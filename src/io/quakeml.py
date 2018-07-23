@@ -13,6 +13,9 @@ import numpy as num
 logger = logging.getLogger('pyrocko.io.quakeml')
 
 
+guts_xmlns = 'http://quakeml.org/xmlns/bed/1.2'
+
+
 class QuakeMLError(Exception):
     pass
 
@@ -707,6 +710,9 @@ class EventParameters(Object):
 
 class QuakeML(Object):
     xmltagname = 'quakeml'
+    xmlns = 'http://quakeml.org/xmlns/quakeml/1.2'
+    guessable_xmlns = [xmlns, guts_xmlns]
+
     event_parameters = EventParameters.T(optional=True)
 
     def get_pyrocko_events(self):
@@ -716,3 +722,13 @@ class QuakeML(Object):
             events.append(e.pyrocko_event())
 
         return events
+
+    @classmethod
+    def load_xml(cls, *args, **kwargs):
+        kwargs['ns_hints'] = [
+            'http://quakeml.org/xmlns/quakeml/1.2',
+            'http://quakeml.org/xmlns/bed/1.2']
+
+        kwargs['ns_ignore'] = True
+
+        return super(QuakeML, cls).load_xml(*args, **kwargs)

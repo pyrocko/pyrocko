@@ -194,7 +194,7 @@ class WaveformGenerator(TargetGenerator):
 
             trs[nslc] = tr
 
-        logger.debug('Calculating waveforms between %s - %s...'
+        logger.debug('Forward modelling waveforms between %s - %s...'
                      % (tts(tmin, format='%Y-%m-%d_%H-%M-%S'),
                         tts(tmax, format='%Y-%m-%d_%H-%M-%S')))
 
@@ -202,7 +202,15 @@ class WaveformGenerator(TargetGenerator):
             targets = self.get_targets()
             resp = engine.process(source, targets)
 
-            for _, target, tr in resp.iter_results():
+            for _, target, res in resp.iter_results(get='results'):
+                if isinstance(res, gf.SeismosizerError):
+                    logger.warning('Station %s is Out of bounds!'
+                                   % '.'.join(target.codes))
+                    continue
+                if not isinstance(res, gf.meta.Result):
+                    continue
+                tr = res.trace.pyrocko_trace()
+
                 resp = self.get_transfer_function(target.codes)
                 if resp:
                     tr = tr.transfer(transfer_function=resp)

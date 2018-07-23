@@ -228,7 +228,7 @@ class Trace(object):
 
         return min(max(0, i), self.ydata.size)
 
-    def add(self, other, interpolate=True):
+    def add(self, other, interpolate=True, left=0., right=0.):
         '''
         Add values of other trace (self += other).
 
@@ -249,7 +249,7 @@ class Trace(object):
             other_xdata = other.get_xdata()
             xdata = self.get_xdata()
             self.ydata += num.interp(
-                xdata, other_xdata, other.ydata, left=0., right=0.)
+                xdata, other_xdata, other.ydata, left=left, right=left)
         else:
             assert self.deltat == other.deltat
             ioff = int(round((other.tmin-self.tmin)/self.deltat))
@@ -380,6 +380,13 @@ class Trace(object):
             self.network, self.station, self.location, self.channel, self.tmin)
         self.nslc_id = reuse(
             (self.network, self.station, self.location, self.channel))
+
+    def prune_from_reuse_cache(self):
+        util.deuse(self.nslc_id)
+        util.deuse(self.network)
+        util.deuse(self.station)
+        util.deuse(self.location)
+        util.deuse(self.channel)
 
     def set_mtime(self, mtime):
         '''
@@ -1245,7 +1252,7 @@ class Trace(object):
               nblock_duration_detection=100):
 
         '''
-        Detect peaks above given threshold.
+        Detect peaks above a given threshold (method 1).
 
         From every instant, where the signal rises above ``threshold``, a time
         length of ``tsearch`` seconds is searched for a maximum. A list with
@@ -1311,6 +1318,50 @@ class Trace(object):
             return tpeaks, apeaks, tzeros
         else:
             return tpeaks, apeaks
+
+    def peaks2(self, threshold, tsearch):
+
+        '''
+        Detect peaks above a given threshold (method 2).
+
+        This variant of peak detection is a bit more robust (and slower) than
+        the one implemented in :py:meth:`Trace.peaks`. First all samples with
+        ``a[i-1] < a[i] > a[i+1]`` are masked as potential peaks. From these,
+        iteratively the one with the maximum amplitude ``a[j]`` and time
+        ``t[j]`` is choosen and potential peaks within
+        ``t[j] - tsearch, t[j] + tsearch``
+        are discarded. The algorithm stops, when ``a[j] < threshold`` or when
+        no more potential peaks are left.
+        '''
+
+        a = num.copy(self.ydata)
+
+        amin = num.min(a)
+
+        a[0] = amin
+        a[1: -1][num.diff(a, 2) <= 0.] = amin
+        a[-1] = amin
+
+        data = []
+        while True:
+            imax = num.argmax(a)
+            amax = a[imax]
+
+            if amax < threshold or amax == amin:
+                break
+
+            data.append((self.tmin + imax * self.deltat, amax))
+
+            ntsearch = int(round(tsearch / self.deltat))
+            a[max(imax-ntsearch//2, 0):min(imax+ntsearch//2, a.size)] = amin
+
+        if data:
+            data.sort()
+            tpeaks, apeaks = list(zip(*data))
+        else:
+            tpeaks, apeaks = [], []
+
+        return tpeaks, apeaks
 
     def extend(self, tmin=None, tmax=None, fillmethod='zeros'):
         '''
@@ -1609,9 +1660,10 @@ class Trace(object):
         Uses normal python '%(placeholder)s' string templates. The following
         placeholders are considered: ``network``, ``station``, ``location``,
         ``channel``, ``tmin`` (time of first sample), ``tmax`` (time of last
-        sample), ``tmin_ms``, ``tmax_ms``, ``tmin_us``, ``tmax_us``. The
-        versions with '_ms' include milliseconds, the versions with '_us'
-        include microseconds.
+        sample), ``tmin_ms``, ``tmax_ms``, ``tmin_us``, ``tmax_us``,
+        ``tmin_year``, ``tmax_year``, ``julianday``. The variants ending with
+        ``'_ms'`` include milliseconds, those with ``'_us'`` include
+        microseconds, those with ``'_year'`` contain only the year.
         '''
 
         template = template.replace('%n', '%(network)s')\
@@ -1636,6 +1688,10 @@ class Trace(object):
             self.tmin, format='%Y-%m-%d_%H-%M-%S.6FRAC')
         params['tmax_us'] = util.time_to_str(
             self.tmax, format='%Y-%m-%d_%H-%M-%S.6FRAC')
+        params['tmin_year'] = util.time_to_str(
+            self.tmin, format='%Y')
+        params['tmax_year'] = util.time_to_str(
+            self.tmax, format='%Y')
         params['julianday'] = util.julian_day_of_year(self.tmin)
         params.update(additional)
         return template % params

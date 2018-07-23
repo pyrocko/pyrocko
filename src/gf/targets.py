@@ -12,6 +12,7 @@ from . import meta
 from pyrocko.guts import Timestamp, Tuple, String, Float, Object, StringChoice
 from pyrocko.guts_array import Array
 from pyrocko.model import gnss
+from pyrocko.orthodrome import distance_accurate50m_numpy
 
 d2r = num.pi / 180.
 
@@ -45,6 +46,8 @@ def component_orientation(source, target, component):
         'N': (0., 0.),
         'E': (90., 0.),
         'Z': (0., -90.)}[component]
+
+    return azi, dip
 
 
 class Target(meta.Receiver):
@@ -252,6 +255,16 @@ class StaticTarget(meta.MultiLocation):
                     east_shift=float(self.coords5[i, 3]),
                     elevation=float(self.coords5[i, 4])))
         return targets
+
+    def distance_to(self, source):
+        src_lats = num.full_like(self.lats, fill_value=source.lat)
+        src_lons = num.full_like(self.lons, fill_value=source.lon)
+
+        target_coords = self.get_latlon()
+        target_lats = target_coords[:, 0]
+        target_lons = target_coords[:, 1]
+        return distance_accurate50m_numpy(
+            src_lats, src_lons, target_lats, target_lons)
 
     def post_process(self, engine, source, statics):
         return meta.StaticResult(result=statics)

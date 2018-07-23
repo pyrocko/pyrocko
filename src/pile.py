@@ -2,7 +2,7 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 from future import standard_library
 standard_library.install_aliases()  # noqa
@@ -66,6 +66,13 @@ class Counter(dict):
         self[k] -= 1
         if self[k] <= 0:
             del self[k]
+
+
+def fix_unicode_copy(counter, func):
+    counter_new = Counter()
+    for k in counter:
+        counter_new[func(k)] = counter[k]
+    return counter_new
 
 
 pjoin = os.path.join
@@ -262,9 +269,19 @@ class TracesFileCache(object):
             v.trees_from_content(v.traces)
             for tr in v.traces:
                 tr.file = v
+                # fix Py2 codes to not include unicode when the cache file
+                # was created with Py3
+                if not isinstance(tr.station, str):
+                    tr.prune_from_reuse_cache()
+                    tr.set_codes(
+                        str(tr.network),
+                        str(tr.station),
+                        str(tr.location),
+                        str(tr.channel))
 
             v.data_use_count = 0
             v.data_loaded = False
+            v.fix_unicode_codes()
 
         return cache
 
@@ -490,6 +507,18 @@ class TracesGroup(object):
         self.by_tlen = Sorted(content, tlen)
         self.by_mtime = Sorted(content, 'mtime')
         self.adjust_minmax()
+
+    def fix_unicode_codes(self):
+        for net in self.networks:
+            if isinstance(net, str):
+                return
+
+        self.networks = fix_unicode_copy(self.networks, str)
+        self.stations = fix_unicode_copy(self.stations, str)
+        self.locations = fix_unicode_copy(self.locations, str)
+        self.channels = fix_unicode_copy(self.channels, str)
+        self.nslc_ids = fix_unicode_copy(
+            self.nslc_ids, lambda k: tuple(str(x) for x in k))
 
     def add(self, content):
         '''
@@ -998,7 +1027,8 @@ class Pile(TracesGroup):
 
     def remove_file(self, file):
         subpile = file.get_parent()
-        subpile.remove_file(file)
+        if subpile is not None:
+            subpile.remove_file(file)
         if file.abspath is not None:
             self.abspaths.remove(file.abspath)
 

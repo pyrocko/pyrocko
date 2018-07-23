@@ -69,7 +69,8 @@ class SnufflerConfig(ConfigBase):
         String.T(), String.T(), default=default_phase_key_mapping)
     demean = Bool.T(default=True)
     show_scale_ranges = Bool.T(default=False)
-    show_scale_axis = Bool.T(default=False)
+    show_scale_axes = Bool.T(default=False)
+    show_boxes = Bool.T(default=True)
     first_start = Bool.T(default=True)
 
     def get_phase_name(self, key):
@@ -96,7 +97,9 @@ class PyrockoConfig(ConfigBase):
         default=os.path.join(pyrocko_dir_tmpl, 'leap-seconds.list'))
     leapseconds_url = String.T(
         default='http://www.ietf.org/timezones/data/leap-seconds.list')
-    earthdata_credentials = Tuple.T(2, String.T(), optional=True)
+    earthdata_credentials = Tuple.T(
+        2, String.T(),
+        optional=True)
     gui_toolkit = StringChoice.T(
         choices=['auto', 'qt4', 'qt5'],
         default='auto')

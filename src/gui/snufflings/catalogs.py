@@ -54,7 +54,6 @@ class CatalogSearch(Snuffling):
 
         self.catalogs = {
             'Geofon': catalog.Geofon(),
-            'USGS/NEIC PDE': catalog.USGS('pde'),
             'USGS/NEIC US': catalog.USGS('us'),
             'Global-CMT': catalog.GlobalCMT(),
             'Kinherd': catalog.Kinherd(),

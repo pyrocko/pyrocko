@@ -21,6 +21,7 @@ rm -f "$outfile_py2"
 
 cd $HOME
 sudo apt-get update -y
+sudo apt-get upgrade -y
 sudo apt-get install -y git python-setuptools python3-setuptools xvfb
 sudo apt-get install -y libgles2-mesa
 
@@ -34,11 +35,11 @@ ln -s "/pyrocko-test-data" "test/data"
 python3 setup.py install_prerequisites --force-yes && \
     sudo python3 setup.py install -f && \
     python3 -m pyrocko.print_version deps >> "$outfile_py3" && \
-    xvfb-run python3 -m nose "$thetest" > >(tee -a "$outfile_py3") 2> >(tee -a "$outfile_py3" >&2) || \
+    xvfb-run -s '-screen 0 640x480x24' python3 -m nose "$thetest" > >(tee -a "$outfile_py3") 2> >(tee -a "$outfile_py3" >&2) || \
     /bin/true
 
 python2 setup.py install_prerequisites --force-yes && \
     sudo python2 setup.py install -f && \
     python2 -m pyrocko.print_version deps >> "$outfile_py2" && \
-    xvfb-run python2 -m nose "$thetest" > >(tee -a "$outfile_py2") 2> >(tee -a "$outfile_py2" >&2) || \
+    xvfb-run -s '-screen 0 640x480x24' python2 -m nose "$thetest" > >(tee -a "$outfile_py2") 2> >(tee -a "$outfile_py2" >&2) || \
     /bin/true

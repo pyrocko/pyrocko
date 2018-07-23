@@ -150,7 +150,7 @@ def find_pyrocko_installs():
             found.append(x)
             del sys.modules['pyrocko']
             del sys.modules['pyrocko.info']
-        except ImportError:
+        except (ImportError, AttributeError):
             pass
 
     sys.path = orig_sys_path
@@ -341,9 +341,10 @@ proceed? [y/n]' % open(fn, 'r').read())
                   shell=False)
 
         while p.poll() is None:
-            print(p.stdout.readline().decode('ascii').rstrip())
+            print(p.stdout.readline().decode(
+                'ascii', errors='replace').rstrip())
 
-        print(p.stdout.read().decode('ascii'))
+        print(p.stdout.read().decode('ascii', errors='replace'))
 
 
 class CustomBuildPyCommand(build_py):

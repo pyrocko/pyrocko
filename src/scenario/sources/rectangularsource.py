@@ -1,6 +1,6 @@
 import numpy as num
 
-from pyrocko.guts import Float
+from pyrocko.guts import Float, Int
 from pyrocko import moment_tensor, gf
 
 from .base import SourceGenerator
@@ -13,6 +13,7 @@ guts_prefix = 'pf.scenario'
 class RectangularSourceGenerator(SourceGenerator):
     depth_min = Float.T(default=0.0)
     depth_max = Float.T(default=5*km)
+    decimation_factor = Int.T(default=2)
 
     strike = Float.T(
         optional=True)
@@ -62,14 +63,15 @@ class RectangularSourceGenerator(SourceGenerator):
             time=float(time),
             lat=float(lat),
             lon=float(lon),
-            magnitude=magnitude,
-
+            anchor='top',
             depth=float(depth),
             length=float(length),
             width=float(width),
             strike=float(strike),
             dip=float(dip),
-            rake=float(rake))
+            rake=float(rake),
+            magnitude=magnitude,
+            decimation_factor=self.decimation_factor)
 
         return source
 
@@ -80,4 +82,5 @@ class RectangularSourceGenerator(SourceGenerator):
                 L='+p2p,black',
                 W='1p,black',
                 G='black',
+                t=60,
                 *automap.jxyr)

@@ -179,7 +179,7 @@ class Integrator(pyrocko.shadow_pile.ShadowPile):
 
     def process(self, iblock, tmin, tmax, traces):
         for trace in traces:
-            trace.ydata -= trace.ydata.mean()
+            trace.ydata = trace.ydata - trace.ydata.mean()
             trace.ydata = num.cumsum(trace.ydata)
 
         return traces
@@ -939,7 +939,8 @@ def MakePileViewerMainClass(base):
 
             self.menuitem_showboxes = qw.QAction('Show Boxes', self.menu)
             self.menuitem_showboxes.setCheckable(True)
-            self.menuitem_showboxes.setChecked(True)
+            self.menuitem_showboxes.setChecked(
+                self.config.show_boxes)
             self.menu.addAction(self.menuitem_showboxes)
 
             self.menuitem_colortraces = qw.QAction('Color Traces', self.menu)
@@ -958,7 +959,7 @@ def MakePileViewerMainClass(base):
                 'Show Scale Axes', self.menu)
             self.menuitem_showscaleaxis.setCheckable(True)
             self.menuitem_showscaleaxis.setChecked(
-                self.config.show_scale_axis)
+                self.config.show_scale_axes)
             self.menu.addAction(self.menuitem_showscaleaxis)
 
             self.menuitem_showzeroline = qw.QAction(
@@ -1290,6 +1291,7 @@ def MakePileViewerMainClass(base):
                 self.active_event_marker.set_active(False)
 
             self.active_event_marker_changed.emit(-1)
+            self.active_event_marker = None
 
         def set_active_event_marker(self, event_marker):
             if self.active_event_marker:
@@ -1944,7 +1946,10 @@ def MakePileViewerMainClass(base):
             dt = self.tmax - self.tmin
             tmid = (self.tmin + self.tmax) / 2.
 
-            keytext = str(key_event.text())
+            try:
+                keytext = str(key_event.text())
+            except UnicodeEncodeError:
+                return
 
             if keytext == '?':
                 self.help()
@@ -1952,6 +1957,24 @@ def MakePileViewerMainClass(base):
             elif keytext == ' ':
                 self.interrupt_following()
                 self.set_time_range(self.tmin+dt, self.tmax+dt)
+
+            elif key_event.key() == qc.Qt.Key_Up:
+                for m in self.selected_markers():
+                    if isinstance(m, PhaseMarker):
+                        if key_event.modifiers() & qc.Qt.ShiftModifier:
+                            p = 0
+                        else:
+                            p = 1 if m.get_polarity() != 1 else None
+                        m.set_polarity(p)
+
+            elif key_event.key() == qc.Qt.Key_Down:
+                for m in self.selected_markers():
+                    if isinstance(m, PhaseMarker):
+                        if key_event.modifiers() & qc.Qt.ShiftModifier:
+                            p = 0
+                        else:
+                            p = -1 if m.get_polarity() != -1 else None
+                        m.set_polarity(p)
 
             elif keytext == 'b':
                 dt = self.tmax - self.tmin
@@ -3177,6 +3200,8 @@ def MakePileViewerMainClass(base):
 
                         if demean:
                             for tr in traces:
+                                if (tr.meta and tr.meta.get('tabu', False)):
+                                    continue
                                 y = tr.get_ydata()
                                 tr.set_ydata(y - num.mean(y))
 
@@ -3185,8 +3210,7 @@ def MakePileViewerMainClass(base):
                         for trace in traces:
 
                             if not (trace.meta
-                                    and 'tabu' in trace.meta
-                                    and trace.meta['tabu']):
+                                    and trace.meta.get('tabu', False)):
 
                                 if fft_filtering:
                                     but = pyrocko.trace.ButterworthResponse

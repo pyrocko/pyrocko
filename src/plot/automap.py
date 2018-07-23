@@ -1044,13 +1044,21 @@ class Map(Object):
 
         self._cities_minpop = minpop
 
-    def add_stations(self, stations, psxy_style=dict(S='t8p', G='black')):
-        lats = [s.lat for s in stations]
-        lons = [s.lon for s in stations]
+    def add_stations(self, stations, psxy_style=dict()):
+
+        default_psxy_style = {
+            'S': 't8p',
+            'G': 'black'
+        }
+        default_psxy_style.update(psxy_style)
+
+        lats, lons = zip(*[od.ne_to_latlon(
+                                s.lat, s.lon, s.north_shift, s.east_shift)
+                           for s in stations])
 
         self.gmt.psxy(
             in_columns=(lons, lats),
-            *self.jxyr, **psxy_style)
+            *self.jxyr, **default_psxy_style)
 
         for station in stations:
             self.add_label(station.lat, station.lon, '.'.join(
@@ -1067,25 +1075,42 @@ class Map(Object):
         return tile
 
     def add_gnss_campaign(self, campaign,
-                          psxy_style=dict(G='black', W='1p,black')):
+                          psxy_style=dict(), labels=True):
 
         offsets = num.array([math.sqrt(s.east.shift**2 + s.north.shift**2)
                              for s in campaign.stations])
-        scale = 1./offsets.max()
+        size = math.sqrt(self.height**2 + self.width**2)
+        scale = (size/10.) / offsets.max()
+
+        default_psxy_style = {
+            'h': 0,
+            'W': '0.5p,black',
+            'G': 'black',
+            'L': True,
+            'S': 'e%dc/0.95/8' % scale,
+        }
+        default_psxy_style.update(psxy_style)
+
+        lats, lons = zip(*[od.ne_to_latlon(
+                                s.lat, s.lon, s.north_shift, s.east_shift)
+                           for s in campaign.stations])
+
+        if labels:
+            rows = [(lons[ista], lats[ista],
+                     s.east.shift, s.north.shift,
+                     s.east.sigma, s.north.sigma, 0,
+                     s.code)
+                    for ista, s in enumerate(campaign.stations)]
+        else:
+            rows = [(lons[ista], lats[ista],
+                     s.east.shift, s.north.shift,
+                     s.east.sigma, s.north.sigma, 0)
+                    for ista, s in enumerate(campaign.stations)]
 
         self.gmt.psvelo(
-            in_rows=[(s.lon, s.lat,
-                      s.east.shift, s.north.shift,
-                      s.east.sigma, s.north.sigma, 0,
-                      s.code)
-                     for s in campaign.stations],
-            h=2,
-            W='0.5p,black',
-            t='30',
-            G='black',
-            L=True,
-            S='e%d/0.95/8' % scale,
-            *self.jxyr
+            in_rows=rows,
+            *self.jxyr,
+            **default_psxy_style
             )
 
     def draw_plates(self):

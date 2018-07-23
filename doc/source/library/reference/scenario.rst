@@ -9,6 +9,7 @@ Available Scenario Target Generators
 
 .. toctree ::
 
+    scenario/sources
     scenario/targets
 
 .. automodule :: pyrocko.scenario.scenario

@@ -1,9 +1,12 @@
 import numpy as num
 import logging
+import sys
+import os
 import os.path as op
 
 from pyrocko.guts import List
-from pyrocko import pile, util, model
+from pyrocko.plot import gmtpy
+from pyrocko import pile, util, model, config
 
 from .base import LocationGenerator, ScenarioError
 from .sources import SourceGenerator, DCSourceGenerator
@@ -127,11 +130,16 @@ class ScenarioGenerator(LocationGenerator):
         return p
 
     def make_map(self, filename):
-        logger.info('Plotting scenarios\' map...')
-        draw_scenario_gmt(self, filename)
+        logger.info('Plotting scenario\'s map...')
+        if not gmtpy.have_gmt():
+            logger.warning('Cannot plot map, GMT is not installed.')
+        try:
+            draw_scenario_gmt(self, filename)
+        except gmtpy.GMTError:
+            logger.warning('GMT threw an error, could not plot map')
 
     def draw_map(self, fn):
-        from pyrocko import automap
+        from pyrocko.plot import automap
 
         lat, lon = self.get_center_latlon()
         radius = self.get_radius()
@@ -164,12 +172,95 @@ class ScenarioGenerator(LocationGenerator):
 
         m.save(fn)
 
+    @property
+    def stores_wanted(self):
+        return set([gen.store_id for gen in self.target_generators
+                    if hasattr(gen, 'store_id')])
+
+    @property
+    def stores_missing(self):
+        return self.stores_wanted - set(self.get_engine().get_store_ids())
+
+    def ensure_gfstores(self, interactive=False, gf_store_superdirs_extra=[]):
+        if not self.stores_missing:
+            return
+
+        from pyrocko.gf import ws
+
+        cfg = config.config()
+
+        if len(cfg.gf_store_superdirs) == 0:
+            store_dir = op.expanduser(
+                op.join(config.pyrocko_dir_tmpl, 'gf_stores'))
+            logger.debug('Creating default gf_store_superdirs: %s' % store_dir)
+
+            util.ensuredir(store_dir)
+            cfg.gf_store_superdirs = [store_dir]
+            config.write_config(cfg)
+
+        gf_store_superdirs = cfg.gf_store_superdirs + gf_store_superdirs_extra
+
+        if interactive:
+            print('We could not find the following Green\'s function stores:\n'
+                  ' %s\n'
+                  'We can try to download the stores from '
+                  'http://kinherd.org:8080 into one of the following '
+                  'directories.'
+                  % '\n'.join(self.stores_missing))
+            for idr, dr in enumerate(gf_store_superdirs):
+                print(' %d. %s' % ((idr+1), dr))
+            s = input('\nInto which directory should we download the GF '
+                      'store(s)?\nDefault 1, (C)ancel: ')
+            if s in ['c', 'C']:
+                print('Canceled!')
+                sys.exit(1)
+            elif s == '':
+                s = 0
+            try:
+                s = int(s)
+                if s > len(gf_store_superdirs):
+                    raise ValueError
+            except ValueError:
+                print('Invalid selection: %s' % s)
+                sys.exit(1)
+        else:
+            s = 1
+
+        download_dir = gf_store_superdirs[s-1]
+        logger.info('Downloading Green\'s functions stores to %s'
+                    % download_dir)
+
+        oldwd = os.getcwd()
+        for store in self.stores_missing:
+            os.chdir(download_dir)
+            ws.download_gf_store(site='kinherd', store_id=store)
+
+        os.chdir(oldwd)
+
     @classmethod
     def initialize(
             cls, path,
             center_lat=None, center_lon=None, radius=None,
-            targets=AVAILABLE_TARGETS,
-            force=False):
+            targets=AVAILABLE_TARGETS, force=False):
+        """Initialize a Scenario and create a ``scenario.yml``
+
+        :param path: Path to create the scenerio in
+        :type path: str
+        :param center_lat: Center latitude, defaults to None
+        :type center_lat: float, optional
+        :param center_lon: Center longitude, defaults to None
+        :type center_lon: float, optional
+        :param radius: Scenario's radius in [m], defaults to None
+        :type radius: float, optional
+        :param targets: Targets to thow into scenario,
+            defaults to AVAILABLE_TARGETS
+        :type targets: list of :class:`pyrocko.scenario.ScenarioTargets`,
+            optional
+        :param force: Overwrite directory, defaults to False
+        :type force: bool, optional
+        :returns: Scenario
+        :rtype: :class:`pyrocko.scenario.ScenarioGenerator`
+        """
         import os.path as op
 
         if op.exists(path) and not force:

@@ -16,7 +16,7 @@ import logging
 import traceback
 import tempfile
 
-from .qt_compat import qc, qw
+from .qt_compat import qc, qw, getSaveFileName
 
 from pyrocko import pile, config
 
@@ -904,8 +904,8 @@ class Snuffling(object):
             raise Exception('invalid mode argument')
 
     def chopper_selected_traces(self, fallback=False, marker_selector=None,
-                                mode='inview', *args, **kwargs):
-
+                                mode='inview', main_bandpass='False',
+                                *args, **kwargs):
         '''
         Iterate over selected traces.
 
@@ -925,6 +925,8 @@ class Snuffling(object):
                 traces not currenly hidden by hide or quick-select commands
                 (including traces accessible through vertical scrolling), or
                 ``'all'`` to disable any restrictions.
+        :param main_bandpass: if ``True``, apply main control high- and lowpass
+                filters to traces.
         '''
 
         try:
@@ -944,6 +946,18 @@ class Snuffling(object):
 
             trace_selector_arg = kwargs.pop('trace_selector', rtrue)
             trace_selector_viewer = self.get_viewer_trace_selector(mode)
+
+            if main_bandpass:
+                def apply_filters(traces):
+                    for tr in traces:
+                        if viewer.highpass is not None:
+                            tr.highpass(4, viewer.highpass)
+                        if viewer.lowpass is not None:
+                            tr.lowpass(4, viewer.lowpass)
+                    return traces
+            else:
+                def apply_filters(traces):
+                    return traces
 
             if markers:
                 for marker in markers:
@@ -965,7 +979,7 @@ class Snuffling(object):
                             *args,
                             **kwargs):
 
-                        yield traces
+                        yield apply_filters(traces)
 
             elif fallback:
                 def trace_selector(tr):
@@ -980,7 +994,7 @@ class Snuffling(object):
                         *args,
                         **kwargs):
 
-                    yield traces
+                    yield apply_filters(traces)
             else:
                 raise NoTracesSelected()
 
@@ -1260,9 +1274,8 @@ class Snuffling(object):
         if not dir and self._previous_output_filename:
             dir = self._previous_output_filename
 
-        fn, _ = qw.QFileDialog.getSaveFileName(
+        fn = getSaveFileName(
             self.get_viewer(), caption, dir, filter, selected_filter)
-
         if not fn:
             raise UserCancelled()
 

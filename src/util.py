@@ -1063,6 +1063,8 @@ def ensuredir(dst):
 
     if os.path.exists(dst):
         return
+    if dst[-1] == '/':
+        dst = dst[:-1]
 
     ensuredirs(dst)
     os.mkdir(dst)
@@ -1083,6 +1085,12 @@ def reuse(x):
     if x not in grs:
         grs[x] = x
     return grs[x]
+
+
+def deuse(x):
+    grs = GlobalVars.reuse_store
+    if x in grs:
+        del grs[x]
 
 
 class Anon(object):

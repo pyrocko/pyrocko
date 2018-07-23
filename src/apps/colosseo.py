@@ -130,8 +130,9 @@ def command_init(args):
                 % tuple([args[0]] + scenario_dims))
 
     scenario_dims[2] *= km
-    scenario.ScenarioGenerator.initialize(project_dir, *scenario_dims,
-                                          force=options.force)
+    scenario.ScenarioGenerator.initialize(
+        project_dir, *scenario_dims, force=options.force)
+
     util.ensuredir(op.join(project_dir, 'gf_stores'))
 
 
@@ -160,7 +161,9 @@ def command_fill(args):
 
     scenario = guts.load(filename=fn)
     scenario.init_modelling(engine)
-    scenario.dump_data(path=project_dir, overwrite=options.force)
+    scenario.ensure_gfstores(interactive=True)
+    scenario.dump_data(
+        path=project_dir, overwrite=options.force)
     scenario.make_map(op.join(project_dir, 'map.pdf'))
 
 

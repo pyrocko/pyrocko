@@ -77,6 +77,10 @@ class GmtPyError(Exception):
     pass
 
 
+class GMTError(GmtPyError):
+    pass
+
+
 class GMTInstallationProblem(GmtPyError):
     pass
 
@@ -153,7 +157,7 @@ def get_bbox(s):
             bb = [float(x) for x in m.group(1).split()]
             return bb
 
-    raise Exception('Cannot find bbox')
+    raise GmtPyError('Cannot find bbox')
 
 
 def replace_bbox(bbox, *args):
@@ -1040,6 +1044,7 @@ GMT_HISTORY = true
 GMT_INTERPOLANT = akima
 GMT_TRIANGULATE = Shewchuk
 GMT_VERBOSE = compat
+GMT_LANGUAGE = us
 #
 # I/O Parameters
 #
@@ -1116,7 +1121,6 @@ PS_TRANSPARENCY = Normal
 TIME_EPOCH = 1970-01-01T00:00:00
 TIME_IS_INTERVAL = off
 TIME_INTERVAL_FRACTION = 0.5
-TIME_LANGUAGE = us
 TIME_UNIT = s
 TIME_WEEK_START = Monday
 TIME_Y2K_OFFSET_YEAR = 1950
@@ -1234,7 +1238,7 @@ def gmt_default_config(version):
     xversion = appropriate_defaults_version(version)
 
     # if not version in _gmt_defaults_by_version:
-    #     raise Exception('No GMT defaults for version %s found' % version)
+    #     raise GMTError('No GMT defaults for version %s found' % version)
 
     gmt_defaults = _gmt_defaults_by_version[xversion]
 
@@ -2795,13 +2799,13 @@ class FrameLayout(Widget):
         av = sv - (st[1]+sb[1]+sc[1])
 
         if ah < 0.0:
-            raise Exception("Container not wide enough for contents "
-                            "(FrameLayout, available: %g cm, needed: %g cm)"
-                            % (sh/cm, (sl[0]+sr[0]+sc[0])/cm))
+            raise GmtPyError("Container not wide enough for contents "
+                             "(FrameLayout, available: %g cm, needed: %g cm)"
+                             % (sh/cm, (sl[0]+sr[0]+sc[0])/cm))
         if av < 0.0:
-            raise Exception("Container not high enough for contents "
-                            "(FrameLayout, available: %g cm, needed: %g cm)"
-                            % (sv/cm, (st[1]+sb[1]+sc[1])/cm))
+            raise GmtPyError("Container not high enough for contents "
+                             "(FrameLayout, available: %g cm, needed: %g cm)"
+                             % (sv/cm, (st[1]+sb[1]+sc[1])/cm))
 
         slh, srh, sch = distribute((sl[0], sr[0], sc[0]),
                                    (gl[0], gr[0], gc[0]), ah)
@@ -2849,7 +2853,7 @@ class FrameLayout(Widget):
         if which in ('left', 'right', 'top', 'bottom', 'center'):
             self.__dict__[which] = widget
         else:
-            raise Exception('No such sub-widget: %s' % which)
+            raise GmtPyError('No such sub-widget: %s' % which)
 
         widget.set_parent(self)
 
@@ -2863,7 +2867,7 @@ class FrameLayout(Widget):
         if which in ('left', 'right', 'top', 'bottom', 'center'):
             return self.__dict__[which]
         else:
-            raise Exception('No such sub-widget: %s' % which)
+            raise GmtPyError('No such sub-widget: %s' % which)
 
     def get_children(self):
         return [self.left, self.right, self.top, self.bottom, self.center]
@@ -2953,13 +2957,13 @@ class GridLayout(Widget):
             ah = sh
 
         if ah < 0.0:
-            raise Exception("Container not wide enough for contents "
-                            "(GridLayout, available: %g cm, needed: %g cm)"
-                            % (sh/cm, (num.sum(esh.max(0)))/cm))
+            raise GmtPyError("Container not wide enough for contents "
+                             "(GridLayout, available: %g cm, needed: %g cm)"
+                             % (sh/cm, (num.sum(esh.max(0)))/cm))
         if av < 0.0:
-            raise Exception("Container not high enough for contents "
-                            "(GridLayout, available: %g cm, needed: %g cm)"
-                            % (sv/cm, (num.sum(esv.max(1)))/cm))
+            raise GmtPyError("Container not high enough for contents "
+                             "(GridLayout, available: %g cm, needed: %g cm)"
+                             % (sv/cm, (num.sum(esv.max(1)))/cm))
 
         nx, ny = esh.shape
 
@@ -3371,9 +3375,9 @@ class GMT(object):
         # convert option arguments to strings
         for k, v in kwargs.items():
             if len(k) > 1:
-                raise Exception('Found illegal keyword argument "%s" '
-                                'while preparing options for command "%s"'
-                                % (k, command))
+                raise GmtPyError('Found illegal keyword argument "%s" '
+                                 'while preparing options for command "%s"'
+                                 % (k, command))
 
             if type(v) is bool:
                 if v:
@@ -3404,7 +3408,7 @@ class GMT(object):
             args = [pjoin(self.installation['bin'], command)]
 
         if not os.path.isfile(args[0]):
-            raise Exception('No such file: %s' % args[0])
+            raise OSError('No such file: %s' % args[0])
         args.extend(options)
         args.extend(addargs)
         if not self.is_gmt5() and not suppressdefaults:
@@ -3450,9 +3454,9 @@ class GMT(object):
 
         if retcode != 0:
             self.keep_temp_dir = True
-            raise Exception('Command %s returned an error. '
-                            'While executing command:\n%s'
-                            % (command, escape_shell_args(args)))
+            raise GMTError('Command %s returned an error. '
+                           'While executing command:\n%s'
+                           % (command, escape_shell_args(args)))
 
         self.command_log.append(args)
 
@@ -3718,7 +3722,7 @@ class GMT(object):
             w, h = self.page_size_points()
 
             if w is None or h is None:
-                raise Exception("Can't determine page size for layout")
+                raise GmtPyError("Can't determine page size for layout")
 
             pm = paper_media(self.gmt_config).lower()
 

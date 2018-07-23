@@ -25,7 +25,7 @@ m2d = 1./d2m
 _testpath = Path([(0, 0), (0, 1), (1, 1), (1, 0), (0, 0)], closed=True)
 
 if hasattr(_testpath, 'contains_points') and num.all(
-        _testpath.contains_points([(0.5, 0.5), (1.5, 0.5)]) != [True, False]):
+        _testpath.contains_points([(0.5, 0.5), (1.5, 0.5)]) == [True, False]):
 
     def path_contains_points(verts, points):
         p = Path(verts, closed=True)
@@ -1011,6 +1011,12 @@ def geographic_midpoint(lats, lons, weights=None):
     lat = num.arctan2(z, hyp)
 
     return lat/d2r, lon/d2r
+
+
+def geographic_midpoint_locations(locations, weights=None):
+    coords = num.array([loc.effective_latlon
+                        for loc in locations])
+    return geographic_midpoint(coords[:, 0], coords[:, 1], weights)
 
 
 def geodetic_to_ecef(lat, lon, alt):

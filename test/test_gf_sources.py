@@ -50,12 +50,58 @@ class GFSourcesTestCase(unittest.TestCase):
 
     def test_source_to_event(self):
 
+        def stype(x):
+            return x.__class__.__name__
+
         for S in gf.source_classes:
             stf = gf.TriangularSTF(effective_duration=2.0)
             s1 = S(lat=10., lon=20., depth=1000.,
                    north_shift=500., east_shift=500., stf=stf)
             ev = s1.pyrocko_event()
+
+            try:
+                s1_mag = s1.get_magnitude()
+                mess = ''
+            except (gf.DerivedMagnitudeError, NotImplementedError) as e:
+                s1_mag = 'N/A'
+                mess = '* %s *' % e
+
+            if ev.magnitude is not None:
+                ev_mag = ev.magnitude
+            else:
+                ev_mag = 'N/A'
+
             s2 = S.from_pyrocko_event(ev)
+
+            if ev.moment_tensor:
+                mt_mag = ev.moment_tensor.magnitude
+            else:
+                mt_mag = 'N/A'
+
+            try:
+                s2_mag = s2.get_magnitude()
+                mess = ''
+            except (gf.DerivedMagnitudeError, NotImplementedError) as e:
+                s2_mag = 'N/A'
+                mess = '* %s *' % e
+
+            # print(
+            #     stype(s1).ljust(32),
+            #     s1_mag,
+            #     ev.magnitude or 'N/A',
+            #     mt_mag,
+            #     s2_mag,
+            #     mess)
+
+            del mess
+
+            def assert_mag_eq(mag1, mag2):
+                if 'N/A' not in (mag1, mag2):
+                    num.testing.assert_approx_equal(mag1, mag2)
+
+            assert_mag_eq(s1_mag, ev_mag)
+            assert_mag_eq(s1_mag, mt_mag)
+            assert_mag_eq(s1_mag, s2_mag)
 
             if not isinstance(s1, gf.DoubleDCSource):
                 assert numeq(
@@ -326,6 +372,28 @@ class GFSourcesTestCase(unittest.TestCase):
             rect1.get_magnitude(),
             rect2.get_magnitude(
                 store, gf.Target(interpolation='nearest_neighbor')))
+
+    def test_discretize_rect_source(self):
+
+        store = self.dummy_homogeneous_store()
+        target = gf.Target(interpolation='nearest_neighbor')
+
+        for source in [
+                gf.RectangularSource(
+                    depth=10*km,
+                    slip=0.5,
+                    width=5*km,
+                    length=5*km),
+                gf.RectangularSource(
+                    depth=10*km,
+                    magnitude=5.0,
+                    width=5*km,
+                    length=5*km)]:
+
+            dsource = source.discretize_basesource(store, target)
+            m1 = source.get_moment(store, target)
+            m2 = dsource.centroid().pyrocko_moment_tensor().scalar_moment()
+            assert abs(m1 - m2) < abs(m1 + m2) * 1e-6
 
 
 if __name__ == '__main__':

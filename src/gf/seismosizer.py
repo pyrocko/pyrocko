@@ -2,7 +2,7 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 from builtins import range, map, zip
 from past.builtins import cmp
 
@@ -88,15 +88,20 @@ class ConversionError(Exception):
 
 
 class NoSuchStore(BadRequest):
-    def __init__(self, store_id=None):
+    def __init__(self, store_id=None, dirs=None):
         BadRequest.__init__(self)
         self.store_id = store_id
+        self.dirs = dirs
 
     def __str__(self):
         if self.store_id is not None:
-            return 'no GF store with id "%s" found.' % self.store_id
+            rstr = 'no GF store with id "%s" found.' % self.store_id
         else:
-            return 'GF store not found'
+            rstr = 'GF store not found.'
+
+        if self.dirs is not None:
+            rstr += ' Searched folders:\n  %s' % '\n  '.join(sorted(self.dirs))
+        return rstr
 
 
 def ufloat(s):
@@ -182,28 +187,6 @@ def discretize_rect_source(deltas, deltat, north, east, depth,
     points[:, 1] = num.repeat(xw, nl)
     points[:, 2] = 0.0
 
-    anch_x = 0.
-    anch_y = 0.
-    if anchor == 'top' or anchor == 'bottom':
-        anch_y = .5 * width
-    elif anchor == 'center_left':
-        anch_x = .5 * length
-    elif anchor == 'center_right':
-        anch_x = -.5 * length
-    elif anchor == 'top_left' or anchor == 'bottom_left':
-        anch_x = .5 * length
-        anch_y = .5 * width
-    elif anchor == 'top_right' or anchor == 'bottom_right':
-        anch_x = -.5 * length
-        anch_y = .5 * width
-    if anchor == 'bottom':
-        anch_y *= -1.
-    if anchor == 'bottom_right' or anchor == 'bottom_left':
-        anch_y *= -1.
-
-    points[:, 0] += anch_x
-    points[:, 1] += anch_y
-
     if nucleation_x is not None:
         dist_x = num.abs(nucleation_x - points[:, 0])
     else:
@@ -217,6 +200,11 @@ def discretize_rect_source(deltas, deltat, north, east, depth,
     dist = num.sqrt(dist_x**2 + dist_y**2)
     times = dist / velocity
 
+    anch_x, anch_y = map_anchor[anchor]
+
+    points[:, 0] -= anch_x * 0.5 * length
+    points[:, 1] -= anch_y * 0.5 * width
+
     rotmat = num.asarray(
         mt.euler_to_matrix(dip*d2r, strike*d2r, 0.0))
 
@@ -228,6 +216,7 @@ def discretize_rect_source(deltas, deltat, north, east, depth,
     points2 = num.repeat(points, nt, axis=0)
     times2 = num.repeat(times, nt) + num.tile(xtau, n)
     amplitudes2 = num.tile(amplitudes, n)
+    amplitudes2 /= num.sum(amplitudes2)
 
     points2[:, 0] += north
     points2[:, 1] += east
@@ -245,27 +234,10 @@ def outline_rect_source(strike, dip, length, width, anchor):
          [0.5*ln, 0.5*wd, 0.],
          [-0.5*ln, 0.5*wd, 0.],
          [-0.5*ln, -0.5*wd, 0.]])
-    anch_x = 0.
-    anch_y = 0.
-    if anchor == 'top' or anchor == 'bottom':
-        anch_y = .5 * width
-    elif anchor == 'center_left':
-        anch_x = .5 * length
-    elif anchor == 'center_right':
-        anch_x = -.5 * length
-    elif anchor == 'top_left' or anchor == 'bottom_left':
-        anch_x = .5 * length
-        anch_y = .5 * width
-    elif anchor == 'top_right' or anchor == 'bottom_right':
-        anch_x = -.5 * length
-        anch_y = .5 * width
-    if anchor == 'bottom':
-        anch_y *= -1.
-    if anchor == 'bottom_right' or anchor == 'bottom_left':
-        anch_y *= -1.
 
-    points[:, 0] += anch_x
-    points[:, 1] += anch_y
+    anch_x, anch_y = map_anchor[anchor]
+    points[:, 0] -= anch_x * 0.5 * length
+    points[:, 1] -= anch_y * 0.5 * width
 
     rotmat = num.asarray(
         mt.euler_to_matrix(dip*d2r, strike*d2r, 0.0))
@@ -1114,7 +1086,7 @@ class Source(Location, Cloneable):
         return meta.component_scheme_to_description[component_scheme]\
             .provided_components
 
-    def pyrocko_event(self, **kwargs):
+    def pyrocko_event(self, store=None, target=None, **kwargs):
         lat, lon = self.effective_latlon
         duration = None
         if self.stf:
@@ -1170,6 +1142,11 @@ class Source(Location, Cloneable):
         d.update(kwargs)
         return cls(**d)
 
+    def get_magnitude(self):
+        raise NotImplementedError(
+            '%s does not implement get_magnitude()'
+            % self.__class__.__name__)
+
 
 class SourceWithMagnitude(Source):
     '''
@@ -1196,9 +1173,9 @@ class SourceWithMagnitude(Source):
     def moment(self, value):
         self.magnitude = float(mt.moment_to_magnitude(value))
 
-    def pyrocko_event(self, **kwargs):
+    def pyrocko_event(self, store=None, target=None, **kwargs):
         return Source.pyrocko_event(
-            self,
+            self, store, target,
             magnitude=self.magnitude,
             **kwargs)
 
@@ -1210,6 +1187,9 @@ class SourceWithMagnitude(Source):
 
         d.update(kwargs)
         return super(SourceWithMagnitude, cls).from_pyrocko_event(ev, **d)
+
+    def get_magnitude(self):
+        return self.magnitude
 
 
 class DerivedMagnitudeError(ValidationError):
@@ -1245,26 +1225,32 @@ class SourceWithDerivedMagnitude(Source):
         pass
 
     def get_magnitude(self, store=None, target=None):
+        if self.magnitude is None:
+            raise DerivedMagnitudeError('no magnitude set')
+
         return self.magnitude
 
     def get_moment(self, store=None, target=None):
-
         return float(mt.magnitude_to_moment(
-            self.get_magnitude(store=store, target=target)))
+            self.get_magnitude(store, target)))
 
-    def pyrocko_moment_tensor(self, store=None):
-        m0 = self.get_moment(store=store)
-        return mt.MomentTensor(m=mt.symmat6(m0, m0, m0, 0., 0., 0.))
+    def pyrocko_moment_tensor(self, store=None, target=None):
+        raise NotImplementedError(
+            '%s does not implement pyrocko_moment_tensor()'
+            % self.__class__.__name__)
 
-    def pyrocko_event(self, store=None, **kwargs):
+    def pyrocko_event(self, store=None, target=None, **kwargs):
         try:
-            mt = self.pyrocko_moment_tensor(store=store)
-        except DerivedMagnitudeError:
+            mt = self.pyrocko_moment_tensor(store, target)
+            magnitude = self.get_magnitude()
+        except (DerivedMagnitudeError, NotImplementedError):
             mt = None
+            magnitude = None
 
         return Source.pyrocko_event(
-            self,
+            self, store, target,
             moment_tensor=mt,
+            magnitude=magnitude,
             **kwargs)
 
 
@@ -1281,7 +1267,7 @@ class ExplosionSource(SourceWithDerivedMagnitude):
     discretized_source_class = meta.DiscretizedExplosionSource
 
     def base_key(self):
-        return Source.base_key(self)
+        return Source.base_key(self) + (self.volume_change,)
 
     def check_conflicts(self):
         if self.magnitude is not None and self.volume_change is not None:
@@ -1344,12 +1330,15 @@ class ExplosionSource(SourceWithDerivedMagnitude):
         times, amplitudes = self.effective_stf_pre().discretize_t(
             store.config.deltat, 0.0)
 
-        amplitudes *= self.get_moment(
-            store, target=target)
+        amplitudes *= self.get_moment(store, target)
 
         return meta.DiscretizedExplosionSource(
             m0s=amplitudes,
             **self._dparams_base_repeated(times))
+
+    def pyrocko_moment_tensor(self, store=None, target=None):
+        a = self.get_moment(store, target) * math.sqrt(2./3.)
+        return mt.MomentTensor(m=mt.symmat6(a, a, a, 0., 0., 0.))
 
 
 class RectangularExplosionSource(ExplosionSource):
@@ -1401,7 +1390,8 @@ class RectangularExplosionSource(ExplosionSource):
     def base_key(self):
         return Source.base_key(self) + (self.strike, self.dip, self.length,
                                         self.width, self.nucleation_x,
-                                        self.nucleation_y, self.velocity)
+                                        self.nucleation_y, self.velocity,
+                                        self.anchor)
 
     def discretize_basesource(self, store, target=None):
 
@@ -1422,6 +1412,8 @@ class RectangularExplosionSource(ExplosionSource):
             self.north_shift, self.east_shift, self.depth,
             self.strike, self.dip, self.length, self.width, self.anchor,
             self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy)
+
+        amplitudes *= self.get_moment(store, target)
 
         return meta.DiscretizedExplosionSource(
             lat=self.lat,
@@ -1490,17 +1482,17 @@ class DCSource(SourceWithMagnitude):
             m6s=mot.m6()[num.newaxis, :] * amplitudes[:, num.newaxis],
             **self._dparams_base_repeated(times))
 
-    def pyrocko_moment_tensor(self):
+    def pyrocko_moment_tensor(self, store=None, target=None):
         return mt.MomentTensor(
             strike=self.strike,
             dip=self.dip,
             rake=self.rake,
             scalar_moment=self.moment)
 
-    def pyrocko_event(self, **kwargs):
+    def pyrocko_event(self, store=None, target=None, **kwargs):
         return SourceWithMagnitude.pyrocko_event(
-            self,
-            moment_tensor=self.pyrocko_moment_tensor(),
+            self, store, target,
+            moment_tensor=self.pyrocko_moment_tensor(store, target),
             **kwargs)
 
     @classmethod
@@ -1519,16 +1511,12 @@ class DCSource(SourceWithMagnitude):
         return super(DCSource, cls).from_pyrocko_event(ev, **d)
 
 
-class CLVDSource(Source):
+class CLVDSource(SourceWithMagnitude):
     '''
     A pure CLVD point source.
     '''
 
     discretized_source_class = meta.DiscretizedMTSource
-
-    amplitude = Float.T(
-        default=1.0,
-        help='value of the largest eigenvalue of moment tensor [Nm]')
 
     azimuth = Float.T(
         default=0.0,
@@ -1542,11 +1530,12 @@ class CLVDSource(Source):
         return Source.base_key(self) + (self.azimuth, self.dip)
 
     def get_factor(self):
-        return self.amplitude
+        return float(mt.magnitude_to_moment(self.magnitude))
 
     @property
     def m6(self):
-        m = mt.symmat6(-0.5, -0.5, 1., 0., 0., 0.)
+        a = math.sqrt(4./3.) * self.get_factor()
+        m = mt.symmat6(-0.5*a, -0.5*a, a, 0., 0., 0.)
         rotmat1 = mt.euler_to_matrix(
             d2r*(self.dip-90.),
             d2r*(self.azimuth-90.),
@@ -1559,21 +1548,22 @@ class CLVDSource(Source):
         return tuple(self.m6.tolist())
 
     def discretize_basesource(self, store, target=None):
+        factor = self.get_factor()
         times, amplitudes = self.effective_stf_pre().discretize_t(
             store.config.deltat, 0.0)
         return meta.DiscretizedMTSource(
-            m6s=self.m6[num.newaxis, :] * amplitudes[:, num.newaxis],
+            m6s=self.m6[num.newaxis, :] * amplitudes[:, num.newaxis] / factor,
             **self._dparams_base_repeated(times))
 
-    def pyrocko_moment_tensor(self):
+    def pyrocko_moment_tensor(self, store=None, target=None):
         return mt.MomentTensor(m=mt.symmat6(*self.m6_astuple))
 
-    def pyrocko_event(self, **kwargs):
-        mt = self.pyrocko_moment_tensor()
+    def pyrocko_event(self, store=None, target=None, **kwargs):
+        mt = self.pyrocko_moment_tensor(store, target)
         return Source.pyrocko_event(
-            self,
-            moment_tensor=self.pyrocko_moment_tensor(),
-            magnitude=mt.moment_magnitude(),
+            self, store, target,
+            moment_tensor=self.pyrocko_moment_tensor(store, target),
+            magnitude=float(mt.moment_magnitude()),
             **kwargs)
 
 
@@ -1638,14 +1628,20 @@ class MTSource(Source):
             m6s=self.m6[num.newaxis, :] * amplitudes[:, num.newaxis],
             **self._dparams_base_repeated(times))
 
-    def pyrocko_moment_tensor(self):
+    def get_magnitude(self, store=None, target=None):
+        m6 = self.m6
+        return mt.moment_to_magnitude(
+            math.sqrt(num.sum(m6[0:3]**2) + 2.0 * num.sum(m6[3:6]**2))
+            / math.sqrt(2.))
+
+    def pyrocko_moment_tensor(self, store=None, target=None):
         return mt.MomentTensor(m=mt.symmat6(*self.m6_astuple))
 
-    def pyrocko_event(self, **kwargs):
-        mt = self.pyrocko_moment_tensor()
+    def pyrocko_event(self, store=None, target=None, **kwargs):
+        mt = self.pyrocko_moment_tensor(store, target)
         return Source.pyrocko_event(
-            self,
-            moment_tensor=self.pyrocko_moment_tensor(),
+            self, store, target,
+            moment_tensor=self.pyrocko_moment_tensor(store, target),
             magnitude=float(mt.moment_magnitude()),
             **kwargs)
 
@@ -1658,6 +1654,18 @@ class MTSource(Source):
 
         d.update(kwargs)
         return super(MTSource, cls).from_pyrocko_event(ev, **d)
+
+
+map_anchor = {
+    'center': (0.0, 0.0),
+    'center_left': (-1.0, 0.0),
+    'center_right': (1.0, 0.0),
+    'top': (0.0, -1.0),
+    'top_left': (-1.0, -1.0),
+    'top_right': (1.0, -1.0),
+    'bottom': (0.0, 1.0),
+    'bottom_left': (-1.0, 1.0),
+    'bottom_right': (1.0, 1.0)}
 
 
 class RectangularSource(SourceWithDerivedMagnitude):
@@ -1731,7 +1739,9 @@ class RectangularSource(SourceWithDerivedMagnitude):
             self.width,
             self.nucleation_x,
             self.nucleation_y,
-            self.velocity)
+            self.velocity,
+            self.decimation_factor,
+            self.anchor)
 
     def check_conflicts(self):
         if self.magnitude is not None and self.slip is not None:
@@ -1744,6 +1754,12 @@ class RectangularSource(SourceWithDerivedMagnitude):
             return self.magnitude
 
         elif self.slip is not None:
+            if None in (store, target):
+                raise DerivedMagnitudeError(
+                    'magnitude for a rectangular source with slip defined '
+                    'can only be derived when earth model and target '
+                    'interpolation method are available')
+
             amplitudes = self._discretize(store, target)[2]
             return float(mt.moment_to_magnitude(num.sum(amplitudes)))
 
@@ -1774,14 +1790,23 @@ class RectangularSource(SourceWithDerivedMagnitude):
             decimation_factor=self.decimation_factor)
 
         if self.slip is not None:
+            if target is not None:
+                interpolation = target.interpolation
+            else:
+                interpolation = 'nearest_neighbor'
+                logger.warn(
+                    'no target information available, will use '
+                    '"nearest_neighbor" interpolation when extracting shear '
+                    'modulus from earth model')
+
             shear_moduli = store.config.get_shear_moduli(
                 self.lat, self.lon,
                 points=points,
-                interpolation=target.interpolation)
+                interpolation=interpolation)
 
-            amplitudes *= dl * dw * shear_moduli * self.slip
+            amplitudes = dl * dw * shear_moduli * self.slip
         else:
-            amplitudes *= self.get_moment()
+            amplitudes *= self.get_moment(store, target)
 
         return points, times, amplitudes, dl, dw
 
@@ -1827,17 +1852,16 @@ class RectangularSource(SourceWithDerivedMagnitude):
             else:
                 return latlon[:, ::-1]
 
-    def pyrocko_moment_tensor(self, store=None):
+    def pyrocko_moment_tensor(self, store=None, target=None):
         return mt.MomentTensor(
             strike=self.strike,
             dip=self.dip,
             rake=self.rake,
-            scalar_moment=self.get_moment(store))
+            scalar_moment=self.get_moment(store, target))
 
-    def pyrocko_event(self, store=None, **kwargs):
+    def pyrocko_event(self, store=None, target=None, **kwargs):
         return SourceWithDerivedMagnitude.pyrocko_event(
-            self,
-            store=store,
+            self, store, target,
             **kwargs)
 
     @classmethod
@@ -2019,7 +2043,7 @@ class DoubleDCSource(SourceWithMagnitude):
 
         return ds
 
-    def pyrocko_moment_tensor(self):
+    def pyrocko_moment_tensor(self, store=None, target=None):
         a1 = 1.0 - self.mix
         a2 = self.mix
         mot1 = mt.MomentTensor(strike=self.strike1, dip=self.dip1,
@@ -2028,10 +2052,10 @@ class DoubleDCSource(SourceWithMagnitude):
                                rake=self.rake2, scalar_moment=a2*self.moment)
         return mt.MomentTensor(m=mot1.m() + mot2.m())
 
-    def pyrocko_event(self, **kwargs):
+    def pyrocko_event(self, store=None, target=None, **kwargs):
         return SourceWithMagnitude.pyrocko_event(
-            self,
-            moment_tensor=self.pyrocko_moment_tensor(),
+            self, store, target,
+            moment_tensor=self.pyrocko_moment_tensor(store, target),
             **kwargs)
 
     @classmethod
@@ -2087,7 +2111,8 @@ class RingfaultSource(SourceWithMagnitude):
     discretized_source_class = meta.DiscretizedMTSource
 
     def base_key(self):
-        return Source.base_key(self) + (self.strike, self.dip, self.diameter)
+        return Source.base_key(self) + (
+            self.strike, self.dip, self.diameter, self.npointsources)
 
     def get_factor(self):
         return self.sign * self.moment
@@ -2176,9 +2201,9 @@ class SFSource(Source):
         return meta.DiscretizedSFSource(forces=forces,
                                         **self._dparams_base_repeated(times))
 
-    def pyrocko_event(self, **kwargs):
+    def pyrocko_event(self, store=None, target=None, **kwargs):
         return Source.pyrocko_event(
-            self,
+            self, store, target,
             **kwargs)
 
     @classmethod
@@ -2774,18 +2799,21 @@ class LocalEngine(Engine):
                 ('index', 'traces', 'config'))
 
     def iter_store_dirs(self):
+        store_dirs = set()
         for d in self.store_superdirs:
             if not os.path.exists(d):
                 logger.warning('store_superdir not available: %s' % d)
                 continue
 
             for entry in os.listdir(d):
-                store_dir = pjoin(d, entry)
+                store_dir = os.path.realpath(pjoin(d, entry))
                 if self._looks_like_store_dir(store_dir):
-                    yield store_dir
+                    store_dirs.add(store_dir)
 
         for store_dir in self.store_dirs:
-            yield store_dir
+            store_dirs.add(os.path.realpath(store_dir))
+
+        return store_dirs
 
     def _scan_stores(self):
         for store_dir in self.iter_store_dirs():
@@ -2808,7 +2836,7 @@ class LocalEngine(Engine):
             self._scan_stores()
 
         if store_id not in self._id_to_store_dir:
-            raise NoSuchStore(store_id)
+            raise NoSuchStore(store_id, self.iter_store_dirs())
 
         return self._id_to_store_dir[store_id]
 
@@ -2952,39 +2980,32 @@ class LocalEngine(Engine):
         return base_seismogram, tcounters
 
     def base_statics(self, source, target, components, nthreads):
+        tcounters = [xtime()]
+        store_ = self.get_store(target.store_id)
 
-        class OkadaSource(object):
-            pass
-
-        if isinstance(source, OkadaSource):
-            pass
+        if target.tsnapshot is not None:
+            n_f = store_.config.sample_rate
+            itsnapshot = int(num.floor(target.tsnapshot * n_f))
+            # print target.tsnapshot, n_f, itsnapshot
         else:
-            tcounters = [xtime()]
-            store_ = self.get_store(target.store_id)
+            itsnapshot = 1
+        tcounters.append(xtime())
 
-            if target.tsnapshot is not None:
-                n_f = store_.config.sample_rate
-                itsnapshot = int(num.floor(target.tsnapshot * n_f))
-                # print target.tsnapshot, n_f, itsnapshot
-            else:
-                itsnapshot = 1
-            tcounters.append(xtime())
+        base_source = source.discretize_basesource(store_, target=target)
 
-            base_source = source.discretize_basesource(store_, target=target)
+        tcounters.append(xtime())
 
-            tcounters.append(xtime())
+        base_statics = store_.statics(
+            base_source,
+            target,
+            itsnapshot,
+            components,
+            target.interpolation,
+            nthreads)
 
-            base_statics = store_.statics(
-                base_source,
-                target,
-                itsnapshot,
-                components,
-                target.interpolation,
-                nthreads)
+        tcounters.append(xtime())
 
-            tcounters.append(xtime())
-
-            return base_statics, tcounters
+        return base_statics, tcounters
 
     def _post_process_dynamic(self, base_seismogram, source, target):
         deltat = list(base_seismogram.values())[0].deltat
@@ -3290,6 +3311,7 @@ class SourceGrid(SourceGroup):
 source_classes = [
     Source,
     SourceWithMagnitude,
+    SourceWithDerivedMagnitude,
     ExplosionSource,
     RectangularExplosionSource,
     DCSource,

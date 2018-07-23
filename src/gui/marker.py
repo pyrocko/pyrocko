@@ -10,6 +10,7 @@ import math
 import time
 import copy
 import logging
+import sys
 
 import numpy as num
 
@@ -20,18 +21,28 @@ from pyrocko.util import TableWriter, TableReader, gmtime_x, mystrftime
 logger = logging.getLogger('pyrocko.gui.marker')
 
 
+if sys.version_info[0] >= 3:
+    polarity_symbols = {1: u'\u2191', -1: u'\u2193', None: u'', 0: u'\u2195'}
+else:
+    polarity_symbols = {1: '+', -1: '-', None: '', 0: '0'}
+
+
 def str_to_float_or_none(s):
     if s == 'None':
         return None
-    else:
-        return float(s)
+    return float(s)
 
 
 def str_to_str_or_none(s):
     if s == 'None':
         return None
-    else:
-        return s
+    return s
+
+
+def str_to_int_or_none(s):
+    if s == 'None':
+        return None
+    return int(s)
 
 
 def str_to_bool(s):
@@ -686,10 +697,11 @@ class PhaseMarker(Marker):
         self._event_hash = event_hash
         self._event_time = event_time
         self._phasename = phasename
-        self._polarity = polarity
         self._automatic = automatic
         self._incidence_angle = incidence_angle
         self._takeoff_angle = takeoff_angle
+
+        self.set_polarity(polarity)
 
     def draw_trace(self, viewer, p, tr, time_projection, track_projection,
                    gain):
@@ -705,7 +717,7 @@ class PhaseMarker(Marker):
         if self._phasename is not None:
             t.append(self._phasename)
         if self._polarity is not None:
-            t.append(self._polarity)
+            t.append(self.get_polarity_symbol())
 
         if self._automatic:
             t.append('@')
@@ -746,6 +758,17 @@ class PhaseMarker(Marker):
     def set_phasename(self, phasename):
         self._phasename = phasename
 
+    def set_polarity(self, polarity):
+        if polarity not in [1, -1, 0, None]:
+            raise ValueError('polarity has to be 1, -1, 0 or None')
+        self._polarity = polarity
+
+    def get_polarity_symbol(self):
+        return polarity_symbols.get(self._polarity, '')
+
+    def get_polarity(self):
+        return self._polarity
+
     def convert_to_marker(self):
         del self._event
         del self._event_hash
@@ -771,17 +794,19 @@ class PhaseMarker(Marker):
 
         et = None, None
         if self._event:
-            def st(t):
-                return util.time_to_str(
-                    t, format='%Y-%m-%d %H:%M:%S.'+'%iFRAC' % fdigits)
-
-            et = st(self._event.time).split()
+            et = self._st(self._event.time, fdigits).split()
+        elif self._event_time:
+            et = self._st(self._event_time, fdigits).split()
 
         attributes.extend([
             self.get_event_hash(), et[0], et[1], self._phasename,
             self._polarity, self._automatic])
 
         return attributes
+
+    def _st(self, t, fdigits):
+        return util.time_to_str(
+            t, format='%Y-%m-%d %H:%M:%S.'+'%iFRAC' % fdigits)
 
     def get_attribute_widths(self, fdigits=3):
         ws = [6]
@@ -811,7 +836,8 @@ class PhaseMarker(Marker):
         else:
             event_time = None
 
-        phasename, polarity = [str_to_str_or_none(x) for x in vals[i:i+2]]
+        phasename = str_to_str_or_none(vals[i])
+        polarity = str_to_int_or_none(vals[i+1])
         automatic = str_to_bool(vals[i+2])
         marker = PhaseMarker(nslc_ids, tmin, tmax, kind, event=None,
                              event_hash=event_hash, event_time=event_time,

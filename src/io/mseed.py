@@ -121,7 +121,7 @@ def detect(first512):
     if sequence_number < 0:
         return False
 
-    type_code = rec[6]
+    type_code = rec[6:7]
     if type_code in b'DRQM':
         bads = []
         for sex in '<>':
@@ -143,11 +143,11 @@ def detect(first512):
         if type_code not in b'VAST':
             return False
 
-        continuation_code = rec[7]
+        continuation_code = rec[7:8]
         if continuation_code != b' ':
             return False
 
-        blockette_type = rec[8:8+3]
+        blockette_type = rec[8:8+3].decode()
         if not re.match(r'^\d\d\d$', blockette_type):
             return False
 
