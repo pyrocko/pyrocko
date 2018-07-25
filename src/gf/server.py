@@ -39,6 +39,8 @@ import re
 from collections import deque
 import logging
 
+import matplotlib.pyplot as plt
+from pyrocko.plot import cake_plot
 from pyrocko import gf, util
 
 logger = logging.getLogger('pyrocko.gf.server')
@@ -433,8 +435,11 @@ class SeismosizerHandler(RequestHandler):
         elif re.match(r'^' + self.api_path + '$', self.path):
             return self.list_stores_json()
 
-        elif re.match(r'^' + self.api_path + r'[a-zA-Z0-9_]+', self.path):
+        elif re.match(r'^' + self.api_path + r'[a-zA-Z0-9_]+$', self.path):
             return self.get_store_config()
+
+        elif re.match(r'^' + self.api_path + r'[a-zA-Z0-9_]+/profile', self.path):
+            return self.get_store_velocity_profile()
 
         elif re.match(r'^' + P + '$', self.path):
             return self.process()
@@ -587,11 +592,18 @@ class SeismosizerHandler(RequestHandler):
                                  self.path):
             store_id = match.groups()[0]
 
-        store = {}
-        store['id'] = store_id
-        store['config'] = str(engine.get_store(store_id).config)
+        try:
+            store = engine.get_store(store_id)
+        except Exception:
+            self.send_error(404)
+            self.end_headers()
+            return
 
-        s = json.dumps(store)
+        data = {}
+        data['id'] = store_id
+        data['config'] = str(store.config)
+
+        s = json.dumps(data)
         length = len(s)
         f = BytesIO(s.encode('ascii'))
         self.send_response(200, 'OK')
@@ -601,6 +613,41 @@ class SeismosizerHandler(RequestHandler):
         self.end_headers()
 
         return f
+
+    def get_store_velocity_profile(self):
+        engine = self.server.engine
+
+        fig = plt.figure()
+        axes = fig.gca()
+
+        store_ids = list(engine.get_store_ids())
+        store_ids.sort(key=lambda x: x.lower())
+
+        for match in re.finditer(r'/gfws/static/api/([a-zA-Z0-9_]+)/profile',
+                                 self.path):
+            store_id = match.groups()[0]
+
+        try:
+            store = engine.get_store(store_id)
+        except Exception:
+            self.send_error(404)
+            self.end_headers()
+            return
+
+        cake_plot.my_model_plot(store.config.earthmodel_1d, axes=axes)
+
+        f = BytesIO()
+        fig.savefig(f, format='png')
+
+        length = f.tell()
+        self.send_response(200, 'OK')
+        self.send_header("Content-Type", "image/png;")
+        self.send_header("Content-Length", str(length))
+        self.send_header("Access-Control-Allow-Origin", '*')
+        self.end_headers()
+
+        f.seek(0)
+        return f.read()
 
     def process(self):
 
