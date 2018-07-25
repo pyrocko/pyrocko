@@ -302,27 +302,30 @@ class GFSourcesTestCase(unittest.TestCase):
         # plot_sources(sources)
 
     def test_explosion_source(self):
+
         target = gf.Target(
             interpolation='nearest_neighbor')
 
         ex = gf.ExplosionSource(
-                magnitude=5.,
-                volume_change=4.,
-                depth=5*km)
+            magnitude=5.,
+            volume_change=4.,
+            depth=5 * km)
 
         with self.assertRaises(gf.DerivedMagnitudeError):
             ex.validate()
 
         ex = gf.ExplosionSource(
-                depth=5*km)
+            depth=5 * km)
 
         ex.validate()
 
         self.assertEqual(ex.get_moment(), 1.0)
 
+        # magnitude input
+        magnitude = 3.
         ex = gf.ExplosionSource(
-                magnitude=3.0,
-                depth=5*km)
+            magnitude=magnitude,
+            depth=5 * km)
 
         store = self.dummy_store()
 
@@ -332,20 +335,43 @@ class GFSourcesTestCase(unittest.TestCase):
         volume_change = ex.get_volume_change(
             store, target)
 
+        self.assertAlmostEqual(
+            ex.get_magnitude(store, target), magnitude)
+
+        # validate with MT source
+        moment = ex.get_moment(store, target) * float(num.sqrt(2. / 3))
+
+        mt = gf.MTSource(mnn=moment, mee=moment, mdd=moment)
+
+        self.assertAlmostEqual(
+            ex.get_magnitude(store, target),
+            mt.get_magnitude(store=store, target=target))
+
+        # discretized sources
+        d_ex = ex.discretize_basesource(store=store, target=target)
+        d_mt = mt.discretize_basesource(store=store, target=target)
+
+        d_ex_m6s = d_ex.get_source_terms('elastic10')
+        d_mt_m6s = d_mt.get_source_terms('elastic10')
+
+        numeq(d_ex_m6s, d_mt_m6s, 1e-20)
+
+        # interpolation method
         with self.assertRaises(TypeError):
             ex.get_volume_change(
                 store, gf.Target(interpolation='nearest_neighbour'))
 
+        # volume change input
         ex = gf.ExplosionSource(
-                volume_change=volume_change,
-                depth=5*km)
+            volume_change=volume_change,
+            depth=5 * km)
 
         self.assertAlmostEqual(
             ex.get_magnitude(store, target), 3.0)
 
         ex = gf.ExplosionSource(
-                magnitude=3.0,
-                depth=-5.)
+            magnitude=3.0,
+            depth=-5.)
 
         with self.assertRaises(gf.DerivedMagnitudeError):
             ex.get_volume_change(store, target)
