@@ -65,6 +65,11 @@ def globe_cross_section():
 
         def _set_lim_and_transforms(self):
             PolarAxes._set_lim_and_transforms(self)
+            try:
+                theta_position = self._theta_label1_position
+            except AttributeError:
+                theta_position = self.get_theta_offset()
+
             self.transProjection = self.GlobeCrossSectionTransform()
             self.transData = (
                 self.transScale +
@@ -75,7 +80,7 @@ def globe_cross_section():
                 self.PolarAffine(IdentityTransform(), Bbox.unit()) +
                 self.transAxes)
             self._xaxis_text1_transform = (
-                self._theta_label1_position +
+                theta_position +
                 self._xaxis_transform)
             self._yaxis_transform = (
                 Affine2D().scale(num.pi * 2.0, 1.0) +
