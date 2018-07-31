@@ -1294,14 +1294,14 @@ class ExplosionSource(SourceWithDerivedMagnitude):
         times, amplitudes = self.effective_stf_pre().discretize_t(
             store.config.deltat, 0.0)
 
-        amplitudes *= self.get_moment(store, target)
+        amplitudes *= self.get_moment(store, target) * math.sqrt(2. / 3.)
 
         return meta.DiscretizedExplosionSource(
             m0s=amplitudes,
             **self._dparams_base_repeated(times))
 
     def pyrocko_moment_tensor(self, store=None, target=None):
-        a = self.get_moment(store, target) * math.sqrt(2./3.)
+        a = self.get_moment(store, target) * math.sqrt(2. / 3.)
         return mt.MomentTensor(m=mt.symmat6(a, a, a, 0., 0., 0.))
 
 
@@ -1595,8 +1595,8 @@ class MTSource(Source):
     def get_magnitude(self, store=None, target=None):
         m6 = self.m6
         return mt.moment_to_magnitude(
-            math.sqrt(num.sum(m6[0:3]**2) + 2.0 * num.sum(m6[3:6]**2))
-            / math.sqrt(2.))
+            math.sqrt(num.sum(m6[0:3]**2) + 2.0 * num.sum(m6[3:6]**2)) /
+            math.sqrt(2.))
 
     def pyrocko_moment_tensor(self, store=None, target=None):
         return mt.MomentTensor(m=mt.symmat6(*self.m6_astuple))
