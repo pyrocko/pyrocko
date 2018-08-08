@@ -11,25 +11,13 @@ from io import BytesIO
 from base64 import b64decode, b64encode
 
 from . import guts
-from .guts import TBase, Object, ValidationError
+from .guts import TBase, Object, ValidationError, literal
 
 
 try:
     unicode
 except NameError:
     unicode = str
-
-
-class literal(str):
-    pass
-
-
-def literal_presenter(dumper, data):
-    return dumper.represent_scalar(
-        'tag:yaml.org,2002:str', str(data), style='|')
-
-
-guts.GutsSafeDumper.add_representer(literal, literal_presenter)
 
 
 restricted_dtype_map = {

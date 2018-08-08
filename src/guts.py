@@ -60,6 +60,68 @@ guts_types = [
 us_to_cc_regex = re.compile(r'([a-z])_([a-z])')
 
 
+class literal(str):
+    pass
+
+
+class folded(str):
+    pass
+
+
+class singlequoted(str):
+    pass
+
+
+class doublequoted(str):
+    pass
+
+
+def make_str_presenter(style):
+    def presenter(dumper, data):
+        return dumper.represent_scalar(
+            'tag:yaml.org,2002:str', str(data), style=style)
+
+    return presenter
+
+
+str_style_map = {
+    None: lambda x: x,
+    '|': literal,
+    '>': folded,
+    "'": singlequoted,
+    '"': doublequoted}
+
+for (style, cls) in str_style_map.items():
+    if style:
+        GutsSafeDumper.add_representer(cls, make_str_presenter(style))
+
+
+class blist(list):
+    pass
+
+
+class flist(list):
+    pass
+
+
+list_style_map = {
+    None: list,
+    'block': blist,
+    'flow': flist}
+
+
+def make_list_presenter(flow_style):
+    def presenter(dumper, data):
+        return dumper.represent_sequence(
+            'tag:yaml.org,2002:seq', data, flow_style=flow_style)
+
+    return presenter
+
+
+GutsSafeDumper.add_representer(blist, make_list_presenter(False))
+GutsSafeDumper.add_representer(flist, make_list_presenter(True))
+
+
 def us_to_cc(s):
     return us_to_cc_regex.sub(lambda pat: pat.group(1)+pat.group(2).upper(), s)
 
@@ -836,6 +898,14 @@ class Bool(Object):
 class String(Object):
     dummy_for = str
 
+    class __T(TBase):
+        def __init__(self, yamlstyle=None, *args, **kwargs):
+            TBase.__init__(self, *args, **kwargs)
+            self.style_cls = str_style_map[yamlstyle]
+
+        def to_save(self, val):
+            return self.style_cls(val)
+
 
 class Unicode(Object):
     dummy_for = newstr
@@ -904,11 +974,14 @@ class List(Object):
     class __T(TBase):
         multivalued = list
 
-        def __init__(self, content_t=Any.T(), *args, **kwargs):
+        def __init__(
+                self, content_t=Any.T(), yamlstyle='flow', *args, **kwargs):
+
             TBase.__init__(self, *args, **kwargs)
             assert isinstance(content_t, TBase) or isinstance(content_t, Defer)
             self.content_t = content_t
             self.content_t.parent = self
+            self.style_cls = list_style_map[yamlstyle]
 
         def default(self):
             if self._default is not None:
@@ -933,7 +1006,7 @@ class List(Object):
             return val
 
         def to_save(self, val):
-            return [self.content_t.to_save(v) for v in val]
+            return self.style_cls(self.content_t.to_save(v) for v in val)
 
         def to_save_xml(self, val):
             return [self.content_t.to_save_xml(v) for v in val]

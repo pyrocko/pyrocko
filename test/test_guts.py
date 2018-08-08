@@ -1078,6 +1078,7 @@ xmlns:f="https://www.w3schools.com/furniture">
         o = load_xml(string=doc)
         s = o.dump_xml()
         o2 = load_xml(string=s)
+        del o2
 
         assert isinstance(o.tables1[0], Table1)
         assert isinstance(o.tables2[0], Table2)
@@ -1120,6 +1121,46 @@ xmlns:f="https://www.w3schools.com/furniture">
 
         o3 = load_xml(string=s2, ns_hints=['', 'http://www.w3.org/TR/html4/'])
         assert isinstance(o3.tables1[0], Table1)
+
+    def testStyles(self):
+        class A(Object):
+            s = String.T(yamlstyle=None)
+            s_singlequoted = String.T(yamlstyle="'")
+            s_doublequoted = String.T(yamlstyle='"')
+            s_literal = String.T(yamlstyle='|')
+            s_folded = String.T(yamlstyle='>')
+            l_block = List.T(String.T(yamlstyle="'"), yamlstyle='block')
+            l_flow = List.T(String.T(yamlstyle="'"), yamlstyle='flow')
+
+        a = A(
+            s='hello',
+            s_singlequoted='hello',
+            s_doublequoted='hello',
+            s_literal='hello\nhello\n',
+            s_folded='hello',
+            l_block=['a', 'b', 'c'],
+            l_flow=['a', 'b', 'c'])
+
+        a.validate()
+
+        a2 = load_string(a.dump())
+        s2 = ('\n'.join(a2.dump().splitlines()[1:]))
+
+        assert s2 == '''
+s: hello
+s_singlequoted: 'hello'
+s_doublequoted: "hello"
+s_literal: |
+  hello
+  hello
+s_folded: >-
+  hello
+l_block:
+- 'a'
+- 'b'
+- 'c'
+l_flow: ['a', 'b', 'c']
+'''.strip()
 
 
 def makeBasicTypeTest(Type, sample, sample_in=None, xml=False):
