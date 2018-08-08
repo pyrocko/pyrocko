@@ -899,7 +899,8 @@ class String(Object):
     dummy_for = str
 
     class __T(TBase):
-        def __init__(self, yamlstyle=None, *args, **kwargs):
+        def __init__(self, *args, **kwargs):
+            yamlstyle = kwargs.pop('yamlstyle', None)
             TBase.__init__(self, *args, **kwargs)
             self.style_cls = str_style_map[yamlstyle]
 
@@ -974,9 +975,8 @@ class List(Object):
     class __T(TBase):
         multivalued = list
 
-        def __init__(
-                self, content_t=Any.T(), yamlstyle='flow', *args, **kwargs):
-
+        def __init__(self, content_t=Any.T(), *args, **kwargs):
+            yamlstyle = kwargs.pop('yamlstyle', None)
             TBase.__init__(self, *args, **kwargs)
             assert isinstance(content_t, TBase) or isinstance(content_t, Defer)
             self.content_t = content_t
