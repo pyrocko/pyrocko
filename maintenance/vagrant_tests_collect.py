@@ -6,55 +6,66 @@ import glob
 import os
 import re
 
+from pyrocko.guts import Object, String, Dict, List
 
-def parse_result(fn, show_skips=False):
-    lines = []
+
+class TestResult(Object):
+    package = String.T()
+    branch = String.T(optional=True)
+    box = String.T()
+    py_version = String.T(optional=True)
+    prerequisite_versions = Dict.T(
+        String.T(), String.T(), optional=True, default={})
+    log = String.T(optional=True, yamlstyle='|')
+    result = String.T(optional=True)
+    errors = List.T(String.T(), optional=True, default=[], yamlstyle='block')
+    fails = List.T(String.T(), optional=True, default=[], yamlstyle='block')
+    skips = List.T(String.T(), optional=True, default=[], yamlstyle='block')
+
+
+def parse_result(res, package, box, fn):
+
     with open(fn, 'r') as f:
         txt = f.read()
 
-        versions = txt.splitlines()[:7]
+        lines = txt.splitlines()
+        for line in lines[:7]:
+            pack, vers = line.split(': ')
+            res.prerequisite_versions[pack] = vers
 
-        m = re.search(r'/test-(.*)\.py([23])\.out$', fn)
-        branch = m.group(1)
-        py_version = m.group(2)
-        lines.append('  running under Py %s' % py_version)
+        txt = '\n'.join(
+            line for line in lines if not re.match(r'^Q\w+::', line))
+        txt = re.sub(r' +\n', '\n', txt)
 
-        lines.append('    versions:')
-        for version in versions:
-            lines.append('       %s' % version)
-
-        lines.append('    log: %s' % fn)
-        lines.append('    branch: %s' % branch)
+        res.log = txt.strip()
 
         m = re.search(r'---+\nTOTAL +(.+)\n---+', txt)
         if m:
-            lines.append('    coverage: %s' % m.group(1))
+            res.coverage = m.group(1)
 
         m = re.search(r'^((OK|FAILED)( +\([^\)]+\))?)', txt, re.M)
         if m:
-            lines.append('    tests: %s' % m.group(1))
+            res.result = m.group(1)
 
-        if show_skips:
-            count = {}
-            for x in re.findall(r'... SKIP: (.*)$', txt, re.M):
-                if x not in count:
-                    count[x] = 1
-                else:
-                    count[x] += 1
+        count = {}
+        for x in re.findall(r'... SKIP: (.*)$', txt, re.M):
+            if x not in count:
+                count[x] = 1
+            else:
+                count[x] += 1
 
-            for x in sorted(count.keys()):
-                lines.append('         skip: %s (%ix)' % (x, count[x]))
+        for x in sorted(count.keys()):
+            res.skips.append('%s (%ix)' % (x, count[x]))
 
         for x in re.findall(r'^ERROR: .*$', txt, re.M):
-            lines.append('         %s' % x)
+            res.errors.append(x)
 
         for x in re.findall(r'^FAIL: .*$', txt, re.M):
-            lines.append('         %s' % x)
-
-    return lines
+            res.fails.append(x)
 
 
 def iter_results():
+    package = 'pyrocko'
     if os.path.exists('vagrant'):
         boxes = os.listdir('vagrant')
 
@@ -62,19 +73,23 @@ def iter_results():
         boxes = [os.path.basename(os.path.abspath('.'))]
         os.chdir('../..')
 
-    for box in boxes:
-        lines = []
-        lines.append(box)
-        results = glob.glob(os.path.join('vagrant', box, 'test-*.py[23].out'))
-        if results:
-            for result in results:
-                lines.extend(parse_result(result))
+    for box in sorted(boxes):
+
+        fns = glob.glob(os.path.join('vagrant', box, 'test-*.py[23].out'))
+        if fns:
+            for fn in fns:
+                m = re.search(r'/test-(.*)\.py([23])\.out$', fn)
+                res = TestResult(package=package, branch=m.group(1), box=box)
+                res.py_version = m.group(2)
+                parse_result(res, package, box, fn)
+                yield res
+
         else:
-            lines.append('  <no results>')
+            res = TestResult(
+                package=package, box=box,
+                result='ERROR (running the tests failed)')
 
-        lines.append('')
-
-        yield '\n'.join(lines)
+            yield res
 
 
 if __name__ == '__main__':

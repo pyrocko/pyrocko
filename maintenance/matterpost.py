@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import os
 import requests
-
 import vagrant_tests_collect
 
 
@@ -15,25 +14,79 @@ def get_webhook():
         return f.read().strip()
 
 
-mattermost_payload = {
-    'username': 'Pyrocko',
-    'icon_url': 'https://pyrocko.org/_static/pyrocko.svg',
-    'text': 'Testing: %s',
-}
+def quoteliteral(s):
+    s = '\n'.join('  '+x for x in s.splitlines())
+    return '''```
+%s
+```
+''' % s
 
 
-def mattermost_post(webhook, data):
-    payload = mattermost_payload.copy()
-    payload['text'] = payload['text'] % data
-    requests.post(webhook, json=payload)
+def to_message(results):
+    message = {
+        'username': 'Pyrocko Testing Department',
+        'icon_url': 'https://pyrocko.org/_static/pyrocko.svg',
+        'attachments': [],
+    }
+
+    lines = []
+    lines2 = []
+    n_ok = 0
+    n = 0
+    for result in results:
+        res = result.result.split()[0]
+        emos = {
+            'OK': ':champagne:',
+            'FAILED': ':-1:',
+            'ERROR': ':bomb:'}
+
+        lines.append(
+            '{emo} {r.package} {branch} {r.box} {py_version}: '
+            '{r.result}'.format(
+                emo=emos.get(res, ':poultry_leg:'),
+                r=result,
+                branch=result.branch or 'x',
+                py_version=(
+                    'py%s' % result.py_version if result.py_version else 'x')))
+
+        result.log = None
+        result.skips = []
+        result.prerequisite_versions = {}
+        if result.result.startswith('OK'):
+            n_ok += 1
+        n += 1
+
+        lines2.append(result.dump())
+
+    all_ok = n_ok == n
+
+    if all_ok:
+        summary = '**Well done, all test suites are running smoothly!**'
+    elif n_ok == 0:
+        summary = '**All test suites failed! ' \
+            'All programmers must return to their work-stations, immediatly!**'
+    else:
+        summary = '**%i out of %i test suites failed.**' % (
+            n - n_ok, n_ok)
+
+    attachment = {
+        'fallback': 'test',
+        'color': '#33CC33' if all_ok else '#CC3333',
+        'text': summary + '\n\n\n\n' + quoteliteral('\n\n'.join(lines2)),
+        'fields': [{'short': True, 'value': line} for line in lines],
+    }
+
+    message['attachments'].append(attachment)
+
+    return message
+
+
+def mattermost_post(webhook, message):
+    requests.post(webhook, json=message)
 
 
 if __name__ == '__main__':
     webhook = get_webhook()
     if webhook:
-        for r in vagrant_tests_collect.iter_results():
-            mattermost_post(webhook, '''
-```
-%s
-```
-''' % r)
+        message = to_message(vagrant_tests_collect.iter_results())
+        mattermost_post(webhook, message)
