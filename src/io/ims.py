@@ -2133,8 +2133,8 @@ class Origin(Block):
             '``"%s"`` %s' % (k, g_event_types[k])
             for k in sorted(g_event_types.keys())))
 
-    author = String.T('author of the origin')
-    origin_id = String.T('origin identification')
+    author = String.T(help='author of the origin')
+    origin_id = String.T(help='origin identification')
 
 
 class OriginSection(TableSection):

@@ -531,7 +531,7 @@ class QSeis2dConfig(Object):
     fade = Tuple.T(4, Timing.T(), optional=True)
     relevel_with_fade_in = Bool.T(default=False)
 
-    gf_directory = String.T('qseis2d_green')
+    gf_directory = String.T(default='qseis2d_green')
 
 
 class QSeis2dError(gf.store.StoreError):
