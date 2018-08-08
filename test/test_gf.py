@@ -494,7 +494,7 @@ class GFTestCase(unittest.TestCase):
 
             azi, bazi = source.azibazi_to(target)
 
-            data *= source.get_moment(store)
+            data *= source.get_moment(store) * math.sqrt(2./3.)
 
             if tr.channel.endswith('N'):
                 data *= math.cos(phi*d2r) * math.cos(azi*d2r)
