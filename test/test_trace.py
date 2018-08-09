@@ -498,8 +498,12 @@ class TraceTestCase(unittest.TestCase):
 
                 a.downsample_to(dt2, demean=False, snap=True)
                 c2s = []
-                downsampler = trace.co_downsample_to(
-                    trace.co_list_append(c2s), dt2)
+                try:
+                    downsampler = trace.co_downsample_to(
+                        trace.co_list_append(c2s), dt2)
+                except trace.ScipyBug:
+                    raise unittest.SkipTest(
+                        'not supported on installed scipy version')
 
                 for b in bs:
                     c = downsampler.send(b)

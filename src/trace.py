@@ -3267,6 +3267,10 @@ def co_list_append(list):
         list.append((yield))
 
 
+class ScipyBug(Exception):
+    pass
+
+
 @coroutine
 def co_lfilter(target, b, a):
     '''
@@ -3310,7 +3314,13 @@ def co_lfilter(target, b, a):
                 zi = num.zeros(max(len(a), len(b))-1, dtype=num.float)
 
             output = input.copy(data=False)
-            ydata, zf = signal.lfilter(b, a, input.get_ydata(), zi=zi)
+            try:
+                ydata, zf = signal.lfilter(b, a, input.get_ydata(), zi=zi)
+            except ValueError:
+                raise ScipyBug(
+                    'signal.lfilter failed: could be related to a bug '
+                    'in some older scipy versions, e.g. on opensuse42.1')
+
             output.set_ydata(ydata)
             states.set(input, zf)
             target.send(output)
