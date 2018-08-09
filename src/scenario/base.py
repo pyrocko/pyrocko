@@ -105,7 +105,7 @@ class Generator(Object):
         return self._seed + self.get_seed_offset()
 
     def get_rstate(self, i):
-        return num.random.RandomState(self.get_seed() + i)
+        return num.random.RandomState(int(self.get_seed() + i))
 
     def get_center_latlon(self):
         return self._parent.get_center_latlon()
