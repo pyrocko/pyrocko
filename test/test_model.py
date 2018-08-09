@@ -187,7 +187,7 @@ class ModelTestCase(unittest.TestCase):
         corr_arr = campaign.get_correlation_matrix()
         num.testing.assert_array_equal(corr_arr, corr_arr.T)
 
-        corr_arr_ref = num.full_like(corr_arr, 0.)
+        corr_arr_ref = num.zeros(corr_arr.shape)
 
         for ista, sta in enumerate(campaign.stations):
             for ic, comp in enumerate([sta.north, sta.east, sta.up]):
@@ -205,7 +205,7 @@ class ModelTestCase(unittest.TestCase):
         covar_arr = campaign.get_covariance_matrix()
         num.testing.assert_array_equal(covar_arr, covar_arr.T)
 
-        covar_ref = num.full_like(covar_arr, 0.)
+        covar_ref = num.zeros(covar_arr.shape)
 
         for ista, sta in enumerate(campaign.stations):
             for ic, comp in enumerate([sta.north, sta.east, sta.up]):
