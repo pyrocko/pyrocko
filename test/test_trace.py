@@ -481,37 +481,38 @@ class TraceTestCase(unittest.TestCase):
 
         y = num.random.random(1000)
 
-        for (dt1, dt2) in [
-                (0.1, 1.0),
-                (0.2, 1.0),
-                (0.5, 1.0),
-                (0.2, 0.4),
-                (0.4, 1.2)]:
+        try:
+            for (dt1, dt2) in [
+                    (0.1, 1.0),
+                    (0.2, 1.0),
+                    (0.5, 1.0),
+                    (0.2, 0.4),
+                    (0.4, 1.2)]:
 
-            for tadd in (0.0, 0.01, 0.2, 0.5, 0.7, 0.75):
-                a = trace.Trace(tmin=sometime+tadd, deltat=dt1, ydata=y)
-                bs = [trace.Trace(
-                    location='b',
-                    tmin=sometime+i*dt1*100+tadd,
-                    deltat=dt1,
-                    ydata=y[i*100:(i+1)*100]) for i in range(10)]
+                for tadd in (0.0, 0.01, 0.2, 0.5, 0.7, 0.75):
+                    a = trace.Trace(tmin=sometime+tadd, deltat=dt1, ydata=y)
+                    bs = [trace.Trace(
+                        location='b',
+                        tmin=sometime+i*dt1*100+tadd,
+                        deltat=dt1,
+                        ydata=y[i*100:(i+1)*100]) for i in range(10)]
 
-                a.downsample_to(dt2, demean=False, snap=True)
-                c2s = []
-                try:
+                    a.downsample_to(dt2, demean=False, snap=True)
+                    c2s = []
                     downsampler = trace.co_downsample_to(
                         trace.co_list_append(c2s), dt2)
-                except trace.ScipyBug:
-                    raise unittest.SkipTest(
-                        'not supported on installed scipy version')
 
-                for b in bs:
-                    c = downsampler.send(b)
-                    c2s.append(c)
+                    for b in bs:
+                        c = downsampler.send(b)
+                        c2s.append(c)
 
-                downsampler.close()
-                assert (round(c2s[0].tmin / dt2) * dt2 - c2s[0].tmin) \
-                    / dt1 < 0.5001
+                    downsampler.close()
+                    assert (round(c2s[0].tmin / dt2) * dt2 - c2s[0].tmin) \
+                        / dt1 < 0.5001
+
+        except trace.ScipyBug:
+            raise unittest.SkipTest(
+                'not supported on installed scipy version')
 
     def testEqualizeSamplingRates(self):
         y = num.random.random(1000)
