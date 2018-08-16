@@ -579,6 +579,7 @@ def my_xp_plot(
         if show is True:
             plt.show()
 
+
 def my_xt_plot(
         paths, zstart, zstop,
         distances=None,
@@ -682,6 +683,7 @@ def my_rays_plot(
         if show is True:
             plt.show()
 
+
 def my_combi_plot(
         mod, paths, rays, zstart, zstop,
         distances=None,
@@ -723,7 +725,7 @@ def my_combi_plot(
     my = (ymax-ymin)*0.05
     ax2.set_xlim(xmin-mx, xmax+mx)
     ax2.set_ylim(ymax+my, ymin-my)
-    
+
     if show is True:
         plt.show()
 
@@ -755,4 +757,3 @@ def my_model_plot(mod, axes=None, show=True):
     if plt:
         if show is True:
             plt.show()
-
