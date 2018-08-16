@@ -31,6 +31,10 @@ class Anon(dict):
         return tuple([self[k] for k in keys])
 
 
+class CakeError(Exception):
+    pass
+
+
 def process_color(s, phase_colors):
     m = re.match(r'^([^{]+){([^}]*)}$', s)
     if not m:
@@ -612,6 +616,10 @@ def print_arrivals(
             x.ljust(17) for x in (ray.path.phase.definition(), su))))
 
 
+class CakeError(Exception):
+    pass
+
+
 def plot_init(size, save, show):
     fontsize = 9
     mpl_init()
@@ -627,8 +635,15 @@ def plot_init(size, save, show):
     return fig, axes, showplt
 
 
-class CakeError(Exception):
-    pass
+def plot_end(save, fig, show=True):
+    if save:
+        fig.savefig(save)
+        if show:
+            plt.show()
+        if FileNotFoundError:
+            raise Exception
+        if ValueError:
+            raise Exception
 
 
 def plot_end(save, fig, show=True):
@@ -789,7 +804,11 @@ To get further help and a list of available options for any subcommand run:
 
         try:
             plot_end(save=c.save, fig=fig, show=c.show)
+<<<<<<< HEAD
         except CakeError as e:
+=======
+        except Exception as e:
+>>>>>>> c088a654ae8fb4db69c8c3da14531f976806ba6d
             exit('cake.py: %s' % str(e))
 
     elif command in ('plot-model',):
@@ -800,7 +819,11 @@ To get further help and a list of available options for any subcommand run:
         plot.my_model_plot(mod, show=showplt)
         try:
             plot_end(save=c.save, fig=fig, show=c.show)
+<<<<<<< HEAD
         except CakeError as e:
+=======
+        except Exception as e:
+>>>>>>> c088a654ae8fb4db69c8c3da14531f976806ba6d
             exit('cake.py: %s' % str(e))
 
     elif command in ('simplify-model',):
