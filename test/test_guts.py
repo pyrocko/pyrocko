@@ -1162,6 +1162,18 @@ l_block:
 l_flow: ['a', 'b', 'c']
 '''.strip()
 
+    def testEmpty(self):
+
+        class A(Object):
+            pass
+
+        class B(Object):
+            a = A.T()
+
+        b = B(a=A())
+        b2 = load_string(b.dump())
+        assert(isinstance(b2.a, A))
+
 
 def makeBasicTypeTest(Type, sample, sample_in=None, xml=False):
 
