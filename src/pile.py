@@ -1423,7 +1423,7 @@ def make_pile(
         a file
     :param regex: regular expression which filenames have to match
     :param fileformat: format of the files ('mseed', 'sac', 'kan',
-        'from_extension', 'try')
+        'from_extension', 'detect')
     :param cachedirname: loader cache is stored under this directory. It is
         created as neccessary.
     :param show_progress: show progress bar and other progress information
