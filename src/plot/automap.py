@@ -1074,8 +1074,8 @@ class Map(Object):
 
         return tile
 
-    def add_gnss_campaign(self, campaign,
-                          psxy_style=dict(), labels=True):
+    def add_gnss_campaign(self, campaign, psxy_style=dict(), labels=True,
+                          vertical=False):
 
         offsets = num.array([math.sqrt(s.east.shift**2 + s.north.shift**2)
                              for s in campaign.stations])
@@ -1095,17 +1095,20 @@ class Map(Object):
                                 s.lat, s.lon, s.north_shift, s.east_shift)
                            for s in campaign.stations])
 
-        if labels:
-            rows = [(lons[ista], lats[ista],
-                     s.east.shift, s.north.shift,
-                     s.east.sigma, s.north.sigma, 0,
-                     s.code)
+        if vertical:
+            rows = [[lons[ista], lats[ista],
+                     0., s.up.shift,
+                     s.east.sigma, s.north.sigma, 0]
                     for ista, s in enumerate(campaign.stations)]
         else:
-            rows = [(lons[ista], lats[ista],
+            rows = [[lons[ista], lats[ista],
                      s.east.shift, s.north.shift,
-                     s.east.sigma, s.north.sigma, 0)
+                     s.east.sigma, s.north.sigma, 0]
                     for ista, s in enumerate(campaign.stations)]
+
+        if labels:
+            for row, sta in zip(rows, campaign.stations):
+                row.append(sta.code)
 
         self.gmt.psvelo(
             in_rows=rows,
