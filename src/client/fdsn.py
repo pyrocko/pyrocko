@@ -103,7 +103,7 @@ class InvalidRequest(Exception):
 
 
 def _request(url, post=False, user=None, passwd=None,
-             allow_TLSv1=True, **kwargs):
+             allow_TLSv1=False, **kwargs):
     url_values = urlencode(kwargs)
     if url_values:
         url += '?' + url_values
@@ -113,14 +113,8 @@ def _request(url, post=False, user=None, passwd=None,
         'timeout': g_timeout
     }
 
-    try:
-        url_args['context'] = ssl.SSLContext(
-            ssl.PROTOCOL_TLSv1 if allow_TLSv1 else ssl.PROTOCOL_SSLv2)
-    except AttributeError:
-        try:
-            url_args['context'] = ssl.create_default_context()
-        except AttributeError:
-            pass
+    if allow_TLSv1:
+        url_args['context'] = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
 
     opener = None
 
