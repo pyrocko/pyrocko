@@ -20,6 +20,12 @@ rm -f "$outfile_py3"
 rm -f "$outfile_py2"
 
 cd $HOME
+
+while fuser /var/lib/dpkg/lock >/dev/null 2>&1 ; do
+    echo -en "Waiting for other software managers to finish..." 
+    sleep 5.0
+done 
+
 sudo apt-get update -y
 sudo apt-get upgrade -y
 sudo apt-get install -y git python-setuptools python3-setuptools xvfb
