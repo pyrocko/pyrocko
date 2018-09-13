@@ -18,7 +18,7 @@ import numpy as num
 
 from pyrocko.guts import (StringChoice, StringPattern, UnicodePattern, String,
                           Unicode, Int, Float, List, Object, Timestamp,
-                          ValidationError, TBase)
+                          ValidationError, TBase, re_tz)
 from pyrocko.guts import load_xml  # noqa
 
 import pyrocko.model
@@ -98,12 +98,22 @@ class DummyAwareOptionalTimestamp(Object):
             elif isinstance(val, (str, newstr)):
                 val = val.strip()
 
-                val = re.sub(r'(Z|\+00(:?00)?)$', '', val)
+                tz_offset = 0
+
+                m = re_tz.search(val)
+                if m:
+                    sh = m.group(2)
+                    sm = m.group(4)
+                    tz_offset = (int(sh)*3600 if sh else 0) \
+                        + (int(sm)*60 if sm else 0)
+
+                    val = re_tz.sub('', val)
+
                 if val[10] == 'T':
                     val = val.replace('T', ' ', 1)
 
                 try:
-                    val = util.str_to_time(val)
+                    val = util.str_to_time(val) - tz_offset
 
                 except util.TimeStrError:
                     year = int(val[:4])
