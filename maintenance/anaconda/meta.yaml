@@ -12,6 +12,7 @@ requirements:
     - python
     - numpy
   run:
+    - python
     - numpy
     - scipy
     - matplotlib
