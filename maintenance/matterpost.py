@@ -67,7 +67,7 @@ def to_message(results):
             'All programmers must return to their work-stations, immediatly!**'
     else:
         summary = '**%i out of %i test suites failed.**' % (
-            n - n_ok, n_ok)
+            n - n_ok, n)
 
     attachment = {
         'fallback': 'test',
