@@ -37,7 +37,7 @@ case $resp in
     * ) conda config --set anaconda_upload no;
         ;;
 esac
-conda-build $BUILD_DIR
+conda-build --python 3.6 $BUILD_DIR
 
 # Workaround for https://github.com/travis-ci/travis-ci/issues/6522
 # Turn off exit on failure.
