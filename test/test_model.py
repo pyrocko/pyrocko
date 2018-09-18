@@ -238,6 +238,7 @@ class ModelTestCase(unittest.TestCase):
         assert s_add.shift == (s1.north.shift + s1.north.shift)
 
         assert len(campaign.stations) == len(campaign2.stations)
+        shutil.rmtree(tempdir)
 
 
 if __name__ == "__main__":

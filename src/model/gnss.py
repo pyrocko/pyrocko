@@ -16,11 +16,12 @@ class GNSSComponent(Object):
     '''
     unit = StringChoice.T(
         choices=['mm', 'cm', 'm'],
+        help='Unit of displacement',
         default='m')
 
     shift = Float.T(
         default=0.,
-        help='Shift in unit')
+        help='Component\'s shift in unit')
 
     sigma = Float.T(
         default=0.,
