@@ -589,6 +589,7 @@ def plot_fuzzy_beachball_mpl(
         raise TypeError('The given moment tensors need to be in a list!')
 
     linewidth = kwargs.pop('linewidth', 1.)
+    edgecolor = kwargs.pop('edgecolor', 'black')
 
     # draw fuzzy beachball
     n_balls = len(mts)
@@ -596,22 +597,21 @@ def plot_fuzzy_beachball_mpl(
     for mt in mts:
         try:
             plot_beachball_mpl(
-                mt, axes, linewidth=0., alpha=alpha, **kwargs)
+                mt, axes, linewidth=0.,
+                edgecolor='none', alpha=alpha, **kwargs)
 
         except BeachballError as e:
             logger.error('%s for MT:\n%s' % (e, mt))
 
-    edgecolor = kwargs.pop('edgecolor', 'black')
-
     # draw optimum edges
     if best_mt is not None:
-        color_p = kwargs.pop('color_p', 'none')
-        color_t = kwargs.pop('color_t', 'none')
+        kwargs.pop('color_p', None)
+        kwargs.pop('color_t', None)
 
         try:
             plot_beachball_mpl(
                 best_mt, axes, linewidth=linewidth, alpha=1.,
-                color_p=color_p, color_t=color_t, edgecolor=best_color,
+                color_p='none', color_t='none', edgecolor=best_color,
                 **kwargs)
 
         except BeachballError as e:
