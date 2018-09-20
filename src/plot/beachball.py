@@ -13,6 +13,7 @@ import numpy as num
 from matplotlib.collections import PathCollection
 from matplotlib.path import Path
 from matplotlib.transforms import Transform
+from matplotlib.patches import Circle
 
 from pyrocko import moment_tensor as mtm
 
@@ -564,6 +565,70 @@ def plot_beachball_mpl(
         transform=transform)
 
     axes.add_artist(path_collection)
+
+
+def plot_fuzzy_beachball_mpl(
+        mts, axes, best_mt=None, best_color='red', kwargs={}):
+    '''
+    Plot fuzzy beachball from a list of given MomentTensors
+
+    :param mts: list of
+        :py:class:`pyrocko.moment_tensor.MomentTensor` object or an
+        array or sequence which can be converted into an MT object
+    :param best_mt: :py:class:`pyrocko.moment_tensor.MomentTensor` object or
+        an array or sequence which can be converted into an MT object
+        of most likely or minimum misfit solution to extr highlight
+    :param best_color: mpl color for best MomentTensor edges,
+        polygons are not plotted
+
+    See plot_beachball_mpl for kwargs
+    '''
+    if not isinstance(mts, list):
+        raise TypeError('The given moment tensors need to be in a list!')
+
+    linewidth = kwargs.pop('linewidth', 1.)
+
+    # draw fuzzy beachball
+    n_balls = len(mts)
+    alpha = float(1. / n_balls)
+    for mt in mts:
+        try:
+            plot_beachball_mpl(
+                mt, axes, linewidth=0., alpha=alpha, **kwargs)
+
+        except BeachballError as e:
+            logger.error('%s for MT:\n%s' % (e, mt))
+
+    edgecolor = kwargs.pop('edgecolor', 'black')
+
+    # draw optimum edges
+    if best_mt is not None:
+        best_mt = mts.pop(0)
+        color_p = kwargs.pop('color_p', 'none')
+        color_t = kwargs.pop('color_t', 'none')
+
+        try:
+            plot_beachball_mpl(
+                best_mt, axes, linewidth=linewidth, alpha=1.,
+                color_p=color_p, color_t=color_t, edgecolor=best_color,
+                **kwargs)
+
+        except BeachballError as e:
+            logger.error('%s for MT:\n%s' % (e, best_mt))
+
+    # draw outer edge
+    size_units = kwargs.pop('size_units', 'points')
+    position = kwargs.pop('position', (0., 0.))
+    size = kwargs.pop('size', None)
+
+    transform, position, size = choose_transform(
+        axes, size_units, position, size)
+
+    circle = Circle(
+        position, size, edgecolor=edgecolor, facecolor='none',
+        transform=transform, linewidth=linewidth + 0.1)
+    axes.add_artist(circle)
+    return axes
 
 
 def plot_beachball_mpl_construction(
