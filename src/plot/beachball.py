@@ -582,6 +582,8 @@ def plot_fuzzy_beachball_mpl(
         polygons are not plotted
 
     See plot_beachball_mpl for kwargs
+
+    Note: The related axes can only be saved as png otherwise it wont work!
     '''
     if not isinstance(mts, list):
         raise TypeError('The given moment tensors need to be in a list!')
@@ -603,7 +605,6 @@ def plot_fuzzy_beachball_mpl(
 
     # draw optimum edges
     if best_mt is not None:
-        best_mt = mts.pop(0)
         color_p = kwargs.pop('color_p', 'none')
         color_t = kwargs.pop('color_t', 'none')
 
