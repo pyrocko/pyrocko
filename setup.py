@@ -24,7 +24,7 @@ from setuptools.command.build_ext import build_ext
 from setuptools.command.install import install
 
 packname = 'pyrocko'
-version = '2018.09.13'
+version = '2018.09.19'
 
 
 class NotInAGitRepos(Exception):
@@ -559,10 +559,6 @@ else:
     omp_lib = []
 
 
-with open('README.md') as f:
-    long_description = f.read()
-
-
 subpacknames = [
     'pyrocko.gf',
     'pyrocko.fomosto',
@@ -584,6 +580,7 @@ subpacknames = [
     'pyrocko.obspy_compat',
 ]
 
+
 setup(
     cmdclass={
         'install': CustomInstallCommand,
@@ -598,10 +595,11 @@ setup(
     name=packname,
     version=version,
     description='A versatile seismology toolkit for Python.',
-    long_description=long_description,
+    long_description=open('README.md', 'r').read(),
+    long_description_content_type='text/markdown',
     author='The Pyrocko Developers',
     author_email='info@pyrocko.org',
-    url='http://pyrocko.org',
+    url='https://pyrocko.org',
     license='GPLv3',
     classifiers=[
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
