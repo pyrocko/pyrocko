@@ -559,6 +559,10 @@ else:
     omp_lib = []
 
 
+with open('README.md') as f:
+    long_description = f.read()
+
+
 subpacknames = [
     'pyrocko.gf',
     'pyrocko.fomosto',
@@ -594,6 +598,7 @@ setup(
     name=packname,
     version=version,
     description='A versatile seismology toolkit for Python.',
+    long_description=long_description,
     author='The Pyrocko Developers',
     author_email='info@pyrocko.org',
     url='http://pyrocko.org',
