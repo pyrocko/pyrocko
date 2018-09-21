@@ -585,8 +585,6 @@ def plot_fuzzy_beachball_mpl(
 
     Note: The related axes can only be saved as png otherwise it wont work!
     '''
-    if not isinstance(mts, list):
-        raise TypeError('The given moment tensors need to be in a list!')
 
     linewidth = kwargs.pop('linewidth', 1.)
     edgecolor = kwargs.pop('edgecolor', 'black')
