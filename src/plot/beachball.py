@@ -610,7 +610,8 @@ def mts2amps(mts, projection, beachball_type, grid_resolution=200):
 
 
 def plot_fuzzy_beachball_mpl_pixmap(
-        mts, axes, best_mt,
+        mts, axes,
+        best_mt=None,
         beachball_type='deviatoric',
         position=(0., 0.),
         size=None,
@@ -632,13 +633,14 @@ def plot_fuzzy_beachball_mpl_pixmap(
         array or sequence which can be converted into an MT object
     :param best_mt: :py:class:`pyrocko.moment_tensor.MomentTensor` object or
         an array or sequence which can be converted into an MT object
-        of most likely or minimum misfit solution to extr highlight
+        of most likely or minimum misfit solution to extra highlight
     :param best_color: mpl color for best MomentTensor edges,
         polygons are not plotted
 
-    See plot_beachball_mpl for kwargs
+    See plot_beachball_mpl for other arguments
 
-    Note: The related axes can only be saved as png otherwise it wont work!
+    Note: The related axes should only be saved as raster image (e.g. png)
+          otherwise output might be looking unexpected!
     '''
     if size_units == 'points':
         raise BeachballError(
