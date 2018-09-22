@@ -13,7 +13,6 @@ import numpy as num
 from matplotlib.collections import PathCollection
 from matplotlib.path import Path
 from matplotlib.transforms import Transform
-from matplotlib.patches import Circle
 from matplotlib.colors import LinearSegmentedColormap
 
 from pyrocko import moment_tensor as mtm
