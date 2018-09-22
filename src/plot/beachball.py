@@ -568,91 +568,7 @@ def plot_beachball_mpl(
     axes.add_artist(path_collection)
 
 
-def plot_fuzzy_beachball_mpl(
-        mts, axes, best_mt=None, best_color='red', kwargs={}):
-    '''
-    Plot fuzzy beachball from a list of given MomentTensors
-
-    :param mts: list of
-        :py:class:`pyrocko.moment_tensor.MomentTensor` object or an
-        array or sequence which can be converted into an MT object
-    :param best_mt: :py:class:`pyrocko.moment_tensor.MomentTensor` object or
-        an array or sequence which can be converted into an MT object
-        of most likely or minimum misfit solution to extr highlight
-    :param best_color: mpl color for best MomentTensor edges,
-        polygons are not plotted
-
-    See plot_beachball_mpl for kwargs
-
-    Note: The related axes can only be saved as png otherwise it wont work!
-    '''
-
-    linewidth = kwargs.pop('linewidth', 1.)
-    edgecolor = kwargs.pop('edgecolor', 'black')
-
-    # draw fuzzy beachball
-    n_balls = len(mts)
-    alpha = float(1. / n_balls)
-    for mt in mts:
-        try:
-            plot_beachball_mpl(
-                mt, axes, linewidth=0.,
-                edgecolor='none', alpha=alpha, **kwargs)
-
-        except BeachballError as e:
-            logger.error('%s for MT:\n%s' % (e, mt))
-
-    # draw optimum edges
-    if best_mt is not None:
-        kwargs.pop('color_p', None)
-        kwargs.pop('color_t', None)
-
-        try:
-            plot_beachball_mpl(
-                best_mt, axes, linewidth=linewidth, alpha=1.,
-                color_p='none', color_t='none', edgecolor=best_color,
-                **kwargs)
-
-        except BeachballError as e:
-            logger.error('%s for MT:\n%s' % (e, best_mt))
-
-    # draw outer edge
-    size_units = kwargs.pop('size_units', 'points')
-    position = kwargs.pop('position', (0., 0.))
-    size = kwargs.pop('size', None)
-
-    transform, position, size = choose_transform(
-        axes, size_units, position, size)
-
-    circle = Circle(
-        position, size, edgecolor=edgecolor, facecolor='none',
-        transform=transform, linewidth=linewidth + 0.1)
-    axes.add_artist(circle)
-    return axes
-
-
-def plot_fuzzy_beachball_mpl_pixmap(
-        mts, axes, best_mt,
-        beachball_type='deviatoric',
-        position=(0., 0.),
-        size=None,
-        zorder=0,
-        color_t='red',
-        color_p='white',
-        edgecolor='black',
-        best_color='red',
-        linewidth=2,
-        alpha=1.0,
-        projection='lambert',
-        size_units='data',
-        grid_resolution=200):
-
-    if size_units == 'points':
-        raise BeachballError(
-            'size_units="points" not supported in plot_beachball_mpl_pixmap')
-
-    transform, position, size = choose_transform(
-        axes, size_units, position, size)
+def mts2amps(mts, projection, beachball_type, grid_resolution=200):
 
     n_balls = len(mts)
     nx = grid_resolution
@@ -661,12 +577,12 @@ def plot_fuzzy_beachball_mpl_pixmap(
     x = num.linspace(-1., 1., nx)
     y = num.linspace(-1., 1., ny)
 
-    vecs2 = num.zeros((nx*ny, 2), dtype=num.float)
+    vecs2 = num.zeros((nx * ny, 2), dtype=num.float)
     vecs2[:, 0] = num.tile(x, ny)
     vecs2[:, 1] = num.repeat(y, nx)
 
     ii_ok = vecs2[:, 0]**2 + vecs2[:, 1]**2 <= 1.0
-    amps = num.zeros(nx*ny, dtype=num.float)
+    amps = num.zeros(nx * ny, dtype=num.float)
     amps[:] = num.nan
     amps[ii_ok] = 0.
     for mt in mts:
@@ -685,38 +601,88 @@ def plot_fuzzy_beachball_mpl_pixmap(
         amps_ok = ep * num.cos(atheta)**2 + (
             en * num.cos(aphi)**2 + et * num.sin(aphi)**2) * num.sin(atheta)**2
 
-        amps_ok[amps_ok > 0] = 1.
-        amps_ok[amps_ok < 0] = 0.
+        if n_balls > 1:
+            amps_ok[amps_ok > 0] = 1.
+            amps_ok[amps_ok < 0] = 0.
 
         amps[ii_ok] += amps_ok
 
-    amps = num.reshape(amps, (ny, nx)) / n_balls
+    return num.reshape(amps, (ny, nx)) / n_balls, x, y
 
-    cmap = LinearSegmentedColormap.from_list('dummy', [color_p, color_t])
 
-    extent = [
-        position[0] + x.min() * size,
-        position[0] + x.max() * size,
-        position[1] + y.min() * size,
-        position[1] + y.max() * size]
+def plot_fuzzy_beachball_mpl_pixmap(
+        mts, axes, best_mt,
+        beachball_type='deviatoric',
+        position=(0., 0.),
+        size=None,
+        zorder=0,
+        color_t='red',
+        color_p='white',
+        edgecolor='black',
+        best_color='red',
+        linewidth=2,
+        alpha=1.0,
+        projection='lambert',
+        size_units='data',
+        grid_resolution=200):
+    '''
+    Plot fuzzy beachball from a list of given MomentTensors
 
-    axes.imshow(
-        amps.T, cmap=cmap, origin='lower',
-        extent=extent, zorder=zorder)
+    :param mts: list of
+        :py:class:`pyrocko.moment_tensor.MomentTensor` object or an
+        array or sequence which can be converted into an MT object
+    :param best_mt: :py:class:`pyrocko.moment_tensor.MomentTensor` object or
+        an array or sequence which can be converted into an MT object
+        of most likely or minimum misfit solution to extr highlight
+    :param best_color: mpl color for best MomentTensor edges,
+        polygons are not plotted
+
+    See plot_beachball_mpl for kwargs
+
+    Note: The related axes can only be saved as png otherwise it wont work!
+    '''
+    if size_units == 'points':
+        raise BeachballError(
+            'size_units="points" not supported in plot_beachball_mpl_pixmap')
+
+    transform, position, size = choose_transform(
+        axes, size_units, position, size)
+
+    amps, x, y = mts2amps(
+        mts,
+        grid_resolution=grid_resolution,
+        projection=projection,
+        beachball_type=beachball_type)
+
+    ncolors = 256
+    cmap = LinearSegmentedColormap.from_list(
+        'dummy', [color_p, color_t], N=ncolors)
+
+    levels = num.linspace(0, 1., ncolors)
+    axes.contourf(
+        position[0] + y * size, position[1] + x * size, amps.T,
+        levels=levels,
+        cmap=cmap,
+        transform=transform,
+        zorder=zorder,
+        alpha=alpha)
 
     # draw optimum edges
     if best_mt is not None:
-        try:
-            plot_beachball_mpl(
-                best_mt, axes=axes, linewidth=linewidth, alpha=1.,
-                beachball_type=beachball_type,
-                position=position,
-                size=size, size_units=size_units,
-                zorder=zorder,
-                color_p='none', color_t='none', edgecolor=best_color)
+        best_amps, bx, by = mts2amps(
+            [best_mt],
+            grid_resolution=grid_resolution,
+            projection=projection,
+            beachball_type=beachball_type)
 
-        except BeachballError as e:
-            logger.error('%s for MT:\n%s' % (e, best_mt))
+        axes.contour(
+            position[0] + by * size, position[1] + bx * size, best_amps.T,
+            levels=[0.],
+            colors=[best_color],
+            linewidths=linewidth,
+            transform=transform,
+            zorder=zorder,
+            alpha=alpha)
 
     phi = num.linspace(0., 2 * PI, 361)
     x = num.cos(phi)
@@ -784,39 +750,11 @@ def plot_beachball_mpl_pixmap(
 
     ep, en, et, vp, vn, vt = mt.eigensystem()
 
-    nx = 200
-    ny = 200
-
-    x = num.linspace(-1., 1., nx)
-    y = num.linspace(-1., 1., ny)
-
-    vecs2 = num.zeros((nx*ny, 2), dtype=num.float)
-    vecs2[:, 0] = num.tile(x, ny)
-    vecs2[:, 1] = num.repeat(y, nx)
-
-    ii_ok = vecs2[:, 0]**2 + vecs2[:, 1]**2 <= 1.0
-
-    vecs3_ok = inverse_project(vecs2[ii_ok, :], projection)
-
-    to_e = num.vstack((vn, vt, vp))
-
-    vecs_e = num.dot(to_e, vecs3_ok.T).T
-    rtp = numpy_xyz2rtp(vecs_e)
-
-    atheta, aphi = rtp[:, 1], rtp[:, 2]
-    amps_ok = ep * num.cos(atheta)**2 + (
-        en * num.cos(aphi)**2 + et * num.sin(aphi)**2) * num.sin(atheta)**2
-
-    amps = num.zeros(nx*ny, dtype=num.float)
-    amps[:] = num.nan
-    amps[ii_ok] = amps_ok
-
-    amps = num.reshape(amps, (ny, nx))
-    return amps
-    print amps
+    amps, x, y = mts2amps(
+        [mt], projection, beachball_type, grid_resolution=200)
 
     axes.contourf(
-        position[0] + y*size, position[1] + x*size, amps.T,
+        position[0] + y * size, position[1] + x * size, amps.T,
         levels=[-num.inf, 0., num.inf],
         colors=[color_p, color_t],
         transform=transform,
@@ -824,7 +762,7 @@ def plot_beachball_mpl_pixmap(
         alpha=alpha)
 
     axes.contour(
-        position[0] + y*size, position[1] + x*size, amps.T,
+        position[0] + y * size, position[1] + x * size, amps.T,
         levels=[0.],
         colors=[edgecolor],
         linewidths=linewidth,
@@ -832,11 +770,11 @@ def plot_beachball_mpl_pixmap(
         zorder=zorder,
         alpha=alpha)
 
-    phi = num.linspace(0., 2*PI, 361)
+    phi = num.linspace(0., 2 * PI, 361)
     x = num.cos(phi)
     y = num.sin(phi)
     axes.plot(
-        position[0] + x*size, position[1] + y*size,
+        position[0] + x * size, position[1] + y * size,
         linewidth=linewidth,
         color=edgecolor,
         transform=transform,
