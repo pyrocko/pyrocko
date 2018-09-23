@@ -567,7 +567,7 @@ def plot_beachball_mpl(
     axes.add_artist(path_collection)
 
 
-def mts2amps(mts, projection, beachball_type, grid_resolution=200):
+def mts2amps(mts, projection, beachball_type, grid_resolution=200, mask=True):
 
     n_balls = len(mts)
     nx = grid_resolution
@@ -600,7 +600,7 @@ def mts2amps(mts, projection, beachball_type, grid_resolution=200):
         amps_ok = ep * num.cos(atheta)**2 + (
             en * num.cos(aphi)**2 + et * num.sin(aphi)**2) * num.sin(atheta)**2
 
-        if n_balls > 1:
+        if mask:
             amps_ok[amps_ok > 0] = 1.
             amps_ok[amps_ok < 0] = 0.
 
@@ -653,7 +653,8 @@ def plot_fuzzy_beachball_mpl_pixmap(
         mts,
         grid_resolution=grid_resolution,
         projection=projection,
-        beachball_type=beachball_type)
+        beachball_type=beachball_type,
+        mask=True)
 
     ncolors = 256
     cmap = LinearSegmentedColormap.from_list(
@@ -674,7 +675,8 @@ def plot_fuzzy_beachball_mpl_pixmap(
             [best_mt],
             grid_resolution=grid_resolution,
             projection=projection,
-            beachball_type=beachball_type)
+            beachball_type=beachball_type,
+            mask=False)
 
         axes.contour(
             position[0] + by * size, position[1] + bx * size, best_amps.T,
@@ -752,7 +754,7 @@ def plot_beachball_mpl_pixmap(
     ep, en, et, vp, vn, vt = mt.eigensystem()
 
     amps, x, y = mts2amps(
-        [mt], projection, beachball_type, grid_resolution=200)
+        [mt], projection, beachball_type, grid_resolution=200, mask=False)
 
     axes.contourf(
         position[0] + y * size, position[1] + x * size, amps.T,
