@@ -241,8 +241,10 @@ def check_rect_source_discretisation(points2, nl, nw, store):
         points=num.repeat(depths[:, num.newaxis], 3, axis=1),
         interpolation='multilinear')
 
-    if not num.all(vs_profile > distances):
+    min_wavelength = vs_profile * store.config.deltat
+    if not num.all(min_wavelength > distances*2):
         return False
+
     return True
 
 
@@ -1402,7 +1404,6 @@ class RectangularExplosionSource(ExplosionSource):
             self.strike, self.dip, self.length, self.width, self.anchor,
             self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy)
 
-        print(check_rect_source_discretisation(points, nl, nw, store))
         if not check_rect_source_discretisation(points, nl, nw, store):
             logger.warning('The source\' sub-sources are further than'
                            ' lambda/4 apart')
@@ -1783,7 +1784,6 @@ class RectangularSource(SourceWithDerivedMagnitude):
             self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy,
             decimation_factor=self.decimation_factor)
 
-        print(check_rect_source_discretisation(points, nl, nw, store))
         if not check_rect_source_discretisation(points, nl, nw, store):
             logger.warning('The source\' sub-sources are further than'
                            ' lambda/4 apart')
