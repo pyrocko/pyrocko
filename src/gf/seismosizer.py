@@ -88,6 +88,7 @@ class ConversionError(Exception):
 
 
 class NoSuchStore(BadRequest):
+
     def __init__(self, store_id=None, dirs=None):
         BadRequest.__init__(self)
         self.store_id = store_id
@@ -143,7 +144,7 @@ def permudef(ln, j=0):
         k, v = ln[j]
         for y in v:
             ln[j] = k, y
-            for s in permudef(ln, j+1):
+            for s in permudef(ln, j + 1):
                 yield s
 
         ln[j] = k, v
@@ -171,16 +172,16 @@ def discretize_rect_source(deltas, deltat, north, east, depth,
     ln = length
     wd = width
 
-    nl = int((2./decimation_factor) * num.ceil(ln / mindeltagf)) + 1
-    nw = int((2./decimation_factor) * num.ceil(wd / mindeltagf)) + 1
+    nl = int((2. / decimation_factor) * num.ceil(ln / mindeltagf)) + 1
+    nw = int((2. / decimation_factor) * num.ceil(wd / mindeltagf)) + 1
 
-    n = int(nl*nw)
+    n = int(nl * nw)
 
     dl = ln / nl
     dw = wd / nw
 
-    xl = num.linspace(-0.5*(ln-dl), 0.5*(ln-dl), nl)
-    xw = num.linspace(-0.5*(wd-dw), 0.5*(wd-dw), nw)
+    xl = num.linspace(-0.5 * (ln - dl), 0.5 * (ln - dl), nl)
+    xw = num.linspace(-0.5 * (wd - dw), 0.5 * (wd - dw), nw)
 
     points = num.empty((n, 3), dtype=num.float)
     points[:, 0] = num.tile(xl, nw)
@@ -206,7 +207,7 @@ def discretize_rect_source(deltas, deltat, north, east, depth,
     points[:, 1] -= anch_y * 0.5 * width
 
     rotmat = num.asarray(
-        mt.euler_to_matrix(dip*d2r, strike*d2r, 0.0))
+        mt.euler_to_matrix(dip * d2r, strike * d2r, 0.0))
 
     points = num.dot(rotmat.T, points.T).T
 
@@ -222,25 +223,45 @@ def discretize_rect_source(deltas, deltat, north, east, depth,
     points2[:, 1] += east
     points2[:, 2] += depth
 
-    return points2, times2, amplitudes2, dl, dw
+    return points2, times2, amplitudes2, dl, dw, nl, nw
+
+
+def check_rect_source_discretisation(points2, nl, nw, store):
+    # We assume a non-rotated fault plane
+    points = points2.T.reshape((3, nl, nw))
+
+    distances = num.sqrt(
+        (points[0, 0, :] - points[0, 1, :])**2 +
+        (points[1, 0, :] - points[1, 1, :])**2 +
+        (points[2, 0, :] - points[2, 1, :])**2)
+
+    depths = points[2, 0, :]
+    vs_profile = store.config.get_vs(
+        lat=0., lon=0.,
+        points=num.repeat(depths[:, num.newaxis], 3, axis=1),
+        interpolation='multilinear')
+
+    if not num.all(vs_profile > distances):
+        return False
+    return True
 
 
 def outline_rect_source(strike, dip, length, width, anchor):
     ln = length
     wd = width
     points = num.array(
-        [[-0.5*ln, -0.5*wd, 0.],
-         [0.5*ln, -0.5*wd, 0.],
-         [0.5*ln, 0.5*wd, 0.],
-         [-0.5*ln, 0.5*wd, 0.],
-         [-0.5*ln, -0.5*wd, 0.]])
+        [[-0.5 * ln, -0.5 * wd, 0.],
+         [0.5 * ln, -0.5 * wd, 0.],
+         [0.5 * ln, 0.5 * wd, 0.],
+         [-0.5 * ln, 0.5 * wd, 0.],
+         [-0.5 * ln, -0.5 * wd, 0.]])
 
     anch_x, anch_y = map_anchor[anchor]
     points[:, 0] -= anch_x * 0.5 * length
     points[:, 1] -= anch_y * 0.5 * width
 
     rotmat = num.asarray(
-        mt.euler_to_matrix(dip*d2r, strike*d2r, 0.0))
+        mt.euler_to_matrix(dip * d2r, strike * d2r, 0.0))
 
     return num.dot(rotmat.T, points.T).T
 
@@ -358,7 +379,7 @@ class Range(SObject):
 
     @classmethod
     def parse(cls, s):
-        s = re.sub('\s+', '', s)
+        s = re.sub(r'\s+', '', s)
         m = cls.pattern.match(s)
         if not m:
             try:
@@ -422,16 +443,16 @@ class Range(SObject):
             step = stop - start
 
         if n is None:
-            if (step < 0) != (stop-start < 0):
+            if (step < 0) != (stop - start < 0):
                 raise InvalidGridDef(
                     'Range specification "%s" has inconsistent ordering '
                     '(step < 0 => stop > start)' % self)
 
-            n = int(round((stop-start)/step))+1
-            stop2 = start + (n-1)*step
-            if abs(stop-stop2) > eps:
-                n = int(math.floor((stop-start)/step))+1
-                stop = start + (n-1)*step
+            n = int(round((stop - start) / step)) + 1
+            stop2 = start + (n - 1) * step
+            if abs(stop - stop2) > eps:
+                n = int(math.floor((stop - start) / step)) + 1
+                stop = start + (n - 1) * step
             else:
                 stop = stop2
 
@@ -616,12 +637,13 @@ def sshift(times, amplitudes, tshift, deltat):
     if t0 == t1:
         return times, amplitudes
 
-    amplitudes2 = num.zeros(amplitudes.size+1, dtype=num.float)
+    amplitudes2 = num.zeros(amplitudes.size + 1, dtype=num.float)
 
     amplitudes2[:-1] += (t1 - tshift) / deltat * amplitudes
     amplitudes2[1:] += (tshift - t0) / deltat * amplitudes
 
-    times2 = num.arange(times.size+1, dtype=num.float) * deltat + times[0] + t0
+    times2 = num.arange(times.size + 1, dtype=num.float) * \
+        deltat + times[0] + t0
 
     return times2, amplitudes2
 
@@ -663,7 +685,8 @@ class BoxcarSTF(STF):
         times = num.linspace(tmin, tmax, nt)
         amplitudes = num.ones_like(times)
         if times.size > 1:
-            t_edges = num.linspace(tmin-0.5*deltat, tmax+0.5*deltat, nt + 1)
+            t_edges = num.linspace(
+                tmin - 0.5 * deltat, tmax + 0.5 * deltat, nt + 1)
             t = tmin_stf + self.duration * num.array(
                 [0.0, 0.0, 1.0, 1.0], dtype=num.float)
             f = num.array([0., 1., 1., 0.], dtype=num.float)
@@ -753,7 +776,8 @@ class TriangularSTF(STF):
         tmax = round(tmax_stf / deltat) * deltat
         nt = int(round((tmax - tmin) / deltat)) + 1
         if nt > 1:
-            t_edges = num.linspace(tmin-0.5*deltat, tmax+0.5*deltat, nt + 1)
+            t_edges = num.linspace(
+                tmin - 0.5 * deltat, tmax + 0.5 * deltat, nt + 1)
             t = tmin_stf + self.duration * num.array(
                 [0.0, self.peak_ratio, 1.0], dtype=num.float)
             f = num.array([0., 1., 0.], dtype=num.float)
@@ -789,7 +813,7 @@ class HalfSinusoidSTF(STF):
 
     @classmethod
     def factor_duration_to_effective(cls):
-        return math.sqrt((3.0*math.pi**2 - 24.0) / math.pi**2)
+        return math.sqrt((3.0 * math.pi**2 - 24.0) / math.pi**2)
 
     def centroid_time(self, tref):
         return tref - 0.5 * self.duration * self.anchor
@@ -806,7 +830,7 @@ class HalfSinusoidSTF(STF):
         nt = int(round((tmax - tmin) / deltat)) + 1
         if nt > 1:
             t_edges = num.maximum(tmin_stf, num.minimum(tmax_stf, num.linspace(
-                tmin - 0.5*deltat, tmax + 0.5*deltat, nt + 1)))
+                tmin - 0.5 * deltat, tmax + 0.5 * deltat, nt + 1)))
             fint = -num.cos((t_edges - tmin_stf) * (math.pi / self.duration))
             amplitudes = fint[1:] - fint[:-1]
             amplitudes /= num.sum(amplitudes)
@@ -850,8 +874,8 @@ class SmoothRampSTF(STF):
         tmax_stf = tref + self.duration * (1. - self.anchor) * 0.5
         tmin = round(tmin_stf / deltat) * deltat
         tmax = round(tmax_stf / deltat) * deltat
-        D = round((tmax - tmin)/deltat) * deltat
-        nt = int(round(D/deltat)) + 1
+        D = round((tmax - tmin) / deltat) * deltat
+        nt = int(round(D / deltat)) + 1
         times = num.linspace(tmin, tmax, nt)
         if nt > 1:
             rise_time = self.rise_ratio * self.duration
@@ -861,7 +885,7 @@ class SmoothRampSTF(STF):
             t_inc = times[ii]
             a = num.cos(num.pi * (t_inc - tmin_stf) / rise_time)
             b = num.cos(3 * num.pi * (t_inc - tmin_stf) / rise_time) - 1.0
-            amplitudes[ii] = (9./16.) * (1 - a + (1./9.)*b)
+            amplitudes[ii] = (9. / 16.) * (1 - a + (1. / 9.) * b)
 
             amplitudes /= num.sum(amplitudes)
         else:
@@ -1167,6 +1191,7 @@ class SourceWithDerivedMagnitude(Source):
         help='moment magnitude Mw as in [Hanks and Kanamori, 1979]')
 
     class __T(Source.T):
+
         def validate_extra(self, val):
             Source.T.validate_extra(self, val)
             val.check_conflicts()
@@ -1371,11 +1396,16 @@ class RectangularExplosionSource(ExplosionSource):
 
         stf = self.effective_stf_pre()
 
-        points, times, amplitudes, dl, dw = discretize_rect_source(
+        points, times, amplitudes, dl, dw, nl, nw = discretize_rect_source(
             store.config.deltas, store.config.deltat,
             self.north_shift, self.east_shift, self.depth,
             self.strike, self.dip, self.length, self.width, self.anchor,
             self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy)
+
+        print(check_rect_source_discretisation(points, nl, nw, store))
+        if not check_rect_source_discretisation(points, nl, nw, store):
+            logger.warning('The source\' sub-sources are further than'
+                           ' lambda/4 apart')
 
         amplitudes *= self.get_moment(store, target)
 
@@ -1498,11 +1528,11 @@ class CLVDSource(SourceWithMagnitude):
 
     @property
     def m6(self):
-        a = math.sqrt(4./3.) * self.get_factor()
-        m = mt.symmat6(-0.5*a, -0.5*a, a, 0., 0., 0.)
+        a = math.sqrt(4. / 3.) * self.get_factor()
+        m = mt.symmat6(-0.5 * a, -0.5 * a, a, 0., 0., 0.)
         rotmat1 = mt.euler_to_matrix(
-            d2r*(self.dip-90.),
-            d2r*(self.azimuth-90.),
+            d2r * (self.dip - 90.),
+            d2r * (self.azimuth - 90.),
             0.)
         m = rotmat1.T * m * rotmat1
         return mt.to6(m)
@@ -1746,12 +1776,17 @@ class RectangularSource(SourceWithDerivedMagnitude):
 
         stf = self.effective_stf_pre()
 
-        points, times, amplitudes, dl, dw = discretize_rect_source(
+        points, times, amplitudes, dl, dw, nl, nw = discretize_rect_source(
             store.config.deltas, store.config.deltat,
             self.north_shift, self.east_shift, self.depth,
             self.strike, self.dip, self.length, self.width, self.anchor,
             self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy,
             decimation_factor=self.decimation_factor)
+
+        print(check_rect_source_discretisation(points, nl, nw, store))
+        if not check_rect_source_discretisation(points, nl, nw, store):
+            logger.warning('The source\' sub-sources are further than'
+                           ' lambda/4 apart')
 
         if self.slip is not None:
             if target is not None:
@@ -1937,17 +1972,17 @@ class DoubleDCSource(SourceWithMagnitude):
     def split(self):
         a1 = 1.0 - self.mix
         a2 = self.mix
-        delta_north = math.cos(self.azimuth*d2r) * self.distance
-        delta_east = math.sin(self.azimuth*d2r) * self.distance
+        delta_north = math.cos(self.azimuth * d2r) * self.distance
+        delta_east = math.sin(self.azimuth * d2r) * self.distance
 
         dc1 = DCSource(
             lat=self.lat,
             lon=self.lon,
-            time=self.time - self.delta_time*a1,
-            north_shift=self.north_shift - delta_north*a1,
-            east_shift=self.east_shift - delta_east*a1,
-            depth=self.depth - self.delta_depth*a1,
-            moment=self.moment*a1,
+            time=self.time - self.delta_time * a1,
+            north_shift=self.north_shift - delta_north * a1,
+            east_shift=self.east_shift - delta_east * a1,
+            depth=self.depth - self.delta_depth * a1,
+            moment=self.moment * a1,
             strike=self.strike1,
             dip=self.dip1,
             rake=self.rake1,
@@ -1956,11 +1991,11 @@ class DoubleDCSource(SourceWithMagnitude):
         dc2 = DCSource(
             lat=self.lat,
             lon=self.lon,
-            time=self.time + self.delta_time*a2,
-            north_shift=self.north_shift + delta_north*a2,
-            east_shift=self.east_shift + delta_east*a2,
-            depth=self.depth + self.delta_depth*a2,
-            moment=self.moment*a2,
+            time=self.time + self.delta_time * a2,
+            north_shift=self.north_shift + delta_north * a2,
+            east_shift=self.east_shift + delta_east * a2,
+            depth=self.depth + self.delta_depth * a2,
+            moment=self.moment * a2,
             strike=self.strike2,
             dip=self.dip2,
             rake=self.rake2,
@@ -1976,14 +2011,14 @@ class DoubleDCSource(SourceWithMagnitude):
         mot2 = mt.MomentTensor(strike=self.strike2, dip=self.dip2,
                                rake=self.rake2, scalar_moment=a2)
 
-        delta_north = math.cos(self.azimuth*d2r) * self.distance
-        delta_east = math.sin(self.azimuth*d2r) * self.distance
+        delta_north = math.cos(self.azimuth * d2r) * self.distance
+        delta_east = math.sin(self.azimuth * d2r) * self.distance
 
         times1, amplitudes1 = self.effective_stf1_pre().discretize_t(
-            store.config.deltat, -self.delta_time*a1)
+            store.config.deltat, -self.delta_time * a1)
 
         times2, amplitudes2 = self.effective_stf2_pre().discretize_t(
-            store.config.deltat, self.delta_time*a2)
+            store.config.deltat, self.delta_time * a2)
 
         nt1 = times1.size
         nt2 = times2.size
@@ -1993,17 +2028,17 @@ class DoubleDCSource(SourceWithMagnitude):
             lon=self.lon,
             times=num.concatenate((times1, times2)),
             north_shifts=num.concatenate((
-                num.repeat(self.north_shift - delta_north*a1, nt1),
-                num.repeat(self.north_shift + delta_north*a2, nt2))),
+                num.repeat(self.north_shift - delta_north * a1, nt1),
+                num.repeat(self.north_shift + delta_north * a2, nt2))),
             east_shifts=num.concatenate((
-                num.repeat(self.east_shift - delta_east*a1, nt1),
-                num.repeat(self.east_shift + delta_east*a2, nt2))),
+                num.repeat(self.east_shift - delta_east * a1, nt1),
+                num.repeat(self.east_shift + delta_east * a2, nt2))),
             depths=num.concatenate((
-                num.repeat(self.depth - self.delta_depth*a1, nt1),
-                num.repeat(self.depth + self.delta_depth*a2, nt2))),
+                num.repeat(self.depth - self.delta_depth * a1, nt1),
+                num.repeat(self.depth + self.delta_depth * a2, nt2))),
             m6s=num.vstack((
-                mot1.m6()[num.newaxis, :]*amplitudes1[:, num.newaxis],
-                mot2.m6()[num.newaxis, :]*amplitudes2[:, num.newaxis])))
+                mot1.m6()[num.newaxis, :] * amplitudes1[:, num.newaxis],
+                mot2.m6()[num.newaxis, :] * amplitudes2[:, num.newaxis])))
 
         return ds
 
@@ -2011,9 +2046,9 @@ class DoubleDCSource(SourceWithMagnitude):
         a1 = 1.0 - self.mix
         a2 = self.mix
         mot1 = mt.MomentTensor(strike=self.strike1, dip=self.dip1,
-                               rake=self.rake1, scalar_moment=a1*self.moment)
+                               rake=self.rake1, scalar_moment=a1 * self.moment)
         mot2 = mt.MomentTensor(strike=self.strike2, dip=self.dip2,
-                               rake=self.rake2, scalar_moment=a2*self.moment)
+                               rake=self.rake2, scalar_moment=a2 * self.moment)
         return mt.MomentTensor(m=mot1.m() + mot2.m())
 
     def pyrocko_event(self, store=None, target=None, **kwargs):
@@ -2083,14 +2118,14 @@ class RingfaultSource(SourceWithMagnitude):
 
     def discretize_basesource(self, store=None, target=None):
         n = self.npointsources
-        phi = num.linspace(0, 2.0*num.pi, n, endpoint=False)
+        phi = num.linspace(0, 2.0 * num.pi, n, endpoint=False)
 
         points = num.zeros((n, 3))
         points[:, 0] = num.cos(phi) * 0.5 * self.diameter
         points[:, 1] = num.sin(phi) * 0.5 * self.diameter
 
         rotmat = num.array(mt.euler_to_matrix(
-            self.dip*d2r, self.strike*d2r, 0.0))
+            self.dip * d2r, self.strike * d2r, 0.0))
         points = num.dot(rotmat.T, points.T).T  # !!! ?
 
         points[:, 0] += self.north_shift
@@ -2098,7 +2133,7 @@ class RingfaultSource(SourceWithMagnitude):
         points[:, 2] += self.depth
 
         m = num.array(mt.MomentTensor(strike=90., dip=90., rake=-90.,
-                                      scalar_moment=1.0/n).m())
+                                      scalar_moment=1.0 / n).m())
 
         rotmats = num.transpose(
             [[num.cos(phi), num.sin(phi), num.zeros(n)],
@@ -2237,12 +2272,12 @@ class PorePressureLineSource(Source):
 
         n = 2 * int(math.ceil(self.length / num.min(store.config.deltas))) + 1
 
-        a = num.linspace(-0.5*self.length, 0.5*self.length, n)
+        a = num.linspace(-0.5 * self.length, 0.5 * self.length, n)
 
-        sa = math.sin(self.azimuth*d2r)
-        ca = math.cos(self.azimuth*d2r)
-        sd = math.sin(self.dip*d2r)
-        cd = math.cos(self.dip*d2r)
+        sa = math.sin(self.azimuth * d2r)
+        ca = math.cos(self.azimuth * d2r)
+        sd = math.sin(self.dip * d2r)
+        cd = math.cos(self.dip * d2r)
 
         points = num.zeros((n, 3))
         points[:, 0] = self.north_shift + a * ca * cd
@@ -2256,7 +2291,7 @@ class PorePressureLineSource(Source):
             north_shifts=points[:, 0],
             east_shifts=points[:, 1],
             depths=points[:, 2],
-            pp=num.ones(n)/n)
+            pp=num.ones(n) / n)
 
 
 class Request(Object):
@@ -2443,6 +2478,7 @@ class Rule(object):
 
 
 class VectorRule(Rule):
+
     def __init__(self, quantity, differentiate=0, integrate=0):
         self.components = [quantity + '.' + c for c in 'ned']
         self.differentiate = differentiate
@@ -2453,10 +2489,10 @@ class VectorRule(Rule):
         sa, ca, sd, cd = target.get_sin_cos_factors()
 
         comps = []
-        if nonzero(ca*cd):
+        if nonzero(ca * cd):
             comps.append(n)
 
-        if nonzero(sa*cd):
+        if nonzero(sa * cd):
             comps.append(e)
 
         if nonzero(sd):
@@ -2468,13 +2504,13 @@ class VectorRule(Rule):
         n, e, d = self.components
         sa, ca, sd, cd = target.get_sin_cos_factors()
 
-        if nonzero(ca*cd):
-            data = base_seismogram[n].data * (ca*cd)
+        if nonzero(ca * cd):
+            data = base_seismogram[n].data * (ca * cd)
         else:
             data = 0.0
 
-        if nonzero(sa*cd):
-            data = data + base_seismogram[e].data * (sa*cd)
+        if nonzero(sa * cd):
+            data = data + base_seismogram[e].data * (sa * cd)
 
         if nonzero(sd):
             data = data + base_seismogram[d].data * sd
@@ -2483,6 +2519,7 @@ class VectorRule(Rule):
 
 
 class HorizontalVectorRule(Rule):
+
     def __init__(self, quantity, differentiate=0, integrate=0):
         self.components = [quantity + '.' + c for c in 'ne']
         self.differentiate = differentiate
@@ -2517,6 +2554,7 @@ class HorizontalVectorRule(Rule):
 
 
 class ScalarRule(Rule):
+
     def __init__(self, quantity, differentiate=0):
         self.c = quantity
 
@@ -2528,6 +2566,7 @@ class ScalarRule(Rule):
 
 
 class StaticDisplacement(Rule):
+
     def required_components(self, target):
         return tuple(['displacement.%s' % c for c in list('ned')])
 
@@ -2923,7 +2962,7 @@ class LocalEngine(Engine):
         tcounters.append(xtime())
 
         if target.sample_rate is not None:
-            deltat = 1./target.sample_rate
+            deltat = 1. / target.sample_rate
         else:
             deltat = None
 
@@ -3089,8 +3128,8 @@ class LocalEngine(Engine):
                 for (i, k) in enumerate(skeys)]
 
             for ii_results, tcounters_dyn in process_dynamic(
-              work_dynamic, request.sources, request.targets, self,
-              nthreads=nthreads):
+                    work_dynamic, request.sources, request.targets, self,
+                    nthreads=nthreads):
 
                 tcounters_dyn_list.append(num.diff(tcounters_dyn))
                 isource, itarget, result = ii_results
@@ -3111,8 +3150,8 @@ class LocalEngine(Engine):
                 for (i, k) in enumerate(skeys)]
 
             for ii_results, tcounters_static in process_static(
-              work_static, request.sources, request.targets, self,
-              nthreads=nthreads):
+                    work_static, request.sources, request.targets, self,
+                    nthreads=nthreads):
 
                 tcounters_static_list.append(num.diff(tcounters_static))
                 isource, itarget, result = ii_results
@@ -3135,7 +3174,7 @@ class LocalEngine(Engine):
         if request.has_dynamic:
             tcumu_dyn = num.sum(num.vstack(tcounters_dyn_list), axis=0)
             t_dyn = float(num.sum(tcumu_dyn))
-            perc_dyn = map(float, tcumu_dyn/t_dyn * 100.)
+            perc_dyn = map(float, tcumu_dyn / t_dyn * 100.)
             (s.t_perc_get_store_and_receiver,
              s.t_perc_discretize_source,
              s.t_perc_make_base_seismogram,
@@ -3147,7 +3186,7 @@ class LocalEngine(Engine):
         if request.has_statics:
             tcumu_static = num.sum(num.vstack(tcounters_static_list), axis=0)
             t_static = num.sum(tcumu_static)
-            perc_static = map(float, tcumu_static/t_static * 100.)
+            perc_static = map(float, tcumu_static / t_static * 100.)
             (s.t_perc_static_get_store,
              s.t_perc_static_discretize_basesource,
              s.t_perc_static_sum_statics,
