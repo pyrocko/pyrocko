@@ -137,6 +137,7 @@ def _request(url, post=False, user=None, passwd=None,
                 except TypeError:
                     del url_args['context']  # context not avail before 3.4.3
 
+            logger.debug('Response: %s' % resp.getcode())
             if resp.getcode() == 204:
                 raise EmptyResult(url)
             return resp
