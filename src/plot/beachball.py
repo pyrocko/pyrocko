@@ -581,8 +581,8 @@ def mts2amps(mts, projection, beachball_type, grid_resolution=200, mask=True):
     vecs2[:, 1] = num.repeat(y, nx)
 
     ii_ok = vecs2[:, 0]**2 + vecs2[:, 1]**2 <= 1.0
-    amps = num.zeros(nx * ny, dtype=num.float)
-    amps[:] = num.nan
+    amps = num.full(nx * ny, num.nan, dtype=num.float)
+
     amps[ii_ok] = 0.
     for mt in mts:
         mt = deco_part(mt, beachball_type)
@@ -639,8 +639,8 @@ def plot_fuzzy_beachball_mpl_pixmap(
 
     See plot_beachball_mpl for other arguments
 
-    Note: The related axes should only be saved as raster image (e.g. png)
-          otherwise output might be looking unexpected!
+    .. note: The related axes should only be saved as raster image (e.g. png)
+             otherwise output might be looking unexpected!
     '''
     if size_units == 'points':
         raise BeachballError(
