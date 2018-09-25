@@ -1670,6 +1670,14 @@ class Config(Object):
         except ValueError:
             raise OutOfBounds()
 
+    def is_static(self):
+        if self.modelling_code_id in ('psgrn_pscmp', 'poel'):
+            return True
+        return False
+
+    def is_dynamic(self):
+        return not self.is_static()
+
 
 class ConfigTypeA(Config):
     '''

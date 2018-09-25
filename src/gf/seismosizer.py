@@ -241,7 +241,7 @@ def check_rect_source_discretisation(points2, nl, nw, store):
         points=num.repeat(depths[:, num.newaxis], 3, axis=1),
         interpolation='multilinear')
 
-    min_wavelength = vs_profile * store.config.deltat
+    min_wavelength = vs_profile * (store.config.deltat * 2)
     if not num.all(min_wavelength > distances*2):
         return False
 
@@ -1406,7 +1406,7 @@ class RectangularExplosionSource(ExplosionSource):
 
         if not check_rect_source_discretisation(points, nl, nw, store):
             logger.warning('The source\' sub-sources are further than'
-                           ' lambda/4 apart')
+                           ' lambda_min/2 apart!')
 
         amplitudes *= self.get_moment(store, target)
 
@@ -1721,7 +1721,9 @@ class RectangularSource(SourceWithDerivedMagnitude):
 
     decimation_factor = Int.T(
         optional=True,
-        default=1)
+        default=1,
+        help='Sub-source decimation factor, a larger decimation will'
+             ' improve the necessary computation time.')
 
     def base_key(self):
         return SourceWithDerivedMagnitude.base_key(self) + (
@@ -1775,6 +1777,10 @@ class RectangularSource(SourceWithDerivedMagnitude):
         else:
             nucy = None
 
+        # Disable decimation for dynamic waveform targets
+        if self.decimation_factor > 1 and isinstance(target, Target):
+            self.decimation_factor = 1
+
         stf = self.effective_stf_pre()
 
         points, times, amplitudes, dl, dw, nl, nw = discretize_rect_source(
@@ -1785,8 +1791,8 @@ class RectangularSource(SourceWithDerivedMagnitude):
             decimation_factor=self.decimation_factor)
 
         if not check_rect_source_discretisation(points, nl, nw, store):
-            logger.warning('The source\' sub-sources are further than'
-                           ' lambda/4 apart')
+            logger.warn('The source\'s sub-sources are further than'
+                        ' lambda_min/4 apart')
 
         if self.slip is not None:
             if target is not None:
