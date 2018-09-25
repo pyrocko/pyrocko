@@ -208,10 +208,8 @@ class BeachballTestCase(unittest.TestCase):
         axes.set_ylim(0., 10.)
         axes.set_axis_off()
 
-        #fig.savefig('fuzzy_bb_no.png', dpi=400)
-        #
-        #plt.show()
-
+        # fig.savefig('fuzzy_bb_no.png', dpi=400)
+        # plt.show()
 
     def show_comparison(self, nx=10):
         import matplotlib.pyplot as plt
