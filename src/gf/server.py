@@ -25,6 +25,7 @@ import socket
 from http.server import SimpleHTTPRequestHandler as SHRH
 import sys
 import html
+import json
 import cgi
 from io import BytesIO
 import io
@@ -38,6 +39,8 @@ import re
 from collections import deque
 import logging
 
+import matplotlib.pyplot as plt
+from pyrocko.plot import cake_plot
 from pyrocko import gf, util
 
 logger = logging.getLogger('pyrocko.gf.server')
@@ -413,6 +416,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
 class SeismosizerHandler(RequestHandler):
 
     stores_path = '/gfws/static/stores/'
+    api_path = '/gfws/api/'
     process_path = '/gfws/seismosizer/1/query'
 
     def send_head(self):
@@ -427,6 +431,15 @@ class SeismosizerHandler(RequestHandler):
 
         elif re.match(r'^' + S + '$', self.path):
             return self.list_stores()
+
+        elif re.match(r'^' + self.api_path + '$', self.path):
+            return self.list_stores_json()
+
+        elif re.match(r'^' + self.api_path + r'[a-zA-Z0-9_]+$', self.path):
+            return self.get_store_config()
+
+        elif re.match(r'^' + self.api_path + r'[a-zA-Z0-9_]+/profile', self.path):
+            return self.get_store_velocity_profile()
 
         elif re.match(r'^' + P + '$', self.path):
             return self.process()
@@ -532,6 +545,110 @@ class SeismosizerHandler(RequestHandler):
         self.end_headers()
         return f
 
+    def list_stores_json(self):
+        engine = self.server.engine
+
+        store_ids = list(engine.get_store_ids())
+        store_ids.sort(key=lambda x: x.lower())
+
+        def get_store_dict(store):
+            return {
+                'id': store.config.id,
+                'short_type': store.config.short_type,
+                'modelling_code_id': store.config.modelling_code_id,
+                'source_depth_min': store.config.source_depth_min,
+                'source_depth_max': store.config.source_depth_max,
+                'source_depth_delta': store.config.source_depth_delta,
+                'distance_min': store.config.distance_min,
+                'distance_max': store.config.distance_max,
+                'distance_delta': store.config.distance_delta,
+                'sample_rate': store.config.sample_rate,
+                'size': store.size_index_and_data
+            }
+
+        stores = {
+            'stores': [get_store_dict(engine.get_store(store_id))
+                       for store_id in store_ids]
+        }
+
+        s = json.dumps(stores)
+        length = len(s)
+        f = BytesIO(s.encode('ascii'))
+        self.send_response(200, 'OK')
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(length))
+        self.send_header("Access-Control-Allow-Origin", '*')
+        self.end_headers()
+
+        return f
+
+    def get_store_config(self):
+        engine = self.server.engine
+
+        store_ids = list(engine.get_store_ids())
+        store_ids.sort(key=lambda x: x.lower())
+
+        for match in re.finditer(r'/gfws/api/([a-zA-Z0-9_]+)',
+                                 self.path):
+            store_id = match.groups()[0]
+
+        try:
+            store = engine.get_store(store_id)
+        except Exception:
+            self.send_error(404)
+            self.end_headers()
+            return
+
+        data = {}
+        data['id'] = store_id
+        data['config'] = str(store.config)
+
+        s = json.dumps(data)
+        length = len(s)
+        f = BytesIO(s.encode('ascii'))
+        self.send_response(200, 'OK')
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(length))
+        self.send_header("Access-Control-Allow-Origin", '*')
+        self.end_headers()
+
+        return f
+
+    def get_store_velocity_profile(self):
+        engine = self.server.engine
+
+        fig = plt.figure()
+        axes = fig.gca()
+
+        store_ids = list(engine.get_store_ids())
+        store_ids.sort(key=lambda x: x.lower())
+
+        for match in re.finditer(r'/gfws/api/([a-zA-Z0-9_]+)/profile',
+                                 self.path):
+            store_id = match.groups()[0]
+
+        try:
+            store = engine.get_store(store_id)
+        except Exception:
+            self.send_error(404)
+            self.end_headers()
+            return
+
+        cake_plot.my_model_plot(store.config.earthmodel_1d, axes=axes)
+
+        f = BytesIO()
+        fig.savefig(f, format='png')
+
+        length = f.tell()
+        self.send_response(200, 'OK')
+        self.send_header("Content-Type", "image/png;")
+        self.send_header("Content-Length", str(length))
+        self.send_header("Access-Control-Allow-Origin", '*')
+        self.end_headers()
+
+        f.seek(0)
+        return f.read()
+
     def process(self):
 
         request = gf.load(string=self.body['request'][0])
@@ -624,7 +741,7 @@ def run(ip, port, engine):
 
 
 if __name__ == '__main__':
-    util.setup_logging('pyrocko.gf.server', 'warning')
+    util.setup_logging('pyrocko.gf.server', 'info')
     port = 8085
     engine = gf.LocalEngine(store_superdirs=sys.argv[1:])
     logger.info('Starting Server at http://127.0.0.1:%d' % port)
