@@ -22,7 +22,7 @@ except ImportError:
     from urllib.error import HTTPError
 
 from pyrocko import util
-
+from .. import config
 
 logger = logging.getLogger('pyrocko.client.fdsn')
 
@@ -53,7 +53,7 @@ g_site_abbr = {
 
 g_default_site = 'geofon'
 
-g_timeout = 20.
+g_timeout = config.config().fdsn_timeout
 
 re_realm_from_auth_header = re.compile(r'(realm)\s*[:=]\s*"([^"]*)"?')
 
