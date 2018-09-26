@@ -416,7 +416,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
 class SeismosizerHandler(RequestHandler):
 
     stores_path = '/gfws/static/stores/'
-    api_path = '/gfws/static/api/'
+    api_path = '/gfws/api/'
     process_path = '/gfws/seismosizer/1/query'
 
     def send_head(self):
@@ -588,7 +588,7 @@ class SeismosizerHandler(RequestHandler):
         store_ids = list(engine.get_store_ids())
         store_ids.sort(key=lambda x: x.lower())
 
-        for match in re.finditer(r'/gfws/static/api/([a-zA-Z0-9_]+)',
+        for match in re.finditer(r'/gfws/api/([a-zA-Z0-9_]+)',
                                  self.path):
             store_id = match.groups()[0]
 
@@ -623,7 +623,7 @@ class SeismosizerHandler(RequestHandler):
         store_ids = list(engine.get_store_ids())
         store_ids.sort(key=lambda x: x.lower())
 
-        for match in re.finditer(r'/gfws/static/api/([a-zA-Z0-9_]+)/profile',
+        for match in re.finditer(r'/gfws/api/([a-zA-Z0-9_]+)/profile',
                                  self.path):
             store_id = match.groups()[0]
 
