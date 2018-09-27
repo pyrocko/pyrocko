@@ -14,7 +14,7 @@ import copy
 import shutil
 from optparse import OptionParser
 
-from pyrocko import util, trace, gf, cake, io, marker, config
+from pyrocko import util, trace, gf, cake, io, marker, config, fomosto
 
 logger = logging.getLogger('pyrocko.apps.fomosto')
 km = 1e3
@@ -68,7 +68,7 @@ subcommand_usages = {
     'upgrade':       'upgrade [store-dir] ...',
     'addref':        'addref [store-dir] ... <filename> ...',
     'qc':            'qc [store-dir]',
-    'report':        'report <subcomamnd> <arguments>... [options]'
+    'report':        'report <subcommand> <arguments>... [options]'
 }
 
 subcommands = subcommand_descriptions.keys()
@@ -141,6 +141,7 @@ def cl_parse(command, args, setup=None, details=None):
         description = description + ' %s' % details
 
     parser = OptionParser(usage=susage, description=description)
+    parser.format_description = lambda formatter: description
 
     if setup:
         setup(parser)
@@ -182,7 +183,18 @@ def fomo_wrapper_module(name):
 
 def command_init(args):
 
-    parser, options, args = cl_parse('init', args)
+    details = '''
+
+Available modelling backends:
+%s
+
+  More information at
+    https://pyrocko.org/docs/current/apps/fomosto/backends.html
+''' % '\n'.join(['  * %s' % b for b in fomosto.AVAILABLE_BACKENDS])
+
+    parser, options, args = cl_parse(
+        'init', args,
+        details=details)
 
     if len(args) == 0:
         parser.print_help()

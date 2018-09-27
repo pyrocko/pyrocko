@@ -10,7 +10,7 @@ Scenario's SourceGenerators
 
 
 ``RectangularSourceGenerator``
---------------------------
+------------------------------
 
 .. automodule :: pyrocko.scenario.sources.rectangularsource
     :members:

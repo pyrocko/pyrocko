@@ -171,6 +171,46 @@ class BeachballTestCase(unittest.TestCase):
         self.compare_beachball(
             mt, show=True, size=20., size_units='points', position=(0.5, 0.5))
 
+    def test_fuzzy_beachball(self):
+
+        from matplotlib import pyplot as plt
+
+        def get_random_uniform(lower, upper, dimension=1):
+            return (upper - lower) * num.random.rand(dimension) + lower
+
+        fig = plt.figure(figsize=(4., 4.))
+        fig.subplots_adjust(left=0., right=1., bottom=0., top=1.)
+        axes = fig.add_subplot(1, 1, 1)
+
+        strike = 135.
+        dip = 65.
+        rake = 15.
+
+        best_mt = mtm.MomentTensor.from_values((strike, dip, rake))
+
+        n_balls = 1000
+        mts = []
+        for i in range(n_balls):
+            strike_dev = get_random_uniform(-15., 15.)
+            mts.append(mtm.MomentTensor.from_values(
+                (strike + strike_dev, dip, rake)))
+
+        kwargs = {
+            'beachball_type': 'full',
+            'size': 8,
+            'position': (5, 5),
+            'color_t': 'black',
+            'edgecolor': 'black'}
+
+        beachball.plot_fuzzy_beachball_mpl_pixmap(mts, axes, best_mt, **kwargs)
+
+        axes.set_xlim(0., 10.)
+        axes.set_ylim(0., 10.)
+        axes.set_axis_off()
+
+        # fig.savefig('fuzzy_bb_no.png', dpi=400)
+        # plt.show()
+
     def show_comparison(self, nx=10):
         import matplotlib.pyplot as plt
         from mpl_toolkits.mplot3d import Axes3D  # noqa
@@ -241,5 +281,5 @@ class BeachballTestCase(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    util.setup_logging('test_moment_tensor', 'warning')
+    util.setup_logging('test_beachball', 'warning')
     unittest.main()
