@@ -521,8 +521,10 @@ class Marker(object):
         self._takeoff_angle = takeoff_angle
         if self._event:
             self._event_hash = event.get_hash()
+            self._event_time = event.time
         else:
             self._event_hash = None
+            self._event_time = None
 
     def convert_to_event_marker(self, lat=0., lon=0.):
         if isinstance(self, EventMarker):
