@@ -13,7 +13,7 @@ km = 1000.
 
 
 def latlondepth_to_carthesian(lat, lon, depth):
-    radius = config().earthradius - depth
+    radius = config.config().earthradius - depth
     x = radius * math.cos(d2r*lat) * math.cos(d2r*lon)
     y = radius * math.cos(d2r*lat) * math.sin(d2r*lon)
     z = radius * math.sin(d2r*lat)
