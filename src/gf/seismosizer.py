@@ -242,9 +242,8 @@ def check_rect_source_discretisation(points2, nl, nw, store):
         interpolation='multilinear')
 
     min_wavelength = vs_profile * (store.config.deltat * 2)
-    if not num.all(min_wavelength > distances*2):
+    if not num.all(min_wavelength > distances/2):
         return False
-
     return True
 
 
@@ -1723,7 +1722,7 @@ class RectangularSource(SourceWithDerivedMagnitude):
         optional=True,
         default=1,
         help='Sub-source decimation factor, a larger decimation will'
-             ' improve the necessary computation time.')
+             ' shorten the necessary computation time.')
 
     def base_key(self):
         return SourceWithDerivedMagnitude.base_key(self) + (
@@ -1776,10 +1775,6 @@ class RectangularSource(SourceWithDerivedMagnitude):
             nucy = self.nucleation_y * 0.5 * self.width
         else:
             nucy = None
-
-        # Disable decimation for dynamic waveform targets
-        if self.decimation_factor > 1 and isinstance(target, Target):
-            self.decimation_factor = 1
 
         stf = self.effective_stf_pre()
 
