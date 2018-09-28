@@ -1883,6 +1883,19 @@ class RectangularSource(SourceWithDerivedMagnitude):
 class DoubleDCSource(SourceWithMagnitude):
     '''
     Two double-couple point sources separated in space and time.
+    Moment share between the sub-sources is controlled by the
+    parameter mix.
+    The position of the subsources is dependent on the moment
+    distribution between the two sources. Depth, east and north
+    shift are given for the centroid between the two double-couples.
+    The subsources will positioned according to their moment shares
+    around this centroid position.
+    This is done according to their delta parameters, which are
+    therefore in relation to that centroid.
+    Note that depth of the subsources therefore can be
+    depth+/-delta_depth. For shallow earthquakes therefore
+    the depth has to be chosen deeper to avoid sampling
+    above surface.
     '''
 
     strike1 = Float.T(
