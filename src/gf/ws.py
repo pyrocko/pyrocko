@@ -19,7 +19,7 @@ g_url_static = '%(site)s/gfws/%(service)s'
 
 g_site_abbr = {
     'localhost': 'http://localhost:8080',
-    'kinherd': 'http://kinherd.org:8080'}
+    'kinherd': 'http://kinherd.org'}
 
 g_default_site = 'localhost'
 
