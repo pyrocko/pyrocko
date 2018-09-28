@@ -53,7 +53,7 @@ g_site_abbr = {
 
 g_default_site = 'geofon'
 
-if config.config().fdsn_timeout == None:
+if config.config().fdsn_timeout is None:
     g_timeout = 20.
 else:
     g_timeout = config.config().fdsn_timeout
