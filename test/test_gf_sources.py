@@ -414,7 +414,8 @@ class GFSourcesTestCase(unittest.TestCase):
                     depth=10*km,
                     magnitude=5.0,
                     width=5*km,
-                    length=5*km)]:
+                    length=5*km,
+                    decimation_factor=2)]:
 
             dsource = source.discretize_basesource(store, target)
             m1 = source.get_moment(store, target)

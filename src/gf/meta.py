@@ -1550,24 +1550,110 @@ class Config(Object):
         The default implementation retrieves and interpolates the shear moduli
         from the contained 1D velocity profile.
         '''
+        return self.get_material_property(lat, lon, points,
+                                          parameter='shear_moduli',
+                                          interpolation=interpolation)
+
+    def get_vs(self, lat, lon, points, interpolation=None):
+        '''
+        Get Vs at given points from contained velocity model.
+
+        :param lat: surface origin for coordinate system of ``points``
+        :param points: NumPy array of shape ``(N, 3)``, where each row is
+            a point ``(north, east, depth)``, relative to origin at
+            ``(lat, lon)``
+        :param interpolation: interpolation method. Choose from
+            ``('nearest_neighbor', 'multilinear')``
+        :returns: NumPy array of length N with extracted shear moduli at each
+            point
+
+        The default implementation retrieves and interpolates Vs
+        from the contained 1D velocity profile.
+        '''
+        return self.get_material_property(lat, lon, points,
+                                          parameter='vs',
+                                          interpolation=interpolation)
+
+    def get_vp(self, lat, lon, points, interpolation=None):
+        '''
+        Get Vp at given points from contained velocity model.
+
+        :param lat: surface origin for coordinate system of ``points``
+        :param points: NumPy array of shape ``(N, 3)``, where each row is
+            a point ``(north, east, depth)``, relative to origin at
+            ``(lat, lon)``
+        :param interpolation: interpolation method. Choose from
+            ``('nearest_neighbor', 'multilinear')``
+        :returns: NumPy array of length N with extracted shear moduli at each
+            point
+
+        The default implementation retrieves and interpolates Vp
+        from the contained 1D velocity profile.
+        '''
+        return self.get_material_property(lat, lon, points,
+                                          parameter='vp',
+                                          interpolation=interpolation)
+
+    def get_rho(self, lat, lon, points, interpolation=None):
+        '''
+        Get rho at given points from contained velocity model.
+
+        :param lat: surface origin for coordinate system of ``points``
+        :param points: NumPy array of shape ``(N, 3)``, where each row is
+            a point ``(north, east, depth)``, relative to origin at
+            ``(lat, lon)``
+        :param interpolation: interpolation method. Choose from
+            ``('nearest_neighbor', 'multilinear')``
+        :returns: NumPy array of length N with extracted shear moduli at each
+            point
+
+        The default implementation retrieves and interpolates rho
+        from the contained 1D velocity profile.
+        '''
+        return self.get_material_property(lat, lon, points,
+                                          parameter='rho',
+                                          interpolation=interpolation)
+
+    def get_material_property(self, lat, lon, points, parameter='vs',
+                              interpolation=None):
+
         if interpolation is None:
             raise TypeError('Interpolation method not defined! available: '
                             "multilinear", "nearest_neighbor")
 
-        store_depth_profile = self.coords[0]
-
         earthmod = self.earthmodel_1d
-
-        vs_profile = earthmod.profile('vs')
+        store_depth_profile = self.coords[0]
         z_profile = earthmod.profile('z')
-        rho_profile = earthmod.profile('rho')
 
-        store_vs_profile = num.interp(
-            store_depth_profile, z_profile, vs_profile)
-        store_rho_profile = num.interp(
-            store_depth_profile, z_profile, rho_profile)
-        store_shear_modulus_profile = \
-            num.power(store_vs_profile, 2) * store_rho_profile
+        if parameter == 'vs':
+            vs_profile = earthmod.profile('vs')
+            profile = num.interp(
+                store_depth_profile, z_profile, vs_profile)
+
+        elif parameter == 'vp':
+            vp_profile = earthmod.profile('vp')
+            profile = num.interp(
+                store_depth_profile, z_profile, vp_profile)
+
+        elif parameter == 'rho':
+            rho_profile = earthmod.profile('rho')
+
+            profile = num.interp(
+                store_depth_profile, z_profile, rho_profile)
+
+        elif parameter == 'shear_moduli':
+            vs_profile = earthmod.profile('vs')
+            rho_profile = earthmod.profile('rho')
+
+            store_vs_profile = num.interp(
+                store_depth_profile, z_profile, vs_profile)
+            store_rho_profile = num.interp(
+                store_depth_profile, z_profile, rho_profile)
+
+            profile = num.power(store_vs_profile, 2) * store_rho_profile
+        else:
+            raise TypeError(
+                'parameter %s not available' % parameter)
 
         if interpolation == 'multilinear':
             kind = 'linear'
@@ -1577,13 +1663,20 @@ class Config(Object):
             raise TypeError(
                 'Interpolation method %s not available' % interpolation)
 
-        shear_moduli_interpolator = interp1d(
-            store_depth_profile, store_shear_modulus_profile, kind=kind)
+        interpolator = interp1d(store_depth_profile, profile, kind=kind)
 
         try:
-            return shear_moduli_interpolator(points[:, 2])
+            return interpolator(points[:, 2])
         except ValueError:
             raise OutOfBounds()
+
+    def is_static(self):
+        if self.modelling_code_id in ('psgrn_pscmp', 'poel'):
+            return True
+        return False
+
+    def is_dynamic(self):
+        return not self.is_static()
 
 
 class ConfigTypeA(Config):

@@ -51,10 +51,11 @@ Classes covered in these examples:
  * :class:`pyrocko.gf.seismosizer.DoubleDCSource` (a representation of a
    double double-couple source object).
 
+
 Beachballs from moment tensors
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-This example demonstrates how to create beachballs from (random) moment tensors.  
+Here we create random moment tensors and plot their beachballs.
 
 Download :download:`beachball_example01.py </../../examples/beachball_example01.py>`
 
@@ -83,6 +84,7 @@ Download :download:`beachball_example03.py </../../examples/beachball_example03.
 
     The three types of beachballs that can be plotted through pyrocko.
 
+
 Beachballs from source objects
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -108,6 +110,27 @@ Download :download:`beachball_example02.py </../../examples/beachball_example02.
     :alt: Beachballs (focal mechanisms) created in corners of graph.
 
     Four different source object types plotted with different beachball sizes.
+
+
+Fuzzy beachballs with uncertainty
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If we want to express moment tensor uncertainties we can plot fuzzy beachballs from an ensemble of many solutions.
+
+This example will generate random solution around a best moment tensor (red lines). The perturbed solutions are the uncertainty which can be illustrated in a fuzzy beachball.
+
+Download :download:`beachball_example05.py </../../examples/beachball_example05.py>`
+
+.. literalinclude :: /../../examples/beachball_example05.py
+    :language: python
+
+
+.. figure :: /static/beachball-example05.png
+    :align: center
+    :alt: Fuzzy beachball with uncertainty.
+
+    Fuzzy beachball illustrating the solutions uncertainty.
+
 
 
 Add station symbols to focal sphere diagram
