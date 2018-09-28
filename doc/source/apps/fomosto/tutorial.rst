@@ -652,3 +652,10 @@ store.
 
       $ fomosto redeploy my_first_gfs derived
 
+
+Download pre-calculated Green's function stores
+-----------------------------------------------
+
+Pre-calculated Green's functions stores with global or regional coverage can be explored online at:
+
+https://greens-mill.pyrocko.org

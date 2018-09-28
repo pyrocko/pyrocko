@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-VERSION=v`python -c "import pyrocko; print(pyrocko.__version__);"`
+VERSION=v`python3 -c "import pyrocko; print(pyrocko.__version__);"`
 
 if [ ! -f maintenance/deploy-docs.sh ] ; then
     echo "must be run from pyrocko's toplevel directory"
