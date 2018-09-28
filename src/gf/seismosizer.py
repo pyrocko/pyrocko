@@ -1848,7 +1848,7 @@ class DoubleDCSource(SourceWithMagnitude):
     '''
     Two double-couple point sources separated in space and time.
     Moment share between the sub-sources is controlled by the
-    parameter mix. 
+    parameter mix.
     The position of the subsources is dependent on the moment
     distribution between the two sources. Depth, east and north
     shift are given for the centroid between the two double-couples.
