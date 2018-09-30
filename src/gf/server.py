@@ -446,6 +446,7 @@ class SeismosizerHandler(RequestHandler):
 
         else:
             self.send_error(404, "File not found")
+            self.end_headers()
             return None
 
     def translate_path(self, path):

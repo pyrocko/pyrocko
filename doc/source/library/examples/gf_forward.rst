@@ -8,7 +8,7 @@ Calculate synthetic seismograms from a local GF store
 
 It is assumed that a :class:`~pyrocko.gf.store.Store` with store ID
 *crust2_dd* has been downloaded in advance. A list of currently available
-stores can be found at http://kinherd.org/gfs.html as well as how to download
+stores can be found at https://greens-mill.pyrocko.org as well as how to download
 such stores.
 
 Further API documentation for the utilized objects can be found at :class:`~pyrocko.gf.targets.Target`,

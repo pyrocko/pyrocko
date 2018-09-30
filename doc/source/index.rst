@@ -51,7 +51,9 @@ Indices and tables
 * :ref:`search`
 
 
-More manuals from the ecosystem:
----------------------------------
+More resources:
+---------------
 
-* `Kite - Static displacement and InSAR post-processing <https://pyrocko.org/docs/kite>`_
+* `Green's Mill - Online resource for pre-calculated Green's functions <https://greens-mill.pyrocko.org>`_
+
+* `Kite - Software for static displacement and InSAR post-processing <https://pyrocko.org/docs/kite>`_

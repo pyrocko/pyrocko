@@ -963,12 +963,20 @@ def command_server(args):
 def command_download(args):
     from pyrocko.gf import ws
 
+    details = '''
+
+Browse pre-calculated Green's function stores online:
+
+  https://greens-mill.pyrocko.org
+'''
+
     def setup(parser):
         parser.add_option(
             '--force', dest='force', action='store_true',
             help='overwrite existing files')
 
-    parser, options, args = cl_parse('download', args, setup=setup)
+    parser, options, args = cl_parse(
+        'download', args, setup=setup, details=details)
     if not len(args) in (1, 2):
         parser.print_help()
         sys.exit(1)

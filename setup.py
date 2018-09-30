@@ -24,7 +24,7 @@ from setuptools.command.build_ext import build_ext
 from setuptools.command.install import install
 
 packname = 'pyrocko'
-version = '2018.09.19'
+version = '2018.09.28'
 
 
 class NotInAGitRepos(Exception):

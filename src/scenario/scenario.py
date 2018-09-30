@@ -208,7 +208,7 @@ class ScenarioGenerator(LocationGenerator):
             print('We could not find the following Green\'s function stores:\n'
                   ' %s\n'
                   'We can try to download the stores from '
-                  'http://kinherd.org:8080 into one of the following '
+                  'http://kinherd.org into one of the following '
                   'directories.'
                   % '\n'.join(self.stores_missing))
             for idr, dr in enumerate(gf_store_superdirs):
