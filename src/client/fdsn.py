@@ -22,7 +22,7 @@ except ImportError:
     from urllib.error import HTTPError
 
 from pyrocko import util
-from .. import config
+from pyrocko import config
 
 logger = logging.getLogger('pyrocko.client.fdsn')
 
