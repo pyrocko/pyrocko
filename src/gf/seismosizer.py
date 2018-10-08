@@ -2492,6 +2492,9 @@ class VectorRule(Rule):
         if nonzero(sd):
             data = data + base_seismogram[d].data * sd
 
+        if self.differentiate == 1:
+            data = num.diff(data)
+
         return data
 
 

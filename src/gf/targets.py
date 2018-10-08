@@ -59,7 +59,11 @@ class Target(meta.Receiver):
     quantity = meta.QuantityType.T(
         optional=True,
         help='Measurement quantity type (e.g. "displacement", "pressure", ...)'
-             'If not given, it is guessed from the channel code.')
+             'If not given, it is guessed from the channel code.'
+             'Beware: If velocity is requested, the velocity is not directly'
+             'retrived. Instead a numpy.diff is run on the retrieved'
+             'displacements. For high accuracy we recommend using the'
+             'Pyrocko object DifferentiationResponse.')
 
     codes = Tuple.T(
         4, String.T(), default=('', 'STA', '', 'Z'),
