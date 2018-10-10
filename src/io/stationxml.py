@@ -10,7 +10,6 @@ import time
 import logging
 import datetime
 import calendar
-import re
 import math
 import copy
 
@@ -1019,15 +1018,30 @@ class FDSNStationXML(Object):
         return pstations
 
     @classmethod
-    def from_pyrocko_stations(cls, pyrocko_stations):
+    def from_pyrocko_stations(
+            cls, pyrocko_stations, add_flat_responses_from=None):
+
         ''' Generate :py:class:`FDSNStationXML` from list of
         :py:class;`pyrocko.model.Station` instances.
 
-        :param pyrocko_stations: list of
-            :py:class;`pyrocko.model.Station` instances.
+        :param pyrocko_stations: list of :py:class;`pyrocko.model.Station`
+            instances.
+        :param add_flat_responses_from: unit, 'M', 'M/S' or 'M/S**2'
         '''
         from collections import defaultdict
         network_dict = defaultdict(list)
+
+        if add_flat_responses_from:
+            assert add_flat_responses_from in ('M', 'M/S', 'M/S**2')
+            extra = dict(
+                response=Response(
+                    instrument_sensitivity=Sensitivity(
+                        value=1.0,
+                        frequency=1.0,
+                        input_units=Units(name=add_flat_responses_from))))
+        else:
+            extra = {}
+
         for s in pyrocko_stations:
             network, station, location = s.nsl()
             channel_list = []
@@ -1041,7 +1055,8 @@ class FDSNStationXML(Object):
                         elevation=Distance(value=s.elevation),
                         depth=Distance(value=s.depth),
                         azimuth=Azimuth(value=c.azimuth),
-                        dip=Dip(value=c.dip)
+                        dip=Dip(value=c.dip),
+                        **extra
                     )
                 )
 
