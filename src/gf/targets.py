@@ -62,8 +62,8 @@ class Target(meta.Receiver):
              'If not given, it is guessed from the channel code.'
              'Beware: If velocity is requested, the velocity is not directly'
              'retrieved. Instead a numpy.diff is run on the retrieved'
-             'displacements. For high accuracy we recommend using the'
-             'Pyrocko object DifferentiationResponse.')
+             'displacements, with lower accuracy. For high accuracy we'
+             'recommend using the Pyrocko object DifferentiationResponse.')
 
     codes = Tuple.T(
         4, String.T(), default=('', 'STA', '', 'Z'),
