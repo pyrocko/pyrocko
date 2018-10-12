@@ -10,7 +10,6 @@ import time
 import logging
 import datetime
 import calendar
-import re
 import math
 import copy
 
@@ -18,7 +17,7 @@ import numpy as num
 
 from pyrocko.guts import (StringChoice, StringPattern, UnicodePattern, String,
                           Unicode, Int, Float, List, Object, Timestamp,
-                          ValidationError, TBase)
+                          ValidationError, TBase, re_tz)
 from pyrocko.guts import load_xml  # noqa
 
 import pyrocko.model
@@ -98,12 +97,22 @@ class DummyAwareOptionalTimestamp(Object):
             elif isinstance(val, (str, newstr)):
                 val = val.strip()
 
-                val = re.sub(r'(Z|\+00(:?00)?)$', '', val)
+                tz_offset = 0
+
+                m = re_tz.search(val)
+                if m:
+                    sh = m.group(2)
+                    sm = m.group(4)
+                    tz_offset = (int(sh)*3600 if sh else 0) \
+                        + (int(sm)*60 if sm else 0)
+
+                    val = re_tz.sub('', val)
+
                 if val[10] == 'T':
                     val = val.replace('T', ' ', 1)
 
                 try:
-                    val = util.str_to_time(val)
+                    val = util.str_to_time(val) - tz_offset
 
                 except util.TimeStrError:
                     year = int(val[:4])
@@ -1009,15 +1018,30 @@ class FDSNStationXML(Object):
         return pstations
 
     @classmethod
-    def from_pyrocko_stations(cls, pyrocko_stations):
+    def from_pyrocko_stations(
+            cls, pyrocko_stations, add_flat_responses_from=None):
+
         ''' Generate :py:class:`FDSNStationXML` from list of
         :py:class;`pyrocko.model.Station` instances.
 
-        :param pyrocko_stations: list of
-            :py:class;`pyrocko.model.Station` instances.
+        :param pyrocko_stations: list of :py:class;`pyrocko.model.Station`
+            instances.
+        :param add_flat_responses_from: unit, 'M', 'M/S' or 'M/S**2'
         '''
         from collections import defaultdict
         network_dict = defaultdict(list)
+
+        if add_flat_responses_from:
+            assert add_flat_responses_from in ('M', 'M/S', 'M/S**2')
+            extra = dict(
+                response=Response(
+                    instrument_sensitivity=Sensitivity(
+                        value=1.0,
+                        frequency=1.0,
+                        input_units=Units(name=add_flat_responses_from))))
+        else:
+            extra = {}
+
         for s in pyrocko_stations:
             network, station, location = s.nsl()
             channel_list = []
@@ -1031,7 +1055,8 @@ class FDSNStationXML(Object):
                         elevation=Distance(value=s.elevation),
                         depth=Distance(value=s.depth),
                         azimuth=Azimuth(value=c.azimuth),
-                        dip=Dip(value=c.dip)
+                        dip=Dip(value=c.dip),
+                        **extra
                     )
                 )
 

@@ -393,7 +393,7 @@ class SPTree(object):
                 for idim in range(self.ndim):
                     dimcorners = [slice(None, None, 2)] * self.ndim
                     dimcorners[idim] = 1
-                    if all_(works_full[dimcorners]):
+                    if all_(works_full[tuple(dimcorners)]):
                         deepen[idim] = 0
 
             if not any_(deepen):
