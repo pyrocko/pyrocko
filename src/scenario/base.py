@@ -35,7 +35,7 @@ class ScenarioError(Exception):
     pass
 
 
-def is_on_land(lat, lon, method='topo'):
+def is_on_land(lat, lon, method='coastlines'):
     if method == 'topo':
         elevation = topo.elevation(lat, lon)
         if elevation is None:
