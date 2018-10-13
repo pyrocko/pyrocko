@@ -520,7 +520,7 @@ def polylinefit(x, y, n_or_xnodes):
             a[ndata+i, i*2+3] = -1.0*w
 
     d = num.concatenate((y, num.zeros(n-1)))
-    model = num.linalg.lstsq(a, d)[0].reshape((n, 2))
+    model = num.linalg.lstsq(a, d, rcond=-1)[0].reshape((n, 2))
 
     ynodes = num.zeros(n+1)
     ynodes[:n] = model[:, 0]*xnodes[:n] + model[:, 1]
