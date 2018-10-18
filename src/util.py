@@ -87,6 +87,7 @@ def _download(url, fpath, username=None, password=None,
 
     import requests
     from requests.auth import HTTPBasicAuth
+    from requests.exceptions import HTTPError
 
     requests.adapters.DEFAULT_RETRIES = 5
     urljoin = requests.compat.urljoin
@@ -231,6 +232,10 @@ def _download(url, fpath, username=None, password=None,
                 return fsize
             else:
                 download_file(url, fpath)
+
+    except HTTPError as e:
+        logging.warn("http error: %s" % e)
+        raise DownloadError('could not download file(s) from: %s' % url)
 
     finally:
         session.close()

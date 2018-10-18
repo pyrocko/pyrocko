@@ -688,6 +688,13 @@ setup(
             sources=[op.join('src', 'gf', 'ext', 'store_ext.c')]),
 
         Extension(
+            'eikonal_ext',
+            include_dirs=[get_python_inc(), numpy.get_include()],
+            extra_compile_args=['-Wextra'] + omp_arg,
+            extra_link_args=[] + omp_lib,
+            sources=[op.join('src', 'ext', 'eikonal_ext.c')]),
+
+        Extension(
             'parstack_ext',
             include_dirs=[get_python_inc(), numpy.get_include()],
             extra_compile_args=['-Wextra'] + omp_arg,
