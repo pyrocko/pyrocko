@@ -279,7 +279,7 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
         return respfile
 
     def get_stationxml(self):
-        stations = self.get_stations().values()
+        stations = self.get_pyrocko_stations().values()
         respfiles = []
         for station in stations:
             for channel in station.get_channels():
