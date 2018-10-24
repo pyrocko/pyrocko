@@ -1110,6 +1110,9 @@ class Tuple(Object):
                         strip_module=strip_module))
 
 
+re_tz = re.compile(r'(Z|([+-][0-2][0-9])(:?([0-5][0-9]))?)$')
+
+
 class Timestamp(Object):
     dummy_for = float
 
@@ -1126,12 +1129,22 @@ class Timestamp(Object):
 
             elif isinstance(val, (str, newstr)):
                 val = val.strip()
-                val = re.sub(r'(Z|\+00(:?00)?)$', '', val)
+                tz_offset = 0
+
+                m = re_tz.search(val)
+                if m:
+                    sh = m.group(2)
+                    sm = m.group(4)
+                    tz_offset = (int(sh)*3600 if sh else 0) \
+                        + (int(sm)*60 if sm else 0)
+
+                    val = re_tz.sub('', val)
+
                 if len(val) > 10 and val[10] == 'T':
                     val = val.replace('T', ' ', 1)
 
                 try:
-                    val = str_to_time(val)
+                    val = str_to_time(val) - tz_offset
                 except TimeStrError:
                     raise ValidationError(
                         '%s: cannot parse time/date: %s' % (self.xname(), val))

@@ -21,6 +21,8 @@ requirements:
     - progressbar2
     - future
     - requests
+    - jinja2
+    - nose
 
 # test:
 #   source_files:

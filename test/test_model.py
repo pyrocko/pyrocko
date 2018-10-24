@@ -139,6 +139,37 @@ class ModelTestCase(unittest.TestCase):
             assert(near(r.ydata[0], 1.0, 0.001))
             assert(near(t.ydata[0], 1.0, 0.001))
 
+    def testProjectionsZOnly(self):
+        km = 1000.
+
+        ev = model.Event(lat=-10, lon=150., depth=0.0)
+
+        for azi in num.linspace(0., 360., 37):
+            lat, lon = orthodrome.ne_to_latlon(
+                ev.lat, ev.lon, 10.*km * math.cos(azi), 10.*km * math.sin(azi))
+
+            sta = model.Station(lat=lat, lon=lon)
+            sta.set_event_relative_data(ev)
+            sta.set_channels_by_name('BHZ', 'BHN', 'BHE')
+            traces = [
+                trace.Trace(
+                    channel='BHZ',
+                    ydata=num.array([1.0])),
+            ]
+
+            projected = []
+            for m, in_channels, out_channels in sta.guess_projections_to_enu():
+                projected.extend(trace.project(
+                    traces, m, in_channels, out_channels))
+
+            def g(traces, cha):
+                for tr in traces:
+                    if tr.channel == cha:
+                        return tr
+
+            z = g(projected, 'U')
+            assert(near(z.ydata[0], 1.0, 0.001))
+
     def testGNSSCampaign(self):
         tempdir = tempfile.mkdtemp(prefix='pyrocko-model')
         fn = pjoin(tempdir, 'gnss_campaign.yml')
