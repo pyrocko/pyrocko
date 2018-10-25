@@ -399,7 +399,10 @@ on
                 'psgrn had a non-zero exit state: %i' % proc.returncode)
 
         if error_str:
-            errmess.append('psgrn emitted something via stderr')
+            logger.warn(
+                'psgrn emitted something via stderr: \n\n%s'
+                % error_str.decode())
+            # errmess.append('psgrn emitted something via stderr')
 
         if output_str.lower().find(b'error') != -1:
             errmess.append("the string 'error' appeared in psgrn output")
