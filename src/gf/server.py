@@ -39,9 +39,13 @@ import re
 from collections import deque
 import logging
 
+import matplotlib
+matplotlib.use('Agg')  # noqa
+
 import matplotlib.pyplot as plt
 from pyrocko.plot import cake_plot
 from pyrocko import gf, util
+
 
 logger = logging.getLogger('pyrocko.gf.server')
 
