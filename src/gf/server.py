@@ -39,13 +39,19 @@ import re
 from collections import deque
 import logging
 
+import matplotlib
+matplotlib.use('Agg')  # noqa
+
 import matplotlib.pyplot as plt
 from pyrocko.plot import cake_plot
 from pyrocko import gf, util
 
+
 logger = logging.getLogger('pyrocko.gf.server')
 
 __version__ = '1.0'
+
+store_id_pattern = gf.StringID.pattern[1:-1]
 
 
 def enc(s):
@@ -204,9 +210,8 @@ class RequestHandler(asynchat.async_chat, SHRH):
             self.outgoing.append(f)
         else:
             self.log_request(self.code)
-
-        # signal the end of this request
-        # self.outgoing.append(None)
+            # signal the end of this request
+            self.outgoing.append(None)
 
     def handle_request_line(self):
         """Called when the http request line and headers have been received"""
@@ -422,23 +427,24 @@ class SeismosizerHandler(RequestHandler):
     def send_head(self):
         S = self.stores_path
         P = self.process_path
+        A = self.api_path
         for x in (S,):
             if re.match(r'^' + x[:-1] + '$', self.path):
                 return self.redirect(x)
 
-        if re.match(r'^' + S + gf.StringID.pattern[1:-1], self.path):
+        if re.match(r'^' + S + store_id_pattern, self.path):
             return RequestHandler.send_head(self)
 
         elif re.match(r'^' + S + '$', self.path):
             return self.list_stores()
 
-        elif re.match(r'^' + self.api_path + '$', self.path):
+        elif re.match(r'^' + A + '$', self.path):
             return self.list_stores_json()
 
-        elif re.match(r'^' + self.api_path + r'[a-zA-Z0-9_]+$', self.path):
+        elif re.match(r'^' + A + store_id_pattern + '$', self.path):
             return self.get_store_config()
 
-        elif re.match(r'^' + self.api_path + r'[a-zA-Z0-9_]+/profile', self.path):
+        elif re.match(r'^' + A + store_id_pattern + '/profile$', self.path):
             return self.get_store_velocity_profile()
 
         elif re.match(r'^' + P + '$', self.path):
@@ -589,7 +595,7 @@ class SeismosizerHandler(RequestHandler):
         store_ids = list(engine.get_store_ids())
         store_ids.sort(key=lambda x: x.lower())
 
-        for match in re.finditer(r'/gfws/api/([a-zA-Z0-9_]+)',
+        for match in re.finditer(r'/gfws/api/(' + store_id_pattern + ')',
                                  self.path):
             store_id = match.groups()[0]
 
@@ -624,8 +630,8 @@ class SeismosizerHandler(RequestHandler):
         store_ids = list(engine.get_store_ids())
         store_ids.sort(key=lambda x: x.lower())
 
-        for match in re.finditer(r'/gfws/api/([a-zA-Z0-9_]+)/profile',
-                                 self.path):
+        for match in re.finditer(
+                r'/gfws/api/(' + store_id_pattern + ')/profile', self.path):
             store_id = match.groups()[0]
 
         try:
