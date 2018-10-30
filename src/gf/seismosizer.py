@@ -3015,7 +3015,7 @@ class LocalEngine(Engine):
 
         tcounters.append(xtime())
 
-        base_statics = store_.statics(
+        base_statics = store_.statics_new(
             base_source,
             target,
             itsnapshot,

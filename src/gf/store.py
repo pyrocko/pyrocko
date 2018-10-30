@@ -1821,6 +1821,41 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
 
         return out
 
+    def statics_new(self, source, multi_location, itsnapshot, components,
+                    interpolation='nearest_neighbor', nthreads=0):
+        if not self._f_index:
+            self.open()
+
+        out = {}
+        ntargets = multi_location.ntargets
+        source_terms = source.get_source_terms(self.config.component_scheme)
+        delays = source.times.astype(num.float32)
+        scheme_desc = meta.component_scheme_to_description[
+            self.config.component_scheme]
+
+        if ntargets == 0:
+            raise StoreError('MultiLocation.coords5 is empty')
+
+        res = store_ext.store_calc_static(
+            self.cstore,
+            source.coords5(),
+            source_terms,
+            delays,
+            multi_location.coords5,
+            self.config.component_scheme,
+            interpolation,
+            itsnapshot,
+            nthreads)
+
+        out = {}
+        for icomp, (comp, comp_res) in enumerate(
+                zip(scheme_desc.provided_components, res)):
+            if comp not in components:
+                continue
+            out[comp] = res[icomp]
+
+        return out
+
     def seismogram_old(
             self, source, receiver, components, deltat=None,
             itmin=None, nsamples=None, interpolation='nearest_neighbor',

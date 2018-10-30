@@ -764,6 +764,139 @@ static store_error_t store_sum_static(
     return SUCCESS;
 }
 
+static store_error_t store_calc_static(
+        const store_t *store,
+        const float64_t *source_coords,
+        const float64_t *ms,
+        const float32_t *delays,
+        const float64_t *receiver_coords,
+        const size_t nsources,
+        const size_t nreceivers,
+        const component_scheme_t *cscheme,
+        const mapping_scheme_t *mscheme,
+        const mapping_t *mapping,
+        interpolation_scheme_id interpolation,
+        int32_t it,
+        int32_t nthreads,
+        gf_dtype **result) {
+
+    float32_t weight, delay;
+    trace_t trace;
+    float32_t deltat = store->deltat;
+    int idelay_floor, idelay_ceil;
+    int idx, idx_record;
+    float w1, w2;
+    store_error_t err = SUCCESS;
+
+    (void) nthreads;
+
+    size_t ireceiver, isource, iip, nip, icomponent, isummand, nsummands_max, nsummands;
+    float64_t ws_this[cscheme->ncomponents*cscheme->nsummands_max];
+    uint64_t irecord_bases[VICINITY_NIP_MAX];
+    float64_t weights_ip[VICINITY_NIP_MAX];
+
+    if (!inlimits(it))
+        return BAD_REQUEST;
+
+    if (result == NULL)
+        return ALLOC_FAILED;
+
+    nsummands_max = cscheme->nsummands_max;
+    nip = mscheme->vicinity_nip;
+
+    if (0 == nsummands_max || 0 == nreceivers)
+        return SUCCESS;
+
+    for (ireceiver=0; ireceiver<nreceivers; ireceiver++) {
+        for (isource=0; isource<nsources; isource++) {
+
+            cscheme->make_weights(
+                &source_coords[isource*5],
+                &ms[isource*cscheme->nsource_terms],
+                &receiver_coords[ireceiver*5],
+                ws_this);
+
+
+            delay = delays[isource];
+            idelay_floor = (int) floor(delay/deltat);
+            idelay_ceil = (int) ceil(delay/deltat);
+            if (!inlimits(idelay_floor) || !inlimits(idelay_ceil))
+                err += BAD_REQUEST;
+
+            if (interpolation == MULTILINEAR) {
+                err += mscheme->vicinity(
+                    mapping,
+                    &source_coords[isource*5],
+                    &receiver_coords[ireceiver*5],
+                    irecord_bases,
+                    weights_ip);
+
+                for (iip=0; iip<nip; iip++) {
+                    for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
+                        nsummands = cscheme->nsummands[icomponent];
+                        for (isummand=0; isummand<nsummands; isummand++) {
+                            weight = weights_ip[iip] * ws_this[icomponent*nsummands_max + isummand];
+                            if (weight == 0.)
+                                continue;
+
+                            idx_record = irecord_bases[iip] + cscheme->igs[icomponent][isummand];
+                            err += store_get(store, idx_record, &trace);
+                            if (trace.is_zero)
+                                continue;
+
+                            idx = it - idelay_floor - trace.itmin;
+                            if (idelay_floor == idelay_ceil) {
+                                result[icomponent][ireceiver] += fe32toh(trace.data[max(0, min(idx, trace.nsamples-1))]) * weight;
+                            } else {
+                                w1 = (idelay_ceil - delay/deltat);
+                                w2 = (1.0-w1);
+                                result[icomponent][ireceiver] += (
+                                    fe32toh(trace.data[max(0, min(idx, trace.nsamples-1))]) * w1
+                                    + fe32toh(trace.data[max(0, min(idx-1, trace.nsamples-1))]) * w2) * weight;
+                            }
+                        }
+                    }
+                }
+            } else if (interpolation == NEAREST_NEIGHBOR) {
+                err += mscheme->irecord(
+                    mapping,
+                    &source_coords[isource*5],
+                    &receiver_coords[ireceiver*5],
+                    irecord_bases);
+
+                for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
+                    nsummands = cscheme->nsummands[icomponent];
+                    for (isummand=0; isummand<nsummands; isummand++) {
+                        weight = ws_this[icomponent*nsummands_max + isummand];
+                        if (weight == 0.)
+                            continue;
+
+                        idx_record = irecord_bases[0] + cscheme->igs[icomponent][isummand];
+                        err += store_get(store, idx_record, &trace);
+                        if (trace.is_zero)
+                            continue;
+
+                        idx = it - idelay_floor - trace.itmin;
+                        if (idelay_floor == idelay_ceil) {
+                            result[icomponent][ireceiver] += fe32toh(trace.data[max(0, min(idx, trace.nsamples-1))]) * weight;
+                        } else {
+                            w1 = (idelay_ceil - delay/deltat);
+                            w2 = (1.0-w1);
+                            result[icomponent][ireceiver] += (
+                                fe32toh(trace.data[max(0, min(idx, trace.nsamples-1))]) * w1
+                                + fe32toh(trace.data[max(0, min(idx-1, trace.nsamples-1))]) * w2) * weight;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (err != SUCCESS)
+        return BAD_REQUEST;
+    return SUCCESS;
+}
+
 static store_error_t store_init(int f_index, int f_data, store_t *store) {
     void *p;
     struct stat st;
@@ -1609,7 +1742,12 @@ static store_error_t make_sum_params(
     #endif
         for (ireceiver=0; ireceiver<nreceivers; ireceiver++) {
             for (isource=0; isource<nsources; isource++) {
-                cscheme->make_weights(&source_coords[isource*5], &ms[isource*cscheme->nsource_terms], &receiver_coords[ireceiver*5], ws_this);
+                cscheme->make_weights(
+                    &source_coords[isource*5],
+                    &ms[isource*cscheme->nsource_terms],
+                    &receiver_coords[ireceiver*5],
+                    ws_this);
+
                 if (interpolation == MULTILINEAR)  {
                     err += mscheme->vicinity(
                         mapping,
@@ -1884,6 +2022,11 @@ static PyObject* w_make_sum_params(PyObject *m, PyObject *args) {
     out_list = Py_BuildValue("[]");
     for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
         array_dims[0] = nsources * nreceivers * cscheme->nsummands[icomponent] * vicinities_nip;
+        printf("nsources: %ld\n", nsources);
+        printf("nreceiver: %ld\n", nreceivers);
+        printf("nsummands: %ld\n", cscheme->nsummands[icomponent]);
+        printf("vicinities_nip: %ld\n", vicinities_nip);
+        printf("array_size: %ld bytes\n", array_dims[0]*4 + array_dims[0]*8);
         weights_arr = (PyArrayObject*)PyArray_SimpleNew(1, array_dims, NPY_FLOAT32);
         irecords_arr = (PyArrayObject*)PyArray_SimpleNew(1, array_dims, NPY_UINT64);
 
@@ -1920,6 +2063,128 @@ static PyObject* w_make_sum_params(PyObject *m, PyObject *args) {
     return out_list;
 }
 
+
+static PyObject* w_store_calc_static(PyObject *m, PyObject *args) {
+    PyObject *capsule, *source_coords_arr, *receiver_coords_arr, *ms_arr, *delays_arr;
+    PyArrayObject *results_arr;
+    float64_t *source_coords, *receiver_coords, *ms, *delays;
+    gf_dtype *results[NCOMPONENTS_MAX];
+    int32_t it, nthreads;
+    size_t icomponent, nsources, nreceivers;
+
+    char *component_scheme_name, *interpolation_scheme_name;
+    const component_scheme_t *cscheme;
+    const mapping_scheme_t *mscheme;
+    interpolation_scheme_id interpolation;
+    store_error_t err;
+    store_t *store;
+    PyObject *out_list;
+
+    npy_intp array_dims[1];
+    npy_intp shape_want_coords[2] = {-1, 5};
+    npy_intp shape_want_ms[2] = {-1, 6};
+
+    struct module_state *st = GETSTATE(m);
+
+
+    if (!PyArg_ParseTuple(
+            args, "OOOOOssII", &capsule, &source_coords_arr, &ms_arr, &delays_arr, &receiver_coords_arr,
+            &component_scheme_name, &interpolation_scheme_name,
+            &it, &nthreads)) {
+        PyErr_SetString(st->error,
+            "usage: calc_static(cstore, source_coords, moment_tensors, delays, receiver_coords, component_scheme, interpolation_name, it, nthreads)");
+        return NULL;
+    }
+    nsources = PyArray_SIZE((PyArrayObject*)delays_arr);
+
+    store = get_store_from_capsule(capsule);
+    if (store == NULL)
+        return NULL;
+
+    mscheme = store->mapping_scheme;
+    if (mscheme == NULL) {
+        PyErr_SetString(st->error, "w_make_calc_params: no mapping scheme set on store");
+        return NULL;
+    }
+
+    cscheme = get_component_scheme(component_scheme_name);
+    if (cscheme == NULL) {
+        PyErr_SetString(st->error, "w_make_calc_params: invalid component scheme name");
+        return NULL;
+    }
+
+    interpolation = get_interpolation_scheme_id(interpolation_scheme_name);
+    if (interpolation == UNDEFINED_INTERPOLATION_SCHEME) {
+        PyErr_SetString(st->error, "w_make_calc_params: invalid interpolation scheme name");
+        return NULL;
+    }
+    if (!good_array(source_coords_arr, NPY_FLOAT64, -1, 2, shape_want_coords)) {
+        return NULL;
+    }
+
+    shape_want_ms[1] = cscheme->nsource_terms;
+    if (!good_array(ms_arr, NPY_FLOAT64, -1, 2, shape_want_ms)) {
+        return NULL;
+    }
+
+    if (!good_array(receiver_coords_arr, NPY_FLOAT64, -1, 2, shape_want_coords)) {
+        return NULL;
+    }
+
+    if (!good_array((PyObject*)delays_arr, NPY_FLOAT32, -1, 1, NULL)) {
+        PyErr_SetString(st->error, "w_store_calc_static: unhealthy delays array");
+        return NULL;
+    }
+    if (!inlimits(it)) {
+        PyErr_SetString(st->error, "w_store_calc_static: invalid it argument");
+        return NULL;
+    }
+
+    source_coords = PyArray_DATA((PyArrayObject*)source_coords_arr);
+    ms = PyArray_DATA((PyArrayObject*)ms_arr);
+    delays = PyArray_DATA((PyArrayObject*)delays_arr);
+    receiver_coords = PyArray_DATA((PyArrayObject*)receiver_coords_arr);
+
+    nsources = PyArray_DIMS((PyArrayObject*)source_coords_arr)[0];
+    nreceivers = PyArray_DIMS((PyArrayObject*)receiver_coords_arr)[0];
+
+    out_list = Py_BuildValue("[]");
+    for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
+        array_dims[0] = nreceivers;
+        results_arr = (PyArrayObject*)PyArray_SimpleNew(1, array_dims, NPY_FLOAT32);
+
+        results[icomponent] = PyArray_DATA(results_arr);
+
+        PyList_Append(out_list, (PyObject*)results_arr);
+        Py_DECREF(results_arr);
+    }
+
+    err = store_calc_static(
+        store,
+        source_coords,
+        ms,
+        delays,
+        receiver_coords,
+        nsources,
+        nreceivers,
+        cscheme,
+        mscheme,
+        store->mapping,
+        interpolation,
+        it,
+        nthreads,
+        results);
+
+    if (SUCCESS != err) {
+        Py_DECREF(out_list);
+        PyErr_SetString(st->error, store_error_names[err]);
+        return NULL;
+    }
+
+    return out_list;
+}
+
+
 static PyMethodDef store_ext_methods[] = {
     {"store_init",  w_store_init, METH_VARARGS,
         "Initialize store struct." },
@@ -1935,6 +2200,9 @@ static PyMethodDef store_ext_methods[] = {
 
     {"store_sum_static", w_store_sum_static, METH_VARARGS,
         "Get weight-and-delay-sum of GF samples for static displacement." },
+
+    {"store_calc_static", w_store_calc_static, METH_VARARGS,
+        "Calculate static displacements (make make_sum_params obsolete" },
 
     {"make_sum_params", w_make_sum_params, METH_VARARGS,
         "Prepare parameters for weight-and-delay-sum." },

@@ -91,14 +91,14 @@ mantle
         config = gf.meta.ConfigTypeA(
             id=store_id,
             ncomponents=10,
-            sample_rate=1. / c.pscmp_config.snapshots.deltat,
-            receiver_depth=0. * km,
-            source_depth_min=0. * km,
-            source_depth_max=20. * km,
-            source_depth_delta=0.25 * km,
-            distance_min=0. * km,
-            distance_max=40. * km,
-            distance_delta=0.25 * km,
+            sample_rate=1./c.pscmp_config.snapshots.deltat,
+            receiver_depth=0.*km,
+            source_depth_min=0.*km,
+            source_depth_max=20.*km,
+            source_depth_delta=0.25*km,
+            distance_min=0.*km,
+            distance_max=40.*km,
+            distance_delta=0.25*km,
             modelling_code_id='psgrn_pscmp.%s' % version,
             earthmodel_1d=mod,
             tabulated_phases=[])
@@ -338,6 +338,52 @@ mantle
                 # print benchmark.__str__(header=False)
                 num.testing.assert_equal(t, s)
                 benchmark.clear()
+
+    def test_calc_statics(self):
+        from pyrocko.gf import store_ext
+
+        store = gf.Store(self.get_pscmp_store_dir())
+        store.open()
+        src_length = 2 * km
+        src_width = 5 * km
+        ntargets = 1600
+        interp = ['nearest_neighbor', 'multilinear']
+        interpolation = interp[0]
+
+        source = gf.RectangularSource(
+            lat=0., lon=0.,
+            depth=5*km, north_shift=0., east_shift=0.,
+            width=src_width, length=src_length)
+
+        static_target = gf.StaticTarget(
+            north_shifts=5*km + random.rand(ntargets) * 5*km,
+            east_shifts=0*km + random.rand(ntargets) * 5*km)
+        targets = static_target.get_targets()
+
+        dsource = source.discretize_basesource(store, targets[0])
+        mts_arr = dsource.m6s
+
+        receiver_coords_arr = num.empty((len(targets), 5))
+        for itarget, target in enumerate(targets):
+            receiver = target.receiver(store)
+            receiver_coords_arr[itarget, :] = \
+                [receiver.lat, receiver.lon, receiver.north_shift,
+                 receiver.east_shift, receiver.depth]
+
+        delays_t = num.zeros_like(mts_arr.shape[0])
+        pos = 6
+
+        out = store_ext.store_calc_static(
+            store.cstore,
+            dsource.coords5(),
+            mts_arr,
+            delays_t,
+            static_target.coords5,
+            self.config.component_scheme,
+            interpolation,
+            pos,
+            1)
+        print(out)
 
     def test_gnss_target(self):
         src_length = 5 * km
