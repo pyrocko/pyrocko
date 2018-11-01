@@ -228,7 +228,12 @@ def discretize_rect_source(deltas, deltat, north, east, depth,
 
 def check_rect_source_discretisation(points2, nl, nw, store):
     # We assume a non-rotated fault plane
+    N_CRITICAL = 16
     points = points2.T.reshape((3, nl, nw))
+    if points.size <= N_CRITICAL:
+        logger.warning('RectangularSource is defined by only %d sub-sources!'
+                       % points.size)
+        return True
 
     distances = num.sqrt(
         (points[0, 0, :] - points[0, 1, :])**2 +
