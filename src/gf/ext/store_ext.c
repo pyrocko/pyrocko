@@ -710,6 +710,7 @@ static store_error_t store_sum_static(
 
     nsummands_src = nsummands / nsources;
 
+    Py_BEGIN_ALLOW_THREADS
     #if defined(_OPENMP)
         if (nthreads == 0)
             nthreads = omp_get_num_procs();
@@ -759,6 +760,7 @@ static store_error_t store_sum_static(
     #if defined(_OPENMP)
         }
     #endif
+    Py_END_ALLOW_THREADS
     if (err != SUCCESS)
         return BAD_REQUEST;
     return SUCCESS;
@@ -806,6 +808,26 @@ static store_error_t store_calc_static(
 
     if (0 == nsummands_max || 0 == nreceivers)
         return SUCCESS;
+
+    Py_BEGIN_ALLOW_THREADS
+    #if defined(_OPENMP)
+        if (nthreads == 0)
+            nthreads = omp_get_num_procs();
+        else if (nthreads > omp_get_num_procs()) {
+            nthreads = omp_get_num_procs();
+            printf("make_sum_params - Warning: Desired nthreads exceeds number of physical processors, falling to %d threads\n", nthreads);
+        }
+
+        #pragma omp parallel \
+            shared (store, source_coords, ms, delays, receiver_coords, \
+                    cscheme, mscheme, mapping, interpolation, it, nip, result) \
+            private (isource, iip, icomponent, isummand, nsummands, irecord_bases, weights_ip, ws_this, \
+                     delay, weight, idelay_floor, idelay_ceil, idx, idx_record, trace, w1, w2) \
+            reduction (+: err) \
+            num_threads (nthreads)
+        {
+        #pragma omp for schedule (static)
+    #endif
 
     for (ireceiver=0; ireceiver<nreceivers; ireceiver++) {
         for (isource=0; isource<nsources; isource++) {
@@ -891,6 +913,10 @@ static store_error_t store_calc_static(
             }
         }
     }
+    #if defined(_OPENMP)
+        }
+    #endif
+    Py_END_ALLOW_THREADS
 
     if (err != SUCCESS)
         return BAD_REQUEST;
@@ -2022,11 +2048,11 @@ static PyObject* w_make_sum_params(PyObject *m, PyObject *args) {
     out_list = Py_BuildValue("[]");
     for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
         array_dims[0] = nsources * nreceivers * cscheme->nsummands[icomponent] * vicinities_nip;
-        printf("nsources: %ld\n", nsources);
+        /* printf("nsources: %ld\n", nsources);
         printf("nreceiver: %ld\n", nreceivers);
         printf("nsummands: %ld\n", cscheme->nsummands[icomponent]);
         printf("vicinities_nip: %ld\n", vicinities_nip);
-        printf("array_size: %ld bytes\n", array_dims[0]*4 + array_dims[0]*8);
+        printf("array_size: %ld bytes\n", array_dims[0]*4 + array_dims[0]*8); */
         weights_arr = (PyArrayObject*)PyArray_SimpleNew(1, array_dims, NPY_FLOAT32);
         irecords_arr = (PyArrayObject*)PyArray_SimpleNew(1, array_dims, NPY_UINT64);
 
@@ -2067,7 +2093,8 @@ static PyObject* w_make_sum_params(PyObject *m, PyObject *args) {
 static PyObject* w_store_calc_static(PyObject *m, PyObject *args) {
     PyObject *capsule, *source_coords_arr, *receiver_coords_arr, *ms_arr, *delays_arr;
     PyArrayObject *results_arr;
-    float64_t *source_coords, *receiver_coords, *ms, *delays;
+    float64_t *source_coords, *receiver_coords, *ms;
+    float32_t *delays;
     gf_dtype *results[NCOMPONENTS_MAX];
     int32_t it, nthreads;
     size_t icomponent, nsources, nreceivers;
@@ -2149,10 +2176,10 @@ static PyObject* w_store_calc_static(PyObject *m, PyObject *args) {
     nreceivers = PyArray_DIMS((PyArrayObject*)receiver_coords_arr)[0];
 
     out_list = Py_BuildValue("[]");
-    for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
-        array_dims[0] = nreceivers;
-        results_arr = (PyArrayObject*)PyArray_SimpleNew(1, array_dims, NPY_FLOAT32);
+    array_dims[0] = (npy_intp) nreceivers;
 
+    for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
+        results_arr = (PyArrayObject*) PyArray_ZEROS(1, array_dims, NPY_GFDTYPE, 0);
         results[icomponent] = PyArray_DATA(results_arr);
 
         PyList_Append(out_list, (PyObject*)results_arr);
