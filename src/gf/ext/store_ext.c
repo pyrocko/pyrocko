@@ -6,8 +6,6 @@
 #define SLIMIT 1000000
 
 #define SQR(a)  ( (a) * (a) )
-#define D2R (M_PI / 180.)
-#define R2D (1.0 / D2R)
 
 #define EARTHRADIUS 6371000.0
 #define EARTH_OBLATENESS 1./298.257223563
@@ -18,8 +16,8 @@
 #define inposlimits(i) (0 <= (i) && (i) <= SLIMIT)
 
 #include "Python.h"
-#include "numpy/arrayobject.h"
 
+#include "numpy/arrayobject.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
@@ -40,6 +38,26 @@
   #define be64toh(x) OSSwapBigToHostInt64(x)
   #define le64toh(x) OSSwapLittleToHostInt64(x)
 #endif
+
+
+#ifdef LUT
+  #include "lut.h"
+
+  #define D2R (32768.0 / 360.0)
+  #define R2D (1.0 / D2R)
+  #define Q15 (1.0/(double)((1<<15)-1))
+
+  double sin(double x) {
+      return sin1(x) * Q15;
+  }
+  double cos(double x) {
+      return cos1(x) * Q15;
+  }
+#else
+  #define D2R (M_PI / 180.)
+#endif
+#define R2D (1.0 / D2R)
+
 
 struct module_state {
     PyObject *error;
@@ -770,7 +788,7 @@ static store_error_t store_calc_static(
         const store_t *store,
         const float64_t *source_coords,
         const float64_t *ms,
-        const float32_t *delays,
+        const float64_t *delays,
         const float64_t *receiver_coords,
         const size_t nsources,
         const size_t nreceivers,
@@ -815,7 +833,7 @@ static store_error_t store_calc_static(
             nthreads = omp_get_num_procs();
         else if (nthreads > omp_get_num_procs()) {
             nthreads = omp_get_num_procs();
-            printf("make_sum_params - Warning: Desired nthreads exceeds number of physical processors, falling to %d threads\n", nthreads);
+            printf("store_calc_static - Warning: Desired nthreads exceeds number of physical processors, falling to %d threads\n", nthreads);
         }
 
         #pragma omp parallel \
@@ -2093,8 +2111,7 @@ static PyObject* w_make_sum_params(PyObject *m, PyObject *args) {
 static PyObject* w_store_calc_static(PyObject *m, PyObject *args) {
     PyObject *capsule, *source_coords_arr, *receiver_coords_arr, *ms_arr, *delays_arr;
     PyArrayObject *results_arr;
-    float64_t *source_coords, *receiver_coords, *ms;
-    float32_t *delays;
+    float64_t *source_coords, *receiver_coords, *ms, *delays;
     gf_dtype *results[NCOMPONENTS_MAX];
     int32_t it, nthreads;
     size_t icomponent, nsources, nreceivers;
@@ -2158,7 +2175,7 @@ static PyObject* w_store_calc_static(PyObject *m, PyObject *args) {
         return NULL;
     }
 
-    if (!good_array((PyObject*)delays_arr, NPY_FLOAT32, -1, 1, NULL)) {
+    if (!good_array((PyObject*)delays_arr, NPY_FLOAT64, -1, 1, NULL)) {
         PyErr_SetString(st->error, "w_store_calc_static: unhealthy delays array");
         return NULL;
     }

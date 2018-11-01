@@ -408,50 +408,55 @@ mantle
 
         benchmark.clear()
 
-        @benchmark.labeled('with make_sum_params')
-        def fwd_model_seperate(interpolation=interp[0], nthreads=1):
-            args = (store.cstore, dsource.coords5(), mts_arr,
-                    static_target.coords5, 'elastic10', interpolation, nthreads)
+        def run(interpolation=interp[0], nthreads=1):
+            @benchmark.labeled(' sum_statics %d cpu (%s)' %
+                               (nthreads, interpolation))
+            def fwd_model_seperate(interpolation=interp[0], nthreads=1):
+                args = (store.cstore, dsource.coords5(), mts_arr,
+                        static_target.coords5, 'elastic10', interpolation,
+                        nthreads)
 
-            sum_params = store_ext.make_sum_params(*args)
+                sum_params = store_ext.make_sum_params(*args)
 
-            out = {}
+                out = {}
 
-            for icomp, comp in enumerate(scheme_desc):
-                weights, irecords = sum_params[icomp]
-                out[comp] = store_ext.store_sum_static(
-                        store.cstore, irecords, delays_s, weights,
-                        pos, ntargets**2, nthreads)
-            return out
+                for icomp, comp in enumerate(scheme_desc):
+                    weights, irecords = sum_params[icomp]
+                    out[comp] = store_ext.store_sum_static(
+                            store.cstore, irecords, delays_s, weights,
+                            pos, ntargets**2, nthreads)
+                return out
 
-        @benchmark.labeled('without make_sum_params')
-        def fwd_model_unified(interpolation=interp[0], nthreads=1):
-            out = {}
-            res = store_ext.store_calc_static(
-                    store.cstore,
-                    dsource.coords5(),
-                    mts_arr,
-                    delays_s,
-                    static_target.coords5,
-                    'elastic10',
-                    interpolation,
-                    pos,
-                    nthreads)
-            for comp, r in zip(scheme_desc, res):
-                out[comp] = r
+            @benchmark.labeled('calc_statics %d cpu (%s)' %
+                               (nthreads, interpolation))
+            def fwd_model_unified(interpolation=interp[0], nthreads=1):
+                out = {}
+                res = store_ext.store_calc_static(
+                        store.cstore,
+                        dsource.coords5(),
+                        mts_arr,
+                        dsource.times,
+                        static_target.coords5,
+                        'elastic10',
+                        interpolation,
+                        pos,
+                        nthreads)
+                for comp, r in zip(scheme_desc, res):
+                    out[comp] = r
 
-            return out
+                return out
+
+            res1 = fwd_model_seperate(interpolation, nthreads)
+            res2 = fwd_model_unified(interpolation, nthreads)
+
+            for r1, r2 in zip(res1.values(), res2.values()):
+                num.testing.assert_equal(r1, r2)
 
         for interpolation in interp:
             for nthreads in [1, 2, 4, 8, 0]:
-                res1 = fwd_model_seperate(interpolation, nthreads)
-                res2 = fwd_model_unified(interpolation, nthreads)
-
-                for r1, r2 in zip(res1.values(), res2.values()):
-                    num.testing.assert_equal(r1, r2)
-                print('Interpolation', interpolation)
-                print(benchmark)
-                benchmark.clear()
+                run(interpolation, nthreads)
+            print(benchmark)
+            benchmark.clear()
 
         def plot(displ):
             import matplotlib.pyplot as plt
