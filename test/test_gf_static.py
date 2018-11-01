@@ -1,4 +1,7 @@
 from __future__ import division, print_function, absolute_import
+import matplotlib
+matplotlib.use('TkAgg')
+
 import unittest
 import numpy as num
 import cProfile
@@ -339,52 +342,6 @@ mantle
                 num.testing.assert_equal(t, s)
                 benchmark.clear()
 
-    def test_calc_statics(self):
-        from pyrocko.gf import store_ext
-
-        store = gf.Store(self.get_pscmp_store_dir())
-        store.open()
-        src_length = 2 * km
-        src_width = 5 * km
-        ntargets = 1600
-        interp = ['nearest_neighbor', 'multilinear']
-        interpolation = interp[0]
-
-        source = gf.RectangularSource(
-            lat=0., lon=0.,
-            depth=5*km, north_shift=0., east_shift=0.,
-            width=src_width, length=src_length)
-
-        static_target = gf.StaticTarget(
-            north_shifts=5*km + random.rand(ntargets) * 5*km,
-            east_shifts=0*km + random.rand(ntargets) * 5*km)
-        targets = static_target.get_targets()
-
-        dsource = source.discretize_basesource(store, targets[0])
-        mts_arr = dsource.m6s
-
-        receiver_coords_arr = num.empty((len(targets), 5))
-        for itarget, target in enumerate(targets):
-            receiver = target.receiver(store)
-            receiver_coords_arr[itarget, :] = \
-                [receiver.lat, receiver.lon, receiver.north_shift,
-                 receiver.east_shift, receiver.depth]
-
-        delays_t = num.zeros_like(mts_arr.shape[0])
-        pos = 6
-
-        out = store_ext.store_calc_static(
-            store.cstore,
-            dsource.coords5(),
-            mts_arr,
-            delays_t,
-            static_target.coords5,
-            self.config.component_scheme,
-            interpolation,
-            pos,
-            1)
-        print(out)
-
     def test_gnss_target(self):
         src_length = 5 * km
         src_width = 2 * km
@@ -410,6 +367,101 @@ mantle
         statics = res.static_results()
         for static in statics:
             assert len(static.campaign.stations) == nstations
+
+    def test_new_static(self):
+        from pyrocko.gf import store_ext
+        benchmark.show_factor = True
+
+        store = gf.Store('/home/marius/Development/testing/gf/ak135_static/')
+        store.open()
+        src_length = 2 * km
+        src_width = 5 * km
+        ntargets = 100
+
+        north_shifts, east_shifts = num.meshgrid(
+            num.linspace(-20*km, 20*km, ntargets),
+            num.linspace(-20*km, 20*km, ntargets))
+
+        interp = ['nearest_neighbor', 'multilinear']
+        interpolation = interp[1]
+
+        source = gf.RectangularSource(
+            lat=0., lon=0.,
+            depth=5*km, north_shift=0., east_shift=0.,
+            anchor='top',
+            width=src_width, length=src_length)
+
+        static_target = gf.GNSSCampaignTarget(
+            north_shifts=north_shifts,
+            east_shifts=east_shifts,
+            lats=num.zeros_like(north_shifts),
+            lons=num.zeros_like(north_shifts))
+
+        targets = static_target.get_targets()
+
+        dsource = source.discretize_basesource(store, targets[0])
+        mts_arr = dsource.m6s
+        delays_s = dsource.times.astype(num.float32)
+        pos = 1
+
+        scheme_desc = ['displacement.n', 'displacement.e', 'displacement.d']
+
+        benchmark.clear()
+
+        @benchmark.labeled('with make_sum_params')
+        def fwd_model_seperate(interpolation=interp[0], nthreads=1):
+            args = (store.cstore, dsource.coords5(), mts_arr,
+                    static_target.coords5, 'elastic10', interpolation, nthreads)
+
+            sum_params = store_ext.make_sum_params(*args)
+
+            out = {}
+
+            for icomp, comp in enumerate(scheme_desc):
+                weights, irecords = sum_params[icomp]
+                out[comp] = store_ext.store_sum_static(
+                        store.cstore, irecords, delays_s, weights,
+                        pos, ntargets**2, nthreads)
+            return out
+
+        @benchmark.labeled('without make_sum_params')
+        def fwd_model_unified(interpolation=interp[0], nthreads=1):
+            out = {}
+            res = store_ext.store_calc_static(
+                    store.cstore,
+                    dsource.coords5(),
+                    mts_arr,
+                    delays_s,
+                    static_target.coords5,
+                    'elastic10',
+                    interpolation,
+                    pos,
+                    nthreads)
+            for comp, r in zip(scheme_desc, res):
+                out[comp] = r
+
+            return out
+
+        for interpolation in interp:
+            for nthreads in [1, 2, 4, 8, 0]:
+                res1 = fwd_model_seperate(interpolation, nthreads)
+                res2 = fwd_model_unified(interpolation, nthreads)
+
+                for r1, r2 in zip(res1.values(), res2.values()):
+                    num.testing.assert_equal(r1, r2)
+                print('Interpolation', interpolation)
+                print(benchmark)
+                benchmark.clear()
+
+        def plot(displ):
+            import matplotlib.pyplot as plt
+            size = int(num.sqrt(displ.size))
+            fig = plt.figure()
+            ax = fig.gca()
+            ax.imshow(displ.reshape((size, size)))
+            plt.show()
+
+        # plot(res1['displacement.n'])
 
 
 if __name__ == '__main__':

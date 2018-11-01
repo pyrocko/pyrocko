@@ -1780,8 +1780,8 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
             util.ensuredirs(fn)
             ip.dump(fn)
 
-    def statics(self, source, multi_location, itsnapshot, components,
-                interpolation='nearest_neighbor', nthreads=0):
+    def statics_old(self, source, multi_location, itsnapshot, components,
+                    interpolation='nearest_neighbor', nthreads=0):
         if not self._f_index:
             self.open()
 
@@ -1821,8 +1821,8 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
 
         return out
 
-    def statics_new(self, source, multi_location, itsnapshot, components,
-                    interpolation='nearest_neighbor', nthreads=0):
+    def statics(self, source, multi_location, itsnapshot, components,
+                interpolation='nearest_neighbor', nthreads=0):
         if not self._f_index:
             self.open()
 
