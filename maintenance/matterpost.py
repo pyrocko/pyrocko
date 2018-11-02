@@ -33,8 +33,13 @@ def to_message(results):
     lines2 = []
     n_ok = 0
     n = 0
+    truncated = False
     for result in results:
-        res = result.result.split()[0]
+        if result.result:
+            res = result.result.split()[0]
+        else:
+            res = ''
+
         emos = {
             'OK': ':champagne:',
             'FAILED': ':-1:',
@@ -52,11 +57,15 @@ def to_message(results):
         result.log = None
         result.skips = []
         result.prerequisite_versions = {}
-        if result.result.startswith('OK'):
+        if result.result and result.result.startswith('OK'):
             n_ok += 1
         n += 1
 
-        lines2.append(result.dump())
+        if sum(len(x) for x in lines2) < 3000:
+            lines2.append(result.dump())
+        elif not truncated:
+            lines2.append('... [message truncated]')
+            truncated = True
 
     all_ok = n_ok == n
 
