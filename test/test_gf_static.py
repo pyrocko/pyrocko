@@ -1,4 +1,6 @@
 from __future__ import division, print_function, absolute_import
+import matplotlib
+
 import unittest
 import numpy as num
 import cProfile
@@ -10,6 +12,8 @@ from tempfile import mkdtemp
 from .common import Benchmark
 from pyrocko import gf, util, cake
 from pyrocko.fomosto import qseis, psgrn_pscmp
+
+matplotlib.use('TkAgg')
 
 random = num.random
 logger = logging.getLogger('pyrocko.test.test_gf_static')
@@ -91,14 +95,14 @@ mantle
         config = gf.meta.ConfigTypeA(
             id=store_id,
             ncomponents=10,
-            sample_rate=1. / c.pscmp_config.snapshots.deltat,
-            receiver_depth=0. * km,
-            source_depth_min=0. * km,
-            source_depth_max=20. * km,
-            source_depth_delta=0.25 * km,
-            distance_min=0. * km,
-            distance_max=40. * km,
-            distance_delta=0.25 * km,
+            sample_rate=1./(3600. * 24.),
+            receiver_depth=0.*km,
+            source_depth_min=0.*km,
+            source_depth_max=20.*km,
+            source_depth_delta=0.25*km,
+            distance_min=0.*km,
+            distance_max=40.*km,
+            distance_delta=0.25*km,
             modelling_code_id='psgrn_pscmp.%s' % version,
             earthmodel_1d=mod,
             tabulated_phases=[])
@@ -110,7 +114,7 @@ mantle
         store = gf.store.Store(store_dir, 'r')
         store.close()
 
-        psgrn_pscmp.build(store_dir, nworkers=1)
+        psgrn_pscmp.build(store_dir, nworkers=4)
         return store_dir
 
     def _create_qseis_store(self):
@@ -364,6 +368,106 @@ mantle
         statics = res.static_results()
         for static in statics:
             assert len(static.campaign.stations) == nstations
+
+    def test_new_static(self):
+        from pyrocko.gf import store_ext
+        benchmark.show_factor = True
+
+        store = gf.Store(self.get_pscmp_store_dir())
+        store.open()
+        src_length = 2 * km
+        src_width = 5 * km
+        ntargets = 100
+
+        north_shifts, east_shifts = num.meshgrid(
+            num.linspace(-20*km, 20*km, ntargets),
+            num.linspace(-20*km, 20*km, ntargets))
+
+        interp = ['nearest_neighbor', 'multilinear']
+        interpolation = interp[1]
+
+        source = gf.RectangularSource(
+            lat=0., lon=0.,
+            depth=5*km, north_shift=0., east_shift=0.,
+            anchor='top',
+            width=src_width, length=src_length)
+
+        static_target = gf.GNSSCampaignTarget(
+            north_shifts=north_shifts,
+            east_shifts=east_shifts,
+            lats=num.zeros_like(north_shifts),
+            lons=num.zeros_like(north_shifts))
+
+        targets = static_target.get_targets()
+
+        dsource = source.discretize_basesource(store, targets[0])
+        mts_arr = dsource.m6s
+        delays_s = dsource.times.astype(num.float32)
+        pos = 1
+
+        scheme_desc = ['displacement.n', 'displacement.e', 'displacement.d']
+
+        benchmark.clear()
+
+        def run(interpolation=interp[0], nthreads=1):
+            @benchmark.labeled(' sum_statics %d cpu (%s)' %
+                               (nthreads, interpolation))
+            def fwd_model_seperate(interpolation=interp[0], nthreads=1):
+                args = (store.cstore, dsource.coords5(), mts_arr,
+                        static_target.coords5, 'elastic10', interpolation,
+                        nthreads)
+
+                sum_params = store_ext.make_sum_params(*args)
+
+                out = {}
+
+                for icomp, comp in enumerate(scheme_desc):
+                    weights, irecords = sum_params[icomp]
+                    out[comp] = store_ext.store_sum_static(
+                            store.cstore, irecords, delays_s, weights,
+                            pos, ntargets**2, nthreads)
+                return out
+
+            @benchmark.labeled('calc_statics %d cpu (%s)' %
+                               (nthreads, interpolation))
+            def fwd_model_unified(interpolation=interp[0], nthreads=1):
+                out = {}
+                res = store_ext.store_calc_static(
+                        store.cstore,
+                        dsource.coords5(),
+                        mts_arr,
+                        dsource.times,
+                        static_target.coords5,
+                        'elastic10',
+                        interpolation,
+                        pos,
+                        nthreads)
+                for comp, r in zip(scheme_desc, res):
+                    out[comp] = r
+
+                return out
+
+            res1 = fwd_model_seperate(interpolation, nthreads)
+            res2 = fwd_model_unified(interpolation, nthreads)
+
+            for r1, r2 in zip(res1.values(), res2.values()):
+                num.testing.assert_equal(r1, r2)
+
+        for interpolation in interp:
+            for nthreads in [1, 2, 4, 8, 0]:
+                run(interpolation, nthreads)
+            print(benchmark)
+            benchmark.clear()
+
+        def plot(displ):
+            import matplotlib.pyplot as plt
+            size = int(num.sqrt(displ.size))
+            fig = plt.figure()
+            ax = fig.gca()
+            ax.imshow(displ.reshape((size, size)))
+            plt.show()
+
+        # plot(res1['displacement.n'])
 
 
 if __name__ == '__main__':

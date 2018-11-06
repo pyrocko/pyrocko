@@ -228,7 +228,12 @@ def discretize_rect_source(deltas, deltat, north, east, depth,
 
 def check_rect_source_discretisation(points2, nl, nw, store):
     # We assume a non-rotated fault plane
+    N_CRITICAL = 8
     points = points2.T.reshape((3, nl, nw))
+    if points.size <= N_CRITICAL:
+        logger.warning('RectangularSource is defined by only %d sub-sources!'
+                       % points.size)
+        return True
 
     distances = num.sqrt(
         (points[0, 0, :] - points[0, 1, :])**2 +
@@ -1403,10 +1408,6 @@ class RectangularExplosionSource(ExplosionSource):
             self.strike, self.dip, self.length, self.width, self.anchor,
             self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy)
 
-        if not check_rect_source_discretisation(points, nl, nw, store):
-            logger.warning('The source\' sub-sources are further than'
-                           ' lambda_min/2 apart!')
-
         amplitudes *= self.get_moment(store, target)
 
         return meta.DiscretizedExplosionSource(
@@ -1784,10 +1785,6 @@ class RectangularSource(SourceWithDerivedMagnitude):
             self.strike, self.dip, self.length, self.width, self.anchor,
             self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy,
             decimation_factor=self.decimation_factor)
-
-        if not check_rect_source_discretisation(points, nl, nw, store):
-            logger.warn('The source\'s sub-sources are further than'
-                        ' lambda_min/4 apart')
 
         if self.slip is not None:
             if target is not None:
