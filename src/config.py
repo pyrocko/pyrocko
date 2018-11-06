@@ -81,6 +81,7 @@ class PyrockoConfig(ConfigBase):
     cache_dir = PathWithPlaceholders.T(
         default=os.path.join(pyrocko_dir_tmpl, 'cache'))
     earthradius = Float.T(default=6371.*1000.)
+    fdsn_timeout = Float.T(default=None, optional=True)
     gf_store_dirs = List.T(PathWithPlaceholders.T())
     gf_store_superdirs = List.T(PathWithPlaceholders.T())
     topo_dir = PathWithPlaceholders.T(

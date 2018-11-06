@@ -38,6 +38,7 @@ case $resp in
         ;;
 esac
 conda-build --python 3.6 $BUILD_DIR
+conda-build --python 3.7 $BUILD_DIR
 
 # Workaround for https://github.com/travis-ci/travis-ci/issues/6522
 # Turn off exit on failure.
