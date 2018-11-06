@@ -1408,10 +1408,6 @@ class RectangularExplosionSource(ExplosionSource):
             self.strike, self.dip, self.length, self.width, self.anchor,
             self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy)
 
-        if not check_rect_source_discretisation(points, nl, nw, store):
-            logger.warning('The source\' sub-sources are further than'
-                           ' lambda_min/2 apart!')
-
         amplitudes *= self.get_moment(store, target)
 
         return meta.DiscretizedExplosionSource(
@@ -1789,10 +1785,6 @@ class RectangularSource(SourceWithDerivedMagnitude):
             self.strike, self.dip, self.length, self.width, self.anchor,
             self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy,
             decimation_factor=self.decimation_factor)
-
-        if not check_rect_source_discretisation(points, nl, nw, store):
-            logger.warn('The source\'s sub-sources are further than'
-                        ' lambda_min/4 apart')
 
         if self.slip is not None:
             if target is not None:

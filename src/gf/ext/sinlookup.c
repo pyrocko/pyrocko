@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <sys/types.h>
+#include <time.h>
  
 /**
  * Generate the lookup tables for sin1() in a way that the text can be pasted
@@ -42,6 +43,9 @@ void generate_tables()
 void run()
 {
   double angle;
+  clock_t t0;
+  float t_lut, t_sin;
+
   printf("%6s, %8s, %8s, %6s\n", "angle", "sin", "sin1", "error", "cos", "cos1", "error");
   for(angle=0; angle<360; angle+=0.1) {
     double lookup_sine = sin1(angle * 32768.0 / 360.0) * Q15;
@@ -53,8 +57,25 @@ void run()
     double cos_error  = real_cos - lookup_cos;
     printf("%6.1f, %+8.5f, %+8.5f, %+8.6f, %+8.5f, %+8.5f, %+8.6f\n", angle, real_sine, lookup_sine, sine_error, real_cos, lookup_cos, cos_error);
   }
+
+  t0 = clock();
+  for(angle=0; angle < 360; angle += 0.00001) {
+    sin1(angle * 32768.0 / 360.0) * Q15;
+  }
+  t_lut = ((float)(clock() - t_lut) / 1000000.0F ) * 1000;
+
+
+  t0 = clock();
+  for(angle=0; angle < 360; angle += 0.00001) {
+    sin(angle * 2*M_PI / 360.0);
+  }
+  t_sin = ((float)(clock() - t_sin) / 1000000.0F ) * 1000;
+
+  printf("\nTime elapsed for sin\n");
+  printf("LUT %f\nmath.h %f\n", t_lut, t_sin);
+
 }
- 
+
 /**
  * Test main function
  *

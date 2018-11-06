@@ -1,6 +1,5 @@
 from __future__ import division, print_function, absolute_import
 import matplotlib
-matplotlib.use('TkAgg')
 
 import unittest
 import numpy as num
@@ -13,6 +12,8 @@ from tempfile import mkdtemp
 from .common import Benchmark
 from pyrocko import gf, util, cake
 from pyrocko.fomosto import qseis, psgrn_pscmp
+
+matplotlib.use('TkAgg')
 
 random = num.random
 logger = logging.getLogger('pyrocko.test.test_gf_static')
@@ -94,7 +95,7 @@ mantle
         config = gf.meta.ConfigTypeA(
             id=store_id,
             ncomponents=10,
-            sample_rate=1./c.pscmp_config.snapshots.deltat,
+            sample_rate=1./(3600. * 24.),
             receiver_depth=0.*km,
             source_depth_min=0.*km,
             source_depth_max=20.*km,
@@ -113,7 +114,7 @@ mantle
         store = gf.store.Store(store_dir, 'r')
         store.close()
 
-        psgrn_pscmp.build(store_dir, nworkers=1)
+        psgrn_pscmp.build(store_dir, nworkers=4)
         return store_dir
 
     def _create_qseis_store(self):
@@ -372,7 +373,7 @@ mantle
         from pyrocko.gf import store_ext
         benchmark.show_factor = True
 
-        store = gf.Store('/home/marius/Development/testing/gf/ak135_static/')
+        store = gf.Store(self.get_pscmp_store_dir())
         store.open()
         src_length = 2 * km
         src_width = 5 * km

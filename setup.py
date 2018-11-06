@@ -683,10 +683,9 @@ setup(
         Extension(
             'gf.store_ext',
             include_dirs=[get_python_inc(), numpy.get_include()],
-            extra_compile_args=['-D_FILE_OFFSET_BITS=64','-Wextra'] + omp_arg,  # noqa
+            extra_compile_args=['-D_FILE_OFFSET_BITS=64', '-Wextra'] + omp_arg,
             extra_link_args=[] + omp_lib,
-            sources=[op.join('src', 'gf', 'ext', 'lut.c'),
-                     op.join('src', 'gf', 'ext', 'store_ext.c')]),
+            sources=[op.join('src', 'gf', 'ext', 'store_ext.c')]),
 
         Extension(
             'eikonal_ext',

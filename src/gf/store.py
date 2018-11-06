@@ -1829,7 +1829,7 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
         out = {}
         ntargets = multi_location.ntargets
         source_terms = source.get_source_terms(self.config.component_scheme)
-        delays = source.times.astype(num.float32)
+        delays = source.times
         scheme_desc = meta.component_scheme_to_description[
             self.config.component_scheme]
 
@@ -1924,7 +1924,8 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
                 scheme,
                 interpolation, nthreads)
 
-        except store_ext.StoreExtError:
+        except store_ext.StoreExtError as e:
+            raise e
             raise meta.OutOfBounds()
 
         provided_components = scheme_desc.provided_components
