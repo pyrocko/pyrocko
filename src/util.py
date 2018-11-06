@@ -1266,6 +1266,7 @@ def unpack_fixed(format, line, *callargs):
     values = []
     icall = 0
     for form in format.split(','):
+        form = form.strip()
         optional = form[-1] == '?'
         form = form.rstrip('?')
         typ = form[0]
