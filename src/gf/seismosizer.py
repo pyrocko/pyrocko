@@ -3098,7 +3098,7 @@ class LocalEngine(Engine):
 
         nprocs = kwargs.pop('nprocs', None)
         nthreads = kwargs.pop('nthreads', 1)
-        if nprocs:
+        if nprocs is not None:
             nthreads = nprocs
 
         if request is None:
