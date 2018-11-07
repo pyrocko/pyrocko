@@ -31,6 +31,9 @@ git clone -b $branch "/vagrant/pyrocko.git" "$pyrockodir"
 cd "$pyrockodir"
 ln -s "/pyrocko-test-data" "test/data"
 
+mkdir -p "$HOME/.config/matplotlib"
+echo "backend : qt4agg" > "$HOME/.config/matplotlib/matplotlibrc"
+
 python3 setup.py install_prerequisites --force-yes && \
     sudo python3 setup.py install -f && \
     python3 -m pyrocko.print_version deps >> "$outfile_py3" && \
