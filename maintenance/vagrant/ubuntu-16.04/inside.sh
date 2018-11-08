@@ -21,10 +21,15 @@ rm -f "$outfile_py2"
 
 cd $HOME
 
-while fuser /var/lib/dpkg/lock >/dev/null 2>&1 ; do
-    echo -en "Waiting for other software managers to finish..." 
+while sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1 ; do
+    echo -en "Waiting for other software managers to finish..."
     sleep 5.0
-done 
+done
+
+while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 ; do
+    echo -en "Waiting for other software managers to finish..."
+    sleep 5.0
+done
 
 sudo apt-get update -y
 sudo apt-get upgrade -y
