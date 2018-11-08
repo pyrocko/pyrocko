@@ -13,7 +13,7 @@ from pyrocko.guts import Timestamp, Tuple, String, Float, Object, StringChoice
 from pyrocko.guts_array import Array
 from pyrocko.model import gnss
 from pyrocko.orthodrome import distance_accurate50m_numpy
-from pyrocko.util import full_like
+from pyrocko.util import num_full_like
 
 d2r = num.pi / 180.
 
