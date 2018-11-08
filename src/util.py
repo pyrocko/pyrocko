@@ -40,6 +40,23 @@ except ImportError:
     from pyrocko import dummy_progressbar as progressbar_mod
 
 
+try:
+    num_full = num.full
+except AttributeError:
+    def num_full(shape, fill_value, dtype=None, order='C'):
+        a = num.empty(shape, dtype=dtype, order=order)
+        a.fill(fill_value)
+        return a
+
+try:
+    num_full_like = num.full_like
+except AttributeError:
+    def num_full_like(arr, fill_value, dtype=None, order='K', subok=True):
+        a = num.empty_like(arr, dtype=dtype, order=order, subok=subok)
+        a.fill(fill_value)
+        return a
+
+
 def progressbar_module():
     return progressbar_mod
 

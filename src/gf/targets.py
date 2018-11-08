@@ -13,6 +13,7 @@ from pyrocko.guts import Timestamp, Tuple, String, Float, Object, StringChoice
 from pyrocko.guts_array import Array
 from pyrocko.model import gnss
 from pyrocko.orthodrome import distance_accurate50m_numpy
+from pyrocko.util import full_like
 
 d2r = num.pi / 180.
 
@@ -261,8 +262,8 @@ class StaticTarget(meta.MultiLocation):
         return targets
 
     def distance_to(self, source):
-        src_lats = num.full_like(self.lats, fill_value=source.lat)
-        src_lons = num.full_like(self.lons, fill_value=source.lon)
+        src_lats = num_full_like(self.lats, fill_value=source.lat)
+        src_lons = num_full_like(self.lons, fill_value=source.lon)
 
         target_coords = self.get_latlon()
         target_lats = target_coords[:, 0]
