@@ -595,7 +595,7 @@ setup(
     name=packname,
     version=version,
     description='A versatile seismology toolkit for Python.',
-    long_description=open('README.md', 'r').read(),
+    long_description=open('README.md', 'rb').read().decode('utf8'),
     long_description_content_type='text/markdown',
     author='The Pyrocko Developers',
     author_email='info@pyrocko.org',
