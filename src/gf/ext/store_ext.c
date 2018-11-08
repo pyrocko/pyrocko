@@ -556,8 +556,7 @@ static store_error_t store_sum_extent(
         if (ihave) {
             itmin_d = min(itmin_d, itmin + idelay);
             itmax_d = max(itmax_d, itmax + idelay);
-        }
-        else {
+        } else {
             itmin_d = itmin + idelay;
             itmax_d = itmax + idelay;
             ihave = 1;
@@ -781,6 +780,178 @@ static store_error_t store_sum_static(
     Py_END_ALLOW_THREADS
     if (err != SUCCESS)
         return BAD_REQUEST;
+    return SUCCESS;
+}
+
+static store_error_t store_calc_timeseries(
+        const store_t *store,
+        const float64_t *source_coords,
+        const float64_t *ms,
+        const float64_t *delays,
+        const float64_t *receiver_coords,
+        size_t nsources,
+        size_t nreceivers,
+        const component_scheme_t *cscheme,
+        const mapping_scheme_t *mscheme,
+        const mapping_t *mapping,
+        interpolation_scheme_id interpolation,
+        int32_t nthreads,
+        trace_t *result) {
+
+    float32_t weight, delay;
+    trace_t trace;
+    float32_t deltat = store->deltat;
+    gf_dtype begin_value, end_value;
+    int ilo, i, idx_record;
+    int idelay_floor, idelay_ceil;
+    float w1, w2;
+    store_error_t err;
+    int32_t itmin;
+    int32_t nsamples;
+    gf_dtype *out;
+
+    size_t ireceiver, isource, iip, nip, icomponent, isummand, nsummands_max, nsummands;
+    float64_t ws_this[cscheme->ncomponents*cscheme->nsummands_max];
+    uint64_t irecord_bases[VICINITY_NIP_MAX];
+    float64_t weights_ip[VICINITY_NIP_MAX];
+
+    out = result->data;
+    itmin = result->itmin;
+    nsamples = result->nsamples;
+
+    result->is_zero = 1;
+    result->begin_value = 0.0;
+    result->end_value = 0.0;
+
+
+    if (!inlimits(itmin) || !inposlimits(nsamples)) {
+        return BAD_REQUEST;
+    }
+
+    nsummands_max = cscheme->nsummands_max;
+    nip = mscheme->vicinity_nip;
+/*
+    if (0 == n) {
+        return SUCCESS;
+    }*/
+
+    begin_value = 0.0;
+    end_value = 0.0;
+
+    for (ireceiver=0; ireceiver<nreceivers; ireceiver++) {
+        for (isource=0; isource<nsources; isource++) {
+
+            cscheme->make_weights(
+                &source_coords[isource*5],
+                &ms[isource*cscheme->nsource_terms],
+                &receiver_coords[ireceiver*5],
+                ws_this);
+
+            delay = delays[isource];
+            idelay_floor = (int)floor(delay/deltat);
+            idelay_ceil = (int)ceil(delay/deltat);
+            if (!inlimits(idelay_floor) || !inlimits(idelay_ceil))
+                err += BAD_REQUEST;
+            
+            if (interpolation == MULTILINEAR) {
+                err += mscheme->vicinity(
+                    mapping,
+                    &source_coords[isource*5],
+                    &receiver_coords[ireceiver*5],
+                    irecord_bases,
+                    weights_ip);
+
+                for (iip=0; iip<nip; iip++) {
+                    for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
+                        nsummands = cscheme->nsummands[icomponent];
+                        for (isummand=0; isummand<nsummands; isummand++) {
+                            weight = weights_ip[iip] * ws_this[icomponent*nsummands_max + isummand];
+                            if (weight == 0.)
+                                continue;
+                            idx_record = irecord_bases[iip] + cscheme->igs[icomponent][isummand];
+                            err += store_get(store, idx_record, &trace);
+
+                            if (trace.is_zero)
+                                continue;
+                            trace_trim_sticky(&trace, itmin - idelay_ceil, nsamples + idelay_ceil - idelay_floor);
+
+                            if (idelay_floor == idelay_ceil) {
+                                ilo = itmin - idelay_floor - trace.itmin;
+                                /*for (i=0; i<nsamples; i++) {
+                                    ifloor = i + ilo;
+                                    ifloor = max(0, min(ifloor, trace.nsamples-1));
+                                    out[i] += fe32toh(trace.data[ifloor]) * weight;
+                                } // version below is a bit faster */
+                                for (i=0; i<min(-ilo,nsamples); i++) {
+                                    out[i] += fe32toh(trace.data[0]) * weight;
+                                }
+                                for (i=max(0,-ilo); i<min(nsamples, trace.nsamples-ilo); i++) {
+                                    out[i] += fe32toh(trace.data[i+ilo]) * weight;
+                                }
+                                for (i=max(0,trace.nsamples-ilo); i<nsamples; i++) {
+                                    out[i] += fe32toh(trace.data[trace.nsamples-1]) * weight;
+                                }
+                            } else {
+                                ilo = itmin - idelay_floor - trace.itmin;
+                                /*ihi = ilo - 1;*/
+                                w1 = (idelay_ceil - delay/deltat);
+                                w2 = 1.0 - w1;
+                                w1 *= weight;
+                                w2 *= weight;
+                                /* printf("- w1 %f, w2 %f\n", w1, w2); */
+                                /*for (i=0; i<nsamples; i++) {
+                                    ifloor = i + ilo;
+                                    iceil = i + ihi;
+                                    ifloor = max(0, min(ifloor, trace.nsamples-1));
+                                    iceil = max(0, min(iceil, trace.nsamples-1));
+                                    out[i] += fe32toh(trace.data[ifloor]) * w1;
+                                    out[i] += fe32toh(trace.data[iceil]) * w2;
+                                } // version below is a bit faster */
+                                for (i=0; i<min(-ilo,nsamples); i++) {
+                                    out[i] += fe32toh(trace.data[0]) * weight;
+                                }
+                                for (i=max(0,-ilo); i<min(nsamples, -ilo+1); i++) {
+                                    out[i] += fe32toh(trace.data[i+ilo])*w1
+                                              + fe32toh(trace.data[0])*w2;
+                                }
+                                for (i=max(0,-ilo+1); i<min(nsamples, trace.nsamples-ilo); i++) {
+                                    out[i] += fe32toh(trace.data[i+ilo])*w1
+                                              + fe32toh(trace.data[i+ilo-1])*w2;
+                                }
+                                for (i=max(0,trace.nsamples-ilo);
+                                     i<min(nsamples, trace.nsamples-ilo+1); i++) {
+                                    out[i] += fe32toh(trace.data[trace.nsamples-1]) * w1
+                                              + fe32toh(trace.data[i+ilo-1])*w2;
+                                }
+                                for (i=max(0,trace.nsamples-ilo+1); i<nsamples; i++) {
+                                    out[i] += fe32toh(trace.data[trace.nsamples-1]) * weight;
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (interpolation == NEAREST_NEIGHBOR) {
+                err += mscheme->irecord(
+                    mapping,
+                    &source_coords[isource*5],
+                    &receiver_coords[ireceiver*5],
+                    irecord_bases);
+
+                for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
+                    nsummands = cscheme->nsummands[icomponent];
+                    for (isummand=0; isummand<nsummands; isummand++) {
+                        weight = ws_this[icomponent*nsummands_max + isummand];
+                    }
+                }
+            }
+
+        }
+    }
+
+    result->is_zero = 0;
+    result->begin_value = begin_value;
+    result->end_value = end_value;
+
     return SUCCESS;
 }
 
@@ -2108,6 +2279,143 @@ static PyObject* w_make_sum_params(PyObject *m, PyObject *args) {
 }
 
 
+static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
+    PyObject *capsule, *source_coords_arr, *ms_arr, *delays_arr, *receiver_coords_arr;
+    PyArrayObject *array = NULL;
+    store_t *store;
+    trace_t result;
+    npy_intp array_dims[1] = {0};
+
+    char *component_scheme_name, *interpolation_scheme_name;
+    const component_scheme_t *cscheme;
+    const mapping_scheme_t *mscheme;
+    interpolation_scheme_id interpolation;
+
+    float64_t *source_coords, *receiver_coords, *ms, *delays;
+    int itmin_, nsamples_, nsources, nreceivers;
+    int32_t itmin, nsamples, nthreads;
+    store_error_t err;
+
+    npy_intp shape_want_coords[2] = {-1, 5};
+    npy_intp shape_want_ms[2] = {-1, 6};
+
+    struct module_state *st = GETSTATE(m);
+
+    if (!PyArg_ParseTuple(
+            args, "OOOOOssiiI", &capsule, &source_coords_arr, &ms_arr, &delays_arr,
+            &receiver_coords_arr, &component_scheme_name, 
+            &interpolation_scheme_name, &itmin_, &nsamples_, &nthreads)) {
+        PyErr_SetString(st->error,
+            "usage: make_sum_params(cstore, source_coords, moment_tensors, delays, receiver_coords, component_scheme, interpolation_name, nthreads)");
+        return NULL;
+    }
+
+
+    store = get_store_from_capsule(capsule);
+    if (store == NULL) {
+        PyErr_SetString(st->error, "w_store_calc_timeseries: bad store given");
+        return NULL;
+    }
+
+    mscheme = store->mapping_scheme;
+    if (mscheme == NULL) {
+        PyErr_SetString(st->error, "w_store_calc_timeseries: no mapping scheme set on store");
+        return NULL;
+    }
+
+    cscheme = get_component_scheme(component_scheme_name);
+    if (cscheme == NULL) {
+        PyErr_SetString(st->error, "w_store_calc_timeseries: invalid component scheme name");
+        return NULL;
+    }
+
+    interpolation = get_interpolation_scheme_id(interpolation_scheme_name);
+    if (interpolation == UNDEFINED_INTERPOLATION_SCHEME) {
+        PyErr_SetString(st->error, "w_store_calc_timeseries: invalid interpolation scheme name");
+        return NULL;
+    }
+    if (!good_array(source_coords_arr, NPY_FLOAT64, -1, 2, shape_want_coords)) {
+        PyErr_SetString(st->error, "w_store_sum_static: unhealthy source_coords array");
+        return NULL;
+    }
+
+    shape_want_ms[1] = cscheme->nsource_terms;
+    if (!good_array(ms_arr, NPY_FLOAT64, -1, 2, shape_want_ms)) {
+        PyErr_SetString(st->error, "w_store_calc_timeseries: unhealthy moment_tensors array");
+        return NULL;
+    }
+
+    if (!good_array(receiver_coords_arr, NPY_FLOAT64, -1, 2, shape_want_coords)) {
+        PyErr_SetString(st->error, "w_store_calc_timeseries: unhealthy reveiver_coords array");
+        return NULL;
+    }
+
+    if (!good_array((PyObject*)delays_arr, NPY_FLOAT64, -1, 1, NULL)) {
+        PyErr_SetString(st->error, "w_store_calc_timeseries: unhealthy delays array");
+        return NULL;
+    }
+
+    if (!inlimits(itmin_)) {
+        PyErr_SetString(st->error, "w_store_calc_timeseries: invalid itmin argument");
+        return NULL;
+    }
+    itmin = itmin_;
+
+    if (!(inposlimits(nsamples_) || -1 == nsamples_)) {
+        PyErr_SetString(st->error, "w_store_calc_timeseries: invalid nsamples argument");
+        return NULL;
+    }
+    nsamples = nsamples_;
+
+    source_coords = PyArray_DATA((PyArrayObject*) source_coords_arr);
+    ms = PyArray_DATA((PyArrayObject*) ms_arr);
+    delays = PyArray_DATA((PyArrayObject*) delays_arr);
+    receiver_coords = PyArray_DATA((PyArrayObject*) receiver_coords_arr);
+
+    nsources = PyArray_DIMS((PyArrayObject*) source_coords_arr)[0];
+    nreceivers = PyArray_DIMS((PyArrayObject*) receiver_coords_arr)[0];
+
+    if (nsamples == -1) {
+        printf("nsamples == -1");
+        /*err = store_sum_extent(store, irecords, delays, n, &nsamples, &itmin);
+        if (SUCCESS != err) {
+            PyErr_SetString(st->error, store_error_names[err]);
+            return NULL;
+        }*/
+    }
+
+    array_dims[0] = nsamples;
+    array = (PyArrayObject*)PyArray_ZEROS(1, array_dims, NPY_GFDTYPE, 0);
+
+    result.nsamples = nsamples;
+    result.itmin = itmin;
+    result.data = (gf_dtype*)PyArray_DATA(array);
+
+    err = store_calc_timeseries(
+        store,
+        source_coords,
+        ms,
+        delays,
+        receiver_coords,
+        nsources,
+        nreceivers,
+        cscheme,
+        mscheme,
+        store->mapping,
+        interpolation,
+        nthreads,
+        &result);
+
+    if (SUCCESS != err) {
+        PyErr_SetString(st->error, store_error_names[err]);
+        return NULL;
+    }
+
+    return Py_BuildValue("Nififf", array, result.itmin, store->deltat,
+                         result.is_zero, result.begin_value, result.end_value);
+}
+
+
 static PyObject* w_store_calc_static(PyObject *m, PyObject *args) {
     PyObject *capsule, *source_coords_arr, *receiver_coords_arr, *ms_arr, *delays_arr;
     PyArrayObject *results_arr;
@@ -2139,39 +2447,43 @@ static PyObject* w_store_calc_static(PyObject *m, PyObject *args) {
             "usage: calc_static(cstore, source_coords, moment_tensors, delays, receiver_coords, component_scheme, interpolation_name, it, nthreads)");
         return NULL;
     }
-    nsources = PyArray_SIZE((PyArrayObject*)delays_arr);
 
     store = get_store_from_capsule(capsule);
-    if (store == NULL)
+    if (store == NULL) {
+        PyErr_SetString(st->error, "w_store_sum_static: bad store given");
         return NULL;
+    }
 
     mscheme = store->mapping_scheme;
     if (mscheme == NULL) {
-        PyErr_SetString(st->error, "w_make_calc_params: no mapping scheme set on store");
+        PyErr_SetString(st->error, "w_store_sum_static: no mapping scheme set on store");
         return NULL;
     }
 
     cscheme = get_component_scheme(component_scheme_name);
     if (cscheme == NULL) {
-        PyErr_SetString(st->error, "w_make_calc_params: invalid component scheme name");
+        PyErr_SetString(st->error, "w_store_sum_static: invalid component scheme name");
         return NULL;
     }
 
     interpolation = get_interpolation_scheme_id(interpolation_scheme_name);
     if (interpolation == UNDEFINED_INTERPOLATION_SCHEME) {
-        PyErr_SetString(st->error, "w_make_calc_params: invalid interpolation scheme name");
+        PyErr_SetString(st->error, "w_store_sum_static: invalid interpolation scheme name");
         return NULL;
     }
     if (!good_array(source_coords_arr, NPY_FLOAT64, -1, 2, shape_want_coords)) {
+        PyErr_SetString(st->error, "w_store_sum_static: unhealthy source_coords array");
         return NULL;
     }
 
     shape_want_ms[1] = cscheme->nsource_terms;
     if (!good_array(ms_arr, NPY_FLOAT64, -1, 2, shape_want_ms)) {
+        PyErr_SetString(st->error, "w_store_calc_static: unhealthy moment_tensors array");
         return NULL;
     }
 
     if (!good_array(receiver_coords_arr, NPY_FLOAT64, -1, 2, shape_want_coords)) {
+        PyErr_SetString(st->error, "w_store_calc_static: unhealthy reveiver_coords array");
         return NULL;
     }
 
@@ -2179,6 +2491,7 @@ static PyObject* w_store_calc_static(PyObject *m, PyObject *args) {
         PyErr_SetString(st->error, "w_store_calc_static: unhealthy delays array");
         return NULL;
     }
+
     if (!inlimits(it)) {
         PyErr_SetString(st->error, "w_store_calc_static: invalid it argument");
         return NULL;
@@ -2246,7 +2559,10 @@ static PyMethodDef store_ext_methods[] = {
         "Get weight-and-delay-sum of GF samples for static displacement." },
 
     {"store_calc_static", w_store_calc_static, METH_VARARGS,
-        "Calculate static displacements (make make_sum_params obsolete" },
+        "Calculate static displacements (make make_sum_params obsolete)" },
+
+    {"store_calc_timeseries", w_store_calc_timeseries, METH_VARARGS,
+        "Calculate timeseries (make make_sum_params obsolete)" },
 
     {"make_sum_params", w_make_sum_params, METH_VARARGS,
         "Prepare parameters for weight-and-delay-sum." },

@@ -43,8 +43,9 @@ void generate_tables()
 void run()
 {
   double angle;
+  float anglef;
   clock_t t0;
-  float t_lut, t_sin;
+  float t_lut, t_sin, t_sin32;
 
   printf("%6s, %8s, %8s, %6s\n", "angle", "sin", "sin1", "error", "cos", "cos1", "error");
   for(angle=0; angle<360; angle+=0.1) {
@@ -71,8 +72,14 @@ void run()
   }
   t_sin = ((float)(clock() - t_sin) / 1000000.0F ) * 1000;
 
+  t0 = clock();
+  for(angle=0; angle < 360.0; angle += 0.00001) {
+    sinf((float) angle * 2*3.18 / 360.0);
+  }
+  t_sin32 = ((float)(clock() - t_sin) / 1000000.0F ) * 1000;
+
   printf("\nTime elapsed for sin\n");
-  printf("LUT %f\nmath.h %f\n", t_lut, t_sin);
+  printf("LUT %f\nmath.h %f\nmath.h (32) %f\n", t_lut, t_sin, t_sin32);
 
 }
 
