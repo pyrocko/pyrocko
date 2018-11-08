@@ -928,6 +928,64 @@ class GFTestCase(unittest.TestCase):
 
         benchmark.show_factor = False
 
+    def test_calc_timeseries(self):
+        from pyrocko.gf import store_ext
+        benchmark.show_factor = True
+
+        def test_timeseries(store, dim, ntargets, interpolation,
+                            nthreads):
+            source = gf.RectangularSource(
+                lat=0., lon=0.,
+                depth=10*km, north_shift=0.1, east_shift=0.1,
+                width=dim, length=dim)
+
+            targets = [gf.Target(
+                lat=random.random()*10.,
+                lon=random.random()*10.,
+                north_shift=0.1,
+                east_shift=0.1) for x in range(ntargets)]
+
+            dsource = source.discretize_basesource(store, targets[0])
+            source_coords_arr = dsource.coords5()
+            mts_arr = dsource.m6s
+
+            receiver_coords_arr = num.empty((len(targets), 5))
+            for itarget, target in enumerate(targets):
+                receiver = target.receiver(store)
+                receiver_coords_arr[itarget, :] = \
+                    [receiver.lat, receiver.lon, receiver.north_shift,
+                     receiver.east_shift, receiver.depth]
+            nsources = mts_arr.shape[0]
+            delays = num.zeros(nsources)
+
+            res = store_ext.store_calc_timeseries(
+                store.cstore,
+                source_coords_arr,
+                mts_arr,
+                delays,
+                receiver_coords_arr,
+                'elastic10',
+                interpolation,
+                5,
+                1000,
+                nthreads)
+            return res
+
+        store = gf.Store('/home/marius/Development/testing/gf/crust2_de/')
+        store.open()
+
+        res = test_timeseries(
+            store, 5*km,
+            ntargets=10, interpolation='multilinear', nthreads=1)
+
+        def plot(res):
+            import matplotlib.pyplot as plt
+            plt.plot(res[0])
+            plt.show()
+
+        plot(res)
+        print(res)
+
     def _test_homogeneous_scenario(
             self,
             config_type_class,
