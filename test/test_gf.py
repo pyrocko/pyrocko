@@ -932,18 +932,17 @@ class GFTestCase(unittest.TestCase):
         from pyrocko.gf import store_ext
         benchmark.show_factor = True
 
+        rstate = num.random.RandomState(123)
+
         def test_timeseries(store, dim, ntargets, interpolation,
                             nthreads):
-            source = gf.RectangularSource(
-                lat=0., lon=0.,
-                depth=10*km, north_shift=0.1, east_shift=0.1,
-                width=dim, length=dim)
+            source = gf.DCSource(
+                lat=0., lon=0., depth=1*km)
 
             targets = [gf.Target(
-                lat=random.random()*10.,
-                lon=random.random()*10.,
-                north_shift=0.1,
-                east_shift=0.1) for x in range(ntargets)]
+                lat=rstate.uniform()*1.,
+                lon=rstate.uniform()*1.)
+                       for x in range(ntargets)]
 
             dsource = source.discretize_basesource(store, targets[0])
             source_coords_arr = dsource.coords5()
@@ -958,33 +957,66 @@ class GFTestCase(unittest.TestCase):
             nsources = mts_arr.shape[0]
             delays = num.zeros(nsources)
 
-            res = store_ext.store_calc_timeseries(
-                store.cstore,
-                source_coords_arr,
-                mts_arr,
-                delays,
-                receiver_coords_arr,
-                'elastic10',
-                interpolation,
-                5,
-                1000,
-                nthreads)
-            return res
+            @benchmark.labeled('calc_timeseries')
+            def calc_timeseries():
+                return store_ext.store_calc_timeseries(
+                    store.cstore,
+                    source_coords_arr,
+                    mts_arr,
+                    delays,
+                    receiver_coords_arr,
+                    'elastic10',
+                    interpolation,
+                    5,
+                    50000,
+                    nthreads)
+
+            @benchmark.labeled('sum_timeseries')
+            def sum_timeseries():
+                res = []
+                for target in targets:
+                    params = store_ext.make_sum_params(
+                        store.cstore,
+                        source_coords_arr,
+                        mts_arr,
+                        target.coords5[num.newaxis, :].copy(),
+                        'elastic10',
+                        interpolation,
+                        nthreads)
+                    for weights, irecords in params:
+                        d = num.zeros(irecords.shape[0], dtype=num.float32)
+                        r = store_ext.store_sum(
+                            store.cstore,
+                            irecords,
+                            d,
+                            weights,
+                            5,
+                            50000)
+                        res.append(r)
+
+                return res
+
+            res_calc = calc_timeseries()
+            res_sum = sum_timeseries()
+
+            for c, s in zip(res_calc, res_sum):
+                num.testing.assert_equal(c[0], s[0])
 
         store = gf.Store('/home/marius/Development/testing/gf/crust2_de/')
         store.open()
 
         res = test_timeseries(
-            store, 5*km,
-            ntargets=10, interpolation='multilinear', nthreads=1)
+            store, .05*km,
+            ntargets=50, interpolation='nearest_neighbor', nthreads=0)
+        print(benchmark)
 
         def plot(res):
             import matplotlib.pyplot as plt
             plt.plot(res[0])
             plt.show()
 
-        plot(res)
-        print(res)
+        # plot(res)
+        # print(res)
 
     def _test_homogeneous_scenario(
             self,
