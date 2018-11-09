@@ -521,7 +521,6 @@ static void trace_trim_sticky(trace_t *trace, int32_t itmin, int32_t nsamples) {
     trace->data += ilo;
 }
 
-
 static store_error_t store_sum_extent(
             const store_t *store,
             const uint64_t *irecords,
@@ -783,6 +782,77 @@ static store_error_t store_sum_static(
     return SUCCESS;
 }
 
+
+static store_error_t stack_trace(
+        trace_t *trace,
+        float32_t weight,
+        int itmin,
+        float64_t delay,
+        int idelay_floor,
+        int idelay_ceil,
+        int nsamples,
+        float32_t deltat,
+        gf_dtype *out) {
+
+    int ilo, i;
+    float64_t w1, w2;
+
+    if (idelay_floor == idelay_ceil) {
+        ilo = itmin - idelay_floor - trace->itmin;
+        /*for (i=0; i<nsamples; i++) {
+            ifloor = i + ilo;
+            ifloor = max(0, min(ifloor, trace->nsamples-1));
+            out[i] += fe32toh(trace->data[ifloor]) * weight;
+        } // version below is a bit faster */
+        for (i=0; i<min(-ilo,nsamples); i++) {
+            out[i] += fe32toh(trace->data[0]) * weight;
+        }
+        for (i=max(0,-ilo); i<min(nsamples, trace->nsamples-ilo); i++) {
+            out[i] += fe32toh(trace->data[i+ilo]) * weight;
+        }
+        for (i=max(0,trace->nsamples-ilo); i<nsamples; i++) {
+            out[i] += fe32toh(trace->data[trace->nsamples-1]) * weight;
+        }
+    } else {
+        ilo = itmin - idelay_floor - trace->itmin;
+        /*ihi = ilo - 1;*/
+        w1 = (idelay_ceil - delay/deltat);
+        w2 = 1.0 - w1;
+        w1 *= (float64_t) weight;
+        w2 *= (float64_t) weight;
+        /* printf("- w1 %f, w2 %f\n", w1, w2); */
+        /*for (i=0; i<nsamples; i++) {
+            ifloor = i + ilo;
+            iceil = i + ihi;
+            ifloor = max(0, min(ifloor, trace->nsamples-1));
+            iceil = max(0, min(iceil, trace->nsamples-1));
+            out[i] += fe32toh(trace->data[ifloor]) * w1;
+            out[i] += fe32toh(trace->data[iceil]) * w2;
+        } // version below is a bit faster */
+        for (i=0; i<min(-ilo, nsamples); i++) {
+            out[i] += fe32toh(trace->data[0]) * weight;
+        }
+        for (i=max(0, -ilo); i<min(nsamples, -ilo+1); i++) {
+            out[i] += fe32toh(trace->data[i+ilo])*w1
+                      + fe32toh(trace->data[0])*w2;
+        }
+        for (i=max(0, -ilo+1); i<min(nsamples, trace->nsamples-ilo); i++) {
+            out[i] += fe32toh(trace->data[i+ilo])*w1
+                      + fe32toh(trace->data[i+ilo-1])*w2;
+        }
+        for (i=max(0, trace->nsamples-ilo);
+             i<min(nsamples, trace->nsamples-ilo+1); i++) {
+            out[i] += fe32toh(trace->data[trace->nsamples-1]) * w1
+                      + fe32toh(trace->data[i+ilo-1])*w2;
+        }
+        for (i=max(0, trace->nsamples-ilo+1); i<nsamples; i++) {
+            out[i] += fe32toh(trace->data[trace->nsamples-1]) * weight;
+        }
+    }
+    return SUCCESS;
+}
+
+
 static store_error_t store_calc_timeseries(
         const store_t *store,
         const float64_t *source_coords,
@@ -796,15 +866,13 @@ static store_error_t store_calc_timeseries(
         const mapping_t *mapping,
         interpolation_scheme_id interpolation,
         int32_t nthreads,
-        trace_t *result) {
+        trace_t **results) {
 
     float32_t weight, delay;
-    trace_t trace;
+    trace_t trace, *result;
     float32_t deltat = store->deltat;
     gf_dtype begin_value, end_value;
-    int ilo, i, idx_record;
-    int idelay_floor, idelay_ceil;
-    float w1, w2;
+    int idx_record, idelay_floor, idelay_ceil;
     store_error_t err;
     int32_t itmin;
     int32_t nsamples;
@@ -815,28 +883,32 @@ static store_error_t store_calc_timeseries(
     uint64_t irecord_bases[VICINITY_NIP_MAX];
     float64_t weights_ip[VICINITY_NIP_MAX];
 
-    out = result->data;
-    itmin = result->itmin;
-    nsamples = result->nsamples;
-
-    result->is_zero = 1;
-    result->begin_value = 0.0;
-    result->end_value = 0.0;
-
-
-    if (!inlimits(itmin) || !inposlimits(nsamples)) {
+/*    if (!inlimits(itmin) || !inposlimits(nsamples)) {
         return BAD_REQUEST;
     }
-
+*/
     nsummands_max = cscheme->nsummands_max;
     nip = mscheme->vicinity_nip;
-/*
-    if (0 == n) {
-        return SUCCESS;
-    }*/
 
-    begin_value = 0.0;
-    end_value = 0.0;
+    Py_BEGIN_ALLOW_THREADS
+    #if defined(_OPENMP)
+        if (nthreads == 0)
+            nthreads = omp_get_num_procs();
+        else if (nthreads > omp_get_num_procs()) {
+            nthreads = omp_get_num_procs();
+            printf("store_calc_static - Warning: Desired nthreads exceeds number of physical processors, falling to %d threads\n", nthreads);
+        }
+
+        #pragma omp parallel \
+            shared (store, source_coords, ms, delays, receiver_coords, \
+                    cscheme, mscheme, mapping, interpolation, nip, results, nsources, nsummands_max) \
+            private (isource, iip, icomponent, isummand, nsummands, irecord_bases, weights_ip, ws_this, \
+                     delay, weight, idelay_floor, idelay_ceil, idx_record, trace, result, out, itmin, nsamples, begin_value, end_value) \
+            reduction (+: err) \
+            num_threads (nthreads)
+        {
+        #pragma omp for schedule (dynamic)
+    #endif
 
     for (ireceiver=0; ireceiver<nreceivers; ireceiver++) {
         for (isource=0; isource<nsources; isource++) {
@@ -861,74 +933,44 @@ static store_error_t store_calc_timeseries(
                     irecord_bases,
                     weights_ip);
 
-                for (iip=0; iip<nip; iip++) {
-                    for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
-                        nsummands = cscheme->nsummands[icomponent];
+                for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
+                    begin_value = 0.0;
+                    end_value = 0.0;
+
+                    result = results[icomponent+ireceiver*cscheme->ncomponents];
+
+                    out = result->data;
+                    itmin = result->itmin;
+                    nsamples = result->nsamples;
+
+                    result->is_zero = 1;
+                    result->begin_value = 0.0;
+                    result->end_value = 0.0;
+
+                    nsummands = cscheme->nsummands[icomponent];
+
+                    for (iip=0; iip<nip; iip++) {
                         for (isummand=0; isummand<nsummands; isummand++) {
                             weight = weights_ip[iip] * ws_this[icomponent*nsummands_max + isummand];
                             if (weight == 0.)
                                 continue;
+
                             idx_record = irecord_bases[iip] + cscheme->igs[icomponent][isummand];
                             err += store_get(store, idx_record, &trace);
-
                             if (trace.is_zero)
                                 continue;
                             trace_trim_sticky(&trace, itmin - idelay_ceil, nsamples + idelay_ceil - idelay_floor);
 
-                            if (idelay_floor == idelay_ceil) {
-                                ilo = itmin - idelay_floor - trace.itmin;
-                                /*for (i=0; i<nsamples; i++) {
-                                    ifloor = i + ilo;
-                                    ifloor = max(0, min(ifloor, trace.nsamples-1));
-                                    out[i] += fe32toh(trace.data[ifloor]) * weight;
-                                } // version below is a bit faster */
-                                for (i=0; i<min(-ilo,nsamples); i++) {
-                                    out[i] += fe32toh(trace.data[0]) * weight;
-                                }
-                                for (i=max(0,-ilo); i<min(nsamples, trace.nsamples-ilo); i++) {
-                                    out[i] += fe32toh(trace.data[i+ilo]) * weight;
-                                }
-                                for (i=max(0,trace.nsamples-ilo); i<nsamples; i++) {
-                                    out[i] += fe32toh(trace.data[trace.nsamples-1]) * weight;
-                                }
-                            } else {
-                                ilo = itmin - idelay_floor - trace.itmin;
-                                /*ihi = ilo - 1;*/
-                                w1 = (idelay_ceil - delay/deltat);
-                                w2 = 1.0 - w1;
-                                w1 *= weight;
-                                w2 *= weight;
-                                /* printf("- w1 %f, w2 %f\n", w1, w2); */
-                                /*for (i=0; i<nsamples; i++) {
-                                    ifloor = i + ilo;
-                                    iceil = i + ihi;
-                                    ifloor = max(0, min(ifloor, trace.nsamples-1));
-                                    iceil = max(0, min(iceil, trace.nsamples-1));
-                                    out[i] += fe32toh(trace.data[ifloor]) * w1;
-                                    out[i] += fe32toh(trace.data[iceil]) * w2;
-                                } // version below is a bit faster */
-                                for (i=0; i<min(-ilo,nsamples); i++) {
-                                    out[i] += fe32toh(trace.data[0]) * weight;
-                                }
-                                for (i=max(0,-ilo); i<min(nsamples, -ilo+1); i++) {
-                                    out[i] += fe32toh(trace.data[i+ilo])*w1
-                                              + fe32toh(trace.data[0])*w2;
-                                }
-                                for (i=max(0,-ilo+1); i<min(nsamples, trace.nsamples-ilo); i++) {
-                                    out[i] += fe32toh(trace.data[i+ilo])*w1
-                                              + fe32toh(trace.data[i+ilo-1])*w2;
-                                }
-                                for (i=max(0,trace.nsamples-ilo);
-                                     i<min(nsamples, trace.nsamples-ilo+1); i++) {
-                                    out[i] += fe32toh(trace.data[trace.nsamples-1]) * w1
-                                              + fe32toh(trace.data[i+ilo-1])*w2;
-                                }
-                                for (i=max(0,trace.nsamples-ilo+1); i<nsamples; i++) {
-                                    out[i] += fe32toh(trace.data[trace.nsamples-1]) * weight;
-                                }
-                            }
+                            stack_trace(&trace, weight, itmin, delay, idelay_floor, idelay_ceil, nsamples, deltat, out);
+
+                            begin_value += trace.begin_value * weight;
+                            end_value += trace.end_value * weight;
                         }
                     }
+
+                    result->is_zero = 0;
+                    result->begin_value = begin_value;
+                    result->end_value = end_value;
                 }
             } else if (interpolation == NEAREST_NEIGHBOR) {
                 err += mscheme->irecord(
@@ -938,19 +980,52 @@ static store_error_t store_calc_timeseries(
                     irecord_bases);
 
                 for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
+                    begin_value = 0.0;
+                    end_value = 0.0;
+
+                    result = results[icomponent+ireceiver*cscheme->ncomponents];
+
+                    out = result->data;
+                    itmin = result->itmin;
+                    nsamples = result->nsamples;
+
+                    result->is_zero = 1;
+                    result->begin_value = 0.0;
+                    result->end_value = 0.0;
+
                     nsummands = cscheme->nsummands[icomponent];
+
                     for (isummand=0; isummand<nsummands; isummand++) {
                         weight = ws_this[icomponent*nsummands_max + isummand];
+                        if (weight == 0.)
+                            continue;
+
+                        idx_record = irecord_bases[0] + cscheme->igs[icomponent][isummand];
+                        err += store_get(store, idx_record, &trace);
+                        if (trace.is_zero)
+                                continue;
+                        trace_trim_sticky(&trace, itmin - idelay_ceil, nsamples + idelay_ceil - idelay_floor);
+
+                        stack_trace(&trace, weight, itmin, delay, idelay_floor, idelay_ceil, nsamples, deltat, out);
+
+                        begin_value += trace.begin_value * weight;
+                        end_value += trace.end_value * weight;
                     }
+
+                    result->is_zero = 0;
+                    result->begin_value = begin_value;
+                    result->end_value = end_value;
                 }
             }
-
+/*            if (err != SUCCESS)
+                return INDEX_OUT_OF_BOUNDS;*/
         }
     }
+    #if defined(_OPENMP)
+        }
+    #endif
+    Py_END_ALLOW_THREADS
 
-    result->is_zero = 0;
-    result->begin_value = begin_value;
-    result->end_value = end_value;
 
     return SUCCESS;
 }
@@ -1015,7 +1090,7 @@ static store_error_t store_calc_static(
             reduction (+: err) \
             num_threads (nthreads)
         {
-        #pragma omp for schedule (static)
+        #pragma omp for schedule (guided)
     #endif
 
     for (ireceiver=0; ireceiver<nreceivers; ireceiver++) {
@@ -1042,9 +1117,9 @@ static store_error_t store_calc_static(
                     irecord_bases,
                     weights_ip);
 
-                for (iip=0; iip<nip; iip++) {
-                    for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
-                        nsummands = cscheme->nsummands[icomponent];
+                for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
+                    nsummands = cscheme->nsummands[icomponent];
+                    for (iip=0; iip<nip; iip++) {
                         for (isummand=0; isummand<nsummands; isummand++) {
                             weight = weights_ip[iip] * ws_this[icomponent*nsummands_max + isummand];
                             if (weight == 0.)
@@ -2268,7 +2343,6 @@ static PyObject* w_make_sum_params(PyObject *m, PyObject *args) {
         weights,
         irecords);
 
-
     if (SUCCESS != err) {
         Py_DECREF(out_list);
         PyErr_SetString(st->error, store_error_names[err]);
@@ -2280,10 +2354,9 @@ static PyObject* w_make_sum_params(PyObject *m, PyObject *args) {
 
 
 static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
-    PyObject *capsule, *source_coords_arr, *ms_arr, *delays_arr, *receiver_coords_arr;
+    PyObject *capsule, *source_coords_arr, *ms_arr, *delays_arr, *receiver_coords_arr, *out_list;
     PyArrayObject *array = NULL;
     store_t *store;
-    trace_t result;
     npy_intp array_dims[1] = {0};
 
     char *component_scheme_name, *interpolation_scheme_name;
@@ -2299,6 +2372,8 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
     npy_intp shape_want_coords[2] = {-1, 5};
     npy_intp shape_want_ms[2] = {-1, 6};
 
+    size_t ires;
+
     struct module_state *st = GETSTATE(m);
 
     if (!PyArg_ParseTuple(
@@ -2309,7 +2384,6 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
             "usage: make_sum_params(cstore, source_coords, moment_tensors, delays, receiver_coords, component_scheme, interpolation_name, nthreads)");
         return NULL;
     }
-
 
     store = get_store_from_capsule(capsule);
     if (store == NULL) {
@@ -2335,7 +2409,7 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
         return NULL;
     }
     if (!good_array(source_coords_arr, NPY_FLOAT64, -1, 2, shape_want_coords)) {
-        PyErr_SetString(st->error, "w_store_sum_static: unhealthy source_coords array");
+        PyErr_SetString(st->error, "w_store_calc_timeseries: unhealthy source_coords array");
         return NULL;
     }
 
@@ -2384,12 +2458,17 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
         }*/
     }
 
-    array_dims[0] = nsamples;
-    array = (PyArrayObject*)PyArray_ZEROS(1, array_dims, NPY_GFDTYPE, 0);
+    trace_t *results[nreceivers*cscheme->ncomponents];
+    for (ires=0; ires < nreceivers*cscheme->ncomponents; ires++) {
+        trace_t *result = malloc(sizeof(trace_t));
 
-    result.nsamples = nsamples;
-    result.itmin = itmin;
-    result.data = (gf_dtype*)PyArray_DATA(array);
+        array_dims[0] = nsamples;
+        array = (PyArrayObject*)PyArray_ZEROS(1, array_dims, NPY_GFDTYPE, 0);
+        result->nsamples = nsamples;
+        result->itmin = itmin;
+        result->data = (gf_dtype*) PyArray_DATA(array);
+        results[ires] = result;
+    }
 
     err = store_calc_timeseries(
         store,
@@ -2404,15 +2483,27 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
         store->mapping,
         interpolation,
         nthreads,
-        &result);
+        results);
 
     if (SUCCESS != err) {
         PyErr_SetString(st->error, store_error_names[err]);
         return NULL;
     }
 
-    return Py_BuildValue("Nififf", array, result.itmin, store->deltat,
-                         result.is_zero, result.begin_value, result.end_value);
+    out_list = Py_BuildValue("[]");
+    for (ires=0; ires < nreceivers*cscheme->ncomponents; ires++) {
+        trace_t *result = results[ires];
+
+        array_dims[0] = result->nsamples;
+        array = (PyArrayObject*) PyArray_SimpleNewFromData(1, array_dims, NPY_GFDTYPE, result->data);
+
+        PyList_Append(
+            out_list,
+            Py_BuildValue("Nififf", array, result->itmin, store->deltat,
+                result->is_zero, result->begin_value, result->end_value));
+    }
+
+    return out_list;
 }
 
 
