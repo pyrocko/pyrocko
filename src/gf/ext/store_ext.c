@@ -795,7 +795,7 @@ static store_error_t stack_trace(
         gf_dtype *out) {
 
     int ilo, i;
-    float64_t w1, w2;
+    float w1, w2;
 
     if (idelay_floor == idelay_ceil) {
         ilo = itmin - idelay_floor - trace->itmin;
@@ -818,8 +818,8 @@ static store_error_t stack_trace(
         /*ihi = ilo - 1;*/
         w1 = (idelay_ceil - delay/deltat);
         w2 = 1.0 - w1;
-        w1 *= (float64_t) weight;
-        w2 *= (float64_t) weight;
+        w1 *= weight;
+        w2 *= weight;
         /* printf("- w1 %f, w2 %f\n", w1, w2); */
         /*for (i=0; i<nsamples; i++) {
             ifloor = i + ilo;
@@ -1017,8 +1017,6 @@ static store_error_t store_calc_timeseries(
                     result->end_value = end_value;
                 }
             }
-/*            if (err != SUCCESS)
-                return INDEX_OUT_OF_BOUNDS;*/
         }
     }
     #if defined(_OPENMP)
@@ -1026,6 +1024,8 @@ static store_error_t store_calc_timeseries(
     #endif
     Py_END_ALLOW_THREADS
 
+    if (err != SUCCESS)
+        return BAD_REQUEST;
 
     return SUCCESS;
 }

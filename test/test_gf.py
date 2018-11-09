@@ -935,9 +935,12 @@ class GFTestCase(unittest.TestCase):
         rstate = num.random.RandomState(123)
 
         def test_timeseries(store, dim, ntargets, interpolation,
-                            nthreads):
+                            nthreads, niter=1):
             source = gf.DCSource(
                 lat=0., lon=0., depth=1*km)
+
+            source = gf.RectangularSource(
+                lat=0., lon=0., depth=.5*km, length=dim, width=dim, anchor='top')
 
             targets = [gf.Target(
                 lat=rstate.uniform()*1.,
@@ -967,8 +970,8 @@ class GFTestCase(unittest.TestCase):
                     receiver_coords_arr,
                     'elastic10',
                     interpolation,
-                    5,
-                    50000,
+                    0,
+                    100,
                     nthreads)
 
             @benchmark.labeled('sum_timeseries')
@@ -990,14 +993,16 @@ class GFTestCase(unittest.TestCase):
                             irecords,
                             d,
                             weights,
-                            5,
-                            50000)
+                            0,
+                            100)
                         res.append(r)
 
                 return res
 
-            res_calc = calc_timeseries()
-            res_sum = sum_timeseries()
+            for _ in range(niter):
+                res_calc = calc_timeseries()
+            for _ in range(niter):
+                res_sum = sum_timeseries()
 
             for c, s in zip(res_calc, res_sum):
                 num.testing.assert_equal(c[0], s[0])
@@ -1006,8 +1011,8 @@ class GFTestCase(unittest.TestCase):
         store.open()
 
         res = test_timeseries(
-            store, .05*km,
-            ntargets=50, interpolation='nearest_neighbor', nthreads=0)
+            store, dim=3*km,
+            ntargets=20, interpolation='nearest_neighbor', nthreads=0)
         print(benchmark)
 
         def plot(res):
