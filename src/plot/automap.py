@@ -154,10 +154,12 @@ class Map(Object):
     show_center_mark = Bool.T(default=False)
     show_rivers = Bool.T(default=True)
     show_plates = Bool.T(default=False)
+    show_boundaries = Bool.T(default=False)
     illuminate_factor_land = Float.T(default=0.5)
     illuminate_factor_ocean = Float.T(default=0.25)
     color_wet = Tuple.T(3, Int.T(), default=(216, 242, 254))
     color_dry = Tuple.T(3, Int.T(), default=(172, 208, 165))
+    color_boundaries = Tuple.T(3, Int.T(), default=(1, 1, 1))
     topo_resolution_min = Float.T(
         default=40.,
         help='minimum resolution of topography [dpi]')
@@ -586,6 +588,10 @@ class Map(Object):
 
         if not self._have_topo_ocean:
             fill['S'] = color_wet
+
+        if self.show_boundaries:
+            fill['N'] = '1/1p,%s,%s' % (
+                gmtpy.color(self.color_boundaries), 'solid')
 
         gmt.pscoast(
             D=cres,
