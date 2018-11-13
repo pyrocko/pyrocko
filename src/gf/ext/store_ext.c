@@ -803,7 +803,7 @@ static store_error_t store_sum_static(
 
 
 static store_error_t ensure_trace_capacity(result_trace_t *result, int itmin, int itmax) {
-    int ishift, new_capacity, start_pos, nsamples;
+    int ishift, new_capacity, start_pos, nsamples, i;
     gf_dtype *new_buffer;
 
     nsamples = itmax - itmin + 1;
@@ -831,11 +831,20 @@ static store_error_t ensure_trace_capacity(result_trace_t *result, int itmin, in
     if (itmin < result->itmin) {
         ishift = result->itmin - itmin;
 
+        if (result->data[0] != 0.) {
+            for (i=0; i<ishift; i++)
+                result->data[-i] = result->data[0];
+        }
+
         result->buf_pos = result->buf_pos - ishift;
         result->data = result->buffer + result->buf_pos;
         result->itmin = itmin;
     }
 
+    if (nsamples > result->nsamples && result->data[result->nsamples-1] != 0.) {
+        for (i=0; i<(nsamples - result->nsamples); i++)
+            result->data[result->nsamples+i] = result->data[result->nsamples-1];
+    }
     result->nsamples = max(result->nsamples, nsamples);
     result->itmax = max(result->itmax, itmax);
     return SUCCESS;
@@ -1026,7 +1035,6 @@ static store_error_t store_calc_timeseries(
                     end_value = 0.0;
 
                     result = results[icomponent+ireceiver*cscheme->ncomponents];
-                    printf("comp %d\n", icomponent);
 
                     result->is_zero = 1;
                     result->begin_value = 0.0;
@@ -1066,7 +1074,6 @@ static store_error_t store_calc_timeseries(
 
                             begin_value += trace.begin_value * weight;
                             end_value += trace.end_value * weight;
-                            printf("itmin: %d nsamples: %d begin: %.10e end: %.10e\n", result->itmin, result->nsamples, trace.begin_value, trace.end_value);
                         }
                     }
 
@@ -1123,7 +1130,6 @@ static store_error_t store_calc_timeseries(
                             result->data);
 
                         begin_value += trace.begin_value * weight;
-                        printf("begin: %f end: %f\n", trace.begin_value, trace.end_value);
                         end_value += trace.end_value * weight;
                     }
 
