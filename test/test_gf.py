@@ -943,8 +943,8 @@ class GFTestCase(unittest.TestCase):
             #     lat=0., lon=0., depth=.5*km, length=dim, width=dim, anchor='top')
 
             targets = [gf.Target(
-                lat=rstate.uniform()*.1,
-                lon=rstate.uniform()*.1)
+                lat=rstate.uniform(),
+                lon=rstate.uniform())
                        for x in range(ntargets)]
 
             dsource = source.discretize_basesource(store, targets[0])
@@ -1005,17 +1005,14 @@ class GFTestCase(unittest.TestCase):
                 res_sum = sum_timeseries()
 
             for c, s in zip(res_calc, res_sum):
-                print(c[0].size, c[1:], s[0].size, s[1:])
-                print(c[0] - s[0])
-
-                # num.testing.assert_equal(c[0], s[0], verbose=True)
+                num.testing.assert_equal(c[0], s[0], verbose=True)
 
         store = gf.Store('/home/marius/Development/testing/gf/crust2_de/')
         store.open()
 
         res = test_timeseries(
-            store, dim=1*km, niter=1,
-            ntargets=1, interpolation='multilinear', nthreads=1)
+            store, dim=1*km, niter=20,
+            ntargets=40, interpolation='multilinear', nthreads=0)
         print(benchmark)
 
         def plot(res):
