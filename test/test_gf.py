@@ -971,7 +971,7 @@ class GFTestCase(unittest.TestCase):
                     'elastic10',
                     interpolation,
                     0,
-                    1000,
+                    -1,
                     nthreads)
 
             @benchmark.labeled('sum_timeseries')
@@ -994,7 +994,7 @@ class GFTestCase(unittest.TestCase):
                             d,
                             weights,
                             0,
-                            1000)
+                            -1)
                         res.append(r)
 
                 return res
@@ -1006,7 +1006,7 @@ class GFTestCase(unittest.TestCase):
 
             for c, s in zip(res_calc, res_sum):
                 print(c[0].size, c[1:], s[0].size, s[1:])
-                # print(c[0] - s[0])
+                print(c[0] - s[0])
 
                 # num.testing.assert_equal(c[0], s[0], verbose=True)
 
@@ -1014,8 +1014,8 @@ class GFTestCase(unittest.TestCase):
         store.open()
 
         res = test_timeseries(
-            store, dim=1*km, niter=20,
-            ntargets=50, interpolation='multilinear', nthreads=0)
+            store, dim=1*km, niter=1,
+            ntargets=1, interpolation='multilinear', nthreads=1)
         print(benchmark)
 
         def plot(res):
