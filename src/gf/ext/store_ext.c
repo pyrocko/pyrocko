@@ -244,6 +244,25 @@ typedef struct {
     gf_dtype *data;
 } trace_t;
 
+/* result trace sheme defs */
+
+#define RESULT_INIT_CAPACITY 512
+
+typedef struct {
+    int is_zero;
+    int32_t itmin;
+    int32_t itmin_want;
+    int32_t itmax;
+    int32_t nsamples;
+    int32_t nsamples_want;
+    int32_t ncapacity;
+    int32_t buf_pos;
+    gf_dtype begin_value;
+    gf_dtype end_value;
+    gf_dtype *data;
+    gf_dtype *buffer;
+} result_trace_t;
+
 /* component scheme defs */
 
 #define NCOMPONENTS_MAX 3
@@ -387,7 +406,7 @@ static const trace_t ZERO_TRACE = { 1, 0, 0, 0.0, 0.0, NULL };
 static const store_t ZERO_STORE = { 0, 0, 0, 0, 0.0, NULL, NULL, NULL, NULL, NULL };
 
 static store_error_t store_get_span(const store_t *store, uint64_t irecord,
-                             int32_t *itmin, int32_t *nsamples, int *is_zero) {
+                                    int32_t *itmin, int32_t *nsamples, int *is_zero) {
     record_t *record;
     if (irecord >= store->nrecords) {
         return INVALID_RECORD;
@@ -783,7 +802,80 @@ static store_error_t store_sum_static(
 }
 
 
-static store_error_t stack_trace(
+static store_error_t ensure_trace_capacity(result_trace_t *result, int itmin, int nsamples) {
+    int ishift, new_capacity, start_pos;
+    gf_dtype *new_buffer;
+
+    if (nsamples > result->ncapacity) {
+        new_capacity = result->ncapacity;
+
+        do {
+            new_capacity = new_capacity + 2*RESULT_INIT_CAPACITY;
+            start_pos = (new_capacity - nsamples) / 2;
+        } while (nsamples > new_capacity);
+
+        new_buffer = (gf_dtype*) calloc(new_capacity, sizeof(gf_dtype));
+        memcpy(new_buffer + start_pos, result->data, result->ncapacity);
+        free(result->buffer);
+
+        result->buf_pos = start_pos;
+        result->buffer = new_buffer;
+        result->data = result->buffer + start_pos;
+        result->ncapacity = new_capacity;
+
+    }
+
+    if (itmin < result->itmin) {
+        ishift = result->itmin - itmin;
+
+        result->buf_pos = result->buf_pos - ishift;
+        result->data = result->buffer + result->buf_pos;
+        result->itmin = itmin;
+    }
+
+    result->nsamples = max(result->nsamples, nsamples);
+    return SUCCESS;
+}
+
+
+static store_error_t check_trace_extent(
+        store_t *store,
+        result_trace_t *result,
+        float64_t delay,
+        int irecord) {
+
+    int itmin, itmax, ns, is_zero, req_capacity;
+    float64_t idelay;
+    store_error_t err = SUCCESS;
+    ns = itmin = 0;
+
+    err = store_get_span(store, irecord, &itmin, &ns, &is_zero);
+
+    idelay = delay / store->deltat;
+    itmin = itmin + floor(idelay);
+    itmax = itmin + ns + ceil(idelay);
+
+    req_capacity = result->nsamples_want;
+
+    if (result->itmin_want > 0)
+        itmin = result->itmin_want;
+
+    if (result->nsamples_want == -1) {
+        // initial tmin
+        if (result->itmin == -1)
+            result->itmin = itmin;
+
+        req_capacity = max(result->itmax, itmax) - min(result->itmin, itmin);
+    }
+
+    err += ensure_trace_capacity(result, itmin, req_capacity);
+    result->itmax = max(result->itmax, itmax);
+
+    return err;
+}
+
+
+static store_error_t stack_trace_timeseries(
         trace_t *trace,
         float32_t weight,
         int itmin,
@@ -792,7 +884,7 @@ static store_error_t stack_trace(
         int idelay_ceil,
         int nsamples,
         float32_t deltat,
-        gf_dtype *out) {
+        gf_dtype* out) {
 
     int ilo, i;
     float w1, w2;
@@ -854,7 +946,7 @@ static store_error_t stack_trace(
 
 
 static store_error_t store_calc_timeseries(
-        const store_t *store,
+        store_t *store,
         const float64_t *source_coords,
         const float64_t *ms,
         const float64_t *delays,
@@ -866,27 +958,25 @@ static store_error_t store_calc_timeseries(
         const mapping_t *mapping,
         interpolation_scheme_id interpolation,
         int32_t nthreads,
-        trace_t **results) {
+        result_trace_t **results) {
 
     float32_t weight, delay;
-    trace_t trace, *result;
+    trace_t trace;
+    result_trace_t *result;
     float32_t deltat = store->deltat;
     gf_dtype begin_value, end_value;
     int idx_record, idelay_floor, idelay_ceil;
-    store_error_t err;
-    int32_t itmin;
-    int32_t nsamples;
-    gf_dtype *out;
+    store_error_t err = SUCCESS;
 
     size_t ireceiver, isource, iip, nip, icomponent, isummand, nsummands_max, nsummands;
     float64_t ws_this[cscheme->ncomponents*cscheme->nsummands_max];
     uint64_t irecord_bases[VICINITY_NIP_MAX];
     float64_t weights_ip[VICINITY_NIP_MAX];
 
-/*    if (!inlimits(itmin) || !inposlimits(nsamples)) {
+    /*if (!inlimits(itmin)) { // || !inposlimits(nsamples)
         return BAD_REQUEST;
-    }
-*/
+    }*/
+
     nsummands_max = cscheme->nsummands_max;
     nip = mscheme->vicinity_nip;
 
@@ -903,7 +993,7 @@ static store_error_t store_calc_timeseries(
             shared (store, source_coords, ms, delays, receiver_coords, \
                     cscheme, mscheme, mapping, interpolation, nip, results, nsources, nsummands_max) \
             private (isource, iip, icomponent, isummand, nsummands, irecord_bases, weights_ip, ws_this, \
-                     delay, weight, idelay_floor, idelay_ceil, idx_record, trace, result, out, itmin, nsamples, begin_value, end_value) \
+                     delay, weight, idelay_floor, idelay_ceil, idx_record, trace, result, begin_value, end_value) \
             reduction (+: err) \
             num_threads (nthreads)
         {
@@ -920,8 +1010,8 @@ static store_error_t store_calc_timeseries(
                 ws_this);
 
             delay = delays[isource];
-            idelay_floor = (int)floor(delay/deltat);
-            idelay_ceil = (int)ceil(delay/deltat);
+            idelay_floor = (int) floor(delay/deltat);
+            idelay_ceil = (int) ceil(delay/deltat);
             if (!inlimits(idelay_floor) || !inlimits(idelay_ceil))
                 err += BAD_REQUEST;
             
@@ -939,10 +1029,6 @@ static store_error_t store_calc_timeseries(
 
                     result = results[icomponent+ireceiver*cscheme->ncomponents];
 
-                    out = result->data;
-                    itmin = result->itmin;
-                    nsamples = result->nsamples;
-
                     result->is_zero = 1;
                     result->begin_value = 0.0;
                     result->end_value = 0.0;
@@ -957,11 +1043,27 @@ static store_error_t store_calc_timeseries(
 
                             idx_record = irecord_bases[iip] + cscheme->igs[icomponent][isummand];
                             err += store_get(store, idx_record, &trace);
+
                             if (trace.is_zero)
                                 continue;
-                            trace_trim_sticky(&trace, itmin - idelay_ceil, nsamples + idelay_ceil - idelay_floor);
 
-                            stack_trace(&trace, weight, itmin, delay, idelay_floor, idelay_ceil, nsamples, deltat, out);
+                            err += check_trace_extent(store, result, delay, idx_record);
+
+                            trace_trim_sticky(
+                                &trace,
+                                result->itmin - idelay_ceil,
+                                result->nsamples + idelay_ceil - idelay_floor);
+
+                            stack_trace_timeseries(
+                                &trace,
+                                weight,
+                                result->itmin,
+                                delay,
+                                idelay_floor,
+                                idelay_ceil,
+                                result->nsamples,
+                                deltat,
+                                result->data);
 
                             begin_value += trace.begin_value * weight;
                             end_value += trace.end_value * weight;
@@ -985,10 +1087,6 @@ static store_error_t store_calc_timeseries(
 
                     result = results[icomponent+ireceiver*cscheme->ncomponents];
 
-                    out = result->data;
-                    itmin = result->itmin;
-                    nsamples = result->nsamples;
-
                     result->is_zero = 1;
                     result->begin_value = 0.0;
                     result->end_value = 0.0;
@@ -1001,12 +1099,28 @@ static store_error_t store_calc_timeseries(
                             continue;
 
                         idx_record = irecord_bases[0] + cscheme->igs[icomponent][isummand];
+
                         err += store_get(store, idx_record, &trace);
                         if (trace.is_zero)
                                 continue;
-                        trace_trim_sticky(&trace, itmin - idelay_ceil, nsamples + idelay_ceil - idelay_floor);
 
-                        stack_trace(&trace, weight, itmin, delay, idelay_floor, idelay_ceil, nsamples, deltat, out);
+                        err += check_trace_extent(store, result, delay, idx_record);
+
+                        trace_trim_sticky(
+                            &trace,
+                            result->itmin - idelay_ceil,
+                            result->nsamples + idelay_ceil - idelay_floor);
+
+                        stack_trace_timeseries(
+                            &trace,
+                            weight,
+                            result->itmin,
+                            delay,
+                            idelay_floor,
+                            idelay_ceil,
+                            result->nsamples,
+                            deltat,
+                            result->data);
 
                         begin_value += trace.begin_value * weight;
                         end_value += trace.end_value * weight;
@@ -2381,7 +2495,7 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
             &receiver_coords_arr, &component_scheme_name, 
             &interpolation_scheme_name, &itmin_, &nsamples_, &nthreads)) {
         PyErr_SetString(st->error,
-            "usage: make_sum_params(cstore, source_coords, moment_tensors, delays, receiver_coords, component_scheme, interpolation_name, nthreads)");
+            "usage: store_calc_timeseries(cstore, source_coords, moment_tensors, delays, receiver_coords, component_scheme, interpolation_name, itmin, nsamples, nthreads)");
         return NULL;
     }
 
@@ -2449,24 +2563,26 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
     nsources = PyArray_DIMS((PyArrayObject*) source_coords_arr)[0];
     nreceivers = PyArray_DIMS((PyArrayObject*) receiver_coords_arr)[0];
 
-    if (nsamples == -1) {
-        printf("nsamples == -1");
-        /*err = store_sum_extent(store, irecords, delays, n, &nsamples, &itmin);
-        if (SUCCESS != err) {
-            PyErr_SetString(st->error, store_error_names[err]);
-            return NULL;
-        }*/
-    }
+    if (nsamples == -1)
+        itmin = -1;
 
-    trace_t *results[nreceivers*cscheme->ncomponents];
+    // Initialize empty traces
+    result_trace_t *results[nreceivers*cscheme->ncomponents];
     for (ires=0; ires < nreceivers*cscheme->ncomponents; ires++) {
-        trace_t *result = malloc(sizeof(trace_t));
+        result_trace_t *result = malloc(sizeof(result_trace_t));
 
-        array_dims[0] = nsamples;
-        array = (PyArrayObject*)PyArray_ZEROS(1, array_dims, NPY_GFDTYPE, 0);
-        result->nsamples = nsamples;
+        result->nsamples = -1; // initialized by check_trace_extent
+        result->nsamples_want = nsamples;
+
         result->itmin = itmin;
-        result->data = (gf_dtype*) PyArray_DATA(array);
+        result->itmin_want = itmin;
+        result->itmax = -1; // initialized by check_trace_extent
+
+        result->ncapacity = RESULT_INIT_CAPACITY;
+        result->buffer = (gf_dtype*) calloc(RESULT_INIT_CAPACITY, sizeof(gf_dtype));
+        result->data = result->buffer;
+        result->buf_pos = 0;
+
         results[ires] = result;
     }
 
@@ -2492,7 +2608,7 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
 
     out_list = Py_BuildValue("[]");
     for (ires=0; ires < nreceivers*cscheme->ncomponents; ires++) {
-        trace_t *result = results[ires];
+        result_trace_t *result = results[ires];
 
         array_dims[0] = result->nsamples;
         array = (PyArrayObject*) PyArray_SimpleNewFromData(1, array_dims, NPY_GFDTYPE, result->data);
