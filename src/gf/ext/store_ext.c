@@ -246,7 +246,7 @@ typedef struct {
 
 /* result trace sheme defs */
 
-#define RESULT_INIT_CAPACITY 512
+#define RESULT_INIT_CAPACITY 1024
 
 typedef struct {
     int is_zero;
@@ -802,9 +802,13 @@ static store_error_t store_sum_static(
 }
 
 
-static store_error_t ensure_trace_capacity(result_trace_t *result, int itmin, int nsamples) {
-    int ishift, new_capacity, start_pos;
+static store_error_t ensure_trace_capacity(result_trace_t *result, int itmin, int itmax) {
+    int ishift, new_capacity, start_pos, nsamples;
     gf_dtype *new_buffer;
+
+    nsamples = itmax - itmin + 1;
+
+    /*printf("Requested itmin: %d, itmax: %d, nsamples: %d\n", itmin, itmax, nsamples);*/
 
     if (nsamples > result->ncapacity) {
         new_capacity = result->ncapacity;
@@ -812,17 +816,16 @@ static store_error_t ensure_trace_capacity(result_trace_t *result, int itmin, in
         do {
             new_capacity = new_capacity + 2*RESULT_INIT_CAPACITY;
             start_pos = (new_capacity - nsamples) / 2;
-        } while (nsamples > new_capacity);
+        } while (nsamples > new_capacity - start_pos);
 
         new_buffer = (gf_dtype*) calloc(new_capacity, sizeof(gf_dtype));
-        memcpy(new_buffer + start_pos, result->data, result->ncapacity);
+        memcpy(new_buffer + start_pos, result->buffer, sizeof(gf_dtype) * result->ncapacity);
         free(result->buffer);
 
         result->buf_pos = start_pos;
         result->buffer = new_buffer;
         result->data = result->buffer + start_pos;
         result->ncapacity = new_capacity;
-
     }
 
     if (itmin < result->itmin) {
@@ -834,6 +837,7 @@ static store_error_t ensure_trace_capacity(result_trace_t *result, int itmin, in
     }
 
     result->nsamples = max(result->nsamples, nsamples);
+    result->itmax = max(result->itmax, itmax);
     return SUCCESS;
 }
 
@@ -844,32 +848,26 @@ static store_error_t check_trace_extent(
         float64_t delay,
         int irecord) {
 
-    int itmin, itmax, ns, is_zero, req_capacity;
+    int itmin, itmax, ns, is_zero;
     float64_t idelay;
     store_error_t err = SUCCESS;
     ns = itmin = 0;
 
-    err = store_get_span(store, irecord, &itmin, &ns, &is_zero);
-
-    idelay = delay / store->deltat;
-    itmin = itmin + floor(idelay);
-    itmax = itmin + ns + ceil(idelay);
-
-    req_capacity = result->nsamples_want;
-
-    if (result->itmin_want > 0)
-        itmin = result->itmin_want;
-
     if (result->nsamples_want == -1) {
-        // initial tmin
-        if (result->itmin == -1)
-            result->itmin = itmin;
+        err = store_get_span(store, irecord, &itmin, &ns, &is_zero);
 
-        req_capacity = max(result->itmax, itmax) - min(result->itmin, itmin);
+        idelay = delay/store->deltat;
+        itmin = itmin + (int) floor(idelay);
+        itmax = itmin + ns + (int) ceil(idelay) - 1;
+
+        itmin = min(result->itmin, itmin);
+        itmax = max(result->itmax, itmax);
+    } else {
+        itmin = result->itmin_want;
+        itmax = result->nsamples_want - result->itmin_want - 1;
     }
 
-    err += ensure_trace_capacity(result, itmin, req_capacity);
-    result->itmax = max(result->itmax, itmax);
+    err += ensure_trace_capacity(result, itmin, itmax);
 
     return err;
 }
@@ -2579,9 +2577,9 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
         result->itmax = -1; // initialized by check_trace_extent
 
         result->ncapacity = RESULT_INIT_CAPACITY;
-        result->buffer = (gf_dtype*) calloc(RESULT_INIT_CAPACITY, sizeof(gf_dtype));
-        result->data = result->buffer;
-        result->buf_pos = 0;
+        result->buffer = (gf_dtype*) calloc(RESULT_INIT_CAPACITY * 3, sizeof(gf_dtype));
+        result->buf_pos = RESULT_INIT_CAPACITY;
+        result->data = result->buffer + RESULT_INIT_CAPACITY;
 
         results[ires] = result;
     }
