@@ -1026,6 +1026,7 @@ static store_error_t store_calc_timeseries(
                     end_value = 0.0;
 
                     result = results[icomponent+ireceiver*cscheme->ncomponents];
+                    printf("comp %d\n", icomponent);
 
                     result->is_zero = 1;
                     result->begin_value = 0.0;
@@ -1065,6 +1066,7 @@ static store_error_t store_calc_timeseries(
 
                             begin_value += trace.begin_value * weight;
                             end_value += trace.end_value * weight;
+                            printf("itmin: %d nsamples: %d begin: %.10e end: %.10e\n", result->itmin, result->nsamples, trace.begin_value, trace.end_value);
                         }
                     }
 
@@ -1121,6 +1123,7 @@ static store_error_t store_calc_timeseries(
                             result->data);
 
                         begin_value += trace.begin_value * weight;
+                        printf("begin: %f end: %f\n", trace.begin_value, trace.end_value);
                         end_value += trace.end_value * weight;
                     }
 
