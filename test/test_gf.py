@@ -937,14 +937,14 @@ class GFTestCase(unittest.TestCase):
         def test_timeseries(store, dim, ntargets, interpolation,
                             nthreads, niter=1):
             source = gf.DCSource(
-                lat=0., lon=0., depth=1*km)
+                lat=0., lon=0., depth=1*km, magnitude=8.)
 
-            source = gf.RectangularSource(
-                lat=0., lon=0., depth=.5*km, length=dim, width=dim, anchor='top')
+            # source = gf.RectangularSource(
+            #     lat=0., lon=0., depth=.5*km, length=dim, width=dim, anchor='top')
 
             targets = [gf.Target(
-                lat=rstate.uniform()*1.,
-                lon=rstate.uniform()*1.)
+                lat=rstate.uniform()*.1,
+                lon=rstate.uniform()*.1)
                        for x in range(ntargets)]
 
             dsource = source.discretize_basesource(store, targets[0])
@@ -970,7 +970,7 @@ class GFTestCase(unittest.TestCase):
                     receiver_coords_arr,
                     'elastic10',
                     interpolation,
-                    0,
+                    -123,
                     100,
                     nthreads)
 
@@ -993,7 +993,7 @@ class GFTestCase(unittest.TestCase):
                             irecords,
                             d,
                             weights,
-                            0,
+                            -123,
                             100)
                         res.append(r)
 
@@ -1005,14 +1005,15 @@ class GFTestCase(unittest.TestCase):
                 res_sum = sum_timeseries()
 
             for c, s in zip(res_calc, res_sum):
+                print(c[0].size, c[1:], s[0].size, s[1:])
                 num.testing.assert_equal(c[0], s[0])
 
         store = gf.Store('/home/marius/Development/testing/gf/crust2_de/')
         store.open()
 
         res = test_timeseries(
-            store, dim=3*km,
-            ntargets=20, interpolation='nearest_neighbor', nthreads=0)
+            store, dim=1*km, niter=10,
+            ntargets=20, interpolation='multilinear', nthreads=0)
         print(benchmark)
 
         def plot(res):
