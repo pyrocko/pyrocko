@@ -625,7 +625,8 @@ def plot_fuzzy_beachball_mpl_pixmap(
         alpha=1.0,
         projection='lambert',
         size_units='data',
-        grid_resolution=200):
+        grid_resolution=200,
+        method='contourf'):
     '''
     Plot fuzzy beachball from a list of given MomentTensors
 
@@ -645,7 +646,8 @@ def plot_fuzzy_beachball_mpl_pixmap(
     '''
     if size_units == 'points':
         raise BeachballError(
-            'size_units="points" not supported in plot_beachball_mpl_pixmap')
+            'size_units="points" not supported in '
+            'plot_fuzzy_beachball_mpl_pixmap')
 
     transform, position, size = choose_transform(
         axes, size_units, position, size)
@@ -662,13 +664,29 @@ def plot_fuzzy_beachball_mpl_pixmap(
         'dummy', [color_p, color_t], N=ncolors)
 
     levels = num.linspace(0, 1., ncolors)
-    axes.contourf(
-        position[0] + y * size, position[1] + x * size, amps.T,
-        levels=levels,
-        cmap=cmap,
-        transform=transform,
-        zorder=zorder,
-        alpha=alpha)
+    if method == 'contourf':
+        axes.contourf(
+            position[0] + y * size, position[1] + x * size, amps.T,
+            levels=levels,
+            cmap=cmap,
+            transform=transform,
+            zorder=zorder,
+            alpha=alpha)
+
+    elif method == 'imshow':
+        axes.imshow(
+            amps.T,
+            extent=(
+                position[0] + y[0] * size,
+                position[0] + y[-1] * size,
+                position[1] - x[0] * size,
+                position[1] - x[-1] * size),
+            cmap=cmap,
+            transform=transform,
+            zorder=zorder-0.1,
+            alpha=alpha)
+    else:
+        assert False, 'invalid `method` argument'
 
     # draw optimum edges
     if best_mt is not None:
