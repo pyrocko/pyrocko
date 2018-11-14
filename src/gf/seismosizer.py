@@ -2614,60 +2614,49 @@ class OutOfBoundsContext(Object):
     components = List.T(String.T())
 
 
-def process_subrequest_dynamic(work, pshared=None):
-    engine = pshared['engine']
-    _, _, isources, itargets = work
+def process_dynamic_new(work, psources, ptargets, engine, nthreads=0):
+    dsource_cache = {}
+    tcounters = list(range(6))
 
-    sources = [pshared['sources'][isource] for isource in isources]
-    targets = [pshared['targets'][itarget] for itarget in itargets]
+    store_ids = set()
 
-    components = set()
-    for target in targets:
-        rule = engine.get_rule(sources[0], target)
-        components.update(rule.required_components(target))
+    for itarget, target in enumerate(ptargets):
+        target._id = itarget
+        store_ids.add(target.store_id)
 
-    try:
-        base_seismogram, tcounters = engine.base_seismogram(
-            sources[0],
-            targets[0],
-            components,
-            pshared['dsource_cache'])
+    for isource, source in enumerate(psources):
 
-    except meta.OutOfBounds as e:
-        e.context = OutOfBoundsContext(
-            source=sources[0],
-            target=targets[0],
-            distance=sources[0].distance_to(targets[0]),
-            components=components)
-        raise
+        components = set()
+        for itarget, target in enumerate(ptargets):
+            rule = engine.get_rule(source, target)
+            components.update(rule.required_components(target))
 
-    n_records_stacked = 0
-    t_optimize = 0.0
-    t_stack = 0.0
-    for _, tr in base_seismogram.items():
-        n_records_stacked += tr.n_records_stacked
-        t_optimize += tr.t_optimize
-        t_stack += tr.t_stack
+        for store_id in store_ids:
+            store_targets = [t for t in ptargets if t.store_id == store_id]
 
-    results = []
-    for isource, source in zip(isources, sources):
-        for itarget, target in zip(itargets, targets):
             try:
-                result = engine._post_process_dynamic(
-                    base_seismogram, source, target)
-                result.n_records_stacked = n_records_stacked
-                result.n_shared_stacking = len(sources) * len(targets)
-                result.t_optimize = t_optimize
-                result.t_stack = t_stack
+                base_seismograms = engine.base_seismograms(
+                    source,
+                    store_targets,
+                    components,
+                    dsource_cache,
+                    nthreads)
+            except Exception as e:
+                e.context = OutOfBoundsContext(
+                    source=source,
+                    target=store_targets[0],
+                    distance=source.distance_to(store_targets[0]),
+                    components=components)
+                raise e
 
-            except SeismosizerError as e:
-                result = e
+            for seismogram, target in zip(base_seismograms, store_targets):
+                try:
+                    result = engine._post_process_dynamic(
+                            seismogram, source, target)
+                except SeismosizerError as e:
+                    result.e = e
 
-            results.append((isource, itarget, result))
-
-    tcounters.append(xtime())
-
-    return results, tcounters
+                yield (isource, target._id, result), tcounters
 
 
 def process_dynamic(work, psources, ptargets, engine, nthreads=0):
@@ -2953,6 +2942,46 @@ class LocalEngine(Engine):
 
         return cache[source, store]
 
+    def base_seismograms(self, source, targets, components, dsource_cache,
+                         nthreads=0):
+
+        target = targets[0]
+
+        store_ = self.get_store(target.store_id)
+        receivers = [t.receiver(store_) for t in targets]
+
+        ds = store_.config.sample_rate
+        itmin = num.array([t.tmin for t in targets], dtype=num.float)
+        itmax = num.array([t.tmax for t in targets], dtype=num.float)
+
+        if num.all(~num.isnan(itmin)) and num.all(~num.isnan(itmax)):
+            itmin = num.floor(itmax * ds).astype(num.int32)
+            nsamples = num.ceil((itmax - itmin) * ds).astype(num.int32)
+        else:
+            itmin = None
+            nsamples = None
+
+        base_source = self._cached_discretize_basesource(
+            source, store_, dsource_cache, target)
+
+        if target.sample_rate is not None:
+            deltat = 1. / target.sample_rate
+        else:
+            deltat = None
+
+        base_seismograms = store_.calc_seismograms(
+            base_source, receivers, components,
+            deltat=deltat,
+            itmin=itmin, nsamples=nsamples,
+            interpolation=target.interpolation,
+            optimization=target.optimization,
+            nthreads=nthreads)
+
+        for i, base_seismogram in enumerate(base_seismograms):
+            base_seismograms[i] = store.make_same_span(base_seismogram)
+
+        return base_seismograms
+
     def base_seismogram(self, source, target, components, dsource_cache,
                         nthreads):
 
@@ -3141,9 +3170,9 @@ class LocalEngine(Engine):
                   if not isinstance(target, StaticTarget)])
                 for (i, k) in enumerate(skeys)]
 
-            for ii_results, tcounters_dyn in process_dynamic(
+            for ii_results, tcounters_dyn in process_dynamic_new(
                     work_dynamic, request.sources, request.targets, self,
-                    nthreads=nthreads):
+                    nthreads=0):
 
                 tcounters_dyn_list.append(num.diff(tcounters_dyn))
                 isource, itarget, result = ii_results
