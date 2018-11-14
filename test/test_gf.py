@@ -939,8 +939,9 @@ class GFTestCase(unittest.TestCase):
             source = gf.DCSource(
                 lat=0., lon=0., depth=1*km, magnitude=8.)
 
-            # source = gf.RectangularSource(
-            #     lat=0., lon=0., depth=.5*km, length=dim, width=dim, anchor='top')
+            source = gf.RectangularSource(
+                lat=0., lon=0., depth=3*km,
+                length=dim, width=dim, anchor='top')
 
             targets = [gf.Target(
                 lat=rstate.uniform(),
@@ -962,6 +963,8 @@ class GFTestCase(unittest.TestCase):
 
             @benchmark.labeled('calc_timeseries')
             def calc_timeseries():
+                itmin = num.zeros(ntargets, dtype=num.int32)
+                nsamples = num.ones(ntargets, dtype=num.int32) * -1
                 return store_ext.store_calc_timeseries(
                     store.cstore,
                     source_coords_arr,
@@ -970,8 +973,8 @@ class GFTestCase(unittest.TestCase):
                     receiver_coords_arr,
                     'elastic10',
                     interpolation,
-                    0,
-                    -1,
+                    itmin,
+                    nsamples,
                     nthreads)
 
             @benchmark.labeled('sum_timeseries')
@@ -1005,14 +1008,15 @@ class GFTestCase(unittest.TestCase):
                 res_sum = sum_timeseries()
 
             for c, s in zip(res_calc, res_sum):
+                # print(c[0] - s[0])
                 num.testing.assert_equal(c[0], s[0], verbose=True)
 
         store = gf.Store('/home/marius/Development/testing/gf/crust2_de/')
         store.open()
 
         res = test_timeseries(
-            store, dim=1*km, niter=20,
-            ntargets=40, interpolation='multilinear', nthreads=0)
+            store, dim=1*km, niter=1,
+            ntargets=1, interpolation='multilinear', nthreads=1)
         print(benchmark)
 
         def plot(res):

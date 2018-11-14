@@ -1780,47 +1780,6 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
             util.ensuredirs(fn)
             ip.dump(fn)
 
-    def statics_old(self, source, multi_location, itsnapshot, components,
-                    interpolation='nearest_neighbor', nthreads=0):
-        if not self._f_index:
-            self.open()
-
-        out = {}
-        ntargets = multi_location.ntargets
-        source_terms = source.get_source_terms(self.config.component_scheme)
-        delays = source.times.astype(num.float32)
-        scheme_desc = meta.component_scheme_to_description[
-            self.config.component_scheme]
-
-        if ntargets == 0:
-            raise StoreError('MultiLocation.coords5 is empty')
-
-        try:
-            sum_params = store_ext.make_sum_params(
-                self.cstore,
-                source.coords5(),
-                source_terms,
-                multi_location.coords5,
-                self.config.component_scheme,
-                interpolation,
-                nthreads or 0)
-        except store_ext.StoreExtError:
-            raise meta.OutOfBounds()
-
-        for icomp, comp in enumerate(scheme_desc.provided_components):
-            if comp not in components:
-                continue
-            weights, irecords = sum_params[icomp]
-            out[comp] = self.sum_statics(
-                irecords,
-                delays,
-                weights,
-                itsnapshot,
-                ntargets,
-                nthreads or 0)
-
-        return out
-
     def statics(self, source, multi_location, itsnapshot, components,
                 interpolation='nearest_neighbor', nthreads=0):
         if not self._f_index:
@@ -1856,35 +1815,87 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
 
         return out
 
-    def seismogram_old(
-            self, source, receiver, components, deltat=None,
-            itmin=None, nsamples=None, interpolation='nearest_neighbor',
-            optimization='enable'):
-
-        out = {}
+    def calc_seismograms(self, source, receivers, components, deltat=None,
+                         itmin=None, nsamples=None,
+                         interpolation='nearest_neighbor',
+                         optimization='enable', nthreads=1):
+        config = self.config
 
         if deltat is None:
             decimate = 1
         else:
-            decimate = int(round(deltat/self.config.deltat))
-            if abs(deltat / (decimate * self.config.deltat) - 1.0) > 0.001:
+            decimate = int(round(deltat/config.deltat))
+            if abs(deltat / (decimate * config.deltat) - 1.0) > 0.001:
                 raise StoreError(
                     'unavailable decimation ratio target.deltat / store.deltat'
-                    ' = %g / %g' % (deltat, self.config.deltat))
+                    ' = %g / %g' % (deltat, config.deltat))
 
-        for (component, args, delays, weights) in \
-                self.config.make_sum_params(source, receiver):
+        store, decimate_ = self._decimated_store(decimate)
 
-            if component in components:
-                gtr = self.sum(args, delays, weights,
-                               decimate=decimate,
-                               itmin=itmin, nsamples=nsamples,
-                               interpolation=interpolation,
-                               optimization=optimization)
+        if not store._f_index:
+            store.open()
 
-                out[component] = gtr
+        scheme = config.component_scheme
+        scheme_desc = meta.component_scheme_to_description[
+            config.component_scheme]
 
-        return out
+        source_coords_arr = source.coords5()
+        source_terms = source.get_source_terms(scheme)
+        delays = source.times.ravel()
+
+        nreceiver = len(receivers)
+        receiver_coords_arr = num.empty((nreceiver, 5))
+        for irec, rec in enumerate(receivers):
+            receiver_coords_arr[irec, :] = rec.coords5
+
+        dt = self._deltat
+        itoffset = int(num.floor(delays.min()/dt)) if delays.size != 0 else 0
+
+        if itmin is None:
+            itmin = num.zeros(nreceiver, dtype=num.int32)
+        else:
+            itmin -= itoffset
+
+        if nsamples is None:
+            nsamples = num.zeros(nreceiver, dtype=num.int32) - 1
+
+        try:
+            results = store_ext.store_calc_timeseries(
+                store.cstore,
+                source_coords_arr,
+                source_terms,
+                delays,
+                receiver_coords_arr,
+                scheme,
+                interpolation,
+                itmin,
+                nsamples,
+                nthreads)
+        except Exception as e:
+            raise e
+
+        provided_components = scheme_desc.provided_components
+        ncomponents = len(provided_components)
+
+        seismograms = [{}] * nreceiver
+        for ires, res in enumerate(results):
+            ireceiver = ires // ncomponents
+
+            comp = provided_components[res[-1]]
+            if comp not in components:
+                continue
+
+            tr = GFTrace(*res[:-1])
+            tr.deltat = config.deltat * decimate
+            tr.itmin += itoffset
+
+            tr.n_records_stacked = 0
+            tr.t_optimize = 0.
+            tr.t_stack = 0.
+
+            seismograms[ireceiver][comp] = tr
+
+        return seismograms
 
     def seismogram(self, source, receiver, components, deltat=None,
                    itmin=None, nsamples=None,
