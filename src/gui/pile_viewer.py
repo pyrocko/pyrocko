@@ -3780,7 +3780,7 @@ def MakePileViewerMainClass(base):
                             arg = toks2[1]
                             m = re.match(
                                 r'^\d\d\d\d(-\d\d(-\d\d( \d\d(:\d\d'
-                                r'(:\d\d(.\d+)?)?)?)?)?)?$', arg)
+                                r'(:\d\d(\.\d+)?)?)?)?)?)?$', arg)
                             if m:
                                 tlen = None
                                 if not m.group(1):
@@ -3800,7 +3800,7 @@ def MakePileViewerMainClass(base):
                                 t = pyrocko.util.str_to_time(arg)
                                 self.go_to_time(t, tlen=tlen)
 
-                            elif re.match(r'^\d\d:\d\d(:\d\d(.\d+)?)?$', arg):
+                            elif re.match(r'^\d\d:\d\d(:\d\d(\.\d+)?)?$', arg):
                                 supl = '00:00:00'
                                 if len(supl) > len(arg):
                                     arg = arg + supl[-(len(supl)-len(arg)):]
