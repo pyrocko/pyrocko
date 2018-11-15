@@ -626,7 +626,7 @@ def plot_fuzzy_beachball_mpl_pixmap(
         projection='lambert',
         size_units='data',
         grid_resolution=200,
-        method='contourf'):
+        method='imshow'):
     '''
     Plot fuzzy beachball from a list of given MomentTensors
 
@@ -640,9 +640,6 @@ def plot_fuzzy_beachball_mpl_pixmap(
         polygons are not plotted
 
     See plot_beachball_mpl for other arguments
-
-    .. note: The related axes should only be saved as raster image (e.g. png)
-             otherwise output might be looking unexpected!
     '''
     if size_units == 'points':
         raise BeachballError(
