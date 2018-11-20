@@ -19,65 +19,46 @@ examples below.
 Invocation
 ----------
 
+To start cake, just open a terminal and type "cake", 
+so the console will give you a bunch of options from which you can choose.
+
+
+
+Now as you have seen there's some subcommands; with a ruff description.
+If you want to know more, just append *-h* or *--help*.
+This works for cake itself::
+
+	cake -h 
+
+or for the subcommands as well, like::
+
+	cake plot-rays --help
+
+or more general:
+
 .. program:: cake
 
 ::
 
     cake <subcommand> [options]
 
-Subcommands:
+To be more precise, all subcommands can further be specified by the *--options* 
+appended to the initial command.
 
-.. describe::    print
+The complete list of subcommands is: 
 
-    get information on model/phase/material properties
-
-.. describe::    arrivals
-
-    print list of phase arrivals
-
-.. describe::    paths
-
-    print ray path details
-
-.. describe::    plot-xt
-
-    plot traveltime vs distance curves
-
-.. describe::    plot-xp
-
-    plot ray parameter vs distance curves
-
-.. describe::    plot-rays
-
-    plot ray propagation paths
-
-.. describe::    plot
-
-    plot combination of ray and traveltime curves
-
-.. describe::    plot-model
-
-    plot velocity model
-
-.. describe::    list-models
-
-    list builtin velocity models
-
-.. describe::    list-phase-map
-
-    show translation table for classic phase names
-
-.. describe::    simplify-model
-
-    create a simplified version of a layered model
-
-.. describe::    scatter
-
-    show details about scattering at model interfaces
-
-To get further help and a list of available options for any subcommand run::
-
-    cake <subcommand> --help
+* print
+* arrivals
+* paths
+* plot-xt
+* plot-xp
+* plot-rays
+* plot
+* plot-model
+* list-models
+* list-phase-map
+* simplify-model
+* scatter
 
 
 Options
