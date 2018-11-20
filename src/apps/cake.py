@@ -13,8 +13,7 @@ from pyrocko import cake, util, orthodrome
 from pyrocko.plot import cake_plot as plot
 from optparse import OptionParser, OptionGroup
 import matplotlib.pyplot as plt
-from pyrocko.plot import mpl_init, mpl_papersize, mpl_margins, \
-    mpl_graph_color, mpl_color
+from pyrocko.plot import mpl_init, mpl_papersize, mpl_margins
 
 r2d = cake.r2d
 
@@ -289,8 +288,6 @@ as in --phases.''')
             group.add_option(
                 '-u', '--show', dest='show', action='store_true',
                 help='shows plot when saving (-u for unhide)')
-
-
 
         parser.add_option_group(group)
 
@@ -746,7 +743,7 @@ To get further help and a list of available options for any subcommand run:
             c = optparse(
                 ('model', 'phases'),
                 ('zstart', 'zstop', 'distances', 'as_degrees', 'aspect',
-                 'shade_model', 'phase_colors', 'save', 'size','show'),
+                 'shade_model', 'phase_colors', 'save', 'size', 'show'),
                 usage=subusage, descr=descr)
 
         mod = c.model
@@ -833,7 +830,7 @@ To get further help and a list of available options for any subcommand run:
             (),
             ('model', 'accuracy', 'slowness', 'interface', 'phases',
              'distances', 'zstart', 'zstop', 'distances', 'as_degrees',
-             'material', 'vred','save'),
+             'material', 'vred', 'save'),
             usage='cake help-options', descr='list all available options')
 
     elif command in ('--help', '-h', 'help'):

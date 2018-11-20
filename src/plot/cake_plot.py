@@ -10,8 +10,8 @@ import numpy as num
 from pyrocko import cake
 from . import mpl_labelspace as labelspace, mpl_init,\
     mpl_color as str_to_mpl_color, InvalidColorDef
-from pyrocko.plot import mpl_init, mpl_papersize, mpl_margins, \
-    mpl_graph_color, mpl_color
+# from pyrocko.plot import mpl_init, mpl_papersize, mpl_margins, \
+#     mpl_graph_color, mpl_color
 
 str_to_mpl_color
 InvalidColorDef
@@ -22,7 +22,8 @@ r2d = cake.r2d
 
 def globe_cross_section():
     # modified from http://stackoverflow.com/questions/2417794/
-    # how-to-make-the-angles-in-a-matplotlib-polar-plot-go-clockwise-with-0-at-the-to
+    # how-to-make-the-angles-in-a-matplotlib-
+    # polar-plot-go-clockwise-with-0-at-the-top
 
     from matplotlib.projections import PolarAxes, register_projection
     from matplotlib.transforms import Affine2D, Bbox, IdentityTransform
@@ -579,6 +580,7 @@ def my_xp_plot(
         if show is True:
             plt.show()
 
+
 def my_xt_plot(
         paths, zstart, zstop,
         distances=None,
@@ -682,6 +684,7 @@ def my_rays_plot(
         if show is True:
             plt.show()
 
+
 def my_combi_plot(
         mod, paths, rays, zstart, zstop,
         distances=None,
@@ -723,7 +726,7 @@ def my_combi_plot(
     my = (ymax-ymin)*0.05
     ax2.set_xlim(xmin-mx, xmax+mx)
     ax2.set_ylim(ymax+my, ymin-my)
-    
+
     if show is True:
         plt.show()
 
@@ -755,4 +758,3 @@ def my_model_plot(mod, axes=None, show=True):
     if plt:
         if show is True:
             plt.show()
-
