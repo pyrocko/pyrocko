@@ -48,6 +48,7 @@ in the Pyrocko source directory)::
 '''
 from __future__ import absolute_import
 from pyrocko.util import parse_md
+from pyrocko.guts import StringChoice, Float, Int, Bool, Tuple, Object
 
 from builtins import str as newstr
 
@@ -55,6 +56,9 @@ import math
 import random
 
 __doc__ += parse_md(__file__)
+
+
+guts_prefix = 'pf'
 
 point = 1.
 inch = 72.
@@ -232,7 +236,30 @@ def papersize(paper, orientation='landscape', units='point'):
 papersize.__doc__ %= (_doc_papersizes, _doc_units)
 
 
-class AutoScaler(object):
+class AutoScaleMode(StringChoice):
+    '''
+    Mode of operation for auto-scaling.
+
+    ================ ==================================================
+    mode             description
+    ================ ==================================================
+    ``'auto'``:      Look at data range and choose one of the choices
+                     below.
+    ``'min-max'``:   Output range is selected to include data range.
+    ``'0-max'``:     Output range shall start at zero and end at data
+                     max.
+    ``'min-0'``:     Output range shall start at data min and end at
+                     zero.
+    ``'symmetric'``: Output range shall by symmetric by zero.
+    ``'off'``:       Similar to ``'min-max'``, but snap and space are
+                     disabled, such that the output range always
+                     exactly matches the data range.
+    ================ ==================================================
+    '''
+    choices = ['auto', 'min-max', '0-max', 'min-0', 'symmetric', 'off']
+
+
+class AutoScaler(Object):
 
     '''
     Tunable 1D autoscaling based on data range.
@@ -242,63 +269,48 @@ class AutoScaler(object):
     notation.
 
     The autoscaling process is guided by the following public attributes:
+    '''
 
-        .. py:attribute:: approx_ticks
+    approx_ticks = Float.T(
+        default=7.0,
+        help='Approximate number of increment steps (tickmarks) to generate.')
 
-            Approximate number of increment steps (tickmarks) to generate.
+    mode = AutoScaleMode.T(
+        default='auto',
+        help='''Mode of operation for auto-scaling.''')
 
-        .. py:attribute:: mode
+    exp = Int.T(
+        optional=True,
+        help='If defined, override automatically determined exponent for '
+             'notation by the given value.')
 
-            Mode of operation: one of ``'auto'``, ``'min-max'``, ``'0-max'``,
-            ``'min-0'``, ``'symmetric'`` or ``'off'``.
+    snap = Bool.T(
+        default=False,
+        help='If set to True, snap output range to multiples of increment. '
+             'This parameter has no effect, if mode is set to ``\'off\'``.')
 
-            ================ ==================================================
-            mode             description
-            ================ ==================================================
-            ``'auto'``:      Look at data range and choose one of the choices
-                             below.
-            ``'min-max'``:   Output range is selected to include data range.
-            ``'0-max'``:     Output range shall start at zero and end at data
-                             max.
-            ``'min-0'``:     Output range shall start at data min and end at
-                             zero.
-            ``'symmetric'``: Output range shall by symmetric by zero.
-            ``'off'``:       Similar to ``'min-max'``, but snap and space are
-                             disabled, such that the output range always
-                             exactly matches the data range.
-            ================ ==================================================
+    inc = Float.T(
+        optional=True,
+        help='If defined, override automatically determined tick increment by '
+             'the given value.')
 
-        .. py:attribute:: exp
+    space = Float.T(
+        default=0.0,
+        help='Add some padding to the range. The value given, is the fraction '
+             'by which the output range is increased on each side. If mode is '
+             '``\'0-max\'`` or ``\'min-0\'``, the end at zero is kept fixed '
+             'at zero. This parameter has no effect if mode is set to '
+             '``\'off\'``.')
 
-            If defined, override automatically determined exponent for notation
-            by the given value.
+    exp_factor = Int.T(
+        default=3,
+        help='Exponent of notation is chosen to be a multiple of this value.')
 
-        .. py:attribute:: snap
-
-            If set to True, snap output range to multiples of increment. This
-            parameter has no effect, if mode is set to ``'off'``.
-
-        .. py:attribute:: inc
-
-            If defined, override automatically determined tick increment by the
-            given value.
-
-        .. py:attribute:: space
-
-            Add some padding to the range. The value given, is the fraction by
-            which the output range is increased on each side. If mode is
-            ``'0-max'`` or ``'min-0'``, the end at zero is kept fixed at zero.
-            This parameter has no effect if mode is set to ``'off'``.
-
-        .. py:attribute:: exp_factor
-
-            Exponent of notation is chosen to be a multiple of this value.
-
-        .. py:attribute:: no_exp_interval:
-
-            Range of exponent, for which no exponential notation is allowed.
-
-   '''
+    no_exp_interval = Tuple.T(
+        2, Int.T(),
+        default=(-3, 5),
+        help='Range of exponent, for which no exponential notation is a'
+             'allowed.')
 
     def __init__(
             self,
@@ -317,14 +329,16 @@ class AutoScaler(object):
         The parameters are described in the AutoScaler documentation.
         '''
 
-        self.approx_ticks = approx_ticks
-        self.mode = mode
-        self.exp = exp
-        self.snap = snap
-        self.inc = inc
-        self.space = space
-        self.exp_factor = exp_factor
-        self.no_exp_interval = no_exp_interval
+        Object.__init__(
+            self,
+            approx_ticks=approx_ticks,
+            mode=mode,
+            exp=exp,
+            snap=snap,
+            inc=inc,
+            space=space,
+            exp_factor=exp_factor,
+            no_exp_interval=no_exp_interval)
 
     def make_scale(self, data_range, override_mode=None):
 
