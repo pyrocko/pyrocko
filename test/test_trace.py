@@ -25,6 +25,11 @@ def floats(l):
     return num.array(l, dtype=num.float)
 
 
+def is_multiple(x, d, eps):
+    x2 = int(round(x / d)) * d
+    return abs(x - x2) < d*eps
+
+
 class TraceTestCase(unittest.TestCase):
 
     def testIntegrationDifferentiation(self):
@@ -238,25 +243,56 @@ class TraceTestCase(unittest.TestCase):
         assert a.ydata.size == 10000*1000
 
     def testDownsampling(self):
-        for (dt1, dt2, test_fail) in [
-                (1./125., 1/10., True),
-                (1., 5., False)]:
 
-            n = 1024
-            xdata = num.arange(n, dtype=num.float)
-            ydata = num.exp(-((xdata-n/2)/10.)**2)
-            t = trace.Trace(
-                ydata=ydata, tmin=sometime, deltat=dt1, location='1')
+        data = [
+            (1./125., 1/10., True)]
 
-            t2 = t.copy()
-            t2.set_codes(location='2')
-            if test_fail:
-                with self.assertRaises(trace.UnavailableDecimation):
-                    t2.downsample_to(dt2, allow_upsample_max=1)
+        for f in [0.1, 1.0, 10.]:
+            for i in range(1, 6):
+                data.append((f*float(1.), f*float(i), False))
 
-            t2.downsample_to(dt2, allow_upsample_max=10)
+        for (dt1, dt2, test_fail) in data:
 
-            assert t2.deltat == dt2
+            for toff in [
+                    num.random.random() * dt1 + num.random.random() * dt2]:
+
+                n = 1024
+                xdata = num.arange(n, dtype=num.float)
+                ydata = num.exp(-((xdata-n/2)/10.)**2)
+
+                for orig_snap in (True, False):
+                    t = trace.Trace(
+                        ydata=ydata,
+                        tmin=sometime+toff,
+                        deltat=dt1,
+                        location='1')
+
+                    if orig_snap:
+                        t.snap()
+
+                    t2 = t.copy()
+                    if test_fail:
+                        with self.assertRaises(trace.UnavailableDecimation):
+                            t2.downsample_to(dt2, allow_upsample_max=1)
+
+                    for snap in (True, False):
+                        t2 = t.copy()
+                        t2.set_codes(location='2')
+                        t2.downsample_to(dt2, allow_upsample_max=10, snap=snap)
+
+                        # print(
+                        #     "%20.4f %6s %10.4f %10.4f %20.4f %20.4f %6s" % (
+                        #         toff, snap,
+                        #         t.deltat, t2.deltat,
+                        #         t.tmin, t2.tmin,
+                        #         is_multiple(t2.tmin, t2.deltat, 1e-3)))
+
+                        if snap and orig_snap:
+                            assert is_multiple(t2.tmin, t2.deltat, 1e-3)
+                        elif snap and not orig_snap:
+                            assert abs(
+                                int(round(t2.tmin / t2.deltat)) *
+                                t2.deltat - t2.tmin) <= 0.51*t.deltat
 
             # trace.snuffle([t, t2])
 
