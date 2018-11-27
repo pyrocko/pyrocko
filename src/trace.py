@@ -1115,6 +1115,17 @@ class Trace(object):
 
         return xself
 
+    def fix_deltat_rounding_errors(self):
+        '''
+        Try to undo sampling rate rounding errors.
+
+        See :py:func:`fix_deltat_rounding_errors`.
+        '''
+
+        self.deltat = fix_deltat_rounding_errors(self.deltat)
+        self.tmax = self.tmin + (self.data_len() - 1) * self.deltat
+
+
     def sta_lta_centered(self, tshort, tlong, quad=True, scalingmethod=1):
         '''
         Run special STA/LTA filter where the short time window is centered on
@@ -2467,6 +2478,29 @@ def same_sampling_rate(a, b, eps=1.0e-6):
     '''
 
     return abs(a.deltat - b.deltat) < (a.deltat + b.deltat)*eps
+
+
+def fix_deltat_rounding_errors(deltat):
+    '''
+    Try to undo sampling rate rounding errors.
+
+    Fix rounding errors of sampling intervals when these are read from single
+    precision floating point values.
+
+    Assumes that the true sampling rate or sampling interval was an integer
+    value. No correction will be applied if this would change the sampling
+    rate by more than 0.001%.
+    '''
+
+    if deltat <= 1.0:
+        deltat_new = 1.0 / round(1.0 / deltat)
+    else:
+        deltat_new = round(deltat)
+
+    if abs(deltat_new - deltat) / deltat > 1e-5:
+        deltat_new = deltat
+
+    return deltat_new
 
 
 def merge_codes(a, b, sep='-'):
