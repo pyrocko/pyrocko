@@ -2614,7 +2614,7 @@ class OutOfBoundsContext(Object):
     components = List.T(String.T())
 
 
-def process_dynamic_new(work, psources, ptargets, engine, nthreads=0):
+def process_dynamic_timeseries(work, psources, ptargets, engine, nthreads=0):
     dsource_cache = {}
     tcounters = list(range(6))
 
@@ -2622,17 +2622,26 @@ def process_dynamic_new(work, psources, ptargets, engine, nthreads=0):
 
     for itarget, target in enumerate(ptargets):
         target._id = itarget
-        store_ids.add(target.store_id)
+
+    sources = set()
+    targets = set()
+    for w in work:
+        _, _, isources, itargets = w
+
+        sources.update(set([psources[isource] for isource in isources]))
+        targets.update(set([ptargets[itarget] for itarget in itargets]))
+
+    store_ids = set([t.store_id for t in targets])
 
     for isource, source in enumerate(psources):
 
         components = set()
-        for itarget, target in enumerate(ptargets):
+        for itarget, target in enumerate(targets):
             rule = engine.get_rule(source, target)
             components.update(rule.required_components(target))
 
         for store_id in store_ids:
-            store_targets = [t for t in ptargets if t.store_id == store_id]
+            store_targets = [t for t in targets if t.store_id == store_id]
 
             try:
                 base_seismograms = engine.base_seismograms(
@@ -2654,7 +2663,7 @@ def process_dynamic_new(work, psources, ptargets, engine, nthreads=0):
                     result = engine._post_process_dynamic(
                             seismogram, source, target)
                 except SeismosizerError as e:
-                    result.e = e
+                    result = e
 
                 yield (isource, target._id, result), tcounters
 
@@ -3032,7 +3041,6 @@ class LocalEngine(Engine):
         if target.tsnapshot is not None:
             n_f = store_.config.sample_rate
             itsnapshot = int(num.floor(target.tsnapshot * n_f))
-            # print target.tsnapshot, n_f, itsnapshot
         else:
             itsnapshot = 1
         tcounters.append(xtime())
@@ -3124,6 +3132,7 @@ class LocalEngine(Engine):
 
         request = kwargs.pop('request', None)
         status_callback = kwargs.pop('status_callback', None)
+        calc_timeseries = kwargs.pop('calc_timeseries', True)
 
         nprocs = kwargs.pop('nprocs', None)
         nthreads = kwargs.pop('nthreads', 1)
@@ -3162,6 +3171,12 @@ class LocalEngine(Engine):
 
         # Processing dynamic targets through
         # parimap(process_subrequest_dynamic)
+
+        if calc_timeseries:
+            _process_dynamic = process_dynamic_timeseries
+        else:
+            _process_dynamic = process_dynamic
+
         if request.has_dynamic:
             work_dynamic = [
                 (i, nsub,
@@ -3170,9 +3185,9 @@ class LocalEngine(Engine):
                   if not isinstance(target, StaticTarget)])
                 for (i, k) in enumerate(skeys)]
 
-            for ii_results, tcounters_dyn in process_dynamic_new(
+            for ii_results, tcounters_dyn in _process_dynamic(
                     work_dynamic, request.sources, request.targets, self,
-                    nthreads=0):
+                    nthreads):
 
                 tcounters_dyn_list.append(num.diff(tcounters_dyn))
                 isource, itarget, result = ii_results
