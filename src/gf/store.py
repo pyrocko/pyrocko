@@ -402,10 +402,6 @@ class BaseStore(object):
         return self._sum(irecords, delays, weights, itmin, nsamples, decimate,
                          implementation, optimization)
 
-    def sum_statics(self, irecords, delays, weights, it, ntargets, nthreads=0):
-        return self._sum_statics(irecords, delays, weights, it, ntargets,
-                                 nthreads)
-
     def irecord_format(self):
         return util.zfmt(self._nrecords)
 
@@ -797,28 +793,6 @@ class BaseStore(object):
 
         return irecords3, delays3, weights3
 
-    def _optimize_statics(self, irecords, weights):
-        if num.unique(irecords).size == irecords.size:
-            return irecords, weights
-
-        iorder = num.argsort(irecords)
-
-        irecords2 = irecords[iorder]
-        weights2 = weights[iorder]
-
-        ui = num.empty(irecords2.size, dtype=num.bool)
-        ui[1:] = num.diff(irecords2) != 0
-
-        ui[0] = 0
-        ind2 = num.cumsum(ui)
-        ui[0] = 1
-        ind1 = num.where(ui)[0]
-
-        irecords3 = irecords2[ind1]
-        weights3 = num.bincount(ind2, weights2)
-
-        return irecords3, weights3
-
     def _sum(self, irecords, delays, weights, itmin, nsamples, decimate,
              implementation, optimization):
 
@@ -875,32 +849,6 @@ class BaseStore(object):
         tr.t_stack = t2 - t1
 
         return tr
-
-    def _sum_static_python(self, irecords, weights, implementation,
-                           optimization):
-
-        if not self._f_index:
-            self.open()
-
-        t0 = time.time()
-        if optimization == 'enable':
-            irecords, weights = self._optimize_statics(
-                irecords, weights)
-        else:
-            assert optimization == 'disable'
-
-        t1 = time.time()
-
-        value = num.sum(self._end_values[irecords] * weights)
-        val = GFValue(value)
-
-        t2 = time.time()
-
-        val.n_records_stacked = irecords.size
-        val.t_optimize = t1 - t0
-        val.t_stack = t2 - t1
-
-        return val
 
     def _sum_statics(self, irecords, delays, weights, it, ntargets,
                      nthreads):
@@ -1877,7 +1825,7 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
         provided_components = scheme_desc.provided_components
         ncomponents = len(provided_components)
 
-        seismograms = [{}] * nreceiver
+        seismograms = [dict() for _ in range(nreceiver)]
         for ires, res in enumerate(results):
             ireceiver = ires // ncomponents
 
@@ -1936,7 +1884,6 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
                 interpolation, nthreads)
 
         except store_ext.StoreExtError as e:
-            raise e
             raise meta.OutOfBounds()
 
         provided_components = scheme_desc.provided_components

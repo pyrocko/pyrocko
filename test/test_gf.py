@@ -893,7 +893,6 @@ class GFTestCase(unittest.TestCase):
                 idim = 8
             if interpolation == 'nearest_neighbor':
                 idim = 1
-            print(store.config)
 
             nsummands_scheme = [5, 5, 3]  # elastic8
             nsummands_scheme = [6, 6, 4]  # elastic10
@@ -1015,8 +1014,8 @@ class GFTestCase(unittest.TestCase):
         store.open()
 
         res = test_timeseries(
-            store, dim=1*km, niter=1,
-            ntargets=1, interpolation='multilinear', nthreads=1)
+            store, dim=10*km, niter=1,
+            ntargets=20, interpolation='multilinear', nthreads=0)
         print(benchmark)
 
         def plot(res):
@@ -1026,6 +1025,43 @@ class GFTestCase(unittest.TestCase):
 
         # plot(res)
         # print(res)
+
+    def test_process_timeseries(self):
+        store_dir = self.get_pulse_store_dir()
+
+        engine = gf.LocalEngine(store_dirs=['/home/marius/Development/testing/gf/global_2s/'])
+
+        sources = [
+            gf.ExplosionSource(
+                time=0.0,
+                depth=depth,
+                moment=moment)
+
+            for moment in [3.0] for depth in [300.]
+        ]
+
+        targets = [
+            gf.Target(
+                codes=('', 'ST%d' % i, '', component),
+                north_shift=shift*km,
+                east_shift=0.)
+
+            for component in 'ZNE' for i, shift in enumerate([100, 200, 300])
+        ]
+
+        response_sum = engine.process(sources=sources, targets=targets,
+                                      calc_timeseries=False, nthreads=0)
+        response_calc = engine.process(sources=sources, targets=targets,
+                                       calc_timeseries=True, nthreads=0)
+
+        for (source, target, tr), (source_n, target_n, tr_n) in zip(
+                response_sum.iter_results(), response_calc.iter_results()):
+            t1 = tr.get_xdata()
+            t2 = tr_n.get_xdata()
+
+            num.testing.assert_equal(t1, t2)
+            assert source is source_n
+            assert target is target_n
 
     def _test_homogeneous_scenario(
             self,
@@ -1188,7 +1224,6 @@ class GFTestCase(unittest.TestCase):
                     limit = 1e-6
 
                 if not num.all(ds < limit):
-                    print(ds)
                     trace.snuffle(trs1+trs2)
 
                 assert num.all(ds < limit)
@@ -1219,7 +1254,7 @@ for config_type_class in gf.config_type_classes:
                     test_homogeneous_scenario.__name__ = name
 
                     return test_homogeneous_scenario
-
+                continue
                 setattr(GFTestCase, name, make_method(
                     config_type_class, scheme, discretized_source_class))
 
