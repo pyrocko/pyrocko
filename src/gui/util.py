@@ -399,12 +399,13 @@ class Progressbar(object):
         self.pbar = qw.QProgressBar(parent)
         self.aborted = False
         self.time_last_update = 0.
+        print('xx',can_abort)
         if can_abort:
             self.abort_button = qw.QPushButton('Abort', parent)
             self.abort_button.clicked.connect(
                 self.abort)
         else:
-            self.abort_button = False
+            self.abort_button = None
 
     def widgets(self):
         widgets = [self.label, self.bar()]
@@ -428,7 +429,7 @@ class Progressbars(qw.QFrame):
         self.start_times = {}
         self.hide()
 
-    def set_status(self, name, value):
+    def set_status(self, name, value, can_abort=True):
         now = time.time()
         if name not in self.start_times:
             self.start_times[name] = now
@@ -442,7 +443,7 @@ class Progressbars(qw.QFrame):
         if name not in self.bars:
             if value == 100:
                 return False
-            self.bars[name] = Progressbar(self, name)
+            self.bars[name] = Progressbar(self, name, can_abort=can_abort)
             self.make_layout()
 
         bar = self.bars[name]
