@@ -823,7 +823,8 @@ static store_error_t ensure_trace_capacity(result_trace_t *result, int itmin, in
 
 
         new_buffer = (gf_dtype*) calloc(new_capacity, sizeof(gf_dtype));
-        /* TODO handle alloc failure */
+        if (new_buffer == NULL)
+            return ALLOC_FAILED;
 
         memcpy(new_buffer + start_pos, result->buffer, sizeof(gf_dtype) * result->ncapacity);
         
@@ -874,7 +875,6 @@ static store_error_t check_trace_extent(
 
     if (result->nsamples_want == -1) {
         err = store_get_span(store, irecord, &itmin, &ns, &is_zero);
-        /* TODO handle error */
 
         idelay = delay/store->deltat;
         itmin = itmin + (int) floor(idelay);
@@ -995,10 +995,6 @@ static store_error_t store_calc_timeseries(
     uint64_t irecord_bases[VICINITY_NIP_MAX];
     float64_t weights_ip[VICINITY_NIP_MAX];
 
-    /*if (!inlimits(itmin)) { // || !inposlimits(nsamples)
-        return BAD_REQUEST;
-    }*/
-
     nsummands_max = cscheme->nsummands_max;
     nip = mscheme->vicinity_nip;
 
@@ -1065,14 +1061,11 @@ static store_error_t store_calc_timeseries(
 
                             idx_record = irecord_bases[iip] + cscheme->igs[icomponent][isummand];
                             err += check_trace_extent(store, result, delay, idx_record);
-                            /* TODO handle possible errors */
-
-                            if (weight == 0.)
+                            if (err != SUCCESS || weight == 0.)
                                 continue;
 
                             err += store_get(store, idx_record, &trace);
-                            /* TODO handle errors */
-                            if (trace.is_zero)
+                            if (err != SUCCESS || trace.is_zero)
                                 continue;
 
                             trace_trim_sticky(
@@ -1125,13 +1118,12 @@ static store_error_t store_calc_timeseries(
 
                         idx_record = irecord_bases[0] + cscheme->igs[icomponent][isummand];
                         err += check_trace_extent(store, result, delay, idx_record);
-
-                        if (weight == 0.)
+                        if (err != SUCCESS || weight == 0.)
                             continue;
 
                         err += store_get(store, idx_record, &trace);
-                        if (trace.is_zero)
-                                continue;
+                        if (err != SUCCESS || trace.is_zero)
+                            continue;
 
                         trace_trim_sticky(
                             &trace,
@@ -2505,9 +2497,10 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
     const component_scheme_t *cscheme;
     const mapping_scheme_t *mscheme;
     interpolation_scheme_id interpolation;
+    gf_dtype *data;
 
     float64_t *source_coords, *receiver_coords, *ms, *delays;
-    int32_t *itmin, *nsamples, this_nsamples, this_itmin;
+    int32_t *itmin, *nsamples, nsamples_want, itmin_want;
     int nsources, nreceivers;
     int32_t nthreads;
     store_error_t err;
@@ -2613,11 +2606,11 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
         nsamples_want = nsamples[ires / cscheme->ncomponents];
         itmin_want = itmin[ires / cscheme->ncomponents];
 
-        if (nsamples_want == -1)
-            itmin_want = 999999;
-
         result_trace_t *result = malloc(sizeof(result_trace_t));
-        /* TODO can fail */
+        if (result == NULL) {
+            PyErr_SetString(st->error, "Could not allocate result struct");
+            return NULL;
+        }
 
         result->icomponent = ires % cscheme->ncomponents;
 
@@ -2635,7 +2628,10 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
             result->ncapacity = (nsamples_want / RESULT_INIT_CAPACITY + 1) + RESULT_INIT_CAPACITY * 2;
 
         result->buffer = (gf_dtype*) calloc(result->ncapacity, sizeof(gf_dtype));
-        /* TODO can fail */
+        if (result->buffer == NULL) {
+            PyErr_SetString(st->error, "Could not allocate result data array");
+            return NULL;
+        }
         
         result->buf_pos = RESULT_INIT_CAPACITY;
         result->data = result->buffer + RESULT_INIT_CAPACITY;
@@ -2667,13 +2663,19 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
     for (ires=0; ires < nreceivers*cscheme->ncomponents; ires++) {
         result_trace_t *result = results[ires];
 
-        array = (PyArrayObject*) PyArray_SimpleNewFromData(1, array_dims, NPY_GFDTYPE, result->data);
-        /* TODO copy array to avoid mem leak */
+        data = malloc(result->nsamples * sizeof(gf_dtype));
+        memcpy(data, result->data, result->nsamples * sizeof(gf_dtype));
+
+        array_dims[0] = result->nsamples;
+        array = (PyArrayObject*) PyArray_SimpleNewFromData(1, array_dims, NPY_GFDTYPE, data);
+        PyArray_ENABLEFLAGS(array, NPY_ARRAY_OWNDATA);
 
         PyList_Append(
             out_list,
             Py_BuildValue("Nififfi", array, result->itmin, store->deltat,
                 result->is_zero, result->begin_value, result->end_value, result->icomponent));
+
+        free(result->buffer);
 
         /*printf("comp: %d, nsamples: %d, itmin: %d\n", result->icomponent, result->nsamples, result->itmin);*/
     }
