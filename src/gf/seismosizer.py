@@ -2619,17 +2619,17 @@ def process_dynamic_timeseries(work, psources, ptargets, engine, nthreads=0):
     tcounters = list(range(6))
 
     store_ids = set()
+    sources = set()
+    targets = set()
 
     for itarget, target in enumerate(ptargets):
         target._id = itarget
 
-    sources = set()
-    targets = set()
     for w in work:
         _, _, isources, itargets = w
 
-        sources.update(set([psources[isource] for isource in isources]))
-        targets.update(set([ptargets[itarget] for itarget in itargets]))
+        sources.update([psources[isource] for isource in isources])
+        targets.update([ptargets[itarget] for itarget in itargets])
 
     store_ids = set([t.store_id for t in targets])
 
