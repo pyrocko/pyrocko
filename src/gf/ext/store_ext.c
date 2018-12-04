@@ -821,8 +821,12 @@ static store_error_t ensure_trace_capacity(result_trace_t *result, int itmin, in
             start_pos = (new_capacity - nsamples) / 2;
         } while (nsamples > new_capacity - start_pos);
 
+
         new_buffer = (gf_dtype*) calloc(new_capacity, sizeof(gf_dtype));
+        /* TODO handle alloc failure */
+
         memcpy(new_buffer + start_pos, result->buffer, sizeof(gf_dtype) * result->ncapacity);
+        
         free(result->buffer);
 
         result->buf_pos = start_pos;
@@ -870,6 +874,7 @@ static store_error_t check_trace_extent(
 
     if (result->nsamples_want == -1) {
         err = store_get_span(store, irecord, &itmin, &ns, &is_zero);
+        /* TODO handle error */
 
         idelay = delay/store->deltat;
         itmin = itmin + (int) floor(idelay);
@@ -1029,8 +1034,10 @@ static store_error_t store_calc_timeseries(
             delay = delays[isource];
             idelay_floor = (int) floor(delay/deltat);
             idelay_ceil = (int) ceil(delay/deltat);
-            if (!inlimits(idelay_floor) || !inlimits(idelay_ceil))
+            if (!inlimits(idelay_floor) || !inlimits(idelay_ceil)) {
                 err += BAD_REQUEST;
+                continue;
+            }
             
             if (interpolation == MULTILINEAR) {
                 err += mscheme->vicinity(
@@ -1058,11 +1065,13 @@ static store_error_t store_calc_timeseries(
 
                             idx_record = irecord_bases[iip] + cscheme->igs[icomponent][isummand];
                             err += check_trace_extent(store, result, delay, idx_record);
+                            /* TODO handle possible errors */
 
                             if (weight == 0.)
                                 continue;
 
                             err += store_get(store, idx_record, &trace);
+                            /* TODO handle errors */
                             if (trace.is_zero)
                                 continue;
 
@@ -2601,30 +2610,33 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
     for (ires=0; ires < nreceivers*cscheme->ncomponents; ires++) {
 
 
-        this_nsamples = nsamples[ires / cscheme->ncomponents];
-        this_itmin = itmin[ires / cscheme->ncomponents];
+        nsamples_want = nsamples[ires / cscheme->ncomponents];
+        itmin_want = itmin[ires / cscheme->ncomponents];
 
-        if (this_nsamples == -1)
-            this_itmin = 999999;
+        if (nsamples_want == -1)
+            itmin_want = 999999;
 
         result_trace_t *result = malloc(sizeof(result_trace_t));
+        /* TODO can fail */
 
         result->icomponent = ires % cscheme->ncomponents;
 
         result->nsamples = 0; // initialized by check_trace_extent
-        result->nsamples_want = this_nsamples;
+        result->nsamples_want = nsamples_want;
 
-        result->itmin = this_itmin;
-        result->itmin_want = this_itmin;
+        result->itmin = itmin_want;
+        result->itmin_want = itmin_want;
         result->itmax = 0; // initialized by check_trace_extent
         result->empty = 1;
 
-        if (this_nsamples == -1)
+        if (nsamples_want == -1)
             result->ncapacity = RESULT_INIT_CAPACITY * 3;
         else
-            result->ncapacity = (this_nsamples / RESULT_INIT_CAPACITY + 1) + RESULT_INIT_CAPACITY * 2;
+            result->ncapacity = (nsamples_want / RESULT_INIT_CAPACITY + 1) + RESULT_INIT_CAPACITY * 2;
 
-        result->buffer = (gf_dtype*) calloc(RESULT_INIT_CAPACITY * 3, sizeof(gf_dtype));
+        result->buffer = (gf_dtype*) calloc(result->ncapacity, sizeof(gf_dtype));
+        /* TODO can fail */
+        
         result->buf_pos = RESULT_INIT_CAPACITY;
         result->data = result->buffer + RESULT_INIT_CAPACITY;
 
@@ -2655,8 +2667,8 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
     for (ires=0; ires < nreceivers*cscheme->ncomponents; ires++) {
         result_trace_t *result = results[ires];
 
-        array_dims[0] = result->nsamples;
         array = (PyArrayObject*) PyArray_SimpleNewFromData(1, array_dims, NPY_GFDTYPE, result->data);
+        /* TODO copy array to avoid mem leak */
 
         PyList_Append(
             out_list,
@@ -2665,6 +2677,9 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
 
         /*printf("comp: %d, nsamples: %d, itmin: %d\n", result->icomponent, result->nsamples, result->itmin);*/
     }
+
+    /* TODO cleanup */
+
     return out_list;
 }
 
