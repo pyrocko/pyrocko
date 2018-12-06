@@ -22,7 +22,7 @@ else:
     from SimpleHTTPServer import SimpleHTTPRequestHandler
     from urllib import unquote
 
-from pyrocko.snuffling import Snuffling, Switch, Choice, NoViewerSet    # noqa
+from pyrocko.gui.snuffler.snuffling import Snuffling, Switch, Choice, NoViewerSet    # noqa
 from pyrocko.guts import dump_xml                                       # noqa
 from pyrocko import util, gui_util, model, orthodrome as ortho          # noqa
 from pyrocko import moment_tensor                                       # noqa

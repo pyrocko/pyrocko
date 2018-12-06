@@ -3,7 +3,7 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from pyrocko.gui import snuffler
+from pyrocko.gui.snuffler import snuffler
 
 
 def main(args=None):

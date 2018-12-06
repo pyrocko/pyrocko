@@ -3,7 +3,7 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
-from pyrocko.gui.snuffling import Snuffling, Param
+from pyrocko.gui.snuffler.snuffling import Snuffling, Param
 from pyrocko.trace import Trace
 import numpy as num
 

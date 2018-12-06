@@ -1,4 +1,4 @@
-from pyrocko.gui import snuffling as sn
+from pyrocko.gui.snuffler import snuffling as sn
 from pyrocko import obspy_compat as oc
 
 

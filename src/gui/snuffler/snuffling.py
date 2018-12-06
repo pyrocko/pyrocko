@@ -16,13 +16,13 @@ import logging
 import traceback
 import tempfile
 
-from .qt_compat import qc, qw, getSaveFileName
+from ..qt_compat import qc, qw, getSaveFileName
 
 from pyrocko import pile, config
 
-from .util import (ValControl, LinValControl, FigureFrame, WebKitFrame,
-                   VTKFrame, PixmapFrame, Marker, EventMarker, PhaseMarker,
-                   load_markers, save_markers)
+from ..util import (ValControl, LinValControl, FigureFrame, WebKitFrame,
+                    VTKFrame, PixmapFrame, Marker, EventMarker, PhaseMarker,
+                    load_markers, save_markers)
 
 if sys.version_info >= (3, 0):
     from importlib import reload
@@ -30,7 +30,7 @@ if sys.version_info >= (3, 0):
 
 Marker, load_markers, save_markers  # noqa
 
-logger = logging.getLogger('pyrocko.gui.snuffling')
+logger = logging.getLogger('pyrocko.gui.snuffler.snuffling')
 
 
 class MyFrame(qw.QFrame):
@@ -1512,8 +1512,9 @@ class Snuffling(object):
         '''
         Add some markers to the display.
 
-        Takes a list of objects of type :py:class:`pyrocko.gui.util.Marker` and
-        adds these to the viewer.
+        Takes a list of objects of type
+        :py:class:`pyrocko.gui.snuffler.marker.Marker` and adds these to the
+        viewer.
         '''
 
         self.get_viewer().add_markers(markers)
