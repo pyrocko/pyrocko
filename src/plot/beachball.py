@@ -1,9 +1,9 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-# python 2/3
-from __future__ import absolute_import
+
+from __future__ import absolute_import, print_function, division
 
 from math import pi as PI
 import logging

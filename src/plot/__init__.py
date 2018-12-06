@@ -1,4 +1,4 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
@@ -46,7 +46,8 @@ in the Pyrocko source directory)::
     plt.show()
 
 '''
-from __future__ import absolute_import
+
+from __future__ import absolute_import, print_function, division
 from pyrocko.util import parse_md
 from pyrocko.guts import StringChoice, Float, Int, Bool, Tuple, Object
 

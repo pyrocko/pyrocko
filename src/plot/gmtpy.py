@@ -1,13 +1,11 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
+
 '''A Python interface to GMT.'''
 
-# This file is part of GmtPy (http://emolch.github.io/gmtpy/)
-# See there for copying and licensing information.
-
-from __future__ import print_function, absolute_import
+from __future__ import absolute_import, print_function
 import subprocess
 try:
     from StringIO import StringIO as BytesIO

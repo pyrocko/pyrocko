@@ -1,4 +1,9 @@
-from __future__ import print_function
+# https://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+
+from __future__ import absolute_import, print_function, division
 
 import sys
 import logging
@@ -246,7 +251,7 @@ def command_map(args):
 
 
 def command_snuffle(args):
-    from pyrocko.gui import snuffler
+    from pyrocko.gui.snuffler import snuffler
     parser, options, args = cl_parse('map', args)
 
     if len(args) == 0:

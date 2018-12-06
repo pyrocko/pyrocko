@@ -1,4 +1,4 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
@@ -7,7 +7,6 @@ try:
     import queue
 except ImportError:
     import Queue as queue
-
 
 import multiprocessing
 import traceback

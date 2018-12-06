@@ -1,7 +1,8 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
+
 '''Effective seismological trace viewer.'''
 from __future__ import absolute_import
 
@@ -22,11 +23,12 @@ from pyrocko import util
 from pyrocko import model
 from pyrocko import config
 from pyrocko import io
-from pyrocko.gui import marker
 from pyrocko.io import stationxml
 
+from . import marker
 
-logger = logging.getLogger('pyrocko.gui.snuffler')
+
+logger = logging.getLogger('pyrocko.gui.snuffler.snuffler')
 
 app = None
 
@@ -54,7 +56,8 @@ def snuffle(pile=None, **kwargs):
     :param pile: :py:class:`pile.Pile` object to be visualized
     :param stations: list of `pyrocko.model.Station` objects or ``None``
     :param events: list of `pyrocko.model.Event` objects or ``None``
-    :param markers: list of `pyrocko.gui.util.Marker` objects or ``None``
+    :param markers: list of `pyrocko.gui.snuffler.util.Marker` objects or
+        ``None``
     :param ntracks: float, number of tracks to be shown initially (default: 12)
     :param follow: time interval (in seconds) for real time follow mode or
         ``None``

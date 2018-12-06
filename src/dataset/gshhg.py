@@ -1,4 +1,4 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
@@ -25,7 +25,7 @@ http://www.soest.hawaii.edu/pwessel/gshhg/.
     Shoreline Database, J. Geophys. Res., 101, #B4, pp. 8741-8743, 1996.
 '''
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function, division
 
 import logging
 import io
