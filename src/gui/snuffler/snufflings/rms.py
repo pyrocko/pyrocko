@@ -1,9 +1,11 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from __future__ import absolute_import
-from pyrocko.gui.snuffling import Snuffling, Param
+
+from __future__ import absolute_import, print_function, division
+
+from pyrocko.gui.snuffler.snuffling import Snuffling, Param
 from pyrocko.trace import Trace
 import numpy as num
 

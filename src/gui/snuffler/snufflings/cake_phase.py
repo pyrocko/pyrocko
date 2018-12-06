@@ -1,6 +1,13 @@
+# https://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+
+from __future__ import absolute_import, print_function, division
+
 from builtins import str
-from pyrocko.gui.snuffling import Snuffling, Param, Switch, Choice
-from pyrocko.gui.marker import PhaseMarker
+from pyrocko.gui.snuffler.snuffling import Snuffling, Param, Switch, Choice
+from pyrocko.gui.snuffler.marker import PhaseMarker
 from pyrocko import gf
 from pyrocko import cake
 import numpy as num
@@ -166,7 +173,7 @@ class CakePhase(Snuffling):
 
         if plot_rays:
             fig = self.figure(name='Ray Paths')
-            from pyrocko import cake_plot
+            from pyrocko.plot import cake_plot
             cake_plot.my_rays_plot(model, None, allrays, depth, 0.0,
                                    num.array(alldists)*cake.m2d,
                                    axes=fig.gca())
@@ -225,7 +232,7 @@ class CakePhase(Snuffling):
     def plot_model(self):
         self.update_model()
 
-        from pyrocko import cake_plot
+        from pyrocko.plot import cake_plot
 
         fig = self.figure(name='Model: %s' % self._model[0])
 

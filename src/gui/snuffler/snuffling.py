@@ -1,14 +1,16 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
+
 '''
 Snuffling infrastructure
 
 This module provides the base class :py:class:`Snuffling` for user-defined
 snufflings and some utilities for their handling.
 '''
-from __future__ import absolute_import
+
+from __future__ import absolute_import, print_function, division
 
 import os
 import sys
@@ -16,13 +18,13 @@ import logging
 import traceback
 import tempfile
 
-from .qt_compat import qc, qw, getSaveFileName, use_pyqt5
+from ..qt_compat import qc, qw, getSaveFileName, use_pyqt5
 
 from pyrocko import pile, config
 
-from .util import (ValControl, LinValControl, FigureFrame, WebKitFrame,
-                   VTKFrame, PixmapFrame, Marker, EventMarker, PhaseMarker,
-                   load_markers, save_markers)
+from ..util import (ValControl, LinValControl, FigureFrame, WebKitFrame,
+                    VTKFrame, PixmapFrame, Marker, EventMarker, PhaseMarker,
+                    load_markers, save_markers)
 
 if sys.version_info >= (3, 0):
     from importlib import reload
@@ -30,7 +32,7 @@ if sys.version_info >= (3, 0):
 
 Marker, load_markers, save_markers  # noqa
 
-logger = logging.getLogger('pyrocko.gui.snuffling')
+logger = logging.getLogger('pyrocko.gui.snuffler.snuffling')
 
 
 def fnpatch(x):
@@ -1519,8 +1521,9 @@ class Snuffling(object):
         '''
         Add some markers to the display.
 
-        Takes a list of objects of type :py:class:`pyrocko.gui.util.Marker` and
-        adds these to the viewer.
+        Takes a list of objects of type
+        :py:class:`pyrocko.gui.snuffler.marker.Marker` and adds these to the
+        viewer.
         '''
 
         self.get_viewer().add_markers(markers)

@@ -1,4 +1,4 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
@@ -11,7 +11,8 @@
 #   payload size, a hash, and a record type.
 # * A record payload consists of a sequence of record entries.
 # * A record entry consists of a key, a type, and a value.
-from __future__ import absolute_import, division
+
+from __future__ import absolute_import, print_function, division
 from builtins import range
 
 from struct import unpack, pack

@@ -394,11 +394,15 @@ class CustomBuildPyCommand(build_py):
             ('pyrocko', 'gmtpy', ['pyrocko.plot.gmtpy']),
             ('pyrocko', 'hudson', ['pyrocko.plot.hudson']),
             ('pyrocko', 'response_plot', ['pyrocko.plot.response']),
-            ('pyrocko', 'snuffling', ['pyrocko.gui.snuffling']),
-            ('pyrocko', 'pile_viewer', ['pyrocko.gui.pile_viewer']),
-            ('pyrocko', 'marker', ['pyrocko.gui.marker']),
-            ('pyrocko', 'snuffler', ['pyrocko.gui.snuffler']),
+            ('pyrocko', 'snuffling', ['pyrocko.gui.snuffler.snuffling']),
+            ('pyrocko', 'pile_viewer', ['pyrocko.gui.snuffler.pile_viewer']),
+            ('pyrocko', 'marker', ['pyrocko.gui.snuffler.marker']),
+            ('pyrocko', 'snuffler', ['pyrocko.gui.snuffler.snuffler']),
             ('pyrocko', 'gui_util', ['pyrocko.gui.util']),
+            ('pyrocko.gui', 'snuffling', ['pyrocko.gui.snuffler.snuffling']),
+            ('pyrocko.gui', 'pile_viewer', [
+                'pyrocko.gui.snuffler.pile_viewer']),
+            ('pyrocko.gui', 'marker', ['pyrocko.gui.snuffler.marker']),
         ]
 
         for (package, compat_module, import_modules) in mapping:
@@ -568,8 +572,12 @@ subpacknames = [
     'pyrocko.model',
     'pyrocko.plot',
     'pyrocko.gui',
-    'pyrocko.gui.snufflings',
-    'pyrocko.gui.snufflings.map',
+    'pyrocko.gui.snuffler',
+    'pyrocko.gui.snuffler',
+    'pyrocko.gui.snuffler.snufflings',
+    'pyrocko.gui.snuffler.snufflings.map',
+    'pyrocko.gui.sparrow',
+    'pyrocko.gui.sparrow.elements',
     'pyrocko.dataset',
     'pyrocko.dataset.topo',
     'pyrocko.streaming',
@@ -579,6 +587,19 @@ subpacknames = [
     'pyrocko.obspy_compat',
 ]
 
+entry_points = {
+    'console_scripts':
+        ['fomosto = pyrocko.apps.fomosto:main',
+         'cake = pyrocko.apps.cake:main',
+         'automap = pyrocko.apps.automap:main',
+         'hamster = pyrocko.apps.hamster:main',
+         'jackseis = pyrocko.apps.jackseis:main',
+         'colosseo = pyrocko.apps.colosseo:main',
+         'sparrow = pyrocko.apps.sparrow:main',
+         'sparrow%i = pyrocko.apps.sparrow:main' % sys.version_info.major],
+    'gui_scripts':
+        ['snuffler = pyrocko.apps.snuffler:main']
+}
 
 setup(
     cmdclass={
@@ -726,18 +747,7 @@ setup(
         'src/apps/gmtpy-epstopdf',
     ],
 
-    entry_points={
-        'console_scripts':
-            ['fomosto = pyrocko.apps.fomosto:main',
-             'cake = pyrocko.apps.cake:main',
-             'automap = pyrocko.apps.automap:main',
-             'hamster = pyrocko.apps.hamster:main',
-             'jackseis = pyrocko.apps.jackseis:main',
-             'colosseo = pyrocko.apps.colosseo:main'],
-        'gui_scripts':
-            ['snuffler = pyrocko.apps.snuffler:main']
-    },
-
+    entry_points=entry_points,
     package_data={
         packname: ['data/*.png',
                    'data/*.html',

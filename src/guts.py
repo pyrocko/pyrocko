@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
+
 '''Lightweight declarative YAML and XML data binding for Python.'''
-from __future__ import absolute_import, print_function
+
+from __future__ import absolute_import, print_function, division
+
 from builtins import str as newstr
 from builtins import range
 from future.utils import with_metaclass

@@ -1,10 +1,15 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-'''Access to the USGS Global Crustal Database.
-Simple queries and statistical analysis'''
-from __future__ import absolute_import
+
+'''
+Access to the USGS Global Crustal Database.
+
+Simple queries and statistical analysis.
+'''
+
+from __future__ import absolute_import, print_function, division
 from builtins import range
 from builtins import map
 

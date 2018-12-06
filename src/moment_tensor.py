@@ -1,4 +1,4 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
@@ -21,7 +21,8 @@ moment according to the "standard decomposition" can be found in the
 output of :py:meth:`MomentTensor.standard_decomposition`.
 '''
 
-from __future__ import division, print_function, absolute_import
+from __future__ import absolute_import, print_function, division
+
 from builtins import map
 from builtins import zip
 

@@ -1,8 +1,10 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from __future__ import absolute_import
+
+from __future__ import absolute_import, print_function, division
+
 from builtins import object
 
 import calendar
@@ -18,7 +20,7 @@ from pyrocko import util, plot, model, trace
 from pyrocko.util import TableWriter, TableReader, gmtime_x, mystrftime
 
 
-logger = logging.getLogger('pyrocko.gui.marker')
+logger = logging.getLogger('pyrocko.gui.snuffler.marker')
 
 
 if sys.version_info[0] >= 3:
@@ -364,8 +366,8 @@ class Marker(object):
             draw_triangle=False,
             **kwargs):
 
-        from .qt_compat import qc, qg
-        from . import util as gui_util
+        from ..qt_compat import qc, qg
+        from .. import util as gui_util
 
         if self.selected or self.alerted or not self.nslc_ids:
 
@@ -419,8 +421,8 @@ class Marker(object):
             self, viewer, p, tr, time_projection, track_projection, gain,
             outline_label=False):
 
-        from .qt_compat import qc, qg
-        from . import util as gui_util
+        from ..qt_compat import qc, qg
+        from .. import util as gui_util
 
         if self.nslc_ids and not self.match_nslc(tr.nslc_id):
             return
@@ -595,8 +597,8 @@ class EventMarker(Marker):
             self.draw_label(p, time_projection, y_projection)
 
     def draw_label(self, p, time_projection, y_projection):
-        from .qt_compat import qg
-        from . import util as gui_util
+        from ..qt_compat import qg
+        from .. import util as gui_util
 
         u = time_projection(self.tmin)
         v0, v1 = y_projection.get_out_range()

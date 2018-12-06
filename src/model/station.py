@@ -1,8 +1,9 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from __future__ import absolute_import, division
+
+from __future__ import absolute_import, print_function, division
 
 from builtins import range
 import math

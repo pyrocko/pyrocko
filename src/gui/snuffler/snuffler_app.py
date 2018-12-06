@@ -1,9 +1,12 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
+
 '''Effective seismological trace viewer.'''
-from __future__ import absolute_import
+
+from __future__ import absolute_import, print_function, division
+
 from future import standard_library
 standard_library.install_aliases()  # noqa
 
@@ -31,9 +34,9 @@ from pyrocko import io              # noqa
 
 from . import pile_viewer     # noqa
 
-from .qt_compat import qc, qg, qw, qn
+from ..qt_compat import qc, qg, qw, qn
 
-logger = logging.getLogger('pyrocko.gui.snuffler_app')
+logger = logging.getLogger('pyrocko.gui.snuffler.snuffler_app')
 
 
 class AcquisitionThread(qc.QThread):
