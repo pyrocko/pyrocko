@@ -401,7 +401,8 @@ class CustomBuildPyCommand(build_py):
             ('pyrocko', 'snuffler', ['pyrocko.gui.snuffler.snuffler']),
             ('pyrocko', 'gui_util', ['pyrocko.gui.util']),
             ('pyrocko.gui', 'snuffling', ['pyrocko.gui.snuffler.snuffling']),
-            ('pyrocko.gui', 'pile_viewer', ['pyrocko.gui.snuffler.pile_viewer']),
+            ('pyrocko.gui', 'pile_viewer', [
+                'pyrocko.gui.snuffler.pile_viewer']),
             ('pyrocko.gui', 'marker', ['pyrocko.gui.snuffler.marker']),
         ]
 
@@ -587,6 +588,19 @@ subpacknames = [
     'pyrocko.obspy_compat',
 ]
 
+entry_points = {
+    'console_scripts':
+        ['fomosto = pyrocko.apps.fomosto:main',
+         'cake = pyrocko.apps.cake:main',
+         'automap = pyrocko.apps.automap:main',
+         'hamster = pyrocko.apps.hamster:main',
+         'jackseis = pyrocko.apps.jackseis:main',
+         'colosseo = pyrocko.apps.colosseo:main',
+         'sparrow = pyrocko.apps.sparrow:main',
+         'sparrow%i = pyrocko.apps.sparrow:main' % sys.version_info.major],
+    'gui_scripts':
+        ['snuffler = pyrocko.apps.snuffler:main']
+}
 
 setup(
     cmdclass={
@@ -735,19 +749,7 @@ setup(
         'src/apps/gmtpy-epstopdf',
     ],
 
-    entry_points={
-        'console_scripts':
-            ['fomosto = pyrocko.apps.fomosto:main',
-             'cake = pyrocko.apps.cake:main',
-             'automap = pyrocko.apps.automap:main',
-             'hamster = pyrocko.apps.hamster:main',
-             'jackseis = pyrocko.apps.jackseis:main',
-             'colosseo = pyrocko.apps.colosseo:main',
-             'sparrow = pyrocko.apps.sparrow:main'],
-        'gui_scripts':
-            ['snuffler = pyrocko.apps.snuffler:main']
-    },
-
+    entry_points=entry_points,
     package_data={
         packname: ['data/*.png',
                    'data/*.html',
