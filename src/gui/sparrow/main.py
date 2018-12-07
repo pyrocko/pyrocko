@@ -196,7 +196,7 @@ class Viewer(qw.QMainWindow):
             level=4, smooth=True))
         self.state.elements.append(elements.GridState())
         self.state.elements.append(elements.CoastlinesState())
-        self.state.elements.append(elements.StationsState())
+        # self.state.elements.append(elements.StationsState())
 
     def update_elements(self, path, value):
         for estate in self.state.elements:
