@@ -1,9 +1,12 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
+
 '''Effective seismological trace viewer.'''
-from __future__ import absolute_import
+
+from __future__ import absolute_import, print_function, division
+
 from future import standard_library
 standard_library.install_aliases()  # noqa
 
@@ -25,8 +28,9 @@ from pyrocko import util
 from pyrocko import model
 from pyrocko import config
 from pyrocko import io
-from pyrocko import marker
 from pyrocko.io import stationxml
+
+from . import marker
 
 
 logger = logging.getLogger('pyrocko.gui.snuffler.snuffler')

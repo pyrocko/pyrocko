@@ -1,3 +1,10 @@
+# https://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+
+from __future__ import absolute_import, print_function, division
+
 import numpy as num
 import logging
 from os import path as op
@@ -411,7 +418,7 @@ class InSARGenerator(TargetGenerator):
                 sources,
                 self.get_targets(),
                 nthreads=0)
-        except gf.meta.OutOfBounds as e:
+        except gf.meta.OutOfBounds:
             logger.warning('Could not calculate InSAR displacements'
                            ' - the GF store\'s extend is too small!')
             return []

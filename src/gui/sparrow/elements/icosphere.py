@@ -1,3 +1,10 @@
+# https://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+
+from __future__ import absolute_import, print_function, division
+
 import math
 
 from pyrocko.guts import Int, StringChoice, Bool
@@ -144,8 +151,6 @@ class IcosphereElement(Element):
             state_bind_checkbox(self, state, 'smooth', cb)
 
             layout.addWidget(qw.QFrame(), 4, 0, 1, 2)
-            
-
 
         self._controls = frame
 

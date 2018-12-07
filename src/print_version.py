@@ -1,4 +1,9 @@
-from __future__ import print_function
+# https://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+
+from __future__ import absolute_import, print_function, division
 
 if __name__ == '__main__':
     import sys

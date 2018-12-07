@@ -1,9 +1,12 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
+
+
 '''This module provides basic signal processing for seismic traces.'''
-from __future__ import division, absolute_import
+
+from __future__ import absolute_import, print_function, division
 
 from builtins import zip
 from builtins import map
@@ -1124,7 +1127,6 @@ class Trace(object):
 
         self.deltat = fix_deltat_rounding_errors(self.deltat)
         self.tmax = self.tmin + (self.data_len() - 1) * self.deltat
-
 
     def sta_lta_centered(self, tshort, tlong, quad=True, scalingmethod=1):
         '''

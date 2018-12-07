@@ -1,3 +1,9 @@
+# https://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+
+from __future__ import absolute_import, print_function, division
 
 import time
 
@@ -37,7 +43,10 @@ class StationsElement(Element):
         now = time.time()
         tmin = now-3600.
         tmax = now
-        sx = fdsn.station(site='iris', format='text', level='channel', channel='??Z', startbefore=tmin, endafter=tmax)
+        sx = fdsn.station(
+            site='iris', format='text', level='channel', channel='??Z',
+            startbefore=tmin, endafter=tmax)
+
         stations = sx.get_pyrocko_stations()
 
         latlondepth = num.array([(s.lat, s.lon, 0.) for s in stations])

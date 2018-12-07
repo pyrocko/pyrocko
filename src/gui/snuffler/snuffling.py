@@ -1,14 +1,16 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
+
 '''
 Snuffling infrastructure
 
 This module provides the base class :py:class:`Snuffling` for user-defined
 snufflings and some utilities for their handling.
 '''
-from __future__ import absolute_import
+
+from __future__ import absolute_import, print_function, division
 
 import os
 import sys

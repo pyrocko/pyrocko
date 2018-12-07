@@ -1,8 +1,9 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-# file: setup.py
+
+from __future__ import absolute_import, print_function, division
 
 from distutils.core import setup, Extension
 import sys

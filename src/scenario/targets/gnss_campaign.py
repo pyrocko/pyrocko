@@ -1,3 +1,10 @@
+# https://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+
+from __future__ import absolute_import, print_function, division
+
 import logging
 import os.path as op
 import numpy as num
@@ -72,7 +79,7 @@ class GNSSCampaignGenerator(TargetGenerator):
                 sources,
                 self.get_targets(),
                 nthreads=0)
-        except gf.meta.OutOfBounds as e:
+        except gf.meta.OutOfBounds:
             logger.warning('Could not calculate GNSS displacements'
                            ' - the GF store\'s extend is too small!')
             return []

@@ -1,15 +1,9 @@
-#!/usr/bin/env python
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
-# Moment tensor calculator
-#
-# Copyright (c) 2010, Sebastian Heimann <sebastian.heimann@zmaw.de>
-#
-# This file is part of pyrocko. For licensing information please see the file
-# COPYING which is included with pyrocko.
+from __future__ import absolute_import, print_function, division
 
 import sys
 import signal

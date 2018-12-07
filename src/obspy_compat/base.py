@@ -1,4 +1,4 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
@@ -34,7 +34,7 @@ Pyrocko and ObsPy classes.
 
 '''
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function, division
 
 
 def to_pyrocko_trace(trace):

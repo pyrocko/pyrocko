@@ -1,8 +1,9 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from __future__ import absolute_import, division
+
+from __future__ import absolute_import, print_function, division
 
 import os
 import re
@@ -10,7 +11,7 @@ import math
 import os.path as op
 
 from pyrocko import config, util
-from .srtmgl3 import SRTMGL3, AuthenticationRequired
+from .srtmgl3 import SRTMGL3, AuthenticationRequired  # noqa
 from .etopo1 import ETOPO1
 from . import dataset, tile
 
