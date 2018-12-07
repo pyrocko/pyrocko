@@ -9,7 +9,6 @@ import math
 import sys
 import signal
 import gc
-import qdarkstyle
 import logging
 
 import numpy as num
@@ -586,6 +585,7 @@ app = None
 
 
 def main(*args, **kwargs):
+
     from pyrocko import util
     util.setup_logging('sparrow', 'info')
 
@@ -595,10 +595,18 @@ def main(*args, **kwargs):
     if app is None:
         app = App()
 
-        if use_pyqt5:
-            app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
-        else:
-            app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt())
+        try:
+            import qdarkstyle
+
+            if use_pyqt5:
+                app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
+            else:
+                app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt())
+
+        except ImportError:
+            logger.info(
+                'Module qdarkstyle not available.\n'
+                'If wanted, install qdarkstyle with "pip install qdarkstyle".')
 
     win = Viewer(*args, **kwargs)
     app.set_main_window(win)
