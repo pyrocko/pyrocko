@@ -21,6 +21,11 @@ class TopoState(ElementState):
     visible = Bool.T(default=True)
     exaggeration = Float.T(default=1.0)
 
+    def create(self):
+        element = TopoElement()
+        element.bind_state(self)
+        return element
+
 
 class TopoElement(Element):
 
@@ -30,19 +35,22 @@ class TopoElement(Element):
         self.mesh = None
         self._controls = None
 
-        region = (6.0, 8.0, 50., 51)
-        self._tile = topo.get('SRTMGL3', region)
+        region = (-180., 180, -90, 90)
+        self._tile = topo.get('ETOPO1_D8', region)
         self._visible = False
 
     def get_name(self):
         return 'Topography'
 
+    def bind_state(self, state):
+        upd = self.update
+        self._listeners.append(upd)
+        state.add_listener(upd, 'visible')
+        state.add_listener(upd, 'exaggeration')
+        self._state = state
+
     def set_parent(self, parent):
         self.parent = parent
-        state = parent.state
-        upd = self.update
-        self._listeners = [upd]
-        state.add_listener(upd, 'topo.exaggeration')
 
         self.parent.add_panel(
             self.get_name(), self._get_controls(), visible=True)
@@ -50,7 +58,7 @@ class TopoElement(Element):
 
     def update(self, *args):
 
-        tstate = self.parent.state.topo
+        tstate = self._state
 
         if tstate.visible:
             if self.mesh is None:
@@ -58,7 +66,7 @@ class TopoElement(Element):
                 vertices, faces = geometry.topo_to_mesh(
                     t.y(), t.x(), t.data*tstate.exaggeration, cake.earthradius)
 
-                self.mesh = TrimeshPipe(vertices, faces)
+                self.mesh = TrimeshPipe(vertices, faces, smooth=True)
 
             else:
                 t = self._tile
@@ -78,7 +86,7 @@ class TopoElement(Element):
         self.parent.update_view()
 
     def _get_controls(self):
-        state = self.parent.state
+        state = self._state
         if not self._controls:
             from ..state import state_bind_slider
 
@@ -98,7 +106,7 @@ class TopoElement(Element):
             # slider.setPageStep(1)
             layout.addWidget(slider, 0, 1)
 
-            state_bind_slider(self, state, 'topo.exaggeration', slider)
+            state_bind_slider(self, state, 'exaggeration', slider)
 
         self._controls = frame
 

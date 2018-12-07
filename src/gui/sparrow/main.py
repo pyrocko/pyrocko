@@ -13,6 +13,7 @@ import logging
 
 import numpy as num
 
+from pyrocko import guts
 from pyrocko import geonames
 from pyrocko import moment_tensor as pmt
 
@@ -106,6 +107,24 @@ def color_lights():
 class Viewer(qw.QMainWindow):
     def __init__(self):
         qw.QMainWindow.__init__(self)
+        
+        mbar = self.menuBar()
+        menu = mbar.addMenu('Add')
+        for name, estate in [
+                ('Stations', elements.StationsState()),
+                ('Topography', elements.TopoState()),
+                ('Catalog', elements.CatalogState())]:
+
+            def wrap_add_element(estate):
+                def add_element(*args):
+                    self.state.elements.append(guts.clone(estate))
+                return add_element
+
+            mitem = qw.QAction(name, self)
+
+            mitem.triggered.connect(wrap_add_element(estate))
+
+            menu.addAction(mitem)
 
         self.state = vstate.ViewerState()
         self.listeners = []
@@ -516,12 +535,18 @@ class Viewer(qw.QMainWindow):
         self.state.panels_visible = not self.state.panels_visible
 
     def update_panel_visibility(self, *args):
+        mbar = self.menuBar()
+
         if self.state.panels_visible:
+            mbar.show()
             for dockwidget in self.dockwidgets:
                 dockwidget.setVisible(True)
         else:
+            mbar.hide()
             for dockwidget in self.dockwidgets:
                 dockwidget.setVisible(False)
+
+
 
     def toggle_panel(self, dockwidget, visible):
         if visible is None:

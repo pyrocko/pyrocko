@@ -24,6 +24,10 @@ class StationsState(ElementState):
     visible = Bool.T(default=True)
     size = Float.T(default=5.0)
 
+    @classmethod
+    def get_name(self):
+        return 'Stations'
+
     def create(self):
         element = StationsElement()
         element.bind_state(self)
