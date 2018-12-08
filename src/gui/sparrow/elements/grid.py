@@ -5,8 +5,6 @@
 
 from __future__ import absolute_import, print_function, division
 
-import math
-
 import numpy as num
 
 import vtk
@@ -18,7 +16,8 @@ from pyrocko.gui.qt_compat import qw
 
 from pyrocko.gui import vtk_util
 from .base import Element, ElementState
-from pyrocko.geometry import d2r, r2d
+from .. import common
+from pyrocko.geometry import r2d
 
 guts_prefix = 'sparrow'
 
@@ -26,26 +25,8 @@ guts_prefix = 'sparrow'
 class LatLonGrid(object):
     def __init__(self, r, step_major, step_minor, lat, lon, delta):
 
-        def fl_major(x):
-            return math.floor(x / step_major) * step_major
-
-        def ce_major(x):
-            return math.ceil(x / step_major) * step_major
-
-        lat_min = max(-90. + step_major, fl_major(lat - delta))
-        lat_max = min(90. - step_major, ce_major(lat + delta))
-
-        lon_closed = False
-        if abs(lat)+delta < 89.:
-            factor = 1.0 / math.cos((abs(lat)+delta) * d2r)
-            lon_min = fl_major(lon - delta * factor)
-            lon_max = ce_major(lon + delta * factor)
-            if lon_max >= lon_min + 360. - step_major*1e-5:
-                lon_min, lon_max = -180., 180. - step_major
-                lon_closed = True
-        else:
-            lon_min, lon_max = -180., 180. - step_major
-            lon_closed = True
+        lat_min, lat_max, lon_min, lon_max, lon_closed = common.cover_region(
+            lat, lon, delta, step_major)
 
         lat_majors = util.arange2(lat_min, lat_max, step_major)
         lon_majors = util.arange2(lon_min, lon_max, step_major)
