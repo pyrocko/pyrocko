@@ -88,7 +88,7 @@ class CoastlinesElement(Element):
 
     def __init__(self):
         Element.__init__(self)
-        self.parent = None
+        self._parent = None
         self._controls = None
         self._coastlines = None
 
@@ -102,25 +102,43 @@ class CoastlinesElement(Element):
         state.add_listener(upd, 'resolution')
         self._state = state
 
+    def unbind_state(self):
+        self._listeners = []
+
     def set_parent(self, parent):
-        self.parent = parent
-        self.parent.add_panel(
+        self._parent = parent
+        self._parent.add_panel(
             self.get_name(), self._get_controls(), visible=True)
         self.update()
+
+    def unset_parent(self):
+        self.unbind_state()
+        if self._parent:
+            if self._coastlines:
+                self._parent.remove_actor(self._coastlines.actor)
+                self._coastlines = None
+
+            if self._controls:
+                self._parent.remove_panel(self._controls)
+                self._controls = None
+
+            self._parent.update_view()
+            self._parent = None
+
 
     def update(self, *args):
         state = self._state
         if not state.visible and self._coastlines:
-            self.parent.remove_actor(self._coastlines.actor)
+            self._parent.remove_actor(self._coastlines.actor)
 
         if state.visible:
             if not self._coastlines:
                 self._coastlines = CoastlinesPipe(resolution=state.resolution)
 
-            self.parent.add_actor(self._coastlines.actor)
+            self._parent.add_actor(self._coastlines.actor)
             self._coastlines.set_resolution(state.resolution)
 
-        self.parent.update_view()
+        self._parent.update_view()
 
     def _get_controls(self):
         if not self._controls:
@@ -140,6 +158,10 @@ class CoastlinesElement(Element):
             cb = qw.QCheckBox('Show')
             layout.addWidget(cb, 1, 0)
             state_bind_checkbox(self, self._state, 'visible', cb)
+
+            pb = qw.QPushButton('Remove')
+            layout.addWidget(pb, 1, 1)
+            pb.clicked.connect(self.unset_parent)
 
             layout.addWidget(qw.QFrame(), 2, 0, 1, 2)
 

@@ -40,6 +40,11 @@ logger = logging.getLogger('pyrocko.gui.sparrow.main')
 d2r = num.pi/180.
 
 
+def get_app():
+    global app
+    return app
+
+
 class LocationChoice(object):
     def __init__(self, name, lat, lon, depth=0):
         self._name = name
@@ -107,13 +112,22 @@ def color_lights():
 class Viewer(qw.QMainWindow):
     def __init__(self):
         qw.QMainWindow.__init__(self)
+
+        self._panel_togglers = {}
         
         mbar = self.menuBar()
+        menu = mbar.addMenu('File')
+
+        mitem = qw.QAction('Quit', self)
+        mitem.triggered.connect(self.request_quit)
+        menu.addAction(mitem)
+
         menu = mbar.addMenu('Add')
         for name, estate in [
                 ('Stations', elements.StationsState()),
                 ('Topography', elements.TopoState()),
-                ('Catalog', elements.CatalogState())]:
+                ('Catalog', elements.CatalogState()),
+                ('Coastlines', elements.CoastlinesState())]:
 
             def wrap_add_element(estate):
                 def add_element(*args):
@@ -126,10 +140,11 @@ class Viewer(qw.QMainWindow):
 
             menu.addAction(mitem)
 
+        self.panels_menu = mbar.addMenu('Panels')
+
         self.state = vstate.ViewerState()
         self.listeners = []
         self.elements = {}
-        self.dockwidgets = []
 
         self.frame = qw.QFrame()
 
@@ -216,6 +231,20 @@ class Viewer(qw.QMainWindow):
         self.state.elements.append(elements.CoastlinesState())
         # self.state.elements.append(elements.StationsState())
 
+        self.timer = qc.QTimer(self)
+        self.timer.timeout.connect(self.periodical)
+        self.timer.setInterval(1000)
+        self.timer.start()
+
+        self.closing = False
+
+    def periodical(self):
+        pass
+
+    def request_quit(self):
+        app = get_app()
+        app.myQuit()
+
     def update_elements(self, path, value):
         for estate in self.state.elements:
             if estate not in self._elements:
@@ -256,10 +285,10 @@ class Viewer(qw.QMainWindow):
             self.do_dolly(x, y, x0, y0, center_x, center_y)
 
     def mouse_wheel_event_forward(self, obj, event):
-        self.do_dolly(1.0)
+        self.do_dolly(-1.0)
 
     def mouse_wheel_event_backward(self, obj, event):
-        self.do_dolly(-1.0)
+        self.do_dolly(1.0)
 
     def do_rotate(self, x, y, x0, y0, center_x, center_y):
 
@@ -492,86 +521,49 @@ class Viewer(qw.QMainWindow):
     def add_panel(
             self, name, panel,
             visible=False,
-            volatile=False,
+            # volatile=False,
             tabify=False,
             where=qc.Qt.RightDockWidgetArea):
 
-        if not self.dockwidgets:
-            self.dockwidgets = []
-
-        dws = [x for x in self.dockwidgets if self.dockWidgetArea(x) == where]
-
         dockwidget = qw.QDockWidget(name, self)
 
-        self.dockwidgets.append(dockwidget)
         dockwidget.setWidget(panel)
         panel.setParent(dockwidget)
         self.addDockWidget(where, dockwidget)
 
-        if tabify and dws:
-            self.tabifyDockWidget(dws[-1], dockwidget)
+        mitem = dockwidget.toggleViewAction()
+        self._panel_togglers[dockwidget] = mitem
+        self.panels_menu.addAction(mitem)
 
-        self.toggle_panel(dockwidget, visible)
-
-        mitem = qw.QAction(name, None)
-
-        def toggle_panel(checked):
-            self.toggle_panel(dockwidget, True)
-
-        mitem.triggered.connect(toggle_panel)
-
-        if volatile:
-            def visibility(visible):
-                if not visible:
-                    self.remove_panel(panel)
-
-            dockwidget.visibilityChanged.connect(
-                visibility)
-
-        # self.get_view().add_panel_toggler(mitem)
-        # self.dockwidget_to_toggler[dockwidget] = mitem
 
     def toggle_panel_visibility(self):
         self.state.panels_visible = not self.state.panels_visible
 
     def update_panel_visibility(self, *args):
         mbar = self.menuBar()
+        dockwidgets = self.findChildren(qw.QDockWidget)
 
         if self.state.panels_visible:
             mbar.show()
-            for dockwidget in self.dockwidgets:
+            for dockwidget in dockwidgets:
                 dockwidget.setVisible(True)
         else:
             mbar.hide()
-            for dockwidget in self.dockwidgets:
+            for dockwidget in dockwidgets:
                 dockwidget.setVisible(False)
-
-
-
-    def toggle_panel(self, dockwidget, visible):
-        if visible is None:
-            visible = not dockwidget.isVisible()
-
-        dockwidget.setVisible(visible)
-        if visible:
-            w = dockwidget.widget()
-            minsize = w.minimumSize()
-            w.setMinimumHeight(w.sizeHint().height() + 5)
-
-            def reset_minimum_size():
-                w.setMinimumSize(minsize)
-
-            qc.QTimer.singleShot(200, reset_minimum_size)
-
-            dockwidget.setFocus()
-            dockwidget.raise_()
 
     def remove_panel(self, panel):
         dockwidget = panel.parent()
         self.removeDockWidget(dockwidget)
         dockwidget.setParent(None)
-        # mitem = self.dockwidget_to_toggler[dockwidget]
-        # self.get_view().remove_panel_toggler(mitem)
+        self.panels_menu.removeAction(self._panel_togglers[dockwidget])
+
+    def closeEvent(self, event):
+        event.accept()
+        self.closing = True
+
+    def is_closing(self):
+        return self.closing
 
 
 class App(qw.QApplication):
