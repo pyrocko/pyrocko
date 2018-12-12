@@ -933,10 +933,9 @@ class GFTestCase(unittest.TestCase):
 
         rstate = num.random.RandomState(123)
 
-        def test_timeseries(store, dim, ntargets, interpolation,
-                            nthreads, niter=1):
-            source = gf.DCSource(
-                lat=0., lon=0., depth=1*km, magnitude=8.)
+        def test_timeseries(store, source, dim, ntargets, interpolation,
+                            nthreads, niter=1,
+                            random_itmin=False, random_nsamples=False):
 
             source = gf.RectangularSource(
                 lat=0., lon=0., depth=3*km,
@@ -960,10 +959,19 @@ class GFTestCase(unittest.TestCase):
             nsources = mts_arr.shape[0]
             delays = num.zeros(nsources)
 
-            @benchmark.labeled('calc_timeseries')
+            itmin = num.zeros(ntargets, dtype=num.int32)
+            nsamples = num.full(ntargets, -1, dtype=num.int32)
+
+            if random_itmin:
+                itmin = num.random.randint(-20, 5, size=ntargets,
+                                           dtype=num.int32)
+
+            if random_nsamples:
+                nsamples = num.random.randint(10, 100, size=ntargets,
+                                              dtype=num.int32)
+
+            @benchmark.labeled('calc_timeseries-%s' % interpolation)
             def calc_timeseries():
-                itmin = num.zeros(ntargets, dtype=num.int32)
-                nsamples = num.ones(ntargets, dtype=num.int32) * -1
                 return store_ext.store_calc_timeseries(
                     store.cstore,
                     source_coords_arr,
@@ -976,10 +984,10 @@ class GFTestCase(unittest.TestCase):
                     nsamples,
                     nthreads)
 
-            @benchmark.labeled('sum_timeseries')
+            @benchmark.labeled('sum_timeseries-%s' % interpolation)
             def sum_timeseries():
-                res = []
-                for target in targets:
+                results = []
+                for itarget, target in enumerate(targets):
                     params = store_ext.make_sum_params(
                         store.cstore,
                         source_coords_arr,
@@ -995,11 +1003,11 @@ class GFTestCase(unittest.TestCase):
                             irecords,
                             d,
                             weights,
-                            0,
-                            -1)
-                        res.append(r)
+                            int(itmin[itarget]),
+                            int(nsamples[itarget]))
+                        results.append(r)
 
-                return res
+                return results
 
             for _ in range(niter):
                 res_calc = calc_timeseries()
@@ -1009,14 +1017,30 @@ class GFTestCase(unittest.TestCase):
             for c, s in zip(res_calc, res_sum):
                 # print(c[0] - s[0])
                 num.testing.assert_equal(c[0], s[0], verbose=True)
+                for cc, cs in zip(c[1:-1], s[1:]):
+                    continue
+                    assert cc == cs
 
         store = gf.Store('/home/marius/Development/testing/gf/crust2_de/')
         store.open()
 
-        res = test_timeseries(
-            store, dim=10*km, niter=1,
-            ntargets=20, interpolation='multilinear', nthreads=0)
-        print(benchmark)
+        sources = [
+                gf.DCSource(lat=0., lon=0., depth=1*km, magnitude=8.),
+                gf.RectangularSource(lat=0., lon=0., anchor='top', depth=5*km,
+                                     width=10*km, length=20*km)
+        ]
+
+        for source in sources:
+            for interp in ['multilinear', 'nearest_neighbor']:
+                for random_itmin in [True, False]:
+                    for random_nsamples in [True, False]:
+                        test_timeseries(
+                            store, source, dim=10*km, niter=1,
+                            ntargets=20, interpolation=interp, nthreads=0,
+                            random_itmin=random_itmin,
+                            random_nsamples=random_nsamples)
+                print(benchmark)
+                benchmark.clear()
 
         def plot(res):
             import matplotlib.pyplot as plt
@@ -1037,29 +1061,39 @@ class GFTestCase(unittest.TestCase):
                 depth=depth,
                 moment=moment)
 
-            for moment in [3.0] for depth in [300.]
+            for moment in [2., 4., 8.] for depth in [300., 600., 1200.,]
         ]
 
         targets = [
             gf.Target(
                 codes=('', 'ST%d' % i, '', component),
                 north_shift=shift*km,
-                east_shift=0.)
+                east_shift=0.,
+                tmin=tmin,
+                tmax=None if tmin is None else tmin+40)
 
-            for component in 'ZNE' for i, shift in enumerate([100, 200, 300])
+            for component in 'ZNE' for i, shift in enumerate([100])
+            for tmin in [None, 5, 20]
         ]
 
         response_sum = engine.process(sources=sources, targets=targets,
-                                      calc_timeseries=False, nthreads=0)
+                                      calc_timeseries=False, nthreads=1)
         response_calc = engine.process(sources=sources, targets=targets,
-                                       calc_timeseries=True, nthreads=0)
+                                       calc_timeseries=True, nthreads=1)
+
+        res_calc = list(response_calc.iter_results())
+        res_sum = list(response_sum.iter_results())
 
         for (source, target, tr), (source_n, target_n, tr_n) in zip(
                 response_sum.iter_results(), response_calc.iter_results()):
             t1 = tr.get_xdata()
             t2 = tr_n.get_xdata()
-
             num.testing.assert_equal(t1, t2)
+
+            disp1 = tr.get_ydata()
+            disp2 = tr_n.get_ydata()
+
+            num.testing.assert_equal(disp1, disp2)
             assert source is source_n
             assert target is target_n
 

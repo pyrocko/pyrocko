@@ -104,7 +104,7 @@ class GFTrace(object):
                  is_zero=False, begin_value=None, end_value=None, tmin=None):
 
         assert sum((x is None) for x in (tmin, itmin)) == 1, \
-            'GFTrace: either tmin or itmin must be given'
+            'GFTrace: either tmin or itmin must be given'\
 
         if tmin is not None:
             itmin = int(round(tmin / deltat))
@@ -1801,8 +1801,7 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
 
         if itmin is None:
             itmin = num.zeros(nreceiver, dtype=num.int32)
-        else:
-            itmin -= itoffset
+        itmin -= itoffset
 
         if nsamples is None:
             nsamples = num.zeros(nreceiver, dtype=num.int32) - 1

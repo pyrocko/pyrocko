@@ -2955,17 +2955,26 @@ class LocalEngine(Engine):
                          nthreads=0):
 
         target = targets[0]
+        interp = set([t.interpolation for t in targets])
+        if len(interp) > 1:
+            logging.warning('Targets have different interpolation schemes!'
+                            ' Choosing %s for all targets.'
+                            % target.interpolation)
 
         store_ = self.get_store(target.store_id)
         receivers = [t.receiver(store_) for t in targets]
 
         ds = store_.config.sample_rate
-        itmin = num.array([t.tmin for t in targets], dtype=num.float)
-        itmax = num.array([t.tmax for t in targets], dtype=num.float)
+        tmin = num.array([t.tmin for t in targets], dtype=num.float)
+        tmax = num.array([t.tmax for t in targets], dtype=num.float)
 
-        if num.all(~num.isnan(itmin)) and num.all(~num.isnan(itmax)):
-            itmin = num.floor(itmax * ds).astype(num.int32)
-            nsamples = num.ceil((itmax - itmin) * ds).astype(num.int32)
+        if not num.all(num.isnan(tmin)) or not num.all(num.isnan(tmax)):
+            mask_itmin = num.isnan(tmin)
+            itmin = num.floor(tmin * ds).astype(num.int32)
+            nsamples = num.ceil((tmax - tmin) * ds).astype(num.int32)
+
+            itmin[mask_itmin] = 0
+            nsamples[mask_itmin] = -1
         else:
             itmin = None
             nsamples = None

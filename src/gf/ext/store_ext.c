@@ -856,8 +856,8 @@ static store_error_t ensure_trace_capacity(result_trace_t *result, int itmin, in
             result->data[result->nsamples+idx] = value;
     }
 
-    result->nsamples = max(result->nsamples, nsamples);
     result->itmax = max(result->itmax, itmax);
+    result->nsamples = max(result->nsamples, nsamples);
     return SUCCESS;
 }
 
@@ -889,7 +889,7 @@ static store_error_t check_trace_extent(
         itmax = max(result->itmax, itmax);
     } else {
         itmin = result->itmin_want;
-        itmax = result->nsamples_want - result->itmin_want - 1;
+        itmax = result->itmin_want + result->nsamples_want - 1;
     }
     err += ensure_trace_capacity(result, itmin, itmax);
 
@@ -1044,14 +1044,11 @@ static store_error_t store_calc_timeseries(
                     weights_ip);
 
                 for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
-                    begin_value = 0.0;
-                    end_value = 0.0;
 
                     result = results[icomponent+ireceiver*cscheme->ncomponents];
 
-                    result->is_zero = 1;
-                    result->begin_value = 0.0;
-                    result->end_value = 0.0;
+                    begin_value = 0.0;
+                    end_value = 0.0;
 
                     nsummands = cscheme->nsummands[icomponent];
 
@@ -1086,11 +1083,10 @@ static store_error_t store_calc_timeseries(
 
                             begin_value += trace.begin_value * weight;
                             end_value += trace.end_value * weight;
-
-                            result->is_zero = 0;
                         }
                     }
 
+                    result->is_zero = 0;
                     result->begin_value = begin_value;
                     result->end_value = end_value;
                 }
@@ -1102,14 +1098,11 @@ static store_error_t store_calc_timeseries(
                     irecord_bases);
 
                 for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
-                    begin_value = 0.0;
-                    end_value = 0.0;
 
                     result = results[icomponent+ireceiver*cscheme->ncomponents];
 
-                    result->is_zero = 1;
-                    result->begin_value = 0.0;
-                    result->end_value = 0.0;
+                    begin_value = 0.0;
+                    end_value = 0.0;
 
                     nsummands = cscheme->nsummands[icomponent];
 
@@ -1144,9 +1137,9 @@ static store_error_t store_calc_timeseries(
                         begin_value += trace.begin_value * weight;
                         end_value += trace.end_value * weight;
 
-                        result->is_zero = 0;
                     }
 
+                    result->is_zero = 0;
                     result->begin_value = begin_value;
                     result->end_value = end_value;
                 }
@@ -2488,8 +2481,8 @@ static PyObject* w_make_sum_params(PyObject *m, PyObject *args) {
 
 
 static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
-    PyObject *capsule, *source_coords_arr, *ms_arr, *delays_arr, *receiver_coords_arr, *itmin_arr, *nsamples_arr, *out_list;
-    PyArrayObject *array = NULL;
+    PyObject *capsule, *source_coords_arr, *ms_arr, *delays_arr, *receiver_coords_arr, *itmin_arr, *nsamples_arr, *out_list, *out_tuple;
+    PyObject *array = NULL;
     store_t *store;
     npy_intp array_dims[1] = {0};
 
@@ -2622,6 +2615,9 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
         result->itmax = 0; // initialized by check_trace_extent
         result->empty = 1;
 
+        result->begin_value = 0.0;
+        result->end_value = 0.0;
+
         if (nsamples_want == -1)
             result->ncapacity = RESULT_INIT_CAPACITY * 3;
         else
@@ -2667,20 +2663,19 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
         memcpy(data, result->data, result->nsamples * sizeof(gf_dtype));
 
         array_dims[0] = result->nsamples;
-        array = (PyArrayObject*) PyArray_SimpleNewFromData(1, array_dims, NPY_GFDTYPE, data);
-        PyArray_ENABLEFLAGS(array, NPY_ARRAY_OWNDATA);
+        array = (PyObject*) PyArray_SimpleNewFromData(1, array_dims, NPY_GFDTYPE, data);
+        PyArray_ENABLEFLAGS((PyArrayObject*) array, NPY_ARRAY_OWNDATA);
 
-        PyList_Append(
-            out_list,
-            Py_BuildValue("Nififfi", array, result->itmin, store->deltat,
-                result->is_zero, result->begin_value, result->end_value, result->icomponent));
+        out_tuple = Py_BuildValue("Nififfi",
+                array, result->itmin, store->deltat,
+                result->is_zero, result->begin_value, result->end_value, result->icomponent);
+        PyList_Append(out_list, out_tuple);
 
         free(result->buffer);
-
+        Py_DECREF(out_tuple);
+        /*free(result);*/
         /*printf("comp: %d, nsamples: %d, itmin: %d\n", result->icomponent, result->nsamples, result->itmin);*/
     }
-
-    /* TODO cleanup */
 
     return out_list;
 }
