@@ -766,7 +766,7 @@ To get further help and a list of available options for any subcommand run:
         elif command == 'plot-xt':
             plot.my_xt_plot(
                 paths, c.zstart, c.zstop, c.distances, c.as_degrees,
-                vred=c.vred, axes=axes, show=showplt,
+                vred=c.vred, show=showplt,
                 phase_colors=c.phase_colors)
 
         elif command == 'plot-rays':

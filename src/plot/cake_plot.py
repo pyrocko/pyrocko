@@ -22,7 +22,7 @@ r2d = cake.r2d
 
 def globe_cross_section():
     # modified from http://stackoverflow.com/questions/2417794/
-    # how-to-make-the-angles-in-a-matplotlib-polar-plot-go-clockwise-with-0-at-the-to
+    # how-to-make-the-angles-in-a-matplotlib-polar-plot-go-clockwise-with-0-at-the-top
 
     from matplotlib.projections import PolarAxes, register_projection
     from matplotlib.transforms import Affine2D, Bbox, IdentityTransform
