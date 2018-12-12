@@ -419,7 +419,7 @@ class GFTestCase(unittest.TestCase):
 
         store.close()
 
-    def test_sum_statics(self):
+    def _test_sum_statics(self):
 
         nrecords = 20
 
