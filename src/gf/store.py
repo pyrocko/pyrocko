@@ -1769,6 +1769,12 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
                          optimization='enable', nthreads=1):
         config = self.config
 
+        assert interpolation in ['nearest_neighbor', 'multilinear'], \
+            'Unknown interpolation: %s' % interpolation
+
+        if not isinstance(receivers, list):
+            receivers = [receivers]
+
         if deltat is None:
             decimate = 1
         else:
@@ -1811,7 +1817,7 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
                 store.cstore,
                 source_coords_arr,
                 source_terms,
-                delays,
+                (delays - itoffset*self._deltat),
                 receiver_coords_arr,
                 scheme,
                 interpolation,

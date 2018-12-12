@@ -2673,6 +2673,7 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
 
         free(result->buffer);
         Py_DECREF(out_tuple);
+        free(result);
         /*free(result);*/
         /*printf("comp: %d, nsamples: %d, itmin: %d\n", result->icomponent, result->nsamples, result->itmin);*/
     }

@@ -1015,13 +1015,12 @@ class GFTestCase(unittest.TestCase):
                 res_sum = sum_timeseries()
 
             for c, s in zip(res_calc, res_sum):
-                # print(c[0] - s[0])
                 num.testing.assert_equal(c[0], s[0], verbose=True)
                 for cc, cs in zip(c[1:-1], s[1:]):
                     continue
                     assert cc == cs
 
-        store = gf.Store('/home/marius/Development/testing/gf/crust2_de/')
+        store = gf.Store(self.get_pulse_store_dir())
         store.open()
 
         sources = [
@@ -1051,9 +1050,7 @@ class GFTestCase(unittest.TestCase):
         # print(res)
 
     def test_process_timeseries(self):
-        store_dir = self.get_pulse_store_dir()
-
-        engine = gf.LocalEngine(store_dirs=['/home/marius/Development/testing/gf/global_2s/'])
+        engine = gf.LocalEngine(use_config=True)
 
         sources = [
             gf.ExplosionSource(
@@ -1061,7 +1058,7 @@ class GFTestCase(unittest.TestCase):
                 depth=depth,
                 moment=moment)
 
-            for moment in [2., 4., 8.] for depth in [300., 600., 1200.,]
+            for moment in [2., 4., 8.] for depth in [300., 600., 1200.]
         ]
 
         targets = [
@@ -1070,6 +1067,7 @@ class GFTestCase(unittest.TestCase):
                 north_shift=shift*km,
                 east_shift=0.,
                 tmin=tmin,
+                store_id='global2s',
                 tmax=None if tmin is None else tmin+40)
 
             for component in 'ZNE' for i, shift in enumerate([100])
@@ -1080,9 +1078,6 @@ class GFTestCase(unittest.TestCase):
                                       calc_timeseries=False, nthreads=1)
         response_calc = engine.process(sources=sources, targets=targets,
                                        calc_timeseries=True, nthreads=1)
-
-        res_calc = list(response_calc.iter_results())
-        res_sum = list(response_sum.iter_results())
 
         for (source, target, tr), (source_n, target_n, tr_n) in zip(
                 response_sum.iter_results(), response_calc.iter_results()):
@@ -1216,14 +1211,18 @@ class GFTestCase(unittest.TestCase):
         components = gf.component_scheme_to_description[
             component_scheme].provided_components
 
-        for seismogram in (store.seismogram, store.seismogram_old):
-            for interpolation in ('nearest_neighbor', 'multilinear'):
+        for seismogram in [store.seismogram, store.calc_seismograms]:
+            for interpolation in ['nearest_neighbor', 'multilinear']:
                 trs1 = []
-                for component, gtr in seismogram(
-                        dsource, receiver, components,
-                        interpolation=interpolation).items():
 
-                    tr = gtr.to_trace('', 'STA', '', component)
+                res = seismogram(dsource, receiver, components,
+                                 interpolation=interpolation)
+                if isinstance(res, list) and len(res) == 1:
+                    res = res[0]
+                for component, gtr in res.items():
+
+                    tr = gtr.to_trace('', 'STA', seismogram.__name__,
+                                      component)
                     trs1.append(tr)
 
                 trs2 = _make_traces_homogeneous(
@@ -1235,8 +1234,7 @@ class GFTestCase(unittest.TestCase):
                 tmax = min(tr.tmax for tr in trs1+trs2)
                 for tr in trs1+trs2:
                     tr.chop(tmin, tmax)
-
-                assert tr.data_len() > 2
+                    assert tr.data_len() > 2
 
                 trs1.sort(key=lambda tr: tr.channel)
                 trs2.sort(key=lambda tr: tr.channel)
@@ -1288,7 +1286,6 @@ for config_type_class in gf.config_type_classes:
                     test_homogeneous_scenario.__name__ = name
 
                     return test_homogeneous_scenario
-                continue
                 setattr(GFTestCase, name, make_method(
                     config_type_class, scheme, discretized_source_class))
 
