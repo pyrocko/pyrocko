@@ -496,6 +496,11 @@ class Viewer(qw.QMainWindow):
 
     def update_camera(self, *args):
         cam, up, foc = self.get_camera_geometry()
+
+        self.camera_position = cam
+        self.camera_up = up
+        self.camera_foc = foc
+
         camera = self.ren.GetActiveCamera()
         camera.SetPosition(*cam)
         camera.SetFocalPoint(*foc)

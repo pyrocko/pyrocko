@@ -33,6 +33,10 @@ class Description(Object):
             ncols=table.get_ncols())
 
 
+class ColumnNameError(Exception):
+    pass
+
+
 class Table(object):
 
     def __init__(self, name=None):
@@ -77,10 +81,15 @@ class Table(object):
             self._group_headers.append(gheader)
 
             if gheader:
+                if gheader.name in self._col_groups:
+                    raise ColumnNameError(gheader.name)
+
                 self._col_groups[gheader.name] = iarr
 
             for icol in range(ncols(arr)):
                 header = headers.pop(0)
+                if header.name in self._cols:
+                    raise ColumnNameError(gheader.name)
                 self._cols[header.name] = iarr, icol
                 self._headers.append(header)
 

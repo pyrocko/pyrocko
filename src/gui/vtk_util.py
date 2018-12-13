@@ -77,50 +77,87 @@ def make_multi_polyline(lines_rtp=None, lines_latlon=None):
 class ScatterPipe(object):
     def __init__(self, vertices):
         nvertices = vertices.shape[0]
+
         vpoints = vtk.vtkPoints()
         vpoints.SetNumberOfPoints(nvertices)
-        i = 0
-        for x, y, z in vertices:
-            vpoints.InsertPoint(i, x, y, z)
-            i += 1
+        vpoints.SetData(numpy_to_vtk(vertices))
 
         ppd = vtk.vtkPolyData()
         ppd.SetPoints(vpoints)
 
-        vertex_filter = vtk.vtkVertexGlyphFilter()
-        try:
-            vertex_filter.SetInputData(ppd)
-        except AttributeError:
-            vertex_filter.SetInputConnection(ppd.GetProducerPort())
+        poid = ppd.GetPointData()
+        normals = num.random.normal(size=(nvertices, 3))
+        normals /= geometry.vnorm(normals)[:, num.newaxis]
+        normals[:, :] = 0.
+        normals[:, 2] = 1.
+        
+        vnormals = numpy_to_vtk(normals)
 
-        vertex_filter.Update()
+        poid.SetNormals(vnormals)
 
-        pd = vtk.vtkPolyData()
-        pd.ShallowCopy(vertex_filter.GetOutput())
+        self.poid = poid
+        vnormals.SetName('orientation')
 
-        # colors = num.random.random((nvertices, 3))
-        colors = num.ones((nvertices, 3))
-        vcolors = numpy_to_vtk_colors(colors)
-        pd.GetPointData().SetScalars(vcolors)
+        self.vnormals = vnormals
+        
+
+        # vertex_filter = vtk.vtkVertexGlyphFilter()
+        # try:
+        #     vertex_filter.SetInputData(ppd)
+        # except AttributeError:
+        #     vertex_filter.SetInputConnection(ppd.GetProducerPort())
+        #
+        # vertex_filter.Update()
+        #
+        # pd = vtk.vtkPolyData()
+        # pd.ShallowCopy(vertex_filter.GetOutput())
+
+        source = vtk.vtkRegularPolygonSource()
+        source.SetNumberOfSides(3)
+        source.SetRadius(0.001)
+        source.SetCenter(0., 0., 0.)
+
+
+        # glyph = vtk.vtkGlyph3D()
+        # glyph.SetInputData(ppd)
+        # glyph.SetSourceConnection(source.GetOutputPort())
+        #
+        # # colors = num.random.random((nvertices, 3))
+        # colors = num.ones((nvertices, 3))
+        # vcolors = numpy_to_vtk_colors(colors)
+        #
+        # glyph.GetPointData().SetScalars(vcolors)
+        #
+        # map = vtk.vtkPolyDataMapper()
+        # try:
+        #     map.SetInputConnection(glyph.GetOutputPort())
+        # except AttributeError:
+        #     map.SetInputData(glyph)
+        #
+        # self.polydata = glyph
+
+        gmap = vtk.vtkGlyph3D()
+        gmap.SetInputData(ppd)
+        gmap.SetSourceConnection(source.GetOutputPort())
+        gmap.SetVectorModeToUseNormal()
+        gmap.SetOrient(True)
+        # gmap.SetOrientationArray('orientation')
+        self.gmap = gmap
+        
 
         map = vtk.vtkPolyDataMapper()
-        try:
-            map.SetInputConnection(pd.GetProducerPort())
-        except AttributeError:
-            map.SetInputData(pd)
-
-        self.polydata = pd
+        map.SetInputConnection(gmap.GetOutputPort())
 
         act = vtk.vtkActor()
         act.SetMapper(map)
 
         prop = act.GetProperty()
-        prop.SetPointSize(10)
-        try:
-            prop.SetRenderPointsAsSpheres(True)
-        except AttributeError:
-            logger.warn(
-                'Cannot render points as sphere with this version of VTK')
+        # prop.SetPointSize(10)
+        # try:
+        #     prop.SetRenderPointsAsSpheres(True)
+        # except AttributeError:
+        #     logger.warn(
+        #         'Cannot render points as sphere with this version of VTK')
 
         self.prop = prop
 
@@ -131,8 +168,18 @@ class ScatterPipe(object):
         self.polydata.GetPointData().SetScalars(vcolors)
 
     def set_size(self, size):
-        self.prop.SetPointSize(size)
+        self.gmap.SetScaleFactor(size)
 
+    def set_normals(self, normals):
+        #print(normals)
+        self.vnormals = numpy_to_vtk(normals)
+        self.vnormals.SetName('orientation2')
+        self.poid.SetNormals(self.vnormals)
+        #self.gmap.SetOrient(True)
+        #self.gmap.SetOrientationArray('orientation2')
+        #self.gmap.SetOrientationModeToRotation()
+        #self.gmap.Update()
+        pass
 
 class TrimeshPipe(object):
     def __init__(self, vertices, faces, values=None, smooth=False):

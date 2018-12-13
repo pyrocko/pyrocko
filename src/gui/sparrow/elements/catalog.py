@@ -37,8 +37,13 @@ class CatalogElement(Element):
         self._pipe = None
         self._controls = None
 
-        events = pmodel.load_events('catalogs/sachsen.txt')
-        latlondepth = num.array([(ev.lat, ev.lon, ev.depth) for ev in events])
+        # events = pmodel.load_events('catalogs/sachsen.txt')
+        # latlondepth = num.array([(ev.lat, ev.lon, ev.depth) for ev in events])
+
+        npoints = 50
+        latlondepth = num.random.normal(size=(npoints, 3))
+        latlondepth[:, 2] *= 0.01
+
         self._points = geometry.latlondepth2xyz(
             latlondepth,
             planetradius=cake.earthradius)
@@ -70,8 +75,14 @@ class CatalogElement(Element):
                 self._pipe = ScatterPipe(self._points)
                 self.parent.add_actor(self._pipe.actor)
 
-        print('s', state.size)
-        self._pipe.set_size(state.size)
+            campos = self.parent.camera_position
+            normals = self._points - campos[num.newaxis, :]
+            #normals = num.random.normal(size=(self._points.shape[0], 3))
+            normals /= geometry.vnorm(normals)[:, num.newaxis]
+
+            self._pipe.set_normals(normals)
+
+            self._pipe.set_size(state.size)
 
         self.parent.update_view()
 
