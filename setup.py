@@ -47,9 +47,8 @@ def git_infos():
     sha1 = q(['git', 'log', '--pretty=oneline', '-n1']).split()[0]
     sha1 = re.sub(br'[^0-9a-f]', '', sha1)
     sha1 = str(sha1.decode('ascii'))
-    sstatus = q(['git', 'status'])
-    local_modifications = bool(re.search(br'^#\s+modified:', sstatus,
-                                         flags=re.M))
+    sstatus = q(['git', 'status', '--porcelain', '-uno'])
+    local_modifications = bool(sstatus.strip())
     return sha1, local_modifications
 
 
