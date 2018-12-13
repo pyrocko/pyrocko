@@ -38,17 +38,10 @@ from ..util import (ValControl, LinValControl, Marker, EventMarker,
                     PhaseMarker, make_QPolygonF, draw_label, Label,
                     Progressbars)
 
-from ..qt_compat import qc, qg, qw, qgl, qsvg, use_pyqt5
+from ..qt_compat import qc, qg, qw, qgl, qsvg, use_pyqt5, fnpatch
 
 import scipy.stats as sstats
 import platform
-
-
-def fnpatch(x):
-    if use_pyqt5:
-        return x
-    else:
-        return x, None
 
 
 if sys.version_info[0] >= 3:
