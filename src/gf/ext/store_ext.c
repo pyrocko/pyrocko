@@ -259,6 +259,7 @@ typedef struct {
     int32_t ncapacity;
     int32_t buf_pos;
     int32_t empty;
+    store_error_t err;
     gf_dtype begin_value;
     gf_dtype end_value;
     gf_dtype *data;
@@ -1030,8 +1031,12 @@ static store_error_t store_calc_timeseries(
             delay = delays[isource];
             idelay_floor = (int) floor(delay/deltat);
             idelay_ceil = (int) ceil(delay/deltat);
+
             if (!inlimits(idelay_floor) || !inlimits(idelay_ceil)) {
-                err += BAD_REQUEST;
+                for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
+                    result = results[icomponent+ireceiver*cscheme->ncomponents];
+                    result->err = BAD_REQUEST;                    
+                }
                 continue;
             }
             
@@ -1042,6 +1047,14 @@ static store_error_t store_calc_timeseries(
                     &receiver_coords[ireceiver*5],
                     irecord_bases,
                     weights_ip);
+
+                if (err != SUCCESS) {
+                    for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
+                        result = results[icomponent+ireceiver*cscheme->ncomponents];
+                        result->err = err;
+                    }
+                    continue;
+                }
 
                 for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
 
@@ -1058,12 +1071,16 @@ static store_error_t store_calc_timeseries(
 
                             idx_record = irecord_bases[iip] + cscheme->igs[icomponent][isummand];
                             err += check_trace_extent(store, result, delay, idx_record);
-                            if (err != SUCCESS || weight == 0.)
+                            if (err != SUCCESS || weight == 0.) {
+                                result->err = err;
                                 continue;
+                            }
 
                             err += store_get(store, idx_record, &trace);
-                            if (err != SUCCESS || trace.is_zero)
+                            if (err != SUCCESS || trace.is_zero) {
+                                result->err = err;
                                 continue;
+                            }
 
                             trace_trim_sticky(
                                 &trace,
@@ -1097,6 +1114,14 @@ static store_error_t store_calc_timeseries(
                     &receiver_coords[ireceiver*5],
                     irecord_bases);
 
+                if (!inlimits(idelay_floor) || !inlimits(idelay_ceil)) {
+                    for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
+                        result = results[icomponent+ireceiver*cscheme->ncomponents];
+                        result->err = BAD_REQUEST;                    
+                    }
+                    continue;
+                }
+
                 for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
 
                     result = results[icomponent+ireceiver*cscheme->ncomponents];
@@ -1111,12 +1136,16 @@ static store_error_t store_calc_timeseries(
 
                         idx_record = irecord_bases[0] + cscheme->igs[icomponent][isummand];
                         err += check_trace_extent(store, result, delay, idx_record);
-                        if (err != SUCCESS || weight == 0.)
+                        if (err != SUCCESS || weight == 0.) {
+                            result->err = err;
                             continue;
+                        }
 
                         err += store_get(store, idx_record, &trace);
-                        if (err != SUCCESS || trace.is_zero)
+                        if (err != SUCCESS || trace.is_zero) {
+                            result->err = err;
                             continue;
+                        }
 
                         trace_trim_sticky(
                             &trace,
@@ -2571,16 +2600,6 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
         return NULL;
     }
 
-    /*if (!inlimits(itmin_)) {
-        PyErr_SetString(st->error, "w_store_calc_timeseries: invalid itmin argument");
-        return NULL;
-    }
-
-    if (!(inposlimits(nsamples_) || -1 == nsamples_)) {
-        PyErr_SetString(st->error, "w_store_calc_timeseries: invalid nsamples argument");
-        return NULL;
-    }*/
-
     source_coords = PyArray_DATA((PyArrayObject*) source_coords_arr);
     ms = PyArray_DATA((PyArrayObject*) ms_arr);
     delays = PyArray_DATA((PyArrayObject*) delays_arr);
@@ -2614,6 +2633,7 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
         result->itmin_want = itmin_want;
         result->itmax = 0; // initialized by check_trace_extent
         result->empty = 1;
+        result->err = SUCCESS;
 
         result->begin_value = 0.0;
         result->end_value = 0.0;
@@ -2666,15 +2686,14 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
         array = (PyObject*) PyArray_SimpleNewFromData(1, array_dims, NPY_GFDTYPE, data);
         PyArray_ENABLEFLAGS((PyArrayObject*) array, NPY_ARRAY_OWNDATA);
 
-        out_tuple = Py_BuildValue("Nififfi",
+        out_tuple = Py_BuildValue("Nififfii",
                 array, result->itmin, store->deltat,
-                result->is_zero, result->begin_value, result->end_value, result->icomponent);
+                result->is_zero, result->begin_value, result->end_value, result->icomponent, result->err);
         PyList_Append(out_list, out_tuple);
 
         free(result->buffer);
-        Py_DECREF(out_tuple);
         free(result);
-        /*free(result);*/
+        Py_DECREF(out_tuple);
         /*printf("comp: %d, nsamples: %d, itmin: %d\n", result->icomponent, result->nsamples, result->itmin);*/
     }
 
@@ -2716,29 +2735,29 @@ static PyObject* w_store_calc_static(PyObject *m, PyObject *args) {
 
     store = get_store_from_capsule(capsule);
     if (store == NULL) {
-        PyErr_SetString(st->error, "w_store_sum_static: bad store given");
+        PyErr_SetString(st->error, "w_store_calc_static: bad store given");
         return NULL;
     }
 
     mscheme = store->mapping_scheme;
     if (mscheme == NULL) {
-        PyErr_SetString(st->error, "w_store_sum_static: no mapping scheme set on store");
+        PyErr_SetString(st->error, "w_store_calc_static: no mapping scheme set on store");
         return NULL;
     }
 
     cscheme = get_component_scheme(component_scheme_name);
     if (cscheme == NULL) {
-        PyErr_SetString(st->error, "w_store_sum_static: invalid component scheme name");
+        PyErr_SetString(st->error, "w_store_calc_static: invalid component scheme name");
         return NULL;
     }
 
     interpolation = get_interpolation_scheme_id(interpolation_scheme_name);
     if (interpolation == UNDEFINED_INTERPOLATION_SCHEME) {
-        PyErr_SetString(st->error, "w_store_sum_static: invalid interpolation scheme name");
+        PyErr_SetString(st->error, "w_store_calc_static: invalid interpolation scheme name");
         return NULL;
     }
     if (!good_array(source_coords_arr, NPY_FLOAT64, -1, 2, shape_want_coords)) {
-        PyErr_SetString(st->error, "w_store_sum_static: unhealthy source_coords array");
+        PyErr_SetString(st->error, "w_store_calc_static: unhealthy source_coords array");
         return NULL;
     }
 

@@ -23,6 +23,8 @@ assert_ae = num.testing.assert_almost_equal
 logger = logging.getLogger('pyrocko.test.test_gf')
 benchmark = Benchmark()
 
+local_stores = gf.LocalEngine(use_config=True).get_store_ids()
+
 r2d = 180. / math.pi
 d2r = 1.0 / r2d
 km = 1000.
@@ -507,8 +509,9 @@ class GFTestCase(unittest.TestCase):
             tr2.set_ydata(data)
             tr2.set_codes(location='X')
 
-            self.assertTrue(numeq(data, tr.ydata, 0.01))
+            num.testing.assert_almost_equal(data, tr.ydata, 2)
 
+    @unittest.skip('')
     def test_pulse_decimate(self):
         store_dir = self.get_pulse_store_dir()
 
@@ -550,7 +553,8 @@ class GFTestCase(unittest.TestCase):
         for tr in trs:
             tr.chop(tmin, tmax)
 
-        self.assertTrue(numeq(trs[0].ydata, trs[1].ydata, 0.01))
+        num.testing.assert_almost_equal(
+            trs[0].ydata, trs[1].ydata, 2)
 
     def test_stf_pre_post(self):
         store_dir = self.get_pulse_store_dir()
@@ -927,6 +931,7 @@ class GFTestCase(unittest.TestCase):
 
         benchmark.show_factor = False
 
+    @unittest.skip('depends on local store')
     def test_calc_timeseries(self):
         from pyrocko.gf import store_ext
         benchmark.show_factor = True
@@ -1049,6 +1054,8 @@ class GFTestCase(unittest.TestCase):
         # plot(res)
         # print(res)
 
+    @unittest.skipIf('global2s' not in local_stores, 
+                     'depends on store global_2s')
     def test_process_timeseries(self):
         engine = gf.LocalEngine(use_config=True)
 
@@ -1067,7 +1074,7 @@ class GFTestCase(unittest.TestCase):
                 north_shift=shift*km,
                 east_shift=0.,
                 tmin=tmin,
-                store_id='global2s',
+                store_id='global_2s',
                 tmax=None if tmin is None else tmin+40)
 
             for component in 'ZNE' for i, shift in enumerate([100])
@@ -1076,6 +1083,7 @@ class GFTestCase(unittest.TestCase):
 
         response_sum = engine.process(sources=sources, targets=targets,
                                       calc_timeseries=False, nthreads=1)
+
         response_calc = engine.process(sources=sources, targets=targets,
                                        calc_timeseries=True, nthreads=1)
 

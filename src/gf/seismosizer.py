@@ -2643,20 +2643,23 @@ def process_dynamic_timeseries(work, psources, ptargets, engine, nthreads=0):
         for store_id in store_ids:
             store_targets = [t for t in targets if t.store_id == store_id]
 
-            try:
-                base_seismograms = engine.base_seismograms(
-                    source,
-                    store_targets,
-                    components,
-                    dsource_cache,
-                    nthreads)
-            except Exception as e:
-                e.context = OutOfBoundsContext(
-                    source=source,
-                    target=store_targets[0],
-                    distance=source.distance_to(store_targets[0]),
-                    components=components)
-                raise e
+            base_seismograms = engine.base_seismograms(
+                source,
+                store_targets,
+                components,
+                dsource_cache,
+                nthreads)
+
+            for iseis, seismogram in enumerate(base_seismograms):
+                for tr in seismogram.values():
+                    if tr.err != store.SeismosizerErrorEnum.SUCCESS:
+                        e = Exception()
+                        e.context = OutOfBoundsContext(
+                            source=source,
+                            target=store_targets[iseis],
+                            distance=source.distance_to(store_targets[iseis]),
+                            components=components)
+                        raise e
 
             for seismogram, target in zip(base_seismograms, store_targets):
                 try:

@@ -377,7 +377,7 @@ mantle
         store.open()
         src_length = 2 * km
         src_width = 5 * km
-        ntargets = 2
+        ntargets = 20
 
         north_shifts, east_shifts = num.meshgrid(
             num.linspace(-20*km, 20*km, ntargets),
@@ -462,7 +462,7 @@ mantle
             print(benchmark)
             benchmark.clear()
 
-        run(interpolation, nthreads=1, niter=3)
+        run(interpolation, nthreads=0, niter=10000)
         print(benchmark)
 
         def plot(displ):

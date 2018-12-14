@@ -9,6 +9,7 @@ import errno
 import time
 import os
 import struct
+import weakref
 import math
 import shutil
 import fcntl
@@ -48,6 +49,25 @@ gf_record_dtype = num.dtype([
     ('begin_value', E + 'f4'),
     ('end_value', E + 'f4'),
 ])
+
+
+class SeismosizerErrorEnum:
+    SUCCESS = 0
+    INVALID_RECORD = 1
+    EMPTY_RECORD = 2
+    BAD_RECORD = 3
+    ALLOC_FAILED = 4
+    BAD_REQUEST = 5
+    BAD_DATA_OFFSET = 6
+    READ_DATA_FAILED = 7
+    SEEK_INDEX_FAILED = 8
+    READ_INDEX_FAILED = 9
+    FSTAT_TRACES_FAILED = 10
+    BAD_STORE = 11
+    MMAP_INDEX_FAILED = 12
+    MMAP_TRACES_FAILED = 13
+    INDEX_OUT_OF_BOUNDS = 14
+    NTARGETS_OUT_OF_BOUNDS = 15
 
 
 def valid_string_id(s):
@@ -120,13 +140,14 @@ class GFTrace(object):
             begin_value = 0.0
             end_value = 0.0
 
-        self.data = data
+        self.data = weakref.ref(data)()
         self.itmin = itmin
         self.deltat = deltat
         self.is_zero = is_zero
         self.n_records_stacked = 0.
         self.t_stack = 0.
         self.t_optimize = 0.
+        self.err = SeismosizerErrorEnum.SUCCESS
 
         if data is not None and data.size > 0:
             if begin_value is None:
@@ -1831,20 +1852,23 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
         ncomponents = len(provided_components)
 
         seismograms = [dict() for _ in range(nreceiver)]
-        for ires, res in enumerate(results):
+        for ires in range(len(results)):
+            res = results.pop(0)
             ireceiver = ires // ncomponents
 
-            comp = provided_components[res[-1]]
+            comp = provided_components[res[-2]]
+
             if comp not in components:
                 continue
 
-            tr = GFTrace(*res[:-1])
+            tr = GFTrace(*res[:-2])
             tr.deltat = config.deltat * decimate
             tr.itmin += itoffset
 
             tr.n_records_stacked = 0
             tr.t_optimize = 0.
             tr.t_stack = 0.
+            tr.err = res[-1]
 
             seismograms[ireceiver][comp] = tr
 
@@ -1928,4 +1952,5 @@ NoSuchExtra
 NoSuchPhase
 BaseStore
 Store
+SeismosizerErrorEnum
 '''.split()
