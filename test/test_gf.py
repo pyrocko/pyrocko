@@ -1054,7 +1054,7 @@ class GFTestCase(unittest.TestCase):
         # plot(res)
         # print(res)
 
-    @unittest.skipIf('global2s' not in local_stores, 
+    @unittest.skipIf('global2s' not in local_stores,
                      'depends on store global_2s')
     def test_process_timeseries(self):
         engine = gf.LocalEngine(use_config=True)
