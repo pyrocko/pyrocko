@@ -107,12 +107,14 @@ class InvalidRequest(Exception):
 
 def _request(url, post=False, user=None, passwd=None,
              allow_TLSv1=False, **kwargs):
+    timeout = float(kwargs.pop('timeout', g_timeout))
     url_values = urlencode(kwargs)
     if url_values:
         url += '?' + url_values
+
     logger.debug('Accessing URL %s' % url)
     url_args = {
-        'timeout': g_timeout
+        'timeout': timeout
     }
 
     if allow_TLSv1:
