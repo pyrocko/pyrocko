@@ -244,6 +244,28 @@ typedef struct {
     gf_dtype *data;
 } trace_t;
 
+/* result trace sheme defs */
+
+#define RESULT_INIT_CAPACITY 1024
+
+typedef struct {
+    int is_zero;
+    int32_t icomponent;
+    int32_t itmin;
+    int32_t itmin_want;
+    int32_t itmax;
+    int32_t nsamples;
+    int32_t nsamples_want;
+    int32_t ncapacity;
+    int32_t buf_pos;
+    int32_t empty;
+    store_error_t err;
+    gf_dtype begin_value;
+    gf_dtype end_value;
+    gf_dtype *data;
+    gf_dtype *buffer;
+} result_trace_t;
+
 /* component scheme defs */
 
 #define NCOMPONENTS_MAX 3
@@ -387,7 +409,7 @@ static const trace_t ZERO_TRACE = { 1, 0, 0, 0.0, 0.0, NULL };
 static const store_t ZERO_STORE = { 0, 0, 0, 0, 0.0, NULL, NULL, NULL, NULL, NULL };
 
 static store_error_t store_get_span(const store_t *store, uint64_t irecord,
-                             int32_t *itmin, int32_t *nsamples, int *is_zero) {
+                                    int32_t *itmin, int32_t *nsamples, int *is_zero) {
     record_t *record;
     if (irecord >= store->nrecords) {
         return INVALID_RECORD;
@@ -521,7 +543,6 @@ static void trace_trim_sticky(trace_t *trace, int32_t itmin, int32_t nsamples) {
     trace->data += ilo;
 }
 
-
 static store_error_t store_sum_extent(
             const store_t *store,
             const uint64_t *irecords,
@@ -556,8 +577,7 @@ static store_error_t store_sum_extent(
         if (ihave) {
             itmin_d = min(itmin_d, itmin + idelay);
             itmax_d = max(itmax_d, itmax + idelay);
-        }
-        else {
+        } else {
             itmin_d = itmin + idelay;
             itmax_d = itmax + idelay;
             ihave = 1;
@@ -784,6 +804,388 @@ static store_error_t store_sum_static(
     return SUCCESS;
 }
 
+
+static store_error_t ensure_trace_capacity(result_trace_t *result, int itmin, int itmax) {
+    int new_capacity, start_pos, nsamples, idx;
+    int ishift = 0;
+    gf_dtype *new_buffer, value;
+
+    nsamples = itmax - itmin + 1;
+
+    /*printf("Requested itmin: %d, itmax: %d, nsamples: %d\n", itmin, itmax, nsamples);*/
+
+    if (nsamples > (result->ncapacity - result->buf_pos)) {
+        new_capacity = result->ncapacity;
+
+        do {
+            new_capacity = new_capacity + 2*RESULT_INIT_CAPACITY;
+            start_pos = (new_capacity - nsamples) / 2;
+        } while (nsamples > new_capacity - start_pos);
+
+
+        new_buffer = (gf_dtype*) calloc(new_capacity, sizeof(gf_dtype));
+        if (new_buffer == NULL)
+            return ALLOC_FAILED;
+
+        memcpy(new_buffer + start_pos, result->buffer, sizeof(gf_dtype) * result->ncapacity);
+        
+        free(result->buffer);
+
+        result->buf_pos = start_pos;
+        result->buffer = new_buffer;
+        result->data = result->buffer + start_pos;
+        result->ncapacity = new_capacity;
+    }
+
+    if (itmin < result->itmin) {
+        ishift = result->itmin - itmin;
+
+        if (result->data[0] != 0.) {
+            value = result->data[0];
+            for (idx=1; idx<=ishift; idx++)
+                result->data[-idx] = value;
+        }
+
+        result->buf_pos = result->buf_pos - ishift;
+        result->data = result->buffer + result->buf_pos;
+        result->itmin = itmin;
+    }
+
+    if (nsamples > result->nsamples && result->data[result->nsamples-1] != 0.) {
+        value = result->data[ishift+result->nsamples-1];
+        for (idx=0; idx<(nsamples - result->nsamples); idx++)
+            result->data[result->nsamples+idx] = value;
+    }
+
+    result->itmax = max(result->itmax, itmax);
+    result->nsamples = max(result->nsamples, nsamples);
+    return SUCCESS;
+}
+
+
+static store_error_t check_trace_extent(
+        store_t *store,
+        result_trace_t *result,
+        float64_t delay,
+        int irecord) {
+
+    int itmin, itmax, ns, is_zero;
+    float64_t idelay;
+    store_error_t err = SUCCESS;
+    ns = itmin = 0;
+
+    if (result->nsamples_want == -1) {
+        err = store_get_span(store, irecord, &itmin, &ns, &is_zero);
+
+        idelay = delay/store->deltat;
+        itmin = itmin + (int) floor(idelay);
+        itmax = itmin + ns + (int) ceil(idelay) - 1;
+
+        if (result->empty) {
+            result->itmin = itmin;
+            result->empty = 0;
+        }
+
+        itmin = min(result->itmin, itmin);
+        itmax = max(result->itmax, itmax);
+    } else {
+        itmin = result->itmin_want;
+        itmax = result->itmin_want + result->nsamples_want - 1;
+    }
+    err += ensure_trace_capacity(result, itmin, itmax);
+
+    return err;
+}
+
+
+static store_error_t stack_trace_timeseries(
+        trace_t *trace,
+        float32_t weight,
+        int itmin,
+        float64_t delay,
+        int idelay_floor,
+        int idelay_ceil,
+        int nsamples,
+        float32_t deltat,
+        gf_dtype* out) {
+
+    int ilo, i;
+    float w1, w2;
+
+    if (idelay_floor == idelay_ceil) {
+        ilo = itmin - idelay_floor - trace->itmin;
+        /*for (i=0; i<nsamples; i++) {
+            ifloor = i + ilo;
+            ifloor = max(0, min(ifloor, trace->nsamples-1));
+            out[i] += fe32toh(trace->data[ifloor]) * weight;
+        } // version below is a bit faster */
+        for (i=0; i<min(-ilo,nsamples); i++) {
+            out[i] += fe32toh(trace->data[0]) * weight;
+        }
+        for (i=max(0,-ilo); i<min(nsamples, trace->nsamples-ilo); i++) {
+            out[i] += fe32toh(trace->data[i+ilo]) * weight;
+        }
+        for (i=max(0,trace->nsamples-ilo); i<nsamples; i++) {
+            out[i] += fe32toh(trace->data[trace->nsamples-1]) * weight;
+        }
+    } else {
+        ilo = itmin - idelay_floor - trace->itmin;
+        /*ihi = ilo - 1;*/
+        w1 = (idelay_ceil - delay/deltat);
+        w2 = 1.0 - w1;
+        w1 *= weight;
+        w2 *= weight;
+        /* printf("- w1 %f, w2 %f\n", w1, w2); */
+        /*for (i=0; i<nsamples; i++) {
+            ifloor = i + ilo;
+            iceil = i + ihi;
+            ifloor = max(0, min(ifloor, trace->nsamples-1));
+            iceil = max(0, min(iceil, trace->nsamples-1));
+            out[i] += fe32toh(trace->data[ifloor]) * w1;
+            out[i] += fe32toh(trace->data[iceil]) * w2;
+        } // version below is a bit faster */
+        for (i=0; i<min(-ilo, nsamples); i++) {
+            out[i] += fe32toh(trace->data[0]) * weight;
+        }
+        for (i=max(0, -ilo); i<min(nsamples, -ilo+1); i++) {
+            out[i] += fe32toh(trace->data[i+ilo])*w1
+                      + fe32toh(trace->data[0])*w2;
+        }
+        for (i=max(0, -ilo+1); i<min(nsamples, trace->nsamples-ilo); i++) {
+            out[i] += fe32toh(trace->data[i+ilo])*w1
+                      + fe32toh(trace->data[i+ilo-1])*w2;
+        }
+        for (i=max(0, trace->nsamples-ilo);
+             i<min(nsamples, trace->nsamples-ilo+1); i++) {
+            out[i] += fe32toh(trace->data[trace->nsamples-1]) * w1
+                      + fe32toh(trace->data[i+ilo-1])*w2;
+        }
+        for (i=max(0, trace->nsamples-ilo+1); i<nsamples; i++) {
+            out[i] += fe32toh(trace->data[trace->nsamples-1]) * weight;
+        }
+    }
+    return SUCCESS;
+}
+
+
+static store_error_t store_calc_timeseries(
+        store_t *store,
+        const float64_t *source_coords,
+        const float64_t *ms,
+        const float64_t *delays,
+        const float64_t *receiver_coords,
+        size_t nsources,
+        size_t nreceivers,
+        const component_scheme_t *cscheme,
+        const mapping_scheme_t *mscheme,
+        const mapping_t *mapping,
+        interpolation_scheme_id interpolation,
+        int32_t nthreads,
+        result_trace_t **results) {
+
+    float32_t weight, delay;
+    trace_t trace;
+    result_trace_t *result;
+    float32_t deltat = store->deltat;
+    gf_dtype begin_value, end_value;
+    int idx_record, idelay_floor, idelay_ceil;
+    store_error_t err = SUCCESS;
+
+    size_t ireceiver, isource, iip, nip, icomponent, isummand, nsummands_max, nsummands;
+    float64_t ws_this[cscheme->ncomponents*cscheme->nsummands_max];
+    uint64_t irecord_bases[VICINITY_NIP_MAX];
+    float64_t weights_ip[VICINITY_NIP_MAX];
+
+    nsummands_max = cscheme->nsummands_max;
+    nip = mscheme->vicinity_nip;
+
+    Py_BEGIN_ALLOW_THREADS
+    #if defined(_OPENMP)
+        if (nthreads == 0)
+            nthreads = omp_get_num_procs();
+        else if (nthreads > omp_get_num_procs()) {
+            nthreads = omp_get_num_procs();
+            printf("store_calc_static - Warning: Desired nthreads exceeds number of physical processors, falling to %d threads\n", nthreads);
+        }
+
+        #pragma omp parallel \
+            shared (store, source_coords, ms, delays, receiver_coords, \
+                    cscheme, mscheme, mapping, interpolation, nip, results, nsources, nsummands_max) \
+            private (isource, iip, icomponent, isummand, nsummands, irecord_bases, weights_ip, ws_this, \
+                     delay, weight, idelay_floor, idelay_ceil, idx_record, trace, result, begin_value, end_value) \
+            reduction (+: err) \
+            num_threads (nthreads)
+        {
+        #pragma omp for schedule (dynamic)
+    #endif
+
+    for (ireceiver=0; ireceiver<nreceivers; ireceiver++) {
+        for (isource=0; isource<nsources; isource++) {
+
+            cscheme->make_weights(
+                &source_coords[isource*5],
+                &ms[isource*cscheme->nsource_terms],
+                &receiver_coords[ireceiver*5],
+                ws_this);
+
+            delay = delays[isource];
+            idelay_floor = (int) floor(delay/deltat);
+            idelay_ceil = (int) ceil(delay/deltat);
+
+            if (!inlimits(idelay_floor) || !inlimits(idelay_ceil)) {
+                for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
+                    result = results[icomponent+ireceiver*cscheme->ncomponents];
+                    result->err = BAD_REQUEST;                    
+                }
+                continue;
+            }
+            
+            if (interpolation == MULTILINEAR) {
+                err += mscheme->vicinity(
+                    mapping,
+                    &source_coords[isource*5],
+                    &receiver_coords[ireceiver*5],
+                    irecord_bases,
+                    weights_ip);
+
+                if (err != SUCCESS) {
+                    for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
+                        result = results[icomponent+ireceiver*cscheme->ncomponents];
+                        result->err = err;
+                    }
+                    continue;
+                }
+
+                for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
+
+                    result = results[icomponent+ireceiver*cscheme->ncomponents];
+
+                    begin_value = 0.0;
+                    end_value = 0.0;
+
+                    nsummands = cscheme->nsummands[icomponent];
+
+                    for (iip=0; iip<nip; iip++) {
+                        for (isummand=0; isummand<nsummands; isummand++) {
+                            weight = weights_ip[iip] * ws_this[icomponent*nsummands_max + isummand];
+
+                            idx_record = irecord_bases[iip] + cscheme->igs[icomponent][isummand];
+                            err += check_trace_extent(store, result, delay, idx_record);
+                            if (err != SUCCESS || weight == 0.) {
+                                result->err = err;
+                                continue;
+                            }
+
+                            err += store_get(store, idx_record, &trace);
+                            if (err != SUCCESS || trace.is_zero) {
+                                result->err = err;
+                                continue;
+                            }
+
+                            trace_trim_sticky(
+                                &trace,
+                                result->itmin - idelay_ceil,
+                                result->nsamples + idelay_ceil - idelay_floor);
+
+                            stack_trace_timeseries(
+                                &trace,
+                                weight,
+                                result->itmin,
+                                delay,
+                                idelay_floor,
+                                idelay_ceil,
+                                result->nsamples,
+                                deltat,
+                                result->data);
+
+                            begin_value += trace.begin_value * weight;
+                            end_value += trace.end_value * weight;
+                        }
+                    }
+
+                    result->is_zero = 0;
+                    result->begin_value = begin_value;
+                    result->end_value = end_value;
+                }
+            } else if (interpolation == NEAREST_NEIGHBOR) {
+                err += mscheme->irecord(
+                    mapping,
+                    &source_coords[isource*5],
+                    &receiver_coords[ireceiver*5],
+                    irecord_bases);
+
+                if (!inlimits(idelay_floor) || !inlimits(idelay_ceil)) {
+                    for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
+                        result = results[icomponent+ireceiver*cscheme->ncomponents];
+                        result->err = BAD_REQUEST;                    
+                    }
+                    continue;
+                }
+
+                for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
+
+                    result = results[icomponent+ireceiver*cscheme->ncomponents];
+
+                    begin_value = 0.0;
+                    end_value = 0.0;
+
+                    nsummands = cscheme->nsummands[icomponent];
+
+                    for (isummand=0; isummand<nsummands; isummand++) {
+                        weight = ws_this[icomponent*nsummands_max + isummand];
+
+                        idx_record = irecord_bases[0] + cscheme->igs[icomponent][isummand];
+                        err += check_trace_extent(store, result, delay, idx_record);
+                        if (err != SUCCESS || weight == 0.) {
+                            result->err = err;
+                            continue;
+                        }
+
+                        err += store_get(store, idx_record, &trace);
+                        if (err != SUCCESS || trace.is_zero) {
+                            result->err = err;
+                            continue;
+                        }
+
+                        trace_trim_sticky(
+                            &trace,
+                            result->itmin - idelay_ceil,
+                            result->nsamples + idelay_ceil - idelay_floor);
+
+                        stack_trace_timeseries(
+                            &trace,
+                            weight,
+                            result->itmin,
+                            delay,
+                            idelay_floor,
+                            idelay_ceil,
+                            result->nsamples,
+                            deltat,
+                            result->data);
+
+                        begin_value += trace.begin_value * weight;
+                        end_value += trace.end_value * weight;
+
+                    }
+
+                    result->is_zero = 0;
+                    result->begin_value = begin_value;
+                    result->end_value = end_value;
+                }
+            }
+        }
+    }
+    #if defined(_OPENMP)
+        }
+    #endif
+    Py_END_ALLOW_THREADS
+
+    if (err != SUCCESS)
+        return BAD_REQUEST;
+
+    return SUCCESS;
+}
+
 static store_error_t store_calc_static(
         const store_t *store,
         const float64_t *source_coords,
@@ -844,7 +1246,7 @@ static store_error_t store_calc_static(
             reduction (+: err) \
             num_threads (nthreads)
         {
-        #pragma omp for schedule (static)
+        #pragma omp for schedule (guided)
     #endif
 
     for (ireceiver=0; ireceiver<nreceivers; ireceiver++) {
@@ -871,9 +1273,9 @@ static store_error_t store_calc_static(
                     irecord_bases,
                     weights_ip);
 
-                for (iip=0; iip<nip; iip++) {
-                    for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
-                        nsummands = cscheme->nsummands[icomponent];
+                for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
+                    nsummands = cscheme->nsummands[icomponent];
+                    for (iip=0; iip<nip; iip++) {
                         for (isummand=0; isummand<nsummands; isummand++) {
                             weight = weights_ip[iip] * ws_this[icomponent*nsummands_max + isummand];
                             if (weight == 0.)
@@ -2097,11 +2499,202 @@ static PyObject* w_make_sum_params(PyObject *m, PyObject *args) {
         weights,
         irecords);
 
-
     if (SUCCESS != err) {
         Py_DECREF(out_list);
         PyErr_SetString(st->error, store_error_names[err]);
         return NULL;
+    }
+
+    return out_list;
+}
+
+
+static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
+    PyObject *capsule, *source_coords_arr, *ms_arr, *delays_arr, *receiver_coords_arr, *itmin_arr, *nsamples_arr, *out_list, *out_tuple;
+    PyObject *array = NULL;
+    store_t *store;
+    npy_intp array_dims[1] = {0};
+
+    char *component_scheme_name, *interpolation_scheme_name;
+    const component_scheme_t *cscheme;
+    const mapping_scheme_t *mscheme;
+    interpolation_scheme_id interpolation;
+    gf_dtype *data;
+
+    float64_t *source_coords, *receiver_coords, *ms, *delays;
+    int32_t *itmin, *nsamples, nsamples_want, itmin_want;
+    int nsources, nreceivers;
+    int32_t nthreads;
+    store_error_t err;
+
+    npy_intp shape_want_coords[2] = {-1, 5};
+    npy_intp shape_want_ms[2] = {-1, 6};
+
+    size_t ires;
+
+    struct module_state *st = GETSTATE(m);
+
+    if (!PyArg_ParseTuple(
+            args, "OOOOOssOOI", &capsule, &source_coords_arr, &ms_arr, &delays_arr,
+            &receiver_coords_arr, &component_scheme_name, 
+            &interpolation_scheme_name, &itmin_arr, &nsamples_arr, &nthreads)) {
+        PyErr_SetString(st->error,
+            "usage: store_calc_timeseries(cstore, source_coords, moment_tensors, delays, receiver_coords, component_scheme, interpolation_name, itmin_arr, nsamples_arr, nthreads)");
+        return NULL;
+    }
+
+    store = get_store_from_capsule(capsule);
+    if (store == NULL) {
+        PyErr_SetString(st->error, "w_store_calc_timeseries: bad store given");
+        return NULL;
+    }
+
+    mscheme = store->mapping_scheme;
+    if (mscheme == NULL) {
+        PyErr_SetString(st->error, "w_store_calc_timeseries: no mapping scheme set on store");
+        return NULL;
+    }
+
+    cscheme = get_component_scheme(component_scheme_name);
+    if (cscheme == NULL) {
+        PyErr_SetString(st->error, "w_store_calc_timeseries: invalid component scheme name");
+        return NULL;
+    }
+
+    interpolation = get_interpolation_scheme_id(interpolation_scheme_name);
+    if (interpolation == UNDEFINED_INTERPOLATION_SCHEME) {
+        PyErr_SetString(st->error, "w_store_calc_timeseries: invalid interpolation scheme name");
+        return NULL;
+    }
+    if (!good_array(source_coords_arr, NPY_FLOAT64, -1, 2, shape_want_coords)) {
+        PyErr_SetString(st->error, "w_store_calc_timeseries: unhealthy source_coords array");
+        return NULL;
+    }
+
+    shape_want_ms[1] = cscheme->nsource_terms;
+    if (!good_array(ms_arr, NPY_FLOAT64, -1, 2, shape_want_ms)) {
+        PyErr_SetString(st->error, "w_store_calc_timeseries: unhealthy moment_tensors array");
+        return NULL;
+    }
+
+    if (!good_array(receiver_coords_arr, NPY_FLOAT64, -1, 2, shape_want_coords)) {
+        PyErr_SetString(st->error, "w_store_calc_timeseries: unhealthy reveiver_coords array");
+        return NULL;
+    }
+
+    nsources = PyArray_DIMS((PyArrayObject*) source_coords_arr)[0];
+    nreceivers = PyArray_DIMS((PyArrayObject*) receiver_coords_arr)[0];
+
+    if (!good_array((PyObject*)delays_arr, NPY_FLOAT64, nsources, 1, NULL)) {
+        PyErr_SetString(st->error, "w_store_calc_timeseries: unhealthy delays array");
+        return NULL;
+    }
+
+    if (!good_array((PyObject*)itmin_arr, NPY_INT32, nreceivers, 1, NULL)) {
+        PyErr_SetString(st->error, "w_store_calc_timeseries: unhealthy itmin array");
+        return NULL;
+    }
+
+    if (!good_array((PyObject*)nsamples_arr, NPY_INT32, nreceivers, 1, NULL)) {
+        PyErr_SetString(st->error, "w_store_calc_timeseries: unhealthy nsamples array");
+        return NULL;
+    }
+
+    source_coords = PyArray_DATA((PyArrayObject*) source_coords_arr);
+    ms = PyArray_DATA((PyArrayObject*) ms_arr);
+    delays = PyArray_DATA((PyArrayObject*) delays_arr);
+    receiver_coords = PyArray_DATA((PyArrayObject*) receiver_coords_arr);
+
+    itmin = PyArray_DATA((PyArrayObject*) itmin_arr);
+    nsamples = PyArray_DATA((PyArrayObject*) nsamples_arr);
+
+
+    // Initialize empty traces
+    result_trace_t *results[nreceivers*cscheme->ncomponents];
+
+    for (ires=0; ires < nreceivers*cscheme->ncomponents; ires++) {
+
+
+        nsamples_want = nsamples[ires / cscheme->ncomponents];
+        itmin_want = itmin[ires / cscheme->ncomponents];
+
+        result_trace_t *result = malloc(sizeof(result_trace_t));
+        if (result == NULL) {
+            PyErr_SetString(st->error, "Could not allocate result struct");
+            return NULL;
+        }
+
+        result->icomponent = ires % cscheme->ncomponents;
+
+        result->nsamples = 0; // initialized by check_trace_extent
+        result->nsamples_want = nsamples_want;
+
+        result->itmin = itmin_want;
+        result->itmin_want = itmin_want;
+        result->itmax = 0; // initialized by check_trace_extent
+        result->empty = 1;
+        result->err = SUCCESS;
+
+        result->begin_value = 0.0;
+        result->end_value = 0.0;
+
+        if (nsamples_want == -1)
+            result->ncapacity = RESULT_INIT_CAPACITY * 3;
+        else
+            result->ncapacity = (nsamples_want / RESULT_INIT_CAPACITY + 1) + RESULT_INIT_CAPACITY * 2;
+
+        result->buffer = (gf_dtype*) calloc(result->ncapacity, sizeof(gf_dtype));
+        if (result->buffer == NULL) {
+            PyErr_SetString(st->error, "Could not allocate result data array");
+            return NULL;
+        }
+        
+        result->buf_pos = RESULT_INIT_CAPACITY;
+        result->data = result->buffer + RESULT_INIT_CAPACITY;
+
+        results[ires] = result;
+    }
+
+    err = store_calc_timeseries(
+        store,
+        source_coords,
+        ms,
+        delays,
+        receiver_coords,
+        nsources,
+        nreceivers,
+        cscheme,
+        mscheme,
+        store->mapping,
+        interpolation,
+        nthreads,
+        results);
+
+    if (SUCCESS != err) {
+        PyErr_SetString(st->error, store_error_names[err]);
+        return NULL;
+    }
+
+    out_list = Py_BuildValue("[]");
+    for (ires=0; ires < nreceivers*cscheme->ncomponents; ires++) {
+        result_trace_t *result = results[ires];
+
+        data = malloc(result->nsamples * sizeof(gf_dtype));
+        memcpy(data, result->data, result->nsamples * sizeof(gf_dtype));
+
+        array_dims[0] = result->nsamples;
+        array = (PyObject*) PyArray_SimpleNewFromData(1, array_dims, NPY_GFDTYPE, data);
+        PyArray_ENABLEFLAGS((PyArrayObject*) array, NPY_ARRAY_OWNDATA);
+
+        out_tuple = Py_BuildValue("Nififfii",
+                array, result->itmin, store->deltat,
+                result->is_zero, result->begin_value, result->end_value, result->icomponent, result->err);
+        PyList_Append(out_list, out_tuple);
+
+        free(result->buffer);
+        free(result);
+        Py_DECREF(out_tuple);
+        /*printf("comp: %d, nsamples: %d, itmin: %d\n", result->icomponent, result->nsamples, result->itmin);*/
     }
 
     return out_list;
@@ -2139,39 +2732,43 @@ static PyObject* w_store_calc_static(PyObject *m, PyObject *args) {
             "usage: calc_static(cstore, source_coords, moment_tensors, delays, receiver_coords, component_scheme, interpolation_name, it, nthreads)");
         return NULL;
     }
-    nsources = PyArray_SIZE((PyArrayObject*)delays_arr);
 
     store = get_store_from_capsule(capsule);
-    if (store == NULL)
+    if (store == NULL) {
+        PyErr_SetString(st->error, "w_store_calc_static: bad store given");
         return NULL;
+    }
 
     mscheme = store->mapping_scheme;
     if (mscheme == NULL) {
-        PyErr_SetString(st->error, "w_make_calc_params: no mapping scheme set on store");
+        PyErr_SetString(st->error, "w_store_calc_static: no mapping scheme set on store");
         return NULL;
     }
 
     cscheme = get_component_scheme(component_scheme_name);
     if (cscheme == NULL) {
-        PyErr_SetString(st->error, "w_make_calc_params: invalid component scheme name");
+        PyErr_SetString(st->error, "w_store_calc_static: invalid component scheme name");
         return NULL;
     }
 
     interpolation = get_interpolation_scheme_id(interpolation_scheme_name);
     if (interpolation == UNDEFINED_INTERPOLATION_SCHEME) {
-        PyErr_SetString(st->error, "w_make_calc_params: invalid interpolation scheme name");
+        PyErr_SetString(st->error, "w_store_calc_static: invalid interpolation scheme name");
         return NULL;
     }
     if (!good_array(source_coords_arr, NPY_FLOAT64, -1, 2, shape_want_coords)) {
+        PyErr_SetString(st->error, "w_store_calc_static: unhealthy source_coords array");
         return NULL;
     }
 
     shape_want_ms[1] = cscheme->nsource_terms;
     if (!good_array(ms_arr, NPY_FLOAT64, -1, 2, shape_want_ms)) {
+        PyErr_SetString(st->error, "w_store_calc_static: unhealthy moment_tensors array");
         return NULL;
     }
 
     if (!good_array(receiver_coords_arr, NPY_FLOAT64, -1, 2, shape_want_coords)) {
+        PyErr_SetString(st->error, "w_store_calc_static: unhealthy reveiver_coords array");
         return NULL;
     }
 
@@ -2179,6 +2776,7 @@ static PyObject* w_store_calc_static(PyObject *m, PyObject *args) {
         PyErr_SetString(st->error, "w_store_calc_static: unhealthy delays array");
         return NULL;
     }
+
     if (!inlimits(it)) {
         PyErr_SetString(st->error, "w_store_calc_static: invalid it argument");
         return NULL;
@@ -2246,7 +2844,10 @@ static PyMethodDef store_ext_methods[] = {
         "Get weight-and-delay-sum of GF samples for static displacement." },
 
     {"store_calc_static", w_store_calc_static, METH_VARARGS,
-        "Calculate static displacements (make make_sum_params obsolete" },
+        "Calculate static displacements (make make_sum_params obsolete)" },
+
+    {"store_calc_timeseries", w_store_calc_timeseries, METH_VARARGS,
+        "Calculate timeseries (make make_sum_params obsolete)" },
 
     {"make_sum_params", w_make_sum_params, METH_VARARGS,
         "Prepare parameters for weight-and-delay-sum." },

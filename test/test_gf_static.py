@@ -377,7 +377,7 @@ mantle
         store.open()
         src_length = 2 * km
         src_width = 5 * km
-        ntargets = 100
+        ntargets = 20
 
         north_shifts, east_shifts = num.meshgrid(
             num.linspace(-20*km, 20*km, ntargets),
@@ -409,10 +409,10 @@ mantle
 
         benchmark.clear()
 
-        def run(interpolation=interp[0], nthreads=1):
+        def run(interpolation=interp[0], nthreads=1, niter=1):
             @benchmark.labeled(' sum_statics %d cpu (%s)' %
                                (nthreads, interpolation))
-            def fwd_model_seperate(interpolation=interp[0], nthreads=1):
+            def fwd_model_seperate(interpolation=interp[0]):
                 args = (store.cstore, dsource.coords5(), mts_arr,
                         static_target.coords5, 'elastic10', interpolation,
                         nthreads)
@@ -430,7 +430,7 @@ mantle
 
             @benchmark.labeled('calc_statics %d cpu (%s)' %
                                (nthreads, interpolation))
-            def fwd_model_unified(interpolation=interp[0], nthreads=1):
+            def fwd_model_unified(interpolation=interp[0]):
                 out = {}
                 res = store_ext.store_calc_static(
                         store.cstore,
@@ -447,17 +447,23 @@ mantle
 
                 return out
 
-            res1 = fwd_model_seperate(interpolation, nthreads)
-            res2 = fwd_model_unified(interpolation, nthreads)
+            for _ in range(niter):
+                res1 = fwd_model_seperate(interpolation)
+            for _ in range(niter):
+                res2 = fwd_model_unified(interpolation)
 
             for r1, r2 in zip(res1.values(), res2.values()):
                 num.testing.assert_equal(r1, r2)
 
         for interpolation in interp:
+            continue
             for nthreads in [1, 2, 4, 8, 0]:
                 run(interpolation, nthreads)
             print(benchmark)
             benchmark.clear()
+
+        run(interpolation, nthreads=0, niter=10000)
+        print(benchmark)
 
         def plot(displ):
             import matplotlib.pyplot as plt

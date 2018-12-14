@@ -9,6 +9,7 @@ import errno
 import time
 import os
 import struct
+import weakref
 import math
 import shutil
 import fcntl
@@ -48,6 +49,25 @@ gf_record_dtype = num.dtype([
     ('begin_value', E + 'f4'),
     ('end_value', E + 'f4'),
 ])
+
+
+class SeismosizerErrorEnum:
+    SUCCESS = 0
+    INVALID_RECORD = 1
+    EMPTY_RECORD = 2
+    BAD_RECORD = 3
+    ALLOC_FAILED = 4
+    BAD_REQUEST = 5
+    BAD_DATA_OFFSET = 6
+    READ_DATA_FAILED = 7
+    SEEK_INDEX_FAILED = 8
+    READ_INDEX_FAILED = 9
+    FSTAT_TRACES_FAILED = 10
+    BAD_STORE = 11
+    MMAP_INDEX_FAILED = 12
+    MMAP_TRACES_FAILED = 13
+    INDEX_OUT_OF_BOUNDS = 14
+    NTARGETS_OUT_OF_BOUNDS = 15
 
 
 def valid_string_id(s):
@@ -104,7 +124,7 @@ class GFTrace(object):
                  is_zero=False, begin_value=None, end_value=None, tmin=None):
 
         assert sum((x is None) for x in (tmin, itmin)) == 1, \
-            'GFTrace: either tmin or itmin must be given'
+            'GFTrace: either tmin or itmin must be given'\
 
         if tmin is not None:
             itmin = int(round(tmin / deltat))
@@ -120,13 +140,14 @@ class GFTrace(object):
             begin_value = 0.0
             end_value = 0.0
 
-        self.data = data
+        self.data = weakref.ref(data)()
         self.itmin = itmin
         self.deltat = deltat
         self.is_zero = is_zero
         self.n_records_stacked = 0.
         self.t_stack = 0.
         self.t_optimize = 0.
+        self.err = SeismosizerErrorEnum.SUCCESS
 
         if data is not None and data.size > 0:
             if begin_value is None:
@@ -401,10 +422,6 @@ class BaseStore(object):
             optimization='enable'):
         return self._sum(irecords, delays, weights, itmin, nsamples, decimate,
                          implementation, optimization)
-
-    def sum_statics(self, irecords, delays, weights, it, ntargets, nthreads=0):
-        return self._sum_statics(irecords, delays, weights, it, ntargets,
-                                 nthreads)
 
     def irecord_format(self):
         return util.zfmt(self._nrecords)
@@ -797,28 +814,6 @@ class BaseStore(object):
 
         return irecords3, delays3, weights3
 
-    def _optimize_statics(self, irecords, weights):
-        if num.unique(irecords).size == irecords.size:
-            return irecords, weights
-
-        iorder = num.argsort(irecords)
-
-        irecords2 = irecords[iorder]
-        weights2 = weights[iorder]
-
-        ui = num.empty(irecords2.size, dtype=num.bool)
-        ui[1:] = num.diff(irecords2) != 0
-
-        ui[0] = 0
-        ind2 = num.cumsum(ui)
-        ui[0] = 1
-        ind1 = num.where(ui)[0]
-
-        irecords3 = irecords2[ind1]
-        weights3 = num.bincount(ind2, weights2)
-
-        return irecords3, weights3
-
     def _sum(self, irecords, delays, weights, itmin, nsamples, decimate,
              implementation, optimization):
 
@@ -875,32 +870,6 @@ class BaseStore(object):
         tr.t_stack = t2 - t1
 
         return tr
-
-    def _sum_static_python(self, irecords, weights, implementation,
-                           optimization):
-
-        if not self._f_index:
-            self.open()
-
-        t0 = time.time()
-        if optimization == 'enable':
-            irecords, weights = self._optimize_statics(
-                irecords, weights)
-        else:
-            assert optimization == 'disable'
-
-        t1 = time.time()
-
-        value = num.sum(self._end_values[irecords] * weights)
-        val = GFValue(value)
-
-        t2 = time.time()
-
-        val.n_records_stacked = irecords.size
-        val.t_optimize = t1 - t0
-        val.t_stack = t2 - t1
-
-        return val
 
     def _sum_statics(self, irecords, delays, weights, it, ntargets,
                      nthreads):
@@ -1780,47 +1749,6 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
             util.ensuredirs(fn)
             ip.dump(fn)
 
-    def statics_old(self, source, multi_location, itsnapshot, components,
-                    interpolation='nearest_neighbor', nthreads=0):
-        if not self._f_index:
-            self.open()
-
-        out = {}
-        ntargets = multi_location.ntargets
-        source_terms = source.get_source_terms(self.config.component_scheme)
-        delays = source.times.astype(num.float32)
-        scheme_desc = meta.component_scheme_to_description[
-            self.config.component_scheme]
-
-        if ntargets == 0:
-            raise StoreError('MultiLocation.coords5 is empty')
-
-        try:
-            sum_params = store_ext.make_sum_params(
-                self.cstore,
-                source.coords5(),
-                source_terms,
-                multi_location.coords5,
-                self.config.component_scheme,
-                interpolation,
-                nthreads or 0)
-        except store_ext.StoreExtError:
-            raise meta.OutOfBounds()
-
-        for icomp, comp in enumerate(scheme_desc.provided_components):
-            if comp not in components:
-                continue
-            weights, irecords = sum_params[icomp]
-            out[comp] = self.sum_statics(
-                irecords,
-                delays,
-                weights,
-                itsnapshot,
-                ntargets,
-                nthreads or 0)
-
-        return out
-
     def statics(self, source, multi_location, itsnapshot, components,
                 interpolation='nearest_neighbor', nthreads=0):
         if not self._f_index:
@@ -1856,35 +1784,95 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
 
         return out
 
-    def seismogram_old(
-            self, source, receiver, components, deltat=None,
-            itmin=None, nsamples=None, interpolation='nearest_neighbor',
-            optimization='enable'):
+    def calc_seismograms(self, source, receivers, components, deltat=None,
+                         itmin=None, nsamples=None,
+                         interpolation='nearest_neighbor',
+                         optimization='enable', nthreads=1):
+        config = self.config
 
-        out = {}
+        assert interpolation in ['nearest_neighbor', 'multilinear'], \
+            'Unknown interpolation: %s' % interpolation
+
+        if not isinstance(receivers, list):
+            receivers = [receivers]
 
         if deltat is None:
             decimate = 1
         else:
-            decimate = int(round(deltat/self.config.deltat))
-            if abs(deltat / (decimate * self.config.deltat) - 1.0) > 0.001:
+            decimate = int(round(deltat/config.deltat))
+            if abs(deltat / (decimate * config.deltat) - 1.0) > 0.001:
                 raise StoreError(
                     'unavailable decimation ratio target.deltat / store.deltat'
-                    ' = %g / %g' % (deltat, self.config.deltat))
+                    ' = %g / %g' % (deltat, config.deltat))
 
-        for (component, args, delays, weights) in \
-                self.config.make_sum_params(source, receiver):
+        store, decimate_ = self._decimated_store(decimate)
 
-            if component in components:
-                gtr = self.sum(args, delays, weights,
-                               decimate=decimate,
-                               itmin=itmin, nsamples=nsamples,
-                               interpolation=interpolation,
-                               optimization=optimization)
+        if not store._f_index:
+            store.open()
 
-                out[component] = gtr
+        scheme = config.component_scheme
+        scheme_desc = meta.component_scheme_to_description[
+            config.component_scheme]
 
-        return out
+        source_coords_arr = source.coords5()
+        source_terms = source.get_source_terms(scheme)
+        delays = source.times.ravel()
+
+        nreceiver = len(receivers)
+        receiver_coords_arr = num.empty((nreceiver, 5))
+        for irec, rec in enumerate(receivers):
+            receiver_coords_arr[irec, :] = rec.coords5
+
+        dt = self._deltat
+        itoffset = int(num.floor(delays.min()/dt)) if delays.size != 0 else 0
+
+        if itmin is None:
+            itmin = num.zeros(nreceiver, dtype=num.int32)
+        itmin -= itoffset
+
+        if nsamples is None:
+            nsamples = num.zeros(nreceiver, dtype=num.int32) - 1
+
+        try:
+            results = store_ext.store_calc_timeseries(
+                store.cstore,
+                source_coords_arr,
+                source_terms,
+                (delays - itoffset*self._deltat),
+                receiver_coords_arr,
+                scheme,
+                interpolation,
+                itmin,
+                nsamples,
+                nthreads)
+        except Exception as e:
+            raise e
+
+        provided_components = scheme_desc.provided_components
+        ncomponents = len(provided_components)
+
+        seismograms = [dict() for _ in range(nreceiver)]
+        for ires in range(len(results)):
+            res = results.pop(0)
+            ireceiver = ires // ncomponents
+
+            comp = provided_components[res[-2]]
+
+            if comp not in components:
+                continue
+
+            tr = GFTrace(*res[:-2])
+            tr.deltat = config.deltat * decimate
+            tr.itmin += itoffset
+
+            tr.n_records_stacked = 0
+            tr.t_optimize = 0.
+            tr.t_stack = 0.
+            tr.err = res[-1]
+
+            seismograms[ireceiver][comp] = tr
+
+        return seismograms
 
     def seismogram(self, source, receiver, components, deltat=None,
                    itmin=None, nsamples=None,
@@ -1925,7 +1913,6 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
                 interpolation, nthreads)
 
         except store_ext.StoreExtError as e:
-            raise e
             raise meta.OutOfBounds()
 
         provided_components = scheme_desc.provided_components
@@ -1965,4 +1952,5 @@ NoSuchExtra
 NoSuchPhase
 BaseStore
 Store
+SeismosizerErrorEnum
 '''.split()

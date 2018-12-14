@@ -399,12 +399,13 @@ class Progressbar(object):
         self.pbar = qw.QProgressBar(parent)
         self.aborted = False
         self.time_last_update = 0.
+        print('xx',can_abort)
         if can_abort:
             self.abort_button = qw.QPushButton('Abort', parent)
             self.abort_button.clicked.connect(
                 self.abort)
         else:
-            self.abort_button = False
+            self.abort_button = None
 
     def widgets(self):
         widgets = [self.label, self.bar()]
