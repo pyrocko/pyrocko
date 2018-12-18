@@ -1,6 +1,6 @@
 from builtins import str
 import os
-from pyrocko.snuffling import Snuffling, Param, Switch, Choice
+from pyrocko.gui.snuffling import Snuffling, Param, Switch, Choice
 from pyrocko.gui.marker import PhaseMarker
 from pyrocko import orthodrome
 from pyrocko import gf

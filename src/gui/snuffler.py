@@ -25,7 +25,7 @@ from pyrocko import util
 from pyrocko import model
 from pyrocko import config
 from pyrocko import io
-from pyrocko import marker
+from pyrocko.gui import marker
 from pyrocko.io import stationxml
 
 
@@ -329,3 +329,7 @@ def snuffler_from_commandline(args=None):
         force_cache=options.force_cache,
         store_path=options.store_path,
         store_interval=options.store_interval)
+
+
+if __name__ == '__main__':
+    snuffler_from_commandline()
