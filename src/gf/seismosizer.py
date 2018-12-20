@@ -1723,7 +1723,8 @@ class RectangularSource(SourceWithDerivedMagnitude):
         optional=True,
         default=1,
         help='Sub-source decimation factor, a larger decimation will'
-             ' shorten the necessary computation time.')
+             ' make the result inaccurate but shorten the necessary'
+             ' computation time (use for testing puposes only).')
 
     def base_key(self):
         return SourceWithDerivedMagnitude.base_key(self) + (
