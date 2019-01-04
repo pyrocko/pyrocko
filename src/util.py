@@ -1688,6 +1688,10 @@ class LeapSecondsOutdated(LeapSecondsError):
     pass
 
 
+class InvalidLeapSecondsFile(LeapSecondsOutdated):
+    pass
+
+
 def parse_leap_seconds_list(fn):
     data = []
     texpires = None
@@ -1704,6 +1708,9 @@ def parse_leap_seconds_list(fn):
     try:
         with open(fn, 'rb') as f:
             for line in f:
+                if line.strip().startswith(b'<!DOCTYPE'):
+                    raise InvalidLeapSecondsFile('invalid leap seconds file')
+
                 if line.startswith(b'#@'):
                     texpires = int(line.split()[1]) + t0
                 elif line.startswith(b'#') or len(line) < 5:
@@ -1728,20 +1735,27 @@ def read_leap_seconds2():
     conf = config.config()
     fn = conf.leapseconds_path
     url = conf.leapseconds_url
-    try:
-        return parse_leap_seconds_list(fn)
+    # check for outdated default URL
+    if url == 'http://www.ietf.org/timezones/data/leap-seconds.list':
+        url = 'https://www.ietf.org/timezones/data/leap-seconds.list'
+        logger.info(
+            'Leap seconds default URL is now: %s\nUsing new default.' % url)
 
-    except LeapSecondsOutdated:
+    for i in range(3):
         try:
-            logger.info('updating leap seconds list...')
-            download_file(url, fn)
+            return parse_leap_seconds_list(fn)
 
-        except Exception as e:
-            raise LeapSecondsError(
-                'cannot download leap seconds list from %s to %s (%s)'
-                % (url, fn, e))
+        except LeapSecondsOutdated:
+            try:
+                logger.info('updating leap seconds list...')
+                download_file(url, fn)
 
-        return parse_leap_seconds_list(fn)
+            except Exception as e:
+                raise LeapSecondsError(
+                    'cannot download leap seconds list from %s to %s (%s)'
+                    % (url, fn, e))
+
+    raise LeapSecondsError('Could not retrieve/read leap seconds file.')
 
 
 def gps_utc_offset(t_utc):
