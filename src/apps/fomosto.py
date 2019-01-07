@@ -14,7 +14,8 @@ import copy
 import shutil
 from optparse import OptionParser
 
-from pyrocko import util, trace, gf, cake, io, marker, config, fomosto
+from pyrocko import util, trace, gf, cake, io, config, fomosto
+from pyrocko.gui import marker
 
 logger = logging.getLogger('pyrocko.apps.fomosto')
 km = 1e3
