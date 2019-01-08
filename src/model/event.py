@@ -11,7 +11,8 @@ import hashlib
 import base64
 
 from pyrocko import util, moment_tensor
-from pyrocko.guts import Object, Float, String, Timestamp, Unicode
+from pyrocko.guts import Object, Float, String, Timestamp, Unicode, \
+    StringPattern, List
 
 logger = logging.getLogger('pyrocko.model.event')
 
@@ -41,6 +42,10 @@ class EmptyEvent(Exception):
     pass
 
 
+class Tag(StringPattern):
+    pattern = r'^[A-Za-z][A-Za-z0-9._]{0,128}:[A-Za-z0-9._-]+$'
+
+
 class Event(Object):
     '''Seismic event representation
 
@@ -68,11 +73,13 @@ class Event(Object):
     catalog = String.T(optional=True)
     moment_tensor = moment_tensor.MomentTensor.T(optional=True)
     duration = Float.T(optional=True)
+    tags = List.T(Tag.T(optional=True))
 
     def __init__(
             self, lat=0., lon=0., time=0., name='', depth=None,
             magnitude=None, magnitude_type=None, region=None, load=None,
-            loadf=None, catalog=None, moment_tensor=None, duration=None):
+            loadf=None, catalog=None, moment_tensor=None, duration=None,
+            tags=[]):
 
         vals = None
         if load is not None:
@@ -82,13 +89,13 @@ class Event(Object):
 
         if vals:
             lat, lon, time, name, depth, magnitude, magnitude_type, region, \
-                catalog, moment_tensor, duration = vals
+                catalog, moment_tensor, duration, tags = vals
 
         Object.__init__(
             self, lat=lat, lon=lon, time=time, name=name, depth=depth,
             magnitude=magnitude, magnitude_type=magnitude_type,
             region=region, catalog=catalog,
-            moment_tensor=moment_tensor, duration=duration)
+            moment_tensor=moment_tensor, duration=duration, tags=tags)
 
     def time_as_string(self):
         return util.time_to_str(self.time)
@@ -132,6 +139,9 @@ class Event(Object):
 
         if self.duration is not None:
             file.write('duration = %g\n' % self.duration)
+
+        if self.tags:
+            file.write('tags = %s\n' % ', '.join(self.tags))
 
     @staticmethod
     def unique(events, deltat=10., group_cmp=(lambda a, b:
@@ -209,6 +219,8 @@ class Event(Object):
                         d[k] = float(v)
                     if k == 'time':
                         d[k] = util.str_to_time(v)
+                    if k == 'tags':
+                        d[k] = [x.strip() for x in v.split(',')]
 
                 if line.startswith('---'):
                     d['have_separator'] = True
@@ -251,7 +263,8 @@ class Event(Object):
             d.get('region', None),
             d.get('catalog', None),
             mt,
-            d.get('duration', None))
+            d.get('duration', None),
+            d.get('tags', []))
 
     @staticmethod
     def load_catalog(filename):

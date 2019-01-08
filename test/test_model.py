@@ -32,7 +32,9 @@ class ModelTestCase(unittest.TestCase):
         fn = pjoin(tempdir, 'event.txt')
         e1 = model.Event(
             10., 20., 1234567890., 'bubu', region='taka tuka land',
-            magnitude=5.1, magnitude_type='Mw')
+            magnitude=5.1, magnitude_type='Mw',
+            tags=['cluster:-1', 'custom_magnitude:2.5'])
+
         e1.olddump(fn)
         e2 = model.Event(load=fn)
         assert e1.region == e2.region
@@ -43,6 +45,7 @@ class ModelTestCase(unittest.TestCase):
         assert e1.region == e2.region
         assert e1.magnitude == e2.magnitude
         assert e1.magnitude_type == e2.magnitude_type
+        assert e1.tags == e2.tags
         shutil.rmtree(tempdir)
 
     def testIOEvent(self):
@@ -51,7 +54,9 @@ class ModelTestCase(unittest.TestCase):
         e1 = model.Event(
             10., 20., 1234567890., 'bubu', region='taka tuka land',
             moment_tensor=moment_tensor.MomentTensor(strike=45., dip=90),
-            magnitude=5.1, magnitude_type='Mw')
+            magnitude=5.1, magnitude_type='Mw',
+            tags=['cluster:-1', 'custom_magnitude:2.5'])
+
         guts.dump(e1, filename=fn)
         e2 = guts.load(filename=fn)
         assert e1.region == e2.region
@@ -63,6 +68,7 @@ class ModelTestCase(unittest.TestCase):
         assert e1.magnitude == e2.magnitude
         assert e1.magnitude_type == e2.magnitude_type
         assert e1.get_hash() == e2.get_hash()
+        assert e1.tags == e2.tags
 
         fn2 = pjoin(tempdir, 'events.txt')
         guts.dump_all([e1, e2], filename=fn2)
