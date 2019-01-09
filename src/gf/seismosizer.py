@@ -1262,7 +1262,8 @@ class ExplosionSource(SourceWithDerivedMagnitude):
     discretized_source_class = meta.DiscretizedExplosionSource
 
     def base_key(self):
-        return Source.base_key(self) + (self.volume_change,)
+        return SourceWithDerivedMagnitude.base_key(self) + \
+            (self.volume_change,)
 
     def check_conflicts(self):
         if self.magnitude is not None and self.volume_change is not None:
@@ -1279,8 +1280,7 @@ class ExplosionSource(SourceWithDerivedMagnitude):
             moment = self.volume_change * \
                 self.get_moment_to_volume_change_ratio(store, target)
 
-            return float(mt.moment_to_magnitude(moment))
-
+            return float(mt.moment_to_magnitude(abs(moment)))
         else:
             return float(mt.moment_to_magnitude(1.0))
 
@@ -1326,6 +1326,9 @@ class ExplosionSource(SourceWithDerivedMagnitude):
             store.config.deltat, 0.0)
 
         amplitudes *= self.get_moment(store, target) * math.sqrt(2. / 3.)
+
+        if self.volume_change < 0:
+            amplitudes *= -1
 
         return meta.DiscretizedExplosionSource(
             m0s=amplitudes,
