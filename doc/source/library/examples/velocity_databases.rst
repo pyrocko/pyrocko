@@ -20,7 +20,7 @@ Here we utilize the :mod:`pyrocko.dataset.crust2x2` module to query the Crust 2.
 ::
     
     >>> from pyrocko import crust2x2
-    >>> profile = crust_2x2.get_profile(23., 59.)
+    >>> profile = crust2x2.get_profile(23., 59.)
     >>> print profile
 
     type, name:              T9, thin Margin /shield  transition, 1 km seds.
