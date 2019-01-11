@@ -1,15 +1,11 @@
 from __future__ import division, print_function, absolute_import
 import unittest
 import tempfile
-from . import common
 
 from pyrocko import util, model
-
-if common.have_gui():
-    from pyrocko.gui import marker
+from pyrocko.gui import marker
 
 
-@common.require_gui
 class MarkerTestCase(unittest.TestCase):
 
     def test_writeread(self):
