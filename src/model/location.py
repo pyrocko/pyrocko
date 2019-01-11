@@ -54,6 +54,7 @@ class Location(Object):
 
     elevation = Float.T(
         default=0.0,
+        optional=True,
         help='elevation [m]')
 
     depth = Float.T(

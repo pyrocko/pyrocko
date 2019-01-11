@@ -12,6 +12,7 @@ import base64
 
 from pyrocko import util, moment_tensor
 from pyrocko.guts import Object, Float, String, Timestamp, Unicode
+from .location import Location
 
 logger = logging.getLogger('pyrocko.model.event')
 
@@ -41,7 +42,7 @@ class EmptyEvent(Exception):
     pass
 
 
-class Event(Object):
+class Event(Location):
     '''Seismic event representation
 
     :param lat: latitude of hypocenter (default 0.0)
@@ -57,11 +58,8 @@ class Event(Object):
     :param duration: source duration as float (optional)
     '''
 
-    lat = Float.T(default=0.0)
-    lon = Float.T(default=0.0)
     time = Timestamp.T(default=util.str_to_time('1970-01-01 00:00:00'))
     name = String.T(default='', optional=True)
-    depth = Float.T(optional=True)
     magnitude = Float.T(optional=True)
     magnitude_type = String.T(optional=True)
     region = Unicode.T(optional=True)
@@ -70,9 +68,9 @@ class Event(Object):
     duration = Float.T(optional=True)
 
     def __init__(
-            self, lat=0., lon=0., time=0., name='', depth=None,
+            self, lat=0., lon=0., time=0., name='', depth=None, elevation=None,
             magnitude=None, magnitude_type=None, region=None, load=None,
-            loadf=None, catalog=None, moment_tensor=None, duration=None):
+            loadf=None, catalog=None, moment_tensor=None, duration=None,):
 
         vals = None
         if load is not None:
@@ -84,8 +82,9 @@ class Event(Object):
             lat, lon, time, name, depth, magnitude, magnitude_type, region, \
                 catalog, moment_tensor, duration = vals
 
-        Object.__init__(
+        Location.__init__(
             self, lat=lat, lon=lon, time=time, name=name, depth=depth,
+            elevation=elevation,
             magnitude=magnitude, magnitude_type=magnitude_type,
             region=region, catalog=catalog,
             moment_tensor=moment_tensor, duration=duration)
