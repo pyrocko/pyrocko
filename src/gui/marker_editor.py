@@ -215,6 +215,10 @@ class MarkerSortFilterProxyModel(QSortFilterProxyModel):
         else:
             return qc.QVariant()
 
+    def sort(self, column, order):
+        if column != _column_mapping['MT']:
+            super(MarkerSortFilterProxyModel, self).sort(column, order)
+
 
 class MarkerTableView(qw.QTableView):
     def __init__(self, *args, **kwargs):
