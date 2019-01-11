@@ -14,21 +14,22 @@ import logging
 import posixpath
 import shutil
 
-if sys.version_info >= (3, 0):
+if sys.version_info >= (3, 0):  # noqa
     from http.server import HTTPServer, SimpleHTTPRequestHandler
     from urllib.parse import unquote
-else:
+else:  # noqa
     from BaseHTTPServer import HTTPServer
     from SimpleHTTPServer import SimpleHTTPRequestHandler
     from urllib import unquote
 
-from pyrocko.snuffling import Snuffling, Switch, Choice, NoViewerSet    # noqa
-from pyrocko.guts import dump_xml                                       # noqa
-from pyrocko import util, gui_util, model, orthodrome as ortho          # noqa
-from pyrocko import moment_tensor                                       # noqa
-from pyrocko.automap import Map                                         # noqa
-from .xmlMarker import XMLEventMarker, EventMarkerList, XMLStationMarker  # noqa
-from .xmlMarker import StationMarkerList, MarkerLists                   # noqa
+from pyrocko.gui.snuffling import Snuffling, Switch, Choice, NoViewerSet
+from pyrocko.guts import dump_xml
+from pyrocko import util, model, orthodrome as ortho
+from pyrocko.gui import util as gui_util
+from pyrocko import moment_tensor
+from pyrocko.plot.automap import Map
+from .xmlMarker import XMLEventMarker, EventMarkerList, XMLStationMarker
+from .xmlMarker import StationMarkerList, MarkerLists
 
 
 g_counter = 0

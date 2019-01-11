@@ -2857,7 +2857,7 @@ class Ray(object):
 
 
 def anything_to_crust2_profile(crust2_profile):
-    from pyrocko import crust2x2
+    from pyrocko.dataset import crust2x2
     if isinstance(crust2_profile, tuple):
         lat, lon = [float(x) for x in crust2_profile]
         return crust2x2.get_profile(lat, lon)
@@ -3770,7 +3770,7 @@ def read_nd_model_fh(f):
 
 
 def from_crust2x2_profile(profile, depthmantle=50000):
-    from pyrocko import crust2x2
+    from pyrocko.dataset import crust2x2
 
     default_qp_qs = {
         'soft sed.': (50., 50.),
