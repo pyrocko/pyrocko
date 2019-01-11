@@ -1080,13 +1080,16 @@ class Map(Object):
 
         return tile
 
-    def add_gnss_campaign(self, campaign, psxy_style=dict(), labels=True,
-                          vertical=False):
+    def add_gnss_campaign(self, campaign, psxy_style=dict(), offset_scale=None,
+                          labels=True, vertical=False):
 
-        offsets = num.array([math.sqrt(s.east.shift**2 + s.north.shift**2)
-                             for s in campaign.stations])
+        if offset_scale is None:
+            offset_scale = num.array(
+                [math.sqrt(s.east.shift**2 + s.north.shift**2 + s.up.shift**2)
+                 for s in campaign.stations]).max()
+
         size = math.sqrt(self.height**2 + self.width**2)
-        scale = (size/10.) / offsets.max()
+        scale = (size/10.) / offset_scale
 
         default_psxy_style = {
             'h': 0,
@@ -1097,19 +1100,19 @@ class Map(Object):
         }
         default_psxy_style.update(psxy_style)
 
-        lats, lons = zip(*[od.ne_to_latlon(
-                                s.lat, s.lon, s.north_shift, s.east_shift)
-                           for s in campaign.stations])
+        lats, lons = zip(
+            *[od.ne_to_latlon(s.lat, s.lon, s.north_shift, s.east_shift)
+              for s in campaign.stations])
 
         if vertical:
             rows = [[lons[ista], lats[ista],
                      0., s.up.shift,
-                     s.east.sigma, s.north.sigma, 0]
+                     s.east.sigma, s.north.sigma, s.correlation_ne]
                     for ista, s in enumerate(campaign.stations)]
         else:
             rows = [[lons[ista], lats[ista],
                      s.east.shift, s.north.shift,
-                     s.east.sigma, s.north.sigma, 0]
+                     s.east.sigma, s.north.sigma, s.correlation_ne]
                     for ista, s in enumerate(campaign.stations)]
 
         if labels:
@@ -1119,8 +1122,7 @@ class Map(Object):
         self.gmt.psvelo(
             in_rows=rows,
             *self.jxyr,
-            **default_psxy_style
-            )
+            **default_psxy_style)
 
     def draw_plates(self):
         from pyrocko.dataset import tectonics
