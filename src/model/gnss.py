@@ -66,15 +66,15 @@ class GNSSStation(Location):
         help='Survey end time')
 
     correlation_ne = Float.T(
-        optional=True,
+        default=0.,
         help='North-East component correlation')
 
     correlation_eu = Float.T(
-        optional=True,
+        default=0.,
         help='East-Up component correlation')
 
     correlation_nu = Float.T(
-        optional=True,
+        default=0.,
         help='North-Up component correlation')
 
     north = GNSSComponent.T(
@@ -96,11 +96,11 @@ class GNSSStation(Location):
         covar[num.diag_indices_from(covar)] = num.array(
             [c.sigma**2 for c in (s.north, s.east, s.up)])
 
-        if s.correlation_ne is not None:
+        if s.correlation_ne is not 0.:
             covar[0, 1] = s.correlation_ne * s.north.sigma * s.east.sigma
-        if s.correlation_nu is not None:
+        if s.correlation_nu is not 0.:
             covar[0, 2] = s.correlation_nu * s.north.sigma * s.up.sigma
-        if s.correlation_eu is not None:
+        if s.correlation_eu is not 0.:
             covar[1, 2] = s.correlation_eu * s.east.sigma * s.up.sigma
 
         if full:
