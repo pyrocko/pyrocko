@@ -16,6 +16,7 @@ from pyrocko.guts import Float, String, Timestamp, Unicode, \
     StringPattern, List
 from .location import Location
 
+
 logger = logging.getLogger('pyrocko.model.event')
 
 guts_prefix = 'pf'
@@ -28,8 +29,8 @@ def ehash(s):
         hashlib.sha1(s.encode('utf8')).digest()).decode('ascii'))
 
 
-def float_or_none_to_str(x, prec=9):
-    return 'None' if x is None else '{:.{prec}e}'.format(x, prec=prec)
+def float_or_none_to_str(x):
+    return 'None' if x is None else '%.14e' % x
 
 
 class FileParseError(Exception):
@@ -293,14 +294,11 @@ class Event(Location):
 
         s = float_or_none_to_str
 
-        to_hash = ', '.join((
+        return ehash(', '.join((
             stime,
-            s(e.lat), s(e.lon), s(e.depth),
-            float_or_none_to_str(e.magnitude, 5),
-            str(e.catalog), str(e.name or ''),
-            str(e.region)))
-
-        return ehash(to_hash)
+            s(e.lat), s(e.lon), s(e.depth), s(e.magnitude),
+            str(e.catalog), str(e.name),
+            str(e.region))))
 
     def human_str(self):
         s = [
