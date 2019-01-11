@@ -38,7 +38,7 @@ if sys.version_info[0] >= 3 or use_pyqt5:
         try:
             return float(val), True
         except ValueError:
-            return 0.0, False
+            return 9e99, False
 
     def toString(val):
         return str(val).encode('utf-8').decode()
@@ -77,18 +77,10 @@ class BeachballWidget(qw.QWidget):
 
     def __init__(self, moment_tensor=None, *args, **kwargs):
         qw.QWidget.__init__(self, *args, **kwargs)
-        self.colors = {'white': qc.Qt.white,
-                       'green': qc.Qt.green,
-                       'red': qc.Qt.red}
-
-        self.brushs_pens = {}
-        for k, c in self.colors.items():
-            pen = qg.QPen(c)
-            pen.setWidthF(3)
-            self.brushs_pens[k] = (qg.QBrush(c), pen)
         self.moment_tensor = moment_tensor
         self.setGeometry(0, 0, 100, 100)
         self.setAttribute(qc.Qt.WA_TranslucentBackground)
+
         self.flipy = qg.QTransform()
         self.flipy.translate(0, self.height())
         self.flipy.scale(1, -1)
@@ -99,17 +91,22 @@ class BeachballWidget(qw.QWidget):
         painter.save()
         painter.setWorldTransform(self.flipy)
         try:
-            data = mt2beachball(self.moment_tensor, size=self.height()/2.2,
-                                position=(center.x(), center.y()))
+            data = mt2beachball(
+                self.moment_tensor, size=self.height()/2.2,
+                position=(center.x(), center.y()),
+                color_t=qc.Qt.red, color_p=qc.Qt.white, edgecolor=qc.Qt.black)
             for pdata in data:
                 paths, fill, edges, thickness = pdata
-                if fill == 'none':
-                    continue
-                brush, pen = self.brushs_pens[fill]
+
+                pen = qg.QPen(edges)
+                pen.setWidthF(3)
+                if fill != 'none':
+                    brush = qg.QBrush(fill)
+                    painter.setBrush(brush)
+
                 polygon = qg.QPolygonF()
                 polygon = make_QPolygonF(*paths.T)
                 painter.setRenderHint(qg.QPainter.Antialiasing)
-                painter.setBrush(brush)
                 painter.setPen(pen)
                 painter.drawPolygon(polygon)
         except BeachballError as e:
@@ -120,7 +117,7 @@ class BeachballWidget(qw.QWidget):
     def to_qpixmap(self):
         try:
             return self.grab(self.rect())
-        except:
+        except AttributeError:
             return qg.QPixmap().grabWidget(self, self.rect())
 
 
