@@ -735,6 +735,8 @@ class DiscretizedSource(Object):
     depths = Array.T(shape=(None,), dtype=num.float)
     dl = Float.T(optional=True)
     dw = Float.T(optional=True)
+    nl = Float.T(optional=True)
+    nw = Float.T(optional=True)
 
     @classmethod
     def check_scheme(cls, scheme):
