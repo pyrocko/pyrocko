@@ -217,7 +217,8 @@ def check_pyrocko_install_compat():
         return
 
     expected_submodules = ['gui', 'dataset', 'client',
-                           'streaming', 'io', 'model']
+                           'streaming', 'io', 'model',
+                           'modelling']
 
     installed_date, p, install_path, long_version = found[0]
 
@@ -601,6 +602,7 @@ subpacknames = [
     'pyrocko.apps',
     'pyrocko.io',
     'pyrocko.model',
+    'pyrocko.modelling',
     'pyrocko.plot',
     'pyrocko.gui',
     'pyrocko.gui.snuffler',
@@ -655,8 +657,8 @@ setup(
         'Topic :: Scientific/Engineering :: Physics',
         'Topic :: Scientific/Engineering :: Visualization',
         'Topic :: Scientific/Engineering :: Information Analysis',
-        'Topic :: Software Development :: Libraries :: Application Frameworks',
-        ],
+        'Topic :: Software Development :: Libraries :: Application Frameworks'
+    ],
     keywords=[
         'seismology, waveform analysis, earthquake modelling, geophysics,'
         ' geophysical inversion'],
@@ -773,6 +775,13 @@ setup(
             include_dirs=[get_python_inc()],
             extra_compile_args=['-Wno-parentheses', '-Wno-uninitialized'],
             extra_link_args=[] if sys.platform != 'sunos5' else ['-Wl,-x']),
+
+        Extension(
+            'modelling.disloc_ext',
+            include_dirs=[get_python_inc(), numpy.get_include()],
+            extra_compile_args=['-Wextra'] + omp_arg,
+            extra_link_args=[] + omp_lib,
+            sources=[op.join('src', 'modelling', 'ext', 'disloc_ext.c')])
     ],
 
     scripts=[
