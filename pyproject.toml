@@ -66,6 +66,7 @@ squirrel = "pyrocko.apps.squirrel:main"
 
 [project.entry-points.gui_scripts]
 snuffler = "pyrocko.apps.snuffler:main"
+sparrow = "pyrocko.apps.sparrow:main"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
