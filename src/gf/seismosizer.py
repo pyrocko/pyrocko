@@ -1371,6 +1371,66 @@ class ExplosionSource(SourceWithDerivedMagnitude):
         return mt.MomentTensor(m=mt.symmat6(a, a, a, 0., 0., 0.))
 
 
+class ElipsoidVolumeSource(SourceWithDerivedMagnitude):
+    volume_x = Float.T(
+        optional=False,
+        help='Volume change in X direction.')
+    volume_y = Float.T(
+        optional=False,
+        help='Volume change in Y direction.')
+    volume_z = Float.T(
+        optional=False,
+        help='Volume change in Z direction.')
+
+    rotation_x = Float.T(
+        default=0.,
+        help='Rotation in X direction.')
+    rotation_y = Float.T(
+        default=0.,
+        help='Rotation in Y direction.')
+    rotation_z = Float.T(
+        default=0.,
+        help='Rotation in Z direction.')
+
+    def check_conflicts(self):
+        '''
+        Check for parameter conflicts.
+
+        To be overloaded in subclasses. Raises :py:exc:`DerivedMagnitudeError`
+        on conflicts.
+        '''
+        pass
+
+    def get_magnitude(self, store=None, target=None):
+        if self.magnitude is None:
+            raise DerivedMagnitudeError('no magnitude set')
+
+        return self.magnitude
+
+    def get_moment(self, store=None, target=None):
+        return float(mt.magnitude_to_moment(
+            self.get_magnitude(store, target)))
+
+    def pyrocko_moment_tensor(self, store=None, target=None):
+        raise NotImplementedError(
+            '%s does not implement pyrocko_moment_tensor()'
+            % self.__class__.__name__)
+
+    def pyrocko_event(self, store=None, target=None, **kwargs):
+        try:
+            mt = self.pyrocko_moment_tensor(store, target)
+            magnitude = self.get_magnitude()
+        except (DerivedMagnitudeError, NotImplementedError):
+            mt = None
+            magnitude = None
+
+        return Source.pyrocko_event(
+            self, store, target,
+            moment_tensor=mt,
+            magnitude=magnitude,
+            **kwargs)
+
+
 class RectangularExplosionSource(ExplosionSource):
     '''
     Rectangular or line explosion source.
