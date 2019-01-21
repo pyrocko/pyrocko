@@ -150,12 +150,17 @@ def iload(filename, load_data, endianness='>'):
                 (year, doy, hour, minute, second) = \
                     struct.unpack(endianness+'5H', trace_header[156:156+2*5])
 
+                # maybe not standard?
+                (msecs, usecs) = struct.unpack(
+                    endianness+'2H', trace_header[168:168+4])
+
                 try:
                     if year < 100:
                         year += 2000
 
                     tmin = calendar.timegm(
-                        (year, 1, doy, hour, minute, second))
+                        (year, 1, doy, hour, minute, second)) \
+                        + msecs * 1.0e-3 + usecs * 1.0e-6
 
                 except Exception:
                     raise SEGYError('invalid start date/time')
@@ -183,6 +188,9 @@ def iload(filename, load_data, endianness='>'):
                     f.seek(nsamples_this*sample_size, 1)
                     tmax = tmin + deltat_us_this/1000000.*(nsamples_this-1)
                     data = None
+
+                if str(dtype).startswith('<') or str(dtype).startswith('>'):
+                    data = data.astype(str(dtype)[1:])
 
                 tr = trace.Trace(
                     '',
