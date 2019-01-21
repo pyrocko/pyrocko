@@ -189,7 +189,7 @@ def iload(filename, load_data, endianness='>'):
                     tmax = tmin + deltat_us_this/1000000.*(nsamples_this-1)
                     data = None
 
-                if data and (
+                if data is not None and (
                         str(dtype).startswith('<')
                         or str(dtype).startswith('>')):
                     data = data.astype(str(dtype)[1:])
