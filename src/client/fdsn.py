@@ -124,7 +124,7 @@ def _request(url, post=False, user=None, passwd=None,
 
     req = Request(url)
     if post:
-        logger.debug('POST data: \n%s' % post)
+        logger.debug('POST data: \n%s' % post.decode('utf8'))
         req.data = post
 
     req.add_header('Accept', '*/*')
@@ -255,9 +255,9 @@ def station(url=g_url, site=g_default_site, majorversion=1, parsed=True,
 
     if parsed:
         from pyrocko.io import stationxml
-        format = params.get('format', 'xml')
+        format = kwargs.get('format', 'xml')
         if format == 'text':
-            if params.get('level', 'station') == 'channel':
+            if kwargs.get('level', 'station') == 'channel':
                 return stationxml.load_channel_table(
                     stream=_request(url, **params))
             else:
@@ -265,7 +265,7 @@ def station(url=g_url, site=g_default_site, majorversion=1, parsed=True,
                                      'level="channel" is required')
 
         elif format == 'xml':
-            assert params.get('format', 'xml') == 'xml'
+            assert kwargs.get('format', 'xml') == 'xml'
             return stationxml.load_xml(stream=_request(url, **params))
         else:
             raise InvalidRequest('format must be "xml" or "text"')
