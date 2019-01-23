@@ -2558,6 +2558,7 @@ Earthmodel1D
 StringID
 ScopeType
 WaveformType
+QuantityType
 NearfieldTermsType
 Reference
 Region
