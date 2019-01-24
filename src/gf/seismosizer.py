@@ -1180,7 +1180,7 @@ class SourceWithMagnitude(Source):
 
     magnitude = Float.T(
         default=6.0,
-        help='moment magnitude Mw as in [Hanks and Kanamori, 1979]')
+        help='Moment magnitude Mw as in [Hanks and Kanamori, 1979]')
 
     def __init__(self, **kwargs):
         if 'moment' in kwargs:
@@ -1369,66 +1369,6 @@ class ExplosionSource(SourceWithDerivedMagnitude):
     def pyrocko_moment_tensor(self, store=None, target=None):
         a = self.get_moment(store, target) * math.sqrt(2. / 3.)
         return mt.MomentTensor(m=mt.symmat6(a, a, a, 0., 0., 0.))
-
-
-class ElipsoidVolumeSource(SourceWithDerivedMagnitude):
-    volume_x = Float.T(
-        optional=False,
-        help='Volume change in X direction.')
-    volume_y = Float.T(
-        optional=False,
-        help='Volume change in Y direction.')
-    volume_z = Float.T(
-        optional=False,
-        help='Volume change in Z direction.')
-
-    rotation_x = Float.T(
-        default=0.,
-        help='Rotation in X direction.')
-    rotation_y = Float.T(
-        default=0.,
-        help='Rotation in Y direction.')
-    rotation_z = Float.T(
-        default=0.,
-        help='Rotation in Z direction.')
-
-    def check_conflicts(self):
-        '''
-        Check for parameter conflicts.
-
-        To be overloaded in subclasses. Raises :py:exc:`DerivedMagnitudeError`
-        on conflicts.
-        '''
-        pass
-
-    def get_magnitude(self, store=None, target=None):
-        if self.magnitude is None:
-            raise DerivedMagnitudeError('no magnitude set')
-
-        return self.magnitude
-
-    def get_moment(self, store=None, target=None):
-        return float(mt.magnitude_to_moment(
-            self.get_magnitude(store, target)))
-
-    def pyrocko_moment_tensor(self, store=None, target=None):
-        raise NotImplementedError(
-            '%s does not implement pyrocko_moment_tensor()'
-            % self.__class__.__name__)
-
-    def pyrocko_event(self, store=None, target=None, **kwargs):
-        try:
-            mt = self.pyrocko_moment_tensor(store, target)
-            magnitude = self.get_magnitude()
-        except (DerivedMagnitudeError, NotImplementedError):
-            mt = None
-            magnitude = None
-
-        return Source.pyrocko_event(
-            self, store, target,
-            moment_tensor=mt,
-            magnitude=magnitude,
-            **kwargs)
 
 
 class RectangularExplosionSource(ExplosionSource):
@@ -1647,6 +1587,97 @@ class CLVDSource(SourceWithMagnitude):
 
     def pyrocko_moment_tensor(self, store=None, target=None):
         return mt.MomentTensor(m=mt.symmat6(*self.m6_astuple))
+
+    def pyrocko_event(self, store=None, target=None, **kwargs):
+        mt = self.pyrocko_moment_tensor(store, target)
+        return Source.pyrocko_event(
+            self, store, target,
+            moment_tensor=self.pyrocko_moment_tensor(store, target),
+            magnitude=float(mt.moment_magnitude()),
+            **kwargs)
+
+
+class CLVDVolumeSource(SourceWithMagnitude):
+
+    discretized_source_class = meta.DiscretizedMTSource
+
+    azimuth = Float.T(
+        default=0.0,
+        help='azimuth direction of largest dipole, clockwise from north [deg]')
+
+    dip = Float.T(
+        default=90.,
+        help='dip direction of largest dipole, downward from horizontal [deg]')
+
+    volume_change = Float.T(
+        optional=True,
+        default=0.,
+        help='volume change of the explosion/implosion or '
+             'the contracting/extending magmatic source. [m^3]')
+
+    clvd_magnitude = Float.T(
+        default=0.,
+        help='Moment magnitude Mw as in [Hanks and Kanamori, 1979], '
+             'for the CLVD part')
+
+    get_moment_to_volume_change_ratio = \
+        ExplosionSource.get_moment_to_volume_change_ratio
+
+    def base_key(self):
+        return Source.base_key(self) + \
+            (self.azimuth, self.dip, self.volume_change, self.clvd_magnitude)
+
+    @property
+    def magnitude(self):
+        return self.clvd_magnitude
+
+    def get_magnitude(self):
+        return float(mt.moment_to_magnitude(1.0))
+
+    def get_factor(self):
+        return float(mt.magnitude_to_moment(self.clvd_magnitude))
+
+    def get_m6(self, store, target):
+        a = math.sqrt(4. / 3.) * self.get_factor()
+        m_clvd = mt.symmat6(-0.5 * a, -0.5 * a, a, 0., 0., 0.)
+
+        if store is None and target is None:
+            m_iso = 0.
+        else:
+            m_iso = self.volume_change * \
+                self.get_moment_to_volume_change_ratio(store, target)
+            m_iso = mt.symmat6(m_iso, m_iso, m_iso, 0., 0., 0.,) \
+                * math.sqrt(2. / 3.)
+
+        m = m_clvd + m_iso
+        rotmat1 = mt.euler_to_matrix(
+            d2r * (self.dip - 90.),
+            d2r * (self.azimuth - 90.),
+            0.)
+        m = rotmat1.T * m * rotmat1
+
+        return mt.to6(m)
+
+    def get_m6_astuple(self, store, target):
+        m6 = self.get_m6(store, target)
+        return tuple(m6.tolist())
+
+    def discretize_basesource(self, store, target=None):
+        factor = self.get_factor()
+        # factor += self.volume_change * \
+        #     self.get_moment_to_volume_change_ratio(store, target)
+
+        times, amplitudes = self.effective_stf_pre().discretize_t(
+            store.config.deltat, 0.0)
+        m6 = self.get_m6(store, target)
+
+        return meta.DiscretizedMTSource(
+            m6s=m6[num.newaxis, :] * amplitudes[:, num.newaxis] / factor,
+            **self._dparams_base_repeated(times))
+
+    def pyrocko_moment_tensor(self, store=None, target=None):
+        m6_astuple = self.get_m6_astuple(store, target)
+        return mt.MomentTensor(m=mt.symmat6(*m6_astuple))
 
     def pyrocko_event(self, store=None, target=None, **kwargs):
         mt = self.pyrocko_moment_tensor(store, target)
@@ -3488,6 +3519,7 @@ source_classes = [
     RectangularExplosionSource,
     DCSource,
     CLVDSource,
+    CLVDVolumeSource,
     MTSource,
     RectangularSource,
     DoubleDCSource,
