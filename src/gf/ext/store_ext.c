@@ -1012,8 +1012,7 @@ static store_error_t store_calc_timeseries(
             shared (store, source_coords, ms, delays, receiver_coords, \
                     cscheme, mscheme, mapping, interpolation, nip, results, nsources, nsummands_max) \
             private (isource, iip, icomponent, isummand, nsummands, irecord_bases, weights_ip, ws_this, \
-                     delay, weight, idelay_floor, idelay_ceil, idx_record, trace, result, begin_value, end_value) \
-            reduction (+: err) \
+                     delay, weight, idelay_floor, idelay_ceil, idx_record, trace, result, begin_value, end_value, err) \
             num_threads (nthreads)
         {
         #pragma omp for schedule (dynamic)
@@ -1041,7 +1040,7 @@ static store_error_t store_calc_timeseries(
             }
             
             if (interpolation == MULTILINEAR) {
-                err += mscheme->vicinity(
+                err = mscheme->vicinity(
                     mapping,
                     &source_coords[isource*5],
                     &receiver_coords[ireceiver*5],
@@ -1070,13 +1069,13 @@ static store_error_t store_calc_timeseries(
                             weight = weights_ip[iip] * ws_this[icomponent*nsummands_max + isummand];
 
                             idx_record = irecord_bases[iip] + cscheme->igs[icomponent][isummand];
-                            err += check_trace_extent(store, result, delay, idx_record);
+                            err = check_trace_extent(store, result, delay, idx_record);
                             if (err != SUCCESS || weight == 0.) {
                                 result->err = err;
                                 continue;
                             }
 
-                            err += store_get(store, idx_record, &trace);
+                            err = store_get(store, idx_record, &trace);
                             if (err != SUCCESS || trace.is_zero) {
                                 result->err = err;
                                 continue;
@@ -1108,7 +1107,7 @@ static store_error_t store_calc_timeseries(
                     result->end_value = end_value;
                 }
             } else if (interpolation == NEAREST_NEIGHBOR) {
-                err += mscheme->irecord(
+                err = mscheme->irecord(
                     mapping,
                     &source_coords[isource*5],
                     &receiver_coords[ireceiver*5],
@@ -1135,13 +1134,13 @@ static store_error_t store_calc_timeseries(
                         weight = ws_this[icomponent*nsummands_max + isummand];
 
                         idx_record = irecord_bases[0] + cscheme->igs[icomponent][isummand];
-                        err += check_trace_extent(store, result, delay, idx_record);
+                        err = check_trace_extent(store, result, delay, idx_record);
                         if (err != SUCCESS || weight == 0.) {
                             result->err = err;
                             continue;
                         }
 
-                        err += store_get(store, idx_record, &trace);
+                        err = store_get(store, idx_record, &trace);
                         if (err != SUCCESS || trace.is_zero) {
                             result->err = err;
                             continue;
@@ -1179,9 +1178,6 @@ static store_error_t store_calc_timeseries(
         }
     #endif
     Py_END_ALLOW_THREADS
-
-    if (err != SUCCESS)
-        return BAD_REQUEST;
 
     return SUCCESS;
 }
