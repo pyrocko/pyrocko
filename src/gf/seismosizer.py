@@ -1327,8 +1327,9 @@ class ExplosionSource(SourceWithDerivedMagnitude):
 
         amplitudes *= self.get_moment(store, target) * math.sqrt(2. / 3.)
 
-        if self.volume_change < 0:
-            amplitudes *= -1
+        if self.volume_change is not None:
+            if self.volume_change < 0.:
+                amplitudes *= -1
 
         return meta.DiscretizedExplosionSource(
             m0s=amplitudes,

@@ -376,7 +376,7 @@ mantle
         store = gf.Store(self.get_pscmp_store_dir())
         store.open()
         src_length = 2 * km
-        src_width = 5 * km
+        src_width = 2 * km
         ntargets = 20
 
         north_shifts, east_shifts = num.meshgrid(
@@ -410,6 +410,7 @@ mantle
         benchmark.clear()
 
         def run(interpolation=interp[0], nthreads=1, niter=1):
+
             @benchmark.labeled(' sum_statics %d cpu (%s)' %
                                (nthreads, interpolation))
             def fwd_model_seperate(interpolation=interp[0]):
@@ -462,7 +463,7 @@ mantle
             print(benchmark)
             benchmark.clear()
 
-        run(interpolation, nthreads=0, niter=10000)
+        run(interpolation, nthreads=0, niter=30)
         print(benchmark)
 
         def plot(displ):
