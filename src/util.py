@@ -1061,7 +1061,7 @@ def ensuredirs(dst):
     if a the target path is a directory to be created).
     '''
 
-    d, x = os.path.split(dst)
+    d, x = os.path.split(dst.rstrip(os.sep))
     dirs = []
     while d and not os.path.exists(d):
         dirs.append(d)
@@ -1085,8 +1085,8 @@ def ensuredir(dst):
 
     if os.path.exists(dst):
         return
-    if dst[-1] == '/':
-        dst = dst[:-1]
+
+    dst.rstrip(os.sep)
 
     ensuredirs(dst)
     os.mkdir(dst)
