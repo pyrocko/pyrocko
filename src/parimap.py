@@ -25,7 +25,7 @@ def worker(q_in, q_out, function, eprintignore, pshared):
         try:
             res = function(*args, **kwargs)
         except Exception as e:
-            if eprintignore is not None and not isinstance(e, eprintignore):
+            if eprintignore is None or not isinstance(e, eprintignore):
                 traceback.print_exc()
             exception = e
         q_out.put((i, res, exception))
