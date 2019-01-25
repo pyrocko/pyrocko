@@ -14,7 +14,8 @@ from pyrocko.guts import StringPattern, Object, Bool, Int, Float, String, \
     ArgumentError, ValidationError, Any, List, Tuple, Union, Choice, Dict, \
     load, load_string, load_xml_string, load_xml, load_all, iload_all, \
     load_all_xml, iload_all_xml, dump, dump_xml, dump_all, dump_all_xml, \
-    make_typed_list_class, walk, zip_walk, path_to_str, clone
+    make_typed_list_class, walk, zip_walk, path_to_str, clone, set_elements, \
+    get_elements, YPathError
 
 
 guts_prefix = 'guts_test'
@@ -1031,6 +1032,59 @@ class GutsTestCase(unittest.TestCase):
         assert b.a_tuple is not b_clone.a_tuple
         assert b.a_list[0] is not b_clone.a_list[0]
         assert b.a_tuple[0] is not b_clone.a_tuple[0]
+
+    def testYPath(self):
+
+        class A(Object):
+            i = Int.T()
+            i_list = List.T(Int.T())
+
+        class B(Object):
+            a_list = List.T(A.T())
+
+        class C(Object):
+            b_list = List.T(B.T())
+
+        c = C(b_list=[B(a_list=[A(i=1), A(i=2)]), B(a_list=[A(i=3), A(i=4)])])
+
+        print(c)
+        assert get_elements(c, 'b_list[:].a_list[:].i') == [1, 2, 3, 4]
+        assert get_elements(c, 'b_list[0].a_list[:].i') == [1, 2]
+        assert get_elements(c, 'b_list[:1].a_list[:].i') == [1, 2]
+        assert get_elements(c, 'b_list[:1].a_list[1:].i') == [2]
+        assert [x.i for x in get_elements(c, 'b_list[-1].a_list[:]')] == [3, 4]
+
+        with self.assertRaises(YPathError):
+            get_elements(c, 'b_list[:].x_list[:].i')
+
+        with self.assertRaises(YPathError):
+            get_elements(c, 'b_list[:].a_list[:].x')
+
+        with self.assertRaises(YPathError):
+            get_elements(c, 'b_list[:].a_list[5]')
+
+        with self.assertRaises(YPathError):
+            get_elements(c, 'b_list[:].a_list[:].i.xxx')
+
+        with self.assertRaises(YPathError):
+            get_elements(c, '...')
+
+        set_elements(c, 'b_list[1].a_list', [A(i=5), A(i=6)])
+        assert get_elements(c, 'b_list[1].a_list[:].i') == [5, 6]
+
+        set_elements(c, 'b_list[:].a_list[:].i', 7)
+        assert get_elements(c, 'b_list[:].a_list[:].i') == [7, 7, 7, 7]
+
+        with self.assertRaises(ValidationError):
+            set_elements(c, 'b_list[:].a_list[:].i', '7', validate=True)
+
+        set_elements(c, 'b_list[:].a_list[:].i', '7', regularize=True)
+        assert get_elements(c, 'b_list[:].a_list[:].i') == [7, 7, 7, 7]
+
+        set_elements(c, 'b_list[:].a_list[:].i_list', [1, 2, 3, 4])
+        set_elements(c, 'b_list[:].a_list[:].i_list[1]', 5)
+        set_elements(c, 'b_list[:].a_list[:].i_list[:]', 5)
+        assert get_elements(c, 'b_list[:].a_list[:].i_list[:]') == [5] * 16
 
     def testXMLNamespaces(self):
         ns1 = 'http://www.w3.org/TR/html4/'

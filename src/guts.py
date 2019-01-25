@@ -1785,6 +1785,144 @@ def clone(x, pool=None):
     return x_copy
 
 
+class YPathError(Exception):
+    '''This exception is raised for invalid ypath specifications.'''
+    pass
+
+
+def _parse_yname(yname):
+    ident = r'[a-zA-Z][a-zA-Z0-9_]*'
+    rint = r'-?[0-9]+'
+    m = re.match(
+        r'^(%s)(\[((%s)?(:)(%s)?|(%s))\])?$'
+        % (ident, rint, rint, rint), yname)
+
+    if not m:
+        raise YPathError('Syntax error in component: "%s"' % yname)
+
+    d = dict(
+        name=m.group(1))
+
+    if m.group(2):
+        if m.group(5):
+            istart = iend = None
+            if m.group(4):
+                istart = int(m.group(4))
+            if m.group(6):
+                iend = int(m.group(6))
+
+            d['slice'] = (istart, iend)
+        else:
+            d['index'] = int(m.group(7))
+
+    return d
+
+
+def _decend(obj, ynames):
+    if ynames:
+        for sobj in iter_elements(obj, ynames):
+            yield sobj
+    else:
+        yield obj
+
+
+def iter_elements(obj, ypath):
+    '''
+    Generator yielding elements matching a given ypath specification.
+
+    :param obj: guts :py:class:`Object` instance
+    :param ypath: Dot-separated object path (e.g. 'root.child.child').
+        To access list objects use slice notatation (e.g.
+        'root.child[:].child[1:3].child[1]').
+
+    Raises :py:exc:`YPathError` on failure.
+    '''
+
+    try:
+        if isinstance(ypath, str):
+            ynames = ypath.split('.')
+        else:
+            ynames = ypath
+
+        yname = ynames[0]
+        ynames = ynames[1:]
+        d = _parse_yname(yname)
+        if d['name'] not in obj.T.propnames:
+            raise AttributeError(d['name'])
+
+        obj = getattr(obj, d['name'])
+
+        if 'index' in d:
+            sobj = obj[d['index']]
+            for ssobj in _decend(sobj, ynames):
+                yield ssobj
+
+        elif 'slice' in d:
+            for i in range(*slice(*d['slice']).indices(len(obj))):
+                sobj = obj[i]
+                for ssobj in _decend(sobj, ynames):
+                    yield ssobj
+        else:
+            for sobj in _decend(obj, ynames):
+                yield sobj
+
+    except (AttributeError, IndexError) as e:
+        raise YPathError('Invalid ypath: "%s" (%s)' % (ypath, str(e)))
+
+
+def get_elements(obj, ypath):
+    '''
+    Get all elements matching a given ypath specification.
+
+    :param obj: guts :py:class:`Object` instance
+    :param ypath: Dot-separated object path (e.g. 'root.child.child').
+        To access list objects use slice notatation (e.g.
+        'root.child[:].child[1:3].child[1]').
+
+    Raises :py:exc:`YPathError` on failure.
+    '''
+    return list(iter_elements(obj, ypath))
+
+def set_elements(obj, ypath, value, validate=False, regularize=False):
+    '''
+    Set elements matching a given ypath specification.
+
+    :param obj: guts :py:class:`Object` instance
+    :param ypath: Dot-separated object path (e.g. 'root.child.child').
+        To access list objects use slice notatation (e.g.
+        'root.child[:].child[1:3].child[1]').
+    :param value: All matching elements will be set to `value`.
+    :param validate: Whether to validate affected subtrees.
+    :param regularize: Whether to regularize affected subtrees.
+
+    Raises :py:exc:`YPathError` on failure.
+    '''
+
+    ynames = ypath.split('.')
+    try:
+        d = _parse_yname(ynames[-1])
+        for sobj in iter_elements(obj, ynames[:-1]):
+            if d['name'] not in sobj.T.propnames:
+                raise AttributeError(d['name'])
+
+            if 'index' in d:
+                ssobj = getattr(sobj, d['name'])
+                ssobj[d['index']] = value
+            elif 'slice' in d:
+                ssobj = getattr(sobj, d['name'])
+                for i in range(*slice(*d['slice']).indices(len(ssobj))):
+                    ssobj[i] = value
+            else:
+                setattr(sobj, d['name'], value)
+                if regularize:
+                    sobj.regularize()
+                if validate:
+                    sobj.validate()
+
+    except (AttributeError, IndexError, YPathError) as e:
+        raise YPathError('Invalid ypath: "%s" (%s)' % (ypath, str(e)))
+
+
 def zip_walk(x, typ=None, path=(), stack=()):
     if typ is None or isinstance(x, typ):
         yield path, stack + (x,)
