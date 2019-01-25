@@ -21,6 +21,7 @@ import shlex
 import optparse
 import os.path as op
 import platform
+import errno
 
 import numpy as num
 from scipy import signal
@@ -1070,8 +1071,11 @@ def ensuredirs(dst):
     dirs.reverse()
 
     for d in dirs:
-        if not os.path.exists(d):
+        try:
             os.mkdir(d)
+        except OSError as e:
+            if not e.errno == errno.EEXIST:
+                raise
 
 
 def ensuredir(dst):
@@ -1089,7 +1093,11 @@ def ensuredir(dst):
     dst.rstrip(os.sep)
 
     ensuredirs(dst)
-    os.mkdir(dst)
+    try:
+        os.mkdir(dst)
+    except OSError as e:
+        if not e.errno == errno.EEXIST:
+            raise
 
 
 def reuse(x):
