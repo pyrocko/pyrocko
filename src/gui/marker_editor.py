@@ -602,8 +602,8 @@ class MarkerTableModel(qc.QAbstractTableModel):
                   istart,
                   istop)
 
-    def done(self):
-        self.dataChanged.emit()
+    def done(self, index):
+        self.dataChanged.emit(index, index)
         return True
 
     def setData(self, index, value, role):
@@ -625,7 +625,7 @@ class MarkerTableModel(qc.QAbstractTableModel):
                                 e.magnitude = valuef
                             else:
                                 e.moment_tensor.magnitude = valuef
-                            return self.done()
+                            return self.done(index)
 
                 if index.column() in [_column_mapping['Lon'],
                                       _column_mapping['Lat'],
@@ -640,18 +640,18 @@ class MarkerTableModel(qc.QAbstractTableModel):
                             elif index.column() == _column_mapping[
                                     'Depth [km]']:
                                 marker.get_event().depth = valuef*1000.
-                            return self.done()
+                            return self.done(index)
 
             if index.column() == _column_mapping['Label']:
                 values = str(toString(value))
                 if values != '':
                     if isinstance(marker, EventMarker):
                         marker.get_event().set_name(values)
-                        return self.done()
+                        return self.done(index)
 
                     if isinstance(marker, PhaseMarker):
                         marker.set_phasename(values)
-                        return self.done()
+                        return self.done(index)
 
         return False
 
