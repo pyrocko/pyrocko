@@ -1108,7 +1108,8 @@ class Map(Object):
             rows = [[lons[ista], lats[ista],
                      0., s.up.shift,
                      s.east.sigma, s.north.sigma, s.correlation_ne]
-                    for ista, s in enumerate(campaign.stations)]
+                    for ista, s in enumerate(campaign.stations)
+                    if s.up is not None]
         else:
             rows = [[lons[ista], lats[ista],
                      s.east.shift, s.north.shift,
@@ -1117,6 +1118,8 @@ class Map(Object):
 
         if labels:
             for row, sta in zip(rows, campaign.stations):
+                if vertical and sta.up is None:
+                    continue
                 row.append(sta.code)
 
         self.gmt.psvelo(
