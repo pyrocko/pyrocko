@@ -23,6 +23,9 @@ class TargetGenerator(LocationGenerator):
     def get_stations(self):
         return []
 
+    def get_onsets(self, engine, sources, tmin=None, tmax=None):
+        return []
+
     def get_waveforms(self, engine, sources, tmin=None, tmax=None):
         return []
 

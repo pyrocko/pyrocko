@@ -94,6 +94,8 @@ class WaveformGenerator(TargetGenerator):
         help='Minimum frequency/wavelength to resolve in the'
              ' synthetic waveforms.')
 
+    tabulated_phases = List.T(gf.meta.TPDef.T(), optional=True)
+
     def get_stations(self):
         return self.station_generator.get_stations()
 
@@ -154,8 +156,11 @@ class WaveformGenerator(TargetGenerator):
 
     def get_codes_to_deltat(self, engine, sources):
         deltats = {}
+
+        # TODO: check needed to recompute each time?
+        targets = self.get_targets()
         for source in sources:
-            for target in self.get_targets():
+            for target in targets:
                 deltats[target.codes] = engine.get_store(
                     target.store_id).config.deltat
 
@@ -198,8 +203,9 @@ class WaveformGenerator(TargetGenerator):
                      % (tts(tmin, format='%Y-%m-%d_%H-%M-%S'),
                         tts(tmax, format='%Y-%m-%d_%H-%M-%S')))
 
+        # TODO: check needed to recompute each time?
+        targets = self.get_targets()
         for source in sources:
-            targets = self.get_targets()
             resp = engine.process(source, targets)
 
             for _, target, res in resp.iter_results(get='results'):
@@ -218,6 +224,24 @@ class WaveformGenerator(TargetGenerator):
                 trs[target.codes].add(tr)
 
         return list(trs.values())
+
+    def get_onsets(self, engine, sources, tmin=None, tmax=None):
+        sources = [s for s in sources if tmin>s.time>tmax]
+        targets = {t.codes[:3]: t for t in self.get_targets()}
+
+        phase_markers = []
+        for nsl, target in targets.items():
+            store = engine.get_store(target.store_id)
+            for source in sources:
+                d = source.distance_to(target)
+                for phase in self.tabulated_phases:
+                    phase_markers.append(
+                        PhaseMarker(
+                            tmin=store.t(phase, (d, source.depth)),
+                            nslc_ids=(nsl,)
+                            )
+                        )
+        return phase_markers
 
     def get_transfer_function(self, codes):
         if self.seismogram_quantity == 'displacement':
