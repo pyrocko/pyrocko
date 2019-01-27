@@ -6,6 +6,7 @@ import os.path as op
 
 from pyrocko.guts import List
 from pyrocko.plot import gmtpy
+from pyrocko.gui.marker import PhaseMarker
 from pyrocko import pile, util, model, config
 from pyrocko.dataset import topo
 

@@ -7,7 +7,8 @@ import numpy as num
 from os import path as op
 from functools import reduce
 
-from pyrocko.guts import StringChoice, Float
+from pyrocko.guts import StringChoice, Float, List
+from pyrocko.gui.marker import PhaseMarker
 from pyrocko import gf, model, util, trace, io
 from pyrocko.io_common import FileSaveError
 
@@ -177,6 +178,7 @@ class WaveformGenerator(TargetGenerator):
         return tinc
 
     def get_waveforms(self, engine, sources, tmin=None, tmax=None):
+        print('get waveforms')
         trs = {}
 
         tmin_all, tmax_all = self.get_time_range(sources)
@@ -226,7 +228,14 @@ class WaveformGenerator(TargetGenerator):
         return list(trs.values())
 
     def get_onsets(self, engine, sources, tmin=None, tmax=None):
-        sources = [s for s in sources if tmin>s.time>tmax]
+        if not self.tabulated_phases:
+            return []
+
+        if tmin:
+            sources = [s for s in sources if tmin>s.time]
+        if tmax:
+            sources = [s for s in sources if s.time<tmax]
+
         targets = {t.codes[:3]: t for t in self.get_targets()}
 
         phase_markers = []
