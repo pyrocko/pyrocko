@@ -326,6 +326,10 @@ class ModelTestCase(unittest.TestCase):
         assert size == nstations*3 - nsparse
         num.testing.assert_array_equal(cov_arr, cov_arr.T)
 
+        comp_mask = num.concatenate(
+            [s.get_component_mask() for s in campaign.stations])
+        assert comp_mask.sum() == campaign.ncomponents
+
 
 if __name__ == "__main__":
     util.setup_logging('test_trace', 'warning')

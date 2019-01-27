@@ -96,7 +96,7 @@ class GNSSStation(Location):
 
         for ic1, comp1 in enumerate(components):
             for ic2, comp2 in enumerate(components):
-                corr = self._get_correlation(comp1, comp2)
+                corr = self._get_comp_correlation(comp1, comp2)
 
                 covar[ic1, ic2] = corr * comp1.sigma * comp2.sigma
 
@@ -121,13 +121,21 @@ class GNSSStation(Location):
             for ic2, comp2 in enumerate(components):
                 if comp1 is comp2:
                     continue
-                corr[ic1, ic2] = self._get_correlation(comp1, comp2)
+                corr[ic1, ic2] = self._get_comp_correlation(comp1, comp2)
 
         # See comment at get_covariance_matrix
         corr[num.tril_indices_from(corr, k=-1)] = \
             corr[num.triu_indices_from(corr, k=1)]
 
         return corr
+
+    def get_displacement_data(self):
+        return num.array([c.shift for c in self.component.values()])
+
+    def get_component_mask(self):
+        return num.array(
+            [False if self.__getattribute__(name) is None else True
+             for name in ('north', 'east', 'up')], dtype=num.bool)
 
     @property
     def components(self):
@@ -140,7 +148,7 @@ class GNSSStation(Location):
     def ncomponents(self):
         return len(self.components)
 
-    def _get_correlation(self, comp1, comp2):
+    def _get_comp_correlation(self, comp1, comp2):
         if comp1 is comp2:
             return 1.
 
@@ -179,6 +187,8 @@ class GNSSCampaign(Object):
         self._cor_mat = None
 
     def add_station(self, station):
+        self._cor_mat = None
+        self._cov_mat = None
         return self.stations.append(station)
 
     def get_station(self, station_code):
@@ -225,6 +235,10 @@ class GNSSCampaign(Object):
 
             self._cor_mat = cor_arr
         return self._cor_mat
+
+    def get_component_mask(self):
+        return num.concatenate(
+            [s.get_component_mask() for s in self.stations])
 
     def dump(self, *args, **kwargs):
         self.regularize()
