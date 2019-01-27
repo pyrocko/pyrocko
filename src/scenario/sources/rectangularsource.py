@@ -33,8 +33,8 @@ class RectangularSourceGenerator(SourceGenerator):
         time = rstate.uniform(self.time_min, self.time_max)
         lat, lon = self.get_latlon(ievent)
         depth = rstate.uniform(self.depth_min, self.depth_max)
-        magnitude = rstate.uniform(self.magnitude_min, self.magnitude_max)
 
+        magnitude = self.draw_magnitude()
         moment = moment_tensor.magnitude_to_moment(magnitude)
 
         # After Mai and Beroza (2000)
