@@ -176,19 +176,16 @@ class ModelTestCase(unittest.TestCase):
             z = g(projected, 'U')
             assert(near(z.ydata[0], 1.0, 0.001))
 
-    def testGNSSCampaign(self):
-        tempdir = tempfile.mkdtemp(prefix='pyrocko-model')
-        fn = pjoin(tempdir, 'gnss_campaign.yml')
+    def getGNSSCampaign(self, nstations=25, nsparse=False):
+        rstate = num.random.RandomState(None)
 
-        nstations = 25
+        lats = rstate.uniform(90, -90, nstations)
+        lons = rstate.uniform(90, -90, nstations)
 
-        lats = num.random.uniform(90, -90, nstations)
-        lons = num.random.uniform(90, -90, nstations)
+        shifts = rstate.uniform(-2.5, 2.5, (nstations, 3))
+        sigma = rstate.uniform(-0.5, 0.5, (nstations, 3))
 
-        shifts = num.random.uniform(-2.5, 2.5, (nstations, 3))
-        sigma = num.random.uniform(-0.5, 0.5, (nstations, 3))
-
-        correlations = num.random.uniform(-0.5, 0.5, (nstations, 3))
+        correlations = rstate.uniform(-0.5, 0.5, (nstations, 3))
 
         campaign = model.gnss.GNSSCampaign()
 
@@ -216,35 +213,82 @@ class ModelTestCase(unittest.TestCase):
 
             campaign.add_station(station)
 
-        for sta in campaign.stations:
-            sta.get_correlation_matrix(full=False)
-            corr_arr = sta.get_correlation_matrix(full=True)
-            num.testing.assert_array_equal(corr_arr, corr_arr.T)
+        if nsparse:
+            assert nsparse < nstations, 'nsparse < nstations'
+
+            stations = rstate.choice(campaign.stations, size=nsparse)
+            channels = rstate.randint(0, 3, size=nsparse)
+
+            channel_map = {
+                0: 'north',
+                1: 'east',
+                2: 'up'
+            }
+
+            for ista, sta in enumerate(stations):
+                cha = channels[ista]
+                sta.__setattr__(channel_map[cha], None)
+
+        return campaign
+
+    def testGNSSCampaign(self):
+        tempdir = tempfile.mkdtemp(prefix='pyrocko-model')
+        fn = pjoin(tempdir, 'gnss_campaign.yml')
+
+        campaign = self.getGNSSCampaign()
+
+        campaign.dump(filename=fn)
+        campaign2 = load(filename=fn)
+
+        s1 = campaign.stations[0]
+
+        s_add = s1.north + s1.north
+        assert s_add.shift == (s1.north.shift + s1.north.shift)
+
+        assert len(campaign.stations) == len(campaign2.stations)
+        shutil.rmtree(tempdir)
+
+    def testGNSSCampaignCorrelationMatrix(self):
+        campaign = self.getGNSSCampaign()
 
         corr_arr = campaign.get_correlation_matrix()
         num.testing.assert_array_equal(corr_arr, corr_arr.T)
 
         corr_arr_ref = num.zeros(corr_arr.shape)
 
+        idx = 0
         for ista, sta in enumerate(campaign.stations):
-            for ic, comp in enumerate([sta.north, sta.east, sta.up]):
-                corr_arr_ref[ista*3+ic, ista*3+ic] = comp.sigma
+            ncomp = sta.ncomponents
+            components = sta.components.values()
 
-            corr_arr_ref[ista*3, ista*3+1] = sta.correlation_ne
-            corr_arr_ref[ista*3+1, ista*3] = sta.correlation_ne
+            for ic, comp in enumerate(components):
+                corr_arr_ref[idx+ic, idx+ic] = comp.sigma
 
-            corr_arr_ref[ista*3, ista*3+2] = sta.correlation_nu
-            corr_arr_ref[ista*3+2, ista*3] = sta.correlation_nu
+            corr_arr_ref[idx, idx+1] = sta.correlation_ne
+            corr_arr_ref[idx+1, idx] = sta.correlation_ne
 
-            corr_arr_ref[ista*3+1, ista*3+2] = sta.correlation_eu
-            corr_arr_ref[ista*3+2, ista*3+1] = sta.correlation_eu
+            corr_arr_ref[idx, idx+2] = sta.correlation_nu
+            corr_arr_ref[idx+2, idx] = sta.correlation_nu
+
+            corr_arr_ref[idx+1, idx+2] = sta.correlation_eu
+            corr_arr_ref[idx+2, idx+1] = sta.correlation_eu
+
+            idx += ncomp
+
+        num.testing.assert_array_equal(corr_arr, corr_arr_ref)
+
+    def testGNSSCampaignCovarianceMatrix(self):
+        campaign = self.getGNSSCampaign(2)
 
         covar_arr = campaign.get_covariance_matrix()
         num.testing.assert_array_equal(covar_arr, covar_arr.T)
 
         covar_ref = num.zeros(covar_arr.shape)
 
+        idx = 0
         for ista, sta in enumerate(campaign.stations):
+            ncomp = sta.ncomponents
+
             for ic, comp in enumerate([sta.north, sta.east, sta.up]):
                 covar_ref[ista*3+ic, ista*3+ic] = comp.sigma**2
 
@@ -263,19 +307,24 @@ class ModelTestCase(unittest.TestCase):
             covar_ref[ista*3+2, ista*3+1] =\
                 sta.correlation_eu * sta.east.sigma * sta.up.sigma
 
+            idx += ncomp
+
         num.testing.assert_array_equal(covar_arr, covar_ref)
 
-        campaign.dump(filename=fn)
+    def testGNSSCampaignSparse(self):
+        nstations = 20
+        nsparse = 5
+        campaign = self.getGNSSCampaign(nstations=nstations, nsparse=nsparse)
 
-        campaign2 = load(filename=fn)
+        cor_arr = campaign.get_correlation_matrix()
+        size = cor_arr.shape[0]
+        assert size == nstations*3 - nsparse
+        num.testing.assert_array_equal(cor_arr, cor_arr.T)
 
-        s1 = campaign.stations[0]
-
-        s_add = s1.north + s1.north
-        assert s_add.shift == (s1.north.shift + s1.north.shift)
-
-        assert len(campaign.stations) == len(campaign2.stations)
-        shutil.rmtree(tempdir)
+        cov_arr = campaign.get_covariance_matrix()
+        size = cov_arr.shape[0]
+        assert size == nstations*3 - nsparse
+        num.testing.assert_array_equal(cov_arr, cov_arr.T)
 
 
 if __name__ == "__main__":

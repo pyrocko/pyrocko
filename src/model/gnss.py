@@ -1,6 +1,8 @@
 import logging
 import math
 import numpy as num
+from collections import OrderedDict
+
 import pyrocko.orthodrome as od
 
 from pyrocko.guts import (Object, Float, String, List, StringChoice,
@@ -78,56 +80,81 @@ class GNSSStation(Location):
         help='North-Up component correlation')
 
     north = GNSSComponent.T(
-        default=GNSSComponent.D())
+        optional=True)
 
     east = GNSSComponent.T(
-        default=GNSSComponent.D())
+        optional=True)
 
     up = GNSSComponent.T(
-        default=GNSSComponent.D())
+        optional=True)
 
-    def __init__(self, *args, **kwargs):
-        Location.__init__(self, *args, **kwargs)
+    def get_covariance_matrix(self):
+        components = self.components.values()
+        ncomponents = self.ncomponents
 
-    def get_covariance_matrix(self, full=True):
-        s = self
+        covar = num.zeros((ncomponents, ncomponents))
 
-        covar = num.zeros((3, 3))
-        covar[num.diag_indices_from(covar)] = num.array(
-            [c.sigma**2 for c in (s.north, s.east, s.up)])
+        for ic1, comp1 in enumerate(components):
+            for ic2, comp2 in enumerate(components):
+                corr = self._get_correlation(comp1, comp2)
 
-        if s.correlation_ne is not 0.:
-            covar[0, 1] = s.correlation_ne * s.north.sigma * s.east.sigma
-        if s.correlation_nu is not 0.:
-            covar[0, 2] = s.correlation_nu * s.north.sigma * s.up.sigma
-        if s.correlation_eu is not 0.:
-            covar[1, 2] = s.correlation_eu * s.east.sigma * s.up.sigma
+                covar[ic1, ic2] = corr * comp1.sigma * comp2.sigma
 
-        if full:
-            covar[num.tril_indices_from(covar, k=-1)] = \
-                covar[num.triu_indices_from(covar, k=1)]
+        # This floating point operation is inaccurate:
+        # corr * comp1.sigma * comp2.sigma != corr * comp2.sigma * comp1.sigma
+        #
+        # Hence this identity
+        covar[num.tril_indices_from(covar, k=-1)] = \
+            covar[num.triu_indices_from(covar, k=1)]
 
         return covar
 
-    def get_correlation_matrix(self, full=True):
-        s = self
+    def get_correlation_matrix(self):
+        components = self.components.values()
+        ncomponents = self.ncomponents
 
-        corr = num.zeros((3, 3))
+        corr = num.zeros((ncomponents, ncomponents))
         corr[num.diag_indices_from(corr)] = num.array(
-            [c.sigma for c in (s.north, s.east, s.up)])
+            [c.sigma for c in components])
 
-        if s.correlation_ne is not None:
-            corr[0, 1] = s.correlation_ne
-        if s.correlation_nu is not None:
-            corr[0, 2] = s.correlation_nu
-        if s.correlation_eu is not None:
-            corr[1, 2] = s.correlation_eu
+        for ic1, comp1 in enumerate(components):
+            for ic2, comp2 in enumerate(components):
+                if comp1 is comp2:
+                    continue
+                corr[ic1, ic2] = self._get_correlation(comp1, comp2)
 
-        if full:
-            corr[num.tril_indices_from(corr, k=-1)] = \
-                corr[num.triu_indices_from(corr, k=1)]
+        # See comment at get_covariance_matrix
+        corr[num.tril_indices_from(corr, k=-1)] = \
+            corr[num.triu_indices_from(corr, k=1)]
 
         return corr
+
+    @property
+    def components(self):
+        return OrderedDict(
+            [(name, self.__getattribute__(name))
+             for name in ('north', 'east', 'up')
+             if self.__getattribute__(name) is not None])
+
+    @property
+    def ncomponents(self):
+        return len(self.components)
+
+    def _get_correlation(self, comp1, comp2):
+        if comp1 is comp2:
+            return 1.
+
+        s = self
+
+        correlation_map = {
+            (s.north, s.east): s.correlation_ne,
+            (s.east, s.up): s.correlation_eu,
+            (s.north, s.up): s.correlation_nu
+        }
+
+        return correlation_map.get(
+            (comp1, comp2),
+            correlation_map.get((comp2, comp1), False))
 
 
 class GNSSCampaign(Object):
@@ -171,24 +198,32 @@ class GNSSCampaign(Object):
 
     def get_covariance_matrix(self):
         if self._cov_mat is None:
-            cov_arr = num.zeros((self.nstations*3, self.nstations*3))
+            cov_arr = num.zeros((self.ncomponents, self.ncomponents))
 
+            idx = 0
             for ista, sta in enumerate(self.stations):
-                cov_arr[ista*3:ista*3+3, ista*3:ista*3+3] = \
-                    sta.get_covariance_matrix(full=True)
+                ncomp = sta.ncomponents
+
+                cov_arr[idx:idx+ncomp, idx:idx+ncomp] = \
+                    sta.get_covariance_matrix()
+                idx += ncomp
 
             self._cov_mat = cov_arr
         return self._cov_mat
 
     def get_correlation_matrix(self):
         if self._cor_mat is None:
-            cov_arr = num.zeros((self.nstations*3, self.nstations*3))
+            cor_arr = num.zeros((self.ncomponents, self.ncomponents))
 
+            idx = 0
             for ista, sta in enumerate(self.stations):
-                cov_arr[ista*3:ista*3+3, ista*3:ista*3+3] = \
-                    sta.get_correlation_matrix(full=True)
+                ncomp = sta.ncomponents
 
-            self._cor_mat = cov_arr
+                cor_arr[idx:idx+ncomp, idx:idx+ncomp] = \
+                    sta.get_correlation_matrix()
+                idx += ncomp
+
+            self._cor_mat = cor_arr
         return self._cor_mat
 
     def dump(self, *args, **kwargs):
@@ -202,3 +237,7 @@ class GNSSCampaign(Object):
     @property
     def nstations(self):
         return len(self.stations)
+
+    @property
+    def ncomponents(self):
+        return sum([s.ncomponents for s in self.stations])
