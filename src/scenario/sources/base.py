@@ -1,6 +1,6 @@
 import os.path as op
 
-from pyrocko import util
+from pyrocko import util, moment_tensor
 from pyrocko.guts import Timestamp, Float, Int, Bool
 
 from ..base import LocationGenerator
@@ -24,15 +24,15 @@ class SourceGenerator(LocationGenerator):
 
     magnitude_min = Float.T(default=4.0)
     magnitude_max = Float.T(default=0.0)
-    b_value = Float.T(optional=True,
-        help='Gutenberg Richter magnitude distribution.')
+    b_value = Float.T(
+        optional=True, help='Gutenberg Richter magnitude distribution.')
 
     def __init__(self, *args, **kwargs):
         super(SourceGenerator, self).__init__(*args, **kwargs)
         if self.b_value and self.magnitude_max:
             raise Exception('b_value and magnitude_max are mutually exclusive')
 
-    def draw_magnitude(self):
+    def draw_magnitude(self, rstate):
         if self.magnitude_max:
             return rstate.uniform(self.magnitude_min, self.magnitude_max)
         else:
