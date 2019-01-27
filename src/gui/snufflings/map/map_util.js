@@ -5,14 +5,15 @@ function Station(lat, lon, nsl, icon_data){
     this.nsl = nsl;
 };
 
-function Event(lat, lon, time, depth, magnitude, icon_data){
+function Event(name, lat, lon, time, depth, magnitude, icon_data){
+    this.name = name;
     this.lat = lat;
     this.lon = lon;
     this.time = time || 0;
     this.depth = depth || 0;
     this.magnitude = magnitude || 0;
     this.get_event_description = function(){
-        return "Magnitude " + this.magnitude.toFixed(2) + "<br>" + this.time + "<br>Depth: " + (this.depth/1000).toFixed(2) + " km";
+        return "Name: " + this.name + "<br>Magnitude " + this.magnitude.toFixed(2) + "<br>" + this.time + "<br>Depth: " + (this.depth/1000).toFixed(2) + " km";
     };
 
     this.get_fill_color = function(depth_min, depth_max){
@@ -28,14 +29,15 @@ function myxmlExtractor(xmlDoc){
 
     for (i=0; i<deb.length; i++)
     {
-        var lat = deb[i].childNodes[3].firstChild.data;
-        var lon = deb[i].childNodes[5].firstChild.data;
-        var time = deb[i].childNodes[7].firstChild.data;
-        var depth = deb[i].childNodes[11].firstChild.data;
-        var mag = parseFloat(deb[i].childNodes[9].firstChild.data);
+        let name = deb[i].childNodes[1].firstChild.data;
+        let lat = deb[i].childNodes[3].firstChild.data;
+        let lon = deb[i].childNodes[5].firstChild.data;
+        let time = deb[i].childNodes[7].firstChild.data;
+        let depth = deb[i].childNodes[11].firstChild.data;
+        let mag = parseFloat(deb[i].childNodes[9].firstChild.data);
         magnitudes[magnitudes.length] = mag;
         depths[depths.length] = depth;
-        var event = new Event(lat, lon, time, depth, mag);
+        var event = new Event(name, lat, lon, time, depth, mag);
 
         events[events.length] = event;
     };
