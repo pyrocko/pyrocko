@@ -158,7 +158,6 @@ class WaveformGenerator(TargetGenerator):
     def get_codes_to_deltat(self, engine, sources):
         deltats = {}
 
-        # TODO: check needed to recompute each time?
         targets = self.get_targets()
         for source in sources:
             for target in targets:
@@ -178,7 +177,6 @@ class WaveformGenerator(TargetGenerator):
         return tinc
 
     def get_waveforms(self, engine, sources, tmin=None, tmax=None):
-        print('get waveforms')
         trs = {}
 
         tmin_all, tmax_all = self.get_time_range(sources)
@@ -205,7 +203,6 @@ class WaveformGenerator(TargetGenerator):
                      % (tts(tmin, format='%Y-%m-%d_%H-%M-%S'),
                         tts(tmax, format='%Y-%m-%d_%H-%M-%S')))
 
-        # TODO: check needed to recompute each time?
         targets = self.get_targets()
         for source in sources:
             resp = engine.process(source, targets)
@@ -232,9 +229,9 @@ class WaveformGenerator(TargetGenerator):
             return []
 
         if tmin:
-            sources = [s for s in sources if tmin>s.time]
+            sources = [s for s in sources if tmin > s.time]
         if tmax:
-            sources = [s for s in sources if s.time<tmax]
+            sources = [s for s in sources if s.time < tmax]
 
         targets = {t.codes[:3]: t for t in self.get_targets()}
 
@@ -244,10 +241,17 @@ class WaveformGenerator(TargetGenerator):
             for source in sources:
                 d = source.distance_to(target)
                 for phase in self.tabulated_phases:
+                    t = store.t(phase.definition, (d, source.depth))
+                    if not t:
+                        continue
+                    t += source.time
                     phase_markers.append(
                         PhaseMarker(
-                            tmin=store.t(phase, (d, source.depth)),
-                            nslc_ids=(nsl,)
+                            phasename=phase.id,
+                            tmin=t,
+                            tmax=t,
+                            event=source.pyrocko_event(),
+                            nslc_ids=(nsl+('*',),)
                             )
                         )
         return phase_markers
@@ -281,8 +285,8 @@ class WaveformGenerator(TargetGenerator):
             '%(wmin_year)s',
             '%(wmin_month)s',
             '%(wmin_day)s',
-            'waveform_%(network)s_%(station)s_'
-            + '%(location)s_%(channel)s_%(tmin)s_%(tmax)s.mseed')
+            'waveform_%(network)s_%(station)s_' +
+            '%(location)s_%(channel)s_%(tmin)s_%(tmax)s.mseed')
 
         tmin_all, tmax_all = self.get_time_range(sources)
         tmin = tmin if tmin is not None else tmin_all

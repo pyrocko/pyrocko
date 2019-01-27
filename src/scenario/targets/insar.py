@@ -110,8 +110,9 @@ class ScenePatch(Object):
 
     @property
     def width(self):
-        track_shift = num.abs(num.cos(self.inclination*d2r)
-                              * self.track_length)
+        track_shift = num.abs(
+            num.cos(self.inclination*d2r) * self.track_length)
+
         return self.swath_width + track_shift
 
     def get_ll_anchor(self):
@@ -411,7 +412,7 @@ class InSARGenerator(TargetGenerator):
                 sources,
                 self.get_targets(),
                 nthreads=0)
-        except gf.meta.OutOfBounds as e:
+        except gf.meta.OutOfBounds:
             logger.warning('Could not calculate InSAR displacements'
                            ' - the GF store\'s extend is too small!')
             return []
