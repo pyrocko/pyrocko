@@ -241,7 +241,7 @@ class WaveformGenerator(TargetGenerator):
             for source in sources:
                 d = source.distance_to(target)
                 for phase in self.tabulated_phases:
-                    t = store.t(phase.definition, (d, source.depth))
+                    t = store.t(phase.definition, (source.depth, d))
                     if not t:
                         continue
                     t += source.time
