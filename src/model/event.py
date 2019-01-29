@@ -16,7 +16,6 @@ from pyrocko.guts import Float, String, Timestamp, Unicode, \
     StringPattern, List
 from .location import Location
 
-
 logger = logging.getLogger('pyrocko.model.event')
 
 guts_prefix = 'pf'
