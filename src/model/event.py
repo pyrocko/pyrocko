@@ -12,7 +12,7 @@ import base64
 
 from pyrocko import util, moment_tensor
 
-from pyrocko.guts import Object, Float, String, Timestamp, Unicode, \
+from pyrocko.guts import Float, String, Timestamp, Unicode, \
     StringPattern, List
 from .location import Location
 
@@ -28,8 +28,8 @@ def ehash(s):
         hashlib.sha1(s.encode('utf8')).digest()).decode('ascii'))
 
 
-def float_or_none_to_str(x):
-    return 'None' if x is None else '%.14e' % x
+def float_or_none_to_str(x, prec=9):
+    return 'None' if x is None else '{:.{prec}e}'.format(x, prec=prec)
 
 
 class FileParseError(Exception):
@@ -293,11 +293,14 @@ class Event(Location):
 
         s = float_or_none_to_str
 
-        return ehash(', '.join((
+        to_hash = ', '.join((
             stime,
-            s(e.lat), s(e.lon), s(e.depth), s(e.magnitude),
+            s(e.lat), s(e.lon), s(e.depth),
+            float_or_none_to_str(e.magnitude, 5),
             str(e.catalog), str(e.name),
-            str(e.region))))
+            str(e.region)))
+
+        return ehash(to_hash)
 
     def human_str(self):
         s = [
