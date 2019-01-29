@@ -561,7 +561,7 @@ class EventMarker(Marker):
         if self._event_hash is not None:
             return self._event_hash
         else:
-            self._event.get_hash()
+            return self._event.get_hash()
 
     def set_active(self, active):
         self._active = active
