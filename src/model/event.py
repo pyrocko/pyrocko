@@ -297,7 +297,7 @@ class Event(Location):
             stime,
             s(e.lat), s(e.lon), s(e.depth),
             float_or_none_to_str(e.magnitude, 5),
-            str(e.catalog), str(e.name),
+            str(e.catalog), str(e.name or ''),
             str(e.region)))
 
         return ehash(to_hash)
