@@ -39,7 +39,7 @@ class GNSSCampaignGenerator(TargetGenerator):
     station_generator = StationGenerator.T(
         default=RandomStationGenerator(
             network_name='GN',
-            with_channels=False),
+            channels=None),
         help='The StationGenerator for creating the stations.')
 
     noise_generator = NoiseGenerator.T(
