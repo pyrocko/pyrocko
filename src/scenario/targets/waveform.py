@@ -7,7 +7,8 @@ import numpy as num
 from os import path as op
 from functools import reduce
 
-from pyrocko.guts import StringChoice, Float
+from pyrocko.guts import StringChoice, Float, List
+from pyrocko.gui.marker import PhaseMarker
 from pyrocko import gf, model, util, trace, io
 from pyrocko.io_common import FileSaveError
 
@@ -96,6 +97,9 @@ class WaveformGenerator(TargetGenerator):
         help='Minimum frequency/wavelength to resolve in the'
              ' synthetic waveforms.')
 
+    tabulated_phases = List.T(gf.meta.TPDef.T(), optional=True,
+        help='Define seismic phases to be calculated.')
+
     def __init__(self, *args, **kwargs):
         super(WaveformGenerator, self).__init__(*args, **kwargs)
         self._targets = []
@@ -162,8 +166,10 @@ class WaveformGenerator(TargetGenerator):
 
     def get_codes_to_deltat(self, engine, sources):
         deltats = {}
+
+        targets = self.get_targets()
         for source in sources:
-            for target in self.get_targets():
+            for target in targets:
                 deltats[target.codes] = engine.get_store(
                     target.store_id).config.deltat
 
@@ -222,6 +228,33 @@ class WaveformGenerator(TargetGenerator):
 
         return list(trs.values())
 
+    def get_onsets(self, engine, sources, *args, **kwargs):
+        if not self.tabulated_phases:
+            return []
+
+        targets = {t.codes[:3]: t for t in self.get_targets()}
+
+        phase_markers = []
+        for nsl, target in targets.items():
+            store = engine.get_store(target.store_id)
+            for source in sources:
+                d = source.distance_to(target)
+                for phase in self.tabulated_phases:
+                    t = store.t(phase.definition, (source.depth, d))
+                    if not t:
+                        continue
+                    t += source.time
+                    phase_markers.append(
+                        PhaseMarker(
+                            phasename=phase.id,
+                            tmin=t,
+                            tmax=t,
+                            event=source.pyrocko_event(),
+                            nslc_ids=(nsl+('*',),)
+                            )
+                        )
+        return phase_markers
+
     def get_transfer_function(self, codes):
         if self.seismogram_quantity == 'displacement':
             return None
@@ -251,8 +284,8 @@ class WaveformGenerator(TargetGenerator):
             '%(wmin_year)s',
             '%(wmin_month)s',
             '%(wmin_day)s',
-            'waveform_%(network)s_%(station)s_'
-            + '%(location)s_%(channel)s_%(tmin)s_%(tmax)s.mseed')
+            'waveform_%(network)s_%(station)s_' +
+            '%(location)s_%(channel)s_%(tmin)s_%(tmax)s.mseed')
 
         tmin_all, tmax_all = self.get_time_range(sources)
         tmin = tmin if tmin is not None else tmin_all
