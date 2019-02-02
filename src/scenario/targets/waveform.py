@@ -96,11 +96,17 @@ class WaveformGenerator(TargetGenerator):
         help='Minimum frequency/wavelength to resolve in the'
              ' synthetic waveforms.')
 
+    def __init__(self, *args, **kwargs):
+        super(WaveformGenerator, self).__init__(*args, **kwargs)
+        self._targets = []
+
     def get_stations(self):
         return self.station_generator.get_stations()
 
     def get_targets(self):
-        targets = []
+        if self._targets:
+            return self._targets
+
         for station in self.get_stations():
             channel_data = []
             channels = station.get_channels()
@@ -136,9 +142,9 @@ class WaveformGenerator(TargetGenerator):
                     azimuth=c_azi,
                     dip=c_dip)
 
-                targets.append(target)
+                self._targets.append(target)
 
-        return targets
+        return self._targets
 
     def get_time_range(self, sources):
         dmin, dmax = self.station_generator.get_distance_range(sources)
