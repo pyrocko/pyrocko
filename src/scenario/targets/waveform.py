@@ -7,14 +7,14 @@ import numpy as num
 from os import path as op
 from functools import reduce
 
-from pyrocko.guts import StringChoice, Float, List, Bool
-from pyrocko.gui.marker import PhaseMarker
+from pyrocko.guts import StringChoice, Float
 from pyrocko import gf, model, util, trace, io
 from pyrocko.io_common import FileSaveError
 
 from .station import StationGenerator, RandomStationGenerator
 from .base import TargetGenerator, NoiseGenerator
 
+progressbar = util.progressbar_module()
 
 DEFAULT_STORE_ID = 'global_2s'
 
@@ -43,7 +43,7 @@ class WhiteNoiseGenerator(WaveformNoiseGenerator):
     def get_seed_offset2(self, deltat, iw, codes):
         m = hashlib.sha1(('%e %i %s.%s.%s.%s' % ((deltat, iw) + codes))
                          .encode('utf8'))
-        return int(m.hexdigest(), base=16) % 10000000
+        return int(m.hexdigest(), base=16) % 1000
 
     def get_intersecting_snippets(self, deltat, codes, tmin, tmax):
         tinc = self.get_time_increment(deltat)
@@ -95,26 +95,6 @@ class WaveformGenerator(TargetGenerator):
         default=0.01,
         help='Minimum frequency/wavelength to resolve in the'
              ' synthetic waveforms.')
-
-    tabulated_phases = List.T(
-        gf.meta.TPDef.T(), optional=True,
-        help='Define seismic phases to be calculated.')
-
-    taper = trace.Taper.T(
-        optional=True,
-        help='Time domain taper applied to synthetic waveforms.')
-
-    compensate_synthetic_offsets = Bool.T(
-        default=False,
-        help='Center synthetic trace amplitudes using mean of waveform tips.')
-
-    tinc = Float.T(
-        optional=True,
-        help='Time increment of waveforms.')
-
-    continuous = Bool.T(
-        default=True,
-        help='Only produce traces that intersect with events.')
 
     def __init__(self, *args, **kwargs):
         super(WaveformGenerator, self).__init__(*args, **kwargs)
@@ -182,10 +162,8 @@ class WaveformGenerator(TargetGenerator):
 
     def get_codes_to_deltat(self, engine, sources):
         deltats = {}
-
-        targets = self.get_targets()
         for source in sources:
-            for target in targets:
+            for target in self.get_targets():
                 deltats[target.codes] = engine.get_store(
                     target.store_id).config.deltat
 
@@ -196,25 +174,17 @@ class WaveformGenerator(TargetGenerator):
         tinc = dmax / self.vmin_cut + 2.0 / self.fmin
 
         deltats = set(self.get_codes_to_deltat(engine, sources).values())
+
         deltat = reduce(util.lcm, deltats)
         tinc = int(round(tinc / deltat)) * deltat
         return tinc
 
-    def get_relevant_sources(self, sources, tmin, tmax):
-        dmin, dmax = self.station_generator.get_distance_range(sources)
-        trange = tmax - tmin
-        tmax_pad = trange + tmax + dmin / self.vmax_cut
-        tmin_pad = tmin - (dmax / self.vmin_cut + trange)
-
-        return [s for s in sources if s.time < tmax_pad and s.time > tmin_pad]
-
-    def get_waveforms(self, engine, sources, tmin, tmax):
-
-        sources_relevant = self.get_relevant_sources(sources, tmin, tmax)
-        if not (self.continuous or sources_relevant):
-            return []
-
+    def get_waveforms(self, engine, sources, tmin=None, tmax=None):
         trs = {}
+
+        tmin_all, tmax_all = self.get_time_range(sources)
+        tmin = tmin if tmin is not None else tmin_all
+        tmax = tmax if tmax is not None else tmax_all
         tts = util.time_to_str
 
         for nslc, deltat in self.get_codes_to_deltat(engine, sources).items():
@@ -236,68 +206,26 @@ class WaveformGenerator(TargetGenerator):
                      % (tts(tmin, format='%Y-%m-%d_%H-%M-%S'),
                         tts(tmax, format='%Y-%m-%d_%H-%M-%S')))
 
-        if not sources_relevant:
-            return list(trs.values())
+        for source in sources:
+            targets = self.get_targets()
+            resp = engine.process(source, targets)
 
-        targets = self.get_targets()
-        response = engine.process(sources_relevant, targets)
-        for source, target, res in response.iter_results(
-                get='results'):
+            for _, target, res in resp.iter_results(get='results'):
+                if isinstance(res, gf.SeismosizerError):
+                    logger.warning('Station %s is Out of bounds!'
+                                   % '.'.join(target.codes))
+                    continue
+                if not isinstance(res, gf.meta.Result):
+                    continue
+                tr = res.trace.pyrocko_trace()
 
-            if isinstance(res, gf.SeismosizerError):
-                logger.warning(
-                    'Out of bounds! \nTarget: %s\nSource: %s\n' % (
-                        '.'.join(target.codes)), source)
-                continue
+                resp = self.get_transfer_function(target.codes)
+                if resp:
+                    tr = tr.transfer(transfer_function=resp)
 
-            tr = res.trace.pyrocko_trace()
-
-            candidate = trs[target.codes]
-            if not candidate.overlaps(tr.tmin, tr.tmax):
-                continue
-
-            if self.compensate_synthetic_offsets:
-                tr.ydata -= (num.mean(tr.ydata[-3:-1]) +
-                             num.mean(tr.ydata[1:3])) / 2.
-
-            if self.taper:
-                tr.taper(self.taper)
-
-            resp = self.get_transfer_function(target.codes)
-            if resp:
-                tr = tr.transfer(transfer_function=resp)
-
-            candidate.add(tr)
-            trs[target.codes] = candidate
+                trs[target.codes].add(tr)
 
         return list(trs.values())
-
-    def get_onsets(self, engine, sources, *args, **kwargs):
-        if not self.tabulated_phases:
-            return []
-
-        targets = {t.codes[:3]: t for t in self.get_targets()}
-
-        phase_markers = []
-        for nsl, target in targets.items():
-            store = engine.get_store(target.store_id)
-            for source in sources:
-                d = source.distance_to(target)
-                for phase in self.tabulated_phases:
-                    t = store.t(phase.definition, (source.depth, d))
-                    if not t:
-                        continue
-                    t += source.time
-                    phase_markers.append(
-                        PhaseMarker(
-                            phasename=phase.id,
-                            tmin=t,
-                            tmax=t,
-                            event=source.pyrocko_event(),
-                            nslc_ids=(nsl+('*',),)
-                            )
-                        )
-        return phase_markers
 
     def get_transfer_function(self, codes):
         if self.seismogram_quantity == 'displacement':
@@ -328,23 +256,20 @@ class WaveformGenerator(TargetGenerator):
             '%(wmin_year)s',
             '%(wmin_month)s',
             '%(wmin_day)s',
-            'waveform_%(network)s_%(station)s_' +
-            '%(location)s_%(channel)s_%(tmin)s_%(tmax)s.mseed')
+            'waveform_%(network)s_%(station)s_'
+            + '%(location)s_%(channel)s_%(tmin)s_%(tmax)s.mseed')
 
         tmin_all, tmax_all = self.get_time_range(sources)
         tmin = tmin if tmin is not None else tmin_all
         tmax = tmax if tmax is not None else tmax_all
         tts = util.time_to_str
 
-        tinc = self.tinc or self.get_useful_time_increment(engine, sources)
+        tinc = self.get_useful_time_increment(engine, sources)
         tmin = math.floor(tmin / tinc) * tinc
         tmax = math.ceil(tmax / tinc) * tinc
 
         nwin = int(round((tmax - tmin) / tinc))
-
-        pbar = util.progressbar('Generating waveforms', nwin)
-        for iwin in range(nwin):
-            pbar.update(iwin)
+        for iwin in progressbar.progressbar(range(nwin)):
             tmin_win = max(tmin, tmin + iwin*tinc)
             tmax_win = min(tmax, tmin + (iwin+1)*tinc)
 
@@ -368,8 +293,6 @@ class WaveformGenerator(TargetGenerator):
                     overwrite=overwrite)
             except FileSaveError as e:
                 logger.debug('Waveform exists %s' % e)
-
-        pbar.finish()
 
         return [path_waveforms]
 
