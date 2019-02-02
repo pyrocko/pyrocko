@@ -2658,12 +2658,15 @@ def process_dynamic_timeseries(work, psources, ptargets, engine, nthreads=0):
             for iseis, seismogram in enumerate(base_seismograms):
                 for tr in seismogram.values():
                     if tr.err != store.SeismosizerErrorEnum.SUCCESS:
-                        e = Exception()
-                        e.context = OutOfBoundsContext(
-                            source=source,
-                            target=store_targets[iseis],
-                            distance=source.distance_to(store_targets[iseis]),
-                            components=components)
+                        e = SeismosizerError(
+                            'Seismosizer failed with return code %i\n%s' % (
+                                tr.err, str(
+                                    OutOfBoundsContext(
+                                        source=source,
+                                        target=store_targets[iseis],
+                                        distance=source.distance_to(
+                                            store_targets[iseis]),
+                                        components=components))))
                         raise e
 
             for seismogram, target in zip(base_seismograms, store_targets):
