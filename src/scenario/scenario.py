@@ -113,8 +113,11 @@ class ScenarioGenerator(LocationGenerator):
         model.station.dump_kml(
             self.get_stations(), op.join(meta_dir, 'stations.kml'))
 
-        PhaseMarker.save_markers(
-            self.get_onsets(), op.join(path, 'markers.txt'))
+        markers = self.get_onsets()
+        if markers:
+            PhaseMarker.save_markers(
+                markers, op.join(meta_dir, 'markers.txt'))
+
         dump_readme(path)
 
         def dump_data(gen, *a, **kw):

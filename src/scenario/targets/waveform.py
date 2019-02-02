@@ -224,14 +224,9 @@ class WaveformGenerator(TargetGenerator):
 
         return list(trs.values())
 
-    def get_onsets(self, engine, sources, tmin=None, tmax=None):
+    def get_onsets(self, engine, sources, *args, **kwargs):
         if not self.tabulated_phases:
             return []
-
-        if tmin:
-            sources = [s for s in sources if tmin > s.time]
-        if tmax:
-            sources = [s for s in sources if s.time < tmax]
 
         targets = {t.codes[:3]: t for t in self.get_targets()}
 
