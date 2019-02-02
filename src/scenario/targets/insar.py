@@ -446,7 +446,7 @@ class InSARGenerator(TargetGenerator):
     def dump_data(self, engine, sources, path,
                   tmin=None, tmax=None, overwrite=False):
         path_insar = op.join(path, 'insar')
-        util.ensuredir(path_insar)
+        gf.store.remake_dir(path_insar, force=overwrite)
 
         tmin, tmax = self.get_time_range(sources)
         tts = util.time_to_str

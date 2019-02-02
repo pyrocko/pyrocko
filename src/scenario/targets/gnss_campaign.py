@@ -98,7 +98,7 @@ class GNSSCampaignGenerator(TargetGenerator):
     def dump_data(self, engine, sources, path,
                   tmin=None, tmax=None, overwrite=False):
         path_gnss = op.join(path, 'gnss')
-        util.ensuredir(path_gnss)
+        gf.store.remake_dir(path_gnss, force=overwrite)
 
         campaigns = self.get_gnss_campaign(
             engine, sources, tmin, tmax)
