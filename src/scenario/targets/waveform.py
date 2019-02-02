@@ -7,14 +7,13 @@ import numpy as num
 from os import path as op
 from functools import reduce
 
-from pyrocko.guts import StringChoice, Float
+from pyrocko.guts import StringChoice, Float, List
+from pyrocko.gui.marker import PhaseMarker
 from pyrocko import gf, model, util, trace, io
 from pyrocko.io_common import FileSaveError
 
 from .station import StationGenerator, RandomStationGenerator
 from .base import TargetGenerator, NoiseGenerator
-
-progressbar = util.progressbar_module()
 
 DEFAULT_STORE_ID = 'global_2s'
 
@@ -96,17 +95,13 @@ class WaveformGenerator(TargetGenerator):
         help='Minimum frequency/wavelength to resolve in the'
              ' synthetic waveforms.')
 
-    def __init__(self, *args, **kwargs):
-        super(WaveformGenerator, self).__init__(*args, **kwargs)
-        self._targets = []
+    tabulated_phases = List.T(gf.meta.TPDef.T(), optional=True)
 
     def get_stations(self):
         return self.station_generator.get_stations()
 
     def get_targets(self):
-        if self._targets:
-            return self._targets
-
+        targets = []
         for station in self.get_stations():
             channel_data = []
             channels = station.get_channels()
@@ -142,9 +137,9 @@ class WaveformGenerator(TargetGenerator):
                     azimuth=c_azi,
                     dip=c_dip)
 
-                self._targets.append(target)
+                targets.append(target)
 
-        return self._targets
+        return targets
 
     def get_time_range(self, sources):
         dmin, dmax = self.station_generator.get_distance_range(sources)
@@ -162,8 +157,10 @@ class WaveformGenerator(TargetGenerator):
 
     def get_codes_to_deltat(self, engine, sources):
         deltats = {}
+
+        targets = self.get_targets()
         for source in sources:
-            for target in self.get_targets():
+            for target in targets:
                 deltats[target.codes] = engine.get_store(
                     target.store_id).config.deltat
 
@@ -206,8 +203,8 @@ class WaveformGenerator(TargetGenerator):
                      % (tts(tmin, format='%Y-%m-%d_%H-%M-%S'),
                         tts(tmax, format='%Y-%m-%d_%H-%M-%S')))
 
+        targets = self.get_targets()
         for source in sources:
-            targets = self.get_targets()
             resp = engine.process(source, targets)
 
             for _, target, res in resp.iter_results(get='results'):
@@ -226,6 +223,33 @@ class WaveformGenerator(TargetGenerator):
                 trs[target.codes].add(tr)
 
         return list(trs.values())
+
+    def get_onsets(self, engine, sources, *args, **kwargs):
+        if not self.tabulated_phases:
+            return []
+
+        targets = {t.codes[:3]: t for t in self.get_targets()}
+
+        phase_markers = []
+        for nsl, target in targets.items():
+            store = engine.get_store(target.store_id)
+            for source in sources:
+                d = source.distance_to(target)
+                for phase in self.tabulated_phases:
+                    t = store.t(phase.definition, (source.depth, d))
+                    if not t:
+                        continue
+                    t += source.time
+                    phase_markers.append(
+                        PhaseMarker(
+                            phasename=phase.id,
+                            tmin=t,
+                            tmax=t,
+                            event=source.pyrocko_event(),
+                            nslc_ids=(nsl+('*',),)
+                            )
+                        )
+        return phase_markers
 
     def get_transfer_function(self, codes):
         if self.seismogram_quantity == 'displacement':
@@ -249,15 +273,15 @@ class WaveformGenerator(TargetGenerator):
     def dump_waveforms(self, engine, sources, path,
                        tmin=None, tmax=None, overwrite=False):
         path_waveforms = op.join(path, 'waveforms')
-        gf.store.remake_dir(path_waveforms, force=overwrite)
+        util.ensuredir(path_waveforms)
 
         path_traces = op.join(
             path_waveforms,
             '%(wmin_year)s',
             '%(wmin_month)s',
             '%(wmin_day)s',
-            'waveform_%(network)s_%(station)s_'
-            + '%(location)s_%(channel)s_%(tmin)s_%(tmax)s.mseed')
+            'waveform_%(network)s_%(station)s_' +
+            '%(location)s_%(channel)s_%(tmin)s_%(tmax)s.mseed')
 
         tmin_all, tmax_all = self.get_time_range(sources)
         tmin = tmin if tmin is not None else tmin_all
@@ -269,7 +293,8 @@ class WaveformGenerator(TargetGenerator):
         tmax = math.ceil(tmax / tinc) * tinc
 
         nwin = int(round((tmax - tmin) / tinc))
-        for iwin in progressbar.progressbar(range(nwin)):
+
+        for iwin in range(nwin):
             tmin_win = max(tmin, tmin + iwin*tinc)
             tmax_win = min(tmax, tmin + (iwin+1)*tinc)
 
