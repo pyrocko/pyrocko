@@ -207,8 +207,9 @@ class WaveformGenerator(TargetGenerator):
                 get='results'):
 
             if isinstance(res, gf.SeismosizerError):
-                logger.warning('Station %s is Out of bounds!'
-                               % '.'.join(target.codes))
+                logger.warning(
+                    'Out of bounds! \nTarget: %s\nSource: %s\n'
+                               % ('.'.join(target.codes)), source)
                 continue
 
             tr = res.trace.pyrocko_trace()
