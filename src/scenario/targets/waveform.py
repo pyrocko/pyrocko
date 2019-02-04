@@ -100,6 +100,10 @@ class WaveformGenerator(TargetGenerator):
     tabulated_phases = List.T(gf.meta.TPDef.T(), optional=True,
         help='Define seismic phases to be calculated.')
 
+    taper = trace.Taper.T(
+        default=trace.CosFader(xfrac=0.05),
+        help='Time domain taper applied to synthetic waveforms.')
+
     def __init__(self, *args, **kwargs):
         super(WaveformGenerator, self).__init__(*args, **kwargs)
         self._targets = []
@@ -223,6 +227,10 @@ class WaveformGenerator(TargetGenerator):
             candidate = trs[target.codes]
             if not candidate.overlaps(tr.tmin, tr.tmax):
                 continue
+
+            tr.ydata -= (num.mean(tr.ydata[-5:-1]) + num.mean(tr.ydata[1:5])) / 2.
+            if self.taper:
+                tr.taper(self.taper)
 
             resp = self.get_transfer_function(target.codes)
             if resp:
