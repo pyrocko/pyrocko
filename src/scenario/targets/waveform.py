@@ -44,7 +44,7 @@ class WhiteNoiseGenerator(WaveformNoiseGenerator):
     def get_seed_offset2(self, deltat, iw, codes):
         m = hashlib.sha1(('%e %i %s.%s.%s.%s' % ((deltat, iw) + codes))
                          .encode('utf8'))
-        return int(m.hexdigest(), base=16) % 1000
+        return int(m.hexdigest(), base=16) % 10000000
 
     def get_intersecting_snippets(self, deltat, codes, tmin, tmax):
         tinc = self.get_time_increment(deltat)
