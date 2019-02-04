@@ -61,7 +61,7 @@ class ScenarioTestCase(unittest.TestCase):
             targets.GNSSCampaignGenerator(
                 station_generator=targets.RandomStationGenerator(
                     avoid_water=False,
-                    with_channels=False))
+                    channels=None))
             ],
         source_generator=scenario.DCSourceGenerator(
             time_min=util.str_to_time('2017-01-01 00:00:00'),
