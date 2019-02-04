@@ -220,11 +220,16 @@ class WaveformGenerator(TargetGenerator):
 
             tr = res.trace.pyrocko_trace()
 
+            candidate = trs[target.codes]
+            if not candidate.overlaps(tr.tmin, tr.tmax):
+                continue
+
             resp = self.get_transfer_function(target.codes)
             if resp:
                 tr = tr.transfer(transfer_function=resp)
 
-            trs[target.codes].add(tr)
+            candidate.add(tr)
+            trs[target.codes] = candidate
 
         return list(trs.values())
 
