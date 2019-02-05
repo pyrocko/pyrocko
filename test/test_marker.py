@@ -40,6 +40,7 @@ class MarkerTestCase(unittest.TestCase):
         assert all((in_event.lat == 111., in_event.lon == 111.,
                     in_event.depth == 111., in_event.time == 111.))
 
+        assert event.get_hash() == in_event.get_hash()
         assert in_pmarker.get_event_hash() == in_event.get_hash()
         assert in_pmarker.get_event_time() == 111.
 
