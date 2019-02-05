@@ -25,7 +25,7 @@ class DCSourceGenerator(SourceGenerator):
         time = rstate.uniform(self.time_min, self.time_max)
         lat, lon = self.get_latlon(ievent)
         depth = rstate.uniform(self.depth_min, self.depth_max)
-        magnitude = rstate.uniform(self.magnitude_min, self.magnitude_max)
+        magnitude = self.draw_magnitude(rstate)
 
         if self.strike is None and self.dip is None and self.rake is None:
             mt = moment_tensor.MomentTensor.random_dc(x=rstate.uniform(size=3))
