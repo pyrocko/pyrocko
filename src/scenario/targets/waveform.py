@@ -15,7 +15,7 @@ from pyrocko.io_common import FileSaveError
 from .station import StationGenerator, RandomStationGenerator
 from .base import TargetGenerator, NoiseGenerator
 
-progressbar = util.progressbar_module()
+
 
 DEFAULT_STORE_ID = 'global_2s'
 
@@ -314,7 +314,9 @@ class WaveformGenerator(TargetGenerator):
         targets = self.get_targets()
         response = engine.process(sources, targets)
 
-        for iwin in progressbar.progressbar(range(nwin)):
+        pbar = util.progressbar('Generating waveforms', nwin)
+        for iwin in range(nwin):
+            pbar.update(iwin)
             tmin_win = max(tmin, tmin + iwin*tinc)
             tmax_win = min(tmax, tmin + (iwin+1)*tinc)
 
