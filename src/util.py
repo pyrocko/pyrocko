@@ -421,7 +421,8 @@ def progressbar(label, maxval):
     widgets = [
         label, ' ',
         progressbar_mod.Bar(marker='-', left='[', right=']'), ' ',
-        progressbar_mod.Percentage(), ' ']
+        progressbar_mod.Percentage(), ' ',
+        progressbar_mod.ETA()]
 
     pbar = progressbar_mod.ProgressBar(widgets=widgets, maxval=maxval).start()
     return pbar
