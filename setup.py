@@ -15,7 +15,7 @@ except ImportError:
 
         @classmethod
         def get_include(self):
-            return ''
+            return None
 
 from distutils.sysconfig import get_python_inc
 from setuptools import setup, Extension, Command
