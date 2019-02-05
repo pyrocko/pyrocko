@@ -77,6 +77,35 @@ def same(x, eps=0.0):
         return all(r == x[0] for r in x)
 
 
+class InconsistentResponseInformation(Exception):
+    pass
+
+
+def check_resp(resp, value, frequency, limit_db, prelude=''):
+    if not value or not frequency:
+        logger.warn('Cannot validate frequency response')
+        return
+
+    value_resp = num.abs(
+        resp.evaluate(num.array([frequency], dtype=num.float)))[0]
+    diff_db = 20.0 * num.log10(value_resp/value)
+
+    if num.abs(diff_db) > limit_db:
+        raise InconsistentResponseInformation(
+            '%s\n'
+            '  reported value: %g\n'
+            '  computed value: %g\n'
+            '  at frequency [Hz]: %g\n'
+            '  difference [dB]: %g\n'
+            '  limit [dB]: %g' % (
+                prelude,
+                value,
+                value_resp,
+                frequency,
+                diff_db,
+                limit_db))
+
+
 this_year = time.gmtime()[0]
 
 
@@ -670,6 +699,19 @@ class Response(Object):
             responses.append(
                 trace.PoleZeroResponse(
                     constant=self.instrument_sensitivity.value))
+
+        if self.instrument_sensitivity:
+            trial = trace.MultiplyResponse(responses)
+            sval = self.instrument_sensitivity.value
+            sfreq = self.instrument_sensitivity.frequency
+            try:
+                check_resp(
+                    trial, sval, sfreq, 0.1,
+                    prelude='Instrument sensitivity value inconsistent with '
+                            'sensitivity computed from complete response\n'
+                            '  channel: %s' % '.'.join(nslc))
+            except InconsistentResponseInformation as e:
+                logger.warn(str(e))
 
         if fake_input_units is not None:
             if not self.instrument_sensitivity or \
