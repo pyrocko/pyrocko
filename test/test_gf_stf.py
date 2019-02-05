@@ -1,6 +1,7 @@
 from __future__ import division, print_function, absolute_import
 import math
 import unittest
+import os
 import numpy as num
 
 from pyrocko import gf, util
@@ -8,8 +9,7 @@ from pyrocko import gf, util
 r2d = 180. / math.pi
 d2r = 1.0 / r2d
 km = 1000.
-plot = False
-
+show_plot = int(os.environ.get('MPL_SHOW', 0))
 
 def numeq(a, b, eps):
     return (num.all(num.asarray(a).shape == num.asarray(b).shape and
@@ -31,12 +31,12 @@ class GFSTFTestCase(unittest.TestCase):
                     duration=duration, peak_ratio=peak_ratio, anchor=0.)
                 t, a = stf.discretize_t(deltat=0.1, tref=tref)
                 assert numeq(stf.centroid_time(tref), tref, 1e-5)
-                if plot:
+                if show_plot:
                     plt.title('Triangular')
                     plt.plot(t, a)
                     plt.plot(t, a, 'o')
 
-        if plot:
+        if show_plot:
             plt.show()
 
     def test_stf_boxcar(self):
@@ -47,12 +47,12 @@ class GFSTFTestCase(unittest.TestCase):
             stf = gf.BoxcarSTF(duration=duration, anchor=0.)
             t, a = stf.discretize_t(deltat=0.1, tref=tref)
             assert numeq(stf.centroid_time(tref), tref, 1e-5)
-            if plot:
+            if show_plot:
                 plt.title('Boxcar')
                 plt.plot(t, a)
                 plt.plot(t, a, 'o')
 
-        if plot:
+        if show_plot:
             plt.show()
 
     def test_stf_half_sinusoid(self):
@@ -63,12 +63,30 @@ class GFSTFTestCase(unittest.TestCase):
             stf = gf.HalfSinusoidSTF(duration=duration, anchor=0.)
             t, a = stf.discretize_t(deltat=0.1, tref=tref)
             assert numeq(stf.centroid_time(tref), tref, 1e-5)
-            if plot:
+            if show_plot:
                 plt.title('Half Sinosoid')
                 plt.plot(t, a)
                 plt.plot(t, a, 'o')
 
-        if plot:
+        if show_plot:
+            plt.show()
+
+    def test_stf_resonator(self):
+        from matplotlib import pyplot as plt
+
+        duration = 30.
+        frequency=1./15.
+        tref = 20.
+        deltat = 1.0
+
+        stf = gf.ResonatorSTF(duration=duration, frequency=frequency)
+        t, a = stf.discretize_t(deltat=0.1, tref=tref)
+        if show_plot:
+            plt.title('Resonator')
+            plt.plot(t, a)
+            plt.plot(t, a, 'o')
+
+        if show_plot:
             plt.show()
 
     def test_effective_durations(self):
@@ -98,6 +116,6 @@ class GFSTFTestCase(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    plot = True
+    show_plot = True
     util.setup_logging('test_gf_stf', 'warning')
     unittest.main()

@@ -903,6 +903,37 @@ class SmoothRampSTF(STF):
         return (type(self).__name__,
                 self.duration, self.rise_ratio, self.anchor)
 
+class ResonatorSTF(STF):
+    '''
+    Simple resonator like source time function.
+
+    f(t) = 0 for t < 0
+    f(t) = e^{-t/tau} * sin(2 * pi * f * t)
+    '''
+
+    duration = Float.T(
+        default=0.0,
+        help='decay time')
+
+    frequency = Float.T(
+        default=1.0,
+        help='resonance frequency')
+
+    def discretize_t(self, deltat, tref):
+        tmin_stf = tref
+        tmax_stf = tref + self.duration * 3
+        tmin = math.floor(tmin_stf / deltat) * deltat
+        tmax = math.ceil(tmax_stf / deltat) * deltat
+        times = util.arange2(tmin, tmax, deltat)
+        amplitudes = num.exp(-(times-tref)/self.duration) \
+            * num.sin(2.0 * num.pi * self.frequency * (times-tref))
+
+        return times, amplitudes
+
+    def base_key(self):
+        return (type(self).__name__,
+                self.duration, self.frequency)
+
 
 class STFMode(StringChoice):
     choices = ['pre', 'post']
@@ -3411,6 +3442,7 @@ stf_classes = [
     BoxcarSTF,
     TriangularSTF,
     HalfSinusoidSTF,
+    ResonatorSTF,
 ]
 
 __all__ = '''
