@@ -21,14 +21,14 @@ class ProgressBar(object):
 
     def update(self, val):
         self._val = val
-        sys.stderr.write('%s  %i/%i %3.0f%%\n' % (
+        sys.stderr.write('%s  %i/%i %3.0f%%\r' % (
             self.label(),
             self._val,
             self._maxval,
             100.*float(self._val) / float(self._maxval)))
 
     def finish(self):
-        sys.stderr.write('%s done\n' % self.label())
+        sys.stderr.write('\n%s done\n' % self.label())
 
 
 class Bar(object):
@@ -37,5 +37,10 @@ class Bar(object):
 
 
 class Percentage(object):
+    def __init__(self, *args, **kwargs):
+        pass
+
+
+class ETA(object):
     def __init__(self, *args, **kwargs):
         pass
