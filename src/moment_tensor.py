@@ -1047,6 +1047,13 @@ def kagan_angle(mt1, mt2):
     return 2. * r2d * math.acos(num.max(num.abs(qk)))
 
 
+def rand_to_gutenberg_richter(rand, b_value, magnitude_min):
+    '''
+    Draw magnitude from Gutenberg Richter distribution.
+    '''
+    return magnitude_min + num.log10(1.-rand) / -b_value
+
+
 if __name__ == '__main__':
 
     import sys
