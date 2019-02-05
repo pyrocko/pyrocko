@@ -588,8 +588,11 @@ class Trace(object):
         if demean:
             data -= num.mean(data)
 
-        result = util.decimate(
-            data, ndecimate, ftype='fir', zi=initials, ioff=ilag)
+        if data.size != 0:
+            result = util.decimate(
+                data, ndecimate, ftype='fir', zi=initials, ioff=ilag)
+        else:
+            result = data
 
         if initials is None:
             self.ydata, finals = result, None
@@ -1124,7 +1127,6 @@ class Trace(object):
 
         self.deltat = fix_deltat_rounding_errors(self.deltat)
         self.tmax = self.tmin + (self.data_len() - 1) * self.deltat
-
 
     def sta_lta_centered(self, tshort, tlong, quad=True, scalingmethod=1):
         '''
