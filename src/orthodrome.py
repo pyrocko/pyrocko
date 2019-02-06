@@ -569,7 +569,7 @@ def ne_to_latlon(lat0, lon0, north_m, east_m):
 
     '''
 
-    a = num.sqrt(north_m**2+east_m**2)/config().earthradius
+    a = num.sqrt(north_m**2+east_m**2)/earthradius
     gamma = num.arctan2(east_m, north_m)
 
     return azidist_to_latlon_rad(lat0, lon0, gamma, a)
@@ -727,7 +727,7 @@ def ne_to_latlon_alternative_method(lat0, lon0, north_m, east_m):
     '''
 
     b = math.pi/2.-lat0*d2r
-    a = num.sqrt(north_m**2+east_m**2)/config().earthradius
+    a = num.sqrt(north_m**2+east_m**2)/earthradius
 
     gamma = num.arctan2(east_m, north_m)
     alphasign = 1.
