@@ -124,6 +124,8 @@ def _request(url, post=False, user=None, passwd=None,
 
     req = Request(url)
     if post:
+        if isinstance(post, str):
+            post = post.encode('utf8')
         logger.debug('POST data: \n%s' % post.decode('utf8'))
         req.data = post
 
