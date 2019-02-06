@@ -2,7 +2,7 @@ import logging
 import os.path as op
 import numpy as num
 
-from pyrocko import gf, util
+from pyrocko import gf
 from pyrocko.guts import Float
 
 from .base import TargetGenerator, NoiseGenerator

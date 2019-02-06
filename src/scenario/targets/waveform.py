@@ -16,7 +16,6 @@ from .station import StationGenerator, RandomStationGenerator
 from .base import TargetGenerator, NoiseGenerator
 
 
-
 DEFAULT_STORE_ID = 'global_2s'
 
 logger = logging.getLogger('pyrocko.scenario.targets.waveform')
@@ -97,7 +96,8 @@ class WaveformGenerator(TargetGenerator):
         help='Minimum frequency/wavelength to resolve in the'
              ' synthetic waveforms.')
 
-    tabulated_phases = List.T(gf.meta.TPDef.T(), optional=True,
+    tabulated_phases = List.T(
+        gf.meta.TPDef.T(), optional=True,
         help='Define seismic phases to be calculated.')
 
     taper = trace.Taper.T(
@@ -108,7 +108,13 @@ class WaveformGenerator(TargetGenerator):
         default=False,
         help='Center synthetic trace amplitudes using mean of waveform tips.')
 
-    tinc = Float.T(optional=True)
+    tinc = Float.T(
+        optional=True,
+        help='Time increment of waveforms.')
+
+    continuous = Bool.T(
+        default=True,
+        help='Only produce traces that intersect with events.')
 
     def __init__(self, *args, **kwargs):
         super(WaveformGenerator, self).__init__(*args, **kwargs)
@@ -194,16 +200,20 @@ class WaveformGenerator(TargetGenerator):
         tinc = int(round(tinc / deltat)) * deltat
         return tinc
 
-    def get_relevant_sources(self, sources, targets, tmin, tmax):
+    def get_relevant_sources(self, sources, tmin, tmax):
         dmin, dmax = self.station_generator.get_distance_range(sources)
         trange = tmax - tmin
         tmax_pad = trange + tmax + dmin / self.vmax_cut
         tmin_pad = tmin - (dmax / self.vmin_cut + trange)
 
-        return [s for s in sources \
-            if s.time < tmax_pad and s.time > tmin_pad]
+        return [s for s in sources if s.time < tmax_pad and s.time > tmin_pad]
 
     def get_waveforms(self, engine, sources, tmin, tmax):
+
+        sources_relevant = self.get_relevant_sources(sources, tmin, tmax)
+        if not (self.continuous or sources_relevant):
+            return []
+
         trs = {}
         tts = util.time_to_str
 
@@ -226,20 +236,18 @@ class WaveformGenerator(TargetGenerator):
                      % (tts(tmin, format='%Y-%m-%d_%H-%M-%S'),
                         tts(tmax, format='%Y-%m-%d_%H-%M-%S')))
 
-        targets = self.get_targets()
-        sources_relevant = self.get_relevant_sources(sources, targets, tmin, tmax)
         if not sources_relevant:
             return list(trs.values())
 
+        targets = self.get_targets()
         response = engine.process(sources_relevant, targets)
-
         for source, target, res in response.iter_results(
                 get='results'):
 
             if isinstance(res, gf.SeismosizerError):
                 logger.warning(
-                    'Out of bounds! \nTarget: %s\nSource: %s\n'
-                               % ('.'.join(target.codes)), source)
+                    'Out of bounds! \nTarget: %s\nSource: %s\n' % (
+                        '.'.join(target.codes)), source)
                 continue
 
             tr = res.trace.pyrocko_trace()
@@ -249,7 +257,8 @@ class WaveformGenerator(TargetGenerator):
                 continue
 
             if self.compensate_synthetic_offsets:
-                tr.ydata -= (num.mean(tr.ydata[-3:-1]) + num.mean(tr.ydata[1:3])) / 2.
+                tr.ydata -= (num.mean(tr.ydata[-3:-1]) +
+                             num.mean(tr.ydata[1:3])) / 2.
 
             if self.taper:
                 tr.taper(self.taper)
