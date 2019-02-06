@@ -154,6 +154,9 @@ def to01(c):
 def nice_value(x):
     '''Round x to nice value.'''
 
+    if x == 0.0:
+        return 0.0
+
     exp = 1.0
     sign = 1
     if x < 0.0:

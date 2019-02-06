@@ -77,6 +77,41 @@ def same(x, eps=0.0):
         return all(r == x[0] for r in x)
 
 
+class InconsistentResponseInformation(Exception):
+    pass
+
+
+def check_resp(resp, value, frequency, limit_db, prelude=''):
+    if not value or not frequency:
+        logger.warn('Cannot validate frequency response')
+        return
+
+    value_resp = num.abs(
+        resp.evaluate(num.array([frequency], dtype=num.float)))[0]
+
+    if value_resp == 0.0:
+        raise InconsistentResponseInformation(
+            '%s\n'
+            '  computed response is zero' % prelude)
+
+    diff_db = 20.0 * num.log10(value_resp/value)
+
+    if num.abs(diff_db) > limit_db:
+        raise InconsistentResponseInformation(
+            '%s\n'
+            '  reported value: %g\n'
+            '  computed value: %g\n'
+            '  at frequency [Hz]: %g\n'
+            '  difference [dB]: %g\n'
+            '  limit [dB]: %g' % (
+                prelude,
+                value,
+                value_resp,
+                frequency,
+                diff_db,
+                limit_db))
+
+
 this_year = time.gmtime()[0]
 
 
@@ -489,10 +524,11 @@ class PolesZeros(BaseFilter):
     zero_list = List.T(PoleZero.T(xmltagname='Zero'))
     pole_list = List.T(PoleZero.T(xmltagname='Pole'))
 
-    def get_pyrocko_response(self):
+    def get_pyrocko_response(self, nslc):
         if self.pz_transfer_function_type == 'DIGITAL (Z-TRANSFORM)':
             logger.warn(
-                'unhandled pole-zero response of type "DIGITAL (Z-TRANSFORM)"')
+                'unhandled pole-zero response of type "DIGITAL (Z-TRANSFORM)" '
+                '(%s)' % '.'.join(nslc))
 
             return []
 
@@ -501,8 +537,8 @@ class PolesZeros(BaseFilter):
                 'LAPLACE (HERTZ)'):
 
             raise NoResponseInformation(
-                'cannot convert PoleZero response of type %s' %
-                self.pz_transfer_function_type)
+                'cannot convert PoleZero response of type %s (%s)' %
+                (self.pz_transfer_function_type, '.'.join(nslc)))
 
         factor = 1.0
         cfactor = 1.0
@@ -516,19 +552,29 @@ class PolesZeros(BaseFilter):
             zeros=[z.value()*factor for z in self.zero_list],
             poles=[p.value()*factor for p in self.pole_list])
 
-        computed_normalization_factor = self.normalization_factor / abs(
-            resp.evaluate(num.array([self.normalization_frequency.value]))[0])
+        if not self.normalization_frequency.value \
+                or not self.normalization_factor:
 
-        perc = abs(computed_normalization_factor /
-                   self.normalization_factor - 1.0) * 100
-
-        if perc > 2.0:
             logger.warn(
-                'computed and reported normalization factors differ by '
-                '%.1f%%: computed: %g, reported: %g' % (
-                    perc,
-                    computed_normalization_factor,
-                    self.normalization_factor))
+                'cannot check pole-zero normalization factor (%s)'
+                % '.'.join(nslc))
+
+        else:
+            computed_normalization_factor = self.normalization_factor / abs(
+                resp.evaluate(
+                    num.array([self.normalization_frequency.value]))[0])
+
+            db = 20.0 * num.log10(
+                computed_normalization_factor / self.normalization_factor)
+
+            if abs(db) > 0.17:
+                logger.warn(
+                    'computed and reported normalization factors differ by '
+                    '%g dB: computed: %g, reported: %g (%s)' % (
+                        db,
+                        computed_normalization_factor,
+                        self.normalization_factor,
+                        '.'.join(nslc)))
 
         return [resp]
 
@@ -618,7 +664,7 @@ class ResponseStage(Object):
     def get_pyrocko_response(self, nslc):
         responses = []
         for pzs in self.poles_zeros_list:
-            responses.extend(pzs.get_pyrocko_response())
+            responses.extend(pzs.get_pyrocko_response(nslc))
 
         if len(self.poles_zeros_list) > 1:
             logger.warn(
@@ -670,6 +716,19 @@ class Response(Object):
             responses.append(
                 trace.PoleZeroResponse(
                     constant=self.instrument_sensitivity.value))
+
+        if self.instrument_sensitivity:
+            trial = trace.MultiplyResponse(responses)
+            sval = self.instrument_sensitivity.value
+            sfreq = self.instrument_sensitivity.frequency
+            try:
+                check_resp(
+                    trial, sval, sfreq, 0.1,
+                    prelude='Instrument sensitivity value inconsistent with '
+                            'sensitivity computed from complete response\n'
+                            '  channel: %s' % '.'.join(nslc))
+            except InconsistentResponseInformation as e:
+                logger.warn(str(e))
 
         if fake_input_units is not None:
             if not self.instrument_sensitivity or \

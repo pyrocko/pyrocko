@@ -259,7 +259,7 @@ class Trace(object):
 
     def mult(self, other, interpolate=True):
         '''
-        Muliply with values of other trace (self \*= other).
+        Muliply with values of other trace (self *= other).
 
         Multiply values of ``other`` trace to the values of ``self``, where it
         intersects with ``other``.  This method does not change the extent of
@@ -588,8 +588,11 @@ class Trace(object):
         if demean:
             data -= num.mean(data)
 
-        result = util.decimate(
-            data, ndecimate, ftype='fir', zi=initials, ioff=ilag)
+        if data.size != 0:
+            result = util.decimate(
+                data, ndecimate, ftype='fir', zi=initials, ioff=ilag)
+        else:
+            result = data
 
         if initials is None:
             self.ydata, finals = result, None
@@ -1125,7 +1128,6 @@ class Trace(object):
         self.deltat = fix_deltat_rounding_errors(self.deltat)
         self.tmax = self.tmin + (self.data_len() - 1) * self.deltat
 
-
     def sta_lta_centered(self, tshort, tlong, quad=True, scalingmethod=1):
         '''
         Run special STA/LTA filter where the short time window is centered on
@@ -1652,12 +1654,21 @@ class Trace(object):
                 + hi(a)*deltaf
 
             if invert:
+                coeffs = transfer_function.evaluate(freqs)
+                if num.any(coeffs == 0.0):
+                    raise InfiniteResponse('%s.%s.%s.%s' % self.nslc_id)
+
                 transfer[hi(a):hi(d)] = 1.0 / transfer_function.evaluate(freqs)
             else:
                 transfer[hi(a):hi(d)] = transfer_function.evaluate(freqs)
 
             tapered_transfer = costaper(a, b, c, d, nfreqs, deltaf)*transfer
         else:
+            if invert:
+                raise Exception(
+                    'transfer: `freqlimits` must be given when `invert` is '
+                    'set to `True`')
+
             freqs = num.arange(nfreqs) * deltaf
             tapered_transfer = transfer_function.evaluate(freqs)
 
@@ -1766,6 +1777,14 @@ def snuffle(traces, **kwargs):
         trf = pile.MemTracesFile(None, traces)
         p.add_file(trf)
     return snuffler.snuffle(p, **kwargs)
+
+
+class InfiniteResponse(Exception):
+    '''
+    This exception is raised by :py:class:`Trace` operations when deconvolution
+    of a frequency response (instrument response transfer function) would
+    result in a division by zero.
+    '''
 
 
 class MisalignedTraces(Exception):
