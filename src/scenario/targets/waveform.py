@@ -341,6 +341,8 @@ class WaveformGenerator(TargetGenerator):
             except FileSaveError as e:
                 logger.debug('Waveform exists %s' % e)
 
+        pbar.finish()
+
         return [path_waveforms]
 
     def dump_responses(self, path):
