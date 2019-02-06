@@ -130,7 +130,8 @@ class GNSSStation(Location):
         return corr
 
     def get_displacement_data(self):
-        return num.array([c.shift for c in self.component.values()])
+        print(self.components.values())
+        return num.array([c.shift for c in self.components.values()])
 
     def get_component_mask(self):
         return num.array(
