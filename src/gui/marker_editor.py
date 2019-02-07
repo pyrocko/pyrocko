@@ -75,8 +75,9 @@ _header_sizes[-1] = 20
 
 class BeachballWidget(qw.QWidget):
 
-    def __init__(self, moment_tensor=None, *args, **kwargs):
+    def __init__(self, moment_tensor, color, *args, **kwargs):
         qw.QWidget.__init__(self, *args, **kwargs)
+        self.color = color
         self.moment_tensor = moment_tensor
         self.setGeometry(0, 0, 100, 100)
         self.setAttribute(qc.Qt.WA_TranslucentBackground)
@@ -94,7 +95,7 @@ class BeachballWidget(qw.QWidget):
             data = mt2beachball(
                 self.moment_tensor, size=self.height()/2.2,
                 position=(center.x(), center.y()),
-                color_t=qc.Qt.red, color_p=qc.Qt.white, edgecolor=qc.Qt.black)
+                color_t=self.color, color_p=qc.Qt.white, edgecolor=qc.Qt.black)
             for pdata in data:
                 paths, fill, edges, thickness = pdata
 
@@ -131,30 +132,19 @@ class MarkerItemDelegate(qw.QStyledItemDelegate):
 
     def paint(self, painter, option, index):
         iactive = self.parent().active_event_index
-
-        if iactive is not None and \
-                self.parent().model().mapToSource(index).row() == iactive:
-                painter.save()
-
-                rect = option.rect
-                x1, y1, x2, y2 = rect.getCoords()
-                pen = painter.pen()
-                pen.setWidth(2)
-                pen.setColor(qg.QColor(*tango_colors['scarletred3']))
-                painter.setPen(pen)
-                painter.drawLine(qc.QLineF(x1, y1, x2, y1))
-                painter.drawLine(qc.QLineF(x1, y2, x2, y2))
-                painter.restore()
+        mcolor = self.color_from_index(index)
 
         if index.column() == _column_mapping['MT']:
-            mt = self.get_mt_from_index(index)
+            mt = self.bb_data_from_index(index)
             if mt:
                 key = ''.join([str(round(x, 1)) for x in mt.m6()])
                 pixmap = self.bbcache.cached(key)
                 if pixmap:
                     pixmap = pixmap.scaledToHeight(option.rect.height())
                 else:
-                    pixmap = BeachballWidget(mt).to_qpixmap()
+                    pixmap = BeachballWidget(
+                        moment_tensor=mt,
+                        color=qg.QColor(*tango_colors['scarletred3'])).to_qpixmap()
                     self.bbcache.insert(key, pixmap)
                 a, b, c, d = option.rect.getRect()
                 painter.save()
@@ -165,6 +155,20 @@ class MarkerItemDelegate(qw.QStyledItemDelegate):
         else:
             qw.QStyledItemDelegate.paint(self, painter, option, index)
 
+        if iactive is not None and \
+                self.parent().model().mapToSource(index).row() == iactive:
+                painter.save()
+
+                rect = option.rect
+                x1, y1, x2, y2 = rect.getCoords()
+                pen = painter.pen()
+                pen.setWidth(2)
+                pen.setColor(mcolor)
+                painter.setPen(pen)
+                painter.drawLine(qc.QLineF(x1, y1, x2, y1))
+                painter.drawLine(qc.QLineF(x1, y2, x2, y2))
+                painter.restore()
+
     def displayText(self, value, locale):
         if isDateTime(value):
             return toDateTime(value).toUTC().toString(
@@ -172,14 +176,21 @@ class MarkerItemDelegate(qw.QStyledItemDelegate):
         else:
             return toString(value)
 
-    def get_mt_from_index(self, index):
+    def marker_from_index(self, index):
         tv = self.parent()
         pv = tv.pile_viewer
-        marker = pv.markers[tv.model().mapToSource(index).row()]
+        return pv.markers[tv.model().mapToSource(index).row()]
+
+    def bb_data_from_index(self, index):
+        marker = self.marker_from_index(index)
         if isinstance(marker, EventMarker):
             return marker.get_event().moment_tensor
         else:
             return None
+
+    def color_from_index(self, index):
+        marker = self.marker_from_index(index)
+        return qg.QColor(*marker.select_color(marker.color_b))
 
 
 class MarkerSortFilterProxyModel(QSortFilterProxyModel):
