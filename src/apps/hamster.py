@@ -21,6 +21,7 @@ logger = logging.getLogger('pyrocko.apps.hamster')
 
 def main(args=None):
     if args is None:
+        print(sys.argv[1:])
         args = sys.argv[1:]
 
     parser = OptionParser(
@@ -78,9 +79,9 @@ necessary.
         help='enable debugging output')
 
     options, args = parser.parse_args(args)
-    if len(args) < 2:
-        parser.error('required argument missing')
-    directory = args[1]
+    if len(args) != 1:
+        parser.error('Error: Usage should be "hamster [options] datadir')
+    directory = args[0]
 
     if options.debug:
         util.setup_logging('hamster', 'debug')
@@ -106,14 +107,14 @@ necessary.
                 network=options.network,
                 station=options.station,
                 location=options.location,
-                channel=options.channel,
+                channels=options.channel,
                 buffersize=options.buffersize,
                 lookback=options.lookback,
                 # in_file=testsource.stdout,
             )
 
             hamster.add_listener(pile)
-            signal.signal(signal.SIGINT, hamster.quit_soon)
+            signal.signal(signal.SIGINT, hamster.quit_requested)
             hamster.start()
             pile.fixate_all()
             sys.exit()
