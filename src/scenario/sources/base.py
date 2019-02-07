@@ -33,7 +33,8 @@ class SourceGenerator(LocationGenerator):
             raise Exception('b_value and magnitude_max are mutually exclusive')
 
     def draw_magnitude(self, rstate):
-        if self.magnitude_max:
+        print(self)
+        if self.b_value is None:
             return rstate.uniform(self.magnitude_min, self.magnitude_max)
         else:
             return moment_tensor.rand_to_gutenberg_richter(
