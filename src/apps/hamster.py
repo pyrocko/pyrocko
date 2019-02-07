@@ -21,7 +21,6 @@ logger = logging.getLogger('pyrocko.apps.hamster')
 
 def main(args=None):
     if args is None:
-        print(sys.argv[1:])
         args = sys.argv[1:]
 
     parser = OptionParser(
