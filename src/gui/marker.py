@@ -655,7 +655,7 @@ class EventMarker(Marker):
         catalog, name, region = [
             str_to_str_or_none(x) for x in vals[9:]]
         e = model.Event(
-            lat, lon, tmin, name, depth, magnitude, region, catalog=catalog)
+            lat, lon, tmin, name, depth, magnitude, region=region, catalog=catalog)
         marker = EventMarker(
             e, kind, event_hash=str_to_str_or_none(vals[4]))
         return marker
