@@ -730,6 +730,7 @@ class GutsTestCase(unittest.TestCase):
 
                 n = shape[0] or 10
                 a = A(arr=num.arange(n, dtype=num.int))
+                print(a)
                 b = load_string(a.dump())
                 self.assertTrue(num.all(a.arr == b.arr))
 
@@ -771,6 +772,21 @@ class GutsTestCase(unittest.TestCase):
             b = load_string(a.dump())
             assert a.arr.shape == b.arr.shape
             self.assertTrue(num.all(a.arr == b.arr))
+
+        b_int = load_string  # noqa
+
+    def testListArrayNoDtype(self):
+        from pyrocko.guts_array import Array
+        import numpy as num
+
+        class A(Object):
+            arr = List.T(Array.T(serialize_as='base64+meta'))
+
+        for dtype in (num.int, num.float):
+            a = A(arr=[num.zeros((3, 3), dtype=dtype)])
+            b = load_string(a.dump())
+            assert a.arr[0].shape == b.arr[0].shape
+            self.assertTrue(num.all(a.arr[0] == b.arr[0]))
 
         b_int = load_string  # noqa
 
