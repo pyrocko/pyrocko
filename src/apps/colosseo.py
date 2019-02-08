@@ -103,7 +103,7 @@ def cl_parse(command, args, setup=None, details=None):
 
 
 def get_scenario_yml(path):
-    fn = op.join(op.abspath(path), 'scenario.yml')
+    fn = op.join(path, 'scenario.yml')
     if op.exists(fn):
         return fn
     return False
@@ -125,7 +125,7 @@ def command_init(args):
     scenario_dims = [52, 5.4, 90.]
     scenario_dims[:len(args[1:])] = map(float, args[1:])
 
-    project_dir = op.abspath(args[0])
+    project_dir = args[0]
     logger.info('Initialising new scenario %s at %.2f, %.2f with radius %d km'
                 % tuple([args[0]] + scenario_dims))
 
@@ -133,7 +133,8 @@ def command_init(args):
     scenario.ScenarioGenerator.initialize(
         project_dir, *scenario_dims, force=options.force)
 
-    util.ensuredir(op.join(project_dir, 'gf_stores'))
+    gf_stores_path = op.join(project_dir, 'gf_stores')
+    util.ensuredir(gf_stores_path)
 
 
 def command_fill(args):
@@ -154,10 +155,10 @@ def command_fill(args):
         parser.print_help()
         sys.exit(1)
 
-    project_dir = op.abspath(args[0])
+    project_dir = args[0]
 
-    logger.info('Initializing gf.LocalEngine...')
-    engine = get_engine()
+    gf_stores_path = op.join(project_dir, 'gf_stores')
+    engine = get_engine([gf_stores_path])
 
     scenario = guts.load(filename=fn)
     scenario.init_modelling(engine)
@@ -179,10 +180,10 @@ def command_map(args):
         parser.print_help()
         sys.exit(1)
 
-    project_dir = op.abspath(args[0])
+    project_dir = args[0]
 
-    logger.info('Initializing gf.LocalEngine...')
-    engine = get_engine()
+    gf_stores_path = op.join(project_dir, 'gf_stores')
+    engine = get_engine([gf_stores_path])
 
     scenario = guts.load(filename=fn)
     scenario.init_modelling(engine)
@@ -202,7 +203,10 @@ def command_snuffle(args):
         parser.print_help()
         sys.exit(1)
 
-    engine = get_engine()
+    project_dir = args[0]
+    gf_stores_path = op.join(project_dir, 'gf_stores')
+
+    engine = get_engine([gf_stores_path])
     scenario = guts.load(filename=fn)
     scenario.init_modelling(engine)
 
@@ -236,8 +240,12 @@ def main(args=None):
         sys.exit('%s: error: no such subcommand: %s' % (program_name, command))
 
 
-def get_engine():
-    return gf.get_engine(store_superdirs=['gf_stores'])
+def get_engine(gf_store_superdirs):
+    logger.info(
+        'Directories to be searched for GF stores:\n%s'
+        % '\n'.join('  ' + s for s in gf_store_superdirs))
+
+    return gf.LocalEngine(store_superdirs=gf_store_superdirs, use_config=True)
 
 
 if __name__ == '__main__':

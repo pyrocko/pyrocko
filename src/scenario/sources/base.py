@@ -33,7 +33,6 @@ class SourceGenerator(LocationGenerator):
             raise Exception('b_value and magnitude_max are mutually exclusive')
 
     def draw_magnitude(self, rstate):
-        print(self)
         if self.b_value is None:
             return rstate.uniform(self.magnitude_min, self.magnitude_max)
         else:

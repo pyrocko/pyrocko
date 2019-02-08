@@ -196,7 +196,7 @@ class ScenarioGenerator(LocationGenerator):
     def stores_missing(self):
         return self.stores_wanted - set(self.get_engine().get_store_ids())
 
-    def ensure_gfstores(self, interactive=False, gf_store_superdirs_extra=[]):
+    def ensure_gfstores(self, interactive=False):
         if not self.stores_missing:
             return
 
@@ -204,24 +204,17 @@ class ScenarioGenerator(LocationGenerator):
 
         cfg = config.config()
 
-        if len(cfg.gf_store_superdirs) == 0:
-            store_dir = op.expanduser(
-                op.join(config.pyrocko_dir_tmpl, 'gf_stores'))
-            logger.debug('Creating default gf_store_superdirs: %s' % store_dir)
+        engine = self.get_engine()
 
-            util.ensuredir(store_dir)
-            cfg.gf_store_superdirs = [store_dir]
-            config.write_config(cfg)
-
-        gf_store_superdirs = cfg.gf_store_superdirs + gf_store_superdirs_extra
+        gf_store_superdirs = engine.store_superdirs
 
         if interactive:
             print('We could not find the following Green\'s function stores:\n'
-                  ' %s\n'
+                  '%s\n'
                   'We can try to download the stores from '
                   'http://kinherd.org into one of the following '
                   'directories.'
-                  % '\n'.join(self.stores_missing))
+                  % '\n'.join('  ' + s for s in self.stores_missing))
             for idr, dr in enumerate(gf_store_superdirs):
                 print(' %d. %s' % ((idr+1), dr))
             s = input('\nInto which directory should we download the GF '
@@ -242,6 +235,7 @@ class ScenarioGenerator(LocationGenerator):
             s = 1
 
         download_dir = gf_store_superdirs[s-1]
+        util.ensuredir(download_dir)
         logger.info('Downloading Green\'s functions stores to %s'
                     % download_dir)
 
