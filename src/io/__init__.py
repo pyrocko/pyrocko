@@ -9,7 +9,7 @@ import logging
 from pyrocko import util, trace
 
 from . import (mseed, sac, kan, segy, yaff, seisan_waveform, gse1, gcf,
-               datacube, suds, css, gse2)
+               datacube, suds, css, gse2, quakeml)
 from .io_common import FileLoadError, FileSaveError
 
 import numpy as num

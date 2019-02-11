@@ -7,6 +7,7 @@ import logging
 from pyrocko.guts import StringPattern, StringChoice, String, Float, Int,\
     Timestamp, Object, List, Union, Bool, Unicode
 from pyrocko.model import event
+from pyrocko.gui import marker
 from pyrocko import moment_tensor
 import numpy as num
 
@@ -388,6 +389,11 @@ class WaveformStreamID(Object):
     location_code = AnonymousLocationCode.T(
         optional=True, xmlstyle='attribute')
 
+    @property
+    def nslc_id(self):
+        return (self.network_code, self.station_code, self.location_code,
+                self.channel_code)
+
 
 class Comment(Object):
     id = ResourceReference.T(optional=True, xmlstyle='attribute')
@@ -526,6 +532,13 @@ class Pick(Object):
     evaluation_status = EvaluationStatus.T(optional=True)
     creation_info = CreationInfo.T(optional=True)
 
+    def pyrocko_phase_marker(self, event=None):
+        return marker.PhaseMarker(
+            event=event, nslc_ids=[self.waveform_id.nslc_id],
+            tmin=self.time.value, tmax=self.time.value,
+            phasename=self.phase_hint.value, polarity=self.polarity,
+            automatic=self.evaluation_mode)
+
 
 class FocalMechanism(Object):
     public_id = ResourceReference.T(
@@ -622,6 +635,10 @@ class Event(Object):
         optional=True)
     region = Region.T(
         optional=True)
+
+    def pyrocko_phase_markers(self):
+        event = self.pyrocko_event()
+        return [p.pyrocko_phase_marker(event=event) for p in self.pick_list]
 
     def pyrocko_event(self):
         '''
@@ -722,6 +739,13 @@ class QuakeML(Object):
             events.append(e.pyrocko_event())
 
         return events
+
+    def get_pyrocko_phase_markers(self):
+        markers = []
+        for e in self.event_parameters.event_list:
+            markers.extend(e.pyrocko_phase_markers())
+
+        return markers
 
     @classmethod
     def load_xml(cls, *args, **kwargs):
