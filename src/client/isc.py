@@ -15,7 +15,7 @@ from pyrocko import util
 from pyrocko.io import quakeml
 from .base_catalog import EarthquakeCatalog
 
-logger = logging.getLogger('pyrocko.client.usgs')
+logger = logging.getLogger('pyrocko.client.isc')
 
 km = 1000.
 
