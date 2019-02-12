@@ -9,3 +9,4 @@ from .geofon import Geofon  # noqa
 from .usgs import USGS  # noqa
 from .kinherd import Kinherd  # noqa
 from .saxony import Saxony  # noqa
+from .isc import ISC  # noqa

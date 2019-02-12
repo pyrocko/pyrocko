@@ -55,6 +55,22 @@ class CatalogTestCase(unittest.TestCase):
         self.assertEqual(round(angle - 7.7, 1), 0.0)
 
     @common.require_internet
+    def testISC(self):
+        cat = catalog.ISC()
+        tmin = util.stt('2009-02-22 05:00:00')
+        tmax = util.stt('2009-02-22 19:00:00')
+        events = cat.get_events((tmin, tmax), magmin=5)
+
+        markers = cat.get_phase_markers((tmin, tmax),
+            phases=['XXX'], station_codes=['XXXXX', 'YYYYY'])
+
+        self.assertEqual(len(markers), 0)
+
+        markers = cat.get_phase_markers((tmin, tmax),
+            phases=['P', 'PcP'], station_codes=['WRA'])
+        self.assertEqual(len(markers), 75)
+
+    @common.require_internet
     def testGlobalCMT(self):
 
         def is_the_haiti_event(ev):
