@@ -657,8 +657,8 @@ class Event(Object):
             foc_mech = self.focal_mechanism_list[0]
             if len(self.focal_mechanism_list) > 1:
                 logger.warn(
-                    'no preferred focal mechanism set, '
-                    'more than one available, using first')
+                    'Event %s: No preferred focal mechanism set, '
+                    'more than one available, using first' % ev.name)
 
         if foc_mech and foc_mech.moment_tensor_list:
             ev.moment_tensor = \
@@ -676,8 +676,8 @@ class Event(Object):
             mag = self.magnitude_list[0]
             if len(self.magnitude_list) > 1:
                 logger.warn(
-                    'no preferred magnitude set, '
-                    'more than one available, using first')
+                    'Event %s: No preferred magnitude set, '
+                    'more than one available, using first' % ev.name)
 
         if mag:
             ev.magnitude = mag.mag.value
