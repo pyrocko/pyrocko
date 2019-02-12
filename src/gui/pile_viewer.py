@@ -934,7 +934,7 @@ def MakePileViewerMainClass(base):
 
             self.menuitem_cliptraces = qw.QAction('Clip Traces', self.menu)
             self.menuitem_cliptraces.setCheckable(True)
-            self.menuitem_cliptraces.setChecked(True)
+            self.menuitem_cliptraces.setChecked(self.config.clip_traces)
             self.menu.addAction(self.menuitem_cliptraces)
 
             self.menuitem_showboxes = qw.QAction('Show Boxes', self.menu)

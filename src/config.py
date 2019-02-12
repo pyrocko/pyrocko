@@ -71,6 +71,7 @@ class SnufflerConfig(ConfigBase):
     show_scale_ranges = Bool.T(default=False)
     show_scale_axes = Bool.T(default=False)
     show_boxes = Bool.T(default=True)
+    clip_traces = Bool.T(default=True)
     first_start = Bool.T(default=True)
 
     def get_phase_name(self, key):
