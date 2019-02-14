@@ -420,6 +420,7 @@ python $HOME/.snufflings/map/snuffling.py --stations=stations.pf
             help='map provider [google | osm] (default=osm)')
 
     def __del__(self):
+        self.file_serving_worker.stop()
         self.thread.quit()
         self.thread.wait()
 
