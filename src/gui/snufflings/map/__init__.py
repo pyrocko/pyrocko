@@ -419,6 +419,10 @@ python $HOME/.snufflings/map/snuffling.py --stations=stations.pf
             default='google',
             help='map provider [google | osm] (default=osm)')
 
+    def __del__(self):
+        self.thread.quit()
+        self.thread.wait()
+
 
 def __snufflings__():
     return [MapMaker()]
