@@ -83,10 +83,11 @@ class ISC(EarthquakeCatalog):
 
         if 'No events were found.' in page:
             logger.info('No events were found.')
-            return []
+            events = []
+        else:
+            data = quakeml.QuakeML.load_xml(string=page)
+            events = data.get_pyrocko_events()
 
-        data = quakeml.QuakeML.load_xml(string=page)
-        events = data.get_pyrocko_events()
         for ev in events:
             self.events[ev.name] = ev
 
