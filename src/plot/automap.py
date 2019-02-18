@@ -1313,6 +1313,20 @@ class CPT(Object):
     color_nan = Tuple.T(3, Float.T(), optional=True)
     levels = List.T(CPTLevel.T())
 
+    @property
+    def vmin(self):
+        if self.levels:
+            return self.levels[0].vmin
+        else:
+            return None
+
+    @property
+    def vmax(self):
+        if self.levels:
+            return self.levels[-1].vmax
+        else:
+            return None
+
     def scale(self, vmin, vmax):
         vmin_old, vmax_old = self.levels[0].vmin, self.levels[-1].vmax
         for level in self.levels:
@@ -1320,6 +1334,42 @@ class CPT(Object):
                 (vmax - vmin) + vmin
             level.vmax = (level.vmax - vmin_old) / (vmax_old - vmin_old) * \
                 (vmax - vmin) + vmin
+
+    def get_lut(self):
+        vs = []
+        colors = []
+        if self.color_below and self.levels:
+            vs.append(self.levels[0].vmin)
+            colors.append(self.color_below)
+
+        for level in self.levels:
+            vs.append(level.vmin)
+            vs.append(level.vmax)
+            colors.append(level.color_min)
+            colors.append(level.color_max)
+
+        if self.color_above and self.levels:
+            vs.append(self.levels[-1].vmax)
+            colors.append(self.color_above)
+
+        vs_lut = num.array(vs)
+        colors_lut = num.array(colors)
+        return vs_lut, colors_lut
+
+    def __call__(self, values):
+        vs_lut, colors_lut = self.get_lut()
+
+        colors = num.zeros((values.size, 3))
+        colors[:, 0] = num.interp(values, vs_lut, colors_lut[:, 0])
+        colors[:, 1] = num.interp(values, vs_lut, colors_lut[:, 1])
+        colors[:, 2] = num.interp(values, vs_lut, colors_lut[:, 2])
+
+        if self.color_nan:
+            cnan = num.zeros((1, 3))
+            cnan[0, :] = self.color_nan
+            colors[num.isnan(values), :] = cnan
+
+        return colors
 
 
 class CPTParseError(Exception):
