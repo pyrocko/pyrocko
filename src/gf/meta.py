@@ -92,6 +92,24 @@ class Result(SeismosizerResult):
 class StaticResult(SeismosizerResult):
     result = Dict.T()
 
+    def return_kite_scene(self, satellite_target, scene_config, component,
+                          rows, cols):
+        from kite import Scene
+        sc = Scene()
+        sc.theta = satellite_target.theta
+        sc.phi = satellite_target.phi
+        sc.frame.llLat = min(satellite_target.lats)
+        sc.frame.llLon = min(satellite_target.lons)
+        sc.frame.dN = scene_config.frame.dN
+        sc.frame.dE = scene_config.frame.dE
+        disp = self.result
+        disp = disp[component]
+        disp = num.reshape(disp,
+                           (rows,
+                            cols))
+        print(num.shape(disp))
+        sc.displacement = disp
+        return sc
 
 class GNSSCampaignResult(StaticResult):
     campaign = gnss.GNSSCampaign.T(
