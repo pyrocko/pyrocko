@@ -5,10 +5,11 @@
 import numpy as num
 import logging
 
-from pyrocko.guts import Bool, Float, List, String, Timestamp
+from pyrocko.guts import Bool, Float, Object, String, Timestamp
+from pyrocko.guts_array import Array
 from pyrocko.gf import Cloneable, Source
 from pyrocko.model import Location
-from pyrocko.modelling import disloc_ext
+from pyrocko.modelling import disloc_ext, okada_ext
 
 guts_prefix = 'modelling'
 
@@ -17,6 +18,45 @@ logger = logging.getLogger('pyrocko.modelling.okada')
 d2r = num.pi / 180.
 r2d = 180. / num.pi
 km = 1e3
+
+
+class CrackSolutions(Object):
+    pass
+
+
+class GriffithCrack(CrackSolutions):
+    width = Float.T(
+        help='Width equals to 2*a',
+        default=1.)
+
+    poisson = Float.T(
+        help='Poisson ratio',
+        default=.25)
+
+    shear_mod = Float.T(
+        help='Shear modulus [Pa]',
+        default=1.e9)
+
+    stressdrop = Array.T(
+        help='Stress drop array:'
+             '[sig12_r - sig12_c, sig13_r - sig13_c, sig11_r - sig11_c]'
+             '[dsig_Strike, dsig_Dip, dsig_Tensile]',
+        default=num.array([0., 0., 0.]))
+
+    @property
+    def a(self):
+        return self.width / 2.
+
+    def disloc_modeI(self, x_obs):
+        if type(x_obs) is not num.ndarray:
+            x_obs = num.array(x_obs)
+
+        disl = num.zeros((x_obs.shape[0], 3))
+        disl[:, 2] = \
+            self.stressdrop[2] * num.sqrt(self.a**2 - x_obs**2) * (
+            2 * (1 - self.poisson)) / self.shear_mod
+
+        return disl
 
 
 class AnalyticalSource(Location, Cloneable):
@@ -61,18 +101,34 @@ class AnalyticalRectangularSource(AnalyticalSource):
              'measured counter-clockwise from right-horizontal '
              'in on-plane view')
 
-    length = Float.T(
+    al1 = Float.T(
         default=0.,
-        help='length of rectangular source area [m]')
+        help='Distance "left" side to source point [m]')
 
-    width = Float.T(
+    al2 = Float.T(
         default=0.,
-        help='width of rectangular source area [m]')
+        help='Distance "right" side to source point [m]')
+
+    aw1 = Float.T(
+        default=0.,
+        help='Distance "lower" side to source point [m]')
+
+    aw2 = Float.T(
+        default=0.,
+        help='Distance "upper" side to source point [m]')
 
     slip = Float.T(
         default=0.,
         help='Slip on the rectangular source area [m]',
         optional=True)
+
+    @property
+    def length(self):
+        return num.abs(self.al1) + num.abs(self.al2)
+
+    @property
+    def width(self):
+        return num.abs(self.aw1) + num.abs(self.aw2)
 
 
 class OkadaSource(AnalyticalRectangularSource):
@@ -93,6 +149,10 @@ class OkadaSource(AnalyticalRectangularSource):
         default=32e9,
         help='Shear modulus along the plane [Pa]',
         optional=True)
+
+    @property
+    def lamb(self):
+        return (2 * self.nu * self.mu) / (1 - 2 * self.nu)
 
     @property
     def seismic_moment(self):
@@ -164,6 +224,32 @@ class OkadaSource(AnalyticalRectangularSource):
 
         return dsrc
 
+    def source_patch(self, source_patch=None):
+        if source_patch is None:
+            source_patch = num.empty(9)
+
+        source_patch[0] = self.northing
+        source_patch[1] = self.easting
+        source_patch[2] = self.depth
+        source_patch[3] = self.strike
+        source_patch[4] = self.dip
+        source_patch[5] = self.al1
+        source_patch[6] = self.al2
+        source_patch[7] = self.aw1
+        source_patch[8] = self.aw2
+
+        return source_patch
+
+    def source_disloc(self, source_disl=None):
+        if source_disl is None:
+            source_disl = num.empty(3)
+
+        source_disl[0] = num.cos(self.rake * d2r) * self.slip
+        source_disl[1] = num.sin(self.rake * d2r) * self.slip
+        source_disl[2] = self.opening
+
+        return source_disl
+
     def get_parameters_array(self):
         return num.array([self.__getattribute__(p) for p in self.parameters])
 
@@ -186,126 +272,109 @@ class OkadaSegment(OkadaSource):
         optional=True)
 
 
-# class OkadaPath(AnalyticalSource):
+class DislocationInverter(object):
+    @staticmethod
+    def get_coef_mat(source_patches_list, pure_shear=False):
+        source_patches = num.array([
+            src.source_patch() for src in source_patches_list])
+        receiver_coords = source_patches[:, :3].copy()
 
-#     depth = None
-#     nu = Float.T(
-#         default=0.25,
-#         help='Poisson\'s ratio, typically 0.25')
-#     nodes = List.T(
-#         default=[],
-#         optional=True,
-#         help='Nodes of the segments as (easting, northing) tuple of [m]')
-#     segments__ = List.T(
-#         default=[],
-#         optional=True,
-#         help='List of all segments.')
+        npoints = len(source_patches_list)
 
-#     def __init__(self, *args, **kwargs):
-#         AnalyticalSource.__init__(self, *args, **kwargs)
+        if pure_shear:
+            n_eq = 2
+        else:
+            n_eq = 3
 
-#         self._segments = []
+        coefmat = num.zeros((npoints * n_eq, npoints * n_eq))
 
-#         if not self.nodes:
-#             self.nodes.append(
-#                 [self.easting, self.northing])
+        def get_normal(strike, dip):
+            return num.array([
+                -num.sin(strike * d2r) * num.sin(dip * d2r),
+                num.cos(strike * d2r) * num.sin(dip * d2r),
+                -num.cos(dip * d2r)])
 
-#     @property
-#     def segments(self):
-#         return self._segments
+        unit_disl = 1.
+        disl_cases = {
+            'strikeslip': {
+                'slip': unit_disl,
+                'opening': 0.,
+                'rake': 0.},
+            'dipslip': {
+                'slip': unit_disl,
+                'opening': 0.,
+                'rake': 90.},
+            'tensileslip': {
+                'slip': 0.,
+                'opening': unit_disl,
+                'rake': 0.}
+        }
 
-#     @segments.setter
-#     def segments(self, segments):
-#         self._segments = segments
+        for idisl, case_type in enumerate([
+                'strikeslip', 'dipslip', 'tensileslip'][:n_eq]):
+            case = disl_cases[case_type]
+            source_disl = num.array([
+                case['slip'] * num.cos(case['rake'] * d2r),
+                case['slip'] * num.sin(case['rake'] * d2r),
+                case['opening']])
 
-#     @staticmethod
-#     def _new_segment(e1, n1, e2, n2, **kwargs):
-#         d_e = e2 - e1
-#         d_n = n2 - n1
-#         length = (d_n**2 + d_e**2)**.5
-#         '''Width Scaling relation after
+            for isource, source in enumerate(source_patches):
+                results = okada_ext.okada(
+                    source[num.newaxis, :],
+                    source_disl[num.newaxis, :],
+                    receiver_coords,
+                    source_patches_list[isource].nu,
+                    0)
 
-#         Leonard, M. (2010). Earthquake fault scaling: Relating rupture length,
-#             width, average displacement, and moment release, Bull. Seismol.
-#             Soc. Am. 100, no. 5, 1971-1988.
-#         '''
-#         segment = {
-#             'northing': n1 + d_n / 2,
-#             'easting': e1 + d_e / 2,
-#             'depth': 0.,
-#             'length': length,
-#             'width': 15. * length**.66,
-#             'strike': num.arccos(d_n / length) * r2d,
-#             'slip': 45.,
-#             'rake': 90.,
-#         }
-#         segment.update(kwargs)
-#         return OkadaSegment(**segment)
+                for irec in range(receiver_coords.shape[0]):
+                    eps = num.zeros((3, 3))
+                    for m in range(3):
+                        for n in range(3):
+                            eps[m, n] = 0.5 * (
+                                results[irec][m * 3 + n + 3] +
+                                results[irec][n * 3 + m + 3])
 
-#     def _move_segment(self, pos, e1, n1, e2, n2):
-#         d_e = e2 - e1
-#         d_n = n2 - n1
-#         length = (d_n**2 + d_e**2)**.5
+                    stress_tens = num.zeros((3, 3))
+                    delta = num.sum([eps[i, i] for i in range(3)])
 
-#         segment_update = {
-#             'northing': n1 + d_n / 2,
-#             'easting': e1 + d_e / 2,
-#             'length': length,
-#             'width': 15. * length**.66,
-#             'strike': num.arccos(d_n / length) * r2d,
-#         }
+                    for m, n in zip([0, 0, 0, 1, 1, 2], [0, 1, 2, 1, 2, 2]):
+                        if m == n:
+                            stress_tens[m, n] = \
+                                source_patches_list[isource].lamb * delta + \
+                                2. * source_patches_list[isource].mu * \
+                                eps[m, n]
 
-#         segment = self.segments[pos]
-#         for attr, val in segment_update.items():
-#             segment.__setattr__(attr, val)
+                        else:
+                            stress_tens[m, n] = \
+                                2. * source_patches_list[isource].mu * \
+                                eps[m, n]
+                            stress_tens[n, m] = stress_tens[m, n]
 
-#     def add_node(self, easting, northing):
-#         self.nodes.append([easting, northing])
-#         self.segments.append(
-#             self._newSegment(
-#                 e1=self.nodes[-2][0],
-#                 n1=self.nodes[-2][1],
-#                 e2=self.nodes[-1][0],
-#                 n2=self.nodes[-1][1]))
+                    normal = get_normal(
+                        source_patches_list[isource].strike,
+                        source_patches_list[isource].dip)
 
-#     def insert_node(self, pos, easting, northing):
-#         self.nodes.insert(pos, [easting, northing])
-#         self.segments.append(
-#             self._newSegment(
-#                 e1=self.nodes[pos][0],
-#                 n1=self.nodes[pos][1],
-#                 e2=self.nodes[pos + 1][0],
-#                 n2=self.nodes[pos + 1][1]))
-#         self._moveSegment(
-#             pos - 1,
-#             e1=self.nodes[pos - 1][0],
-#             n1=self.nodes[pos - 1][1],
-#             e2=self.nodes[pos][0],
-#             n2=self.nodes[pos][1])
+                    for isig in range(n_eq):
+                        tension = num.sum(stress_tens[isig, :] * normal)
+                        coefmat[irec * n_eq + isig, isource * n_eq + idisl] = \
+                            tension / unit_disl
 
-#     def move_node(self, pos, easting, northing):
-#         self.nodes[pos] = [easting, northing]
-#         if pos < len(self):
-#             self._moveSegment(
-#                 pos,
-#                 e1=self.nodes[pos][0],
-#                 n1=self.nodes[pos][1],
-#                 e2=self.nodes[pos + 1][0],
-#                 n2=self.nodes[pos + 1][1])
-#         if pos != 0:
-#             self._moveSegment(
-#                 pos,
-#                 e1=self.nodes[pos - 1][0],
-#                 n1=self.nodes[pos - 1][1],
-#                 e2=self.nodes[pos][0],
-#                 n2=self.nodes[pos][1])
+        return num.matrix(coefmat)
 
-#     def __len__(self):
-#         return len(self.segments)
+    @staticmethod
+    def get_disloc_lsq(
+            stress_field, coef_mat=None, source_list=None, **kwargs):
 
-#     def disloc_source(self):
-#         return num.array([seg.disloc_source() for seg in self.segments
-#                           if seg.enabled])
+        if source_list and not coef_mat:
+            coef_mat = DislocationInverter.get_coef_mat(
+                source_list, **kwargs)
+
+        if not (coef_mat is None):
+            if stress_field.shape[0] == coef_mat.shape[0]:
+                coef_mat = num.matrix(coef_mat)
+
+                return num.linalg.inv(
+                    coef_mat.T * coef_mat) * coef_mat.T * stress_field
 
 
 class ProcessorProfile(dict):
@@ -333,7 +402,6 @@ class DislocProcessor(AnalyticalSourceProcessor):
             src_arr = num.vstack([src.disloc_source() for src in sources
                                   if src.nu == nu])
             res = disloc_ext.disloc(src_arr, coords, nu, nthreads)
-
             result['displacement.e'] += res[:, 0]
             result['displacement.n'] += res[:, 1]
             result['displacement.d'] += -res[:, 2]
@@ -346,4 +414,6 @@ __all__ = [
     'DislocProcessor',
     'AnalyticalSource',
     'AnalyticalRectangularSource',
-    'OkadaSource']
+    'OkadaSource',
+    'DislocationInverter',
+    'GriffithCrack']
