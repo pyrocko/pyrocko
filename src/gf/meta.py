@@ -94,7 +94,10 @@ class StaticResult(SeismosizerResult):
 
     def return_kite_scene(self, satellite_target, scene_config, component,
                           rows, cols):
-        from kite import Scene
+        try:
+            from kite import Scene
+        except ImportError:
+            raise ImportError('Kite not installed')
         sc = Scene()
         sc.theta = satellite_target.theta
         sc.phi = satellite_target.phi
