@@ -107,7 +107,6 @@ class StaticResult(SeismosizerResult):
         disp = num.reshape(disp,
                            (rows,
                             cols))
-        print(num.shape(disp))
         sc.displacement = disp
         return sc
 
