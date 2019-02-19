@@ -4,7 +4,6 @@
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division, print_function
 from builtins import range, map, zip
-from past.builtins import cmp
 
 from collections import defaultdict
 from functools import cmp_to_key
@@ -37,6 +36,10 @@ guts_prefix = 'pf'
 d2r = math.pi / 180.
 
 logger = logging.getLogger('pyrocko.gf.seismosizer')
+
+
+def cmp(x, y):
+    return (x > y) ^ (x < y)
 
 
 def cmp_none_aware(a, b):
