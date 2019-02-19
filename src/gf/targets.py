@@ -274,9 +274,11 @@ class StaticTarget(meta.MultiLocation):
 
     def post_process(self, engine, source, statics, sc):
         if sc is not None:
-            return meta.StaticResult(result=statics, SeismosizerSatelliteScene=sc)
+            return meta.StaticResult(result=statics,
+                                     SeismosizerSatelliteScene=sc)
         else:
             return meta.StaticResult(result=statics)
+
 
 class SatelliteTarget(StaticTarget):
     '''
@@ -310,7 +312,6 @@ class SatelliteTarget(StaticTarget):
         optional=True,
         default=0,
         help='number of coloumns.')
-
 
     def __init__(self, *args, **kwargs):
         StaticTarget.__init__(self, *args, **kwargs)
