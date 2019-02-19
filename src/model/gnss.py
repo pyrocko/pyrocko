@@ -91,28 +91,64 @@ class GNSSStation(Location):
     def get_covariance_matrix(self):
         components = self.components.values()
         ncomponents = self.ncomponents
+        
+        
+        covar = num.zeros((3, 3))
+        if self.north:
+            covar[0, 0] = self.north.sigma**2
+            
+        if self.east:
+            covar[1, 1] = self.east.sigma**2
+            
+        if self.up:
+            covar[2, 2] = self.up.sigma**2
+            
+        if self.correlation_ne and self.north and self.east:
+            covar[0, 1] = (self.correlation_ne * self.north.sigma \
+                                        * self.east.sigma)**2
+            
+        elif self.north and self.east:
+            covar[0, 1] = 0.
+            
+        covar[1, 0] = covar[0, 1]
+        
+        if self.correlation_nu and self.north and self.up:
+            covar[0, 2] = (self.correlation_nu * self.north.sigma \
+                                        * self.up.sigma)**2
+        elif self.north and self.up:
+            covar[0, 2] = 0.
+            
+        covar[2, 0] = covar[0, 2]
+            
+        if self.correlation_eu and self.east and self.up:
+            covar[1, 2] = (self.correlation_eu * self.east.sigma \
+                                        * self.up.sigma)**2
+        elif self.east and self.up:
+            covar[1, 2] = 0.
+        
+        covar[2, 1] = covar[1, 2]   
+            
+            
+        #print(ncomponents)
+        #for ic1, comp1 in enumerate(3):
+            #for ic2, comp2 in enumerate(components):
+                #corr = self._get_comp_correlation(comp1, comp2)
 
-        covar = num.zeros((ncomponents, ncomponents))
-
-        for ic1, comp1 in enumerate(components):
-            for ic2, comp2 in enumerate(components):
-                corr = self._get_comp_correlation(comp1, comp2)
-
-                covar[ic1, ic2] = corr * comp1.sigma * comp2.sigma
+                #covar[ic1, ic2] = corr * comp1.sigma * comp2.sigma
 
         # This floating point operation is inaccurate:
         # corr * comp1.sigma * comp2.sigma != corr * comp2.sigma * comp1.sigma
         #
         # Hence this identity
-        covar[num.tril_indices_from(covar, k=-1)] = \
-            covar[num.triu_indices_from(covar, k=1)]
+        #covar[num.tril_indices_from(covar, k=-1)] = \
+        #    covar[num.triu_indices_from(covar, k=1)]
 
         return covar
 
     def get_correlation_matrix(self):
         components = self.components.values()
         ncomponents = self.ncomponents
-
+        
         corr = num.zeros((ncomponents, ncomponents))
         corr[num.diag_indices_from(corr)] = num.array(
             [c.sigma for c in components])
@@ -136,7 +172,7 @@ class GNSSStation(Location):
         return num.array(
             [False if self.__getattribute__(name) is None else True
              for name in ('north', 'east', 'up')], dtype=num.bool)
-
+ 
     @property
     def components(self):
         return OrderedDict(
@@ -207,16 +243,15 @@ class GNSSCampaign(Object):
             coords[:, 0].max(), coords[:, 1].max()) / 2.
 
     def get_covariance_matrix(self):
+        
         if self._cov_mat is None:
-            cov_arr = num.zeros((self.ncomponents, self.ncomponents))
+            cov_arr = num.zeros((self.nstations *3, self.nstations*3))
 
             idx = 0
             for ista, sta in enumerate(self.stations):
-                ncomp = sta.ncomponents
-
-                cov_arr[idx:idx+ncomp, idx:idx+ncomp] = \
+                cov_arr[idx:idx+3, idx:idx+3] = \
                     sta.get_covariance_matrix()
-                idx += ncomp
+                idx += 3
 
             self._cov_mat = cov_arr
         return self._cov_mat

@@ -1089,16 +1089,7 @@ class Map(Object):
                  for s in campaign.stations]).max()
 
         size = math.sqrt(self.height**2 + self.width**2)
-        scale = (size/10.) / offset_scale
-
-        default_psxy_style = {
-            'h': 0,
-            'W': '0.5p,black',
-            'G': 'black',
-            'L': True,
-            'S': 'e%dc/0.95/8' % scale,
-        }
-        default_psxy_style.update(psxy_style)
+        scale = (size/50.) / offset_scale
 
         lats, lons = zip(
             *[od.ne_to_latlon(s.lat, s.lon, s.north_shift, s.east_shift)
@@ -1106,21 +1097,40 @@ class Map(Object):
 
         if vertical:
             rows = [[lons[ista], lats[ista],
-                     0., s.up.shift,
-                     s.east.sigma, s.north.sigma, s.correlation_ne]
+                    0., s.up.shift,
+                    0., s.up.sigma, 0.]
                     for ista, s in enumerate(campaign.stations)
                     if s.up is not None]
+            
+            default_psxy_style = {
+                'h': 0,
+                'W': '0.5p,black',
+                'G': 'black',
+                'L': True,
+                'S': 'e%dc/0.95/8' % scale,
+            }
+            
         else:
             rows = [[lons[ista], lats[ista],
                      s.east.shift, s.north.shift,
                      s.east.sigma, s.north.sigma, s.correlation_ne]
                     for ista, s in enumerate(campaign.stations)]
+            
+            default_psxy_style = {
+                'h': 0,
+                'W': '0.5p,black',
+                'G': 'black',
+                'L': True,
+                'S': 'e%dc/0.95/8' % scale,
+            }
 
         if labels:
             for row, sta in zip(rows, campaign.stations):
                 if vertical and sta.up is None:
                     continue
                 row.append(sta.code)
+                
+        default_psxy_style.update(psxy_style)       
 
         self.gmt.psvelo(
             in_rows=rows,
