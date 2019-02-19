@@ -92,7 +92,7 @@ class Result(SeismosizerResult):
 class StaticResult(SeismosizerResult):
     result = Dict.T()
 
-    def return_kite_scene(self, satellite_target, scene_config, component,
+    def kite_scene(self, satellite_target, scene_config, component,
                           rows, cols):
         try:
             from kite import Scene
