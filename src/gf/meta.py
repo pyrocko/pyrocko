@@ -93,7 +93,7 @@ class StaticResult(SeismosizerResult):
     result = Dict.T()
 
     def kite_scene(self, satellite_target, scene_config, component,
-                          rows, cols):
+                   rows, cols):
         try:
             from kite import Scene
         except ImportError:
