@@ -272,7 +272,7 @@ class StaticTarget(meta.MultiLocation):
         return distance_accurate50m_numpy(
             src_lats, src_lons, target_lats, target_lons)
 
-    def post_process(self, engine, source, statics, sc):
+    def post_process(self, engine, source, statics, sc=None):
         if sc is not None:
             return meta.StaticResult(result=statics,
                                      SeismosizerSatelliteScene=sc)

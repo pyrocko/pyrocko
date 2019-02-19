@@ -3124,17 +3124,18 @@ class LocalEngine(Engine):
                 v *= factor
 
         if isinstance(starget, SatelliteTarget):
-
             sc = meta.SeismosizerSatelliteScene(
                 nrows=int(starget.nrows),
                 ncols=int(starget.ncols),
                 phi=starget.phi,
                 theta=starget.theta)
+            try:
+                return starget.post_process(self, source, base_statics, sc=sc)
+            except TypeError:
+                return starget.post_process(self, source, base_statics)
 
         else:
-            sc = None
-
-        return starget.post_process(self, source, base_statics, sc)
+            return starget.post_process(self, source, base_statics)
 
     def process(self, *args, **kwargs):
         '''
