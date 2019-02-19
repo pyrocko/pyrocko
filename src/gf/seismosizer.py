@@ -3123,7 +3123,18 @@ class LocalEngine(Engine):
             for v in data.values():
                 v *= factor
 
-        return starget.post_process(self, source, base_statics)
+        if isinstance(starget, SatelliteTarget):
+
+            sc = meta.SeismosizerSatelliteScene(
+                nrows=int(starget.nrows),
+                ncols=int(starget.ncols),
+                phi=starget.phi,
+                theta=starget.theta)
+
+        else:
+            sc = None
+
+        return starget.post_process(self, source, base_statics, sc)
 
     def process(self, *args, **kwargs):
         '''

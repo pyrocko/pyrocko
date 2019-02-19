@@ -9,7 +9,8 @@ import numpy as num
 import math
 
 from . import meta
-from pyrocko.guts import Timestamp, Tuple, String, Float, Object, StringChoice
+from pyrocko.guts import Timestamp, Tuple, String, Float, Object,\
+                          StringChoice, Int
 from pyrocko.guts_array import Array
 from pyrocko.model import gnss
 from pyrocko.orthodrome import distance_accurate50m_numpy
@@ -271,9 +272,11 @@ class StaticTarget(meta.MultiLocation):
         return distance_accurate50m_numpy(
             src_lats, src_lons, target_lats, target_lons)
 
-    def post_process(self, engine, source, statics):
-        return meta.StaticResult(result=statics)
-
+    def post_process(self, engine, source, statics, sc):
+        if sc is not None:
+            return meta.StaticResult(result=statics, SeismosizerSatelliteScene=sc)
+        else:
+            return meta.StaticResult(result=statics)
 
 class SatelliteTarget(StaticTarget):
     '''
@@ -297,6 +300,17 @@ class SatelliteTarget(StaticTarget):
              '\n\n        .. important::\n\n'
              '            :math:`-\\frac{\\pi}{2}` is **down** and'
              ' :math:`\\frac{\\pi}{2}` is **up**.\n\n')
+
+    nrows = Int.T(
+        optional=True,
+        default=0,
+        help='number of rows.')
+
+    ncols = Int.T(
+        optional=True,
+        default=0,
+        help='number of coloumns.')
+
 
     def __init__(self, *args, **kwargs):
         StaticTarget.__init__(self, *args, **kwargs)

@@ -67,15 +67,28 @@ class SeismosizerTrace(Object):
                            deltat=self.deltat,
                            tmin=self.tmin)
 
-    @classmethod
-    def from_pyrocko_trace(cls, tr, **kwargs):
-        d = dict(
-            codes=tr.nslc_id,
-            tmin=tr.tmin,
-            deltat=tr.deltat,
-            data=num.asarray(tr.get_ydata(), dtype=num.float32))
-        d.update(kwargs)
-        return cls(**d)
+
+class SeismosizerSatelliteScene(Object):
+    try:
+        from kite import Scene
+    except ImportError:
+            raise ImportError('Kite not installed')
+
+    nrows = Float.T(
+        default=1.0,
+        help='nrows of dataset')
+
+    ncols = Float.T(
+        default=1.0,
+        help='ncols of dataset')
+
+    phi = Float.T(
+        default=1.0,
+        help='phi [rad]')
+
+    theta = Float.T(
+        default=1.0,
+        help='theta [rad]')
 
 
 class SeismosizerResult(Object):
@@ -91,23 +104,24 @@ class Result(SeismosizerResult):
 
 class StaticResult(SeismosizerResult):
     result = Dict.T()
+    SeismosizerSatelliteScene = SeismosizerSatelliteScene.T(optional=True)
 
-    def kite_scene(self, satellite_target, scene_config, component,
-                   rows, cols):
+    def kite_scene(self, component, scene_config=None):
         try:
             from kite import Scene
         except ImportError:
             raise ImportError('Kite not installed')
         sc = Scene()
-        sc.theta = satellite_target.theta
-        sc.phi = satellite_target.phi
-        sc.frame = scene_config.frame
-        sc.meta = scene_config.meta
+        sc.theta = self.SeismosizerSatelliteScene.theta
+        sc.phi = self.SeismosizerSatelliteScene.phi
+        if scene_config is not None:
+            sc.frame = scene_config.frame
+            sc.meta = scene_config.meta
         disp = self.result
         disp = disp[component]
         disp = num.reshape(disp,
-                           (rows,
-                            cols))
+                           (self.SeismosizerSatelliteScene.nrows,
+                            self.SeismosizerSatelliteScene.ncols))
         sc.displacement = disp
         return sc
 
