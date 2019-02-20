@@ -559,6 +559,9 @@ class SeismosizerHandler(RequestHandler):
         store_ids.sort(key=lambda x: x.lower())
 
         def get_store_dict(store):
+            store.ensure_store_hash()
+            if not store.config.modelling_code_id:
+                store.config.modelling_code_id = 0
             return {
                 'id': store.config.id,
                 'short_type': store.config.short_type,
@@ -570,7 +573,8 @@ class SeismosizerHandler(RequestHandler):
                 'distance_max': store.config.distance_max,
                 'distance_delta': store.config.distance_delta,
                 'sample_rate': store.config.sample_rate,
-                'size': store.size_index_and_data
+                'size': store.size_index_and_data,
+                'store_hash': store.config.store_hash
             }
 
         stores = {

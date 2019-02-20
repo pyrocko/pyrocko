@@ -16,6 +16,7 @@ import fcntl
 import copy
 import logging
 import re
+import hashlib
 
 import numpy as num
 from scipy import signal
@@ -25,6 +26,7 @@ from . import store_ext
 from pyrocko import util, spit
 
 logger = logging.getLogger('pyrocko.gf.store')
+op = os.path
 
 # gf store endianness
 E = '<'
@@ -304,6 +306,10 @@ class BaseStore(object):
     @staticmethod
     def data_fn_(store_dir):
         return os.path.join(store_dir, 'traces')
+
+    @staticmethod
+    def config_fn_(store_dir):
+        return os.path.join(store_dir, 'config')
 
     @staticmethod
     def create(store_dir, deltat, nrecords, force=False):
@@ -933,6 +939,9 @@ class BaseStore(object):
     def data_fn(self):
         return BaseStore.data_fn_(self.store_dir)
 
+    def config_fn(self):
+        return BaseStore.config_fn_(self.store_dir)
+
     def count_special_records(self):
         if not self._f_index:
             self.open()
@@ -1107,13 +1116,13 @@ class Store(BaseStore):
 
     def __init__(self, store_dir, mode='r', use_memmap=True):
         BaseStore.__init__(self, store_dir, mode=mode, use_memmap=use_memmap)
-        config_fn = os.path.join(store_dir, 'config')
+        config_fn = self.config_fn()
         if not os.path.isfile(config_fn):
             raise StoreError(
                 'directory "%s" does not seem to contain a GF Store '
                 '("config" file not found)' % store_dir)
+        self.load_config()
 
-        self.config = meta.load(filename=config_fn)
         self._decimated = {}
         self._extra = {}
         self._phases = {}
@@ -1133,11 +1142,38 @@ class Store(BaseStore):
                 c.ncomponents)
 
     def save_config(self, make_backup=False):
-        config_fn = os.path.join(self.store_dir, 'config')
+        config_fn = self.config_fn()
         if make_backup:
             os.rename(config_fn, config_fn + '~')
 
         meta.dump(self.config, filename=config_fn)
+
+    def load_config(self):
+        logger.debug('loading config file ...')
+        self.config = meta.load(filename=self.config_fn())
+
+    def ensure_store_hash(self, force=False):
+        if self.config.store_hash is not None and not force:
+            return
+        store_hash = self.create_store_hash()
+
+        with open(self.config_fn(), 'a') as config:
+            config.write('store_hash: %s\n' % store_hash)
+        self.load_config()
+
+    def create_store_hash(self):
+        logger.info('creating hash for store ...')
+        m = hashlib.sha1()
+
+        traces_size = op.getsize(self.data_fn())
+        with open(self.data_fn(), 'rb') as traces:
+            while traces.tell() < traces_size:
+                m.update(traces.read(1024))
+                traces.seek(1024 * 1024 * 10, 1)
+
+        with open(self.config_fn(), 'rb') as config:
+            m.update(config.read())
+        return m.hexdigest()
 
     def get_extra_path(self, key):
         return get_extra_path(self.store_dir, key)
