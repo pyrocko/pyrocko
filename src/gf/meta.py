@@ -1441,7 +1441,8 @@ class Config(Object):
     component_scheme = ComponentScheme.T(default='elastic10')
     tabulated_phases = List.T(TPDef.T())
     ncomponents = Int.T(optional=True)
-    store_hash = String.T(optional=True)
+    uuid = String.T(optional=True)
+    reference = String.T(optional=True)
 
     def __init__(self, **kwargs):
         self._do_auto_updates = False

@@ -1152,13 +1152,21 @@ class Store(BaseStore):
         logger.debug('loading config file ...')
         self.config = meta.load(filename=self.config_fn())
 
-    def ensure_store_hash(self, force=False):
-        if self.config.store_hash is not None and not force:
-            return
-        store_hash = self.create_store_hash()
+    def ensure_store_reference(self, force=True):
+        self.ensure_uuid()
+        reference = '%s-%s' % (self.config.id, self.config.uuid[0:6])
 
         with open(self.config_fn(), 'a') as config:
-            config.write('store_hash: %s\n' % store_hash)
+            config.write('\nreference: %s\n' % reference)
+        self.load_config()
+
+    def ensure_uuid(self, force=False):
+        if self.config.uuid is not None and not force:
+            return
+        uuid = self.create_store_hash()
+
+        with open(self.config_fn(), 'a') as config:
+            config.write('\nuuid: %s\n' % uuid)
         self.load_config()
 
     def create_store_hash(self):
