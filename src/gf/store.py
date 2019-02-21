@@ -1152,7 +1152,7 @@ class Store(BaseStore):
         logger.debug('loading config file ...')
         self.config = meta.load(filename=self.config_fn())
 
-    def ensure_store_reference(self, force=True):
+    def ensure_reference(self, force=True):
         self.ensure_uuid()
         reference = '%s-%s' % (self.config.id, self.config.uuid[0:6])
 

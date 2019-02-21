@@ -559,7 +559,7 @@ class SeismosizerHandler(RequestHandler):
         store_ids.sort(key=lambda x: x.lower())
 
         def get_store_dict(store):
-            store.ensure_store_reference()
+            store.ensure_reference()
 
             return {
                 'id': store.config.id,
@@ -697,6 +697,9 @@ class SeismosizerHandler(RequestHandler):
 
 class Server(asyncore.dispatcher):
     def __init__(self, ip, port, handler, engine):
+        self.ensure_uuids(engine)
+        logger.info('starting Server at http://%s:%d', ip, port)
+
         asyncore.dispatcher.__init__(self)
         self.ip = ip
         self.port = port
@@ -715,6 +718,14 @@ class Server(asyncore.dispatcher):
         #     be at least 1; the maximum value is system-dependent (usually
         #     5).
         self.listen(5)
+
+    @staticmethod
+    def ensure_uuids(engine):
+        logger.info('ensuring UUIDs of available stores')
+        store_ids = list(engine.get_store_ids())
+        for store_id in store_ids:
+            store = engine.get_store(store_id)
+            store.ensure_reference()
 
     def handle_accept(self):
         try:
@@ -755,5 +766,4 @@ if __name__ == '__main__':
     util.setup_logging('pyrocko.gf.server', 'info')
     port = 8085
     engine = gf.LocalEngine(store_superdirs=sys.argv[1:])
-    logger.info('Starting Server at http://127.0.0.1:%d' % port)
-    run('', port, engine)
+    run('127.0.0.1', port, engine)
