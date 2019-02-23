@@ -87,13 +87,14 @@ necessary.
     else:
         util.setup_logging('hamster', 'warning')
 
-    pile = hamster_pile.HamsterPile()
-    pile.set_fixation_length(float(options.filelength))
+    p = hamster_pile.HamsterPile()
+
+    p.set_fixation_length(l=float(options.filelength))
 
     fn = 'data_%(network)s_%(station)s_%(location)s_%(channel)s_' \
          '%(tmin)s_%(tmax)s.mseed'
 
-    pile.set_save_path(pjoin(directory, fn))
+    p.set_save_path(pjoin(directory, fn))
 
     # testsource = Popen(['./test_datasource.py'], stdout=PIPE)
 
@@ -112,15 +113,15 @@ necessary.
                 # in_file=testsource.stdout,
             )
 
-            hamster.add_listener(pile)
+            hamster.add_listener(p)
             signal.signal(signal.SIGINT, hamster.quit_requested)
             hamster.start()
-            pile.fixate_all()
+            p.fixate_all()
             sys.exit()
 
         except serial_hamster.SerialHamsterError as e:
 
-            pile.fixate_all()
+            p.fixate_all()
             hamster.stop()
             hamster.clear_listeners()
             logger.error(str(e))
