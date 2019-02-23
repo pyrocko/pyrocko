@@ -89,7 +89,7 @@ necessary.
 
     p = hamster_pile.HamsterPile()
 
-    p.set_fixation_length(l=float(options.filelength))
+    p.set_fixation_length(float(options.filelength))
 
     fn = 'data_%(network)s_%(station)s_%(location)s_%(channel)s_' \
          '%(tmin)s_%(tmax)s.mseed'

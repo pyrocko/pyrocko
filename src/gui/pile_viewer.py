@@ -765,7 +765,7 @@ def MakePileViewerMainClass(base):
                 qw.QSizePolicy.Expanding)
 
             self.setSizePolicy(poli)
-            self.setMinimumSize(300, 200)
+            self.setMinimumSize(10, 10)
             self.setFocusPolicy(qc.Qt.StrongFocus)
 
             self.menu = qw.QMenu(self)
