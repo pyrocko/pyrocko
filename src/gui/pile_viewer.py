@@ -727,7 +727,7 @@ def MakePileViewerMainClass(base):
                 base.__init__(self, *args)
 
             self.pile = pile
-            self.ax_height = 80
+            self.ax_height = 200
             self.panel_parent = panel_parent
 
             self.click_tolerance = 5
@@ -756,7 +756,6 @@ def MakePileViewerMainClass(base):
             self.reloaded = False
             self.pile_has_changed = False
             self.config = pyrocko.config.config('snuffler')
-
             self.tax = TimeAx()
             self.setBackgroundRole(qg.QPalette.Base)
             self.setAutoFillBackground(True)
@@ -1275,6 +1274,7 @@ def MakePileViewerMainClass(base):
 
         def set_event_marker_as_origin(self, ignore=None):
             selected = self.selected_markers()
+
             if not selected:
                 self.fail('An event marker must be selected.')
                 return
@@ -3572,9 +3572,9 @@ def MakePileViewerMainClass(base):
             else:
                 message = self.message
 
-            sb = self.window().statusBar()
-            sb.clearMessage()
-            sb.showMessage(message)
+            #sb = self.window().statusBar()
+            #sb.clearMessage()
+            #sb.showMessage(message)
 
         def set_sortingmode_change_delay_time(self, dt):
             self.sortingmode_change_delay_time = dt
@@ -3588,7 +3588,7 @@ def MakePileViewerMainClass(base):
 
         def set_visible_marker_kinds(self, kinds):
             self.deselect_all()
-            self.visible_marker_kinds = tuple(kinds)
+            self.visible_marker_kinds =  tuple(kinds)
 
         def following(self):
             return self.follow_timer is not None \
@@ -3633,7 +3633,7 @@ def MakePileViewerMainClass(base):
                     * self.follow_lapse
 
             if self.following_interrupted(rnow):
-                return
+                return 
             self.set_time_range(
                 now-self.follow_time-self.follow_tshift,
                 now-self.follow_tshift)
@@ -3707,7 +3707,7 @@ def MakePileViewerMainClass(base):
                             for pattern in patterns:
                                 if command == 'hide':
                                     self.add_blacklist_pattern(pattern)
-                                else:
+                                else: 
                                     self.remove_blacklist_pattern(pattern)
 
                         elif command == 'unhide' and len(toks) == 1:
@@ -3777,7 +3777,7 @@ def MakePileViewerMainClass(base):
                     elif command == 'goto':
                         toks2 = line.split(None, 1)
                         if len(toks2) == 2:
-                            arg = toks2[1]
+                            arg = toks2[1] 
                             m = re.match(
                                 r'^\d\d\d\d(-\d\d(-\d\d( \d\d(:\d\d'
                                 r'(:\d\d(\.\d+)?)?)?)?)?)?$', arg)
@@ -3788,7 +3788,7 @@ def MakePileViewerMainClass(base):
                                 elif not m.group(2):
                                     tlen = 32*24*60*60
                                 elif not m.group(3):
-                                    tlen = 24*60*60
+                                    tlen = 24*60*60 
                                 elif not m.group(4):
                                     tlen = 60*60
                                 elif not m.group(5):
@@ -3856,7 +3856,7 @@ class PileViewer(qw.QFrame):
             use_opengl=False,
             panel_parent=None,
             *args):
-
+ 
         qw.QFrame.__init__(self, *args)
 
         if use_opengl:
@@ -4074,14 +4074,14 @@ class PileViewer(qw.QFrame):
         maxfreq = 1000.0
         self.lowpass_control = ValControl(high_is_none=True)
         self.lowpass_control.setup(
-            'Lowpass [Hz]:', minfreq, maxfreq, maxfreq, 0)
+            'Lowpass [Hz]:', minfreq, maxfreq, 3., 0)
         self.highpass_control = ValControl(low_is_none=True)
         self.highpass_control.setup(
-            'Highpass [Hz]:', minfreq, maxfreq, minfreq, 1)
+            'Highpass [Hz]:', minfreq, maxfreq, 0.05, 1)
         self.gain_control = ValControl()
         self.gain_control.setup('Gain:', 0.001, 1000., 1., 2)
-        self.rot_control = LinValControl()
-        self.rot_control.setup('Rotate [deg]:', -180., 180., 0., 3)
+        #self.rot_control = LinValControl()
+        #self.rot_control.setup('Rotate [deg]:', -180., 180., 0., 3)
 
         self.lowpass_control.valchange.connect(
             self.viewer.lowpass_change)
@@ -4089,21 +4089,22 @@ class PileViewer(qw.QFrame):
             self.viewer.highpass_change)
         self.gain_control.valchange.connect(
             self.viewer.gain_change)
-        self.rot_control.valchange.connect(
-            self.viewer.rot_change)
+        #self.rot_control.valchange.connect(
+        #    self.viewer.rot_change)
 
         for icontrol, control in enumerate((
                 self.highpass_control,
                 self.lowpass_control,
-                self.gain_control,
-                self.rot_control)):
+                self.gain_control)):
+                #self.rot_control)):
 
             for iwidget, widget in enumerate(control.widgets()):
+                widget.setFixedHeight(20)
                 layout.addWidget(widget, icontrol, iwidget)
 
         spacer = qw.QSpacerItem(
             0, 0, qw.QSizePolicy.Expanding, qw.QSizePolicy.Expanding)
-        layout.addItem(spacer, 4, 0, 1, 3)
+        layout.addItem(spacer,3, 0, 1, 3)
 
         self.adjust_controls()
         return frame

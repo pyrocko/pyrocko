@@ -152,7 +152,7 @@ def setup_acquisition_sources(args):
     iarg = 0
     while iarg < len(args):
         arg = args[iarg]
-
+        this_pile = pile.Pile()
         msl = re.match(r'seedlink://([a-zA-Z0-9.-]+)(:(\d+))?(/(.*))?', arg)
         mca = re.match(r'cam://([^:]+)', arg)
         mus = re.match(r'hb628://([^:?]+)(\?([^?]+))?', arg)
@@ -494,7 +494,7 @@ class SnufflerStartWizard(qw.QWizard):
                 sys_info,
                 indent=1).replace('\n', '<br>')
             )
-        text_data.setStyleSheet('padding: 10px;')
+        text_data.setStyleSheet('padding: 1px;')
         lyt.addWidget(text_data)
 
         lyt.addWidget(qw.QLabel(
@@ -512,7 +512,7 @@ class SnufflerStartWizard(qw.QWizard):
         def send_data():
             import requests
             import json
-            try:
+            try: 
                 requests.post('https://pyrocko.org/%s' % webtk,
                               data=json.dumps(sys_info))
             except Exception as e:
@@ -611,29 +611,30 @@ class SnufflerWindow(qw.QMainWindow):
 
         self.main_controls = self.pile_viewer.controls()
         self.add_panel('Main Controls', self.main_controls, visible=controls)
+        self.setStyleSheet('QLabel {font: 5pt Comic Sans MS}')
         self.show()
 
         self.get_view().setFocus(qc.Qt.OtherFocusReason)
 
-        sb = self.statusBar()
-        sb.clearMessage()
-        sb.showMessage('Welcome to Snuffler! Press <?> for help.')
+        #sb = self.statusBar()
+        #sb.clearMessage()
+        #sb.showMessage('Welcome to Snuffler! Press <?> for help.')
 
         snuffler_config = self.pile_viewer.viewer.config
 
-        #if snuffler_config.first_start:
-        #    pass
-        #    wizard = SnufflerStartWizard(self)
+        if snuffler_config.first_start:
+            pass
+            wizard = SnufflerStartWizard(self)
 
-        #    @qc.pyqtSlot()
-        #    def wizard_finished(result):
-        #        if result == wizard.Accepted:
-        #            snuffler_config.first_start = False
-        #            config.write_config(snuffler_config, 'snuffler')
+            @qc.pyqtSlot()
+            def wizard_finished(result):
+                if result == wizard.Accepted:
+                    snuffler_config.first_start = False
+                    config.write_config(snuffler_config, 'snuffler')
 
-        #    wizard.finished.connect(wizard_finished)
+            wizard.finished.connect(wizard_finished)
 
-        #    wizard.show()
+            wizard.show()
 
         if follow:
             self.get_view().follow(float(follow))
@@ -641,7 +642,7 @@ class SnufflerWindow(qw.QMainWindow):
         self.closing = False
 
     def sizeHint(self):
-        return qc.QSize(600,100)#1024, 768)
+        return qc.QSize(600,300)#1024, 768)
         # return qc.QSize(800, 600) # used for screen shots in tutorial
 
     def keyPressEvent(self, ev):
@@ -704,7 +705,10 @@ class SnufflerWindow(qw.QMainWindow):
         if visible:
             w = dockwidget.widget()
             minsize = w.minimumSize()
+
             w.setMinimumHeight(w.sizeHint().height() + 5)
+            #w.setMinimumHeight(80)
+
 
             def reset_minimum_size():
                 w.setMinimumSize(minsize)

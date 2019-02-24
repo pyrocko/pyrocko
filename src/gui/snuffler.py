@@ -20,7 +20,7 @@ from os.path import join as pjoin
 from optparse import OptionParser
 
 
-from pyrocko import pile
+from pyrocko import pile as pypile
 from pyrocko import util
 from pyrocko import model
 from pyrocko import config
@@ -72,7 +72,7 @@ def snuffle(pile=None, **kwargs):
         setup_acquisition_sources, PollInjector
 
     if pile is None:
-        pile = pile.make_pile()
+        pile = pypile.make_pile()
 
     global app
     if app is None:
@@ -157,9 +157,9 @@ def snuffle(pile=None, **kwargs):
 
 
 def snuffler_from_commandline(args=None):
+
     if args is None:
         args = sys.argv[1:]
-
     usage = '''usage: %prog [options] waveforms ...'''
     parser = OptionParser(usage=usage)
 
@@ -295,7 +295,8 @@ def snuffler_from_commandline(args=None):
     if options.gui_toolkit_qt5:
         config.override_gui_toolkit = 'qt5'
 
-    this_pile = pile.Pile()
+    this_pile = pypile.Pile()
+  
     stations = []
     for stations_fn in extend_paths(options.station_fns):
         stations.extend(model.station.load_stations(stations_fn))
