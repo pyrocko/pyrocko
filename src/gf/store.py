@@ -1152,22 +1152,32 @@ class Store(BaseStore):
         logger.debug('loading config file ...')
         self.config = meta.load(filename=self.config_fn())
 
-    def ensure_reference(self, force=True):
+    def ensure_reference(self, force=False):
+        if self.config.reference is not None and not force:
+            return
         self.ensure_uuid()
         reference = '%s-%s' % (self.config.id, self.config.uuid[0:6])
 
-        with open(self.config_fn(), 'a') as config:
-            config.write('\nreference: %s\n' % reference)
-        self.load_config()
+        if self.config.reference is not None:
+            self.config.reference = reference
+            self.save_config()
+        else:
+            with open(self.config_fn(), 'a') as config:
+                config.write('reference: %s\n' % reference)
+            self.load_config()
 
     def ensure_uuid(self, force=False):
         if self.config.uuid is not None and not force:
             return
         uuid = self.create_store_hash()
 
-        with open(self.config_fn(), 'a') as config:
-            config.write('\nuuid: %s\n' % uuid)
-        self.load_config()
+        if self.config.uuid is not None:
+            self.config.uuid = uuid
+            self.save_config()
+        else:
+            with open(self.config_fn(), 'a') as config:
+                config.write('\nuuid: %s\n' % uuid)
+            self.load_config()
 
     def create_store_hash(self):
         logger.info('creating hash for store ...')
@@ -1176,7 +1186,7 @@ class Store(BaseStore):
         traces_size = op.getsize(self.data_fn())
         with open(self.data_fn(), 'rb') as traces:
             while traces.tell() < traces_size:
-                m.update(traces.read(1024))
+                m.update(traces.read(4096))
                 traces.seek(1024 * 1024 * 10, 1)
 
         with open(self.config_fn(), 'rb') as config:

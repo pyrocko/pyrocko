@@ -91,48 +91,45 @@ class GNSSStation(Location):
     def get_covariance_matrix(self):
         components = self.components.values()
         ncomponents = self.ncomponents
-        
-        
+
         covar = num.zeros((3, 3))
         if self.north:
             covar[0, 0] = self.north.sigma**2
-            
+
         if self.east:
             covar[1, 1] = self.east.sigma**2
-            
+
         if self.up:
             covar[2, 2] = self.up.sigma**2
-            
+
         if self.correlation_ne and self.north and self.east:
-            covar[0, 1] = (self.correlation_ne * self.north.sigma \
-                                        * self.east.sigma)**2
-            
+            covar[0, 1] = (self.correlation_ne * self.north.sigma
+                           * self.east.sigma)**2
+
         elif self.north and self.east:
             covar[0, 1] = 0.
-            
+
         covar[1, 0] = covar[0, 1]
-        
+
         if self.correlation_nu and self.north and self.up:
-            covar[0, 2] = (self.correlation_nu * self.north.sigma \
-                                        * self.up.sigma)**2
+            covar[0, 2] = (self.correlation_nu * self.north.sigma
+                           * self.up.sigma)**2
         elif self.north and self.up:
             covar[0, 2] = 0.
-            
+
         covar[2, 0] = covar[0, 2]
-            
+
         if self.correlation_eu and self.east and self.up:
-            covar[1, 2] = (self.correlation_eu * self.east.sigma \
-                                        * self.up.sigma)**2
+            covar[1, 2] = (self.correlation_eu * self.east.sigma
+                           * self.up.sigma)**2
         elif self.east and self.up:
             covar[1, 2] = 0.
-        
+
         covar[2, 1] = covar[1, 2]
 
-        # print(ncomponents)
-        ncomponents = self.ncomponents
         covar = num.zeros((ncomponents, ncomponents))
-        for ic1, comp1 in enumerate(self.components):
-            for ic2, comp2 in enumerate(self.components):
+        for ic1, comp1 in enumerate(components):
+            for ic2, comp2 in enumerate(components):
                 corr = self._get_comp_correlation(comp1, comp2)
                 covar[ic1, ic2] = corr * comp1.sigma * comp2.sigma
 
@@ -140,8 +137,8 @@ class GNSSStation(Location):
         # corr * comp1.sigma * comp2.sigma != corr * comp2.sigma * comp1.sigma
         #
         # Hence this identity
-        #covar[num.tril_indices_from(covar, k=-1)] = \
-        #    covar[num.triu_indices_from(covar, k=1)]
+        covar[num.tril_indices_from(covar, k=-1)] = \
+            covar[num.triu_indices_from(covar, k=1)]
 
         return covar
 
