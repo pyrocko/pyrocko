@@ -903,6 +903,7 @@ class SmoothRampSTF(STF):
         return (type(self).__name__,
                 self.duration, self.rise_ratio, self.anchor)
 
+
 class ResonatorSTF(STF):
     '''
     Simple resonator like source time function.
@@ -1598,6 +1599,11 @@ class CLVDSource(SourceWithMagnitude):
 
 
 class CLVDVolumeSource(SourceWithMagnitude):
+    ''' Volume source, isometric expansion constrained by a CLVD
+
+    This source can be used to constrain sill or dyke like volume dislocation
+    sources.
+    '''
 
     discretized_source_class = meta.DiscretizedMTSource
 
