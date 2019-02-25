@@ -92,41 +92,6 @@ class GNSSStation(Location):
         components = self.components.values()
         ncomponents = self.ncomponents
 
-        covar = num.zeros((3, 3))
-        if self.north:
-            covar[0, 0] = self.north.sigma**2
-
-        if self.east:
-            covar[1, 1] = self.east.sigma**2
-
-        if self.up:
-            covar[2, 2] = self.up.sigma**2
-
-        if self.correlation_ne and self.north and self.east:
-            covar[0, 1] = (self.correlation_ne * self.north.sigma
-                           * self.east.sigma)**2
-
-        elif self.north and self.east:
-            covar[0, 1] = 0.
-
-        covar[1, 0] = covar[0, 1]
-
-        if self.correlation_nu and self.north and self.up:
-            covar[0, 2] = (self.correlation_nu * self.north.sigma
-                           * self.up.sigma)**2
-        elif self.north and self.up:
-            covar[0, 2] = 0.
-
-        covar[2, 0] = covar[0, 2]
-
-        if self.correlation_eu and self.east and self.up:
-            covar[1, 2] = (self.correlation_eu * self.east.sigma
-                           * self.up.sigma)**2
-        elif self.east and self.up:
-            covar[1, 2] = 0.
-
-        covar[2, 1] = covar[1, 2]
-
         covar = num.zeros((ncomponents, ncomponents))
         for ic1, comp1 in enumerate(components):
             for ic2, comp2 in enumerate(components):
@@ -241,25 +206,27 @@ class GNSSCampaign(Object):
 
     def get_covariance_matrix(self):
         if self._cov_mat is None:
-            cov_arr = num.zeros((self.nstations *3, self.nstations*3))
+            ncomponents = self.ncomponents
+            cov_arr = num.zeros((ncomponents, ncomponents))
 
             idx = 0
             for ista, sta in enumerate(self.stations):
-                cov_arr[idx:idx+3, idx:idx+3] = \
+                ncomp = sta.ncomponents
+                cov_arr[idx:idx+ncomp, idx:idx+ncomp] = \
                     sta.get_covariance_matrix()
-                idx += 3
+                idx += ncomp
 
             self._cov_mat = cov_arr
         return self._cov_mat
 
     def get_correlation_matrix(self):
         if self._cor_mat is None:
-            cor_arr = num.zeros((self.ncomponents, self.ncomponents))
+            ncomponents = self.ncomponents
+            cor_arr = num.zeros((ncomponents, ncomponents))
 
             idx = 0
             for ista, sta in enumerate(self.stations):
                 ncomp = sta.ncomponents
-
                 cor_arr[idx:idx+ncomp, idx:idx+ncomp] = \
                     sta.get_correlation_matrix()
                 idx += ncomp
