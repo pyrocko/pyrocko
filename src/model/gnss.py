@@ -126,15 +126,15 @@ class GNSSStation(Location):
         elif self.east and self.up:
             covar[1, 2] = 0.
         
-        covar[2, 1] = covar[1, 2]   
-            
-            
-        #print(ncomponents)
-        #for ic1, comp1 in enumerate(3):
-            #for ic2, comp2 in enumerate(components):
-                #corr = self._get_comp_correlation(comp1, comp2)
+        covar[2, 1] = covar[1, 2]
 
-                #covar[ic1, ic2] = corr * comp1.sigma * comp2.sigma
+        # print(ncomponents)
+        ncomponents = self.ncomponents
+        covar = num.zeros((ncomponents, ncomponents))
+        for ic1, comp1 in enumerate(self.components):
+            for ic2, comp2 in enumerate(self.components):
+                corr = self._get_comp_correlation(comp1, comp2)
+                covar[ic1, ic2] = corr * comp1.sigma * comp2.sigma
 
         # This floating point operation is inaccurate:
         # corr * comp1.sigma * comp2.sigma != corr * comp2.sigma * comp1.sigma
@@ -148,7 +148,7 @@ class GNSSStation(Location):
     def get_correlation_matrix(self):
         components = self.components.values()
         ncomponents = self.ncomponents
-        
+
         corr = num.zeros((ncomponents, ncomponents))
         corr[num.diag_indices_from(corr)] = num.array(
             [c.sigma for c in components])
@@ -172,7 +172,7 @@ class GNSSStation(Location):
         return num.array(
             [False if self.__getattribute__(name) is None else True
              for name in ('north', 'east', 'up')], dtype=num.bool)
- 
+
     @property
     def components(self):
         return OrderedDict(
@@ -243,7 +243,6 @@ class GNSSCampaign(Object):
             coords[:, 0].max(), coords[:, 1].max()) / 2.
 
     def get_covariance_matrix(self):
-        
         if self._cov_mat is None:
             cov_arr = num.zeros((self.nstations *3, self.nstations*3))
 

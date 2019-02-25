@@ -1101,7 +1101,7 @@ class Map(Object):
                     0., s.up.sigma, 0.]
                     for ista, s in enumerate(campaign.stations)
                     if s.up is not None]
-            
+
             default_psxy_style = {
                 'h': 0,
                 'W': '0.5p,black',
@@ -1109,13 +1109,14 @@ class Map(Object):
                 'L': True,
                 'S': 'e%dc/0.95/8' % scale,
             }
-            
+
         else:
             rows = [[lons[ista], lats[ista],
                      s.east.shift, s.north.shift,
                      s.east.sigma, s.north.sigma, s.correlation_ne]
-                    for ista, s in enumerate(campaign.stations)]
-            
+                    for ista, s in enumerate(campaign.stations)
+                    if s.east is not None or s.north is not None]
+
             default_psxy_style = {
                 'h': 0,
                 'W': '0.5p,black',
@@ -1129,8 +1130,8 @@ class Map(Object):
                 if vertical and sta.up is None:
                     continue
                 row.append(sta.code)
-                
-        default_psxy_style.update(psxy_style)       
+
+        default_psxy_style.update(psxy_style)
 
         self.gmt.psvelo(
             in_rows=rows,
