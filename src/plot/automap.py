@@ -1081,52 +1081,48 @@ class Map(Object):
         return tile
 
     def add_gnss_campaign(self, campaign, psxy_style=dict(), offset_scale=None,
-                          labels=True, vertical=False):
+                          labels=True, vertical=False, fontsize=10):
+
+        stations = campaign.stations
 
         if offset_scale is None:
-            offset_scale = num.array(
-                [math.sqrt(s.east.shift**2 + s.north.shift**2 + s.up.shift**2)
-                 for s in campaign.stations]).max()
+            offset_scale = num.zeros(campaign.nstations)
+            for ista, sta in enumerate(stations):
+                for comp in sta.components.values():
+                    offset_scale[ista] += comp.shift
+                offset_scale = num.sqrt(offset_scale**2).max()
 
         size = math.sqrt(self.height**2 + self.width**2)
-        scale = (size/50.) / offset_scale
+        scale = (size/10.) / offset_scale
 
         lats, lons = zip(
             *[od.ne_to_latlon(s.lat, s.lon, s.north_shift, s.east_shift)
-              for s in campaign.stations])
+              for s in stations])
 
         if vertical:
             rows = [[lons[ista], lats[ista],
                     0., s.up.shift,
                     0., s.up.sigma, 0.]
-                    for ista, s in enumerate(campaign.stations)
+                    for ista, s in enumerate(stations)
                     if s.up is not None]
-
-            default_psxy_style = {
-                'h': 0,
-                'W': '0.5p,black',
-                'G': 'black',
-                'L': True,
-                'S': 'e%dc/0.95/8' % scale,
-            }
 
         else:
             rows = [[lons[ista], lats[ista],
                      s.east.shift, s.north.shift,
                      s.east.sigma, s.north.sigma, s.correlation_ne]
-                    for ista, s in enumerate(campaign.stations)
+                    for ista, s in enumerate(stations)
                     if s.east is not None or s.north is not None]
 
-            default_psxy_style = {
-                'h': 0,
-                'W': '0.5p,black',
-                'G': 'black',
-                'L': True,
-                'S': 'e%dc/0.95/8' % scale,
-            }
+        default_psxy_style = {
+            'h': 0,
+            'W': '0.5p,black',
+            'G': 'black',
+            'L': True,
+            'S': 'e%dc/0.95/%d' % (scale, fontsize),
+        }
 
         if labels:
-            for row, sta in zip(rows, campaign.stations):
+            for row, sta in zip(rows, stations):
                 if vertical and sta.up is None:
                     continue
                 row.append(sta.code)
