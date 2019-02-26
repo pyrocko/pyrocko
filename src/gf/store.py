@@ -1879,14 +1879,18 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
             receiver_coords_arr[irec, :] = rec.coords5
 
         dt = self._deltat
+
         itoffset = int(num.floor(delays.min()/dt)) if delays.size != 0 else 0
 
         if itmin is None:
             itmin = num.zeros(nreceiver, dtype=num.int32)
-        itmin -= itoffset
+
+        itmin = (itmin-itoffset).astype(num.int32)
 
         if nsamples is None:
             nsamples = num.zeros(nreceiver, dtype=num.int32) - 1
+        else:
+            nsamples = nsamples.astype(num.int32)
 
         try:
             results = store_ext.store_calc_timeseries(
