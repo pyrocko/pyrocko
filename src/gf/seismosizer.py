@@ -157,11 +157,11 @@ def arr(x):
     return num.atleast_1d(num.asarray(x))
 
 
-def discretize_rect_source(deltas, deltat, north, east, depth,
+def discretize_rect_source(deltas, deltat, time, north, east, depth,
                            strike, dip, length, width,
                            anchor, velocity, stf=None,
                            nucleation_x=None, nucleation_y=None,
-                           tref=0.0, decimation_factor=1):
+                           decimation_factor=1):
 
     if stf is None:
         stf = STF()
@@ -211,7 +211,7 @@ def discretize_rect_source(deltas, deltat, north, east, depth,
 
     points = num.dot(rotmat.T, points.T).T
 
-    xtau, amplitudes = stf.discretize_t(deltat, tref)
+    xtau, amplitudes = stf.discretize_t(deltat, time)
     nt = xtau.size
 
     points2 = num.repeat(points, nt, axis=0)
@@ -617,7 +617,7 @@ class STF(Object, Cloneable):
 
     @property
     def effective_duration(self):
-        return 0.0
+        return self.duration * self.factor_duration_to_effective()
 
     def discretize_t(self, deltat, tref):
         tl = math.floor(tref / deltat) * deltat
@@ -677,10 +677,6 @@ class BoxcarSTF(STF):
 
     def centroid_time(self, tref):
         return tref - 0.5 * self.duration * self.anchor
-
-    @property
-    def effective_duration(self):
-        return self.duration
 
     def discretize_t(self, deltat, tref):
         tmin_stf = tref - self.duration * (self.anchor + 1.) * 0.5
@@ -824,9 +820,6 @@ class HalfSinusoidSTF(STF):
     def centroid_time(self, tref):
         return tref - 0.5 * self.duration * self.anchor
 
-    @property
-    def effective_duration(self):
-        return self.duration * self.factor_duration_to_effective()
 
     def discretize_t(self, deltat, tref):
         tmin_stf = tref - self.duration * (self.anchor + 1.) * 0.5
@@ -902,6 +895,7 @@ class SmoothRampSTF(STF):
     def base_key(self):
         return (type(self).__name__,
                 self.duration, self.rise_ratio, self.anchor)
+
 
 class ResonatorSTF(STF):
     '''
@@ -1015,25 +1009,9 @@ class Source(Location, Cloneable):
         When two source models return an equal vector of values discretization
         is shared.
         '''
-        return (self.depth, self.lat, self.north_shift,
+        return (self.time, self.depth, self.lat, self.north_shift,
                 self.lon, self.east_shift, type(self).__name__) + \
             self.effective_stf_pre().base_key()
-
-    def get_timeshift(self):
-        '''
-        Get the timeshift to be applied during post-processing.
-
-        When discretizing the base seismogram, the source time this is usually
-        done for a source origin time of zero. Different source origin times
-        can be efficiently handled in post-processing of the synthetic
-        seismogram (so GF stacking only has to be done once for source models
-        differing only in origin time).
-
-        This method should return the time shift to apply in the
-        post-processing (usually the origin time).
-        '''
-
-        return self.time
 
     def get_factor(self):
         '''
@@ -1085,7 +1063,7 @@ class Source(Location, Cloneable):
             return g_unit_pulse
 
     def _dparams_base(self):
-        return dict(times=arr(0.),
+        return dict(times=arr(self.time),
                     lat=self.lat, lon=self.lon,
                     north_shifts=arr(self.north_shift),
                     east_shifts=arr(self.east_shift),
@@ -1354,7 +1332,7 @@ class ExplosionSource(SourceWithDerivedMagnitude):
 
     def discretize_basesource(self, store, target=None):
         times, amplitudes = self.effective_stf_pre().discretize_t(
-            store.config.deltat, 0.0)
+            store.config.deltat, self.time)
 
         amplitudes *= self.get_moment(store, target) * math.sqrt(2. / 3.)
 
@@ -1439,7 +1417,7 @@ class RectangularExplosionSource(ExplosionSource):
 
         points, times, amplitudes, dl, dw, nl, nw = discretize_rect_source(
             store.config.deltas, store.config.deltat,
-            self.north_shift, self.east_shift, self.depth,
+            self.time, self.north_shift, self.east_shift, self.depth,
             self.strike, self.dip, self.length, self.width, self.anchor,
             self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy)
 
@@ -1507,7 +1485,7 @@ class DCSource(SourceWithMagnitude):
         mot = mt.MomentTensor(strike=self.strike, dip=self.dip, rake=self.rake)
 
         times, amplitudes = self.effective_stf_pre().discretize_t(
-            store.config.deltat, 0.0)
+            store.config.deltat, self.time)
         return meta.DiscretizedMTSource(
             m6s=mot.m6()[num.newaxis, :] * amplitudes[:, num.newaxis],
             **self._dparams_base_repeated(times))
@@ -1580,7 +1558,7 @@ class CLVDSource(SourceWithMagnitude):
     def discretize_basesource(self, store, target=None):
         factor = self.get_factor()
         times, amplitudes = self.effective_stf_pre().discretize_t(
-            store.config.deltat, 0.0)
+            store.config.deltat, self.time)
         return meta.DiscretizedMTSource(
             m6s=self.m6[num.newaxis, :] * amplitudes[:, num.newaxis] / factor,
             **self._dparams_base_repeated(times))
@@ -1653,7 +1631,7 @@ class MTSource(Source):
 
     def discretize_basesource(self, store, target=None):
         times, amplitudes = self.effective_stf_pre().discretize_t(
-            store.config.deltat, 0.0)
+            store.config.deltat, self.time)
         return meta.DiscretizedMTSource(
             m6s=self.m6[num.newaxis, :] * amplitudes[:, num.newaxis],
             **self._dparams_base_repeated(times))
@@ -1817,7 +1795,7 @@ class RectangularSource(SourceWithDerivedMagnitude):
 
         points, times, amplitudes, dl, dw, nl, nw = discretize_rect_source(
             store.config.deltas, store.config.deltat,
-            self.north_shift, self.east_shift, self.depth,
+            self.time, self.north_shift, self.east_shift, self.depth,
             self.strike, self.dip, self.length, self.width, self.anchor,
             self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy,
             decimation_factor=self.decimation_factor)
@@ -1995,7 +1973,7 @@ class DoubleDCSource(SourceWithMagnitude):
 
     def base_key(self):
         return (
-            self.depth, self.lat, self.north_shift,
+            self.time, self.depth, self.lat, self.north_shift,
             self.lon, self.east_shift, type(self).__name__) + \
             self.effective_stf1_pre().base_key() + \
             self.effective_stf2_pre().base_key() + (
@@ -2062,10 +2040,10 @@ class DoubleDCSource(SourceWithMagnitude):
         delta_east = math.sin(self.azimuth * d2r) * self.distance
 
         times1, amplitudes1 = self.effective_stf1_pre().discretize_t(
-            store.config.deltat, -self.delta_time * a1)
+            store.config.deltat, self.time - self.delta_time * a1)
 
         times2, amplitudes2 = self.effective_stf2_pre().discretize_t(
-            store.config.deltat, self.delta_time * a2)
+            store.config.deltat, self.time + self.delta_time * a2)
 
         nt1 = times1.size
         nt2 = times2.size
@@ -2196,7 +2174,7 @@ class RingfaultSource(SourceWithMagnitude):
                           ms[:, 0, 1], ms[:, 0, 2], ms[:, 1, 2])).T
 
         times, amplitudes = self.effective_stf_pre().discretize_t(
-            store.config.deltat, 0.0)
+            store.config.deltat, self.time)
 
         nt = times.size
 
@@ -2241,7 +2219,7 @@ class SFSource(Source):
 
     def discretize_basesource(self, store, target=None):
         times, amplitudes = self.effective_stf_pre().discretize_t(
-            store.config.deltat, 0.0)
+            store.config.deltat, self.time)
         forces = num.array([[self.fn, self.fe, self.fd]], dtype=num.float)
         forces *= amplitudes[:, num.newaxis]
         return meta.DiscretizedSFSource(forces=forces,
@@ -2332,7 +2310,7 @@ class PorePressureLineSource(Source):
         points[:, 2] = self.depth + a * sd
 
         return meta.DiscretizedPorePressureSource(
-            times=num.zeros(n),
+            times=util.num_full(n, self.time),
             lat=self.lat,
             lon=self.lon,
             north_shifts=points[:, 0],
@@ -3006,20 +2984,20 @@ class LocalEngine(Engine):
         store_ = self.get_store(target.store_id)
         receivers = [t.receiver(store_) for t in targets]
 
-        ds = store_.config.sample_rate
-        tmin = num.array([t.tmin for t in targets], dtype=num.float)
-        tmax = num.array([t.tmax for t in targets], dtype=num.float)
+        rate = store_.config.sample_rate
 
-        if not num.all(num.isnan(tmin)) or not num.all(num.isnan(tmax)):
-            mask_itmin = num.isnan(tmin)
-            itmin = num.floor(tmin * ds).astype(num.int32)
-            nsamples = num.ceil((tmax - tmin) * ds).astype(num.int32)
+        tmin = num.fromiter(
+            (t.tmin for t in targets), dtype=num.float, count=len(targets))
+        tmax = num.fromiter(
+            (t.tmax for t in targets), dtype=num.float, count=len(targets))
 
-            itmin[mask_itmin] = 0
-            nsamples[mask_itmin] = -1
-        else:
-            itmin = None
-            nsamples = None
+        itmin = num.floor(tmin * rate).astype(num.int64)
+        itmax = num.ceil(tmax * rate).astype(num.int64)
+        nsamples = itmax - itmin
+
+        mask = num.isnan(tmin)
+        itmin[mask] = 0
+        nsamples[mask] = -1
 
         base_source = self._cached_discretize_basesource(
             source, store_, dsource_cache, target)
@@ -3113,7 +3091,9 @@ class LocalEngine(Engine):
         return base_statics, tcounters
 
     def _post_process_dynamic(self, base_seismogram, source, target):
-        deltat = list(base_seismogram.values())[0].deltat
+        base_any = next(iter(base_seismogram.values()))
+        deltat = base_any.deltat
+        itmin = base_any.itmin
 
         rule = self.get_rule(source, target)
         data = rule.apply_(target, base_seismogram)
@@ -3122,12 +3102,10 @@ class LocalEngine(Engine):
         if factor != 1.0:
             data = data * factor
 
-        itmin = list(base_seismogram.values())[0].itmin
-
         stf = source.effective_stf_post()
 
         times, amplitudes = stf.discretize_t(
-            deltat, source.get_timeshift())
+            deltat, 0.0)
 
         # repeat end point to prevent boundary effects
         padded_data = num.empty(data.size + amplitudes.size, dtype=num.float)

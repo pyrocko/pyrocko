@@ -251,7 +251,7 @@ class GFSourcesTestCase(unittest.TestCase):
                 dsource = source.discretize_basesource(
                     store, target=dummy_target)
                 cent = dsource.centroid()
-                assert numeq(cent.time + source.get_timeshift(), t, 0.0001)
+                assert numeq(cent.time, t, 0.0001)
 
     def test_outline(self):
         s = gf.MTSource(
