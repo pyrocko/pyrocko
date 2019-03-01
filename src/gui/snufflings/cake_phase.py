@@ -1,5 +1,4 @@
 from builtins import str
-import os
 from pyrocko.gui.snuffling import Snuffling, Param, Switch, Choice
 from pyrocko.gui.marker import PhaseMarker
 from pyrocko import orthodrome
@@ -52,7 +51,18 @@ class CakePhase(Snuffling):
             self.add_parameter(Switch(name, 'wantphase_%i' % iphase,
                                       iphase == 0))
 
-        self._models = cake.builtin_models()
+        model_names = cake.builtin_models()
+        model_names = [
+                'Cake builtin: %s' % model_name for model_name in model_names]
+
+        self._engine = gf.LocalEngine(use_config=True)
+        store_ids = self._engine.get_store_ids()
+
+        for store_id in store_ids:
+            model_names.append('GF Store: %s' % store_id)
+
+        self._models = model_names
+
         self.model_choice = Choice('Model', 'chosen_model',
                                    'ak135-f-continental.m', self._models)
 
@@ -70,11 +80,7 @@ class CakePhase(Snuffling):
         self._model = None
 
     def panel_visibility_changed(self, bool):
-        if bool:
-            self._engine = gf.LocalEngine(use_config=True)
-            store_ids = self._engine.get_store_ids()
-            self._models.extend(store_ids)
-            self.update_model_choices()
+        pass
 
     def wanted_phases(self):
         try:
@@ -170,12 +176,18 @@ class CakePhase(Snuffling):
 
     def update_model(self):
         if not self._model or self._model[0] != self.chosen_model:
-            if self.chosen_model in cake.builtin_models()\
-             or os.path.exists(self.chosen_model):
-                load_model = cake.load_model(self.chosen_model)
-            else:
-                load_model = self._engine.get_store(self.chosen_model)\
+            if self.chosen_model.startswith('Cake builtin: '):
+                load_model = cake.load_model(
+                    self.chosen_model.split(': ', 1)[1])
+
+            elif self.chosen_model.startswith('GF Store: '):
+                store_id = self.chosen_model.split(': ', 1)[1]
+
+                load_model = self._engine.get_store(store_id)\
                     .config.earthmodel_1d
+            else:
+                load_model = cake.load_model(self.chosen_model)
+
             self._model = (self.chosen_model, load_model)
 
     def update_model_choices(self):
