@@ -72,7 +72,7 @@ class SerialHamster(object):
 
     def __init__(
             self, port=0, baudrate=9600, timeout=5, buffersize=128,
-            network='', station='TEST', location='', channels=['Z'],
+            network='S', station='HOY', location='00', channels=['Z'],
             disallow_uneven_sampling_rates=True,
             deltat=None,
             deltat_tolerance=0.01,
