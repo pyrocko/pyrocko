@@ -1008,8 +1008,8 @@ class Source(Location, Cloneable):
         When two source models return an equal vector of values discretization
         is shared.
         '''
-        return (self.time, self.depth, self.lat, self.north_shift,
-                self.lon, self.east_shift, type(self).__name__) + \
+        return (self.depth, self.lat, self.north_shift,
+                self.lon, self.east_shift, self.time, type(self).__name__) + \
             self.effective_stf_pre().base_key()
 
     def get_factor(self):
