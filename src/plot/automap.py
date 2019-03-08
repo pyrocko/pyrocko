@@ -1103,14 +1103,16 @@ class Map(Object):
             rows = [[lons[ista], lats[ista],
                     0., s.up.shift,
                     (s.east.sigma + s.north.sigma) if s.east.sigma else 0.,
-                    s.up.sigma, 0.]
+                    s.up.sigma, 0.,
+                    s.code if labels else None]
                     for ista, s in enumerate(stations)
                     if s.up is not None]
 
         else:
             rows = [[lons[ista], lats[ista],
                      s.east.shift, s.north.shift,
-                     s.east.sigma, s.north.sigma, s.correlation_ne]
+                     s.east.sigma, s.north.sigma, s.correlation_ne,
+                     s.code if labels else None]
                     for ista, s in enumerate(stations)
                     if s.east is not None or s.north is not None]
 
@@ -1122,11 +1124,9 @@ class Map(Object):
             'S': 'e%dc/0.95/%d' % (scale, fontsize),
         }
 
-        if labels:
-            for row, sta in zip(rows, stations):
-                if vertical and sta.up is None:
-                    continue
-                row.append(sta.code)
+        for r in rows:
+            if r[-1] is None:
+                r.pop(-1)
 
         default_psxy_style.update(psxy_style)
 
