@@ -1543,6 +1543,7 @@ class CLVDSource(SourceWithMagnitude):
     def m6(self):
         a = math.sqrt(4. / 3.) * self.get_factor()
         m = mt.symmat6(-0.5 * a, -0.5 * a, a, 0., 0., 0.)
+
         rotmat1 = mt.euler_to_matrix(
             d2r * (self.dip - 90.),
             d2r * (self.azimuth - 90.),
@@ -1614,47 +1615,52 @@ class CLVDVolumeSource(SourceWithMagnitude):
         return self.clvd_magnitude
 
     def get_magnitude(self):
-        return float(mt.moment_to_magnitude(1.0))
+        mt = self.pyrocko_moment_tensor()
+        return float(mt.moment_to_magnitude(mt.moment))
 
     def get_factor(self):
+        if not self.clvd_magnitude:
+            return 1.
         return float(mt.magnitude_to_moment(self.clvd_magnitude))
 
     def get_m6(self, store, target):
         a = math.sqrt(4. / 3.) * self.get_factor()
         m_clvd = mt.symmat6(-0.5 * a, -0.5 * a, a, 0., 0., 0.)
 
+        rotmat1 = mt.euler_to_matrix(
+            d2r * (self.dip - 90.),
+            d2r * (self.azimuth - 90.),
+            0.)
+        m_clvd = rotmat1.T * m_clvd * rotmat1
+
         if store is None and target is None:
             m_iso = 0.
         else:
             m_iso = self.volume_change * \
                 self.get_moment_to_volume_change_ratio(store, target)
-            m_iso = mt.symmat6(m_iso, m_iso, m_iso, 0., 0., 0.,) \
-                * math.sqrt(2. / 3.)
 
-        m = m_clvd + m_iso
-        rotmat1 = mt.euler_to_matrix(
-            d2r * (self.dip - 90.),
-            d2r * (self.azimuth - 90.),
-            0.)
-        m = rotmat1.T * m * rotmat1
+        m_iso = mt.symmat6(m_iso, m_iso, m_iso, 0., 0., 0.,) * math.sqrt(2./3)
 
-        return mt.to6(m)
+        m = mt.to6(m_clvd) + mt.to6(m_iso)
+        return m
+
+    def get_moment(self, store=None, target=None):
+        return float(mt.magnitude_to_moment(
+            self.get_magnitude(store, target)))
 
     def get_m6_astuple(self, store, target):
         m6 = self.get_m6(store, target)
         return tuple(m6.tolist())
 
     def discretize_basesource(self, store, target=None):
-        factor = self.get_factor()
-        # factor += self.volume_change * \
-        #     self.get_moment_to_volume_change_ratio(store, target)
-
         times, amplitudes = self.effective_stf_pre().discretize_t(
             store.config.deltat, 0.0)
+
         m6 = self.get_m6(store, target)
+        m6 *= amplitudes / self.get_factor()
 
         return meta.DiscretizedMTSource(
-            m6s=m6[num.newaxis, :] * amplitudes[:, num.newaxis] / factor,
+            m6s=m6[num.newaxis, :],
             **self._dparams_base_repeated(times))
 
     def pyrocko_moment_tensor(self, store=None, target=None):
