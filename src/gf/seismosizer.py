@@ -60,7 +60,7 @@ def cmp_none_aware(a, b):
     if bnone:
         return 1
 
-    return cmp(a, b)
+    return bool(a > b) - bool(a < b)
 
 
 def xtime():
