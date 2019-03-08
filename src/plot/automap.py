@@ -1102,7 +1102,8 @@ class Map(Object):
         if vertical:
             rows = [[lons[ista], lats[ista],
                     0., s.up.shift,
-                    0., s.up.sigma, 0.]
+                    (s.east.sigma + s.north.sigma) if s.east.sigma else 0.,
+                    s.up.sigma, 0.]
                     for ista, s in enumerate(stations)
                     if s.up is not None]
 
