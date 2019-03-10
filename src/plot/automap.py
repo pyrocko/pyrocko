@@ -1107,7 +1107,7 @@ class Map(Object):
                 'W': '0.5p,black',
                 'G': 'black',
                 'L': True,
-                'S': 'e%dc/0.95/8' % scale,
+                'S': 'e%ec/0.95/8' % scale,
             }
 
         else:
@@ -1122,7 +1122,7 @@ class Map(Object):
                 'W': '0.5p,black',
                 'G': 'black',
                 'L': True,
-                'S': 'e%dc/0.95/8' % scale,
+                'S': 'e%ec/0.95/8' % scale,
             }
 
         if labels:
