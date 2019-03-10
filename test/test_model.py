@@ -216,7 +216,9 @@ class ModelTestCase(unittest.TestCase):
         if nsparse:
             assert nsparse < nstations, 'nsparse < nstations'
 
-            stations = rstate.choice(campaign.stations, size=nsparse)
+            stations2 = list(campaign.stations)
+            rstate.shuffle(stations2)
+            stations = stations2[:nsparse]
             channels = rstate.randint(0, 3, size=nsparse)
 
             channel_map = {
