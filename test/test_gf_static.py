@@ -1,5 +1,4 @@
 from __future__ import division, print_function, absolute_import
-import matplotlib
 
 import unittest
 import numpy as num
@@ -13,7 +12,6 @@ from .common import Benchmark
 from pyrocko import gf, util, cake
 from pyrocko.fomosto import qseis, psgrn_pscmp
 
-matplotlib.use('TkAgg')
 
 random = num.random
 logger = logging.getLogger('pyrocko.test.test_gf_static')
