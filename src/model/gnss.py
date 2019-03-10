@@ -240,7 +240,7 @@ class GNSSCampaign(Object):
 
     def dump(self, *args, **kwargs):
         self.regularize()
-        Object.dump(self, *args, **kwargs)
+        return Object.dump(self, *args, **kwargs)
 
     @property
     def coordinates(self):
