@@ -53,6 +53,18 @@ def have_internet():
 require_internet = unittest.skipUnless(have_internet(), 'need internet access')
 
 
+def skip_on_download_error(f):
+
+    @functools.wraps(f)
+    def wrap_f(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except util.DownloadError:
+            raise unittest.SkipTest('download failed')
+
+    return wrap_f
+
+
 def have_gui():
     display = os.environ.get('DISPLAY', '')
     if not display:
