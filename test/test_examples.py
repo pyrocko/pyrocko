@@ -31,13 +31,16 @@ def tutorial_run_dir():
     return op.join(test_dir, 'example_run_dir')
 
 
-snuffle_orig = None
+def noop(*args, **kwargs):
+    pass
 
 
 class ExamplesTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        from matplotlib import pyplot as plt
+
         cls.cwd = os.getcwd()
         cls.run_dir = tutorial_run_dir()
         util.ensuredir(cls.run_dir)
@@ -45,25 +48,26 @@ class ExamplesTestCase(unittest.TestCase):
         sys.stdout = cls.dn
         os.chdir(cls.run_dir)
 
-        global snuffle_orig
-        snuffle_orig = snuffler.snuffle
+        cls._mpl_show_orig = plt.show
+        plt.show = noop
 
-        def snuffle_dummy(*args, **kwargs):
-            pass
+        cls._snuffle_orig = snuffler.snuffle
+        snuffler.snuffle = noop
 
-        snuffler.snuffle = snuffle_dummy
-
-        cls.show_progress_force_off_orig = pile.show_progress_force_off
+        cls._show_progress_force_off_orig = pile.show_progress_force_off
         pile.show_progress_force_off = True
 
     @classmethod
     def tearDownClass(cls):
+        from matplotlib import pyplot as plt
+
         cls.dn.close()
         sys.stdout = sys.__stdout__
         os.chdir(cls.cwd)
 
-        snuffler.snuffle = snuffle_orig
-        pile.show_progress_force_off = cls.show_progress_force_off_orig
+        snuffler.snuffle = cls._snuffle_orig
+        plt.show = cls._mpl_show_orig
+        pile.show_progress_force_off = cls._show_progress_force_off_orig
 
 
 example_files = [fn for fn in glob.glob(op.join(test_dir, 'examples', '*.py'))
