@@ -19,6 +19,11 @@ from collections import defaultdict
 
 from io import BytesIO
 
+try:
+    import numpy as num
+except ImportError:
+    num = None
+
 import yaml
 try:
     from yaml import CSafeLoader as SafeLoader, CSafeDumper as SafeDumper
@@ -120,6 +125,19 @@ def make_list_presenter(flow_style):
 
 GutsSafeDumper.add_representer(blist, make_list_presenter(False))
 GutsSafeDumper.add_representer(flist, make_list_presenter(True))
+
+if num:
+    def numpy_float_presenter(dumper, data):
+        return dumper.represent_float(float(data))
+
+    def numpy_int_presenter(dumper, data):
+        return dumper.represent_int(int(data))
+
+    for dtype in (num.float64, num.float32):
+        GutsSafeDumper.add_representer(dtype, numpy_float_presenter)
+
+    for dtype in (num.int32, num.int64):
+        GutsSafeDumper.add_representer(dtype, numpy_int_presenter)
 
 
 def us_to_cc(s):
