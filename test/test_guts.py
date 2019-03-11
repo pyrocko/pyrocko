@@ -1047,7 +1047,6 @@ class GutsTestCase(unittest.TestCase):
 
         c = C(b_list=[B(a_list=[A(i=1), A(i=2)]), B(a_list=[A(i=3), A(i=4)])])
 
-        print(c)
         assert get_elements(c, 'b_list[:].a_list[:].i') == [1, 2, 3, 4]
         assert get_elements(c, 'b_list[0].a_list[:].i') == [1, 2]
         assert get_elements(c, 'b_list[:1].a_list[:].i') == [1, 2]

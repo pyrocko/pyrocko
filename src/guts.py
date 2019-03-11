@@ -1901,6 +1901,7 @@ def get_elements(obj, ypath):
     '''
     return list(iter_elements(obj, ypath))
 
+
 def set_elements(obj, ypath, value, validate=False, regularize=False):
     '''
     Set elements matching a given ypath specification.
