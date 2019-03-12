@@ -826,6 +826,16 @@ class Object(with_metaclass(ObjectMetaClass, object)):
         return self.dump()
 
 
+def to_dict(obj):
+    '''
+    Get dict of guts object attributes.
+
+    :param obj: :py:class`Object` object
+    '''
+
+    return dict(obj.T.inamevals(obj))
+
+
 class SObject(Object):
 
     class __T(TBase):
