@@ -1119,6 +1119,17 @@ class Farside(Exception):
 
 
 def latlon_to_xyz(latlons):
+    '''
+    Transforms geographical coordinates of latitudes and longitudes
+    to cartesian coordinates on a unit sphere.
+
+    :param latlons: Latitudes and Longitudes in decimal degree
+    :type latlons: :py:class:`numpy.ndarray`, ``(N x 2)``
+
+    :return: cartesian coordinates [xyz] on unit sphere between 0 and 1, where
+        1 is the radius of the earth
+    :rtype: :py:class:`numpy.ndarray`, ``(N x 3)``
+    '''
     if latlons.ndim == 1:
         return latlon_to_xyz(latlons[num.newaxis, :])[0]
 
@@ -1132,6 +1143,19 @@ def latlon_to_xyz(latlons):
 
 
 def xyz_to_latlon(xyz):
+    '''
+    Inverse operation to "latlon_to_xyz"
+
+    Transforms cartesian coordinates on a unit sphere to geographical
+    coordinates of latitudes and longitudes.
+
+    :param xyzs: cartesian coordinates [xyz] on unit sphere between 0 and 1, where
+        1 is the radius of the earthLatitude
+    :type xyz: :py:class:`numpy.ndarray`, ``(N x 3)``
+
+    :return: geographical Latitudes and Longitudes in decimal degree
+    :rtype: :py:class:`numpy.ndarray`, ``(N x 3)``
+    '''
     if xyz.ndim == 1:
         return xyz_to_latlon(xyz[num.newaxis, :])[0]
 

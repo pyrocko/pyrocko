@@ -76,6 +76,22 @@ def circulation(points, axis):
 
 
 def spoly_cut(l_points, axis=0, nonsimple=True):
+    '''
+    Cuts polygons, which are projected on the cartesian unit sphere
+    along defined axis where it crosses.
+
+    :param l_points: cartesian xyz coordinates on unit sphere (0, 1)
+    :param axis: axis of sphere to cut,
+        0 - x plane = 0; 1 - y plane = 0; 2 - z plane = 0
+    :param nonsimple: ????
+    :type l_points: list of :py:class:`numpy.ndarray`, ``(N x 3)``
+    :type axis: integer
+    :type nonsimple: boolean
+
+    :return: Two lists of polygons on either side of the cutted plane
+    :rtype: 2 lists of :py:class:`numpy.ndarray`, ``(N x 3)``
+    '''
+
     dphi = 2.*PI / 360.
 
     # cut sub-polygons and gather crossing point information
