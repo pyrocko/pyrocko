@@ -593,6 +593,35 @@ class GFTestCase(unittest.TestCase):
                 logger.warning(
                     'test_stf_pre_post: max difference of %.1f %%' % perc)
 
+    def test_target_source_timing(self):
+        store_dir = self.get_pulse_store_dir()
+        engine = gf.LocalEngine(store_dirs=[store_dir])
+
+        source = gf.ExplosionSource(
+                    depth=200.,
+                    magnitude=4.,
+                    time=160000.)
+
+        targets = [
+            gf.Target(
+                codes=('', 'STA', '', component),
+                north_shift=500.,
+                tmin=-300.,
+                tmax=300.,
+                east_shift=500.)
+
+            for component in 'ZNE'
+        ]
+
+        response = engine.process(source, targets)
+        synthetic_traces = response.pyrocko_traces()
+        data = num.zeros(num.shape(synthetic_traces[0].ydata))
+        for tr in synthetic_traces:
+            data += tr.ydata
+
+        sum_data = num.sum(abs(tr.ydata))
+        assert sum_data > 1
+
     def benchmark_get(self):
         store_dir = self.get_benchmark_store_dir()
 
