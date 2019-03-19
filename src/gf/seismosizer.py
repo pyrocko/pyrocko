@@ -3216,7 +3216,7 @@ class LocalEngine(Engine):
             n_f = store_.config.sample_rate
             itsnapshot = int(num.floor(target.tsnapshot * n_f))
         else:
-            itsnapshot = 1
+            itsnapshot = None
         tcounters.append(xtime())
 
         base_source = source.discretize_basesource(store_, target=target)
