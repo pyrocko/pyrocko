@@ -1812,13 +1812,17 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
         out = {}
         ntargets = multi_location.ntargets
         source_terms = source.get_source_terms(self.config.component_scheme)
-        delays = source.times
+        # TODO: deal with delays for snapshots > 1 sample
+        if itsnapshot is not None:
+            delays = source.times
+        else:
+            delays = source.times*0
+            itsnapshot = 1
         scheme_desc = meta.component_scheme_to_description[
             self.config.component_scheme]
 
         if ntargets == 0:
             raise StoreError('MultiLocation.coords5 is empty')
-
         res = store_ext.store_calc_static(
             self.cstore,
             source.coords5(),
