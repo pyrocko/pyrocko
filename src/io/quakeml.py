@@ -535,7 +535,7 @@ class Pick(Object):
 
     @property
     def pyrocko_polarity(self):
-        return polarity_choices[self.polarity]
+        return polarity_choices.get(self.polarity, None)
 
     def pyrocko_phase_marker(self, event=None):
         return marker.PhaseMarker(
