@@ -227,7 +227,7 @@ typedef struct {
     int f_data;
     uint64_t nrecords;
     uint64_t data_size;
-    float32_t deltat;
+    float64_t deltat;
     record_t *records;
     gf_dtype *data;
     gf_dtype **memdata;
@@ -546,12 +546,12 @@ static void trace_trim_sticky(trace_t *trace, int32_t itmin, int32_t nsamples) {
 static store_error_t store_sum_extent(
             const store_t *store,
             const uint64_t *irecords,
-            const float32_t *delays,
+            const float64_t *delays,
             int n,
             int32_t *nsamples_,
             int32_t *itmin_) {
 
-    float itmin_d, itmax_d, idelay;
+    float64_t itmin_d, itmax_d, idelay_d;
     int32_t itmax, itmin, ns;
     int ihave, is_zero, j;
     store_error_t err;
@@ -572,34 +572,37 @@ static store_error_t store_sum_extent(
         }
 
         itmax = itmin + ns - 1;
-        idelay = delays[j]/store->deltat;
+        idelay_d = delays[j]/store->deltat;
 
         if (ihave) {
-            itmin_d = min(itmin_d, itmin + idelay);
-            itmax_d = max(itmax_d, itmax + idelay);
+            itmin_d = min(itmin_d, itmin + idelay_d);
+            itmax_d = max(itmax_d, itmax + idelay_d);
         } else {
-            itmin_d = itmin + idelay;
-            itmax_d = itmax + idelay;
+            itmin_d = itmin + idelay_d;
+            itmax_d = itmax + idelay_d;
             ihave = 1;
         }
     }
 
+
     *itmin_ = (int32_t) floor(itmin_d);
     *nsamples_ = (int32_t) ceil(itmax_d) - *itmin_ + 1;
+
     return SUCCESS;
 }
 
 static store_error_t store_sum(
         const store_t *store,
         const uint64_t *irecords,
-        const float32_t *delays,
+        const float64_t *delays,
         const float32_t *weights,
         int n,
         trace_t *result) {
 
-    float32_t weight, delay;
+    float32_t weight;
+    float64_t delay;
     trace_t trace;
-    float32_t deltat = store->deltat;
+    float64_t deltat = store->deltat;
     gf_dtype begin_value, end_value;
     int ilo;
     int i, j;
@@ -718,7 +721,7 @@ static store_error_t store_sum(
 static store_error_t store_sum_static(
         const store_t *store,
         const uint64_t *irecords,
-        const float32_t *delays,
+        const float64_t *delays,
         const float32_t *weights,
         int32_t it,
         int32_t ntargets,
@@ -727,9 +730,10 @@ static store_error_t store_sum_static(
         int32_t nthreads,
         gf_dtype *result) {
 
-    float32_t weight, delay;
+    float32_t weight;
+    float64_t delay;
     trace_t trace;
-    float32_t deltat = store->deltat;
+    float64_t deltat = store->deltat;
     int idelay_floor, idelay_ceil;
     int j, itarget, idx;
     uint isummand, nsummands_src;
@@ -828,7 +832,7 @@ static store_error_t ensure_trace_capacity(result_trace_t *result, int itmin, in
             return ALLOC_FAILED;
 
         memcpy(new_buffer + start_pos, result->buffer, sizeof(gf_dtype) * result->ncapacity);
-        
+
         free(result->buffer);
 
         result->buf_pos = start_pos;
@@ -870,16 +874,16 @@ static store_error_t check_trace_extent(
         int irecord) {
 
     int itmin, itmax, ns, is_zero;
-    float64_t idelay;
+    float64_t idelay_d;
     store_error_t err = SUCCESS;
     ns = itmin = 0;
 
     if (result->nsamples_want == -1) {
         err = store_get_span(store, irecord, &itmin, &ns, &is_zero);
 
-        idelay = delay/store->deltat;
-        itmin = itmin + (int) floor(idelay);
-        itmax = itmin + ns + (int) ceil(idelay) - 1;
+        idelay_d = delay/store->deltat;
+        itmin = itmin + (int) floor(idelay_d);
+        itmax = itmin + ns + (int) ceil(idelay_d) - 1;
 
         if (result->empty) {
             result->itmin = itmin;
@@ -906,7 +910,7 @@ static store_error_t stack_trace_timeseries(
         int idelay_floor,
         int idelay_ceil,
         int nsamples,
-        float32_t deltat,
+        float64_t deltat,
         gf_dtype* out) {
 
     int ilo, i;
@@ -983,10 +987,11 @@ static store_error_t store_calc_timeseries(
         int32_t nthreads,
         result_trace_t **results) {
 
-    float32_t weight, delay;
+    float32_t weight;
+    float64_t delay;
     trace_t trace;
     result_trace_t *result;
-    float32_t deltat = store->deltat;
+    float64_t deltat = store->deltat;
     gf_dtype begin_value, end_value;
     int idx_record, idelay_floor, idelay_ceil;
     store_error_t err = SUCCESS;
@@ -1034,11 +1039,11 @@ static store_error_t store_calc_timeseries(
             if (!inlimits(idelay_floor) || !inlimits(idelay_ceil)) {
                 for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
                     result = results[icomponent+ireceiver*cscheme->ncomponents];
-                    result->err = BAD_REQUEST;                    
+                    result->err = BAD_REQUEST;
                 }
                 continue;
             }
-            
+
             if (interpolation == MULTILINEAR) {
                 err = mscheme->vicinity(
                     mapping,
@@ -1116,7 +1121,7 @@ static store_error_t store_calc_timeseries(
                 if (!inlimits(idelay_floor) || !inlimits(idelay_ceil)) {
                     for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
                         result = results[icomponent+ireceiver*cscheme->ncomponents];
-                        result->err = BAD_REQUEST;                    
+                        result->err = BAD_REQUEST;
                     }
                     continue;
                 }
@@ -1198,9 +1203,10 @@ static store_error_t store_calc_static(
         int32_t nthreads,
         gf_dtype **result) {
 
-    float32_t weight, delay;
+    float32_t weight;
+    float64_t delay;
     trace_t trace;
-    float32_t deltat = store->deltat;
+    float64_t deltat = store->deltat;
     int idelay_floor, idelay_ceil;
     int idx, idx_record;
     float w1, w2;
@@ -1339,11 +1345,12 @@ static store_error_t store_calc_static(
     return SUCCESS;
 }
 
-static store_error_t store_init(int f_index, int f_data, store_t *store) {
+static store_error_t store_init(int f_index, int f_data, store_t *store, float64_t patch_deltat) {
     void *p;
     struct stat st;
     size_t mmap_index_size;
     int use_mmap;
+    float32_t fdeltat;
 
     use_mmap = 0;
 
@@ -1357,12 +1364,18 @@ static store_error_t store_init(int f_index, int f_data, store_t *store) {
     if (8 != pread(store->f_index, &store->nrecords, 8, 0)) {
         return READ_INDEX_FAILED;
     }
-    if (4 != pread(store->f_index, &store->deltat, 4, 8)) {
+
+    if (4 != pread(store->f_index, &fdeltat, 4, 8)) {
         return READ_INDEX_FAILED;
     }
+    store->deltat = fdeltat;
 
     store->nrecords = xe64toh(store->nrecords);
-    store->deltat = fe32toh(store->deltat);
+    store->deltat = (float64_t)fe32toh(store->deltat);
+
+    if (patch_deltat != 0.0) {
+        store->deltat = patch_deltat;
+    }
 
     if (-1 == fstat(store->f_data, &st)) {
         return FSTAT_TRACES_FAILED;
@@ -1504,11 +1517,12 @@ static PyObject* w_store_init(PyObject *m, PyObject *args) {
     int f_index, f_data;
     store_t *store;
     store_error_t err;
+    float64_t patch_deltat;
 
     struct module_state *st = GETSTATE(m);
 
-    if (!PyArg_ParseTuple(args, "ii", &f_index, &f_data)) {
-        PyErr_SetString(st->error, "usage store_init(f_index, f_data)" );
+    if (!PyArg_ParseTuple(args, "iid", &f_index, &f_data, &patch_deltat)) {
+        PyErr_SetString(st->error, "usage store_init(f_index, f_data, patch_deltat)" );
         return NULL;
     }
 
@@ -1518,7 +1532,7 @@ static PyObject* w_store_init(PyObject *m, PyObject *args) {
         return NULL;
     }
 
-    err = store_init(f_index, f_data, store);
+    err = store_init(f_index, f_data, store, patch_deltat);
     if (SUCCESS != err) {
         PyErr_SetString(st->error, store_error_names[err]);
         store_deinit(store);
@@ -1689,7 +1703,7 @@ static PyObject* w_store_get(PyObject *m, PyObject *args) {
         adata[i] = fe32toh(trace.data[i]);
     }
 
-    return Py_BuildValue("Nififf", array, trace.itmin, store->deltat,
+    return Py_BuildValue("Nidiff", array, trace.itmin, store->deltat,
                          trace.is_zero, trace.begin_value, trace.end_value);
 }
 
@@ -2243,7 +2257,8 @@ static PyObject* w_store_sum(PyObject *m, PyObject *args) {
     PyArrayObject *array = NULL;
     npy_intp array_dims[1] = {0};
     uint64_t *irecords;
-    float32_t *delays, *weights;
+    float32_t *weights;
+    float64_t *delays;
     npy_intp n_;
     int n;
     int itmin_, nsamples_;
@@ -2271,7 +2286,7 @@ static PyObject* w_store_sum(PyObject *m, PyObject *args) {
         return NULL;
     }
 
-    if (!good_array(delays_arr, NPY_FLOAT32, n_, 1, NULL)) return NULL;
+    if (!good_array(delays_arr, NPY_FLOAT64, n_, 1, NULL)) return NULL;
     if (!good_array(weights_arr, NPY_FLOAT32, n_, 1, NULL)) return NULL;
 
     n = n_;
@@ -2313,7 +2328,7 @@ static PyObject* w_store_sum(PyObject *m, PyObject *args) {
         return NULL;
     }
 
-    return Py_BuildValue("Nififf", array, result.itmin, store->deltat,
+    return Py_BuildValue("Nidiff", array, result.itmin, store->deltat,
                          result.is_zero, result.begin_value, result.end_value);
 }
 
@@ -2323,7 +2338,8 @@ static PyObject* w_store_sum_static(PyObject *m, PyObject *args) {
     store_t *store;
     gf_dtype *result;
     uint64_t *irecords;
-    float32_t *delays, *weights;
+    float32_t *weights;
+    float64_t *delays;
     npy_intp shape[1];
     int32_t it, ntargets, nthreads;
     size_t nsummands, nsources;
@@ -2340,7 +2356,7 @@ static PyObject* w_store_sum_static(PyObject *m, PyObject *args) {
     }
 
     store = get_store_from_capsule(capsule);
-    
+
     nsummands = PyArray_SIZE((PyArrayObject*)irecords_arr) / ntargets;
     nsources = PyArray_SIZE((PyArrayObject*)delays_arr);
 
@@ -2352,7 +2368,7 @@ static PyObject* w_store_sum_static(PyObject *m, PyObject *args) {
             /*PyErr_SetString(st->error, "store_sum_static: unhealthy irecords array");*/
             return NULL;
     }
-    if (!good_array((PyObject*)delays_arr, NPY_FLOAT32, -1, 1, NULL) ||
+    if (!good_array((PyObject*)delays_arr, NPY_FLOAT64, -1, 1, NULL) ||
         nsummands % nsources != 0) {
         PyErr_SetString(st->error, "store_sum_static: unhealthy delays array");
         return NULL;
@@ -2373,7 +2389,7 @@ static PyObject* w_store_sum_static(PyObject *m, PyObject *args) {
     shape[0] = (npy_intp) ntargets;
     result_arr = (PyArrayObject*) PyArray_ZEROS(1, shape, NPY_GFDTYPE, 0);
     result = PyArray_DATA(result_arr);
-    
+
     err = store_sum_static(store, irecords, delays, weights, it, ntargets, nsummands, nsources, nthreads, result);
     if (SUCCESS != err) {
         PyErr_SetString(st->error, store_error_names[err]);
@@ -2407,7 +2423,7 @@ static PyObject* w_make_sum_params(PyObject *m, PyObject *args) {
 
     if (!PyArg_ParseTuple(
             args, "OOOOssI", &capsule, &source_coords_arr, &ms_arr,
-            &receiver_coords_arr, &component_scheme_name, 
+            &receiver_coords_arr, &component_scheme_name,
             &interpolation_scheme_name, &nthreads)) {
         PyErr_SetString(st->error,
             "usage: make_sum_params(cstore, source_coords, moment_tensors, receiver_coords, component_scheme, interpolation_name, nthreads)");
@@ -2532,7 +2548,7 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
 
     if (!PyArg_ParseTuple(
             args, "OOOOOssOOI", &capsule, &source_coords_arr, &ms_arr, &delays_arr,
-            &receiver_coords_arr, &component_scheme_name, 
+            &receiver_coords_arr, &component_scheme_name,
             &interpolation_scheme_name, &itmin_arr, &nsamples_arr, &nthreads)) {
         PyErr_SetString(st->error,
             "usage: store_calc_timeseries(cstore, source_coords, moment_tensors, delays, receiver_coords, component_scheme, interpolation_name, itmin_arr, nsamples_arr, nthreads)");
@@ -2644,7 +2660,7 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
             PyErr_SetString(st->error, "Could not allocate result data array");
             return NULL;
         }
-        
+
         result->buf_pos = RESULT_INIT_CAPACITY;
         result->data = result->buffer + RESULT_INIT_CAPACITY;
 
@@ -2682,7 +2698,7 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
         array = (PyObject*) PyArray_SimpleNewFromData(1, array_dims, NPY_GFDTYPE, data);
         PyArray_ENABLEFLAGS((PyArrayObject*) array, NPY_ARRAY_OWNDATA);
 
-        out_tuple = Py_BuildValue("Nififfii",
+        out_tuple = Py_BuildValue("Nidiffii",
                 array, result->itmin, store->deltat,
                 result->is_zero, result->begin_value, result->end_value, result->icomponent, result->err);
         PyList_Append(out_list, out_tuple);

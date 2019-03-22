@@ -364,8 +364,12 @@ class BaseStore(object):
             raise CannotOpen('cannot open gf store: %s' % self.store_dir)
 
         try:
+            # replace single precision deltat value in store with the double
+            # precision value from the config, if available
             self.cstore = store_ext.store_init(
-                self._f_index.fileno(), self._f_data.fileno())
+                self._f_index.fileno(), self._f_data.fileno(),
+                self.get_deltat() or 0.0)
+
         except store_ext.StoreExtError as e:
             raise StoreError(str(e))
 
@@ -484,7 +488,11 @@ class BaseStore(object):
         else:
             return self._get_impl_reference(irecord, itmin, nsamples, decimate)
 
+    def get_deltat(self):
+        return self._deltat
+
     def _get_impl_reference(self, irecord, itmin, nsamples, decimate):
+        deltat = self.get_deltat()
 
         if not (0 <= irecord < self._nrecords):
             raise StoreError('invalid record number requested '
@@ -515,7 +523,7 @@ class BaseStore(object):
             ihi = min(itmin+nsamples, itmin_data+nsamples_data) - itmin_data
             data = self._get_data(ipos, begin_value, end_value, ilo, ihi)
 
-            return GFTrace(data, itmin=itmin_data+ilo, deltat=self._deltat,
+            return GFTrace(data, itmin=itmin_data+ilo, deltat=deltat,
                            begin_value=begin_value, end_value=end_value)
 
         else:
@@ -559,7 +567,7 @@ class BaseStore(object):
                     data_deci[-1] = end_value
 
             return GFTrace(data_deci, itmin_ext//decimate,
-                           self._deltat*decimate,
+                           deltat*decimate,
                            begin_value=begin_value, end_value=end_value)
 
     def _get_span(self, irecord, decimate=1):
@@ -593,9 +601,11 @@ class BaseStore(object):
         if not self._f_index:
             self.open()
 
+        deltat = self.get_deltat()
+
         assert self.mode == 'w'
         assert trace.is_zero or \
-            abs(trace.deltat - self._deltat) < 1e-7 * self._deltat
+            abs(trace.deltat - deltat) < 1e-7 * deltat
         assert 0 <= irecord < self._nrecords, \
             'irecord = %i, nrecords = %i' % (irecord, self._nrecords)
 
@@ -630,7 +640,7 @@ class BaseStore(object):
 
         assert self.mode == 'r'
 
-        deltat = self._deltat * decimate
+        deltat = self.get_deltat() * decimate
 
         if len(irecords) == 0:
             if None in (itmin, nsamples):
@@ -721,7 +731,7 @@ class BaseStore(object):
         if not self._f_index:
             self.open()
 
-        deltat = self._deltat * decimate
+        deltat = self.get_deltat() * decimate
 
         if len(irecords) == 0:
             if None in (itmin, nsamples):
@@ -785,7 +795,7 @@ class BaseStore(object):
         if num.unique(irecords).size == irecords.size:
             return irecords, delays, weights
 
-        deltat = self._deltat
+        deltat = self.get_deltat()
 
         delays = delays / deltat
         irecords2 = num.repeat(irecords, 2)
@@ -834,10 +844,11 @@ class BaseStore(object):
             assert optimization == 'disable'
 
         t1 = time.time()
+        deltat = self.get_deltat()
 
         if implementation == 'c' and decimate == 1:
             if delays.size != 0:
-                itoffset = int(num.floor(num.min(delays)/self._deltat))
+                itoffset = int(num.floor(num.min(delays)/deltat))
             else:
                 itoffset = 0
 
@@ -852,7 +863,7 @@ class BaseStore(object):
             try:
                 tr = GFTrace(*store_ext.store_sum(
                     self.cstore, irecords.astype(num.uint64),
-                    (delays - itoffset*self._deltat).astype(num.float32),
+                    delays - itoffset*deltat,
                     weights.astype(num.float32),
                     int(itmin), int(nsamples)))
 
@@ -905,7 +916,7 @@ class BaseStore(object):
     def _save_index(self):
         self._f_index.seek(0)
         self._f_index.write(struct.pack(gf_store_header_fmt, self._nrecords,
-                                        self._deltat))
+                                        self.get_deltat()))
 
         if self._use_memmap:
             del self._records
@@ -1147,6 +1158,9 @@ class Store(BaseStore):
             os.rename(config_fn, config_fn + '~')
 
         meta.dump(self.config, filename=config_fn)
+
+    def get_deltat(self):
+        return self.config.deltat
 
     def load_config(self):
         logger.debug('loading config file ...')
@@ -1882,7 +1896,7 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
         for irec, rec in enumerate(receivers):
             receiver_coords_arr[irec, :] = rec.coords5
 
-        dt = self._deltat
+        dt = self.get_deltat()
 
         itoffset = int(num.floor(delays.min()/dt)) if delays.size != 0 else 0
 
@@ -1901,7 +1915,7 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
                 store.cstore,
                 source_coords_arr,
                 source_terms,
-                (delays - itoffset*self._deltat),
+                (delays - itoffset*dt),
                 receiver_coords_arr,
                 scheme,
                 interpolation,
