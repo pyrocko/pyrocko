@@ -391,33 +391,33 @@ class GFTestCase(unittest.TestCase):
                                         (random.randint(0, nrecords),
                                          random.randint(0, nrecords))]:
 
-                        a = store.sum(
-                            indices, shifts, weights,
-                            itmin=itmin,
-                            nsamples=nsamples,
-                            decimate=deci)
+                    a = store.sum(
+                        indices, shifts, weights,
+                        itmin=itmin,
+                        nsamples=nsamples,
+                        decimate=deci)
 
-                        b = store.sum(
-                            indices, shifts, weights,
-                            itmin=itmin,
-                            nsamples=nsamples,
-                            decimate=deci,
-                            implementation='alternative')
+                    b = store.sum(
+                        indices, shifts, weights,
+                        itmin=itmin,
+                        nsamples=nsamples,
+                        decimate=deci,
+                        implementation='alternative')
 
-                        c = store.sum(
-                            indices, shifts, weights,
-                            itmin=itmin,
-                            nsamples=nsamples,
-                            decimate=deci,
-                            implementation='reference')
+                    c = store.sum(
+                        indices, shifts, weights,
+                        itmin=itmin,
+                        nsamples=nsamples,
+                        decimate=deci,
+                        implementation='reference')
 
-                        self.assertEqual(a.itmin, c.itmin)
-                        num.testing.assert_array_almost_equal(
-                            a.data, c.data, 2)
+                    self.assertEqual(a.itmin, c.itmin)
+                    num.testing.assert_array_almost_equal(
+                        a.data, c.data, 2)
 
-                        self.assertEqual(b.itmin, c.itmin)
-                        num.testing.assert_array_almost_equal(
-                            b.data, c.data, 2)
+                    self.assertEqual(b.itmin, c.itmin)
+                    num.testing.assert_array_almost_equal(
+                        b.data, c.data, 2)
 
         store.close()
 
@@ -597,30 +597,31 @@ class GFTestCase(unittest.TestCase):
         store_dir = self.get_pulse_store_dir()
         engine = gf.LocalEngine(store_dirs=[store_dir])
 
-        source = gf.ExplosionSource(
-                    depth=200.,
-                    magnitude=4.,
-                    time=160000.)
+        for stime in [0., -160000., time.time()]:
+            source = gf.ExplosionSource(
+                        depth=200.,
+                        magnitude=4.,
+                        time=stime)
 
-        targets = [
-            gf.Target(
-                codes=('', 'STA', '', component),
-                north_shift=500.,
-                tmin=-300.,
-                tmax=300.,
-                east_shift=500.)
+            targets = [
+                gf.Target(
+                    codes=('', 'STA', '', component),
+                    north_shift=500.,
+                    tmin=source.time-300.,
+                    tmax=source.time+300.,
+                    east_shift=500.)
 
-            for component in 'ZNE'
-        ]
+                for component in 'ZNE'
+            ]
 
-        response = engine.process(source, targets)
-        synthetic_traces = response.pyrocko_traces()
-        data = num.zeros(num.shape(synthetic_traces[0].ydata))
-        for tr in synthetic_traces:
-            data += tr.ydata
+            response = engine.process(source, targets)
+            synthetic_traces = response.pyrocko_traces()
+            data = num.zeros(num.shape(synthetic_traces[0].ydata))
+            for tr in synthetic_traces:
+                data += tr.ydata
 
-        sum_data = num.sum(abs(tr.ydata))
-        assert sum_data > 1
+            sum_data = num.sum(abs(tr.ydata))
+            assert sum_data > 1.0
 
     def benchmark_get(self):
         store_dir = self.get_benchmark_store_dir()
