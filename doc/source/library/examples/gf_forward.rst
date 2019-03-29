@@ -57,8 +57,8 @@ Download :download:`gf_forward_example2.py </../../examples/gf_forward_example2_
     :language: python
 
 
-Calculate forward model of thrust event and display wrapped phase
------------------------------------------------------------------
+Calculate forward model of thrust faulting and display wrapped phase
+--------------------------------------------------------------------
 
 In this example we compare the synthetic unwappred and wrapped LOS displacements caused by a thrust rupture.
 
@@ -76,8 +76,9 @@ Download :download:`gf_forward_example3.py </../../examples/gf_forward_example3.
     :language: python
 
 
-Combining severals sources
----------------------------
+Combining severals dislocation sources
+--------------------------------------
+
 In this example we combine two rectangular sources and plot the forward model in profile.
 
 .. figure:: /static/gf_static_several.png
@@ -91,4 +92,15 @@ In this example we combine two rectangular sources and plot the forward model in
 Download :download:`gf_forward_example4.py </../../examples/gf_forward_example4.py>`
 
 .. literalinclude :: /../../examples/gf_forward_example4.py
+    :language: python
+
+
+Creating a custom Source Time Function (STF)
+--------------------------------------------
+
+Basic example how to create a custom STF class, creating a linearly decreasing ramp excitation.
+
+Download :download:`gf_custom_stf.py </../../examples/gf_custom_stf.py>`
+
+.. literalinclude :: /../../examples/gf_custom_stf.py
     :language: python

@@ -259,7 +259,7 @@ class Trace(object):
 
     def mult(self, other, interpolate=True):
         '''
-        Muliply with values of other trace (self *= other).
+        Muliply with values of other trace ``(self *= other)``.
 
         Multiply values of ``other`` trace to the values of ``self``, where it
         intersects with ``other``.  This method does not change the extent of

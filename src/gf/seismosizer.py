@@ -1597,33 +1597,29 @@ class CLVDVolumeSource(SourceWithMagnitude):
         help='volume change of the explosion/implosion or '
              'the contracting/extending magmatic source. [m^3]')
 
-    clvd_magnitude = Float.T(
+    clvd_moment = Float.T(
         default=0.,
         help='Moment magnitude Mw as in [Hanks and Kanamori, 1979], '
-             'for the CLVD part')
+             'for the CLVD part. A negative magnitude reverses the CLVD, the'
+             ' absolute magnitude scales the CLVD.')
 
     get_moment_to_volume_change_ratio = \
         ExplosionSource.get_moment_to_volume_change_ratio
 
     def base_key(self):
         return Source.base_key(self) + \
-            (self.azimuth, self.dip, self.volume_change, self.clvd_magnitude)
+            (self.azimuth, self.dip, self.volume_change, self.clvd_moment)
 
     @property
     def magnitude(self):
-        return self.clvd_magnitude
+        return float(self.get_magnitude())
 
-    def get_magnitude(self):
-        mt = self.pyrocko_moment_tensor()
-        return float(mt.moment_to_magnitude(mt.moment))
-
-    def get_factor(self):
-        if not self.clvd_magnitude:
-            return 1.
-        return float(mt.magnitude_to_moment(self.clvd_magnitude))
+    def get_magnitude(self, store=None, target=None):
+        pmt = self.pyrocko_moment_tensor(store, target)
+        return float(mt.moment_to_magnitude(pmt.moment))
 
     def get_m6(self, store, target):
-        a = math.sqrt(4. / 3.) * self.get_factor()
+        a = math.sqrt(4. / 3.) * self.clvd_moment
         m_clvd = mt.symmat6(-0.5 * a, -0.5 * a, a, 0., 0., 0.)
 
         rotmat1 = mt.euler_to_matrix(
@@ -1633,7 +1629,9 @@ class CLVDVolumeSource(SourceWithMagnitude):
         m_clvd = rotmat1.T * m_clvd * rotmat1
 
         if store is None and target is None:
-            m_iso = 0.
+            logger.warning('Store and target not given, assuming a '
+                           'shear modulus of 36 GPa.')
+            m_iso = self.volume_change * 36e9 * 3.
         else:
             m_iso = self.volume_change * \
                 self.get_moment_to_volume_change_ratio(store, target)
