@@ -27,27 +27,25 @@ import sphinx_sleekcat_theme
 # -- General configuration ----------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
-#needs_sphinx = '1.0'
+# needs_sphinx = '1.0'
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc',
-    'sphinx.ext.imgmath', # 'sphinx.ext.jsmath', 
-    'sphinx.ext.viewcode',
-    'sphinx.ext.intersphinx',
-    'sphinx.ext.autosummary'
+extensions = [
+  'sphinx.ext.autodoc',
+  'sphinx.ext.imgmath',  # 'sphinx.ext.jsmath',
+  'sphinx.ext.viewcode',
+  'sphinx.ext.intersphinx',
+  'sphinx.ext.autosummary'
 ]
 
 intersphinx_mapping = {'numpy': ('https://docs.scipy.org/doc/numpy/',
                                  None),
                        'scipy': ('https://docs.scipy.org/doc/scipy/reference/',
                                  None),
-                       'matplotlib': ('https://matplotlib.org/',
-                                 None),
-                       'python': ('https://docs.python.org/3.5',
-                                  None),
-                       'obspy': ('https://docs.obspy.org/',
-                                  None)}
+                       'matplotlib': ('https://matplotlib.org/', None),
+                       'python': ('https://docs.python.org/3.5', None),
+                       'obspy': ('https://docs.obspy.org/', None)}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -57,16 +55,16 @@ source_suffix = '.rst'
 imgmath_image_format = 'svg'
 
 # The encoding of source files.
-#source_encoding = 'utf-8-sig'
+# source_encoding = 'utf-8-sig'
 
 # The master toctree document.
 master_doc = 'index'
 
 # General information about the project.
-project = u'Pyrocko'
-copyright = u'%d, The Pyrocko Developers' % dt.now().year
+project = 'Pyrocko'
+copyright = '%d, The Pyrocko Developers' % dt.now().year
 
-# The version info for the project you're documenting, acts as replacement for
+# The version info for the project yo're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
@@ -107,7 +105,7 @@ add_module_names = False
 pygments_style = 'sphinx'
 
 # A list of ignored prefixes for module index sorting.
-modindex_common_prefix = [ 'pyrocko.' ]
+modindex_common_prefix = ['pyrocko.']
 
 
 # -- Options for HTML output ---------------------------------------------------
@@ -223,8 +221,8 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'pyrocko.tex', u'Pyrocko Documentation',
-   u'The Pyrocko Developers', 'manual'),
+  ('index', 'pyrocko.tex', 'Pyrocko Documentation',
+   'The Pyrocko Developers', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -260,8 +258,8 @@ autodoc_member_order = 'bysource'
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'pyrocko', u'Pyrocko Documentation',
-     [u'The Pyrocko Developers'], 1)
+    ('index', 'pyrocko', 'Pyrocko Documentation',
+     ['The Pyrocko Developers'], 1)
 ]
 
 
