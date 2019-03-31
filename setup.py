@@ -205,8 +205,7 @@ def check_pyrocko_install_compat():
         return
 
     expected_submodules = ['gui', 'dataset', 'client',
-                           'streaming', 'io', 'model',
-                           'modelling']
+                           'streaming', 'io', 'model']
 
     installed_date, p, install_path, long_version = found[0]
 

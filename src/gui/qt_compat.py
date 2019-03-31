@@ -101,3 +101,5 @@ def fnpatch(x):
         return x, None
 
 
+def get_em(painter):
+    return painter.boundingRect(qc.QRectF(), 0, 'M').width()
