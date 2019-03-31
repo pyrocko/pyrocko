@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+
 # https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
@@ -14,6 +14,7 @@ import sys
 import types
 import copy
 from collections import defaultdict
+from base64 import b64decode, b64encode
 
 from io import BytesIO
 
@@ -953,6 +954,21 @@ class String(Object):
 
         def to_save(self, val):
             return self.style_cls(val)
+
+
+class Bytes(Object):
+    dummy_for = bytes
+
+    class __T(TBase):
+
+        def regularize_extra(self, val):
+            if isinstance(val, (str, newstr)):
+                val = b64decode(val)
+
+            return val
+
+        def to_save(self, val):
+            return literal(b64encode(val).decode('utf-8'))
 
 
 class Unicode(Object):
@@ -1949,7 +1965,12 @@ def set_elements(obj, ypath, value, validate=False, regularize=False):
     ynames = ypath.split('.')
     try:
         d = _parse_yname(ynames[-1])
-        for sobj in iter_elements(obj, ynames[:-1]):
+        if ynames[:-1]:
+            it = iter_elements(obj, ynames[:-1])
+        else:
+            it = [obj]
+
+        for sobj in it:
             if d['name'] not in sobj.T.propnames:
                 raise AttributeError(d['name'])
 
@@ -1995,7 +2016,11 @@ def zip_walk(x, typ=None, path=(), stack=()):
 
 def path_element(x):
     if isinstance(x, tuple):
-        return '%s[%i]' % x
+        if len(x) == 2:
+            return '%s[%i]' % x
+        elif len(x) == 3:
+            return '%s[%i:%i]' % x
+
     else:
         return x
 
