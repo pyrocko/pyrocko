@@ -1831,11 +1831,13 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
         else:
             delays = source.times*0
             itsnapshot = 1
+
         scheme_desc = meta.component_scheme_to_description[
             self.config.component_scheme]
 
         if ntargets == 0:
             raise StoreError('MultiLocation.coords5 is empty')
+
         res = store_ext.store_calc_static(
             self.cstore,
             source.coords5(),
@@ -1901,8 +1903,8 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
 
         if itmin is None:
             itmin = num.zeros(nreceiver, dtype=num.int32)
-
-        itmin = (itmin-itoffset).astype(num.int32)
+        else:
+            itmin = (itmin-itoffset).astype(num.int32)
 
         if nsamples is None:
             nsamples = num.zeros(nreceiver, dtype=num.int32) - 1
@@ -1988,7 +1990,7 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
                 scheme,
                 interpolation, nthreads)
 
-        except store_ext.StoreExtError as e:
+        except store_ext.StoreExtError:
             raise meta.OutOfBounds()
 
         provided_components = scheme_desc.provided_components

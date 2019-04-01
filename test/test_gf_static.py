@@ -332,8 +332,8 @@ mantle
         benchmark.clear()
         for nthreads in [1, 2, 4]:
             for (weights, irecords) in store_ext.make_sum_params(*args):
-                delays_t = num.zeros_like(weights)
-                delays_s = dsource.times.astype(num.float32)
+                delays_t = num.zeros_like(weights, dtype=num.float64)
+                delays_s = dsource.times.astype(num.float64)
                 pos = 6
                 t, s = sum_target(store.cstore, irecords, delays_t, delays_s,
                                   weights, pos, nthreads)
@@ -400,7 +400,7 @@ mantle
 
         dsource = source.discretize_basesource(store, targets[0])
         mts_arr = dsource.m6s
-        delays_s = dsource.times.astype(num.float32)
+        delays_s = dsource.times.astype(num.float64)
         pos = 1
 
         scheme_desc = ['displacement.n', 'displacement.e', 'displacement.d']

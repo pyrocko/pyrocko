@@ -167,12 +167,6 @@ typedef struct {
 #define VICINITY_NIP_MAX 8
 
 typedef enum {
-    TYPE_A = 0,
-    TYPE_B,
-    TYPE_C,
-} mapping_scheme_id;
-
-typedef enum {
     NEAREST_NEIGHBOR = 0,
     MULTILINEAR,
     UNDEFINED_INTERPOLATION_SCHEME,
@@ -186,6 +180,9 @@ const char* interpolation_scheme_names[] = {
 
 typedef store_error_t (*irecord_function_t)(const mapping_t*, const float64_t*, const float64_t*, uint64_t*);
 typedef store_error_t (*vicinity_function_t)(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
+
+static store_error_t irecord_function_type_0(const mapping_t*, const float64_t*, const float64_t*, uint64_t*);
+static store_error_t vicinity_function_type_0(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
 
 static store_error_t irecord_function_type_a(const mapping_t*, const float64_t*, const float64_t*, uint64_t*);
 static store_error_t vicinity_function_type_a(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
@@ -201,8 +198,15 @@ typedef struct {
     const vicinity_function_t vicinity;
 } mapping_scheme_t;
 
+typedef enum {
+    TYPE_0 = 0,
+    TYPE_A,
+    TYPE_B,
+    TYPE_C,
+} mapping_scheme_id;
 
 const mapping_scheme_t mapping_schemes[] = {
+    {"type_0", 2, 1, irecord_function_type_0, vicinity_function_type_0},
     {"type_a", 4, 2, irecord_function_type_a, vicinity_function_type_a},
     {"type_b", 8, 3, irecord_function_type_b, vicinity_function_type_b},
     {NULL, 0, 0, NULL, NULL},
@@ -253,12 +257,9 @@ typedef struct {
     int32_t icomponent;
     int32_t itmin;
     int32_t itmin_want;
-    int32_t itmax;
     int32_t nsamples;
     int32_t nsamples_want;
     int32_t ncapacity;
-    int32_t buf_pos;
-    int32_t empty;
     store_error_t err;
     gf_dtype begin_value;
     gf_dtype end_value;
@@ -270,15 +271,8 @@ typedef struct {
 
 #define NCOMPONENTS_MAX 3
 
-typedef enum {
-    ELASTIC2 = 0,
-    ELASTIC5,
-    ELASTIC8,
-    ELASTIC10,
-    /*POROELASTIC10,*/
-} component_scheme_id;
-
 typedef void (*make_weights_function_t)(const float64_t*, const float64_t*, const float64_t*, float64_t*);
+static void make_weights_dummy(const float64_t*, const float64_t*, const float64_t*, float64_t*);
 static void make_weights_elastic2(const float64_t*, const float64_t*, const float64_t*, float64_t*);
 static void make_weights_elastic5(const float64_t*, const float64_t*, const float64_t*, float64_t*);
 static void make_weights_elastic8(const float64_t*, const float64_t*, const float64_t*, float64_t*);
@@ -294,6 +288,10 @@ typedef struct {
     const uint64_t **igs;
     const make_weights_function_t make_weights;
 } component_scheme_t;
+
+const size_t nsummands_dummy[] = {1};
+static const uint64_t igs_dummy_0[] = {0};
+static const uint64_t *igs_dummy[] = {igs_dummy_0};
 
 const size_t nsummands_elastic2[] = {1, 1, 1};
 static const uint64_t igs_elastic2_0[] = {0};
@@ -319,7 +317,17 @@ static const uint64_t igs_elastic10_1[] = {0, 1, 2, 8, 3, 4};
 static const uint64_t igs_elastic10_2[] = {5, 6, 7, 9};
 static const uint64_t *igs_elastic10[] = {igs_elastic10_0, igs_elastic10_1, igs_elastic10_2};
 
+typedef enum {
+    DUMMY = 0,
+    ELASTIC2,
+    ELASTIC5,
+    ELASTIC8,
+    ELASTIC10,
+    /*POROELASTIC10,*/
+} component_scheme_id;
+
 const component_scheme_t component_schemes[] = {
+    {"dummy", 1, 1, 1, nsummands_dummy, igs_dummy, make_weights_dummy},
     {"elastic2", 1, 3, 1, nsummands_elastic2, igs_elastic2, make_weights_elastic2},
     {"elastic5", 3, 3, 3, nsummands_elastic5, igs_elastic5, make_weights_elastic5},
     {"elastic8", 6, 3, 5, nsummands_elastic8, igs_elastic8, make_weights_elastic8},
@@ -603,7 +611,6 @@ static store_error_t store_sum(
     float64_t delay;
     trace_t trace;
     float64_t deltat = store->deltat;
-    gf_dtype begin_value, end_value;
     int ilo;
     int i, j;
     int idelay_floor, idelay_ceil;
@@ -618,8 +625,6 @@ static store_error_t store_sum(
     nsamples = result->nsamples;
 
     result->is_zero = 1;
-    result->begin_value = 0.0;
-    result->end_value = 0.0;
 
     if (!inlimits(itmin) || !inposlimits(nsamples)) {
         return BAD_REQUEST;
@@ -628,9 +633,6 @@ static store_error_t store_sum(
     if (0 == n) {
         return SUCCESS;
     }
-
-    begin_value = 0.0;
-    end_value = 0.0;
 
     for (j=0; j<n; j++) {
 
@@ -707,13 +709,11 @@ static store_error_t store_sum(
             }
         }
 
-        begin_value += trace.begin_value * weight;
-        end_value += trace.end_value * weight;
+        result->begin_value += trace.begin_value * weight;
+        result->end_value += trace.end_value * weight;
     }
 
     result->is_zero = 0;
-    result->begin_value = begin_value;
-    result->end_value = end_value;
 
     return SUCCESS;
 }
@@ -810,59 +810,85 @@ static store_error_t store_sum_static(
 
 
 static store_error_t ensure_trace_capacity(result_trace_t *result, int itmin, int itmax) {
-    int new_capacity, start_pos, nsamples, idx;
-    int ishift = 0;
-    gf_dtype *new_buffer, value;
+    int ncapacity, buf_pos, nsamples, i;
+    int ncapacity_add;
+    int ishift;
+    int itmin_buffer, itmax_buffer;
+    int result_itmax;
+    gf_dtype *buffer, value;
 
-    nsamples = itmax - itmin + 1;
+    if (result->nsamples_want != -1) {  /* fixed length request, nothing to do */
+        return SUCCESS;
+    }
 
-    /*printf("Requested itmin: %d, itmax: %d, nsamples: %d\n", itmin, itmax, nsamples);*/
-
-    if (nsamples > (result->ncapacity - result->buf_pos)) {
-        new_capacity = result->ncapacity;
-
-        do {
-            new_capacity = new_capacity + 2*RESULT_INIT_CAPACITY;
-            start_pos = (new_capacity - nsamples) / 2;
-        } while (nsamples > new_capacity - start_pos);
-
-
-        new_buffer = (gf_dtype*) calloc(new_capacity, sizeof(gf_dtype));
-        if (new_buffer == NULL)
+    if (result->buffer == NULL) {  /* initial allocation */
+        itmin_buffer = itmin;
+        itmax_buffer = itmax;
+        nsamples = itmax - itmin + 1;
+        ncapacity = max(nsamples * 3, RESULT_INIT_CAPACITY);
+        buffer = (gf_dtype*) calloc(ncapacity, sizeof(gf_dtype));
+        if (buffer == NULL)
             return ALLOC_FAILED;
 
-        memcpy(new_buffer + start_pos, result->buffer, sizeof(gf_dtype) * result->ncapacity);
 
+        buf_pos = (ncapacity - nsamples) / 2;
+        result->buffer = buffer;
+        result->data = result->buffer + buf_pos;
+        result->ncapacity = ncapacity;
+        result->itmin = itmin;
+        result->nsamples = nsamples;
+    } else {
+        itmin_buffer = result->itmin - (int)(result->data - result->buffer);
+        itmax_buffer = itmin_buffer + result->ncapacity - 1;
+        itmin = min(itmin, result->itmin);
+        itmax = max(itmax, result->itmin + result->nsamples - 1);
+    }
+
+    if (itmin < itmin_buffer || itmax_buffer < itmax) {  /* resize */
+        buf_pos = (int)(result->data - result->buffer);
+        ncapacity = result->ncapacity;
+        do {
+            ncapacity_add = max(ncapacity, RESULT_INIT_CAPACITY);
+            ncapacity += ncapacity_add;
+            buf_pos += ncapacity_add / 2;
+            itmin_buffer -= ncapacity_add / 2;
+            itmax_buffer = itmin_buffer + ncapacity - 1;
+        } while (itmin < itmin_buffer || itmax_buffer < itmax);
+
+        buffer = (gf_dtype*) calloc(ncapacity, sizeof(gf_dtype));
+        if (buffer == NULL)
+            return ALLOC_FAILED;
+
+        memcpy(buffer + buf_pos, result->data, sizeof(gf_dtype) * result->nsamples);
         free(result->buffer);
 
-        result->buf_pos = start_pos;
-        result->buffer = new_buffer;
-        result->data = result->buffer + start_pos;
-        result->ncapacity = new_capacity;
+        result->buffer = buffer;
+        result->data = result->buffer + buf_pos;
+        result->ncapacity = ncapacity;
     }
 
-    if (itmin < result->itmin) {
+    if (itmin < result->itmin) {  /* extend front */
         ishift = result->itmin - itmin;
+        value = result->data[0];
+        for (i=result->itmin-1; i>=itmin; i--)
+            result->data[i-result->itmin] = value;
 
-        if (result->data[0] != 0.) {
-            value = result->data[0];
-            for (idx=1; idx<=ishift; idx++)
-                result->data[-idx] = value;
-        }
-
-        result->buf_pos = result->buf_pos - ishift;
-        result->data = result->buffer + result->buf_pos;
-        result->itmin = itmin;
+        result->data -= ishift;
+        result->nsamples += ishift;
+        result->itmin -= ishift;
     }
 
-    if (nsamples > result->nsamples && result->data[result->nsamples-1] != 0.) {
-        value = result->data[ishift+result->nsamples-1];
-        for (idx=0; idx<(nsamples - result->nsamples); idx++)
-            result->data[result->nsamples+idx] = value;
+    result_itmax = result->itmin + result->nsamples - 1;
+
+    if (result_itmax < itmax) {  /* extend back */
+        ishift = itmax - result_itmax;
+        value = result->data[result->nsamples-1];
+        for (i=result_itmax+1; i<=itmax; i++)
+            result->data[i-result->itmin] = value;
+
+        result->nsamples += ishift;
     }
 
-    result->itmax = max(result->itmax, itmax);
-    result->nsamples = max(result->nsamples, nsamples);
     return SUCCESS;
 }
 
@@ -880,22 +906,14 @@ static store_error_t check_trace_extent(
 
     if (result->nsamples_want == -1) {
         err = store_get_span(store, irecord, &itmin, &ns, &is_zero);
-
         idelay_d = delay/store->deltat;
-        itmin = itmin + (int) floor(idelay_d);
-        itmax = itmin + ns + (int) ceil(idelay_d) - 1;
-
-        if (result->empty) {
-            result->itmin = itmin;
-            result->empty = 0;
-        }
-
-        itmin = min(result->itmin, itmin);
-        itmax = max(result->itmax, itmax);
+        itmax = (int) ceil((itmin + ns - 1) + idelay_d);
+        itmin = (int) floor(itmin + idelay_d);
     } else {
         itmin = result->itmin_want;
         itmax = result->itmin_want + result->nsamples_want - 1;
     }
+
     err += ensure_trace_capacity(result, itmin, itmax);
 
     return err;
@@ -992,8 +1010,8 @@ static store_error_t store_calc_timeseries(
     trace_t trace;
     result_trace_t *result;
     float64_t deltat = store->deltat;
-    gf_dtype begin_value, end_value;
-    int idx_record, idelay_floor, idelay_ceil;
+    int idelay_floor, idelay_ceil;
+    uint64_t irecord;
     store_error_t err = SUCCESS;
 
     size_t ireceiver, isource, iip, nip, icomponent, isummand, nsummands_max, nsummands;
@@ -1017,7 +1035,7 @@ static store_error_t store_calc_timeseries(
             shared (store, source_coords, ms, delays, receiver_coords, \
                     cscheme, mscheme, mapping, interpolation, nip, results, nsources, nsummands_max) \
             private (isource, iip, icomponent, isummand, nsummands, irecord_bases, weights_ip, ws_this, \
-                     delay, weight, idelay_floor, idelay_ceil, idx_record, trace, result, begin_value, end_value, err) \
+                     delay, weight, idelay_floor, idelay_ceil, irecord, trace, result, err) \
             num_threads (nthreads)
         {
         #pragma omp for schedule (dynamic)
@@ -1064,23 +1082,20 @@ static store_error_t store_calc_timeseries(
 
                     result = results[icomponent+ireceiver*cscheme->ncomponents];
 
-                    begin_value = 0.0;
-                    end_value = 0.0;
-
                     nsummands = cscheme->nsummands[icomponent];
 
                     for (iip=0; iip<nip; iip++) {
                         for (isummand=0; isummand<nsummands; isummand++) {
                             weight = weights_ip[iip] * ws_this[icomponent*nsummands_max + isummand];
 
-                            idx_record = irecord_bases[iip] + cscheme->igs[icomponent][isummand];
-                            err = check_trace_extent(store, result, delay, idx_record);
+                            irecord = irecord_bases[iip] + cscheme->igs[icomponent][isummand];
+                            err = check_trace_extent(store, result, delay, irecord);
                             if (err != SUCCESS || weight == 0.) {
                                 result->err = err;
                                 continue;
                             }
 
-                            err = store_get(store, idx_record, &trace);
+                            err = store_get(store, irecord, &trace);
                             if (err != SUCCESS || trace.is_zero) {
                                 result->err = err;
                                 continue;
@@ -1102,14 +1117,12 @@ static store_error_t store_calc_timeseries(
                                 deltat,
                                 result->data);
 
-                            begin_value += trace.begin_value * weight;
-                            end_value += trace.end_value * weight;
+                            result->begin_value += trace.begin_value * weight;
+                            result->end_value += trace.end_value * weight;
                         }
                     }
 
                     result->is_zero = 0;
-                    result->begin_value = begin_value;
-                    result->end_value = end_value;
                 }
             } else if (interpolation == NEAREST_NEIGHBOR) {
                 err = mscheme->irecord(
@@ -1130,22 +1143,19 @@ static store_error_t store_calc_timeseries(
 
                     result = results[icomponent+ireceiver*cscheme->ncomponents];
 
-                    begin_value = 0.0;
-                    end_value = 0.0;
-
                     nsummands = cscheme->nsummands[icomponent];
 
                     for (isummand=0; isummand<nsummands; isummand++) {
                         weight = ws_this[icomponent*nsummands_max + isummand];
 
-                        idx_record = irecord_bases[0] + cscheme->igs[icomponent][isummand];
-                        err = check_trace_extent(store, result, delay, idx_record);
+                        irecord = irecord_bases[0] + cscheme->igs[icomponent][isummand];
+                        err = check_trace_extent(store, result, delay, irecord);
                         if (err != SUCCESS || weight == 0.) {
                             result->err = err;
                             continue;
                         }
 
-                        err = store_get(store, idx_record, &trace);
+                        err = store_get(store, irecord, &trace);
                         if (err != SUCCESS || trace.is_zero) {
                             result->err = err;
                             continue;
@@ -1167,14 +1177,12 @@ static store_error_t store_calc_timeseries(
                             deltat,
                             result->data);
 
-                        begin_value += trace.begin_value * weight;
-                        end_value += trace.end_value * weight;
+                        result->begin_value += trace.begin_value * weight;
+                        result->end_value += trace.end_value * weight;
 
                     }
 
                     result->is_zero = 0;
-                    result->begin_value = begin_value;
-                    result->end_value = end_value;
                 }
             }
         }
@@ -1208,7 +1216,8 @@ static store_error_t store_calc_static(
     trace_t trace;
     float64_t deltat = store->deltat;
     int idelay_floor, idelay_ceil;
-    int idx, idx_record;
+    int idx;
+    uint64_t irecord;
     float w1, w2;
     store_error_t err = SUCCESS;
 
@@ -1244,7 +1253,7 @@ static store_error_t store_calc_static(
             shared (store, source_coords, ms, delays, receiver_coords, \
                     cscheme, mscheme, mapping, interpolation, it, nip, result) \
             private (isource, iip, icomponent, isummand, nsummands, irecord_bases, weights_ip, ws_this, \
-                     delay, weight, idelay_floor, idelay_ceil, idx, idx_record, trace, w1, w2) \
+                     delay, weight, idelay_floor, idelay_ceil, idx, irecord, trace, w1, w2) \
             reduction (+: err) \
             num_threads (nthreads)
         {
@@ -1283,8 +1292,8 @@ static store_error_t store_calc_static(
                             if (weight == 0.)
                                 continue;
 
-                            idx_record = irecord_bases[iip] + cscheme->igs[icomponent][isummand];
-                            err += store_get(store, idx_record, &trace);
+                            irecord = irecord_bases[iip] + cscheme->igs[icomponent][isummand];
+                            err += store_get(store, irecord, &trace);
                             if (trace.is_zero)
                                 continue;
 
@@ -1315,8 +1324,8 @@ static store_error_t store_calc_static(
                         if (weight == 0.)
                             continue;
 
-                        idx_record = irecord_bases[0] + cscheme->igs[icomponent][isummand];
-                        err += store_get(store, idx_record, &trace);
+                        irecord = irecord_bases[0] + cscheme->igs[icomponent][isummand];
+                        err += store_get(store, irecord, &trace);
                         if (trace.is_zero)
                             continue;
 
@@ -1557,7 +1566,7 @@ static store_t* get_store_from_capsule(PyObject *capsule) {
 #else
     if (!PyCObject_Check(capsule)) {
 #endif
-        PyErr_SetString(PyExc_ValueError, "store_sum: invalid cstore argument");
+        PyErr_SetString(PyExc_ValueError, "store_init: invalid cstore argument");
         return NULL;
     }
 
@@ -1844,13 +1853,26 @@ static void distance4(const float64_t *a, const float64_t *b, float64_t *distanc
     bnorth = b[2];
     beast = b[3];
 
-    if (alat == blat && alon == blon) { /* carthesian */
+    if (alat == blat && alon == blon) { /* cartesian */
         *distance = sqrt(SQR(bnorth - anorth) + SQR(beast - aeast));
     } else { /* spherical */
         ne_to_latlon(alat, alon, anorth, aeast, &alat_eff, &alon_eff);
         ne_to_latlon(blat, blon, bnorth, beast, &blat_eff, &blon_eff);
         distance_accurate50m(alat_eff, alon_eff, blat_eff, blon_eff, distance);
     }
+}
+
+
+static void make_weights_dummy(
+        const float64_t *source_coords,
+        const float64_t *ms,
+        const float64_t *receiver_coords,
+        float64_t *ws) {
+
+    (void)source_coords;
+    (void)receiver_coords;
+
+    ws[0] = ms[0];
 }
 
 
@@ -2009,6 +2031,71 @@ static void make_weights_elastic10(
     ws[ioff + 1] = f1;
     ws[ioff + 2] = f2;
     ws[ioff + 3] = f5;
+}
+
+static store_error_t irecord_function_type_0(
+        const mapping_t *mapping,
+        const float64_t *source_coords,
+        const float64_t *receiver_coords,
+        uint64_t *irecord) {
+
+    float64_t v[2];
+    uint64_t i;
+    float64_t d3d;
+
+    v[0] = source_coords[4] - receiver_coords[4];
+    distance4(source_coords, receiver_coords, &v[1]);
+    d3d = sqrt(SQR(v[0]) + SQR(v[1]));
+
+    i = (uint64_t)(round((d3d - mapping->mins[0]) / mapping->deltas[0]));
+    if (i >= mapping->ns[0]) {
+        return INDEX_OUT_OF_BOUNDS;
+    }
+    *irecord = i*mapping->ng;
+    return SUCCESS;
+}
+
+static store_error_t vicinity_function_type_0(
+        const mapping_t *mapping,
+        const float64_t *source_coords,
+        const float64_t *receiver_coords,
+        uint64_t *irecords,
+        float64_t *weights) {
+
+    float64_t v[2], w_fl, w_ce;
+    float64_t d3d;
+    float64_t x, x_fl, x_ce;
+    uint64_t i_fl, i_ce;
+    uint64_t ns;
+
+    v[0] = source_coords[4] - receiver_coords[4];
+    distance4(source_coords, receiver_coords, &v[1]);
+    d3d = sqrt(SQR(v[0]) + SQR(v[1]));
+
+    ns = mapping->ns[0];
+
+    x = (d3d - mapping->mins[0]) / mapping->deltas[0];
+    x_fl = floor(x);
+    x_ce = ceil(x);
+
+    w_fl = 1.0 - (x - x_fl);
+    w_ce = (1.0 - (x_ce - x)) * (x_ce - x_fl);
+
+    i_fl = (uint64_t)x_fl;
+    i_ce = (uint64_t)x_ce;
+
+    if (i_fl >= ns || i_ce >= ns) {
+        return INDEX_OUT_OF_BOUNDS;
+    }
+
+    irecords[0] = mapping->ng * i_fl;
+    irecords[1] = mapping->ng * i_ce;
+    irecords[2] = mapping->ng * i_fl;
+    irecords[3] = mapping->ng * i_ce;
+
+    weights[0] = w_fl;
+    weights[1] = w_ce;
+    return SUCCESS;
 }
 
 static store_error_t irecord_function_type_a(
@@ -2321,6 +2408,8 @@ static PyObject* w_store_sum(PyObject *m, PyObject *args) {
     result.nsamples = nsamples;
     result.itmin = itmin;
     result.data = (gf_dtype*)PyArray_DATA(array);
+    result.begin_value = 0.0;
+    result.end_value = 0.0;
 
     err = store_sum(store, irecords, delays, weights, n, &result);
     if (SUCCESS != err) {
@@ -2365,7 +2454,7 @@ static PyObject* w_store_sum_static(PyObject *m, PyObject *args) {
         return NULL;
     }
     if (!good_array((PyObject*)irecords_arr, NPY_UINT64, nsummands * ntargets, 1, NULL)) {
-            /*PyErr_SetString(st->error, "store_sum_static: unhealthy irecords array");*/
+            PyErr_SetString(st->error, "store_sum_static: unhealthy irecords array");
             return NULL;
     }
     if (!good_array((PyObject*)delays_arr, NPY_FLOAT64, -1, 1, NULL) ||
@@ -2374,7 +2463,7 @@ static PyObject* w_store_sum_static(PyObject *m, PyObject *args) {
         return NULL;
     }
     if (!good_array((PyObject*)weights_arr, NPY_FLOAT32, nsummands * ntargets, 1, NULL)) {
-        /*PyErr_SetString(st->error, "store_sum_static: unhealthy weights array");*/
+        PyErr_SetString(st->error, "store_sum_static: unhealthy weights array");
         return NULL;
     }
     if (!inlimits(it)) {
@@ -2625,8 +2714,6 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
     result_trace_t *results[nreceivers*cscheme->ncomponents];
 
     for (ires=0; ires < nreceivers*cscheme->ncomponents; ires++) {
-
-
         nsamples_want = nsamples[ires / cscheme->ncomponents];
         itmin_want = itmin[ires / cscheme->ncomponents];
 
@@ -2638,32 +2725,30 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
 
         result->icomponent = ires % cscheme->ncomponents;
 
-        result->nsamples = 0; // initialized by check_trace_extent
+        result->nsamples = 0;
         result->nsamples_want = nsamples_want;
 
         result->itmin = itmin_want;
         result->itmin_want = itmin_want;
-        result->itmax = 0; // initialized by check_trace_extent
-        result->empty = 1;
         result->err = SUCCESS;
 
         result->begin_value = 0.0;
         result->end_value = 0.0;
 
-        if (nsamples_want == -1)
-            result->ncapacity = RESULT_INIT_CAPACITY * 3;
-        else
-            result->ncapacity = (nsamples_want / RESULT_INIT_CAPACITY + 1) + RESULT_INIT_CAPACITY * 2;
-
-        result->buffer = (gf_dtype*) calloc(result->ncapacity, sizeof(gf_dtype));
-        if (result->buffer == NULL) {
-            PyErr_SetString(st->error, "Could not allocate result data array");
-            return NULL;
+        if (nsamples_want == -1) {
+            result->buffer = NULL;
+            result->data = NULL;
+        } else {
+            result->itmin = itmin_want;
+            result->nsamples = nsamples_want;
+            result->ncapacity = nsamples_want;
+            result->buffer = (gf_dtype*) calloc(result->ncapacity, sizeof(gf_dtype));
+            if (result->buffer == NULL) {
+                PyErr_SetString(st->error, "Could not allocate result data array");
+                return NULL;
+            }
+            result->data = result->buffer;
         }
-
-        result->buf_pos = RESULT_INIT_CAPACITY;
-        result->data = result->buffer + RESULT_INIT_CAPACITY;
-
         results[ires] = result;
     }
 
@@ -2691,6 +2776,7 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
     for (ires=0; ires < nreceivers*cscheme->ncomponents; ires++) {
         result_trace_t *result = results[ires];
 
+
         data = malloc(result->nsamples * sizeof(gf_dtype));
         memcpy(data, result->data, result->nsamples * sizeof(gf_dtype));
 
@@ -2703,7 +2789,9 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
                 result->is_zero, result->begin_value, result->end_value, result->icomponent, result->err);
         PyList_Append(out_list, out_tuple);
 
-        free(result->buffer);
+        if (result->buffer != NULL)
+            free(result->buffer);
+
         free(result);
         Py_DECREF(out_tuple);
         /*printf("comp: %d, nsamples: %d, itmin: %d\n", result->icomponent, result->nsamples, result->itmin);*/

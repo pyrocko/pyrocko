@@ -4,7 +4,6 @@
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division, print_function
 from builtins import range, map, zip
-from past.builtins import cmp
 
 from collections import defaultdict
 from functools import cmp_to_key
@@ -3050,7 +3049,7 @@ class LocalEngine(Engine):
 
         itmin = num.floor(tmin * rate).astype(num.int64)
         itmax = num.ceil(tmax * rate).astype(num.int64)
-        nsamples = itmax - itmin
+        nsamples = itmax - itmin + 1
 
         mask = num.isnan(tmin)
         itmin[mask] = 0
@@ -3086,9 +3085,10 @@ class LocalEngine(Engine):
         receiver = target.receiver(store_)
 
         if target.tmin and target.tmax is not None:
-            n_f = store_.config.sample_rate
-            itmin = int(num.floor(target.tmin * n_f))
-            nsamples = int(num.ceil((target.tmax - target.tmin) * n_f))
+            rate = store_.config.sample_rate
+            itmin = int(num.floor(target.tmin * rate))
+            itmax = int(num.ceil(target.tmax * rate))
+            nsamples = itmax - itmin + 1
         else:
             itmin = None
             nsamples = None
@@ -3125,8 +3125,8 @@ class LocalEngine(Engine):
         store_ = self.get_store(target.store_id)
 
         if target.tsnapshot is not None:
-            n_f = store_.config.sample_rate
-            itsnapshot = int(num.floor(target.tsnapshot * n_f))
+            rate = store_.config.sample_rate
+            itsnapshot = int(num.floor(target.tsnapshot * rate))
         else:
             itsnapshot = None
         tcounters.append(xtime())
