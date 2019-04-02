@@ -10,21 +10,24 @@ def near(a, b, eps):
     return abs(a-b) < eps
 
 
+def is_the_haiti_event_geofon(ev):
+    assert near(ev.magnitude, 7.2, 0.001)
+    assert near(ev.lat, 18.37, 0.001)
+    assert near(ev.lon, -72.55, 0.001)
+    assert near(ev.depth, 17000., 1.)
+    assert ev.region == 'Haiti Region'
+    assert ev.tags.index('geofon_category:xxl') != -1
+
+
 class CatalogTestCase(unittest.TestCase):
 
     @common.require_internet
     def testGeofon(self):
-        def is_the_haiti_event(ev):
-            assert near(ev.magnitude, 7.2, 0.001)
-            assert near(ev.lat, 18.37, 0.001)
-            assert near(ev.lon, -72.55, 0.001)
-            assert near(ev.depth, 17000., 1.)
-            assert ev.region == 'Haiti Region'
 
         cat = catalog.Geofon()
 
-        tmin = util.ctimegm('2010-01-12 21:50:00')
-        tmax = util.ctimegm('2010-01-13 03:17:00')
+        tmin = util.str_to_time('2010-01-12 21:50:00')
+        tmax = util.str_to_time('2010-01-13 03:17:00')
 
         names = cat.get_event_names(
             time_range=(tmin, tmax), nmax=10, magmin=5.)
@@ -34,40 +37,54 @@ class CatalogTestCase(unittest.TestCase):
         for name in names:
             ev = cat.get_event(name)
             if ev.magnitude >= 7:
-                is_the_haiti_event(ev)
+                is_the_haiti_event_geofon(ev)
                 ident = ev.name
 
         assert ident is not None
 
         cat.flush()
-        ev = cat.get_event(ident)
-        is_the_haiti_event(ev)
+
+    @common.require_internet
+    def testGeofonSingleEvent(self):
+        cat = catalog.Geofon()
+        ev = cat.get_event('gfz2010avtm')
+        is_the_haiti_event_geofon(ev)
+        cat.flush()
 
     @common.require_internet
     def testGeofonMT(self):
         cat = catalog.Geofon()
-        tmin = util.ctimegm('2014-01-01 00:00:00')
-        tmax = util.ctimegm('2017-01-01 00:00:00')
+        tmin = util.str_to_time('2014-01-01 00:00:00')
+        tmax = util.str_to_time('2017-01-01 00:00:00')
         events = cat.get_events((tmin, tmax), magmin=8)
         self.assertEqual(len(events), 2)
         mt1, mt2 = [ev.moment_tensor for ev in events]
         angle = moment_tensor.kagan_angle(mt1, mt2)
         self.assertEqual(round(angle - 7.7, 1), 0.0)
 
+    @unittest.skip("don't want to annoy our colleagues at GEOFON")
+    def testGeofonMassive(self):
+        cat = catalog.Geofon(get_moment_tensors=False)
+        tmin = util.str_to_time('2010-01-01 00:00:00')
+        tmax = util.str_to_time('2018-01-01 00:00:00')
+        events = cat.get_events((tmin, tmax))
+        print(len(events))
+
     @common.require_internet
     def testISC(self):
         cat = catalog.ISC()
         tmin = util.stt('2009-02-22 05:00:00')
         tmax = util.stt('2009-02-22 19:00:00')
-        events = cat.get_events((tmin, tmax), magmin=5)
+        cat.get_events((tmin, tmax), magmin=5)
 
-        markers = cat.get_phase_markers((tmin, tmax),
-            phases=['XXX'], station_codes=['XXXXX', 'YYYYY'])
+        markers = cat.get_phase_markers(
+            (tmin, tmax), phases=['XXX'], station_codes=['XXXXX', 'YYYYY'])
 
         self.assertEqual(len(markers), 0)
 
-        markers = cat.get_phase_markers((tmin, tmax),
-            phases=['P', 'PcP'], station_codes=['WRA'])
+        markers = cat.get_phase_markers(
+            (tmin, tmax), phases=['P', 'PcP'], station_codes=['WRA'])
+
         self.assertEqual(len(markers), 75)
 
     @common.require_internet
@@ -82,8 +99,8 @@ class CatalogTestCase(unittest.TestCase):
 
         cat = catalog.GlobalCMT()
 
-        tmin = util.ctimegm('2010-01-12 21:50:00')
-        tmax = util.ctimegm('2010-01-13 03:17:00')
+        tmin = util.str_to_time('2010-01-12 21:50:00')
+        tmax = util.str_to_time('2010-01-13 03:17:00')
 
         names = cat.get_event_names(time_range=(tmin, tmax), magmin=5.)
         ident = None
@@ -109,8 +126,8 @@ class CatalogTestCase(unittest.TestCase):
 
         cat = catalog.USGS()
 
-        tmin = util.ctimegm('2010-01-12 21:50:00')
-        tmax = util.ctimegm('2010-01-13 03:17:00')
+        tmin = util.str_to_time('2010-01-12 21:50:00')
+        tmax = util.str_to_time('2010-01-13 03:17:00')
 
         names = cat.get_event_names(time_range=(tmin, tmax), magmin=5.)
         assert len(names) == 13

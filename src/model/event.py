@@ -45,7 +45,7 @@ class EmptyEvent(Exception):
 
 
 class Tag(StringPattern):
-    pattern = r'^[A-Za-z][A-Za-z0-9._]{0,128}:[A-Za-z0-9._-]+$'
+    pattern = r'^[A-Za-z][A-Za-z0-9._]{0,128}(:[A-Za-z0-9._-]*)?$'
 
 
 class Event(Location):
