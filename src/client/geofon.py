@@ -134,7 +134,7 @@ class Geofon(EarthquakeCatalog):
         return mt
 
     def _parse_events_page(self, page):
-        j = json.loads(page)
+        j = json.loads(page.decode('utf-8'))
         events = []
         for feature in j['features']:
             ev = self._json_feature_to_event(feature)
