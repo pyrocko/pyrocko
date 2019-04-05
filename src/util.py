@@ -422,6 +422,7 @@ class BetterHelpFormatter(optparse.IndentedHelpFormatter):
 
 
 def progressbar(label, maxval):
+    progressbar_mod = progressbar_module()
     if force_dummy_progressbar:
         progressbar_mod = dummy_progressbar
 
