@@ -2932,7 +2932,7 @@ class LocalEngine(Engine):
         Get a store from the engine.
 
         :param store_id: identifier of the store (optional)
-        :returns: :py:class:`pyrocko.gf.store.Store` object
+        :returns: :py:class:`~pyrocko.gf.store.Store` object
 
         If no ``store_id`` is provided the store
         associated with the :py:gattr:`default_store_id` is returned.

@@ -676,7 +676,7 @@ class DiscretizedSource(Object):
     '''Base class for discretized sources.
 
     To compute synthetic seismograms, the parameterized source models (see of
-    :py:class:`pyrocko.gf.seismosizer.Source` derived classes) are first
+    :py:class:`~pyrocko.gf.seismosizer.Source` derived classes) are first
     discretized into a number of point sources. These spacio-temporal point
     source distributions are represented by subclasses of the
     :py:class:`DiscretizedSource`. For elastodynamic problems there is the

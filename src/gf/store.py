@@ -115,7 +115,7 @@ sampling_check_eps = 1e-5
 class GFTrace(object):
 
     '''
-    Green's Function trace class for handling traces from the GF Store.
+    Green's Function trace class for handling traces from the GF store.
     '''
 
     @classmethod
@@ -166,7 +166,7 @@ class GFTrace(object):
         Time vector of the GF trace.
 
         :returns: Time vector
-        :rtype: :py:class:`numpy.Array`
+        :rtype: :py:class:`numpy.ndarray`
         '''
         return num.linspace(
             self.itmin*self.deltat,
@@ -1052,7 +1052,7 @@ class Store(BaseStore):
 
         Creates a new GF store at path ``store_dir``. The layout of the GF is
         defined with the parameters given in ``config``, which should be an
-        object of a subclass of :py:class:`pyrocko.gf.meta.Config`. This
+        object of a subclass of :py:class:`~pyrocko.gf.meta.Config`. This
         function will refuse to overwrite an existing GF store, unless
         ``force`` is set  to ``True``. If more information, e.g. parameters
         used for the modelling code, earth models or other, should be saved
@@ -1060,14 +1060,14 @@ class Store(BaseStore):
         ``extra``. The keys of this dict must be names and the values must be
         *guts* type objects.
 
-        :param store_dir: GF Store path
-        :type store_dir: string
-        :param config: GF Store Config
-        :type config: :py:class:`pyrocko.gf.meta.Config`
-        :param force: Force overwrite, defaults to False
-        :type force: bool, optional
-        :param extra: Extra information, defaults to None
-        :type extra: dict, optional
+        :param store_dir: GF store path
+        :type store_dir: str
+        :param config: GF store Config
+        :type config: :py:class:`~pyrocko.gf.meta.Config`
+        :param force: Force overwrite, defaults to ``False``
+        :type force: bool
+        :param extra: Extra information
+        :type extra: dict or None
         '''
 
         Store.create_editables(store_dir, config, force=force, extra=extra)
@@ -1119,7 +1119,7 @@ class Store(BaseStore):
         config_fn = self.config_fn()
         if not os.path.isfile(config_fn):
             raise StoreError(
-                'directory "%s" does not seem to contain a GF Store '
+                'directory "%s" does not seem to contain a GF store '
                 '("config" file not found)' % store_dir)
         self.load_config()
 
@@ -1235,12 +1235,12 @@ class Store(BaseStore):
 
         Store a single GF trace at (high-level) index ``args``.
 
-        :param args: :py:class:`pyrocko.gf.meta.Config` index tuple, e.g.
+        :param args: :py:class:`~pyrocko.gf.meta.Config` index tuple, e.g.
             ``(source_depth, distance, component)`` as in
-            :py:class:`pyrocko.gf.meta.ConfigTypeA`.
+            :py:class:`~pyrocko.gf.meta.ConfigTypeA`.
         :type args: tuple
-        :returns: GF Trace at ``args``
-        :rtype: :py:class:`pyrocko.gf.store.GFTrace`
+        :returns: GF trace at ``args``
+        :rtype: :py:class:`~pyrocko.gf.store.GFTrace`
         '''
 
         irecord = self.config.irecord(*args)
@@ -1265,26 +1265,27 @@ class Store(BaseStore):
         on the fly or, if available, the trace is read from a decimated version
         of the GF store.
 
-        :param args: :py:class:`pyrocko.gf.meta.Config` index tuple, e.g.
+        :param args: :py:class:`~pyrocko.gf.meta.Config` index tuple, e.g.
             ``(source_depth, distance, component)`` as in
-            :py:class:`pyrocko.gf.meta.ConfigTypeA`.
+            :py:class:`~pyrocko.gf.meta.ConfigTypeA`.
         :type args: tuple
         :param itmin: Start time index (start time is ``itmin * dt``),
             defaults to None
-        :type itmin: integer, optional
+        :type itmin: int or None
         :param nsamples: Number of samples, defaults to None
-        :type nsamples: integer, optional
+        :type nsamples: int or None
         :param decimate: Decimatation factor, defaults to 1
-        :type decimate: integer, optional
+        :type decimate: int
         :param interpolation: Interpolation method
             ``['nearest_neighbor', 'multilinear', 'off']``, defaults to
             ``'nearest_neighbor'``
-        :type interpolation: str, optional
-        :param implementation: Implementation mode, defaults to ``'c'``
-        :type implementation: str, optional
+        :type interpolation: str
+        :param implementation: Implementation to use ``['c', 'reference']``,
+            defaults to ``'c'``.
+        :type implementation: str
 
-        :returns: GF Trace at ``args``
-        :rtype: :py:class:`pyrocko.gf.store.GFTrace`
+        :returns: GF trace at ``args``
+        :rtype: :py:class:`~pyrocko.gf.store.GFTrace`
         '''
 
         store, decimate = self._decimated_store(decimate)
@@ -1326,34 +1327,34 @@ class Store(BaseStore):
         an integer in the range [2,8], decimated traces are used in the
         summation.
 
-        :param args: :py:class:`pyrocko.gf.meta.Config` index tuple, e.g.
+        :param args: :py:class:`~pyrocko.gf.meta.Config` index tuple, e.g.
             ``(source_depth, distance, component)`` as in
-            :py:class:`pyrocko.gf.meta.ConfigTypeA`.
-        :type args: tuple
+            :py:class:`~pyrocko.gf.meta.ConfigTypeA`.
+        :type args: tuple(numpy.ndarray)
         :param delays: Delay times
-        :type delays: :py:class:`numpy.Array`
+        :type delays: :py:class:`numpy.ndarray`
         :param weights: Trace weights
-        :type weights: :py:class:`numpy.Array`
+        :type weights: :py:class:`numpy.ndarray`
         :param itmin: Start time index (start time is ``itmin * dt``),
             defaults to None
-        :type itmin: integer, optional
+        :type itmin: int or None
         :param nsamples: Number of samples, defaults to None
-        :type nsamples: integer, optional
+        :type nsamples: int or None
         :param decimate: Decimatation factor, defaults to 1
-        :type decimate: integer, optional
+        :type decimate: int
         :param interpolation: Interpolation method
             ``['nearest_neighbor', 'multilinear', 'off']``, defaults to
             ``'nearest_neighbor'``
-        :type interpolation: str, optional
-        :param implementation: Implementation mode ``['c', 'alternative']``
-            where ``'alternative'`` uses a Python implementation, defaults to
-            `'c'`
-        :type implementation: str, optional
+        :type interpolation: str
+        :param implementation: Implementation to use,
+            ``['c', 'alternative', 'reference']``, where ``'alternative'`` 
+            and ``'reference'`` use a Python implementation, defaults to `'c'`
+        :type implementation: str
         :param optimization: Optimization mode ``['enable', 'disable']``,
             defaults to ``'enable'``
-        :type optimization: str, optional
-        :returns: Stacked GF Trace.
-        :rtype: :py:class:`pyrocko.gf.store.GFTrace`
+        :type optimization: str
+        :returns: Stacked GF trace.
+        :rtype: :py:class:`~pyrocko.gf.store.GFTrace`
         '''
 
         store, decimate_ = self._decimated_store(decimate)
@@ -1394,13 +1395,13 @@ class Store(BaseStore):
         when computation are done for lower frequency signals.
 
         :param decimate: Decimate factor
-        :type decimate: integer
-        :param config: GF Store config object, defaults to None
-        :type config: :py:class:`pyrocko.gf.meta.Config`, optional
-        :param force: Force overwrite, defaults to False
-        :type force: bool, optional
-        :param show_progress: Show progress, defaults to False
-        :type show_progress: bool, optional
+        :type decimate: int
+        :param config: GF store config object, defaults to None
+        :type config: :py:class:`~pyrocko.gf.meta.Config` or None
+        :param force: Force overwrite, defaults to ``False``
+        :type force: bool
+        :param show_progress: Show progress, defaults to ``False``
+        :type show_progress: bool
         '''
 
         if not self._f_index:
@@ -1530,7 +1531,7 @@ class Store(BaseStore):
         return fn
 
     def get_stored_phase(self, phase_id):
-        """Get stored phase from GF STore
+        """Get stored phase from GF store
 
         :returns: Phase information
         :rtype: :py:class:`pyrocko.spit.SPTree`
@@ -1610,14 +1611,14 @@ class Store(BaseStore):
 
         **Examples:**
 
-        If ``test_store`` is of :py:class:`pyrocko.gf.meta.ConfigTypeA`::
+        If ``test_store`` is of :py:class:`~pyrocko.gf.meta.ConfigTypeA`::
 
             test_store.t('p', (1000, 10000))
             test_store.t('last{P|Pdiff}', (1000, 10000)) # The latter arrival
                                                          # of P or diffracted
                                                          # P phase
 
-        If ``test_store`` is of :py:class:`pyrocko.gf.meta.ConfigTypeB`::
+        If ``test_store`` is of :py:class:`~pyrocko.gf.meta.ConfigTypeB`::
 
             test_store.t('S', (1000, 1000, 10000))
             test_store.t('first{P|p|Pdiff|sP}', (1000, 1000, 10000)) # The
@@ -1626,10 +1627,10 @@ class Store(BaseStore):
                                                          # selected
 
         :param timing: Timing string as described above
-        :type timing: string or :py:class:`pyrocko.gf.meta.Timing`
-        :param \*args: :py:class:`pyrocko.gf.meta.Config` index tuple, e.g.
+        :type timing: str or :py:class:`~pyrocko.gf.meta.Timing`
+        :param \*args: :py:class:`~pyrocko.gf.meta.Config` index tuple, e.g.
             ``(source_depth, distance, component)`` as in
-            :py:class:`pyrocko.gf.meta.ConfigTypeA`.
+            :py:class:`~pyrocko.gf.meta.ConfigTypeA`.
         :type \*args: tuple
         :returns: Phase arrival according to ``timing``
         :rtype: float or None
@@ -1732,8 +1733,8 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
         '''Compute travel time tables.
 
         Travel time tables are computed using the 1D earth model defined in
-        :py:attr:`pyrocko.gf.meta.Config.earthmodel_1d` for each defined phase
-        in :py:attr:`pyrocko.gf.meta.Config.tabulated_phases`. The accuracy of
+        :py:attr:`~pyrocko.gf.meta.Config.earthmodel_1d` for each defined phase
+        in :py:attr:`~pyrocko.gf.meta.Config.tabulated_phases`. The accuracy of
         the tablulated times is adjusted to the sampling rate of the store.
         '''
 
