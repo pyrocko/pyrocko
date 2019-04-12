@@ -34,6 +34,11 @@ vicinity_eps = 1e-5
 logger = logging.getLogger('pyrocko.gf.meta')
 
 
+def fmt_choices(cls):
+    return 'choices: %s' % ', '.join(
+        "``'%s'``" % choice for choice in cls.choices)
+
+
 class InterpolationMethod(StringChoice):
     choices = ['nearest_neighbor', 'multilinear']
 
@@ -229,7 +234,7 @@ class ScopeType(StringChoice):
     ]
 
 
-class WaveformType(StringChoice):
+class WaveType(StringChoice):
     choices = [
         'full waveform',
         'bodywave',
@@ -1386,11 +1391,11 @@ class Config(Object):
     '''
     Green's function store meta information.
 
-    Currently implemented :py:class:`pyrocko.gf.store.Store` configurations
-    are:
+    Currently implemented :py:class:`~pyrocko.gf.store.Store`
+    configuration types are:
 
-    * :py:class:`pyrocko.gf.meta.ConfigTypeA` - cylindrical symmetry,
-      1D earth model, single receiver depth
+    * :py:class:`~pyrocko.gf.meta.ConfigTypeA` - cylindrical or
+      spherical symmetry, 1D earth model, single receiver depth
 
       * Problem is invariant to horizontal translations and rotations around
         vertical axis.
@@ -1398,51 +1403,137 @@ class Config(Object):
       * High level index variables: ``(source_depth, receiver_distance,
         component)``
 
-    * :py:class:`pyrocko.gf.meta.ConfigTypeB` - cylindrical symmetry, 1D earth
-      model, variable receiver depth
+    * :py:class:`~pyrocko.gf.meta.ConfigTypeB` - cylindrical or
+      spherical symmetry, 1D earth model, variable receiver depth
 
       * Symmetries like in Type A but has additional index for receiver depth
       * High level index variables: ``(source_depth, receiver_distance,
         receiver_depth, component)``
 
-    * :py:class:`pyrocko.gf.meta.ConfigTypeC` - no symmetrical constraints but
-      fixed receiver positions
+    * :py:class:`~pyrocko.gf.meta.ConfigTypeC` - no symmetrical
+      constraints but fixed receiver positions
 
       * Cartesian source volume around a reference point
       * High level index variables: ``(ireceiver, source_depth,
         source_east_shift, source_north_shift, component)``
     '''
 
-    id = StringID.T()
+    id = StringID.T(
+        help='Name of the store. May consist of upper and lower-case letters, '
+             'digits, dots and underscores. The name must start with a '
+             'letter.')
 
-    derived_from_id = StringID.T(optional=True)
-    version = String.T(default='1.0', optional=True)
-    modelling_code_id = StringID.T(optional=True)
-    author = Unicode.T(optional=True)
-    author_email = String.T(optional=True)
-    created_time = Timestamp.T(optional=True)
-    regions = List.T(Region.T())
-    scope_type = ScopeType.T(optional=True)
-    waveform_type = WaveformType.T(optional=True)
-    nearfield_terms = NearfieldTermsType.T(optional=True)
-    description = String.T(optional=True)
-    references = List.T(Reference.T())
-    size = Int.T(optional=True)
+    derived_from_id = StringID.T(
+        optional=True,
+        help='Name of the original store, if this store has been derived from '
+             'another one (e.g. extracted subset).')
 
-    earthmodel_1d = Earthmodel1D.T(optional=True)
-    earthmodel_receiver_1d = Earthmodel1D.T(optional=True)
+    version = String.T(
+        default='1.0',
+        optional=True,
+        help='User-defined version string. Use <major>.<minor> format.')
 
-    can_interpolate_source = Bool.T(optional=True)
-    can_interpolate_receiver = Bool.T(optional=True)
-    frequency_min = Float.T(optional=True)
-    frequency_max = Float.T(optional=True)
-    sample_rate = Float.T(optional=True)
-    factor = Float.T(default=1.0, optional=True)
-    component_scheme = ComponentScheme.T(default='elastic10')
-    tabulated_phases = List.T(TPDef.T())
-    ncomponents = Int.T(optional=True)
-    uuid = String.T(optional=True)
-    reference = String.T(optional=True)
+    modelling_code_id = StringID.T(
+        optional=True,
+        help='Identifier of the backend used to compute the store.')
+
+    author = Unicode.T(
+        optional=True,
+        help='Comma-separated list of author names.')
+
+    author_email = String.T(
+        optional=True,
+        help="Author's contact email address.")
+
+    created_time = Timestamp.T(
+        optional=True,
+        help='Time of creation of the store.')
+
+    regions = List.T(
+        Region.T(),
+        help='Geographical regions for which the store is representative.')
+
+    scope_type = ScopeType.T(
+        optional=True,
+        help='Distance range scope of the store '
+             '(%s).' % fmt_choices(ScopeType))
+
+    waveform_type = WaveType.T(
+        optional=True,
+        help='Wave type stored (%s).' % fmt_choices(WaveType))
+
+    nearfield_terms = NearfieldTermsType.T(
+        optional=True,
+        help='Information about the inclusion of near-field terms in the '
+             'modelling (%s).' % fmt_choices(NearfieldTermsType))
+
+    description = String.T(
+        optional=True,
+        help='Free form textual description of the GF store.')
+
+    references = List.T(
+        Reference.T(),
+        help='Reference list to cite the modelling code, earth model or '
+             'related work.')
+
+    earthmodel_1d = Earthmodel1D.T(
+        optional=True,
+        help='Layered earth model in ND (named discontinuity) format.')
+
+    earthmodel_receiver_1d = Earthmodel1D.T(
+        optional=True,
+        help='Receiver-side layered earth model in ND format.')
+
+    can_interpolate_source = Bool.T(
+        optional=True,
+        help='Hint to indicate if the spatial sampling of the store is dense '
+             'enough for multi-linear interpolation at the source.')
+
+    can_interpolate_receiver = Bool.T(
+        optional=True,
+        help='Hint to indicate if the spatial sampling of the store is dense '
+             'enough for multi-linear interpolation at the receiver.')
+
+    frequency_min = Float.T(
+        optional=True,
+        help='Hint to indicate the lower bound of valid frequencies [Hz].')
+
+    frequency_max = Float.T(
+        optional=True,
+        help='Hint to indicate the upper bound of valid frequencies [Hz].')
+
+    sample_rate = Float.T(
+        optional=True,
+        help='Sample rate of the GF store [Hz].')
+
+    factor = Float.T(
+        default=1.0,
+        help='Gain value, factored out of the stored GF samples. '
+             '(may not work properly, keep at 1.0).',
+        optional=True)
+
+    component_scheme = ComponentScheme.T(
+        default='elastic10',
+        help='GF component scheme (%s).' % fmt_choices(ComponentScheme))
+
+    tabulated_phases = List.T(
+        TPDef.T(),
+        help='Mapping of phase names to phase definitions, for which travel '
+             'time tables are available in the GF store.')
+
+    ncomponents = Int.T(
+        optional=True,
+        help='Number of GF components. Use :gattr:`component_scheme` instead.')
+
+    uuid = String.T(
+        optional=True,
+        help='Heuristic hash value which can be used to uniquely identify the '
+             'GF store for practical purposes.')
+
+    reference = String.T(
+        optional=True,
+        help='Store reference name composed of the store\'s :gattr:`id` and '
+             'the first six letters of its :gattr:`uuid`.')
 
     def __init__(self, **kwargs):
         self._do_auto_updates = False
@@ -1689,17 +1780,34 @@ class ConfigTypeA(Config):
       vertical axis.
 
     * All receivers must be at the same depth (e.g. at the surface)
-      High level index variables: ``(source_depth, receiver_distance,
+      High level index variables: ``(source_depth, distance,
       component)``
+
+    * The ``distance`` is the surface distance between source and receiver
+      points.
     '''
 
-    receiver_depth = Float.T(default=0.0)
-    source_depth_min = Float.T()
-    source_depth_max = Float.T()
-    source_depth_delta = Float.T()
-    distance_min = Float.T()
-    distance_max = Float.T()
-    distance_delta = Float.T()
+    receiver_depth = Float.T(
+        default=0.0,
+        help='Fixed receiver depth [m].')
+
+    source_depth_min = Float.T(
+        help='Minimum source depth [m].')
+
+    source_depth_max = Float.T(
+        help='Maximum source depth [m].')
+
+    source_depth_delta = Float.T(
+        help='Grid spacing of source depths [m]')
+
+    distance_min = Float.T(
+        help='Minimum source-receiver surface distance [m].')
+
+    distance_max = Float.T(
+        help='Maximum source-receiver surface distance [m].')
+
+    distance_delta = Float.T(
+        help='Grid spacing of source-receiver surface distance [m].')
 
     short_type = 'A'
 
@@ -1866,15 +1974,32 @@ class ConfigTypeB(Config):
       receiver_depth, component)``
     '''
 
-    receiver_depth_min = Float.T()
-    receiver_depth_max = Float.T()
-    receiver_depth_delta = Float.T()
-    source_depth_min = Float.T()
-    source_depth_max = Float.T()
-    source_depth_delta = Float.T()
-    distance_min = Float.T()
-    distance_max = Float.T()
-    distance_delta = Float.T()
+    receiver_depth_min = Float.T(
+        help='Minimum receiver depth [m].')
+
+    receiver_depth_max = Float.T(
+        help='Maximum receiver depth [m].')
+
+    receiver_depth_delta = Float.T(
+        help='Grid spacing of receiver depths [m]')
+
+    source_depth_min = Float.T(
+        help='Minimum source depth [m].')
+
+    source_depth_max = Float.T(
+        help='Maximum source depth [m].')
+
+    source_depth_delta = Float.T(
+        help='Grid spacing of source depths [m]')
+
+    distance_min = Float.T(
+        help='Minimum source-receiver surface distance [m].')
+
+    distance_max = Float.T(
+        help='Maximum source-receiver surface distance [m].')
+
+    distance_delta = Float.T(
+        help='Grid spacing of source-receiver surface distances [m].')
 
     short_type = 'B'
 
@@ -2081,18 +2206,39 @@ class ConfigTypeC(Config):
       source_east_shift, source_north_shift, component)``
     '''
 
-    receivers = List.T(Receiver.T())
+    receivers = List.T(
+        Receiver.T(),
+        help='List of fixed receivers.')
 
-    source_origin = Location.T()
-    source_depth_min = Float.T()
-    source_depth_max = Float.T()
-    source_depth_delta = Float.T()
-    source_east_shift_min = Float.T()
-    source_east_shift_max = Float.T()
-    source_east_shift_delta = Float.T()
-    source_north_shift_min = Float.T()
-    source_north_shift_max = Float.T()
-    source_north_shift_delta = Float.T()
+    source_origin = Location.T(
+        help='Origin of the source volume grid.')
+
+    source_depth_min = Float.T(
+        help='Minimum source depth [m].')
+
+    source_depth_max = Float.T(
+        help='Maximum source depth [m].')
+
+    source_depth_delta = Float.T(
+        help='Source depth grid spacing [m].')
+
+    source_east_shift_min = Float.T(
+        help='Minimum easting of source grid [m].')
+
+    source_east_shift_max = Float.T(
+        help='Maximum easting of source grid [m].')
+
+    source_east_shift_delta = Float.T(
+        help='Source volume grid spacing in east direction [m].')
+
+    source_north_shift_min = Float.T(
+        help='Minimum northing of source grid [m].')
+
+    source_north_shift_max = Float.T(
+        help='Maximum northing of source grid [m].')
+
+    source_north_shift_delta = Float.T(
+        help='Source volume grid spacing in north direction [m].')
 
     short_type = 'C'
 

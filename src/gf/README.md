@@ -1,5 +1,6 @@
-# Pyrocko Green's Function Submodule
-## Storage and calculation of synthetic seismograms
+# Pyrocko-GF subpackage
+
+## Pyrocko-GF: storage and calculation of synthetic seismograms
 
 The `pyrocko.gf` subpackage splits functionality into several submodules:
 
