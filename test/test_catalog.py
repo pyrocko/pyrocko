@@ -51,6 +51,9 @@ class CatalogTestCase(unittest.TestCase):
         is_the_haiti_event_geofon(ev)
         cat.flush()
 
+        ev = cat.get_event('gfz2019hkck')
+        assert ev.name == 'gfz2019hkck'
+
     @common.require_internet
     def testGeofonMT(self):
         cat = catalog.Geofon()

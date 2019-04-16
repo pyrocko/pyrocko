@@ -133,17 +133,19 @@ class Geofon(EarthquakeCatalog):
 
         return mt
 
-    def _parse_events_page(self, page):
+    def _parse_events_page(self, page, limit=None):
         j = json.loads(page.decode('utf-8'))
         events = []
-        for feature in j['features']:
+        for ifeature, feature in enumerate(j['features']):
             ev = self._json_feature_to_event(feature)
             events.append(ev)
+            if limit and ifeature + 1 == limit:
+                break
 
         return events
 
     def _parse_event_page(self, page):
-        return self._parse_events_page(page)[0]
+        return self._parse_events_page(page, limit=1)[0]
 
     def _json_feature_to_event(self, feature):
         name = feature['id']
