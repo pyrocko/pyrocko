@@ -11,7 +11,6 @@ requirements:
   build:
     - python
     - numpy
-    - {{ compiler('c') }}
     - setuptools
   host:
     - python

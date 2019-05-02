@@ -9,12 +9,8 @@ export PATH=$PATH:$CONDA_PREFIX/bin
 
 if [ `uname` == "Darwin" ]; then
     MINICONDA_FILE="Miniconda3-latest-MacOSX-x86_64.sh"
-    CC="clang"
-    CCLIB=""
 else
     MINICONDA_FILE="Miniconda3-latest-Linux-x86_64.sh"
-    CC="gcc"
-    CCLIB="libgcc"
 fi
 
 # Install Miniconda
@@ -24,7 +20,7 @@ case $resp in
         curl "$MINICONDA_URL/$MINICONDA_FILE" -o "$BUILD_DIR/miniconda.sh";
         chmod +x "$BUILD_DIR/miniconda.sh"
         ./$BUILD_DIR/miniconda.sh -b -u
-        conda install -y conda-build anaconda-client "$CC" "$CCLIB"
+        conda install -y conda-build anaconda-client
         ;;
     *)
         ;;
