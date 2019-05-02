@@ -14,7 +14,7 @@ if [ `uname` == "Darwin" ]; then
 else
     MINICONDA_FILE="Miniconda2-latest-Linux-x86_64.sh"
     CC="gcc"
-    CCLIB="gcclib"
+    CCLIB="libgcc"
 fi
 
 # Install Miniconda
