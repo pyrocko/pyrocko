@@ -24,7 +24,7 @@ from setuptools.command.build_ext import build_ext
 from setuptools.command.install import install
 
 packname = 'pyrocko'
-version = '2019.05.02'
+version = '2019.05.02.post1'
 
 
 class NotInAGitRepos(Exception):
@@ -594,8 +594,7 @@ setup(
     name=packname,
     version=version,
     description='A versatile seismology toolkit for Python.',
-    long_description=open('README.md', 'rb').read().decode('utf8'),
-    long_description_content_type='text/markdown',
+    long_description=open('maintenance/readme-pip.rst', 'rb').read().decode('utf8'),
     author='The Pyrocko Developers',
     author_email='info@pyrocko.org',
     url='https://pyrocko.org',
