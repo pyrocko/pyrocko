@@ -98,7 +98,7 @@ available on GitHub:
 
 For detailled information regarding each computation code refer to the
 Downloads/Software website of section 2.1 (GFZ): https://www.gfz-potsdam.de/en/section/physics-of-earthquakes-and-volcanoes/data-products-services/downloads-software/.
-Green's function stores  calculated with QSSP and QSEIS can be used for dynamic waveform and static displacement modeling. Green's functions stores which are created with the PSGRN-PSCMP backend, which can consider visco-elasticity, return step functions and are therefore mostly applicable to static displacement
+Green's function stores calculated with QSSP and QSEIS can be used for dynamic waveform and static displacement modeling. Green's functions stores which are created with the PSGRN-PSCMP backend return step functions and are therefore mostly applicable to static displacement
 modeling.
 Installation is done for each code inside the uncompressed folder by (More information in each packages' :file:`README.md`):
 
