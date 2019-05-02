@@ -11,6 +11,11 @@ requirements:
   build:
     - python
     - numpy
+    - {{ compiler('c') }}
+    - setuptools
+  host:
+    - python
+    - numpy
   run:
     - python
     - numpy
