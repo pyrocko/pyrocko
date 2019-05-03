@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - gf:
   - CombiSource, which can handle a set of different sources as a single source object
   - resonator stf
-- guts: 
+- guts:
   - Function to get guts attributes
   - ypath functions
 - snuffler: clip_traces configurable by config
@@ -23,7 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Changed
 - gf:
   - Now the discretized point sources have their true time set, time shifting is done only before and afther c function calls.
-  - Source times are handled on double precision 
+  - Source times are handled on double precision
   - Static store requests fallback to zero time to handle absolute source times
   - Store ext gives indivudal index out of bounds error for targets
 - Geofon catalog web format changed, parse geojson instead of html
@@ -39,11 +39,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - ExplosionSource for non-volume sources
 - obspy_compat event conversion
 - Problem with numpy scalars in source and target objects
-- Conversion of quakeml piks to pyrocko phasepiks use phase polarities strings 
+- Conversion of quakeml piks to pyrocko phasepiks use phase polarities strings
 - snuffling broken load dialogs (QT5)
 - trace: deltat rounding error function
 - segy functions
-- model.gnss covar 
+- model.gnss covar
 - scenario: perfomance improvement
 - geofon catalog: problem with multiple solutions for some events
 - setup: UnicodeDecodeError
@@ -55,7 +55,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - Anaconda builds for python 3.6 and 3.7
 - Green's Mill
-- gf: rectangular source check for point source discretisation   
+- gf: rectangular source check for point source discretisation
 - stationxml: using a flat response function is enabled
 - guts: support for time stamps in local time
 - datasets/geonames: get city by name
@@ -64,13 +64,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - trace: has a function to fix rounding errord
 
 ### Changed
-- gf: improved summation of static gf components 
+- gf: improved summation of static gf components
 - FDSN: configurable time out for requests
 
 ### Fixed
-- rdseed get_station fix 
+- rdseed get_station fix
 - gf: quantity velocity from displacement through `num.diff`
- 
+
 
 ## [v2018.09.13] 2019-9-13
 
@@ -81,9 +81,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Toggle lines and cities
 - GF: Server added JSON API
 - Snuffler: and Jackseis now accept YAML event files
-- Snuffler: polarity picking in 
+- Snuffler: polarity picking in
 - fomosto: ttt now checks for holes in travel-time tables
-- Guts: 
+- Guts:
   - can now specify output yaml style for strings
   - improved XML namespace support
   - add utility module to help with guts structure updaters
@@ -91,9 +91,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
 ### Changed
-- GF: 
- - improved handling of derived magnitude sources
- - slip-driven rectangular source, explosion
+- gf:
+  - improved handling of derived magnitude sources
+  - slip-driven rectangular source, explosion
 
 ### Fixed
 - Fixed Bug in `ExplosionSource` (incorrect moment conversion)
