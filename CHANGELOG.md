@@ -4,6 +4,15 @@ All notable changes to Pyrocko will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [unreleased]
+
+## [v2019.05.03] 2019-05-03
+
+### Fixed
+
+- Improved compatibility with Anaconda.
+
+
 ## [v2019.05.02] 2019-05-02
 
 ### Added
