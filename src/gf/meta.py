@@ -68,29 +68,6 @@ class SeismosizerTrace(Object):
                            tmin=self.tmin)
 
 
-class SeismosizerSatelliteScene(Object):
-    try:
-        from kite import Scene
-    except ImportError:
-            raise ImportError('Kite not installed')
-
-    nrows = Float.T(
-        default=1.0,
-        help='nrows of dataset')
-
-    ncols = Float.T(
-        default=1.0,
-        help='ncols of dataset')
-
-    phi = Float.T(
-        default=1.0,
-        help='phi [rad]')
-
-    theta = Float.T(
-        default=1.0,
-        help='theta [rad]')
-
-
 class SeismosizerResult(Object):
     n_records_stacked = Int.T(optional=True, default=1)
     t_stack = Float.T(optional=True, default=0.)
@@ -104,30 +81,54 @@ class Result(SeismosizerResult):
 
 class StaticResult(SeismosizerResult):
     result = Dict.T()
-    SeismosizerSatelliteScene = SeismosizerSatelliteScene.T(optional=True)
 
-    def kite_scene(self, component, scene_config=None):
+
+class GNSSCampaignResult(StaticResult):
+    campaign = gnss.GNSSCampaign.T(
+        optional=True)
+
+
+class SatelliteResult(StaticResult):
+
+    theta = Array.T(
+        optional=True,
+        shape=(None,), dtype=num.float)
+
+    phi = Array.T(
+        optional=True,
+        shape=(None,), dtype=num.float)
+
+    nrows = Int.T(
+        optional=True)
+
+    ncols = Int.T(
+        optional=True)
+
+    def kite_scene(self, component='los', scene_config=None):
         try:
             from kite import Scene
         except ImportError:
             raise ImportError('Kite not installed')
         sc = Scene()
-        sc.theta = self.SeismosizerSatelliteScene.theta
-        sc.phi = self.SeismosizerSatelliteScene.phi
-        if scene_config is not None:
-            sc.frame = scene_config.frame
-            sc.meta = scene_config.meta
-        disp = self.result
-        disp = disp[component]
-        disp = num.reshape(disp,
-                           (self.SeismosizerSatelliteScene.nrows,
-                            self.SeismosizerSatelliteScene.ncols))
-        sc.displacement = disp
-        return sc
+        if self.ncols is None or self.nrows is None or self.theta is None\
+                or self.phi is None:
+            raise('Scene parameters not given')
+        else:
+            sc.theta = self.theta
+            sc.phi = self.phi
+            if scene_config is not None:
+                sc.frame = scene_config.frame
+                sc.meta = scene_config.meta
+                sc.theta = scene_config.theta
+                sc.phi = scene_config.phi
+            components = self.result
+            disp = components[component]
+            disp = num.reshape(disp,
+                               (self.nrows,
+                                self.ncols))
+            sc.displacement = disp
 
-class GNSSCampaignResult(StaticResult):
-    campaign = gnss.GNSSCampaign.T(
-        optional=True)
+            return sc
 
 
 class ComponentSchemeDescription(Object):

@@ -272,12 +272,8 @@ class StaticTarget(meta.MultiLocation):
         return distance_accurate50m_numpy(
             src_lats, src_lons, target_lats, target_lons)
 
-    def post_process(self, engine, source, statics, sc=None):
-        if sc is not None:
-            return meta.StaticResult(result=statics,
-                                     SeismosizerSatelliteScene=sc)
-        else:
-            return meta.StaticResult(result=statics)
+    def post_process(self, engine, source, statics):
+        return meta.StaticResult(result=statics)
 
 
 class SatelliteTarget(StaticTarget):
@@ -327,6 +323,11 @@ class SatelliteTarget(StaticTarget):
             self._los_factors[:, 1] = num.cos(self.theta) * num.cos(self.phi)
             self._los_factors[:, 2] = num.cos(self.theta) * num.sin(self.phi)
         return self._los_factors
+
+    def post_process(self, engine, source, statics):
+        return meta.SatelliteResult(result=statics,
+                                    theta=self.theta, phi=self.phi,
+                                    nrows=self.nrows, ncols=self.ncols)
 
 
 class GNSSCampaignTarget(StaticTarget):
