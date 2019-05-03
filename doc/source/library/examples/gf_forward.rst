@@ -33,18 +33,29 @@ Calculate spatial surface displacement from a local GF store
 In this example we create a :class:`~pyrocko.gf.seismosizer.RectangularSource` and compute the spatial static/geodetic displacement caused by that rupture.
 
 We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.gf.targets.StaticTarget` and :class:`~pyrocko.gf.targets.SatelliteTarget`.
-
 .. figure:: /static/gf_static_displacement.png
     :align: center
     :width: 90%
     :alt: Static displacement from a strike-slip fault calculated through pyrocko
 
-    Synthetic surface displacement from a vertical strike-slip fault, with a N104W azimuth, in the Line-of-sight (LOS), east, north and vertical directions. LOS as for Envisat satellite (Look Angle: 23., Heading:-76). Positive motion toward the satellite. 
+    Synthetic surface displacement from a vertical strike-slip fault, with a N104W azimuth, in the Line-of-sight (LOS), east, north and vertical directions. LOS as for Envisat satellite (Look Angle: 23., Heading:-76). Positive motion toward the satellite.
 
 Download :download:`gf_forward_example2.py </../../examples/gf_forward_example2.py>`
 
 .. literalinclude :: /../../examples/gf_forward_example2.py
     :language: python
+
+Calculate spatial surface displacement from a local GF store and export result as kite scenes
+-------------------------------------------------------------
+
+We repeat the above example but use `Kite <https://pyrocko.org/docs/kite>`_ for displaying the results.
+Kite needs to be installed separately. Kite can be used to do easy quadtree data subsampling and data error variance-covariance estimation of surface displacement data.
+
+Download :download:`gf_forward_example2.py </../../examples/gf_forward_example2_kite.py>`
+
+.. literalinclude :: /../../examples/gf_forward_example2_kite.py
+    :language: python
+
 
 Calculate forward model of thrust event and display wrapped phase
 -----------------------------------------------------------------
@@ -65,7 +76,7 @@ Download :download:`gf_forward_example3.py </../../examples/gf_forward_example3.
     :language: python
 
 
-Combining severals sources 
+Combining severals sources
 ---------------------------
 In this example we combine two rectangular sources and plot the forward model in profile.
 
@@ -75,7 +86,7 @@ In this example we combine two rectangular sources and plot the forward model in
 
     Synthetic LOS displacements from a flower-structure made of one strike-slip
     fault and one thrust fault. LOS as for Sentinel-1 satellite (Look Angle:
-    36., Heading:-76). Positive motion toward the satellite. 
+    36., Heading:-76). Positive motion toward the satellite.
 
 Download :download:`gf_forward_example4.py </../../examples/gf_forward_example4.py>`
 
