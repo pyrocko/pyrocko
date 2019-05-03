@@ -3575,6 +3575,7 @@ stf_classes = [
     BoxcarSTF,
     TriangularSTF,
     HalfSinusoidSTF,
+    SmoothRampSTF,
     ResonatorSTF,
 ]
 
