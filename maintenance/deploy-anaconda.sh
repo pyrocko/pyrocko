@@ -11,6 +11,7 @@ fi
 
 for box in $boxes; do
     cd $box
+    vagrant halt
     echo "Building Anaconda packages on $box"
     ./outside.sh
     cd ..
