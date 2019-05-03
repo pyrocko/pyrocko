@@ -2502,6 +2502,16 @@ class Response(Object):
 
         return traces
 
+    def kite_scenes(self):
+        kite_scenes = []
+        for results in self.results_list:
+            for result in results:
+                if isinstance(result, meta.SatelliteResult):
+                    sc = result.kite_scene()
+                    kite_scenes.append(sc)
+
+        return kite_scenes
+
     def static_results(self):
         '''
         Return a list of requested

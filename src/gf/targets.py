@@ -9,7 +9,8 @@ import numpy as num
 import math
 
 from . import meta
-from pyrocko.guts import Timestamp, Tuple, String, Float, Object, StringChoice
+from pyrocko.guts import Timestamp, Tuple, String, Float, Object,\
+                          StringChoice, Int
 from pyrocko.guts_array import Array
 from pyrocko.model import gnss
 from pyrocko.orthodrome import distance_accurate50m_numpy
@@ -298,6 +299,14 @@ class SatelliteTarget(StaticTarget):
              '            :math:`-\\frac{\\pi}{2}` is **down** and'
              ' :math:`\\frac{\\pi}{2}` is **up**.\n\n')
 
+    nrows = Int.T(
+        optional=True,
+        help='number of rows.')
+
+    ncols = Int.T(
+        optional=True,
+        help='number of coloumns.')
+
     def __init__(self, *args, **kwargs):
         StaticTarget.__init__(self, *args, **kwargs)
         self._los_factors = None
@@ -312,6 +321,11 @@ class SatelliteTarget(StaticTarget):
             self._los_factors[:, 1] = num.cos(self.theta) * num.cos(self.phi)
             self._los_factors[:, 2] = num.cos(self.theta) * num.sin(self.phi)
         return self._los_factors
+
+    def post_process(self, engine, source, statics):
+        return meta.SatelliteResult(result=statics,
+                                    theta=self.theta, phi=self.phi,
+                                    nrows=self.nrows, ncols=self.ncols)
 
 
 class GNSSCampaignTarget(StaticTarget):
