@@ -941,15 +941,15 @@ class Source(Location, Cloneable):
 
     time = Timestamp.T(
         default=0.,
-        help='source origin time')
+        help='source origin time.')
 
     stf = STF.T(
         optional=True,
-        help='source time function')
+        help='source time function.')
 
     stf_mode = STFMode.T(
         default='post',
-        help='whether to apply source time function in pre or post-processing')
+        help='whether to apply source time function in pre or post-processing.')
 
     def __init__(self, **kwargs):
         Location.__init__(self, **kwargs)
@@ -1574,8 +1574,9 @@ class CLVDSource(SourceWithMagnitude):
             **kwargs)
 
 
-class CLVDVolumeSource(SourceWithMagnitude):
-    ''' Volume source, isometric expansion constrained by a CLVD
+class VLVD(SourceWithMagnitude):
+    ''' Volumetric Linear Vector Dipole, a uniaxial rotational symmetric
+    volume source.
 
     This source can be used to constrain sill or dyke like volume dislocation
     sources.
@@ -1600,7 +1601,7 @@ class CLVDVolumeSource(SourceWithMagnitude):
     clvd_magnitude = Float.T(
         default=0.,
         help='Moment magnitude Mw as in [Hanks and Kanamori, 1979], '
-             'for the CLVD part')
+             'for the LVD part')
 
     get_moment_to_volume_change_ratio = \
         ExplosionSource.get_moment_to_volume_change_ratio
@@ -2920,9 +2921,16 @@ class LocalEngine(Engine):
 
     :param use_env: if ``True``, fill :py:attr:`store_superdirs` and
         :py:attr:`store_dirs` with paths set in environment variables
-        GF_STORE_SUPERDIRS AND GF_STORE_DIRS
+        GF_STORE_SUPERDIRS and GF_STORE_DIRS.
     :param use_config: if ``True``, fill :py:attr:`store_superdirs` and
         :py:attr:`store_dirs` with paths set in the user's config file.
+
+        The config file can be found at :file:`~/.pyrocko/config.pf`
+
+        .. code-block ::
+
+            gf_store_dirs: ['/home/pyrocko/gf_stores/ak135/']
+            gf_store_superdirs: ['/home/pyrocko/gf_stores/']
     '''
 
     store_superdirs = List.T(
@@ -3551,7 +3559,7 @@ source_classes = [
     RectangularExplosionSource,
     DCSource,
     CLVDSource,
-    CLVDVolumeSource,
+    VLVD,
     MTSource,
     RectangularSource,
     DoubleDCSource,
