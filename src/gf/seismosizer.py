@@ -2503,6 +2503,10 @@ class Response(Object):
         return traces
 
     def kite_scenes(self):
+        '''
+        Return a list of requested
+        :class:`~kite.scenes` instances.
+        '''
         kite_scenes = []
         for results in self.results_list:
             for result in results:
