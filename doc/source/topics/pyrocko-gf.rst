@@ -243,13 +243,26 @@ Source Time Functions
 Source time functions describe the energy radiation of a dislocation
 source in time. A number of Source Time Functions (STF) are available
 and can be applied in pre- or post-processing. If no specific STF is
-defined as a unit pulse response. \| STF \| Short description \| \| — \|
-— \| \| ``BoxcarSTF`` \| Boxcar type source time function. \| \|
-``TriangularSTF`` \| Triangular type source time function. \| \|
-``HalfSinusoidSTF`` \| Half sinusoid type source time function. \| \|
-``SmoothRampSTF`` \| A smooth-ramp type source time function for
-near-field displacements. \| \| ``ResonatorSTF`` \| A simple resonator
-like source time function. \|
+defined as a unit pulse response.
+
++-----------------------------------+-----------------------------------+
+| STF                               | Short description                 |
++===================================+===================================+
+| ``BoxcarSTF``                     | Boxcar type source time function. |
++-----------------------------------+-----------------------------------+
+| ``TriangularSTF``                 | Triangular type source time       |
+|                                   | function.                         |
++-----------------------------------+-----------------------------------+
+| ``HalfSinusoidSTF``               | Half sinusoid type source time    |
+|                                   | function.                         |
++-----------------------------------+-----------------------------------+
+| ``SmoothRampSTF``                 | A smooth-ramp type source time    |
+|                                   | function for near-field           |
+|                                   | displacements.                    |
++-----------------------------------+-----------------------------------+
+| ``ResonatorSTF``                  | A simple resonator like source    |
+|                                   | time function.                    |
++-----------------------------------+-----------------------------------+
 
 Boxcar STF
 ~~~~~~~~~~
