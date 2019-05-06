@@ -11,6 +11,7 @@ d2r = 1.0 / r2d
 km = 1000.
 show_plot = int(os.environ.get('MPL_SHOW', 0))
 
+
 def numeq(a, b, eps):
     return (num.all(num.asarray(a).shape == num.asarray(b).shape and
             num.abs(num.asarray(a) - num.asarray(b)) < eps))
@@ -75,7 +76,7 @@ class GFSTFTestCase(unittest.TestCase):
         from matplotlib import pyplot as plt
 
         duration = 30.
-        frequency=1./15.
+        frequency = 1./15
         tref = 20.
         deltat = 1.0
 
