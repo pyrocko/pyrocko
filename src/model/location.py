@@ -55,11 +55,11 @@ class Location(Object):
     elevation = Float.T(
         default=0.0,
         optional=True,
-        help='elevation [m]')
+        help='elevation, above the surface [m]')
 
     depth = Float.T(
         default=0.0,
-        help='depth [m]')
+        help='depth, below the surface [m]')
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
