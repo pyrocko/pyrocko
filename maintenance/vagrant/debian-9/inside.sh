@@ -20,6 +20,9 @@ rm -f "$outfile_py3"
 rm -f "$outfile_py2"
 
 cd $HOME
+
+/vagrant/wait_dpkg_locks.sh
+
 sudo apt-get update -y
 sudo apt-get upgrade -y
 sudo apt-get install -y git python-setuptools python3-setuptools xvfb

@@ -74,6 +74,11 @@ class Object(object):
 
         self._data.append([k, v])
 
+    def __getitem__(self, item):
+        for kv in self._data:
+            if kv[0] == item:
+                return kv[1]
+
 
 def multi_representer(dumper, data):
     node = dumper.represent_mapping(

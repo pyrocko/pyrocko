@@ -1,11 +1,15 @@
-Pyrocko is an open source seismology toolbox and library, written in the Python programming language. It can be utilized flexibly for a variety of geophysical tasks, like seismological data processing and analysis, modelling of InSAR, GPS data and dynamic waveforms, or for seismic source characterization.
+Pyrocko is an open source seismology toolbox and library, written in the Python
+programming language. It can be utilized flexibly for a variety of geophysical
+tasks, like seismological data processing and analysis, modelling of InSAR, GPS
+data and dynamic waveforms, or for seismic source characterization.
 
 Installation
 -------------
 
 `Pyrocko is Python2/3 compatible.`
 
-Only source packages for Pyrocko are available on ``pip``, this means that parts of the code has is compiled locally.
+Only source packages for Pyrocko are available on ``pip``, this means that
+parts of the code has is compiled locally.
 
 Example for Ubuntu, Debian, Mint...
 

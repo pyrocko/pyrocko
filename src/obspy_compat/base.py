@@ -98,7 +98,7 @@ def to_pyrocko_events(catalog):
         for origin in obspy_event.origins:
 
             events.append(model.Event(
-                name=obspy_event.resource_id + origin.resource_id,
+                name='%s-%s' % (obspy_event.resource_id, origin.resource_id),
                 time=origin.time.timestamp,
                 lat=origin.latitude,
                 lon=origin.longitude,

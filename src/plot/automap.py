@@ -1124,9 +1124,11 @@ class Map(Object):
             'S': 'e%dc/0.95/%d' % (scale, fontsize),
         }
 
-        for r in rows:
-            if r[-1] is None:
-                r.pop(-1)
+        if labels:
+            for row, sta in zip(rows, campaign.stations):
+                if vertical and sta.up is None:
+                    continue
+                row.append(sta.code)
 
         default_psxy_style.update(psxy_style)
 

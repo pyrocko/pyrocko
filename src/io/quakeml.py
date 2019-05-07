@@ -15,6 +15,7 @@ logger = logging.getLogger('pyrocko.io.quakeml')
 
 
 guts_xmlns = 'http://quakeml.org/xmlns/bed/1.2'
+polarity_choices = {'positive': 1, 'negative': -1, 'undecidable': None}
 
 
 class QuakeMLError(Exception):
@@ -181,7 +182,7 @@ class SourceTimeFunctionType(StringChoice):
 
 
 class PickPolarity(StringChoice):
-    choices = ['positive', 'negative', 'undecidable']
+    choices = list(polarity_choices.keys())
 
 
 class AgencyID(String):
@@ -532,11 +533,16 @@ class Pick(Object):
     evaluation_status = EvaluationStatus.T(optional=True)
     creation_info = CreationInfo.T(optional=True)
 
+    @property
+    def pyrocko_polarity(self):
+        return polarity_choices.get(self.polarity, None)
+
     def pyrocko_phase_marker(self, event=None):
         return marker.PhaseMarker(
             event=event, nslc_ids=[self.waveform_id.nslc_id],
             tmin=self.time.value, tmax=self.time.value,
-            phasename=self.phase_hint.value, polarity=self.polarity,
+            phasename=self.phase_hint.value,
+            polarity=self.pyrocko_polarity,
             automatic=self.evaluation_mode)
 
 

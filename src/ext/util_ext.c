@@ -1,5 +1,5 @@
-#define _XOPEN_SOURCE 600
-#define _DEFAULT_SOURCE
+#include "Python.h"
+
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,8 +9,6 @@
 #include <assert.h>
 #include <math.h>
 #include <locale.h>
-
-#include "Python.h"
 
 struct module_state {
     PyObject *error;

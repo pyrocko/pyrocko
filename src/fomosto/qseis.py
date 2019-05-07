@@ -934,7 +934,10 @@ class QSeisGFBuilder(gf.builder.Builder):
 
                         if not (ta <= tb and tb <= tc and tc <= td):
                             raise QSeisError(
-                                'invalid fade configuration')
+                                'invalid fade configuration '
+                                '(it should be (ta <= tb <= tc <= td) but '
+                                'ta=%g, tb=%g, tc=%g, td=%g)' % (
+                                    ta, tb, tc, td))
 
                         t = tr.get_xdata()
                         fin = num.interp(t, [ta, tb], [0., 1.])

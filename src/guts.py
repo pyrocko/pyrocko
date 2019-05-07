@@ -19,6 +19,11 @@ from collections import defaultdict
 
 from io import BytesIO
 
+try:
+    import numpy as num
+except ImportError:
+    num = None
+
 import yaml
 try:
     from yaml import CSafeLoader as SafeLoader, CSafeDumper as SafeDumper
@@ -120,6 +125,19 @@ def make_list_presenter(flow_style):
 
 GutsSafeDumper.add_representer(blist, make_list_presenter(False))
 GutsSafeDumper.add_representer(flist, make_list_presenter(True))
+
+if num:
+    def numpy_float_presenter(dumper, data):
+        return dumper.represent_float(float(data))
+
+    def numpy_int_presenter(dumper, data):
+        return dumper.represent_int(int(data))
+
+    for dtype in (num.float64, num.float32):
+        GutsSafeDumper.add_representer(dtype, numpy_float_presenter)
+
+    for dtype in (num.int32, num.int64):
+        GutsSafeDumper.add_representer(dtype, numpy_int_presenter)
 
 
 def us_to_cc(s):
@@ -806,6 +824,16 @@ class Object(with_metaclass(ObjectMetaClass, object)):
 
     def __str__(self):
         return self.dump()
+
+
+def to_dict(obj):
+    '''
+    Get dict of guts object attributes.
+
+    :param obj: :py:class`Object` object
+    '''
+
+    return dict(obj.T.inamevals(obj))
 
 
 class SObject(Object):
@@ -1882,6 +1910,7 @@ def get_elements(obj, ypath):
     Raises :py:exc:`YPathError` on failure.
     '''
     return list(iter_elements(obj, ypath))
+
 
 def set_elements(obj, ypath, value, validate=False, regularize=False):
     '''

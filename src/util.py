@@ -25,6 +25,10 @@ import errno
 
 import numpy as num
 from scipy import signal
+from pyrocko import dummy_progressbar
+
+
+force_dummy_progressbar = False
 
 
 if platform.system() != 'Darwin':
@@ -418,6 +422,10 @@ class BetterHelpFormatter(optparse.IndentedHelpFormatter):
 
 
 def progressbar(label, maxval):
+    progressbar_mod = progressbar_module()
+    if force_dummy_progressbar:
+        progressbar_mod = dummy_progressbar
+
     widgets = [
         label, ' ',
         progressbar_mod.Bar(marker='-', left='[', right=']'), ' ',

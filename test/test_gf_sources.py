@@ -18,6 +18,13 @@ def numeq(a, b, eps):
             num.abs(num.asarray(a) - num.asarray(b)) < eps))
 
 
+def default_source(S, **kwargs):
+    if S is not gf.CombiSource:
+        return S(**kwargs)
+    else:
+        return S([gf.MTSource(**kwargs)])
+
+
 class GFSourcesTestCase(unittest.TestCase):
     tempdirs = []
 
@@ -54,6 +61,9 @@ class GFSourcesTestCase(unittest.TestCase):
             return x.__class__.__name__
 
         for S in gf.source_classes:
+            if S is gf.CombiSource:
+                continue
+
             stf = gf.TriangularSTF(effective_duration=2.0)
             s1 = S(lat=10., lon=20., depth=1000.,
                    north_shift=500., east_shift=500., stf=stf)
@@ -226,8 +236,11 @@ class GFSourcesTestCase(unittest.TestCase):
 
             for lats in [[10., 10., 10.], [10., 11., 12.]]:
                 sources = [
-                    S(lat=lat, lon=20., depth=1000.,
-                      north_shift=500., east_shift=500.)
+                    default_source(
+                        S,
+                        lat=lat, lon=20., depth=1000.,
+                        north_shift=500., east_shift=500.)
+
                     for lat in lats]
 
                 dsources = [
@@ -247,7 +260,7 @@ class GFSourcesTestCase(unittest.TestCase):
                 continue
 
             for t in [0.0, util.str_to_time('2014-01-01 10:00:00')]:
-                source = S(time=t)
+                source = default_source(S, time=t)
                 dsource = source.discretize_basesource(
                     store, target=dummy_target)
                 cent = dsource.centroid()

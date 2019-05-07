@@ -20,11 +20,7 @@ rm -f "$outfile_py3"
 rm -f "$outfile_py2"
 
 cd $HOME
-
-while fuser /var/lib/dpkg/lock >/dev/null 2>&1 ; do
-    echo -en "Waiting for other software managers to finish..." 
-    sleep 5.0
-done 
+/vagrant/wait_dpkg_locks.sh
 
 sudo apt-get update -y
 sudo apt-get upgrade -y

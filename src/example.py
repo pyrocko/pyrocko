@@ -6,10 +6,6 @@ import logging
 logger = logging.getLogger('pyrocko.example')
 
 
-class DownloadError(Exception):
-    pass
-
-
 def get_example_data(filename, url=None, recursive=False):
     '''
     Download example data file needed in tutorials.

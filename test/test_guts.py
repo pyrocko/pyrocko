@@ -1047,7 +1047,6 @@ class GutsTestCase(unittest.TestCase):
 
         c = C(b_list=[B(a_list=[A(i=1), A(i=2)]), B(a_list=[A(i=3), A(i=4)])])
 
-        print(c)
         assert get_elements(c, 'b_list[:].a_list[:].i') == [1, 2, 3, 4]
         assert get_elements(c, 'b_list[0].a_list[:].i') == [1, 2]
         assert get_elements(c, 'b_list[:1].a_list[:].i') == [1, 2]
@@ -1227,6 +1226,34 @@ l_flow: ['a', 'b', 'c']
         b = B(a=A())
         b2 = load_string(b.dump())
         assert(isinstance(b2.a, A))
+
+    def testNumpyFloat(self):
+
+        class A(Object):
+            f = Float.T()
+            i = Int.T()
+
+        try:
+            import numpy as num
+
+            a = A(f=num.float64(1.0), i=num.int64(1))
+            a2 = load_string(a.dump())
+            assert a2.f == 1.0
+            assert a2.i == 1
+
+            with self.assertRaises(ValidationError):
+                a.validate()
+
+            a = A(f=num.float32(1.0), i=num.int32(1))
+            a2 = load_string(a.dump())
+            assert a2.f == 1.0
+            assert a2.i == 1
+
+            with self.assertRaises(ValidationError):
+                a.validate()
+
+        except ImportError:
+            pass
 
 
 def makeBasicTypeTest(Type, sample, sample_in=None, xml=False):

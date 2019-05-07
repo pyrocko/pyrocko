@@ -45,7 +45,7 @@ class EmptyEvent(Exception):
 
 
 class Tag(StringPattern):
-    pattern = r'^[A-Za-z][A-Za-z0-9._]{0,128}:[A-Za-z0-9._-]+$'
+    pattern = r'^[A-Za-z][A-Za-z0-9._]{0,128}(:[A-Za-z0-9._-]*)?$'
 
 
 class Event(Location):
@@ -65,6 +65,7 @@ class Event(Location):
     '''
 
     time = Timestamp.T(default=util.str_to_time('1970-01-01 00:00:00'))
+    depth = Float.T(optional=True)
     name = String.T(default='', optional=True)
     magnitude = Float.T(optional=True)
     magnitude_type = String.T(optional=True)

@@ -30,6 +30,10 @@ d2r = 1.0 / r2d
 km = 1000.
 
 
+def arr(x):
+    return num.asarray(x, dtype=num.float)
+
+
 def numeq(a, b, eps):
     return (num.all(num.asarray(a).shape == num.asarray(b).shape and
             num.abs(num.asarray(a) - num.asarray(b)) < eps))
@@ -379,6 +383,15 @@ class GFTestCase(unittest.TestCase):
 
         store = gf.BaseStore(self.create(nrecords=nrecords))
 
+        from pyrocko.gf import store_ext
+        store.open()
+
+        store_ext.store_mapping_init(
+            store.cstore, 'type_0',
+            arr([0]), arr([nrecords-1]), arr([1]),
+            num.array([nrecords], dtype=num.uint64),
+            1)
+
         for deci in (1, 2, 3, 4):
             for i in range(300):
                 n = random.randint(0, 5)
@@ -391,33 +404,63 @@ class GFTestCase(unittest.TestCase):
                                         (random.randint(0, nrecords),
                                          random.randint(0, nrecords))]:
 
-                        a = store.sum(
-                            indices, shifts, weights,
-                            itmin=itmin,
-                            nsamples=nsamples,
-                            decimate=deci)
+                    a = store.sum(
+                        indices, shifts, weights,
+                        itmin=itmin,
+                        nsamples=nsamples,
+                        decimate=deci)
 
-                        b = store.sum(
-                            indices, shifts, weights,
-                            itmin=itmin,
-                            nsamples=nsamples,
-                            decimate=deci,
-                            implementation='alternative')
+                    b = store.sum(
+                        indices, shifts, weights,
+                        itmin=itmin,
+                        nsamples=nsamples,
+                        decimate=deci,
+                        implementation='alternative')
 
-                        c = store.sum(
-                            indices, shifts, weights,
-                            itmin=itmin,
-                            nsamples=nsamples,
-                            decimate=deci,
-                            implementation='reference')
+                    c = store.sum(
+                        indices, shifts, weights,
+                        itmin=itmin,
+                        nsamples=nsamples,
+                        decimate=deci,
+                        implementation='reference')
 
-                        self.assertEqual(a.itmin, c.itmin)
-                        num.testing.assert_array_almost_equal(
-                            a.data, c.data, 2)
+                    self.assertEqual(a.itmin, c.itmin)
+                    num.testing.assert_array_almost_equal(
+                        a.data, c.data, 2)
 
-                        self.assertEqual(b.itmin, c.itmin)
-                        num.testing.assert_array_almost_equal(
-                            b.data, c.data, 2)
+                    self.assertEqual(b.itmin, c.itmin)
+                    num.testing.assert_array_almost_equal(
+                        b.data, c.data, 2)
+
+                    if deci != 1:
+                        continue
+
+                    nthreads = 1
+                    source_coords = num.zeros((n, 5))
+                    source_coords[:, 4] = indices
+                    receiver_coords = num.zeros((1, 5))
+                    source_terms = num.zeros((n, 1))
+                    source_terms[:, 0] = weights
+                    results = store_ext.store_calc_timeseries(
+                        store.cstore,
+                        source_coords,
+                        source_terms,
+                        shifts,
+                        receiver_coords,
+                        'dummy',
+                        'nearest_neighbor',
+                        num.array(
+                            [itmin if itmin is not None else 0],
+                            dtype=num.int32),
+                        num.array(
+                            [nsamples if nsamples is not None else -1],
+                            dtype=num.int32),
+                        nthreads)
+
+                    d = gf.GFTrace(*results[0][:2])
+                    self.assertEqual(a.itmin, d.itmin)
+                    num.testing.assert_array_almost_equal(
+                        a.data, d.data, 2)
 
         store.close()
 
@@ -592,6 +635,36 @@ class GFTestCase(unittest.TestCase):
             if perc > 0.1:
                 logger.warning(
                     'test_stf_pre_post: max difference of %.1f %%' % perc)
+
+    def test_target_source_timing(self):
+        store_dir = self.get_pulse_store_dir()
+        engine = gf.LocalEngine(store_dirs=[store_dir])
+
+        for stime in [0., -160000., time.time()]:
+            source = gf.ExplosionSource(
+                        depth=200.,
+                        magnitude=4.,
+                        time=stime)
+
+            targets = [
+                gf.Target(
+                    codes=('', 'STA', '', component),
+                    north_shift=500.,
+                    tmin=source.time-300.,
+                    tmax=source.time+300.,
+                    east_shift=500.)
+
+                for component in 'ZNE'
+            ]
+
+            response = engine.process(source, targets)
+            synthetic_traces = response.pyrocko_traces()
+            data = num.zeros(num.shape(synthetic_traces[0].ydata))
+            for tr in synthetic_traces:
+                data += tr.ydata
+
+            sum_data = num.sum(abs(tr.ydata))
+            assert sum_data > 1.0
 
     def benchmark_get(self):
         store_dir = self.get_benchmark_store_dir()
@@ -931,29 +1004,23 @@ class GFTestCase(unittest.TestCase):
 
         benchmark.show_factor = False
 
-    @unittest.skip('depends on local store')
+    @unittest.skipIf('global_2s' not in local_stores,
+                     'depends on store global_2s')
     def test_calc_timeseries(self):
         from pyrocko.gf import store_ext
         benchmark.show_factor = True
 
-        rstate = num.random.RandomState(123)
+        engine = gf.LocalEngine(use_config=True)
 
-        def test_timeseries(store, source, dim, ntargets, interpolation,
-                            nthreads, niter=1,
-                            random_itmin=False, random_nsamples=False):
+        def test_timeseries(
+                store, source, targets, interpolation, nthreads,
+                random_itmin=False, random_nsamples=False):
 
-            source = gf.RectangularSource(
-                lat=0., lon=0., depth=3*km,
-                length=dim, width=dim, anchor='top')
-
-            targets = [gf.Target(
-                lat=rstate.uniform(),
-                lon=rstate.uniform())
-                       for x in range(ntargets)]
-
+            ntargets = len(targets)
             dsource = source.discretize_basesource(store, targets[0])
             source_coords_arr = dsource.coords5()
-            mts_arr = dsource.m6s
+            scheme = store.config.component_scheme
+            source_terms = dsource.get_source_terms(scheme)
 
             receiver_coords_arr = num.empty((len(targets), 5))
             for itarget, target in enumerate(targets):
@@ -961,8 +1028,8 @@ class GFTestCase(unittest.TestCase):
                 receiver_coords_arr[itarget, :] = \
                     [receiver.lat, receiver.lon, receiver.north_shift,
                      receiver.east_shift, receiver.depth]
-            nsources = mts_arr.shape[0]
-            delays = num.zeros(nsources)
+
+            delays = dsource.times
 
             itmin = num.zeros(ntargets, dtype=num.int32)
             nsamples = num.full(ntargets, -1, dtype=num.int32)
@@ -970,20 +1037,20 @@ class GFTestCase(unittest.TestCase):
             if random_itmin:
                 itmin = num.random.randint(-20, 5, size=ntargets,
                                            dtype=num.int32)
-
             if random_nsamples:
                 nsamples = num.random.randint(10, 100, size=ntargets,
                                               dtype=num.int32)
 
             @benchmark.labeled('calc_timeseries-%s' % interpolation)
             def calc_timeseries():
+
                 return store_ext.store_calc_timeseries(
                     store.cstore,
                     source_coords_arr,
-                    mts_arr,
+                    source_terms,
                     delays,
                     receiver_coords_arr,
-                    'elastic10',
+                    scheme,
                     interpolation,
                     itmin,
                     nsamples,
@@ -996,65 +1063,83 @@ class GFTestCase(unittest.TestCase):
                     params = store_ext.make_sum_params(
                         store.cstore,
                         source_coords_arr,
-                        mts_arr,
+                        source_terms,
                         target.coords5[num.newaxis, :].copy(),
-                        'elastic10',
+                        scheme,
                         interpolation,
                         nthreads)
+
                     for weights, irecords in params:
-                        d = num.zeros(irecords.shape[0], dtype=num.float32)
+                        neach = irecords.size // dsource.times.size
+                        delays2 = num.repeat(dsource.times, neach)
                         r = store_ext.store_sum(
                             store.cstore,
                             irecords,
-                            d,
+                            delays2,
                             weights,
                             int(itmin[itarget]),
                             int(nsamples[itarget]))
+
                         results.append(r)
 
                 return results
 
-            for _ in range(niter):
-                res_calc = calc_timeseries()
-            for _ in range(niter):
-                res_sum = sum_timeseries()
+            res_calc = calc_timeseries()
+            res_sum = sum_timeseries()
 
             for c, s in zip(res_calc, res_sum):
                 num.testing.assert_equal(c[0], s[0], verbose=True)
                 for cc, cs in zip(c[1:-1], s[1:]):
-                    continue
                     assert cc == cs
 
-        store = gf.Store(self.get_pulse_store_dir())
-        store.open()
-
-        sources = [
-                gf.DCSource(lat=0., lon=0., depth=1*km, magnitude=8.),
-                gf.RectangularSource(lat=0., lon=0., anchor='top', depth=5*km,
-                                     width=10*km, length=20*km)
+        source_store_targets = [
+            (
+                gf.ExplosionSource(time=0.0, depth=100., moment=1.0),
+                gf.Store(self.get_pulse_store_dir()),
+                [
+                    gf.Target(
+                        codes=('', 'STA', '', component),
+                        north_shift=500.,
+                        east_shift=500.,
+                        tmin=-300.,
+                        tmax=+300.)
+                    for component in 'ZNE'
+                ]
+            ),
+            (
+                gf.RectangularSource(
+                    lat=0., lon=0., depth=5*km,
+                    length=1*km, width=1*km, anchor='top'),
+                engine.get_store('global_2s'),
+                [
+                    gf.Target(
+                        codes=('', 'STA%02i' % istation, '', component),
+                        lat=lat,
+                        lon=lon,
+                        store_id='global_2s')
+                    for component in 'ZNE'
+                    for istation, (lat, lon) in enumerate(
+                        num.random.random((1, 2)))
+                ]
+            )
         ]
 
-        for source in sources:
+        for source, store, targets in source_store_targets:
+            store.open()
             for interp in ['multilinear', 'nearest_neighbor']:
                 for random_itmin in [True, False]:
                     for random_nsamples in [True, False]:
                         test_timeseries(
-                            store, source, dim=10*km, niter=1,
-                            ntargets=20, interpolation=interp, nthreads=0,
+                            store, source, targets,
+                            interpolation=interp,
+                            nthreads=1,
                             random_itmin=random_itmin,
                             random_nsamples=random_nsamples)
+
                 print(benchmark)
                 benchmark.clear()
 
-        def plot(res):
-            import matplotlib.pyplot as plt
-            plt.plot(res[0])
-            plt.show()
-
-        # plot(res)
-        # print(res)
-
-    @unittest.skipIf('global2s' not in local_stores,
+    @unittest.skipIf('global_2s' not in local_stores,
                      'depends on store global_2s')
     def test_process_timeseries(self):
         engine = gf.LocalEngine(use_config=True)
@@ -1065,7 +1150,7 @@ class GFTestCase(unittest.TestCase):
                 depth=depth,
                 moment=moment)
 
-            for moment in [2., 4., 8.] for depth in [300., 600., 1200.]
+            for moment in [2., 4., 8.] for depth in [3000., 6000., 12000.]
         ]
 
         targets = [
@@ -1075,10 +1160,10 @@ class GFTestCase(unittest.TestCase):
                 east_shift=0.,
                 tmin=tmin,
                 store_id='global_2s',
-                tmax=None if tmin is None else tmin+40)
+                tmax=None if tmin is None else tmin+40.)
 
             for component in 'ZNE' for i, shift in enumerate([100])
-            for tmin in [None, 5, 20]
+            for tmin in [None, 5., 20.]
         ]
 
         response_sum = engine.process(sources=sources, targets=targets,
@@ -1089,6 +1174,9 @@ class GFTestCase(unittest.TestCase):
 
         for (source, target, tr), (source_n, target_n, tr_n) in zip(
                 response_sum.iter_results(), response_calc.iter_results()):
+            assert source is source_n
+            assert target is target_n
+
             t1 = tr.get_xdata()
             t2 = tr_n.get_xdata()
             num.testing.assert_equal(t1, t2)
@@ -1097,8 +1185,6 @@ class GFTestCase(unittest.TestCase):
             disp2 = tr_n.get_ydata()
 
             num.testing.assert_equal(disp1, disp2)
-            assert source is source_n
-            assert target is target_n
 
     def _test_homogeneous_scenario(
             self,
@@ -1236,7 +1322,7 @@ class GFTestCase(unittest.TestCase):
                 trs2 = _make_traces_homogeneous(
                     dsource, receiver,
                     store.config.earthmodel_1d.require_homogeneous(),
-                    store.config.deltat, '', 'STA', 'a')
+                    store.config.deltat, '', 'STA', 'reference')
 
                 tmin = max(tr.tmin for tr in trs1+trs2)
                 tmax = min(tr.tmax for tr in trs1+trs2)

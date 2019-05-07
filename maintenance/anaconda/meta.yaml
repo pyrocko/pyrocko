@@ -11,6 +11,10 @@ requirements:
   build:
     - python
     - numpy
+    - setuptools
+  host:
+    - python
+    - numpy
   run:
     - python
     - numpy

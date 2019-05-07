@@ -80,7 +80,11 @@ class ObsPyCompatTestCase(unittest.TestCase):
             assert isinstance(sta, model.Station)
 
     def test_to_pyrocko_events(self):
-        pass
+        from obspy.clients.fdsn.client import Client
+        client = Client('IRIS')
+        cat = client.get_events(eventid=609301)
+        events = cat.to_pyrocko_events()
+        self.assertEqual(len(events), len(cat))
 
 
 if __name__ == "__main__":

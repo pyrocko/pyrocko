@@ -22,6 +22,7 @@ except ImportError:
     from urllib.error import HTTPError
 
 from pyrocko import util
+from pyrocko.util import DownloadError
 from pyrocko import config
 
 logger = logging.getLogger('pyrocko.client.fdsn')
@@ -61,11 +62,11 @@ else:
 re_realm_from_auth_header = re.compile(r'(realm)\s*[:=]\s*"([^"]*)"?')
 
 
-class CannotGetRealmFromAuthHeader(Exception):
+class CannotGetRealmFromAuthHeader(DownloadError):
     pass
 
 
-class CannotGetCredentialsFromAuthRequest(Exception):
+class CannotGetCredentialsFromAuthRequest(DownloadError):
     pass
 
 
@@ -83,25 +84,25 @@ def sdatetime(t):
     return util.time_to_str(t, format='%Y-%m-%dT%H:%M:%S')
 
 
-class EmptyResult(Exception):
+class EmptyResult(DownloadError):
     def __init__(self, url):
-        Exception.__init__(self)
+        DownloadError.__init__(self)
         self._url = url
 
     def __str__(self):
         return 'No results for request %s' % self._url
 
 
-class RequestEntityTooLarge(Exception):
+class RequestEntityTooLarge(DownloadError):
     def __init__(self, url):
-        Exception.__init__(self)
+        DownloadError.__init__(self)
         self._url = url
 
     def __str__(self):
         return 'Request entity too large: %s' % self._url
 
 
-class InvalidRequest(Exception):
+class InvalidRequest(DownloadError):
     pass
 
 
@@ -171,12 +172,14 @@ def _request(url, post=False, user=None, passwd=None,
                     logger.error(
                         'authentication failed for realm "%s" when '
                         'accessing url "%s"' % (realm, url))
-                    raise e
+
+                    raise DownloadError('Original error was: %s' % str(e))
 
             else:
                 logger.error(
                     'error content returned by server:\n%s' % e.read())
-                raise e
+
+                raise DownloadError('Original error was: %s' % str(e))
 
         break
 

@@ -115,7 +115,7 @@ sampling_check_eps = 1e-5
 class GFTrace(object):
 
     '''
-    Green's Function trace class for handling traces from the GF Store.
+    Green's Function trace class for handling traces from the GF store.
     '''
 
     @classmethod
@@ -166,7 +166,7 @@ class GFTrace(object):
         Time vector of the GF trace.
 
         :returns: Time vector
-        :rtype: :py:class:`numpy.Array`
+        :rtype: :py:class:`numpy.ndarray`
         '''
         return num.linspace(
             self.itmin*self.deltat,
@@ -364,8 +364,12 @@ class BaseStore(object):
             raise CannotOpen('cannot open gf store: %s' % self.store_dir)
 
         try:
+            # replace single precision deltat value in store with the double
+            # precision value from the config, if available
             self.cstore = store_ext.store_init(
-                self._f_index.fileno(), self._f_data.fileno())
+                self._f_index.fileno(), self._f_data.fileno(),
+                self.get_deltat() or 0.0)
+
         except store_ext.StoreExtError as e:
             raise StoreError(str(e))
 
@@ -484,7 +488,11 @@ class BaseStore(object):
         else:
             return self._get_impl_reference(irecord, itmin, nsamples, decimate)
 
+    def get_deltat(self):
+        return self._deltat
+
     def _get_impl_reference(self, irecord, itmin, nsamples, decimate):
+        deltat = self.get_deltat()
 
         if not (0 <= irecord < self._nrecords):
             raise StoreError('invalid record number requested '
@@ -515,7 +523,7 @@ class BaseStore(object):
             ihi = min(itmin+nsamples, itmin_data+nsamples_data) - itmin_data
             data = self._get_data(ipos, begin_value, end_value, ilo, ihi)
 
-            return GFTrace(data, itmin=itmin_data+ilo, deltat=self._deltat,
+            return GFTrace(data, itmin=itmin_data+ilo, deltat=deltat,
                            begin_value=begin_value, end_value=end_value)
 
         else:
@@ -559,7 +567,7 @@ class BaseStore(object):
                     data_deci[-1] = end_value
 
             return GFTrace(data_deci, itmin_ext//decimate,
-                           self._deltat*decimate,
+                           deltat*decimate,
                            begin_value=begin_value, end_value=end_value)
 
     def _get_span(self, irecord, decimate=1):
@@ -593,9 +601,11 @@ class BaseStore(object):
         if not self._f_index:
             self.open()
 
+        deltat = self.get_deltat()
+
         assert self.mode == 'w'
         assert trace.is_zero or \
-            abs(trace.deltat - self._deltat) < 1e-7 * self._deltat
+            abs(trace.deltat - deltat) < 1e-7 * deltat
         assert 0 <= irecord < self._nrecords, \
             'irecord = %i, nrecords = %i' % (irecord, self._nrecords)
 
@@ -630,7 +640,7 @@ class BaseStore(object):
 
         assert self.mode == 'r'
 
-        deltat = self._deltat * decimate
+        deltat = self.get_deltat() * decimate
 
         if len(irecords) == 0:
             if None in (itmin, nsamples):
@@ -721,7 +731,7 @@ class BaseStore(object):
         if not self._f_index:
             self.open()
 
-        deltat = self._deltat * decimate
+        deltat = self.get_deltat() * decimate
 
         if len(irecords) == 0:
             if None in (itmin, nsamples):
@@ -785,7 +795,7 @@ class BaseStore(object):
         if num.unique(irecords).size == irecords.size:
             return irecords, delays, weights
 
-        deltat = self._deltat
+        deltat = self.get_deltat()
 
         delays = delays / deltat
         irecords2 = num.repeat(irecords, 2)
@@ -834,10 +844,11 @@ class BaseStore(object):
             assert optimization == 'disable'
 
         t1 = time.time()
+        deltat = self.get_deltat()
 
         if implementation == 'c' and decimate == 1:
             if delays.size != 0:
-                itoffset = int(num.floor(num.min(delays)/self._deltat))
+                itoffset = int(num.floor(num.min(delays)/deltat))
             else:
                 itoffset = 0
 
@@ -852,7 +863,7 @@ class BaseStore(object):
             try:
                 tr = GFTrace(*store_ext.store_sum(
                     self.cstore, irecords.astype(num.uint64),
-                    (delays - itoffset*self._deltat).astype(num.float32),
+                    delays - itoffset*deltat,
                     weights.astype(num.float32),
                     int(itmin), int(nsamples)))
 
@@ -905,7 +916,7 @@ class BaseStore(object):
     def _save_index(self):
         self._f_index.seek(0)
         self._f_index.write(struct.pack(gf_store_header_fmt, self._nrecords,
-                                        self._deltat))
+                                        self.get_deltat()))
 
         if self._use_memmap:
             del self._records
@@ -1052,7 +1063,7 @@ class Store(BaseStore):
 
         Creates a new GF store at path ``store_dir``. The layout of the GF is
         defined with the parameters given in ``config``, which should be an
-        object of a subclass of :py:class:`pyrocko.gf.meta.Config`. This
+        object of a subclass of :py:class:`~pyrocko.gf.meta.Config`. This
         function will refuse to overwrite an existing GF store, unless
         ``force`` is set  to ``True``. If more information, e.g. parameters
         used for the modelling code, earth models or other, should be saved
@@ -1060,14 +1071,14 @@ class Store(BaseStore):
         ``extra``. The keys of this dict must be names and the values must be
         *guts* type objects.
 
-        :param store_dir: GF Store path
-        :type store_dir: string
-        :param config: GF Store Config
-        :type config: :py:class:`pyrocko.gf.meta.Config`
-        :param force: Force overwrite, defaults to False
-        :type force: bool, optional
-        :param extra: Extra information, defaults to None
-        :type extra: dict, optional
+        :param store_dir: GF store path
+        :type store_dir: str
+        :param config: GF store Config
+        :type config: :py:class:`~pyrocko.gf.meta.Config`
+        :param force: Force overwrite, defaults to ``False``
+        :type force: bool
+        :param extra: Extra information
+        :type extra: dict or None
         '''
 
         Store.create_editables(store_dir, config, force=force, extra=extra)
@@ -1119,7 +1130,7 @@ class Store(BaseStore):
         config_fn = self.config_fn()
         if not os.path.isfile(config_fn):
             raise StoreError(
-                'directory "%s" does not seem to contain a GF Store '
+                'directory "%s" does not seem to contain a GF store '
                 '("config" file not found)' % store_dir)
         self.load_config()
 
@@ -1147,6 +1158,9 @@ class Store(BaseStore):
             os.rename(config_fn, config_fn + '~')
 
         meta.dump(self.config, filename=config_fn)
+
+    def get_deltat(self):
+        return self.config.deltat
 
     def load_config(self):
         logger.debug('loading config file ...')
@@ -1235,12 +1249,12 @@ class Store(BaseStore):
 
         Store a single GF trace at (high-level) index ``args``.
 
-        :param args: :py:class:`pyrocko.gf.meta.Config` index tuple, e.g.
+        :param args: :py:class:`~pyrocko.gf.meta.Config` index tuple, e.g.
             ``(source_depth, distance, component)`` as in
-            :py:class:`pyrocko.gf.meta.ConfigTypeA`.
+            :py:class:`~pyrocko.gf.meta.ConfigTypeA`.
         :type args: tuple
-        :returns: GF Trace at ``args``
-        :rtype: :py:class:`pyrocko.gf.store.GFTrace`
+        :returns: GF trace at ``args``
+        :rtype: :py:class:`~pyrocko.gf.store.GFTrace`
         '''
 
         irecord = self.config.irecord(*args)
@@ -1265,26 +1279,27 @@ class Store(BaseStore):
         on the fly or, if available, the trace is read from a decimated version
         of the GF store.
 
-        :param args: :py:class:`pyrocko.gf.meta.Config` index tuple, e.g.
+        :param args: :py:class:`~pyrocko.gf.meta.Config` index tuple, e.g.
             ``(source_depth, distance, component)`` as in
-            :py:class:`pyrocko.gf.meta.ConfigTypeA`.
+            :py:class:`~pyrocko.gf.meta.ConfigTypeA`.
         :type args: tuple
         :param itmin: Start time index (start time is ``itmin * dt``),
             defaults to None
-        :type itmin: integer, optional
+        :type itmin: int or None
         :param nsamples: Number of samples, defaults to None
-        :type nsamples: integer, optional
+        :type nsamples: int or None
         :param decimate: Decimatation factor, defaults to 1
-        :type decimate: integer, optional
+        :type decimate: int
         :param interpolation: Interpolation method
             ``['nearest_neighbor', 'multilinear', 'off']``, defaults to
             ``'nearest_neighbor'``
-        :type interpolation: str, optional
-        :param implementation: Implementation mode, defaults to ``'c'``
-        :type implementation: str, optional
+        :type interpolation: str
+        :param implementation: Implementation to use ``['c', 'reference']``,
+            defaults to ``'c'``.
+        :type implementation: str
 
-        :returns: GF Trace at ``args``
-        :rtype: :py:class:`pyrocko.gf.store.GFTrace`
+        :returns: GF trace at ``args``
+        :rtype: :py:class:`~pyrocko.gf.store.GFTrace`
         '''
 
         store, decimate = self._decimated_store(decimate)
@@ -1326,34 +1341,34 @@ class Store(BaseStore):
         an integer in the range [2,8], decimated traces are used in the
         summation.
 
-        :param args: :py:class:`pyrocko.gf.meta.Config` index tuple, e.g.
+        :param args: :py:class:`~pyrocko.gf.meta.Config` index tuple, e.g.
             ``(source_depth, distance, component)`` as in
-            :py:class:`pyrocko.gf.meta.ConfigTypeA`.
-        :type args: tuple
+            :py:class:`~pyrocko.gf.meta.ConfigTypeA`.
+        :type args: tuple(numpy.ndarray)
         :param delays: Delay times
-        :type delays: :py:class:`numpy.Array`
+        :type delays: :py:class:`numpy.ndarray`
         :param weights: Trace weights
-        :type weights: :py:class:`numpy.Array`
+        :type weights: :py:class:`numpy.ndarray`
         :param itmin: Start time index (start time is ``itmin * dt``),
             defaults to None
-        :type itmin: integer, optional
+        :type itmin: int or None
         :param nsamples: Number of samples, defaults to None
-        :type nsamples: integer, optional
+        :type nsamples: int or None
         :param decimate: Decimatation factor, defaults to 1
-        :type decimate: integer, optional
+        :type decimate: int
         :param interpolation: Interpolation method
             ``['nearest_neighbor', 'multilinear', 'off']``, defaults to
             ``'nearest_neighbor'``
-        :type interpolation: str, optional
-        :param implementation: Implementation mode ``['c', 'alternative']``
-            where ``'alternative'`` uses a Python implementation, defaults to
-            `'c'`
-        :type implementation: str, optional
+        :type interpolation: str
+        :param implementation: Implementation to use,
+            ``['c', 'alternative', 'reference']``, where ``'alternative'`` 
+            and ``'reference'`` use a Python implementation, defaults to `'c'`
+        :type implementation: str
         :param optimization: Optimization mode ``['enable', 'disable']``,
             defaults to ``'enable'``
-        :type optimization: str, optional
-        :returns: Stacked GF Trace.
-        :rtype: :py:class:`pyrocko.gf.store.GFTrace`
+        :type optimization: str
+        :returns: Stacked GF trace.
+        :rtype: :py:class:`~pyrocko.gf.store.GFTrace`
         '''
 
         store, decimate_ = self._decimated_store(decimate)
@@ -1394,13 +1409,13 @@ class Store(BaseStore):
         when computation are done for lower frequency signals.
 
         :param decimate: Decimate factor
-        :type decimate: integer
-        :param config: GF Store config object, defaults to None
-        :type config: :py:class:`pyrocko.gf.meta.Config`, optional
-        :param force: Force overwrite, defaults to False
-        :type force: bool, optional
-        :param show_progress: Show progress, defaults to False
-        :type show_progress: bool, optional
+        :type decimate: int
+        :param config: GF store config object, defaults to None
+        :type config: :py:class:`~pyrocko.gf.meta.Config` or None
+        :param force: Force overwrite, defaults to ``False``
+        :type force: bool
+        :param show_progress: Show progress, defaults to ``False``
+        :type show_progress: bool
         '''
 
         if not self._f_index:
@@ -1530,7 +1545,7 @@ class Store(BaseStore):
         return fn
 
     def get_stored_phase(self, phase_id):
-        """Get stored phase from GF STore
+        """Get stored phase from GF store
 
         :returns: Phase information
         :rtype: :py:class:`pyrocko.spit.SPTree`
@@ -1610,14 +1625,14 @@ class Store(BaseStore):
 
         **Examples:**
 
-        If ``test_store`` is of :py:class:`pyrocko.gf.meta.ConfigTypeA`::
+        If ``test_store`` is of :py:class:`~pyrocko.gf.meta.ConfigTypeA`::
 
             test_store.t('p', (1000, 10000))
             test_store.t('last{P|Pdiff}', (1000, 10000)) # The latter arrival
                                                          # of P or diffracted
                                                          # P phase
 
-        If ``test_store`` is of :py:class:`pyrocko.gf.meta.ConfigTypeB`::
+        If ``test_store`` is of :py:class:`~pyrocko.gf.meta.ConfigTypeB`::
 
             test_store.t('S', (1000, 1000, 10000))
             test_store.t('first{P|p|Pdiff|sP}', (1000, 1000, 10000)) # The
@@ -1626,10 +1641,10 @@ class Store(BaseStore):
                                                          # selected
 
         :param timing: Timing string as described above
-        :type timing: string or :py:class:`pyrocko.gf.meta.Timing`
-        :param \*args: :py:class:`pyrocko.gf.meta.Config` index tuple, e.g.
+        :type timing: str or :py:class:`~pyrocko.gf.meta.Timing`
+        :param \*args: :py:class:`~pyrocko.gf.meta.Config` index tuple, e.g.
             ``(source_depth, distance, component)`` as in
-            :py:class:`pyrocko.gf.meta.ConfigTypeA`.
+            :py:class:`~pyrocko.gf.meta.ConfigTypeA`.
         :type \*args: tuple
         :returns: Phase arrival according to ``timing``
         :rtype: float or None
@@ -1732,8 +1747,8 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
         '''Compute travel time tables.
 
         Travel time tables are computed using the 1D earth model defined in
-        :py:attr:`pyrocko.gf.meta.Config.earthmodel_1d` for each defined phase
-        in :py:attr:`pyrocko.gf.meta.Config.tabulated_phases`. The accuracy of
+        :py:attr:`~pyrocko.gf.meta.Config.earthmodel_1d` for each defined phase
+        in :py:attr:`~pyrocko.gf.meta.Config.tabulated_phases`. The accuracy of
         the tablulated times is adjusted to the sampling rate of the store.
         '''
 
@@ -1817,6 +1832,7 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
         else:
             delays = source.times*0
             itsnapshot = 1
+
         scheme_desc = meta.component_scheme_to_description[
             self.config.component_scheme]
 
@@ -1882,14 +1898,14 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
         for irec, rec in enumerate(receivers):
             receiver_coords_arr[irec, :] = rec.coords5
 
-        dt = self._deltat
+        dt = self.get_deltat()
 
         itoffset = int(num.floor(delays.min()/dt)) if delays.size != 0 else 0
 
         if itmin is None:
             itmin = num.zeros(nreceiver, dtype=num.int32)
-
-        itmin = (itmin-itoffset).astype(num.int32)
+        else:
+            itmin = (itmin-itoffset).astype(num.int32)
 
         if nsamples is None:
             nsamples = num.zeros(nreceiver, dtype=num.int32) - 1
@@ -1901,7 +1917,7 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
                 store.cstore,
                 source_coords_arr,
                 source_terms,
-                (delays - itoffset*self._deltat),
+                (delays - itoffset*dt),
                 receiver_coords_arr,
                 scheme,
                 interpolation,
@@ -1975,7 +1991,7 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
                 scheme,
                 interpolation, nthreads)
 
-        except store_ext.StoreExtError as e:
+        except store_ext.StoreExtError:
             raise meta.OutOfBounds()
 
         provided_components = scheme_desc.provided_components

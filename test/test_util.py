@@ -45,6 +45,11 @@ class UtilTestCase(unittest.TestCase):
                 t3 = util.str_to_time(s, format=fmt_opt)
                 assert abs(t1 - t3) < accu
 
+    def testBigTime(self):
+        s = '2500-01-01 00:00:00.000'
+        tx = util.str_to_time(s)
+        assert s == util.time_to_str(tx)
+
     def testIterTimes(self):
 
         tmin = util.str_to_time('1999-03-20 20:10:10')

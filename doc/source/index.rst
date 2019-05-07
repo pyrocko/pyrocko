@@ -40,6 +40,7 @@ Contents
    overview
    install/index
    apps/index
+   topics/index
    formats/index
    library/index
 

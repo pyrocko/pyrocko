@@ -11,6 +11,8 @@ import requests
 import logging
 
 from pyrocko import util
+from pyrocko.util import DownloadError
+
 
 logger = logging.getLogger('pyrocko.gf.ws')
 
@@ -97,18 +99,6 @@ def ujoin(*args):
     return '/'.join(args)
 
 
-class DownloadError(Exception):
-    pass
-
-
-class PathExists(DownloadError):
-    pass
-
-
-class Incomplete(DownloadError):
-    pass
-
-
 def rget(url, path, force=False, method='download', stats=None,
          status_callback=None, entries_wanted=None):
 
@@ -164,6 +154,9 @@ def download_gf_store(url=g_url_static, site=g_default_site, majorversion=1,
     except Exception as e:
         raise DownloadError('download failed. Original error was: %s, %s' % (
             type(e).__name__, e))
+
+        import shutil
+        shutil.rmtree(store_id)
 
 
 def seismosizer(url=g_url, site=g_default_site, majorversion=1,
