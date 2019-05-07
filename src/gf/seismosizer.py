@@ -657,6 +657,11 @@ class BoxcarSTF(STF):
 
     '''
     Boxcar type source time function.
+
+    .. figure :: /static/stf-BoxcarSTF.svg
+        :width: 40%
+        :align: center
+        :alt: boxcar source time function
     '''
 
     duration = Float.T(
@@ -706,6 +711,11 @@ class TriangularSTF(STF):
 
     '''
     Triangular type source time function.
+
+    .. figure :: /static/stf-TriangularSTF.svg
+        :width: 40%
+        :align: center
+        :alt: triangular source time function
     '''
 
     duration = Float.T(
@@ -799,6 +809,11 @@ class HalfSinusoidSTF(STF):
 
     '''
     Half sinusoid type source time function.
+
+    .. figure :: /static/stf-HalfSinusoidSTF.svg
+        :width: 40%
+        :align: center
+        :alt: half-sinusouid source time function
     '''
 
     duration = Float.T(
@@ -849,6 +864,10 @@ class SmoothRampSTF(STF):
     .. [1] W. Bruestle, G. Mueller (1983), Moment and duration of shallow
         earthquakes from Love-wave modelling for regional distances, PEPI 32,
         312-324.
+
+    .. figure :: /static/stf-SmoothRampSTF.svg
+        :width: 40%
+        :alt: smooth ramp source time function
     '''
     duration = Float.T(
         default=0.0,
@@ -899,8 +918,16 @@ class ResonatorSTF(STF):
     '''
     Simple resonator like source time function.
 
-    f(t) = 0 for t < 0
-    f(t) = e^{-t/tau} * sin(2 * pi * f * t)
+    .. math ::
+
+        f(t) = 0 for t < 0
+        f(t) = e^{-t/tau} * sin(2 * pi * f * t)
+
+
+    .. figure :: /static/stf-SmoothRampSTF.svg
+      :width: 40%
+      :alt: smooth ramp source time function
+
     '''
 
     duration = Float.T(

@@ -46,7 +46,7 @@ Download :download:`gf_forward_example2.py </../../examples/gf_forward_example2.
     :language: python
 
 Calculate spatial surface displacement from a local GF store and export result as kite scenes
--------------------------------------------------------------
+------------------------------------------------------------------------------------------------
 
 We repeat the above example but use `Kite <https://pyrocko.org/docs/kite>`_ for displaying the results.
 Kite needs to be installed separately. Kite can be used to do easy quadtree data subsampling and data error variance-covariance estimation of surface displacement data.
