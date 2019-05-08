@@ -99,7 +99,7 @@ Finite sources
 
 First import everything from ``pyrocko.gf``
 
-..code-block ::
+.. code-block ::
     :caption: Import all object from ``pyrocko.gf``.
 
     from pyrocko.gf import *
@@ -328,6 +328,15 @@ Targets are generic data representations, derived or postprocessed from observab
     In Pyrocko locations are given with five coordinates: ``lat``, ``lon``, ``east_shift``, ``north_shift`` and ``depth``.
 
     Latitude and longitude are the origin of an optional local cartesian coordinate system for which an ``east_shift`` and a ``north_shift`` [m] can be defined. A target has a depth below the surface. However, the surface can have topography and the target can also have an ``elevation``.
+
+
+To use the ``Targets``, import everything from ``pyrocko.gf.targets``
+
+.. code-block ::
+    :caption: Import all object from ``pyrocko.gf.targets``.
+
+    from pyrocko.gf.targets import *
+
 
 Waveforms
 ~~~~~~~~~
