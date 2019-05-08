@@ -69,7 +69,7 @@ Source models
 
 Pyrocko-GF supports the simulation of various dislocation sources, focused on earthquake and volcano studies.
 
-.. tip ::
+.. note ::
 
     Multiple sources can be combined through the :class:`~pyrocko.gf.seismosizer.CombiSource` object.
 
