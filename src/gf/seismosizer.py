@@ -1603,7 +1603,7 @@ class CLVDSource(SourceWithMagnitude):
             **kwargs)
 
 
-class CLVDVolumeSource(SourceWithMagnitude):
+class VLVDSource(SourceWithMagnitude):
     ''' Volume source, isometric expansion constrained by a CLVD
 
     This source can be used to constrain sill or dyke like volume dislocation
@@ -1628,9 +1628,8 @@ class CLVDVolumeSource(SourceWithMagnitude):
 
     clvd_moment = Float.T(
         default=0.,
-        help='Moment magnitude Mw as in [Hanks and Kanamori, 1979], '
-             'for the CLVD part. A negative magnitude reverses the CLVD, the'
-             ' absolute magnitude scales the CLVD.')
+        help='Moment M0 for the CLVD part,'
+             ' a negative moment reverses the CLVD.')
 
     get_moment_to_volume_change_ratio = \
         ExplosionSource.get_moment_to_volume_change_ratio
@@ -1644,14 +1643,14 @@ class CLVDVolumeSource(SourceWithMagnitude):
         return float(self.get_magnitude())
 
     def get_magnitude(self, store=None, target=None):
-        pmt = self.pyrocko_moment_tensor(store, target)
-        return float(mt.moment_to_magnitude(pmt.moment))
+        mt = self.pyrocko_moment_tensor(store, target)
+        return float(mt.moment_to_magnitude(mt.moment))
 
     def get_m6(self, store, target):
         a = math.sqrt(4. / 3.) * self.clvd_moment
-        m_clvd = mt.symmat6(-0.5 * a, -0.5 * a, a, 0., 0., 0.)
+        m_clvd = pmt.symmat6(-0.5 * a, -0.5 * a, a, 0., 0., 0.)
 
-        rotmat1 = mt.euler_to_matrix(
+        rotmat1 = pmt.euler_to_matrix(
             d2r * (self.dip - 90.),
             d2r * (self.azimuth - 90.),
             0.)
@@ -1665,13 +1664,13 @@ class CLVDVolumeSource(SourceWithMagnitude):
             m_iso = self.volume_change * \
                 self.get_moment_to_volume_change_ratio(store, target)
 
-        m_iso = mt.symmat6(m_iso, m_iso, m_iso, 0., 0., 0.,) * math.sqrt(2./3)
+        m_iso = pmt.symmat6(m_iso, m_iso, m_iso, 0., 0., 0.,) * math.sqrt(2./3)
 
-        m = mt.to6(m_clvd) + mt.to6(m_iso)
+        m = pmt.to6(m_clvd) + pmt.to6(m_iso)
         return m
 
     def get_moment(self, store=None, target=None):
-        return float(mt.magnitude_to_moment(
+        return float(pmt.magnitude_to_moment(
             self.get_magnitude(store, target)))
 
     def get_m6_astuple(self, store, target):
@@ -1691,7 +1690,7 @@ class CLVDVolumeSource(SourceWithMagnitude):
 
     def pyrocko_moment_tensor(self, store=None, target=None):
         m6_astuple = self.get_m6_astuple(store, target)
-        return mt.MomentTensor(m=mt.symmat6(*m6_astuple))
+        return pmt.MomentTensor(m=pmt.symmat6(*m6_astuple))
 
     def pyrocko_event(self, store=None, target=None, **kwargs):
         mt = self.pyrocko_moment_tensor(store, target)
@@ -3606,7 +3605,7 @@ source_classes = [
     RectangularExplosionSource,
     DCSource,
     CLVDSource,
-    CLVDVolumeSource,
+    VLVDSource,
     MTSource,
     RectangularSource,
     DoubleDCSource,
