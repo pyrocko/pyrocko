@@ -69,6 +69,10 @@ Source models
 
 Pyrocko-GF supports the simulation of various dislocation sources, focused on earthquake and volcano studies.
 
+.. tip ::
+
+    Multiple sources can be combined through the :class:`~pyrocko.gf.seismosizer.CombiSource` object.
+
 Point sources
 ~~~~~~~~~~~~~
 
@@ -93,7 +97,13 @@ Finite sources
 :class:`~pyrocko.gf.seismosizer.RingFault`         Ring fault for volcanic processes, e.g. caldera collapses.
 ================================================== ================================================================
 
-Multiple sources can be combined through the :class:`pyrocko.gf.CombiSource` object.
+First import everything from ``pyrocko.gf``
+
+..code-block ::
+    :caption: Import all object from ``pyrocko.gf``.
+
+    from pyrocko.gf import *
+
 
 Explosion source
 ~~~~~~~~~~~~~~~~
@@ -146,7 +156,8 @@ A moment tensor point source. This is the most complete form of describing an en
        mnn=.5, mee=.1, mdd=.7,
        mne=.6, mnd=.2, med=.1,
        magnitude=6.3)
-                       
+
+    # Or use an event
     mtsource = MTSource.from_pyrocko_event(event)
 
 CLVD source
@@ -161,7 +172,7 @@ CLVD source
 A pure compensated linear vector dipole (CLVD) point source.
 
 .. code-block ::
-    :caption: Initialise a CLVD source
+    :caption: Initialise a CLVD source.
 
     clvdsource = CLVDSource(lat=48., lon=17., depth=5e3, dip=31.depth=5e3, , azimuth=83.)
 
@@ -189,12 +200,14 @@ Rectangular fault
 Classical Haskell finite source model modified for bilateral rupture.
 
 .. code-block ::
-    :caption: Initialise a rectangular fault with a width of 3 km and a length of 8 km.
+    :caption: Initialise a rectangular fault with a width of 3 km, a length of 8 km and slip of 2.3 m.
+
+    km = 1e3
 
     rectangular_fault = RectangularFault(
-        lat=20., lon=44., depth=5e3,
+        lat=20., lon=44., depth=5*km,
         dip=30., strike=120., rake=50.,
-        width=3e3, length=8e3, slip=2.3)
+        width=3*km, length=8*km, slip=2.3)
 
 Ring fault
 ~~~~~~~~~~
