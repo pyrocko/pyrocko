@@ -49,6 +49,7 @@ standard_library.install_aliases()  # noqa
 from builtins import range, zip, str as newstr
 
 import os
+import logging
 import copy
 import math
 import cmath
@@ -63,6 +64,8 @@ import numpy as num
 from scipy.optimize import bisect, brentq
 
 from . import util, config
+
+logger = logging.getLogger('cake')
 
 ZEPS = 0.01
 P = 1
@@ -1498,9 +1501,9 @@ class Layer(object):
 
         self.mtop = mtop if depth_min else self.mtop
         self.mbot = mbot if depth_max else self.mbot
-        self.ztop = depth_min
-        self.zbot = depth_max
-        self.zmid = depth_min + (depth_max - depth_min)/2.
+        self.ztop = depth_min if depth_min else self.ztop
+        self.zbot = depth_max if depth_max else self.zbot
+        self.zmid = self.ztop + (self.zbot - self.ztop)/2.
 
 
 class DoesNotTurn(CakeError):
@@ -1757,6 +1760,11 @@ class Discontinuity(object):
         self.zbot = z
         self.ztop = z
         self.name = name
+
+    def change_depth(self, z):
+        self.z = z
+        self.zbot = z
+        self.ztop = z
 
     def copy(self):
         return copy.deepcopy(self)
@@ -3687,6 +3695,107 @@ class LayeredModel(object):
                 else:
                     newmod.append(element)
         return newmod
+
+    def perturbate(self, rstate=None, keep_vp_vs=False, **kwargs):
+        '''Perturbate the earthmodel's parameters.
+
+        Randomly change the thickness and material parameters of the earth
+        model from a uniform distribution.
+
+        :param **kwargs: Maximum change in percent (e.g. 0.1) of the parameter.
+            Name the parameter, prefixed by ``p``. Supported parameters are
+            ``ph, pvp, pvs, prho, pqs, pqp``.
+        :type **kwargs: dict
+        :param rstate: Random state to draw from, defaults to ``None``
+        :type rstate: :class:`numpy.random.RandomState`, optional
+        :param keep_vp_vs: Keep the Vp/Vs ratio, defaults to False
+        :type keep_vp_vs: bool, optional
+
+        :returns: A new, perturbated earth model
+        :rtype: :class:`~pyrocko.cake.LayeredModel`
+
+        .. code-block :: python
+
+            peturbated_model = earthmodel.peturbate(ph=.1, pvp=.05, prho=.1)
+        '''
+        _pargs = set(['ph', 'pvp', 'pvs', 'prho', 'pqs', 'pqp'])
+        earthmod = copy.deepcopy(self)
+
+        if rstate is None:
+            rstate = num.random.RandomState()
+
+        layers = earthmod.layers()
+        discont = earthmod.discontinuities()
+        prev_layer = None
+
+        def get_change_ratios():
+            values = dict.fromkeys([p[1:] for p in _pargs], 0.)
+
+            for param, pval in kwargs.items():
+                if param not in _pargs:
+                    continue
+                values[param[1:]] = float(rstate.uniform(-pval, pval, size=1))
+            return values
+
+        # skip Surface
+        while True:
+            disc = next(discont)
+            if isinstance(disc, Surface):
+                break
+
+        while True:
+            try:
+                layer = next(layers)
+                m = layer.material(None)
+                h = layer.zbot - layer.ztop
+            except StopIteration:
+                break
+
+            if not isinstance(layer, HomogeneousLayer):
+                raise NotImplementedError(
+                    'Can only perturbate homogeneous layers!')
+
+            changes = get_change_ratios()
+
+            # Changing thickness
+            dh = h * changes['h']
+            changes['h'] = dh
+
+            layer.resize(depth_max=layer.zbot + dh,
+                         depth_min=prev_layer.zbot if prev_layer else None)
+
+            try:
+                disc = next(discont)
+                disc.change_depth(disc.z + dh)
+            except StopIteration:
+                pass
+
+            # Setting material parameters
+            for param, change_ratio in changes.items():
+                if param == 'h':
+                    continue
+
+                value = m.__getattribute__(param)
+                changes[param] = value * change_ratio
+
+            if keep_vp_vs and changes['vp'] != 0.:
+                changes['vs'] = (m.vp + changes['vp']) / m.vp_vs_ratio() - m.vs
+
+            for param, change in changes.items():
+                if param == 'h':
+                    continue
+                value = m.__getattribute__(param)
+                m.__setattr__(param, value + change)
+
+            logger.info(
+                'perturbating earthmodel: {}'.format(
+                    ' '.join(['{param}: {change:{len}.2f}'.format(
+                              param=p, change=c, len=8)
+                              for p, c in changes.items()])))
+
+            prev_layer = layer
+
+        return earthmod
 
     def require_homogeneous(self):
         elements = list(self.elements())
