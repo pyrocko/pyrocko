@@ -1056,8 +1056,8 @@ class Store(BaseStore):
         writeable.
     '''
 
-    @staticmethod
-    def create(store_dir, config, force=False, extra=None):
+    @classmethod
+    def create(cls, store_dir, config, force=False, extra=None):
         '''
         Create new GF store.
 
@@ -1081,8 +1081,10 @@ class Store(BaseStore):
         :type extra: dict or None
         '''
 
-        Store.create_editables(store_dir, config, force=force, extra=extra)
-        Store.create_dependants(store_dir, force=force)
+        cls.create_editables(store_dir, config, force=force, extra=extra)
+        cls.create_dependants(store_dir, force=force)
+
+        return cls(store_dir)
 
     @staticmethod
     def create_editables(store_dir, config, force=False, extra=None):
