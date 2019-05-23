@@ -75,8 +75,8 @@ def circulation(points, axis):
     return result
 
 
-def spoly_cut(l_points, axis=0, nonsimple=True):
-    dphi = 2.*PI / 360.
+def spoly_cut(l_points, axis=0, nonsimple=True, arcres=181):
+    dphi = 2.*PI / (2*arcres)
 
     # cut sub-polygons and gather crossing point information
     crossings = []
@@ -262,8 +262,8 @@ def circle_points(aphi, sign=1.0):
     return vecs
 
 
-def eig2gx(eig):
-    aphi = num.linspace(0., 2.*PI, 181)
+def eig2gx(eig, arcres=181):
+    aphi = num.linspace(0., 2.*PI, arcres)
     ep, en, et, vp, vn, vt = eig
 
     mt_sign = num.sign(ep + en + et)
@@ -314,20 +314,20 @@ def eig2gx(eig):
                 polys.append(poly)
 
             if polys:
-                polys_lower, polys_upper = spoly_cut(polys, 2)
+                polys_lower, polys_upper = spoly_cut(polys, 2, arcres=arcres)
                 lines.extend(polys)
                 lines_lower.extend(polys_lower)
                 lines_upper.extend(polys_upper)
 
             if poly_es:
-                for aa in spoly_cut(poly_es, 0):
-                    for bb in spoly_cut(aa, 1):
-                        for cc in spoly_cut(bb, 2):
+                for aa in spoly_cut(poly_es, 0, arcres=arcres):
+                    for bb in spoly_cut(aa, 1, arcres=arcres):
+                        for cc in spoly_cut(bb, 2, arcres=arcres):
                             for poly_e in cc:
                                 poly = num.dot(from_e, poly_e.T).T
                                 poly[:, 2] -= 0.001
                                 polys_lower, polys_upper = spoly_cut(
-                                    [poly], 2, nonsimple=False)
+                                    [poly], 2, nonsimple=False, arcres=arcres)
 
                                 patches.append(poly)
                                 patches_lower.extend(polys_lower)
@@ -497,6 +497,8 @@ def plot_beachball_mpl(
         edgecolor='black',
         linewidth=2,
         alpha=1.0,
+        arcres=181,
+        decimation=1,
         projection='lambert',
         size_units='points'):
 
@@ -534,7 +536,7 @@ def plot_beachball_mpl(
 
     data = []
     for (group, patches, patches_lower, patches_upper,
-            lines, lines_lower, lines_upper) in eig2gx(eig):
+            lines, lines_lower, lines_upper) in eig2gx(eig, arcres):
 
         if group == 'P':
             color = color_p
@@ -547,13 +549,16 @@ def plot_beachball_mpl(
         for poly in patches_upper:
             verts = project(poly, projection)[:, ::-1] * size + position[NA, :]
             if alpha == 1.0:
-                data.append((Path(verts), color, color, linewidth))
+                data.append(
+                    (Path(verts[::decimation]), color, color, linewidth))
             else:
-                data.append((Path(verts), color, 'none', 0.0))
+                data.append(
+                    (Path(verts[::decimation]), color, 'none', 0.0))
 
         for poly in lines_upper:
             verts = project(poly, projection)[:, ::-1] * size + position[NA, :]
-            data.append((Path(verts), 'none', edgecolor, linewidth))
+            data.append(
+                (Path(verts[::decimation]), 'none', edgecolor, linewidth))
 
     paths, facecolors, edgecolors, linewidths = zip(*data)
     path_collection = PathCollection(
@@ -566,6 +571,7 @@ def plot_beachball_mpl(
         transform=transform)
 
     axes.add_artist(path_collection)
+    return path_collection
 
 
 def mts2amps(mts, projection, beachball_type, grid_resolution=200, mask=True):
