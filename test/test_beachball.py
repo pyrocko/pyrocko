@@ -92,17 +92,17 @@ class BeachballTestCase(unittest.TestCase):
         assert dsum <= 1600
         return dsum
 
-    def test_random_mts(self):
+    def test_random_mts(self, **kwargs):
         nx = 10
         for x in range(nx):
             m6 = num.random.random(6)*2.-1.
             m = mtm.symmat6(*m6)
             mt = mtm.MomentTensor(m=m)
-            self.compare_beachball(mt)
+            self.compare_beachball(mt, **kwargs)
 
         for x in range(nx):
             mt = mtm.MomentTensor.random_mt()
-            self.compare_beachball(mt)
+            self.compare_beachball(mt, **kwargs)
 
     def test_projections(self):
         n = 1000
@@ -162,6 +162,10 @@ class BeachballTestCase(unittest.TestCase):
                 rake=rake)
 
             self.compare_beachball(mt)
+
+    def test_random_mts_views(self):
+        for view in ('top', 'north', 'south', 'east', 'west'):
+            self.test_random_mts(view=view)
 
     @unittest.skip('contour and contourf do not support transform')
     def test_plotstyle(self):

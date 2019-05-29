@@ -132,6 +132,17 @@ Download :download:`beachball_example05.py </../../examples/beachball_example05.
     Fuzzy beachball illustrating the solutions uncertainty.
 
 
+Beachballs views for cross-sections:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It is useful to show beachballs from other view angles, as in cross-sections. For that, we can define a ``view`` for all beachball plotting functions as shown here:
+
+Download :download:`beachball_example06.py </../../examples/beachball_example06.py>`
+
+.. literalinclude :: /../../examples/beachball_example06.py
+    :language: python
+
+
 
 Add station symbols to focal sphere diagram
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
