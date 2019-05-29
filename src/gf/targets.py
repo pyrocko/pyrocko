@@ -299,16 +299,8 @@ class SatelliteTarget(StaticTarget):
              '            :math:`-\\frac{\\pi}{2}` is **down** and'
              ' :math:`\\frac{\\pi}{2}` is **up**.\n\n')
 
-    nrows = Int.T(
-        optional=True,
-        help='number of rows.')
-
-    ncols = Int.T(
-        optional=True,
-        help='number of coloumns.')
-
     def __init__(self, *args, **kwargs):
-        StaticTarget.__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._los_factors = None
 
     def get_los_factors(self):
@@ -323,9 +315,48 @@ class SatelliteTarget(StaticTarget):
         return self._los_factors
 
     def post_process(self, engine, source, statics):
-        return meta.SatelliteResult(result=statics,
-                                    theta=self.theta, phi=self.phi,
-                                    nrows=self.nrows, ncols=self.ncols)
+        return meta.SatelliteResult(
+            result=statics,
+            theta=self.theta, phi=self.phi)
+
+
+class KiteSceneTarget(SatelliteTarget):
+
+    shape = Tuple.T(
+        optional=False,
+        help='Shape of the displacement vectors.')
+
+    def __init__(self, scene, **kwargs):
+        size = scene.displacement.size
+
+        if scene.frame.spacing == 'meter':
+            lats = num.full(size, scene.frame.llLat)
+            lons = num.full(size, scene.frame.llLon)
+            north_shifts = scene.frame.gridN.data.flatten()
+            east_shifts = scene.frame.gridE.data.flatten()
+
+        elif scene.frame.spacing == 'degree':
+            lats = scene.frame.gridN.data.flatten() + scene.frame.llLat
+            lons = scene.frame.gridE.data.flatten() + scene.frame.llLon
+            north_shifts = num.zeros(size)
+            east_shifts = num.zeros(size)
+
+        self.scene = scene
+
+        super().__init__(
+            lats=lats, lons=lons,
+            north_shifts=north_shifts, east_shifts=east_shifts,
+            theta=scene.theta.flatten(),
+            phi=scene.phi.flatten(),
+            shape=scene.shape, **kwargs)
+
+    def post_process(self, engine, source, statics):
+        res = meta.KiteSceneResult(
+            result=statics,
+            theta=self.theta, phi=self.phi,
+            shape=self.scene.shape)
+        res.config = self.scene.config
+        return res
 
 
 class GNSSCampaignTarget(StaticTarget):
