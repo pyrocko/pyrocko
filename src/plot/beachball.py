@@ -22,6 +22,18 @@ logger = logging.getLogger('pyrocko.plot.beachball')
 
 NA = num.newaxis
 
+_view_south = num.array([[0, 0, -1],
+                         [0, 1, 0],
+                         [1, 0, 0]])
+
+_view_north = _view_south.T
+
+_view_east = num.array([[1, 0, 0],
+                        [0, 0, -1],
+                        [0, 1, 0]])
+
+_view_west = _view_east.T
+
 
 class BeachballError(Exception):
     pass
@@ -402,8 +414,22 @@ def inverse_project(points, projection='lambert'):
     return points_out
 
 
-def deco_part(mt, mt_type='full'):
+def deco_part(mt, mt_type='full', view='top'):
+    assert view in ('top', 'north', 'south', 'east', 'west'),\
+        'Allowed views are top, north, south, east and west'
     mt = mtm.as_mt(mt)
+
+    if view == 'top':
+        pass
+    elif view == 'north':
+        mt = mt.rotated(_view_north)
+    elif view == 'south':
+        mt = mt.rotated(_view_south)
+    elif view == 'east':
+        mt = mt.rotated(_view_east)
+    elif view == 'west':
+        mt = mt.rotated(_view_west)
+
     if mt_type == 'full':
         return mt
 
@@ -455,11 +481,12 @@ def mt2beachball(
         color_p='white',
         edgecolor='black',
         linewidth=2,
-        projection='lambert'):
+        projection='lambert',
+        view='top'):
 
     position = num.asarray(position, dtype=num.float)
     size = size or 1
-    mt = deco_part(mt, beachball_type)
+    mt = deco_part(mt, beachball_type, view)
 
     eig = mt.eigensystem()
     if eig[0] == 0. and eig[1] == 0. and eig[2] == 0:
@@ -500,7 +527,8 @@ def plot_beachball_mpl(
         arcres=181,
         decimation=1,
         projection='lambert',
-        size_units='points'):
+        size_units='points',
+        view='top'):
 
     '''
     Plot beachball diagram to a Matplotlib plot
@@ -523,12 +551,15 @@ def plot_beachball_mpl(
         latter causes the beachball to be projected in the plots data
         coordinates (axes must have an aspect ratio of 1.0 or the
         beachball will be shown distorted when using this).
+    :param view: View the beachball from ``top``, ``north``, ``south``,
+        ``east`` or ``west``. Useful for to show beachballs in cross-sections.
+        Default is ``top``.
     '''
 
     transform, position, size = choose_transform(
         axes, size_units, position, size)
 
-    mt = deco_part(mt, beachball_type)
+    mt = deco_part(mt, beachball_type, view)
 
     eig = mt.eigensystem()
     if eig[0] == 0. and eig[1] == 0. and eig[2] == 0:
@@ -574,7 +605,8 @@ def plot_beachball_mpl(
     return path_collection
 
 
-def mts2amps(mts, projection, beachball_type, grid_resolution=200, mask=True):
+def mts2amps(mts, projection, beachball_type, grid_resolution=200, mask=True,
+             view='top'):
 
     n_balls = len(mts)
     nx = grid_resolution
@@ -592,7 +624,7 @@ def mts2amps(mts, projection, beachball_type, grid_resolution=200, mask=True):
 
     amps[ii_ok] = 0.
     for mt in mts:
-        mt = deco_part(mt, beachball_type)
+        mt = deco_part(mt, beachball_type, view)
 
         ep, en, et, vp, vn, vt = mt.eigensystem()
 
@@ -632,7 +664,8 @@ def plot_fuzzy_beachball_mpl_pixmap(
         projection='lambert',
         size_units='data',
         grid_resolution=200,
-        method='imshow'):
+        method='imshow',
+        view='top'):
     '''
     Plot fuzzy beachball from a list of given MomentTensors
 
@@ -660,7 +693,8 @@ def plot_fuzzy_beachball_mpl_pixmap(
         grid_resolution=grid_resolution,
         projection=projection,
         beachball_type=beachball_type,
-        mask=True)
+        mask=True,
+        view=view)
 
     ncolors = 256
     cmap = LinearSegmentedColormap.from_list(
@@ -724,9 +758,10 @@ def plot_fuzzy_beachball_mpl_pixmap(
 def plot_beachball_mpl_construction(
         mt, axes,
         show='patches',
-        beachball_type='deviatoric'):
+        beachball_type='deviatoric',
+        view='top'):
 
-    mt = deco_part(mt, beachball_type)
+    mt = deco_part(mt, beachball_type, view)
     eig = mt.eigensystem()
 
     for (group, patches, patches_lower, patches_upper,
@@ -762,7 +797,8 @@ def plot_beachball_mpl_pixmap(
         linewidth=2,
         alpha=1.0,
         projection='lambert',
-        size_units='data'):
+        size_units='data',
+        view='top'):
 
     if size_units == 'points':
         raise BeachballError(
@@ -771,7 +807,7 @@ def plot_beachball_mpl_pixmap(
     transform, position, size = choose_transform(
         axes, size_units, position, size)
 
-    mt = deco_part(mt, beachball_type)
+    mt = deco_part(mt, beachball_type, view)
 
     ep, en, et, vp, vn, vt = mt.eigensystem()
 
