@@ -61,7 +61,7 @@ satellite_target = gf.SatelliteTarget(
     store_id=store_id)
 
 # The computation is performed by calling process on the engine
-result = engine.process(rect_source, [satellite_target])
+result = engine.process(rect_source, satellite_target, nthreads=0)
 
 # We now return a list of kite_scenes from the result.
 kite_scenes = result.kite_scenes()

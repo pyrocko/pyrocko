@@ -103,37 +103,31 @@ class SatelliteResult(StaticResult):
         optional=True,
         shape=(None,), dtype=num.float)
 
-    nrows = Int.T(
-        optional=True)
 
-    ncols = Int.T(
-        optional=True)
+class KiteSceneResult(SatelliteResult):
 
-    def kite_scene(self, component='displacement.los', scene_config=None):
+    shape = Tuple.T()
+
+    def get_scene(self, component='displacement.los'):
         try:
             from kite import Scene
         except ImportError:
             raise ImportError('Kite not installed')
-        sc = Scene()
-        if self.ncols is None or self.nrows is None or self.theta is None\
-                or self.phi is None:
-            raise('Scene parameters not given')
-        else:
-            sc.theta = self.theta
-            sc.phi = self.phi
-            if scene_config is not None:
-                sc.frame = scene_config.frame
-                sc.meta = scene_config.meta
-                sc.theta = scene_config.theta
-                sc.phi = scene_config.phi
-            components = self.result
-            disp = components[component]
-            disp = num.reshape(disp,
-                               (self.nrows,
-                                self.ncols))
-            sc.displacement = disp
 
-            return sc
+        def reshape(arr):
+            return arr.reshape(self.shape)
+
+        displacement = self.result[component]
+
+        displacement, theta, phi = map(
+            reshape, (displacement, self.theta, self.phi))
+
+        sc = Scene(
+            displacement=displacement,
+            theta=theta, phi=phi,
+            config=self.config)
+
+        return sc
 
 
 class ComponentSchemeDescription(Object):

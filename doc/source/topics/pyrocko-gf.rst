@@ -458,10 +458,5 @@ following way:
 
 For regularly gridded satellite targets, specifically, the forward modelling of the engine's response can be directly converted to a synthetic `Kite <https://pyrocko.org/kite/docs/current/>`_ scene:
 
-.. code-block ::
-
-    # Get synthetic kite scenes
-    kite_scenes = response.kite_scenes()
-
-    # look at the first synthetic scene, using spool
-    kite_scenes[0].spool()
+.. literalinclude :: /../../examples/gf_forward_scene.py
+    :caption: forward modelling from an existing kite scene.
