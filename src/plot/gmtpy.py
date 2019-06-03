@@ -3636,10 +3636,9 @@ class GMT(object):
 
         if filename.endswith('.pdf'):
             if psconvert:
-                psconv = pjoin(self.installation['bin'], 'gmt', 'psconvert')
-                if not os.path.exists(psconv):
-                    raise OSError('Could not find psconvert at %s' % psconv)
-                subprocess.call([psconv, tempfn, '-Tf', '-F' + filename])
+                gmt_bin = pjoin(self.installation['bin'], 'gmt')
+                subprocess.call([gmt_bin, 'psconvert', tempfn, '-Tf',
+                                 '-F' + filename])
             else:
                 subprocess.call(['gmtpy-epstopdf', '--res=%i' % resolution,
                                  '--outfile=' + filename, tempfn + '.eps'])
