@@ -3702,10 +3702,10 @@ class LayeredModel(object):
         Randomly change the thickness and material parameters of the earth
         model from a uniform distribution.
 
-        :param **kwargs: Maximum change in percent (e.g. 0.1) of the parameter.
+        :param kwargs: Maximum change in percent (e.g. 0.1) of the parameter.
             Name the parameter, prefixed by ``p``. Supported parameters are
             ``ph, pvp, pvs, prho, pqs, pqp``.
-        :type **kwargs: dict
+        :type kwargs: dict
         :param rstate: Random state to draw from, defaults to ``None``
         :type rstate: :class:`numpy.random.RandomState`, optional
         :param keep_vp_vs: Keep the Vp/Vs ratio, defaults to False

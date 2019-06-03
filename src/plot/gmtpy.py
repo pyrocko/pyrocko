@@ -3570,7 +3570,8 @@ class GMT(object):
         self.load_unfinished(filename)
 
     def save(self, filename=None, bbox=None, resolution=150, oversample=2.,
-             width=None, height=None, size=None, crop_eps_mode=False):
+             width=None, height=None, size=None, crop_eps_mode=False,
+             psconvert=False):
 
         '''
         Finish and save figure as PDF, PS or PPM file.
@@ -3634,8 +3635,14 @@ class GMT(object):
             shutil.move(tempfn, tempfn + '.eps')
 
         if filename.endswith('.pdf'):
-            subprocess.call(['gmtpy-epstopdf', '--res=%i' % resolution,
-                             '--outfile=' + filename, tempfn + '.eps'])
+            if psconvert:
+                psconv = pjoin(self.installation['bin'], 'gmt', 'psconvert')
+                if not os.path.exists(psconv):
+                    raise OSError('Could not find psconvert at %s' % psconv)
+                subprocess.call([psconv, tempfn, '-Tf', '-F' + filename])
+            else:
+                subprocess.call(['gmtpy-epstopdf', '--res=%i' % resolution,
+                                 '--outfile=' + filename, tempfn + '.eps'])
         else:
             subprocess.call([
                 'gmtpy-epstopdf',

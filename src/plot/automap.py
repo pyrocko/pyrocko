@@ -197,7 +197,7 @@ class Map(Object):
         self._gmtversion = gmtversion
 
     def save(self, outpath, resolution=75., oversample=2., size=None,
-             width=None, height=None):
+             width=None, height=None, psconvert=False):
 
         '''
         Save the image.
@@ -213,7 +213,8 @@ class Map(Object):
         ``convert``. The resolution of rasterized target image can be
         controlled either by ``resolution`` in DPI or by specifying ``width``
         or ``height`` or ``size``, where the latter fits the image into a
-        square with given side length.
+        square with given side length. To save transparency use
+        ``psconvert=True``.
         '''
 
         gmt = self.gmt
@@ -223,7 +224,7 @@ class Map(Object):
             self._draw_topo_scale()
 
         gmt.save(outpath, resolution=resolution, oversample=oversample,
-                 size=size, width=width, height=height)
+                 size=size, width=width, height=height, psconvert=psconvert)
 
     @property
     def scaler(self):
