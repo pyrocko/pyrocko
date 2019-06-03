@@ -13,6 +13,11 @@ Classes covered in these examples:
 For details on GMT wrapping module:
  * :mod:`pyrocko.plot.gmtpy`
 
+ .. note ::
+
+    To retain transparency in :mod:`~pyrocko.plot.gmtpy` use :meth:`save(psconvert=True) <pyrocko.plot.gmtpy.GMT.save>`.
+
+
 Topographic map of Dead Sea basin
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
