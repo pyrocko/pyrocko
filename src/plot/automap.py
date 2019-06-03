@@ -150,6 +150,7 @@ class Map(Object):
     skip_feature_factor = Float.T(default=0.02)
     show_grid = Bool.T(default=False)
     show_topo = Bool.T(default=True)
+    show_scale = Bool.T(default=False)
     show_topo_scale = Bool.T(default=False)
     show_center_mark = Bool.T(default=False)
     show_rivers = Bool.T(default=True)
@@ -629,14 +630,19 @@ class Map(Object):
         else:
             btmpl = '%(xinc)g:%(xlabel)s:/%(yinc)g:%(ylabel)s:'
 
+        if self.show_scale:
+            scale = 'x%gp/%gp/%g/%g/%gk' % (
+                    6./7*widget.width(),
+                    widget.height()/7.,
+                    self.lon,
+                    self.lat,
+                    scale_km)
+        else:
+            scale = False
+
         gmt.psbasemap(
             B=(btmpl % scaler.get_params())+axes_layout,
-            L=('x%gp/%gp/%g/%g/%gk' % (
-                6./7*widget.width(),
-                widget.height()/7.,
-                self.lon,
-                self.lat,
-                scale_km)),
+            L=scale,
             *self._jxyr)
 
         if self.comment:
@@ -1080,7 +1086,7 @@ class Map(Object):
 
         return tile
 
-    def add_gnss_campaign(self, campaign, psxy_style=dict(), offset_scale=None,
+    def add_gnss_campaign(self, campaign, psxy_style=None, offset_scale=None,
                           labels=True, vertical=False, fontsize=10):
 
         stations = campaign.stations
@@ -1090,10 +1096,12 @@ class Map(Object):
             for ista, sta in enumerate(stations):
                 for comp in sta.components.values():
                     offset_scale[ista] += comp.shift
-                offset_scale = num.sqrt(offset_scale**2).max()
+            offset_scale = num.sqrt(offset_scale**2).max()
 
         size = math.sqrt(self.height**2 + self.width**2)
         scale = (size/10.) / offset_scale
+        logger.debug('GNSS: Using offset scale %f, map scale %f',
+                     offset_scale, scale)
 
         lats, lons = zip(
             *[od.ne_to_latlon(s.lat, s.lon, s.north_shift, s.east_shift)
@@ -1118,7 +1126,7 @@ class Map(Object):
 
         default_psxy_style = {
             'h': 0,
-            'W': '0.5p,black',
+            'W': '1.5p,black',
             'G': 'black',
             'L': True,
             'S': 'e%dc/0.95/%d' % (scale, fontsize),
