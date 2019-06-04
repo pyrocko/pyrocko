@@ -30,6 +30,9 @@ included, is a powerful front end tool to create, inspect, and manipulate
 GF stores: the :program:`fomosto` tool ("forward model storage
 tool").
 
+.. contents :: Content
+  :depth: 2
+
 Media models
 ------------
 
@@ -94,30 +97,39 @@ Point sources
 For convenience, different parameterizations of seismological moment tensor
 point sources are available.
 
-========================================================== ================================================================
-Source                                                     Short description
-========================================================== ================================================================
-:class:`~pyrocko.gf.seismosizer.ExplosionSource`           An isotrope moment tensor for explosions or volume changes.
-:class:`~pyrocko.gf.seismosizer.DCSource`                  Double force couple, for pure-shear earthquake ruptures.
-:class:`~pyrocko.gf.seismosizer.MTSource`                  Full moment tensor representation of force excitation.
-:class:`~pyrocko.gf.seismosizer.CLVDSource`                A pure compensated linear vector dipole source.
-:class:`~pyrocko.gf.seismosizer.VLVDSource`                Volumetric linear vector dipole, a rotational symmetric volume
-                                                           source.
-:class:`~pyrocko.gf.seismosizer.SFSource`                  A 3-component single force point source.
-:class:`~pyrocko.gf.seismosizer.PorePressurePointSource`   Excess pore pressure point source.
-========================================================== ================================================================
++---------------------------------------------------------+------------------------------------------------------------------------+
+|Source                                                   | Short description                                                      |
++=========================================================+========================================================================+
+|:class:`~pyrocko.gf.seismosizer.ExplosionSource`         | An isotrope moment tensor for explosions or volume changes.            |
++---------------------------------------------------------+------------------------------------------------------------------------+
+|:class:`~pyrocko.gf.seismosizer.DCSource`                | Double force couple, for pure-shear earthquake ruptures.               |
++---------------------------------------------------------+------------------------------------------------------------------------+
+|:class:`~pyrocko.gf.seismosizer.MTSource`                | Full moment tensor representation of force excitation.                 |
++---------------------------------------------------------+------------------------------------------------------------------------+
+|:class:`~pyrocko.gf.seismosizer.CLVDSource`              | A pure compensated linear vector dipole source.                        |
++---------------------------------------------------------+------------------------------------------------------------------------+
+|:class:`~pyrocko.gf.seismosizer.VLVDSource`              | Volumetric linear vector dipole, a rotational symmetric volume source. |
++---------------------------------------------------------+------------------------------------------------------------------------+
+|:class:`~pyrocko.gf.seismosizer.SFSource`                | A 3-component single force point source.                               |
++---------------------------------------------------------+------------------------------------------------------------------------+
+|:class:`~pyrocko.gf.seismosizer.PorePressurePointSource` | Excess pore pressure point source.                                     |
++---------------------------------------------------------+------------------------------------------------------------------------+
 
 Finite sources
 ~~~~~~~~~~~~~~
 
-======================================================== ================================================================
- Source                                                  Short description
-======================================================== ================================================================
-:class:`~pyrocko.gf.seismosizer.RectangularSource`       Rectangular fault plane.
-:class:`~pyrocko.gf.seismosizer.RingfaultSource`         Ring fault for volcanic processes, e.g. caldera collapses.
-:class:`~pyrocko.gf.seismosizer.DoubleDCSource`          Relative parameterization of a twin double couple source.
-:class:`~pyrocko.gf.seismosizer.PorePressureLineSource`  Excess pore pressure line source
-======================================================== ================================================================
++---------------------------------------------------------+------------------------------------------------------------------------+
+| Source                                                  | Short description                                                      |
++=========================================================+========================================================================+
+|:class:`~pyrocko.gf.seismosizer.RectangularSource`       | Rectangular fault plane.                                               |
++---------------------------------------------------------+------------------------------------------------------------------------+
+|:class:`~pyrocko.gf.seismosizer.RingfaultSource`         | Ring fault for volcanic processes, e.g. caldera collapses.             |
++---------------------------------------------------------+------------------------------------------------------------------------+
+|:class:`~pyrocko.gf.seismosizer.DoubleDCSource`          | Relative parameterization of a twin double couple source.              |
++---------------------------------------------------------+------------------------------------------------------------------------+
+|:class:`~pyrocko.gf.seismosizer.PorePressureLineSource`  | Excess pore pressure line source                                       |
++---------------------------------------------------------+------------------------------------------------------------------------+
+
 
 
 
