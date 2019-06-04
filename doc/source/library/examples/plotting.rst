@@ -15,7 +15,7 @@ For details on GMT wrapping module:
 
  .. note ::
 
-    To retain transparency in :mod:`~pyrocko.plot.gmtpy` use :meth:`save(psconvert=True) <pyrocko.plot.gmtpy.GMT.save>`.
+    To retain PDF transparency in :mod:`~pyrocko.plot.gmtpy` use :meth:`save(psconvert=True) <pyrocko.plot.gmtpy.GMT.save>`.
 
 
 Topographic map of Dead Sea basin
