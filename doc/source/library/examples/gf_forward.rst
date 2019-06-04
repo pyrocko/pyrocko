@@ -6,13 +6,9 @@ Calculate synthetic seismograms from a local GF store
 
 .. highlight:: python
 
-It is assumed that a :class:`~pyrocko.gf.store.Store` with store ID
-*crust2_dd* has been downloaded in advance. A list of currently available
-stores can be found at https://greens-mill.pyrocko.org as well as how to download
-such stores.
+It is assumed that a :class:`~pyrocko.gf.store.Store` with store ID *crust2_dd* has been downloaded in advance. A list of currently available stores can be found at https://greens-mill.pyrocko.org as well as how to download such stores.
 
-Further API documentation for the utilized objects can be found at :class:`~pyrocko.gf.targets.Target`,
-:class:`~pyrocko.gf.seismosizer.LocalEngine` and :class:`~pyrocko.gf.seismosizer.DCSource`.
+Further API documentation for the utilized objects can be found at :class:`~pyrocko.gf.targets.Target`, :class:`~pyrocko.gf.seismosizer.LocalEngine` and :class:`~pyrocko.gf.seismosizer.DCSource`.
 
 Download :download:`gf_forward_example1.py </../../examples/gf_forward_example1.py>`
 
@@ -30,9 +26,10 @@ Download :download:`gf_forward_example1.py </../../examples/gf_forward_example1.
 Calculate spatial surface displacement from a local GF store
 -------------------------------------------------------------
 
-In this example we create a :class:`~pyrocko.gf.seismosizer.RectangularSource` and compute the spatial static/geodetic displacement caused by that rupture.
+In this example we create a :class:`~pyrocko.gf.seismosizer.RectangularSource` and compute the spatial static displacement invoked by that rupture.
 
 We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.gf.targets.StaticTarget` and :class:`~pyrocko.gf.targets.SatelliteTarget`.
+
 .. figure:: /static/gf_static_displacement.png
     :align: center
     :width: 90%
@@ -45,11 +42,11 @@ Download :download:`gf_forward_example2.py </../../examples/gf_forward_example2.
 .. literalinclude :: /../../examples/gf_forward_example2.py
     :language: python
 
-Calculate spatial surface displacement from a local GF store and export result as kite scenes
-------------------------------------------------------------------------------------------------
 
-We repeat the above example but use `Kite <https://pyrocko.org/docs/kite>`_ for displaying the results.
-Kite needs to be installed separately. Kite can be used to do easy quadtree data subsampling and data error variance-covariance estimation of surface displacement data.
+Calculate spatial surface displacement and export Kite scenes
+-------------------------------------------------------------
+
+We repeat the above example but use `Kite <https://pyrocko.org/docs/kite>`_ for displaying the results. Kite needs to be installed separately. Kite can be used to do easy quadtree data sub-sampling and data error variance-covariance estimation of surface displacement data.
 
 Download :download:`gf_forward_example2.py </../../examples/gf_forward_example2_kite.py>`
 
@@ -76,8 +73,8 @@ Download :download:`gf_forward_example3.py </../../examples/gf_forward_example3.
     :language: python
 
 
-Combining severals dislocation sources
---------------------------------------
+Combining dislocation sources 
+-----------------------------
 
 In this example we combine two rectangular sources and plot the forward model in profile.
 
@@ -85,9 +82,7 @@ In this example we combine two rectangular sources and plot the forward model in
     :align: center
     :width: 90%
 
-    Synthetic LOS displacements from a flower-structure made of one strike-slip
-    fault and one thrust fault. LOS as for Sentinel-1 satellite (Look Angle:
-    36., Heading:-76). Positive motion toward the satellite.
+    Synthetic LOS displacements from a flower-structure made of one strike-slip fault and one thrust fault. LOS as for Sentinel-1 satellite (Look Angle: 36°, Heading: -76°). Positive motion toward the satellite.
 
 Download :download:`gf_forward_example4.py </../../examples/gf_forward_example4.py>`
 
