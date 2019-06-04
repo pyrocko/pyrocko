@@ -4,23 +4,20 @@ Pyrocko-GF - *Geophysical forward modelling with pre-calculated Green’s functi
 Introduction
 ------------
 
-Many seismological methods require Green’s functions in dependence of
-combinations of source and receiver coordinates. Examples range from synthetic
-seismogram calculation over source imaging techniques to source inversion
-methods. Calculation of Green’s functions is a computationally expensive
-operation and it can be of advantage to calculate them in advance. The same
-Green’s function traces can then be reused many times as required in a typical
-application.
+Many seismological methods make use of numerically calculated Green’s
+functions (GFs). Often these are required for a vast number of combinations of source
+and receiver coordinates, e.g. when computing synthetic seismograms in seismic
+source inversions. Calculation of the GFs is a computationally
+expensive operation and it can be of advantage to calculate them in advance.
+The same GF traces can then be reused many times as required in a
+typical application.
 
-To efficiently reuse Green's functions across different applications, they must
-be stored in a common format. Like this, they can also be passed to fellow
-researchers, allowing them to focus on their own application rather than
-spending days of work to get their Green’s function setup ready.
+To efficiently reuse GFs across different applications, they must be stored in
+a common format. In such a form, they can also be passed to fellow researchers.
 
 Furthermore, it is useful to store associated meta information, like e.g. 
 travel time tables for seismic phases and the earth model used, together with
-the Green’s function in order to have a complete and consistent framework to
-play with.
+the GF in order to have a complete and consistent framework to play with.
 
 .. figure :: /static/software_architecture.svg
     :align: center
@@ -28,15 +25,15 @@ play with.
 
 
 Pyrocko contains a flexible framework to store and work with pre-calculated
-Green’s functions. It is implemented in the :mod:`pyrocko.gf` subpackage. Also
+GFs. It is implemented in the :mod:`pyrocko.gf` sub-package. Also
 included, is a powerful front end tool to create, inspect, and manipulate
-Green’s function stores: the :program:`fomosto` tool ("forward model storage
+GF stores: the :program:`fomosto` tool ("forward model storage
 tool").
 
 Media models
 ------------
 
-Where Pyrocko uses layered 1D earth models in the calculation of Green’s functions it uses the `TauP <https://www.seis.sc.edu/downloads/TauP/taup.pdf>`_ :file:`.nd` (named discontinuity) format. These files are ascii tables with the following columns:
+Where Pyrocko uses layered 1D earth models in the calculation of GFs it uses the `TauP <https://www.seis.sc.edu/downloads/TauP/taup.pdf>`_ :file:`.nd` (named discontinuity) format. These files are ascii tables with the following columns:
 
 .. code-block :: text
     :caption: Structure of a named discontinuities file (:file:`.nd`).
@@ -56,7 +53,7 @@ Calculating and managing Pyrocko-GF stores is accomplished by Pyrocko’s :progr
 Downloading GF stores
 ~~~~~~~~~~~~~~~~~~~~~
 
-Calculating and quality checking Green’s function stores is a time consuming task. Many pre-calculated stores can be downloaded from our online repository, the `Green's mill (greens-mill.pyrocko.org) <https://greens-mill.pyrocko.org>`_.
+Calculating and quality checking GF stores is a time consuming task. Many pre-calculated stores can be downloaded from our online repository, the `Green's mill (greens-mill.pyrocko.org) <https://greens-mill.pyrocko.org>`_.
 
 The available stores include dynamic stores for simulating waveforms at global and regional extents, as well as static stores for the modelling of step-like surface displacements.
 
@@ -83,7 +80,9 @@ A complete list of arguments can be found in the library reference, :class:`~pyr
 Source models
 -------------
 
-Pyrocko-GF supports the simulation of various dislocation sources, focused on earthquake and volcano studies.
+Pyrocko-GF supports the simulation of various dislocation sources, focused on
+earthquake and volcano studies.
+
 
 .. note ::
 
@@ -92,26 +91,36 @@ Pyrocko-GF supports the simulation of various dislocation sources, focused on ea
 Point sources
 ~~~~~~~~~~~~~
 
-================================================== ================================================================
-Source                                             Short description
-================================================== ================================================================
-:class:`~pyrocko.gf.seismosizer.ExplosionSource`   An isotrope moment tensor for explosions or volume changes.
-:class:`~pyrocko.gf.seismosizer.DCSource`          Double force couple, for pure-shear earthquake ruptures.
-:class:`~pyrocko.gf.seismosizer.MTSource`          Full moment tensor representation of force excitation.
-:class:`~pyrocko.gf.seismosizer.CLVDSource`        A pure compensated linear vector dipole source.
-:class:`~pyrocko.gf.seismosizer.VLVDSource`        Volumetric linear vector dipole, a rotational symmetric volume
-                                                   source.
-================================================== ================================================================
+For convenience, different parameterizations of seismological moment tensor
+point sources are available.
+
+========================================================== ================================================================
+Source                                                     Short description
+========================================================== ================================================================
+:class:`~pyrocko.gf.seismosizer.ExplosionSource`           An isotrope moment tensor for explosions or volume changes.
+:class:`~pyrocko.gf.seismosizer.DCSource`                  Double force couple, for pure-shear earthquake ruptures.
+:class:`~pyrocko.gf.seismosizer.MTSource`                  Full moment tensor representation of force excitation.
+:class:`~pyrocko.gf.seismosizer.CLVDSource`                A pure compensated linear vector dipole source.
+:class:`~pyrocko.gf.seismosizer.VLVDSource`                Volumetric linear vector dipole, a rotational symmetric volume
+                                                           source.
+:class:`~pyrocko.gf.seismosizer.SFSource`                  A 3-component single force point source.
+:class:`~pyrocko.gf.seismosizer.PorePressurePointSource`   Excess pore pressure point source.
+========================================================== ================================================================
 
 Finite sources
 ~~~~~~~~~~~~~~
 
-================================================== ================================================================
- Source                                             Short description
-================================================== ================================================================
-:class:`~pyrocko.gf.seismosizer.RectangularSource` Rectangular fault plane.
-:class:`~pyrocko.gf.seismosizer.RingfaultSource`   Ring fault for volcanic processes, e.g. caldera collapses.
-================================================== ================================================================
+======================================================== ================================================================
+ Source                                                  Short description
+======================================================== ================================================================
+:class:`~pyrocko.gf.seismosizer.RectangularSource`       Rectangular fault plane.
+:class:`~pyrocko.gf.seismosizer.RingfaultSource`         Ring fault for volcanic processes, e.g. caldera collapses.
+:class:`~pyrocko.gf.seismosizer.DoubleDCSource`          Relative parameterization of a twin double couple source.
+:class:`~pyrocko.gf.seismosizer.PorePressureLineSource`  Excess pore pressure line source
+======================================================== ================================================================
+
+
+
 
 First import the Pyrocko-GF framework with
 
@@ -162,7 +171,7 @@ Moment tensor
   :align: center
   :alt: moment tensor source
 
-A moment tensor point source. This is the most complete form of describing an ensemble of burried forces to first order.
+A moment tensor point source. This is the most complete form of describing an ensemble of buried forces to first order.
 
 .. code-block :: python
     :caption: Initialise a full moment tensor.
@@ -325,16 +334,16 @@ Pyrocko-GF :py:class:`Targets <pyrocko.gf.targets.Target>` are data structures
 holding observer properties to tell the framework what we want to model, e.g.
 whether we want to model a waveform or spectrum at a specific receiver site or
 displacement values at a set of locations. Each target has properties
-(location, depth, physical quantity) and essentially is associated to a Green’s
-functions store, used for modelling. The target also defines the method used to
-interpolate the discrete, gridded Green’s function components. Please also see
-the :doc:`Pyrocko GF modelling example <../library/examples/gf_forward>`.
+(location, depth, physical quantity) and essentially is associated to a GF
+store, used for modelling. The target also defines the method used to
+interpolate the discrete, gridded GF components. Please also see the
+:doc:`Pyrocko GF modelling example <../library/examples/gf_forward>`.
 
 .. note ::
     
     In Pyrocko locations are given with five coordinates: ``lat``, ``lon``, ``east_shift``, ``north_shift`` and ``depth``.
 
-    Latitude and longitude are the origin of an optional local cartesian coordinate system for which an ``east_shift`` and a ``north_shift`` [m] can be defined. A target has a depth below the surface. However, the surface can have topography and the target can also have an ``elevation``.
+    Latitude and longitude are the origin of an optional local Cartesian coordinate system for which an ``east_shift`` and a ``north_shift`` [m] can be defined. A target has a depth below the surface. However, the surface can have topography and the target can also have an ``elevation``.
 
 
 Waveforms
@@ -349,7 +358,7 @@ quantity, and optionally a time interval
 
     # Define a list of pyrocko.gf.Target objects, representing the recording
     # devices. In this case one three-component seismometer is represented with
-    # three distict target objects. The channel orientations are guessed from 
+    # three distinct target objects. The channel orientations are guessed from 
     # the channel codes here.
     waveform_targets = [
         gf.Target(
@@ -421,9 +430,9 @@ so-called :class:`~pyrocko.gf.seismosizer.Engine` using the
 :meth:`~pyrocko.gf.seismosizer.LocalEngine.process` method.
 
 Initialisation of the engine requires setting the folder, where it should look
-for  Green’s function stores. This can be configured globally by setting the
-``store_superdirs`` entry in file :file:`~/.pyrocko/config.pf` or locally
-using the initialization arguments of the 
+for  GF stores. This can be configured globally by setting the
+``store_superdirs`` entry in file :file:`~/.pyrocko/config.pf` or locally using
+the initialization arguments of the
 :py:class:`~pyrocko.gf.seismosizer.LocalEngine`.
 
 Note, that modelling of dynamic targets (displacement waveforms) requires GFs
@@ -459,8 +468,7 @@ response.
 Forward modelling static surface displacements
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For static targets, generally, the results are retrieved in the
-following way:
+For static targets, the results are retrieved in the following way:
 
 .. code-block :: python
     :caption: forward model static surface displacements of a rectangular fault
