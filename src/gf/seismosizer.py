@@ -1642,7 +1642,7 @@ class VLVDSource(SourceWithMagnitude):
 
     def get_magnitude(self, store=None, target=None):
         mt = self.pyrocko_moment_tensor(store, target)
-        return float(mt.moment_to_magnitude(mt.moment))
+        return float(pmt.moment_to_magnitude(mt.moment))
 
     def get_m6(self, store, target):
         a = math.sqrt(4. / 3.) * self.clvd_moment
