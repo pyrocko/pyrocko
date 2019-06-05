@@ -85,7 +85,7 @@ class Result(SeismosizerResult):
 
 
 class StaticResult(SeismosizerResult):
-    result = Dict.T()
+    result = Dict.T(String.T(), Array.T(shape=(None,), dtype=num.float, serialize_as='base64'))
 
 
 class GNSSCampaignResult(StaticResult):
@@ -97,11 +97,11 @@ class SatelliteResult(StaticResult):
 
     theta = Array.T(
         optional=True,
-        shape=(None,), dtype=num.float)
+        shape=(None,), dtype=num.float, serialize_as='base64')
 
     phi = Array.T(
         optional=True,
-        shape=(None,), dtype=num.float)
+        shape=(None,), dtype=num.float, serialize_as='base64')
 
 
 class KiteSceneResult(SatelliteResult):

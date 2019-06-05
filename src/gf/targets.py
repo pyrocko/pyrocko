@@ -284,14 +284,18 @@ class SatelliteTarget(StaticTarget):
     post-processing is applied.
     '''
     theta = Array.T(
-        shape=(None,), dtype=num.float,
+        shape=(None,),
+        dtype=num.float,
+        serialize_as='base64',
         help='Horizontal angle towards satellite\'s line of sight in radians.'
              '\n\n        .. important::\n\n'
              '            :math:`0` is **east** and'
              ' :math:`\\frac{\\pi}{2}` is **north**.\n\n')
 
     phi = Array.T(
-        shape=(None,), dtype=num.float,
+        shape=(None,),
+        dtype=num.float,
+        serialize_as='base64',
         help='Theta is look vector elevation angle towards satellite from'
              ' horizon in radians. Matrix of theta towards satellite\'s'
              ' line of sight.'
@@ -323,6 +327,7 @@ class SatelliteTarget(StaticTarget):
 class KiteSceneTarget(SatelliteTarget):
 
     shape = Tuple.T(
+        2, Int.T(),
         optional=False,
         help='Shape of the displacement vectors.')
 
