@@ -300,7 +300,7 @@ class SatelliteTarget(StaticTarget):
              ' :math:`\\frac{\\pi}{2}` is **up**.\n\n')
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(SatelliteTarget, self).__init__(*args, **kwargs)
         self._los_factors = None
 
     def get_los_factors(self):
@@ -343,7 +343,7 @@ class KiteSceneTarget(SatelliteTarget):
 
         self.scene = scene
 
-        super().__init__(
+        super(KiteSceneTarget, self).__init__(
             lats=lats, lons=lons,
             north_shifts=north_shifts, east_shifts=east_shifts,
             theta=scene.theta.flatten(),
