@@ -1332,8 +1332,8 @@ class ExplosionSource(SourceWithDerivedMagnitude):
         else:
             return 1.0 / self.get_moment_to_volume_change_ratio(store)
 
-    def get_moment_to_volume_change_ratio(self, store, target):
-        if store is None or target is None:
+    def get_moment_to_volume_change_ratio(self, store, target=None):
+        if store is None:
             raise DerivedMagnitudeError(
                 'need earth model to convert between volume change and '
                 'magnitude')
@@ -1341,11 +1341,12 @@ class ExplosionSource(SourceWithDerivedMagnitude):
         points = num.array(
             [[self.north_shift, self.east_shift, self.depth]], dtype=num.float)
 
+        interpolation = target.interpolation if target else 'multilinear'
         try:
             shear_moduli = store.config.get_shear_moduli(
                 self.lat, self.lon,
                 points=points,
-                interpolation=target.interpolation)[0]
+                interpolation=interpolation)[0]
         except meta.OutOfBounds:
             raise DerivedMagnitudeError(
                 'could not get shear modulus at source position')
@@ -1601,7 +1602,7 @@ class CLVDSource(SourceWithMagnitude):
             **kwargs)
 
 
-class VLVDSource(SourceWithMagnitude):
+class VLVDSource(Source):
     ''' Volume source, isometric expansion constrained by a CLVD
 
     This source can be used to constrain sill or dyke like volume dislocation
@@ -1654,13 +1655,8 @@ class VLVDSource(SourceWithMagnitude):
             0.)
         m_clvd = rotmat1.T * m_clvd * rotmat1
 
-        if store is None and target is None:
-            logger.warning('Store and target not given, assuming a '
-                           'shear modulus of 36 GPa.')
-            m_iso = self.volume_change * 36e9 * 3.
-        else:
-            m_iso = self.volume_change * \
-                self.get_moment_to_volume_change_ratio(store, target)
+        m_iso = self.volume_change * \
+            self.get_moment_to_volume_change_ratio(store, target)
 
         m_iso = pmt.symmat6(m_iso, m_iso, m_iso, 0., 0., 0.,) * math.sqrt(2./3)
 
