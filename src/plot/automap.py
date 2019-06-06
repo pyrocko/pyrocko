@@ -1137,7 +1137,8 @@ class Map(Object):
             for row in rows:
                 row.pop(-1)
 
-        default_psxy_style.update(psxy_style)
+        if psxy_style is not None:
+            default_psxy_style.update(psxy_style)
 
         self.gmt.psvelo(
             in_rows=rows,
