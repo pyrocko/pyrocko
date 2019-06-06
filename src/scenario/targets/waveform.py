@@ -7,7 +7,7 @@ import numpy as num
 from os import path as op
 from functools import reduce
 
-from pyrocko.guts import StringChoice, Float, List
+from pyrocko.guts import StringChoice, Float, List, Bool
 from pyrocko.gui.marker import PhaseMarker
 from pyrocko import gf, model, util, trace, io
 from pyrocko.io_common import FileSaveError
@@ -15,7 +15,6 @@ from pyrocko.io_common import FileSaveError
 from .station import StationGenerator, RandomStationGenerator
 from .base import TargetGenerator, NoiseGenerator
 
-progressbar = util.progressbar_module()
 
 DEFAULT_STORE_ID = 'global_2s'
 
@@ -44,7 +43,7 @@ class WhiteNoiseGenerator(WaveformNoiseGenerator):
     def get_seed_offset2(self, deltat, iw, codes):
         m = hashlib.sha1(('%e %i %s.%s.%s.%s' % ((deltat, iw) + codes))
                          .encode('utf8'))
-        return int(m.hexdigest(), base=16) % 1000
+        return int(m.hexdigest(), base=16) % 10000000
 
     def get_intersecting_snippets(self, deltat, codes, tmin, tmax):
         tinc = self.get_time_increment(deltat)
@@ -97,8 +96,25 @@ class WaveformGenerator(TargetGenerator):
         help='Minimum frequency/wavelength to resolve in the'
              ' synthetic waveforms.')
 
-    tabulated_phases = List.T(gf.meta.TPDef.T(), optional=True,
+    tabulated_phases = List.T(
+        gf.meta.TPDef.T(), optional=True,
         help='Define seismic phases to be calculated.')
+
+    taper = trace.Taper.T(
+        optional=True,
+        help='Time domain taper applied to synthetic waveforms.')
+
+    compensate_synthetic_offsets = Bool.T(
+        default=False,
+        help='Center synthetic trace amplitudes using mean of waveform tips.')
+
+    tinc = Float.T(
+        optional=True,
+        help='Time increment of waveforms.')
+
+    continuous = Bool.T(
+        default=True,
+        help='Only produce traces that intersect with events.')
 
     def __init__(self, *args, **kwargs):
         super(WaveformGenerator, self).__init__(*args, **kwargs)
@@ -180,16 +196,27 @@ class WaveformGenerator(TargetGenerator):
         tinc = dmax / self.vmin_cut + 2.0 / self.fmin
 
         deltats = set(self.get_codes_to_deltat(engine, sources).values())
-
         deltat = reduce(util.lcm, deltats)
         tinc = int(round(tinc / deltat)) * deltat
         return tinc
 
-    def get_waveforms(self, engine, response, tmin, tmax):
+    def get_relevant_sources(self, sources, tmin, tmax):
+        dmin, dmax = self.station_generator.get_distance_range(sources)
+        trange = tmax - tmin
+        tmax_pad = trange + tmax + dmin / self.vmax_cut
+        tmin_pad = tmin - (dmax / self.vmin_cut + trange)
+
+        return [s for s in sources if s.time < tmax_pad and s.time > tmin_pad]
+
+    def get_waveforms(self, engine, sources, tmin, tmax):
+
+        sources_relevant = self.get_relevant_sources(sources, tmin, tmax)
+        if not (self.continuous or sources_relevant):
+            return []
+
         trs = {}
         tts = util.time_to_str
 
-        sources = response.request.sources
         for nslc, deltat in self.get_codes_to_deltat(engine, sources).items():
             tr_tmin = int(round(tmin / deltat)) * deltat
             tr_tmax = (int(round(tmax / deltat))-1) * deltat
@@ -209,13 +236,18 @@ class WaveformGenerator(TargetGenerator):
                      % (tts(tmin, format='%Y-%m-%d_%H-%M-%S'),
                         tts(tmax, format='%Y-%m-%d_%H-%M-%S')))
 
+        if not sources_relevant:
+            return list(trs.values())
+
+        targets = self.get_targets()
+        response = engine.process(sources_relevant, targets)
         for source, target, res in response.iter_results(
                 get='results'):
 
             if isinstance(res, gf.SeismosizerError):
                 logger.warning(
-                    'Out of bounds! \nTarget: %s\nSource: %s\n'
-                               % ('.'.join(target.codes)), source)
+                    'Out of bounds! \nTarget: %s\nSource: %s\n' % (
+                        '.'.join(target.codes)), source)
                 continue
 
             tr = res.trace.pyrocko_trace()
@@ -223,6 +255,13 @@ class WaveformGenerator(TargetGenerator):
             candidate = trs[target.codes]
             if not candidate.overlaps(tr.tmin, tr.tmax):
                 continue
+
+            if self.compensate_synthetic_offsets:
+                tr.ydata -= (num.mean(tr.ydata[-3:-1]) +
+                             num.mean(tr.ydata[1:3])) / 2.
+
+            if self.taper:
+                tr.taper(self.taper)
 
             resp = self.get_transfer_function(target.codes)
             if resp:
@@ -297,23 +336,22 @@ class WaveformGenerator(TargetGenerator):
         tmax = tmax if tmax is not None else tmax_all
         tts = util.time_to_str
 
-        tinc = self.get_useful_time_increment(engine, sources)
+        tinc = self.tinc or self.get_useful_time_increment(engine, sources)
         tmin = math.floor(tmin / tinc) * tinc
         tmax = math.ceil(tmax / tinc) * tinc
 
         nwin = int(round((tmax - tmin) / tinc))
 
-        targets = self.get_targets()
-        response = engine.process(sources, targets)
-
-        for iwin in progressbar.progressbar(range(nwin)):
+        pbar = util.progressbar('Generating waveforms', nwin)
+        for iwin in range(nwin):
+            pbar.update(iwin)
             tmin_win = max(tmin, tmin + iwin*tinc)
             tmax_win = min(tmax, tmin + (iwin+1)*tinc)
 
             if tmax_win <= tmin_win:
                 continue
 
-            trs = self.get_waveforms(engine, response, tmin_win, tmax_win)
+            trs = self.get_waveforms(engine, sources, tmin_win, tmax_win)
 
             try:
                 io.save(
@@ -330,6 +368,8 @@ class WaveformGenerator(TargetGenerator):
                     overwrite=overwrite)
             except FileSaveError as e:
                 logger.debug('Waveform exists %s' % e)
+
+        pbar.finish()
 
         return [path_waveforms]
 
