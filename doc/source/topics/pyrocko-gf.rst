@@ -499,5 +499,33 @@ For regularly gridded satellite targets, the engine's response
 can be converted to a synthetic `Kite
 <https://pyrocko.org/kite/docs/current/>`_ scene:
 
-.. literalinclude :: /../../examples/gf_forward_scene.py
+.. code-block :: python
     :caption: forward modelling from an existing kite scene.
+
+    from pyrocko import gf
+    from kite import Scene
+
+    km = 1e3
+    engine = gf.LocalEngine(use_config=True)
+
+    scene = Scene.load('sentinel_scene.npz')
+
+    src_lat = 37.08194 + .045
+    src_lon = 28.45194 + .2
+
+    source = gf.RectangularSource(
+        lat=src_lat,
+        lon=src_lon,
+        depth=2*km,
+        length=4*km, width=2*km,
+        strike=45., dip=60.,
+        slip=.5, rake=0.,
+        anchor='top')
+
+    target = gf.KiteSceneTarget(scene, store_id='ak135_static')
+
+    result = engine.process(source, target, nthreads=0)
+
+    mod_scene = result.kite_scenes()[0]
+    mod_scene.spool()
+
