@@ -184,8 +184,11 @@ class ScenarioTestCase(unittest.TestCase):
         have_kite(),
         'Kite is not available')
     @unittest.skipUnless(
-        have_store(store_id_static),
+        have_store(store_id),
         'GF Store "%s" is not available' % store_id)
+    @unittest.skipUnless(
+        have_store(store_id_static),
+        'GF Store "%s" is not available' % store_id_static)
     def test_scenario_insar(self):
         tempdir = mkdtemp(prefix='pyrocko-scenario')
         self.tempdirs.append(tempdir)
@@ -202,7 +205,7 @@ class ScenarioTestCase(unittest.TestCase):
 
     @unittest.skipUnless(
         have_store(store_id_static),
-        'GF Store "%s" is not available' % store_id)
+        'GF Store "%s" is not available' % store_id_static)
     def test_scenario_gnss(self):
         tempdir = mkdtemp(prefix='pyrocko-scenario')
         self.tempdirs.append(tempdir)
@@ -217,6 +220,9 @@ class ScenarioTestCase(unittest.TestCase):
         s = collection.get_scenario('gnss')
         assert len(s.get_gnss_campaigns()) == 1
 
+    @unittest.skipUnless(
+        have_store(store_id_static),
+        'GF Store "%s" is not available' % store_id_static)
     @unittest.skipUnless(
         gmtpy.have_gmt(), 'GMT not available')
     @unittest.skipUnless(
