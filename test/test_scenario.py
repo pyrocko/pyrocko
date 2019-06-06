@@ -6,6 +6,8 @@ import shutil
 from pyrocko import scenario, util, gf, gmtpy, config
 from pyrocko.scenario import targets
 
+util.force_dummy_progressbar = True
+
 km = 1000.
 
 
@@ -38,46 +40,6 @@ class ScenarioTestCase(unittest.TestCase):
 
     tempdirs = []
 
-    generator = scenario.ScenarioGenerator(
-        seed=20,
-        center_lat=42.6,
-        center_lon=13.3,
-        radius=60*km,
-        target_generators=[
-            targets.RandomStationGenerator(
-                avoid_water=False,
-                nstations=5),
-            targets.WaveformGenerator(
-                store_id=store_id,
-                station_generator=targets.RandomStationGenerator(
-                    avoid_water=False),
-                noise_generator=targets.waveform.WhiteNoiseGenerator(),
-                seismogram_quantity='velocity'),
-            targets.InSARGenerator(
-                resolution=(20, 20),
-                avoid_water=False,
-                noise_generator=targets.insar.AtmosphericNoiseGenerator(
-                    amplitude=1e-5)),
-            targets.GNSSCampaignGenerator(
-                station_generator=targets.RandomStationGenerator(
-                    avoid_water=False,
-                    channels=None))
-            ],
-        source_generator=scenario.DCSourceGenerator(
-            time_min=util.str_to_time('2017-01-01 00:00:00'),
-            time_max=util.str_to_time('2017-01-01 02:00:00'),
-            radius=10*km,
-            depth_min=1*km,
-            depth_max=10*km,
-            magnitude_min=3.0,
-            magnitude_max=4.5,
-            strike=120.,
-            dip=45.,
-            rake=90.,
-            perturbation_angle_std=15.,
-            nevents=3)
-    )
-
     @classmethod
     def tearDownClass(cls):
         for d in cls.tempdirs:
@@ -87,37 +49,40 @@ class ScenarioTestCase(unittest.TestCase):
     @unittest.skipUnless(
         have_store(store_id),
         'GF Store "%s" is not available' % store_id)
-    def test_scenario_combinations(self):
-        import copy
-        generator = copy.deepcopy(self.generator)
-        engine = gf.get_engine()
-        generator.init_modelling(engine)
-
-        for src in scenario.sources.AVAILABLE_SOURCES:
-            generator.source_generator = src(
-                time_min=util.str_to_time('2017-01-01 00:00:00'),
-                time_max=util.str_to_time('2017-01-01 02:00:00'),
-                radius=1*km,
-                depth_min=1.5*km,
-                depth_max=5*km,
-                magnitude_min=3.0,
-                magnitude_max=4.5)
-            generator.source_generator.update_hierarchy(generator)
-
-            generator.get_stations()
-            generator.get_waveforms()
-            generator.get_insar_scenes()
-            generator.get_gnss_campaigns()
-
-    @unittest.skipUnless(
-        have_store(store_id),
-        'GF Store "%s" is not available' % store_id)
     def test_scenario_waveforms(self):
         tempdir = mkdtemp(prefix='pyrocko-scenario')
         self.tempdirs.append(tempdir)
 
         vmin = 2500.
-        generator = self.generator
+
+        generator = scenario.ScenarioGenerator(
+            seed=20,
+            center_lat=42.6,
+            center_lon=13.3,
+            radius=60*km,
+            target_generators=[
+                targets.WaveformGenerator(
+                    store_id=ScenarioTestCase.store_id,
+                    station_generator=targets.RandomStationGenerator(
+                        nstations=5,
+                        avoid_water=False),
+                    noise_generator=targets.waveform.WhiteNoiseGenerator(),
+                    seismogram_quantity='velocity'),
+                ],
+            source_generator=scenario.DCSourceGenerator(
+                time_min=util.str_to_time('2017-01-01 00:00:00'),
+                time_max=util.str_to_time('2017-01-01 02:00:00'),
+                radius=10*km,
+                depth_min=1*km,
+                depth_max=10*km,
+                magnitude_min=3.0,
+                magnitude_max=4.5,
+                strike=120.,
+                dip=45.,
+                rake=90.,
+                perturbation_angle_std=15.,
+                nevents=3)
+        )
 
         def twin(source):
             tmin = source.time
@@ -193,7 +158,33 @@ class ScenarioTestCase(unittest.TestCase):
         tempdir = mkdtemp(prefix='pyrocko-scenario')
         self.tempdirs.append(tempdir)
 
-        generator = self.generator
+        generator = scenario.ScenarioGenerator(
+            seed=20,
+            center_lat=42.6,
+            center_lon=13.3,
+            radius=60*km,
+            target_generators=[
+                targets.InSARGenerator(
+                    resolution=(20, 20),
+                    avoid_water=False,
+                    noise_generator=targets.insar.AtmosphericNoiseGenerator(
+                        amplitude=1e-5))
+                ],
+            source_generator=scenario.DCSourceGenerator(
+                time_min=util.str_to_time('2017-01-01 00:00:00'),
+                time_max=util.str_to_time('2017-01-01 02:00:00'),
+                radius=10*km,
+                depth_min=1*km,
+                depth_max=10*km,
+                magnitude_min=3.0,
+                magnitude_max=4.5,
+                strike=120.,
+                dip=45.,
+                rake=90.,
+                perturbation_angle_std=15.,
+                nevents=3)
+        )
+
         engine = gf.get_engine()
         generator.init_modelling(engine)
 
@@ -210,7 +201,32 @@ class ScenarioTestCase(unittest.TestCase):
         tempdir = mkdtemp(prefix='pyrocko-scenario')
         self.tempdirs.append(tempdir)
 
-        generator = self.generator
+        generator = scenario.ScenarioGenerator(
+            seed=20,
+            center_lat=42.6,
+            center_lon=13.3,
+            radius=60*km,
+            target_generators=[
+                targets.GNSSCampaignGenerator(
+                    station_generator=targets.RandomStationGenerator(
+                        avoid_water=False,
+                        channels=None))
+                ],
+            source_generator=scenario.DCSourceGenerator(
+                time_min=util.str_to_time('2017-01-01 00:00:00'),
+                time_max=util.str_to_time('2017-01-01 02:00:00'),
+                radius=10*km,
+                depth_min=1*km,
+                depth_max=10*km,
+                magnitude_min=3.0,
+                magnitude_max=4.5,
+                strike=120.,
+                dip=45.,
+                rake=90.,
+                perturbation_angle_std=15.,
+                nevents=3)
+        )
+
         engine = gf.get_engine()
         generator.init_modelling(engine)
 
@@ -219,6 +235,73 @@ class ScenarioTestCase(unittest.TestCase):
 
         s = collection.get_scenario('gnss')
         assert len(s.get_gnss_campaigns()) == 1
+
+    @unittest.skipUnless(
+        have_kite(),
+        'Kite is not available')
+    @unittest.skipUnless(
+        have_store(store_id),
+        'GF Store "%s" is not available' % store_id)
+    def test_scenario_combinations(self):
+
+        generator = scenario.ScenarioGenerator(
+            seed=20,
+            center_lat=42.6,
+            center_lon=13.3,
+            radius=60*km,
+            target_generators=[
+                targets.RandomStationGenerator(
+                    avoid_water=False,
+                    nstations=5),
+                targets.WaveformGenerator(
+                    store_id=ScenarioTestCase.store_id,
+                    station_generator=targets.RandomStationGenerator(
+                        avoid_water=False),
+                    noise_generator=targets.waveform.WhiteNoiseGenerator(),
+                    seismogram_quantity='velocity'),
+                targets.InSARGenerator(
+                    resolution=(20, 20),
+                    avoid_water=False,
+                    noise_generator=targets.insar.AtmosphericNoiseGenerator(
+                        amplitude=1e-5)),
+                targets.GNSSCampaignGenerator(
+                    station_generator=targets.RandomStationGenerator(
+                        avoid_water=False,
+                        channels=None))
+                ],
+            source_generator=scenario.DCSourceGenerator(
+                time_min=util.str_to_time('2017-01-01 00:00:00'),
+                time_max=util.str_to_time('2017-01-01 02:00:00'),
+                radius=10*km,
+                depth_min=1*km,
+                depth_max=10*km,
+                magnitude_min=3.0,
+                magnitude_max=4.5,
+                strike=120.,
+                dip=45.,
+                rake=90.,
+                perturbation_angle_std=15.,
+                nevents=3)
+        )
+
+        engine = gf.get_engine()
+        generator.init_modelling(engine)
+
+        for src in scenario.sources.AVAILABLE_SOURCES:
+            generator.source_generator = src(
+                time_min=util.str_to_time('2017-01-01 00:00:00'),
+                time_max=util.str_to_time('2017-01-01 02:00:00'),
+                radius=1*km,
+                depth_min=1.5*km,
+                depth_max=5*km,
+                magnitude_min=3.0,
+                magnitude_max=4.5)
+            generator.source_generator.update_hierarchy(generator)
+
+            generator.get_stations()
+            generator.get_waveforms()
+            generator.get_insar_scenes()
+            generator.get_gnss_campaigns()
 
     @unittest.skipUnless(
         have_store(store_id_static),
@@ -232,7 +315,46 @@ class ScenarioTestCase(unittest.TestCase):
         tempdir = mkdtemp(prefix='pyrocko-scenario')
         self.tempdirs.append(tempdir)
 
-        generator = self.generator
+        generator = scenario.ScenarioGenerator(
+            seed=20,
+            center_lat=42.6,
+            center_lon=13.3,
+            radius=60*km,
+            target_generators=[
+                targets.RandomStationGenerator(
+                    avoid_water=False,
+                    nstations=5),
+                targets.WaveformGenerator(
+                    store_id=ScenarioTestCase.store_id,
+                    station_generator=targets.RandomStationGenerator(
+                        avoid_water=False),
+                    noise_generator=targets.waveform.WhiteNoiseGenerator(),
+                    seismogram_quantity='velocity'),
+                targets.InSARGenerator(
+                    resolution=(20, 20),
+                    avoid_water=False,
+                    noise_generator=targets.insar.AtmosphericNoiseGenerator(
+                        amplitude=1e-5)),
+                targets.GNSSCampaignGenerator(
+                    station_generator=targets.RandomStationGenerator(
+                        avoid_water=False,
+                        channels=None))
+                ],
+            source_generator=scenario.DCSourceGenerator(
+                time_min=util.str_to_time('2017-01-01 00:00:00'),
+                time_max=util.str_to_time('2017-01-01 02:00:00'),
+                radius=10*km,
+                depth_min=1*km,
+                depth_max=10*km,
+                magnitude_min=3.0,
+                magnitude_max=4.5,
+                strike=120.,
+                dip=45.,
+                rake=90.,
+                perturbation_angle_std=15.,
+                nevents=3)
+        )
+
         engine = gf.get_engine()
 
         collection = scenario.ScenarioCollection(tempdir, engine)

@@ -7,7 +7,7 @@ import os.path as op
 from pyrocko.guts import List
 from pyrocko.plot import gmtpy
 from pyrocko.gui.marker import PhaseMarker
-from pyrocko import pile, util, model, config
+from pyrocko import pile, util, model
 from pyrocko.dataset import topo
 
 from .base import LocationGenerator, ScenarioError
@@ -70,9 +70,10 @@ class ScenarioGenerator(LocationGenerator):
 
         def method(self, *args, **kwargs):
             result = []
+            func = collector(self, *args, **kwargs)
             for gen in self.target_generators:
                 result.extend(
-                    collector(self, *args, **kwargs)(gen, *args, **kwargs))
+                    func(gen))
             return result
 
         return method
@@ -83,26 +84,35 @@ class ScenarioGenerator(LocationGenerator):
 
     @collect
     def get_waveforms(self, tmin=None, tmax=None):
-        return lambda gen, *a, **kw: gen.get_waveforms(
-            self._engine, self.get_sources(), *a, **kw)
+        tmin, tmax = self._time_range_fill_defaults(tmin, tmax)
+        return lambda gen: gen.get_waveforms(
+            self._engine, self.get_sources(),
+            tmin=tmin, tmax=tmax)
 
     @collect
     def get_onsets(self, tmin=None, tmax=None):
-        return lambda gen, *a, **kw: gen.get_onsets(
-            self._engine, self.get_sources(), *a, **kw)
+        tmin, tmax = self._time_range_fill_defaults(tmin, tmax)
+        return lambda gen: gen.get_onsets(
+            self._engine, self.get_sources(),
+            tmin=tmin, tmax=tmax)
 
     @collect
     def get_insar_scenes(self, tmin=None, tmax=None):
-        return lambda gen, *a, **kw: gen.get_insar_scenes(
-            self._engine, self.get_sources(), *a, **kw)
+        tmin, tmax = self._time_range_fill_defaults(tmin, tmax)
+        return lambda gen: gen.get_insar_scenes(
+            self._engine, self.get_sources(),
+            tmin=tmin, tmax=tmax)
 
     @collect
     def get_gnss_campaigns(self, tmin=None, tmax=None):
-        return lambda gen, *a, **kw: gen.get_gnss_campaign(
-            self._engine, self.get_sources(), *a, **kw)
+        tmin, tmax = self._time_range_fill_defaults(tmin, tmax)
+        return lambda gen: gen.get_gnss_campaigns(
+            self._engine, self.get_sources(),
+            tmin=tmin, tmax=tmax)
 
     @collect
     def dump_data(self, path, tmin=None, tmax=None, overwrite=False):
+        tmin, tmax = self._time_range_fill_defaults(tmin, tmax)
         self.source_generator.dump_data(path)
 
         meta_dir = op.join(path, 'meta')
@@ -120,9 +130,11 @@ class ScenarioGenerator(LocationGenerator):
 
         dump_readme(path)
 
-        def dump_data(gen, *a, **kw):
+        def dump_data(gen):
             logger.info('Creating files from %s...' % gen.__class__.__name__)
-            return gen.dump_data(self._engine, self.get_sources(), *a, **kw)
+            return gen.dump_data(
+                self._engine, self.get_sources(), path,
+                tmin=tmin, tmax=tmax, overwrite=overwrite)
 
         return dump_data
 
@@ -133,6 +145,10 @@ class ScenarioGenerator(LocationGenerator):
     def get_time_range(self):
         ranges = num.array(self._get_time_ranges())
         return ranges.min(), ranges.max()
+
+    def _time_range_fill_defaults(self, tmin, tmax):
+        stmin, stmax = self.get_time_range()
+        return stmin if tmin is None else tmin, stmax if tmax is None else tmax
 
     def get_pile(self, tmin=None, tmax=None):
         p = pile.Pile()
@@ -201,8 +217,6 @@ class ScenarioGenerator(LocationGenerator):
             return
 
         from pyrocko.gf import ws
-
-        cfg = config.config()
 
         engine = self.get_engine()
 

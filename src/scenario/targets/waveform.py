@@ -321,7 +321,8 @@ class WaveformGenerator(TargetGenerator):
     def dump_waveforms(self, engine, sources, path,
                        tmin=None, tmax=None, overwrite=False):
         path_waveforms = op.join(path, 'waveforms')
-        gf.store.remake_dir(path_waveforms, force=overwrite)
+
+        # gf.store.remake_dir(path_waveforms, force=overwrite)
 
         path_traces = op.join(
             path_waveforms,

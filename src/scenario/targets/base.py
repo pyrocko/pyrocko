@@ -32,7 +32,7 @@ class TargetGenerator(LocationGenerator):
     def get_insar_scenes(self, engine, sources, tmin=None, tmax=None):
         return []
 
-    def get_gnss_campaign(self, engine, sources, tmin=None, tmax=None):
+    def get_gnss_campaigns(self, engine, sources, tmin=None, tmax=None):
         return []
 
     def dump_data(self, engine, sources, path,

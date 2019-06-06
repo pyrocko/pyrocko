@@ -66,7 +66,7 @@ class GNSSCampaignGenerator(TargetGenerator):
 
         return [target]
 
-    def get_gnss_campaign(self, engine, sources, tmin=None, tmax=None):
+    def get_gnss_campaigns(self, engine, sources, tmin=None, tmax=None):
         try:
             resp = engine.process(
                 sources,
@@ -100,7 +100,7 @@ class GNSSCampaignGenerator(TargetGenerator):
         path_gnss = op.join(path, 'gnss')
         gf.store.remake_dir(path_gnss, force=overwrite)
 
-        campaigns = self.get_gnss_campaign(
+        campaigns = self.get_gnss_campaigns(
             engine, sources, tmin, tmax)
 
         fn = op.join(path_gnss,
@@ -113,4 +113,4 @@ class GNSSCampaignGenerator(TargetGenerator):
         return [fn]
 
     def add_map_artists(self, engine, sources, automap):
-        automap.add_gnss_campaign(self.get_gnss_campaign(engine, sources)[0])
+        automap.add_gnss_campaign(self.get_gnss_campaigns(engine, sources)[0])
