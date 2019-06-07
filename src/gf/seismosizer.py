@@ -975,7 +975,8 @@ class Source(Location, Cloneable):
 
     stf_mode = STFMode.T(
         default='post',
-        help='whether to apply source time function in pre or post-processing.')
+        help='whether to apply source time function in pre or '
+             'post-processing.')
 
     def __init__(self, **kwargs):
         Location.__init__(self, **kwargs)

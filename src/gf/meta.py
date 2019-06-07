@@ -85,7 +85,9 @@ class Result(SeismosizerResult):
 
 
 class StaticResult(SeismosizerResult):
-    result = Dict.T(String.T(), Array.T(shape=(None,), dtype=num.float, serialize_as='base64'))
+    result = Dict.T(
+        String.T(),
+        Array.T(shape=(None,), dtype=num.float, serialize_as='base64'))
 
 
 class GNSSCampaignResult(StaticResult):

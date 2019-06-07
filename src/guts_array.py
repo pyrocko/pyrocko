@@ -10,7 +10,6 @@ import numpy as num
 from io import BytesIO
 from base64 import b64decode, b64encode
 
-from . import guts
 from .guts import TBase, Object, ValidationError, literal
 
 

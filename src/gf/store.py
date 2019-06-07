@@ -1363,7 +1363,7 @@ class Store(BaseStore):
             ``'nearest_neighbor'``
         :type interpolation: str
         :param implementation: Implementation to use,
-            ``['c', 'alternative', 'reference']``, where ``'alternative'`` 
+            ``['c', 'alternative', 'reference']``, where ``'alternative'``
             and ``'reference'`` use a Python implementation, defaults to `'c'`
         :type implementation: str
         :param optimization: Optimization mode ``['enable', 'disable']``,
