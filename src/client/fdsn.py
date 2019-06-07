@@ -330,6 +330,7 @@ def dataselect(url=g_url, site=g_default_site, majorversion=1, selection=None,
                                  sdatetime(tmin), sdatetime(tmax))))
 
         post = '\n'.join(lst)
-        return _request(url, user=user, passwd=passwd, post=post.encode())
+        return _request(url, user=user, passwd=passwd, post=post.encode(),
+                        timeout=params.get('timeout', g_timeout))
     else:
         return _request(url, user=user, passwd=passwd, **params)
