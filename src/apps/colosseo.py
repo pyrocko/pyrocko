@@ -33,7 +33,7 @@ subcommand_descriptions = {
 }
 
 subcommand_usages = {
-    'init': 'init <scenario_dir> [lat] [lon] [radius_km]',
+    'init': 'init <scenario_dir>',
     'fill': 'fill <scenario_dir>',
     'snuffle': 'snuffle <scenario_dir>',
     'map': '<scenario_dir>',
@@ -139,23 +139,36 @@ def command_init(args):
         parser.add_option(
             '--force', dest='force', action='store_true',
             help='overwrite existing files')
+        parser.add_option(
+            '--location', dest='location', metavar='LAT,LON',
+            help='set scenario center location [deg]')
+        parser.add_option(
+            '--radius', dest='radius', metavar='RADIUS', type=float,
+            help='set scenario center location [km]')
 
     parser, options, args = cl_parse('init', args, setup=setup)
 
-    if len(args) == 0:
+    if len(args) != 1:
         parser.print_help()
         sys.exit(1)
 
-    scenario_dims = [None, None, None]
-    scenario_dims[:len(args[1:])] = map(none_or_float, args[1:])
+    if options.location:
+        try:
+            lat, lon = map(float, options.location.split(','))
+        except Exception:
+            die('expected --location=LAT,LON')
+    else:
+        lat = lon = None
+
+    if options.radius is not None:
+        radius = options.radius * km
+    else:
+        radius = None
 
     project_dir = args[0]
     try:
-        if isinstance(scenario_dims[2], float):
-            scenario_dims[2] *= km
-
         scenario.ScenarioGenerator.initialize(
-            project_dir, *scenario_dims, force=options.force)
+            project_dir,  lat, lon, radius, force=options.force)
 
         gf_stores_path = op.join(project_dir, 'gf_stores')
         util.ensuredir(gf_stores_path)
@@ -195,8 +208,7 @@ def command_fill(args):
         sc = guts.load(filename=fn)
         sc.init_modelling(engine)
         sc.ensure_gfstores(interactive=True)
-        sc.dump_data(
-            path=project_dir, overwrite=options.force)
+        sc.dump_data(path=project_dir, overwrite=options.force)
         sc.make_map(op.join(project_dir, 'map.pdf'))
 
     except scenario.CannotCreatePath as e:
