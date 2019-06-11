@@ -1,6 +1,6 @@
 
 from pyrocko import gf
-from .error import CannotCreate
+from .error import CannotCreatePath
 
 
 def remake_dir(dpath, force):
@@ -8,4 +8,4 @@ def remake_dir(dpath, force):
         return gf.store.remake_dir(dpath, force)
 
     except gf.CannotCreate as e:
-        raise CannotCreate(str(e))
+        raise CannotCreatePath(str(e))

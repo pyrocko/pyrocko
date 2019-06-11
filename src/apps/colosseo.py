@@ -160,7 +160,7 @@ def command_init(args):
         gf_stores_path = op.join(project_dir, 'gf_stores')
         util.ensuredir(gf_stores_path)
 
-    except scenario.CannotCreate as e:
+    except scenario.CannotCreatePath as e:
         die(str(e) + ' Use --force to override.')
 
     except scenario.ScenarioError as e:
@@ -199,7 +199,7 @@ def command_fill(args):
             path=project_dir, overwrite=options.force)
         sc.make_map(op.join(project_dir, 'map.pdf'))
 
-    except scenario.CannotCreate as e:
+    except scenario.CannotCreatePath as e:
         die(str(e) + ' Use --force to override.')
 
     except scenario.ScenarioError as e:

@@ -10,7 +10,7 @@ from pyrocko.gui.marker import PhaseMarker
 from pyrocko import pile, util, model
 from pyrocko.dataset import topo
 
-from .error import ScenarioError, CannotCreate, LocationGenerationError
+from .error import ScenarioError, CannotCreatePath, LocationGenerationError
 from .base import LocationGenerator
 from .sources import SourceGenerator, DCSourceGenerator
 from .targets import TargetGenerator, AVAILABLE_TARGETS
@@ -290,7 +290,7 @@ class ScenarioGenerator(LocationGenerator):
         import os.path as op
 
         if op.exists(path) and not force:
-            raise CannotCreate('Directory %s alread exists.' % path)
+            raise CannotCreatePath('Directory %s alread exists.' % path)
 
         util.ensuredir(path)
         fn = op.join(path, 'scenario.yml')

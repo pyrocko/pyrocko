@@ -8,8 +8,8 @@ class LocationGenerationError(ScenarioError):
     pass
 
 
-class CannotCreate(ScenarioError):
+class CannotCreatePath(ScenarioError):
     pass
 
 
-__all__ = ['ScenarioError', 'LocationGenerationError', 'CannotCreate']
+__all__ = ['ScenarioError', 'LocationGenerationError', 'CannotCreatePath']
