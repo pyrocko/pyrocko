@@ -10,13 +10,15 @@ from pyrocko.gui.marker import PhaseMarker
 from pyrocko import pile, util, model
 from pyrocko.dataset import topo
 
-from .error import ScenarioError, CannotCreate
+from .error import ScenarioError, CannotCreate, LocationGenerationError
 from .base import LocationGenerator
 from .sources import SourceGenerator, DCSourceGenerator
 from .targets import TargetGenerator, AVAILABLE_TARGETS
 
 logger = logging.getLogger('pyrocko.scenario')
 guts_prefix = 'pf.scenario'
+
+km = 1000.
 
 
 class ScenarioGenerator(LocationGenerator):
@@ -43,7 +45,7 @@ class ScenarioGenerator(LocationGenerator):
                 self.get_sources()
                 return
 
-            except ScenarioError:
+            except LocationGenerationError:
                 self.retry()
 
         raise ScenarioError(
@@ -294,15 +296,26 @@ class ScenarioGenerator(LocationGenerator):
         fn = op.join(path, 'scenario.yml')
         logger.debug('Writing new scenario to %s' % fn)
 
-        scenario = cls()
+        scenario = cls(
+            center_lat=center_lat,
+            center_lon=center_lon,
+            radius=radius)
+
         scenario.target_generators.extend([t() for t in targets])
 
         for gen in scenario.target_generators:
             gen.update_hierarchy(scenario)
 
-        scenario.center_lat = center_lat
-        scenario.center_lon = center_lon
-        scenario.radius = radius
+        center_lat, center_lon = gen.get_center_latlon()
+        radius = gen.get_radius()
+
+        logger.info(
+            'Initialising new %sscenario, centered at (%g, %g)%s: %s'
+            % (
+                'global ' if radius is None else '',
+                center_lat, center_lon,
+                '' if radius is None else ' with radius %g km' % (radius / km),
+                path))
 
         scenario.dump(filename=fn)
 

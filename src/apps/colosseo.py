@@ -75,6 +75,13 @@ def die(message, err='', prelude=''):
     sys.exit('%s%s failed: %s%s' % (prelude, program_name, message, err))
 
 
+def none_or_float(x):
+    if x == 'none':
+        return None
+    else:
+        return float(x)
+
+
 def add_common_options(parser):
     parser.add_option(
         '--loglevel',
@@ -139,15 +146,14 @@ def command_init(args):
         parser.print_help()
         sys.exit(1)
 
-    scenario_dims = [52., 5.4, 90.]
-    scenario_dims[:len(args[1:])] = map(float, args[1:])
+    scenario_dims = [None, None, None]
+    scenario_dims[:len(args[1:])] = map(none_or_float, args[1:])
 
     project_dir = args[0]
-    logger.info('Initialising new scenario %s at %.2f, %.2f with radius %d km'
-                % tuple([args[0]] + scenario_dims))
-
     try:
-        scenario_dims[2] *= km
+        if isinstance(scenario_dims[2], float):
+            scenario_dims[2] *= km
+
         scenario.ScenarioGenerator.initialize(
             project_dir, *scenario_dims, force=options.force)
 
@@ -277,12 +283,15 @@ def main(args=None):
 
 
 def get_engine(gf_store_superdirs):
-    engine = gf.LocalEngine(store_superdirs=gf_store_superdirs, use_config=True)
+    engine = gf.LocalEngine(
+        store_superdirs=gf_store_superdirs, use_config=True)
+
     logger.info(
         'Directories to be searched for GF stores:\n%s'
         % '\n'.join('  ' + s for s in engine.store_superdirs))
 
     return engine
+
 
 if __name__ == '__main__':
     main()

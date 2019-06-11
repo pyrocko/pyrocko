@@ -10,7 +10,7 @@ import numpy as num
 from pyrocko.guts import Object, Int, Bool, Float
 from pyrocko import orthodrome as od
 from pyrocko.dataset import gshhg, topo
-from .error import ScenarioError
+from .error import ScenarioError, LocationGenerationError
 
 logger = logging.getLogger('pyrocko.scenario.base')
 
@@ -141,7 +141,10 @@ class LocationGenerator(Generator):
         self._center_latlon = None
 
     def get_center_latlon(self):
-        assert (self.center_lat is None) == (self.center_lon is None)
+        if (self.center_lat is None) != (self.center_lon is None):
+            raise ScenarioError(
+                'Set both: lat and lon, or neither of them (in %s).'
+                % self.__class__.__name__)
 
         if self._center_latlon is None:
 
@@ -190,7 +193,7 @@ class LocationGenerator(Generator):
         if self.avoid_water:
             sadd = ' (avoiding water)'
 
-        raise ScenarioError('Could not generate location%s.' % sadd)
+        raise LocationGenerationError('Could not generate location%s.' % sadd)
 
 
 class TargetGenerator(LocationGenerator):
