@@ -6,6 +6,7 @@ import os.path as op
 from optparse import OptionParser
 
 from pyrocko import util, scenario, guts, gf
+from pyrocko import __version__
 
 
 logger = logging.getLogger('pyrocko.apps.colosseo')
@@ -16,10 +17,13 @@ def d2u(d):
     return dict((k.replace('-', '_'), v) for (k, v) in d.items())
 
 
-description = '''Earthquake scenario generator from Pyrocko
+description = '''This is Colosseo, an earthquake scenario generator.
 
-Create waveforms, InSAR and GNSS offsets of earthquake scenario on the earth.
-'''
+Create seismic waveforms, InSAR and GNSS offsets for a simulated earthquake
+scenario.
+
+Colosseo is part of Pyrocko. Version %s.
+''' % __version__
 
 subcommand_descriptions = {
     'init': 'initialize a new, blank scenario',
@@ -41,8 +45,11 @@ program_name = 'colosseo'
 
 usage_tdata = d2u(subcommand_descriptions)
 usage_tdata['program_name'] = program_name
+usage_tdata['description'] = description
 
 usage = '''%(program_name)s <subcommand> [options] [--] <arguments> ...
+
+%(description)s
 
 Subcommands:
 
