@@ -1,5 +1,8 @@
-from __future__ import division
-from builtins import range
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+from __future__ import absolute_import, division, print_function
 
 import math
 import hashlib
