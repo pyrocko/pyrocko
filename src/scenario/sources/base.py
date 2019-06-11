@@ -4,6 +4,7 @@ from pyrocko import util, moment_tensor
 from pyrocko.guts import Timestamp, Float, Int, Bool
 
 from ..base import LocationGenerator
+from ..error import ScenarioError
 
 km = 1e3
 guts_prefix = 'pf.scenario'
@@ -22,26 +23,37 @@ class SourceGenerator(LocationGenerator):
     time_min = Timestamp.T(default=util.str_to_time('2017-01-01 00:00:00'))
     time_max = Timestamp.T(default=util.str_to_time('2017-01-03 00:00:00'))
 
-    magnitude_min = Float.T(default=1.0)
-    magnitude_max = Float.T(default=4.0)
+    magnitude_min = Float.T(
+        default=4.0,
+        help='minimum moment magnitude')
+    magnitude_max = Float.T(
+        optional=True,
+        help='if set, maximum moment magnitude for a uniform distribution. '
+             'If set to ``None``, magnitudes are drawn using a '
+             'Gutenberg-Richter distribution, see :gattr:`b_value`.')
     b_value = Float.T(
-        optional=True, help='Gutenberg Richter magnitude distribution.')
+        optional=True,
+        help='b-value for Gutenberg-Richter magnitude distribution. If unset, '
+             'a value of 1 is assumed.')
 
     def __init__(self, *args, **kwargs):
         super(SourceGenerator, self).__init__(*args, **kwargs)
-        if self.b_value and self.magnitude_max:
-            raise ValueError(
-                'b_value and magnitude_max are mutually exclusive')
-        if self.magnitude_min > self.magnitude_max:
-            raise ValueError(
-                'attribute_min is greater then magnitude_max')
+        if self.b_value is not None and self.magnitude_max is not None:
+            raise ScenarioError(
+                '%s: b_value and magnitude_max are mutually exclusive.'
+                % self.__class__.__name__)
 
     def draw_magnitude(self, rstate):
-        if self.b_value is None:
+        if self.b_value is None and self.magnitude_max is None:
+            b_value = 1.0
+        else:
+            b_value = self.b_value
+
+        if b_value is None:
             return rstate.uniform(self.magnitude_min, self.magnitude_max)
         else:
             return moment_tensor.rand_to_gutenberg_richter(
-                rstate.rand(), self.b_value, magnitude_min=self.magnitude_min)
+                rstate.rand(), b_value, magnitude_min=self.magnitude_min)
 
     def get_sources(self):
         sources = []
