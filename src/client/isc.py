@@ -81,7 +81,10 @@ class ISC(EarthquakeCatalog):
         page = urlopen(url).read().decode()
         logger.debug('Received page (%i bytes)' % len(page))
 
-        if 'No events were found.' in page:
+        if 'The search could not be run due to problems' in page:
+            logger.warn('%s\nurl: %s' % (page, url))
+            return
+        elif 'No events were found.' in page:
             logger.info('No events were found.')
             events = []
         else:
@@ -111,22 +114,24 @@ class ISC(EarthquakeCatalog):
         of `pyrocko.gui.PhaseMarker` instances.
 
         :param time_range: Tuple with (tmin tmax)
-        :param station_code: List with ISC station codes
+        :param station_codes: List with ISC station codes
             (see http://www.isc.ac.uk/cgi-bin/stations?lista).
+            If `station_codes` is 'global', query all ISC stations.
         :param phases: List of seismic phases. (e.g. ['P', 'PcP']
         '''
-
-        if len(station_codes) == 0:
-            logger.warn('station_codes: list is empty')
 
         p = []
         a = p.append
 
         a('out_format=QuakeML')
         a('request=STNARRIVALS')
-        a('stnsearch=STN')
+        if station_codes == 'global':
+            a('stnsearch=GLOBAL')
+        else:
+            a('stnsearch=STN')
+            a('sta_list=%s' % ','.join(station_codes))
+
         a('phaselist=%s' % ','.join(phases))
-        a('sta_list=%s' % ','.join(station_codes))
 
         self.append_time_params(a, time_range)
 
@@ -143,6 +148,7 @@ class ISC(EarthquakeCatalog):
         logger.debug('Received page (%i bytes)' % len(page))
 
         data = quakeml.QuakeML.load_xml(string=page)
+
         markers = data.get_pyrocko_phase_markers()
         markers = self.replace_isc_codes(markers)
 
