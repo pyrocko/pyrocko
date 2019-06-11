@@ -58,6 +58,16 @@ To get further help and a list of available options for any subcommand run:
 ''' % usage_tdata
 
 
+def die(message, err='', prelude=''):
+    if prelude:
+        prelude = prelude + '\n'
+
+    if err:
+        err = '\n' + err
+
+    sys.exit('%s%s failed: %s%s' % (prelude, program_name, message, err))
+
+
 def add_common_options(parser):
     parser.add_option(
         '--loglevel',
@@ -129,12 +139,19 @@ def command_init(args):
     logger.info('Initialising new scenario %s at %.2f, %.2f with radius %d km'
                 % tuple([args[0]] + scenario_dims))
 
-    scenario_dims[2] *= km
-    scenario.ScenarioGenerator.initialize(
-        project_dir, *scenario_dims, force=options.force)
+    try:
+        scenario_dims[2] *= km
+        scenario.ScenarioGenerator.initialize(
+            project_dir, *scenario_dims, force=options.force)
 
-    gf_stores_path = op.join(project_dir, 'gf_stores')
-    util.ensuredir(gf_stores_path)
+        gf_stores_path = op.join(project_dir, 'gf_stores')
+        util.ensuredir(gf_stores_path)
+
+    except scenario.CannotCreate as e:
+        die(str(e) + ' Use --force to override.')
+
+    except scenario.ScenarioError as e:
+        die(str(e))
 
 
 def command_fill(args):
@@ -158,16 +175,22 @@ def command_fill(args):
     project_dir = args[0]
 
     gf_stores_path = op.join(project_dir, 'gf_stores')
-    engine = get_engine([gf_stores_path])
 
-    scenario = guts.load(filename=fn)
-    scenario.init_modelling(engine)
-    scenario.ensure_gfstores(interactive=True)
-    scenario.dump_data(
-        path=project_dir, overwrite=options.force)
+    try:
+        engine = get_engine([gf_stores_path])
 
-    scenario.make_map([op.join(project_dir, 'map.pdf'),
-                       op.join(project_dir, 'map.ps')])
+        sc = guts.load(filename=fn)
+        sc.init_modelling(engine)
+        sc.ensure_gfstores(interactive=True)
+        sc.dump_data(
+            path=project_dir, overwrite=options.force)
+        sc.make_map(op.join(project_dir, 'map.pdf'))
+
+    except scenario.CannotCreate as e:
+        die(str(e) + ' Use --force to override.')
+
+    except scenario.ScenarioError as e:
+        die(str(e))
 
 
 def command_map(args):
@@ -187,10 +210,13 @@ def command_map(args):
     gf_stores_path = op.join(project_dir, 'gf_stores')
     engine = get_engine([gf_stores_path])
 
-    scenario = guts.load(filename=fn)
-    scenario.init_modelling(engine)
-    scenario.make_map([op.join(project_dir, 'map.pdf'),
-                       op.join(project_dir, 'map.ps')])
+    try:
+        sc = guts.load(filename=fn)
+        sc.init_modelling(engine)
+        sc.make_map(op.join(project_dir, 'map.pdf'))
+
+    except scenario.ScenarioError as e:
+        die(str(e))
 
 
 def command_snuffle(args):
@@ -210,13 +236,13 @@ def command_snuffle(args):
     gf_stores_path = op.join(project_dir, 'gf_stores')
 
     engine = get_engine([gf_stores_path])
-    scenario = guts.load(filename=fn)
-    scenario.init_modelling(engine)
+    sc = guts.load(filename=fn)
+    sc.init_modelling(engine)
 
     return snuffler.snuffle(
-        scenario.get_pile(),
-        stations=scenario.get_stations(),
-        events=scenario.get_events())
+        sc.get_pile(),
+        stations=sc.get_stations(),
+        events=sc.get_events())
 
 
 def main(args=None):
@@ -244,12 +270,12 @@ def main(args=None):
 
 
 def get_engine(gf_store_superdirs):
+    engine = gf.LocalEngine(store_superdirs=gf_store_superdirs, use_config=True)
     logger.info(
         'Directories to be searched for GF stores:\n%s'
-        % '\n'.join('  ' + s for s in gf_store_superdirs))
+        % '\n'.join('  ' + s for s in engine.store_superdirs))
 
-    return gf.LocalEngine(store_superdirs=gf_store_superdirs, use_config=True)
-
+    return engine
 
 if __name__ == '__main__':
     main()

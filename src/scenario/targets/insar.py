@@ -11,6 +11,7 @@ from pyrocko.util import num_full
 
 from .base import TargetGenerator, NoiseGenerator
 from ..base import get_gsshg
+from ..util import remake_dir
 
 DEFAULT_STORE_ID = 'ak135_static'
 
@@ -449,7 +450,7 @@ class InSARGenerator(TargetGenerator):
     def dump_data(self, engine, sources, path,
                   tmin=None, tmax=None, overwrite=False):
         path_insar = op.join(path, 'insar')
-        gf.store.remake_dir(path_insar, force=overwrite)
+        remake_dir(path_insar, force=overwrite)
 
         tmin, tmax = self.get_time_range(sources)
         tts = util.time_to_str

@@ -14,6 +14,8 @@ from pyrocko.io_common import FileSaveError
 
 from .station import StationGenerator, RandomStationGenerator
 from .base import TargetGenerator, NoiseGenerator
+from ..error import ScenarioError
+from ..util import remake_dir
 
 
 DEFAULT_STORE_ID = 'global_2s'
@@ -311,6 +313,10 @@ class WaveformGenerator(TargetGenerator):
 
     def dump_data(self, engine, sources, path,
                   tmin=None, tmax=None, overwrite=False):
+
+        path_waveforms = op.join(path, 'waveforms')
+        remake_dir(path_waveforms, force=overwrite)
+
         fns = []
         fns.extend(
             self.dump_waveforms(engine, sources, path, tmin, tmax, overwrite))
@@ -320,9 +326,8 @@ class WaveformGenerator(TargetGenerator):
 
     def dump_waveforms(self, engine, sources, path,
                        tmin=None, tmax=None, overwrite=False):
-        path_waveforms = op.join(path, 'waveforms')
 
-        # gf.store.remake_dir(path_waveforms, force=overwrite)
+        path_waveforms = op.join(path, 'waveforms')
 
         path_traces = op.join(
             path_waveforms,
@@ -355,7 +360,7 @@ class WaveformGenerator(TargetGenerator):
             trs = self.get_waveforms(engine, sources, tmin_win, tmax_win)
 
             try:
-                io.save(
+                wpaths = io.save(
                     trs, path_traces,
                     additional=dict(
                         wmin_year=tts(tmin_win, format='%Y'),
@@ -367,8 +372,12 @@ class WaveformGenerator(TargetGenerator):
                         wmax_day=tts(tmax_win, format='%d'),
                         wmax=tts(tmax_win, format='%Y-%m-%d_%H-%M-%S')),
                     overwrite=overwrite)
+
+                for wpath in wpaths:
+                    logger.debug('Generated file: %s' % wpath)
+
             except FileSaveError as e:
-                logger.debug('Waveform exists %s' % e)
+                raise ScenarioError(str(e))
 
         pbar.finish()
 

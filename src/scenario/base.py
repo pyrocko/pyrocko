@@ -10,6 +10,7 @@ import numpy as num
 from pyrocko.guts import Object, Int, Bool, Float
 from pyrocko import orthodrome as od
 from pyrocko.dataset import gshhg, topo
+from .error import ScenarioError
 
 logger = logging.getLogger('pyrocko.scenario.base')
 
@@ -28,10 +29,6 @@ def get_gsshg():
         logger.debug('Initialising GSHHG database.')
         coastlines = gshhg.GSHHG.intermediate()
     return coastlines
-
-
-class ScenarioError(Exception):
-    pass
 
 
 def is_on_land(lat, lon, method='coastlines'):
@@ -193,7 +190,7 @@ class LocationGenerator(Generator):
         if self.avoid_water:
             sadd = ' (avoiding water)'
 
-        raise ScenarioError('could not generate location%s' % sadd)
+        raise ScenarioError('Could not generate location%s.' % sadd)
 
 
 class TargetGenerator(LocationGenerator):

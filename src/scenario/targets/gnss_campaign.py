@@ -5,6 +5,7 @@ import numpy as num
 from pyrocko import gf
 from pyrocko.guts import Float
 
+from ..util import remake_dir
 from .base import TargetGenerator, NoiseGenerator
 from .station import RandomStationGenerator, StationGenerator
 
@@ -98,7 +99,7 @@ class GNSSCampaignGenerator(TargetGenerator):
     def dump_data(self, engine, sources, path,
                   tmin=None, tmax=None, overwrite=False):
         path_gnss = op.join(path, 'gnss')
-        gf.store.remake_dir(path_gnss, force=overwrite)
+        remake_dir(path_gnss, force=overwrite)
 
         campaigns = self.get_gnss_campaigns(
             engine, sources, tmin, tmax)

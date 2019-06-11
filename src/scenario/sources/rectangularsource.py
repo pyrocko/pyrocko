@@ -55,8 +55,7 @@ class RectangularSourceGenerator(SourceGenerator):
             if None in (self.strike, self.dip, self.rake):
                 raise ValueError(
                     'RectangularFaultGenerator: '
-                    'strike, dip, rake'
-                    ' must be used in combination')
+                    'strike, dip, rake must be used in combination.')
 
             strike = self.strike
             dip = self.dip

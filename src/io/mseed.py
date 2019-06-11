@@ -81,7 +81,7 @@ def save(traces, filename_template, additional={}, overwrite=True):
 
         fn = tr.fill_template(filename_template, **additional)
         if not overwrite and os.path.exists(fn):
-            raise FileSaveError('file exists: %s' % fn)
+            raise FileSaveError('File exists: %s' % fn)
 
         if fn not in fn_tr:
             fn_tr[fn] = []

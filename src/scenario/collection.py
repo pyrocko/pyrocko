@@ -9,7 +9,7 @@ from pyrocko.guts import Object, Timestamp
 from pyrocko import gf, guts, util, pile, gmtpy
 
 from .scenario import draw_scenario_gmt
-from .base import ScenarioError
+from .error import ScenarioError
 
 op = os.path
 guts_prefix = 'pf.scenario'
@@ -187,7 +187,7 @@ class ScenarioCollection(object):
         except OSError as e:
             if e.errno == errno.EEXIST:
                 raise ScenarioError(
-                    'scenario id is already in use: %s' % scenario_id)
+                    'Scenario id is already in use: %s' % scenario_id)
             else:
                 raise
 

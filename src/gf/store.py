@@ -999,7 +999,7 @@ def remake_dir(dpath, force):
         if force:
             shutil.rmtree(dpath)
         else:
-            raise CannotCreate('directory %s already exists' % dpath)
+            raise CannotCreate('Directory "%s" already exists.' % dpath)
 
     os.mkdir(dpath)
 

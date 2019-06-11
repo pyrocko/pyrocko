@@ -4,7 +4,7 @@ from pyrocko.guts import Float
 from pyrocko import moment_tensor, gf
 
 from .base import SourceGenerator
-from ..base import ScenarioError
+from ..error import ScenarioError
 
 km = 1e3
 guts_prefix = 'pf.scenario'
@@ -33,7 +33,7 @@ class DCSourceGenerator(SourceGenerator):
             if None in (self.strike, self.dip, self.rake):
                 raise ScenarioError(
                     'DCSourceGenerator: '
-                    'strike, dip, and rake must be used in combination')
+                    'strike, dip, and rake must be used in combination.')
 
             mt = moment_tensor.MomentTensor(
                 strike=self.strike, dip=self.dip, rake=self.rake)

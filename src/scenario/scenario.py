@@ -10,16 +10,13 @@ from pyrocko.gui.marker import PhaseMarker
 from pyrocko import pile, util, model
 from pyrocko.dataset import topo
 
-from .base import LocationGenerator, ScenarioError
+from .error import ScenarioError, CannotCreate
+from .base import LocationGenerator
 from .sources import SourceGenerator, DCSourceGenerator
 from .targets import TargetGenerator, AVAILABLE_TARGETS
 
 logger = logging.getLogger('pyrocko.scenario')
 guts_prefix = 'pf.scenario'
-
-
-class CannotCreate(Exception):
-    pass
 
 
 class ScenarioGenerator(LocationGenerator):
@@ -50,7 +47,7 @@ class ScenarioGenerator(LocationGenerator):
                 self.retry()
 
         raise ScenarioError(
-            'could not generate scenario within %i tries' % self.ntries)
+            'Could not generate scenario within %i tries.' % self.ntries)
 
     def init_modelling(self, engine):
         self._engine = engine
@@ -231,14 +228,14 @@ class ScenarioGenerator(LocationGenerator):
                   '%s\n'
                   'We can try to download the stores from '
                   'http://kinherd.org into one of the following '
-                  'directories.'
+                  'directories:'
                   % '\n'.join('  ' + s for s in self.stores_missing))
             for idr, dr in enumerate(gf_store_superdirs):
                 print(' %d. %s' % ((idr+1), dr))
             s = input('\nInto which directory should we download the GF '
                       'store(s)?\nDefault 1, (C)ancel: ')
             if s in ['c', 'C']:
-                print('Canceled!')
+                print('Canceled.')
                 sys.exit(1)
             elif s == '':
                 s = 0
@@ -291,8 +288,7 @@ class ScenarioGenerator(LocationGenerator):
         import os.path as op
 
         if op.exists(path) and not force:
-            raise CannotCreate('Directory %s alread exists! May use force?'
-                               % path)
+            raise CannotCreate('Directory %s alread exists.' % path)
 
         util.ensuredir(path)
         fn = op.join(path, 'scenario.yml')
