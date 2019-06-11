@@ -160,6 +160,14 @@ class ScenarioGenerator(LocationGenerator):
         logger.info('Plotting scenario\'s map...')
         if not gmtpy.have_gmt():
             logger.warning('Cannot plot map, GMT is not installed.')
+            return
+
+        if self.radius is None or self.radius > 5000*km:
+            logger.info(
+                'Drawing map for scenarios with a radius > 5000 km is '
+                'not implemented.')
+            return
+
         try:
             draw_scenario_gmt(self, filename)
         except gmtpy.GMTError:
