@@ -538,10 +538,16 @@ class Pick(Object):
         return polarity_choices.get(self.polarity, None)
 
     def pyrocko_phase_marker(self, event=None):
+        if not self.phase_hint:
+            logger.warn('Pick %s: phase_hint undefined' % self.public_id)
+            phasename = 'undefined'
+        else:
+            phasename = self.phase_hint.value
+
         return marker.PhaseMarker(
             event=event, nslc_ids=[self.waveform_id.nslc_id],
             tmin=self.time.value, tmax=self.time.value,
-            phasename=self.phase_hint.value,
+            phasename=phasename,
             polarity=self.pyrocko_polarity,
             automatic=self.evaluation_mode)
 
@@ -595,7 +601,14 @@ class Origin(Object):
     def position_values(self):
         lat = self.latitude.value
         lon = self.longitude.value
-        depth = self.depth.value
+        if not self.depth:
+            logger.warn(
+                'Origin %s: Depth is undefined. Set to depth=0.' %
+                self.public_id)
+            depth = 0.
+        else:
+            depth = self.depth.value
+
         return lat, lon, depth
 
     def pyrocko_event(self):
