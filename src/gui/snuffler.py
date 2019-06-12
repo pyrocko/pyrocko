@@ -117,10 +117,14 @@ def snuffle(pile=None, **kwargs):
                     'trace-%(network)s.%(station)s.%(location)s.%(channel)s.'
                     '%(tmin)s.mseed')
 
+            interval = min(
+                source.get_wanted_poll_interval() for source in sources)
+
             pollinjector = PollInjector(
                 pile,
                 fixation_length=store_interval,
-                path=store_path)
+                path=store_path,
+                interval=100.)
 
             for source in sources:
                 source.start()
@@ -287,7 +291,7 @@ def snuffler_from_commandline(args=None):
     if options.debug:
         util.setup_logging('snuffler', 'debug')
     else:
-        util.setup_logging('snuffler', 'warning')
+        util.setup_logging('snuffler', 'info')
 
     if options.gui_toolkit_qt4:
         config.override_gui_toolkit = 'qt4'

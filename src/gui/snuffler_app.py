@@ -44,6 +44,9 @@ class AcquisitionThread(qc.QThread):
         self.post_process_sleep = post_process_sleep
         self._sun_is_shining = True
 
+    def get_wanted_poll_interval(self):
+        return 1000.
+
     def run(self):
         while True:
             try:
@@ -134,6 +137,9 @@ class SchoolSeismometerAcquisition(
     def got_trace(self, tr):
         AcquisitionThread.got_trace(self, tr)
 
+    def get_wanted_poll_interval(self):
+        return 100.
+
 
 class EDLAcquisition(
         edl.EDLHamster, AcquisitionThread):
@@ -212,7 +218,12 @@ def setup_acquisition_sources(args):
 
         elif msc:
             port = msc.group(1)
-            sco = SchoolSeismometerAcquisition(port=port)
+            sco = SchoolSeismometerAcquisition(
+                port=port,
+                buffersize=5,
+                deltat=1.0/79.719,
+                disallow_uneven_sampling_rates=False)
+
             sources.append(sco)
         elif med:
             port = med.group(1)
@@ -230,10 +241,11 @@ def setup_acquisition_sources(args):
 class PollInjector(qc.QObject):
 
     def __init__(self, *args, **kwargs):
+        interval = kwargs.pop('interval', 1000.)
         qc.QObject.__init__(self)
         self._injector = pile.Injector(*args, **kwargs)
         self._sources = []
-        self.startTimer(1000.)
+        self.startTimer(interval)
 
     def add_source(self, source):
         self._sources.append(source)

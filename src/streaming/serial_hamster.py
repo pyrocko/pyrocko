@@ -63,6 +63,9 @@ class Queue(object):
     def capacity(self):
         return self.nmax
 
+    def __str__(self):
+        return ' '.join('%g' % v for v in self.queue)
+
 
 class SerialHamsterError(Exception):
     pass
@@ -105,6 +108,7 @@ class SerialHamster(object):
         self.tune_to_quickones = tune_to_quickones
 
         self.min_detection_size = 5
+        self.last_print = 0.0
 
     def add_listener(self, obj):
         self.listeners.append(weakref.ref(obj))
@@ -137,7 +141,8 @@ class SerialHamster(object):
             self.ser = self.in_file
 
     def send_start(self):
-        pass
+        ser = self.ser
+        ser.write(b'4c')
 
     def acquisition_stop(self):
         if self.ser is not None:
@@ -248,6 +253,11 @@ class SerialHamster(object):
 
             tmin_offset = r_tmin - continuous_tmin
             try:
+                tnow = time.time()
+                if self.last_print < tnow - 20.:
+                    print(self.previous_tmin_offsets)
+                    self.last_print = tnow
+
                 toffset = self.previous_tmin_offsets.median()
                 if abs(toffset) > self.deltat*0.7 \
                         and len(self.previous_tmin_offsets) \
@@ -288,7 +298,7 @@ class SerialHamster(object):
 
         if self.tmin is not None and self.deltat is not None:
             for channel, values in zip(self.channels, self.values):
-                v = num.array(values, dtype=num.int)
+                v = num.array(values, dtype=num.int32)
 
                 tr = trace.Trace(
                     network=self.network,
