@@ -7,7 +7,7 @@ Calculate synthetic traveltimes
 Here we will excercise two example how to calculate traveltimes for the phases ``P`` and ``Pg`` for different earth velocity models.
 
 Modules covered in this example:
- * :py:class:`python.cake`
+ * :py:class:`pyrocko.cake`
 
  The first example is minimalistic and will give you a simple travel time table. 
 
