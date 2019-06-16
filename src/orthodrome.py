@@ -483,7 +483,7 @@ def distance_accurate50m_numpy(
     :type b_lats: :py:class:`numpy.ndarray`, ``(N)``
     :type b_lons: :py:class:`numpy.ndarray`, ``(N)``
 
-    :return: Distances in degrees
+    :return: Distances in meter
     :rtype: :py:class:`numpy.ndarray`, ``(N)``
     '''
 
