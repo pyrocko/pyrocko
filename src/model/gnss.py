@@ -88,6 +88,9 @@ class GNSSStation(Location):
     up = GNSSComponent.T(
         optional=True)
 
+    def __eq__(self, other):
+        return self.code == other.code
+
     def get_covariance_matrix(self):
         components = self.components.values()
         ncomponents = self.ncomponents
@@ -188,6 +191,16 @@ class GNSSCampaign(Object):
         self._cor_mat = None
         self._cov_mat = None
         return self.stations.append(station)
+
+    def remove_station(self, station_code):
+        try:
+            station = self.get_station(station_code)
+            self.stations.remove(station)
+            self._cor_mat = None
+            self._cov_mat = None
+        except ValueError:
+            logger.warn('Station {} does not exist in campaign, '
+                        'do nothing.' % station_code)
 
     def get_station(self, station_code):
         for sta in self.stations:
