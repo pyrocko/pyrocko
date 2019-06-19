@@ -89,7 +89,10 @@ class GNSSStation(Location):
         optional=True)
 
     def __eq__(self, other):
-        return self.code == other.code
+        try:
+            return self.code == other.code
+        except AttributeError:
+            return False
 
     def get_covariance_matrix(self):
         components = self.components.values()
