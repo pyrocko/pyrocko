@@ -4,9 +4,9 @@ set -e
 
 if [ ! -f libmseed/libmseed.a ]; then
     rm -rf libmseed
-    tar -xzf libmseed-2.12.tar.gz
+    tar -xzf libmseed-2.19.6.tar.gz
     cd libmseed
-    make gcc
+    CFLAGS="-fPIC" make static
     cd ..
 fi
 
