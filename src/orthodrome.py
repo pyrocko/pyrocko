@@ -1200,50 +1200,107 @@ def stereographic_poly(points):
     return points_out
 
 
-def contains_point(polygon, point):
-    rot = rot_to_00(point[0], point[1])
-    points_xyz = latlon_to_xyz(polygon)
-    points_rot = num.dot(rot, points_xyz.T).T
-    groups = spoly_cut([points_rot], axis=0)
-    for group in groups:
-        for points_g in group:
-            try:
-                points2 = stereographic_poly(points_g)
-                p = Path(points2, closed=True)
-                if p.contains_point((0., 0.)):
-                    return True
+def gnomonic_x(points, cutoff=0.01):
+    points_out = points[:, 1:].copy()
+    if num.any(points[:, 0] < cutoff):
+        raise Farside()
 
-            except Farside:
-                pass
+    factor = 1.0 / points[:, 0]
+    points_out *= factor[:, num.newaxis]
+    return points_out
 
-    return False
+
+def cneg(i, x):
+    if i == 1:
+        return x
+    else:
+        return num.logical_not(x)
 
 
 def contains_points(polygon, points):
+    '''
+    Test which points are inside polygon on a sphere.
+
+    :param polygon: Point coordinates defining the polygon [deg].
+    :type polygon: :py:class:`numpy.ndarray` of shape (N, 2), second index
+        0=lat, 1=lon
+    :param points: Coordinates of points to test [deg].
+    :type points: :py:class:`numpy.ndarray` of shape (N, 2), second index
+        0=lat, 1=lon
+
+    :returns: Boolean mask array.
+    :rtype: :py:class:`numpy.ndarray` of shape (N,)
+
+    The inside of the polygon is defined as the area which is to the left hand
+    side of an observer walking the polygon line, points in order, on the
+    sphere. Lines between the polygon points are treated as great circle paths.
+    The polygon may be arbitrarily complex, as long as it does not have any
+    crossings or thin parts with zero width. The polygon may contain the poles
+    and is allowed to wrap around the sphere multiple times.
+
+    The algorithm works by consecutive cutting of the polygon into (almost)
+    hemispheres and subsequent Gnomonic projections to perform the
+    point-in-polygon tests on a 2D plane.
+    '''
+
+    and_ = num.logical_and
+
     points_xyz = latlon_to_xyz(points)
-    center_xyz = num.mean(points_xyz, axis=0)
+    mask_x = 0. <= points_xyz[:, 0]
+    mask_y = 0. <= points_xyz[:, 1]
+    mask_z = 0. <= points_xyz[:, 2]
 
-    assert num.all(
-        distances3d(points_xyz, center_xyz[num.newaxis, :]) < 1.0)
-
-    lat, lon = xyz_to_latlon(center_xyz)
-    rot = rot_to_00(lat, lon)
-
-    points_rot_xyz = num.dot(rot, points_xyz.T).T
-    points_rot_pro = stereographic(points_rot_xyz)
-
-    poly_xyz = latlon_to_xyz(polygon)
-    poly_rot_xyz = num.dot(rot, poly_xyz.T).T
-    groups = spoly_cut([poly_rot_xyz], axis=0)
     result = num.zeros(points.shape[0], dtype=num.int)
-    for group in groups:
-        for poly_rot_group_xyz in group:
-            try:
-                poly_rot_group_pro = stereographic_poly(poly_rot_group_xyz)
-                result += path_contains_points(
-                    poly_rot_group_pro, points_rot_pro)
 
-            except Farside:
-                pass
+    for ix in [-1, 1]:
+        for iy in [-1, 1]:
+            for iz in [-1, 1]:
+                mask = and_(
+                    and_(cneg(ix, mask_x), cneg(iy, mask_y)),
+                    cneg(iz, mask_z))
+
+                center_xyz = num.array([ix, iy, iz], dtype=num.float)
+
+                lat, lon = xyz_to_latlon(center_xyz)
+                rot = rot_to_00(lat, lon)
+
+                points_rot_xyz = num.dot(rot, points_xyz[mask, :].T).T
+                points_rot_pro = gnomonic_x(points_rot_xyz)
+
+                offset = 0.01
+
+                poly_xyz = latlon_to_xyz(polygon)
+                poly_rot_xyz = num.dot(rot, poly_xyz.T).T
+                poly_rot_xyz[:, 0] -= offset
+                groups = spoly_cut([poly_rot_xyz], axis=0)
+
+                for poly_rot_group_xyz in groups[1]:
+                    poly_rot_group_xyz[:, 0] += offset
+
+                    poly_rot_group_pro = gnomonic_x(
+                        poly_rot_group_xyz)
+
+                    if circulation(poly_rot_group_pro) > 0:
+                        result[mask] += path_contains_points(
+                            poly_rot_group_pro, points_rot_pro)
+                    else:
+                        result[mask] -= path_contains_points(
+                            poly_rot_group_pro, points_rot_pro)
 
     return result.astype(num.bool)
+
+
+def contains_point(polygon, point):
+    '''
+    Test if point is inside polygon on a sphere.
+
+    :param polygon: Point coordinates defining the polygon [deg].
+    :type polygon: :py:class:`numpy.ndarray` of shape (N, 2), second index
+        0=lat, 1=lon
+    :param point: Coordinates ``(lat, lon)`` of point to test [deg].
+
+    Convenience wrapper to :py:func:`contains_points` to test a single point.
+    '''
+
+    return bool(
+        contains_points(polygon, num.asarray(point)[num.newaxis, :])[0])

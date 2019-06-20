@@ -1,4 +1,5 @@
 from __future__ import division, print_function, absolute_import
+import os
 import unittest
 import math
 import random
@@ -22,7 +23,7 @@ r2d = 180./math.pi
 d2r = 1./r2d
 km = 1000.
 
-plot = False
+plot = int(os.environ.get('MPL_SHOW', 0))
 
 
 def random_lat(mi=-90., ma=90., rstate=None, size=None):
@@ -36,9 +37,18 @@ def random_lat(mi=-90., ma=90., rstate=None, size=None):
 def random_lon(mi=-180., ma=180., rstate=None, size=None):
     if rstate is None:
         rstate = num.random
-    mi_ = 0.5*(math.sin(mi * math.pi/180.)+1.)
-    ma_ = 0.5*(math.sin(ma * math.pi/180.)+1.)
-    return num.arcsin(rstate.uniform(mi_, ma_, size=size)*2.-1.)*180./math.pi
+
+    return rstate.uniform(mi, ma, size=size)
+
+
+def random_circle(npoints=100):
+    radius = num.random.uniform(0*km, 20000*km)
+    lat0, lon0 = random_lat(), random_lon()
+    phis = num.linspace(0., 2.*math.pi, npoints, endpoint=False)
+    ns, es = radius*num.sin(phis), radius*num.cos(phis)
+    lats, lons = orthodrome.ne_to_latlon(lat0, lon0, ns, es)
+    circle = num.vstack([lats, lons]).T
+    return lat0, lon0, radius, circle
 
 
 def light(color, factor=0.5):
@@ -389,71 +399,50 @@ class OrthodromeTestCase(unittest.TestCase):
         assert num.all(points2[:, 1] > -eps)
 
     def test_point_in_polygon(self):
+
         if plot:
-            from pyrocko.plot import mpl_graph_color
-
             import matplotlib.pyplot as plt
-            from matplotlib.patches import Polygon
 
-            axes = plt.gca()
+        for i in range(100):
+            if plot:
+                plt.clf()
+                axes = plt.gca()
 
-        nip = 100
+            lat0, lon0, radius, circle = random_circle(100)
+            if plot:
+                print(lat0, lon0, radius)
 
-        for i in range(1):
-            np = 3
-            points = num.zeros((np, 2))
-            points[:, 0] = random_lat(size=3)
-            points[:, 1] = random_lon(size=3)
+            lats = num.linspace(-90., 90., 100)
+            lons = num.linspace(-180., 180., 200)
 
-            points_ip = num.zeros((nip*points.shape[0], 2))
-            for ip in range(points.shape[0]):
-                n, e = orthodrome.latlon_to_ne_numpy(
-                    points[ip % np, 0], points[ip % np, 1],
-                    points[(ip+1) % np, 0], points[(ip+1) % np, 1])
+            points = num.empty((lons.size*lats.size, 2))
+            points[:, 0] = num.repeat(lats, lons.size)
+            points[:, 1] = num.tile(lons, lats.size)
 
-                ns = num.arange(nip) * n / nip
-                es = num.arange(nip) * e / nip
-                lats, lons = orthodrome.ne_to_latlon(
-                    points[ip % np, 0], points[ip % np, 1], ns, es)
+            mask = orthodrome.contains_points(circle, points)
+            distances = orthodrome.distance_accurate50m_numpy(
+                lat0, lon0, points[:, 0], points[:, 1])
 
-                points_ip[ip*nip:(ip+1)*nip, 0] = lats
-                points_ip[ip*nip:(ip+1)*nip, 1] = lons
+            mask2 = distances < radius
+            mask3 = num.logical_and(
+                num.not_equal(mask2, mask),
+                num.abs(distances - radius) > radius / 100.)
 
             if plot:
-                color = mpl_graph_color(i)
-                axes.add_patch(
-                    Polygon(
-                        num.fliplr(points_ip),
-                        facecolor=light(color),
-                        edgecolor=color,
-                        alpha=0.5))
-
-            points_xyz = orthodrome.latlon_to_xyz(points_ip.T)
-            center_xyz = num.mean(points_xyz, axis=0)
-
-            assert num.all(
-                orthodrome.distances3d(
-                    points_xyz, center_xyz[num.newaxis, :]) < 1.0)
-
-            lat, lon = orthodrome.xyz_to_latlon(center_xyz)
-            rot = orthodrome.rot_to_00(lat, lon)
-
-            points_rot_xyz = num.dot(rot, points_xyz.T).T
-            points_rot_pro = orthodrome.stereographic(points_rot_xyz)  # noqa
-
-            poly_xyz = orthodrome.latlon_to_xyz(points_ip)
-            poly_rot_xyz = num.dot(rot, poly_xyz.T).T
-            groups = orthodrome.spoly_cut([poly_rot_xyz], axis=0)
-            num.zeros(points.shape[0], dtype=num.int)
+                axes.plot(
+                    circle[:, 1], circle[:, 0], 'o',
+                    ms=1, color='black')
+                axes.plot(
+                    points[mask, 1], points[mask, 0], 'o',
+                    ms=1, alpha=0.2, color='black')
+                axes.plot(
+                    points[mask3, 1], points[mask3, 0], 'o',
+                    ms=1, color='red')
 
             if plot:
-                for group in groups:
-                    for poly_rot_group_xyz in group:
+                plt.show()
 
-                        axes.set_xlim(-180., 180.)
-                        axes.set_ylim(-90., 90.)
-
-                    plt.show()
+            assert not num.any(mask3)
 
     def test_point_in_region(self):
         testdata = [
