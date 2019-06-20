@@ -75,8 +75,10 @@ def close_poly(points):
 
 
 def circulation(points, axis):
+    # assert num.all(points[:, axis] >= 0.0) or num.all(points[:, axis] <= 0.0)
+
     points2 = points[:, ((axis+2) % 3, (axis+1) % 3)].copy()
-    points2 *= 1.0 / num.sqrt(1.0 + num.abs(points[:, 2]))[:, num.newaxis]
+    points2 *= 1.0 / num.sqrt(1.0 + num.abs(points[:, axis]))[:, num.newaxis]
 
     result = -num.sum(
         (points2[1:, 0] - points2[:-1, 0]) *
