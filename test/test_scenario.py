@@ -15,9 +15,9 @@ def have_store(store_id):
     engine = gf.get_engine()
     try:
         engine.get_store(store_id)
-        return True
+        return True, ''
     except gf.NoSuchStore:
-        return False
+        return False, 'GF store "%s" not available' % store_id
 
 
 def have_kite():
@@ -46,9 +46,7 @@ class ScenarioTestCase(unittest.TestCase):
             continue
             shutil.rmtree(d)
 
-    @unittest.skipUnless(
-        have_store(store_id),
-        'GF Store "%s" is not available' % store_id)
+    @unittest.skipUnless(*have_store(store_id))
     def test_scenario_waveforms(self):
         tempdir = mkdtemp(prefix='pyrocko-scenario')
         self.tempdirs.append(tempdir)
@@ -133,7 +131,7 @@ class ScenarioTestCase(unittest.TestCase):
             self.assert_traces_almost_equal(trs, ref_trs)
 
         tmin, tmax = s.get_time_range()
-        s.ensure_waveforms(tmin, tmax)
+        s.ensure_data(tmin, tmax)
         p = s.get_waveform_pile()
 
         for ref_trs, source in zip(
@@ -148,12 +146,8 @@ class ScenarioTestCase(unittest.TestCase):
     @unittest.skipUnless(
         have_kite(),
         'Kite is not available')
-    @unittest.skipUnless(
-        have_store(store_id),
-        'GF Store "%s" is not available' % store_id)
-    @unittest.skipUnless(
-        have_store(store_id_static),
-        'GF Store "%s" is not available' % store_id_static)
+    @unittest.skipUnless(*have_store(store_id))
+    @unittest.skipUnless(*have_store(store_id_static))
     def test_scenario_insar(self):
         tempdir = mkdtemp(prefix='pyrocko-scenario')
         self.tempdirs.append(tempdir)
@@ -192,11 +186,9 @@ class ScenarioTestCase(unittest.TestCase):
         collection.add_scenario('insar', generator)
 
         s = collection.get_scenario('insar')
-        s.ensure_insar_scenes()
+        s.ensure_data()
 
-    @unittest.skipUnless(
-        have_store(store_id_static),
-        'GF Store "%s" is not available' % store_id_static)
+    @unittest.skipUnless(*have_store(store_id_static))
     def test_scenario_gnss(self):
         tempdir = mkdtemp(prefix='pyrocko-scenario')
         self.tempdirs.append(tempdir)
@@ -239,9 +231,8 @@ class ScenarioTestCase(unittest.TestCase):
     @unittest.skipUnless(
         have_kite(),
         'Kite is not available')
-    @unittest.skipUnless(
-        have_store(store_id),
-        'GF Store "%s" is not available' % store_id)
+    @unittest.skipUnless(*have_store(store_id))
+    @unittest.skipUnless(*have_store(store_id_static))
     def test_scenario_combinations(self):
 
         generator = scenario.ScenarioGenerator(
@@ -303,9 +294,7 @@ class ScenarioTestCase(unittest.TestCase):
             generator.get_insar_scenes()
             generator.get_gnss_campaigns()
 
-    @unittest.skipUnless(
-        have_store(store_id_static),
-        'GF Store "%s" is not available' % store_id_static)
+    @unittest.skipUnless(*have_store(store_id_static))
     @unittest.skipUnless(
         gmtpy.have_gmt(), 'GMT not available')
     @unittest.skipUnless(

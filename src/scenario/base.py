@@ -88,6 +88,10 @@ class Generator(Object):
         for val in self.T.ivals(self):
             if isinstance(val, Generator):
                 val.update_hierarchy(parent=self)
+            elif isinstance(val, list):
+                for el in val:
+                    if isinstance(el, Generator):
+                        el.update_hierarchy(parent=self)
 
     def get_seed(self):
         if self._seed is None:
@@ -131,7 +135,7 @@ class LocationGenerator(Generator):
         optional=True,
         help='Radius for distribution of random locations [m].')
     ntries = Int.T(
-        default=500,
+        default=10,
         help='Maximum number of tries to find a location satisifying all '
              'given constraints')
 

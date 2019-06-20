@@ -115,17 +115,9 @@ class ScenarioCollectionItem(Object):
 
         return path
 
-    def ensure_data(self, tmin=None, tmax=None, overwrite=False):
-        return self.get_generator().dump_data(
-            self.get_path(), tmin, tmax, overwrite)
-
-    def ensure_waveforms(self, tmin=None, tmax=None, overwrite=False):
-        self.ensure_data(tmin, tmax, overwrite)
-        return self.get_waveform_pile()
-
-    def ensure_insar_scenes(self, tmin=None, tmax=None, overwrite=False):
-        self.ensure_data(tmin, tmax, overwrite)
-        return self.get_insar_scenes()
+    def ensure_data(self, tmin=None, tmax=None):
+        return self.get_generator().ensure_data(
+            self.get_path(), tmin, tmax)
 
     def get_archive(self):
         self.ensure_data()

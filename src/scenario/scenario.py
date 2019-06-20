@@ -4,11 +4,14 @@
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division, print_function
 
-import numpy as num
 import logging
 import sys
 import os
 import os.path as op
+import shutil
+import random
+
+import numpy as num
 
 from pyrocko.guts import List
 from pyrocko.plot import gmtpy
@@ -40,10 +43,6 @@ class ScenarioGenerator(LocationGenerator):
 
     def __init__(self, **kwargs):
         LocationGenerator.__init__(self, **kwargs)
-
-        for gen in self.target_generators:
-            gen.update_hierarchy(self)
-
         for itry in range(self.ntries):
 
             try:
@@ -78,7 +77,7 @@ class ScenarioGenerator(LocationGenerator):
             func = collector(self, *args, **kwargs)
             for gen in self.target_generators:
                 result.extend(
-                    func(gen))
+                    func(gen) or [])
             return result
 
         return method
@@ -86,6 +85,10 @@ class ScenarioGenerator(LocationGenerator):
     @collect
     def get_stations(self):
         return lambda gen: gen.get_stations()
+
+    @collect
+    def get_targets(self):
+        return lambda gen: gen.get_targets()
 
     @collect
     def get_waveforms(self, tmin=None, tmax=None):
@@ -115,33 +118,67 @@ class ScenarioGenerator(LocationGenerator):
             self._engine, self.get_sources(),
             tmin=tmin, tmax=tmax)
 
+    def prepare_data(self, path, overwrite):
+        for dentry in [
+                'meta',
+                'waveforms',
+                'insar',
+                'gnss']:
+
+            dpath = op.join(path, dentry)
+            if op.exists(dpath):
+                if overwrite:
+                    shutil.rmtree(dpath)
+                else:
+                    raise CannotCreatePath('Path exists: %s' % dpath)
+
+        for fentry in [
+                'events.txt',
+                'sources.txt',
+                'map.pdf',
+                'README.md']:
+
+            fpath = op.join(path, fentry)
+            if op.exists(fpath):
+                if overwrite:
+                    os.unlink(fpath)
+                else:
+                    raise CannotCreatePath('Path exists: %s' % fpath)
+
     @collect
-    def dump_data(self, path, tmin=None, tmax=None, overwrite=False):
+    def ensure_data(self, path, tmin=None, tmax=None):
         tmin, tmax = self._time_range_fill_defaults(tmin, tmax)
-        self.source_generator.dump_data(path)
+        self.source_generator.ensure_data(path)
 
         meta_dir = op.join(path, 'meta')
         util.ensuredir(meta_dir)
 
-        model.station.dump_stations(
-            self.get_stations(), op.join(meta_dir, 'stations.txt'))
-        model.station.dump_kml(
-            self.get_stations(), op.join(meta_dir, 'stations.kml'))
+        fn_stations = op.join(meta_dir, 'stations.txt')
+        if not op.exists(fn_stations):
+            model.station.dump_stations(
+                self.get_stations(), fn_stations)
 
-        markers = self.get_onsets()
-        if markers:
-            PhaseMarker.save_markers(
-                markers, op.join(meta_dir, 'markers.txt'))
+        fn_stations_kml = op.join(meta_dir, 'stations.kml')
+        if not op.exists(fn_stations_kml):
+            model.station.dump_kml(
+                self.get_stations(), fn_stations_kml)
 
-        dump_readme(path)
+        fn_markers = op.join(meta_dir, 'markers.txt')
+        if not op.exists(fn_markers):
+            markers = self.get_onsets()
+            if markers:
+                PhaseMarker.save_markers(markers, fn_markers)
 
-        def dump_data(gen):
+        fn_readme = op.join(path, 'README.md')
+        if not op.exists(fn_readme):
+            dump_readme(fn_readme)
+
+        def ensure_data(gen):
             logger.info('Creating files from %s...' % gen.__class__.__name__)
-            return gen.dump_data(
-                self._engine, self.get_sources(), path,
-                tmin=tmin, tmax=tmax, overwrite=overwrite)
+            return gen.ensure_data(
+                self._engine, self.get_sources(), path, tmin=tmin, tmax=tmax)
 
-        return dump_data
+        return ensure_data
 
     @collect
     def _get_time_ranges(self):
@@ -315,13 +352,14 @@ class ScenarioGenerator(LocationGenerator):
             center_lon=center_lon,
             radius=radius)
 
+        scenario.seed = random.randint(1, 2**32-1)
+
         scenario.target_generators.extend([t() for t in targets])
 
-        for gen in scenario.target_generators:
-            gen.update_hierarchy(scenario)
+        scenario.update_hierarchy()
 
-        center_lat, center_lon = gen.get_center_latlon()
-        radius = gen.get_radius()
+        center_lat, center_lon = scenario.get_center_latlon()
+        radius = scenario.get_radius()
 
         logger.info(
             'Initialising new %sscenario, centered at (%g, %g)%s: %s'
@@ -331,7 +369,11 @@ class ScenarioGenerator(LocationGenerator):
                 '' if radius is None else ' with radius %g km' % (radius / km),
                 path))
 
+        scenario.get_targets()
+        scenario.get_sources()
+
         scenario.dump(filename=fn)
+        scenario.prepare_data(path, overwrite=force)
 
         return scenario
 
@@ -372,8 +414,7 @@ Kite InSAR scenes for ascending and descending tracks are stored there.
 Use `kite.Scene.load(<filename>)` to inspect the scenes.
 
 '''
-    fn = op.join(path, 'README.md')
-    with open(fn, 'w') as f:
+    with open(path, 'w') as f:
         f.write(readme)
 
-    return [fn]
+    return [path]

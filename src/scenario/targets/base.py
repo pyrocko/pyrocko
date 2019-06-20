@@ -41,9 +41,8 @@ class TargetGenerator(LocationGenerator):
     def get_gnss_campaigns(self, engine, sources, tmin=None, tmax=None):
         return []
 
-    def dump_data(self, engine, sources, path,
-                  tmin=None, tmax=None, overwrite=False):
-        return []
+    def ensure_data(self, engine, sources, path, tmin=None, tmax=None):
+        pass
 
     def add_map_artists(self, engine, sources, automap):
         pass

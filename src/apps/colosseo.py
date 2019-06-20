@@ -167,7 +167,7 @@ def command_init(args):
 
     project_dir = args[0]
     try:
-        scenario.ScenarioGenerator.initialize(
+        sc = scenario.ScenarioGenerator.initialize(
             project_dir,  lat, lon, radius, force=options.force)
 
         gf_stores_path = op.join(project_dir, 'gf_stores')
@@ -208,7 +208,8 @@ def command_fill(args):
         sc = guts.load(filename=fn)
         sc.init_modelling(engine)
         sc.ensure_gfstores(interactive=True)
-        sc.dump_data(path=project_dir, overwrite=options.force)
+        sc.prepare_data(path=project_dir, overwrite=options.force)
+        sc.ensure_data(path=project_dir)
         sc.make_map(op.join(project_dir, 'map.pdf'))
 
     except scenario.CannotCreatePath as e:

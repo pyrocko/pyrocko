@@ -8,10 +8,9 @@ import logging
 import os.path as op
 import numpy as num
 
-from pyrocko import gf
+from pyrocko import gf, util
 from pyrocko.guts import Float
 
-from ..util import remake_dir
 from .base import TargetGenerator, NoiseGenerator
 from .station import RandomStationGenerator, StationGenerator
 
@@ -102,22 +101,21 @@ class GNSSCampaignGenerator(TargetGenerator):
 
         return [stacked_campaign]
 
-    def dump_data(self, engine, sources, path,
-                  tmin=None, tmax=None, overwrite=False):
+    def ensure_data(self, engine, sources, path, tmin=None, tmax=None):
         path_gnss = op.join(path, 'gnss')
-        remake_dir(path_gnss, force=overwrite)
-
-        campaigns = self.get_gnss_campaigns(
-            engine, sources, tmin, tmax)
+        util.ensuredir(path_gnss)
 
         fn = op.join(path_gnss,
                      'campaign-%s.yml' % self.station_generator.network_name)
 
+        if op.exists(fn):
+            return
+
+        campaigns = self.get_gnss_campaigns(engine, sources, tmin, tmax)
+
         with open(fn, 'w') as f:
             for camp in campaigns:
                 camp.dump(stream=f)
-
-        return [fn]
 
     def add_map_artists(self, engine, sources, automap):
         automap.add_gnss_campaign(self.get_gnss_campaigns(engine, sources)[0])

@@ -70,18 +70,18 @@ class SourceGenerator(LocationGenerator):
 
         return sources
 
-    def dump_data(self, path):
+    def ensure_data(self, path):
         fn_sources = op.join(path, 'sources.yml')
-        with open(fn_sources, 'w') as f:
-            for src in self.get_sources():
-                f.write(src.dump())
+        if not op.exists(fn_sources):
+            with open(fn_sources, 'w') as f:
+                for src in self.get_sources():
+                    f.write(src.dump())
 
         fn_events = op.join(path, 'events.txt')
-        with open(fn_events, 'w') as f:
-            for isrc, src in enumerate(self.get_sources()):
-                f.write(src.pyrocko_event().dump())
-
-        return [fn_events, fn_sources]
+        if not op.exists(fn_events):
+            with open(fn_events, 'w') as f:
+                for isrc, src in enumerate(self.get_sources()):
+                    f.write(src.pyrocko_event().dump())
 
     def add_map_artists(self, automap):
         pass

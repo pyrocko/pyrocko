@@ -17,7 +17,6 @@ from pyrocko.util import num_full
 
 from .base import TargetGenerator, NoiseGenerator
 from ..base import get_gsshg
-from ..util import remake_dir
 
 DEFAULT_STORE_ID = 'ak135_static'
 
@@ -260,7 +259,6 @@ class ScenePatch(Object):
         if ncoords == 0:
             logger.warning('InSAR taget has no valid points,'
                            ' maybe it\'s all water?')
-            return
 
         return self.SatelliteGeneratorTarget(
             scene_patch=self,
@@ -453,10 +451,10 @@ class InSARGenerator(TargetGenerator):
 
         return scene_asc, scene_dsc
 
-    def dump_data(self, engine, sources, path,
-                  tmin=None, tmax=None, overwrite=False):
+    def ensure_data(self, engine, sources, path, tmin=None, tmax=None):
+
         path_insar = op.join(path, 'insar')
-        remake_dir(path_insar, force=overwrite)
+        util.ensuredir(path_insar)
 
         tmin, tmax = self.get_time_range(sources)
         tts = util.time_to_str
@@ -470,7 +468,7 @@ class InSARGenerator(TargetGenerator):
         for track in ('ascending', 'descending'):
             fn = '%s.yml' % scene_fn(track)
 
-            if op.exists(fn) and not overwrite:
+            if op.exists(fn):
                 logger.debug('Scene exists: %s' % fn)
                 continue
 
@@ -479,8 +477,6 @@ class InSARGenerator(TargetGenerator):
                 fn = scene_fn(sc.config.meta.orbital_node)
                 logger.debug('Writing %s' % fn)
                 sc.save('%s.npz' % fn)
-
-        return [path_insar]
 
     def add_map_artists(self, engine, sources, automap):
         logger.warning('InSAR mapping is not implemented!')

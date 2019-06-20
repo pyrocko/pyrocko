@@ -17,11 +17,11 @@ from pyrocko.guts import StringChoice, Float, List, Bool
 from pyrocko.gui.marker import PhaseMarker
 from pyrocko import gf, model, util, trace, io
 from pyrocko.io_common import FileSaveError
+from pyrocko import pile
 
 from .station import StationGenerator, RandomStationGenerator
 from .base import TargetGenerator, NoiseGenerator
 from ..error import ScenarioError
-from ..util import remake_dir
 
 
 DEFAULT_STORE_ID = 'global_2s'
@@ -127,6 +127,23 @@ class WaveformGenerator(TargetGenerator):
     def __init__(self, *args, **kwargs):
         super(WaveformGenerator, self).__init__(*args, **kwargs)
         self._targets = []
+        self._piles = {}
+
+    def _get_pile(self, path):
+        apath = op.abspath(path)
+        assert op.isdir(apath)
+
+        if apath not in self._piles:
+            fns = util.select_files(
+                [apath], show_progress=False)
+
+            p = pile.Pile()
+            if fns:
+                p.load_files(fns, fileformat='mseed', show_progress=False)
+
+            self._piles[apath] = p
+
+        return self._piles[apath]
 
     def get_stations(self):
         return self.station_generator.get_stations()
@@ -317,23 +334,29 @@ class WaveformGenerator(TargetGenerator):
         elif self.seismogram_quantity == 'counts':
             raise NotImplementedError()
 
-    def dump_data(self, engine, sources, path,
-                  tmin=None, tmax=None, overwrite=False):
+    def ensure_data(self, engine, sources, path, tmin=None, tmax=None):
+        self.ensure_waveforms(engine, sources, path, tmin, tmax)
+        self.ensure_responses(path)
+
+    def ensure_waveforms(self, engine, sources, path, tmin=None, tmax=None):
 
         path_waveforms = op.join(path, 'waveforms')
-        remake_dir(path_waveforms, force=overwrite)
+        util.ensuredir(path_waveforms)
 
-        fns = []
-        fns.extend(
-            self.dump_waveforms(engine, sources, path, tmin, tmax, overwrite))
-        fns.extend(
-            self.dump_responses(path))
-        return fns
+        p = self._get_pile(path_waveforms)
 
-    def dump_waveforms(self, engine, sources, path,
-                       tmin=None, tmax=None, overwrite=False):
+        nslc_ids = set(target.codes for target in self.get_targets())
 
-        path_waveforms = op.join(path, 'waveforms')
+        def have_waveforms(tmin, tmax):
+            trs_have = p.all(
+                tmin=tmin, tmax=tmax,
+                load_data=False, degap=False,
+                trace_selector=lambda tr: tr.nslc_id in nslc_ids)
+
+            return any(tr.data_len() > 0 for tr in trs_have)
+
+        def add_files(paths):
+            p.load_files(paths, fileformat='mseed', show_progress=False)
 
         path_traces = op.join(
             path_waveforms,
@@ -354,14 +377,18 @@ class WaveformGenerator(TargetGenerator):
 
         nwin = int(round((tmax - tmin) / tinc))
 
-        pbar = util.progressbar('Generating waveforms', nwin)
+        pbar = None
         for iwin in range(nwin):
-            pbar.update(iwin)
-            tmin_win = max(tmin, tmin + iwin*tinc)
-            tmax_win = min(tmax, tmin + (iwin+1)*tinc)
+            tmin_win = tmin + iwin*tinc
+            tmax_win = tmin + (iwin+1)*tinc
 
-            if tmax_win <= tmin_win:
+            if have_waveforms(tmin_win, tmax_win):
                 continue
+
+            if pbar is None:
+                pbar = util.progressbar('Generating waveforms', (nwin-iwin))
+
+            pbar.update(iwin)
 
             trs = self.get_waveforms(engine, sources, tmin_win, tmax_win)
 
@@ -376,27 +403,30 @@ class WaveformGenerator(TargetGenerator):
                         wmax_year=tts(tmax_win, format='%Y'),
                         wmax_month=tts(tmax_win, format='%m'),
                         wmax_day=tts(tmax_win, format='%d'),
-                        wmax=tts(tmax_win, format='%Y-%m-%d_%H-%M-%S')),
-                    overwrite=overwrite)
+                        wmax=tts(tmax_win, format='%Y-%m-%d_%H-%M-%S')))
 
                 for wpath in wpaths:
                     logger.debug('Generated file: %s' % wpath)
 
+                add_files(wpaths)
+
             except FileSaveError as e:
                 raise ScenarioError(str(e))
 
-        pbar.finish()
+        if pbar is not None:
+            pbar.finish()
 
-        return [path_waveforms]
-
-    def dump_responses(self, path):
+    def ensure_responses(self, path):
         from pyrocko.io import stationxml
-
-        logger.debug('Writing out StationXML...')
 
         path_responses = op.join(path, 'meta')
         util.ensuredir(path_responses)
+
         fn_stationxml = op.join(path_responses, 'stations.xml')
+        if op.exists(fn_stationxml):
+            return
+
+        logger.debug('Writing waveform meta information to StationXML...')
 
         stations = self.station_generator.get_stations()
         sxml = stationxml.FDSNStationXML.from_pyrocko_stations(stations)
@@ -419,8 +449,6 @@ class WaveformGenerator(TargetGenerator):
             channel.response = response
 
         sxml.dump_xml(filename=fn_stationxml)
-
-        return [path_responses]
 
     def add_map_artists(self, engine, sources, automap):
         automap.add_stations(self.get_stations())

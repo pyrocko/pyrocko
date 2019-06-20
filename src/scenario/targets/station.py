@@ -75,7 +75,7 @@ class RandomStationGenerator(StationGenerator):
 
         return num.min(dists), num.max(dists)
 
-    def dump_data(self, engine, sources, path, *args, **kwargs):
+    def ensure_data(self, engine, sources, path, tmin=None, tmax=None):
         return []
 
     def add_map_artists(self, engine, sources, automap):
