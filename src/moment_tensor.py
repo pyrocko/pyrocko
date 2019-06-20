@@ -89,7 +89,7 @@ def random_rotation(x=None):
     of rotations is returned, after Avro 1992 - "Fast random rotation
     matrices".
 
-    :param x: three (uniform random) numbers in the range [0, 1\[ used as input
+    :param x: three (uniform random) numbers in the range [0, 1[ used as input
         to the distribution tranformation. If ``None``, random numbers are
         used. Can be used to create grids of random rotations with uniform
         density in rotation space.
@@ -779,7 +779,7 @@ class MomentTensor(Object):
 
         .. math::
 
-            M0 = \\frac{1}{\sqrt{2}}\\sqrt{\\sum_{i,j} |M_{ij}|^2}
+            M0 = \\frac{1}{\\sqrt{2}}\\sqrt{\\sum_{i,j} |M_{ij}|^2}
 
         The scalar moment is calculated based on the Euclidean (Frobenius) norm
         (Silver and Jordan, 1982). The scalar moment returned by this function

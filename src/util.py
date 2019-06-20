@@ -1172,13 +1172,13 @@ def select_files(paths, selector=None, regex=None, show_progress=True):
     To find all files ending in ``'.mseed'`` or ``'.msd'``::
 
         select_files(paths,
-            regex=r'\.(mseed|msd)$')
+            regex=r'\\.(mseed|msd)$')
 
     To find all files ending with ``'$Year.$DayOfYear'``, having set 2009 for
     the year::
 
         select_files(paths,
-            regex=r'(?P<year>\d\d\d\d)\.(?P<doy>\d\d\d)$',
+            regex=r'(?P<year>\\d\\d\\d\\d)\\.(?P<doy>\\d\\d\\d)$',
             selector=(lambda x: int(x.year) == 2009))
     '''
 
@@ -1362,7 +1362,7 @@ def match_nslc(patterns, nslc):
     :returns: ``True`` if the pattern matches or if any of the given patterns
         match; or ``False``.
 
-    The patterns may contain shell-style wildcards: \*, ?, [seq], [!seq].
+    The patterns may contain shell-style wildcards: \\*, ?, [seq], [!seq].
 
     Example::
 

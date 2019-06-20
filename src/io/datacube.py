@@ -360,7 +360,7 @@ def iload(fn, load_data=True, interpolation='sinc'):
     from pyrocko import signal_ext
 
     if interpolation not in ('sinc', 'off'):
-        raise NotImplemented(
+        raise NotImplementedError(
             'no such interpolation method: %s' % interpolation)
 
     with open(fn, 'rb') as f:

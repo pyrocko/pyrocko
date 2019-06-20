@@ -115,7 +115,7 @@ def setup_axes(axes_amplitude=None, axes_phase=None):
             axes_amplitude.xaxis.set_ticklabels([])
 
     if axes_phase is not None:
-        axes_phase.set_ylabel('Phase [$\pi$]')
+        axes_phase.set_ylabel('Phase [$\\pi$]')
         axes_phase.set_xscale('log')
         axes_phase.set_xlabel('Frequency [Hz]')
         axes_phase.grid(True)

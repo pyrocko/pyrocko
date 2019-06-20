@@ -33,13 +33,13 @@ from jinja2 import Environment, PackageLoader
 
 guts_prefix = 'gft'
 ex_path = os.path.dirname(os.path.abspath(sys.argv[0]))
-ja_latex_env = Environment(block_start_string='\BLOCK{',
+ja_latex_env = Environment(block_start_string='\\BLOCK{',
                            block_end_string='}',
-                           variable_start_string='\VAR{',
+                           variable_start_string='\\VAR{',
                            variable_end_string='}',
-                           comment_start_string='\%{',
+                           comment_start_string='\\%{',
                            comment_end_string='}',
-                           line_statement_prefix='\-',
+                           line_statement_prefix='\\-',
                            line_comment_prefix='%%',
                            trim_blocks=True,
                            loader=PackageLoader('pyrocko',
@@ -190,7 +190,7 @@ class GreensFunctionTest(Object):
 
         self.phases = '|'.join([x.id
                                 for x in self.store.config.tabulated_phases])
-        if self.phases is '':
+        if self.phases == '':
             self.phase_ratio_string = r'\color{red}' \
                 '{warning: store has no tabulated phases}'
         elif 'begin' in self.phases:
@@ -1270,7 +1270,7 @@ class GreensFunctionTest(Object):
         src = self.sources[src_id]
         sensors = self.sensors[sen_id].sensors
         for i, trc in enumerate(trcs):
-            if self.phases is '':
+            if self.phases == '':
                 tbrk = None
             else:
                 tbrk = self.store.t(self.phase_ratio_string, src, sensors[i])

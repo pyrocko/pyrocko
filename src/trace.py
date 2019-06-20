@@ -3625,6 +3625,6 @@ def check_alignment(t1, t2):
     if abs(t1.tmin-t2.tmin) > t1.deltat * 1e-4 or \
             abs(t1.tmax - t2.tmax) > t1.deltat * 1e-4 or \
             t1.ydata.shape != t2.ydata.shape:
-                raise MisalignedTraces(
-                    'Cannot calculate misfit of %s and %s due to misaligned '
-                    'traces.' % ('.'.join(t1.nslc_id), '.'.join(t2.nslc_id)))
+        raise MisalignedTraces(
+            'Cannot calculate misfit of %s and %s due to misaligned '
+            'traces.' % ('.'.join(t1.nslc_id), '.'.join(t2.nslc_id)))

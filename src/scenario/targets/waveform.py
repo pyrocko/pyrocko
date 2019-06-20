@@ -28,7 +28,7 @@ class WaveformNoiseGenerator(NoiseGenerator):
         return deltat * 1024
 
     def get_intersecting_snippets(self, deltat, codes, tmin, tmax):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def add_noise(self, tr):
         for ntr in self.get_intersecting_snippets(
@@ -307,7 +307,7 @@ class WaveformGenerator(TargetGenerator):
         elif self.seismogram_quantity == 'acceleration':
             return trace.DifferentiationResponse(2)
         elif self.seismogram_quantity == 'counts':
-            raise NotImplemented()
+            raise NotImplementedError()
 
     def dump_data(self, engine, sources, path,
                   tmin=None, tmax=None, overwrite=False):

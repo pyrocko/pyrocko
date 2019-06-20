@@ -3574,10 +3574,12 @@ class SourceGroup(Object):
                             dtype=num.float)
 
     def __iter__(self):
-        raise NotImplemented('this method should be implemented in subclass')
+        raise NotImplementedError(
+            'this method should be implemented in subclass')
 
     def __len__(self):
-        raise NotImplemented('this method should be implemented in subclass')
+        raise NotImplementedError(
+            'this method should be implemented in subclass')
 
 
 class SourceList(SourceGroup):

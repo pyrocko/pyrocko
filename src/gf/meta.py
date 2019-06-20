@@ -207,7 +207,7 @@ class ComponentScheme(StringChoice):
     Different Green's Function component schemes are available:
 
     ================= =========================================================
-    \                 Description
+    Name              Description
     ================= =========================================================
     ``elastic10``     Elastodynamic for
                       :py:class:`~pyrocko.gf.meta.ConfigTypeA` and
@@ -758,10 +758,10 @@ class DiscretizedSource(Object):
         Object.__setattr__(self, name, value)
 
     def get_source_terms(self, scheme):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def make_weights(self, receiver, scheme):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     @property
     def effective_latlons(self):
@@ -1653,7 +1653,7 @@ class Config(Object):
         return out
 
     def short_info(self):
-        raise NotImplemented('should be implemented in subclass')
+        raise NotImplementedError('should be implemented in subclass')
 
     def get_shear_moduli(self, lat, lon, points,
                          interpolation=None):

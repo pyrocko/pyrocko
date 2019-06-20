@@ -484,13 +484,13 @@ def scatter_out_fmt(d, m, v):
     if v < 1e-8:
         return '  ', '     '
     else:
-        return '%s%s' % ('\/'[d == cake.UP], 'SP'[m == cake.P]), \
+        return '%s%s' % ('\\/'[d == cake.UP], 'SP'[m == cake.P]), \
             mini_fmt(v*100, 5)
 
 
 def scatter_in_fmt(d, m, dwant):
     if d == dwant:
-        return '%s%s' % ('\/'[d == cake.UP], 'SP'[m == cake.P])
+        return '%s%s' % ('\\/'[d == cake.UP], 'SP'[m == cake.P])
     else:
         return '  '
 

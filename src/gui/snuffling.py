@@ -921,7 +921,7 @@ class Snuffling(object):
         :py:meth:`pyrocko.pile.Pile.chopper` is called with the arguments
         *tmin*, *tmax*, and *trace_selector* set to values according to the
         marker. Additional arguments to the chopper are handed over from
-        *\*args* and *\*\*kwargs*.
+        *\\*args* and *\\*\\*kwargs*.
 
         :param fallback: if ``True``, if no selection has been marked, use the
                 content currently visible in the viewer.
@@ -1437,7 +1437,7 @@ class Snuffling(object):
 
         if self.__doc__:
             if self.__doc__.strip().startswith('<html>'):
-                    doc = qw.QLabel(self.__doc__)
+                doc = qw.QLabel(self.__doc__)
             else:
                 try:
                     import markdown
@@ -1564,7 +1564,7 @@ class Snuffling(object):
             logger.error('%s: Snuffling action failed' % self._name)
             return 1
 
-        except Exception as e:
+        except Exception:
             logger.exception(
                 '%s: Snuffling action raised an exception' % self._name)
 

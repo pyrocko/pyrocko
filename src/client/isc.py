@@ -157,10 +157,10 @@ class ISC(EarthquakeCatalog):
     def replace_isc_codes(self, markers):
         for m in markers:
             new_nslc_ids = []
-            for (n, s, l, c) in m.get_nslc_ids():
-                l = l.replace('--', '')
+            for (n, s, l_, c) in m.get_nslc_ids():
+                l_ = l_.replace('--', '')
                 c = c.replace('???', '*')
-                new_nslc_ids.append((n, s, l, c))
+                new_nslc_ids.append((n, s, l_, c))
             m.nslc_ids = new_nslc_ids
 
         return markers

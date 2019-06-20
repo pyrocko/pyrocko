@@ -134,7 +134,7 @@ def detect(first512):
     if len(lines) >= 5 and \
             lines[0].startswith(b'XW01') and lines[2].startswith(b'WID1') and \
             lines[4].startswith(b'DAT1'):
-                return True
+        return True
 
     return False
 

@@ -292,8 +292,7 @@ def eig2gx(eig, arcres=181):
         lines_upper = []
         for iperm, (va, vb, vc, ea, eb, ec) in enumerate([
                 (vp, vn, vt, ep, en, et),
-                (vt, vp, vn, et, ep, en)]):
-                # (vn, vt, vp, en, et, ep)]):
+                (vt, vp, vn, et, ep, en)]):  # (vn, vt, vp, en, et, ep)]):
 
             perm_sign = [-1.0, 1.0][iperm]
             to_e = num.vstack((vb, vc, va))

@@ -86,12 +86,12 @@ def wrap(x, mi, ma):
     '''Wrapping continuous data to fundamental phase values.
 
     .. math::
-        x_{\\mathrm{wrapped}} = x_{\\mathrm{cont},i} - \
-            \\frac{ x_{\\mathrm{cont},i} - r_{\\mathrm{min}} }\
-                  { r_{\\mathrm{max}} -  r_{\\mathrm{min}}} \
-            \cdot ( r_{\\mathrm{max}} -  r_{\\mathrm{min}}),\ \quad
-        x_{\\mathrm{wrapped}}\; \in
-            \;[ r_{\\mathrm{min}},\, r_{\\mathrm{max}}].
+        x_{\\mathrm{wrapped}} = x_{\\mathrm{cont},i} -
+            \\frac{ x_{\\mathrm{cont},i} - r_{\\mathrm{min}} }
+                  { r_{\\mathrm{max}} -  r_{\\mathrm{min}}}
+            \\cdot ( r_{\\mathrm{max}} -  r_{\\mathrm{min}}),\\quad
+        x_{\\mathrm{wrapped}}\\; \\in
+            \\;[ r_{\\mathrm{min}},\\, r_{\\mathrm{max}}].
 
     :param x: Continunous data to be wrapped
     :param mi: Minimum value of wrapped data
@@ -126,14 +126,14 @@ def cosdelta(*args):
 
     .. math::
 
-        A_{\\mathrm{lat'}} = \\frac{ \pi}{180} \cdot A_{lat}, \quad \
-        A_{\\mathrm{lon'}} = \\frac{ \pi}{180} \cdot A_{lon}, \quad \
-        B_{\\mathrm{lat'}} = \\frac{ \pi}{180} \cdot B_{lat}, \quad \
-        B_{\\mathrm{lon'}} = \\frac{ \pi}{180} \cdot B_{lon}\\\\[0.5cm]
+        A_{\\mathrm{lat'}} = \\frac{ \\pi}{180} \\cdot A_{lat}, \\quad
+        A_{\\mathrm{lon'}} = \\frac{ \\pi}{180} \\cdot A_{lon}, \\quad
+        B_{\\mathrm{lat'}} = \\frac{ \\pi}{180} \\cdot B_{lat}, \\quad
+        B_{\\mathrm{lon'}} = \\frac{ \\pi}{180} \\cdot B_{lon}\\\\[0.5cm]
 
-        \\cos(\Delta) = \\min( 1.0, \quad  \\sin( A_{\\mathrm{lat'}}) \
-                     \\sin( B_{\\mathrm{lat'}} ) + \
-                     \\cos(A_{\\mathrm{lat'}})  \\cos( B_{\\mathrm{lat'}} ) \
+        \\cos(\\Delta) = \\min( 1.0, \\quad  \\sin( A_{\\mathrm{lat'}})
+                     \\sin( B_{\\mathrm{lat'}} ) +
+                     \\cos(A_{\\mathrm{lat'}})  \\cos( B_{\\mathrm{lat'}} )
                      \\cos( B_{\\mathrm{lon'}} - A_{\\mathrm{lon'}} )
 
     :param a: Location point A
@@ -195,15 +195,16 @@ def azimuth(*args):
 
     .. math::
 
-        A_{\\mathrm{lat'}} = \\frac{ \pi}{180} \cdot A_{lat}, \quad \
-        A_{\\mathrm{lon'}} = \\frac{ \pi}{180} \cdot A_{lon}, \quad \
-        B_{\\mathrm{lat'}} = \\frac{ \pi}{180} \cdot B_{lat}, \quad \
-        B_{\\mathrm{lon'}} = \\frac{ \pi}{180} \cdot B_{lon}\\\\
+        A_{\\mathrm{lat'}} = \\frac{ \\pi}{180} \\cdot A_{lat}, \\quad
+        A_{\\mathrm{lon'}} = \\frac{ \\pi}{180} \\cdot A_{lon}, \\quad
+        B_{\\mathrm{lat'}} = \\frac{ \\pi}{180} \\cdot B_{lat}, \\quad
+        B_{\\mathrm{lon'}} = \\frac{ \\pi}{180} \\cdot B_{lon}\\\\
 
-        \\varphi_{\\mathrm{azi},AB} = \\frac{180}{\pi} \\arctan \left[ \\frac{\
-                \\cos( A_{\\mathrm{lat'}}) \\cos( B_{\\mathrm{lat'}} ) \
-                \\sin(B_{\\mathrm{lon'}} - A_{\\mathrm{lon'}} )} \
-                {\\sin ( B_{\\mathrm{lat'}} ) - \\sin( A_{\\mathrm{lat'}} \
+        \\varphi_{\\mathrm{azi},AB} = \\frac{180}{\\pi} \\arctan \\left[
+            \\frac{
+                \\cos( A_{\\mathrm{lat'}}) \\cos( B_{\\mathrm{lat'}} )
+                \\sin(B_{\\mathrm{lon'}} - A_{\\mathrm{lon'}} )}
+                {\\sin ( B_{\\mathrm{lat'}} ) - \\sin( A_{\\mathrm{lat'}}
                   cosdelta) } \\right]
 
     :param a: Location point A
@@ -329,7 +330,7 @@ def distance_accurate50m(*args, **kwargs):
 
     Function returns distance in meter between points A and B, coordinates of
     which must be given in geographical coordinates and in degrees.
-    The returned distance should be accurate to 50\,m using WGS84.
+    The returned distance should be accurate to 50 m using WGS84.
     Values for the Earth's equator radius and the Earth's oblateness
     (``f_oblate``) are defined in the pyrocko configuration file
     :py:class:`pyrocko.config`.
@@ -341,41 +342,41 @@ def distance_accurate50m(*args, **kwargs):
 
     .. math::
 
-        F = \\frac{\pi}{180} \
-                            \\frac{(A_{lat} + B_{lat})}{2}, \quad \
-        G = \\frac{\pi}{180}  \
-                            \\frac{(A_{lat} - B_{lat})}{2}, \quad \
-        l = \\frac{\pi}{180} \
-                            \\frac{(A_{lon} - B_{lon})}{2} \quad \
+        F = \\frac{\\pi}{180}
+                            \\frac{(A_{lat} + B_{lat})}{2}, \\quad
+        G = \\frac{\\pi}{180}
+                            \\frac{(A_{lat} - B_{lat})}{2}, \\quad
+        l = \\frac{\\pi}{180}
+                            \\frac{(A_{lon} - B_{lon})}{2} \\quad
         \\\\[0.5cm]
-        S = \\sin^2(G) \\cdot \\cos^2(l) + \
-              \\cos^2(F) \\cdot \\sin^2(l), \quad \quad
-        C = \\cos^2(G) \\cdot \\cos^2(l) + \
+        S = \\sin^2(G) \\cdot \\cos^2(l) +
+              \\cos^2(F) \\cdot \\sin^2(l), \\quad \\quad
+        C = \\cos^2(G) \\cdot \\cos^2(l) +
                   \\sin^2(F) \\cdot \\sin^2(l)
 
     .. math::
 
-        w = \\arctan \\left( \\sqrt{ \\frac{S}{C}} \\right) , \quad \
+        w = \\arctan \\left( \\sqrt{ \\frac{S}{C}} \\right) , \\quad
         r =  \\sqrt{\\frac{S}{C} }
 
     The spherical-earth distance D between A and B, can be given with:
 
     .. math::
 
-        D_{sphere} = 2w \cdot R_{equator}
+        D_{sphere} = 2w \\cdot R_{equator}
 
     The oblateness of the Earth requires some correction with
     correction factors h1 and h2:
 
      .. math::
 
-        h_1 = \\frac{3r - 1}{2C}, \quad \
+        h_1 = \\frac{3r - 1}{2C}, \\quad
         h_2 = \\frac{3r +1 }{2S}\\\\[0.5cm]
 
-        D = D_{\\mathrm{sphere}} \cdot [ 1 + h_1 \,f_{\\mathrm{oblate}} \
-                 \cdot \\sin^2(F) \
-                 \\cos^2(G) - h_2\, f_{\\mathrm{oblate}} \
-                 \cdot \\cos^2(F) \\sin^2(G)]
+        D = D_{\\mathrm{sphere}} \\cdot [ 1 + h_1 \\,f_{\\mathrm{oblate}}
+                 \\cdot \\sin^2(F)
+                 \\cos^2(G) - h_2\\, f_{\\mathrm{oblate}}
+                 \\cdot \\cos^2(F) \\sin^2(G)]
 
 
     :param a: Location point A
@@ -425,7 +426,7 @@ def distance_accurate50m_numpy(
     Function returns distance in meter between points ``a`` and ``b``,
     coordinates of which must be given in geographical coordinates and in
     degrees.
-    The returned distance should be accurate to 50\,m using WGS84.
+    The returned distance should be accurate to 50 m using WGS84.
     Values for the Earth's equator radius and the Earth's oblateness
     (``f_oblate``) are defined in the pyrocko configuration file
     :py:class:`pyrocko.config`.
@@ -437,20 +438,20 @@ def distance_accurate50m_numpy(
 
     .. math::
 
-        F_i = \\frac{\pi}{180} \
-                           \\frac{(a_{lat,i} + a_{lat,i})}{2}, \quad \
-        G_i = \\frac{\pi}{180}  \
-                           \\frac{(a_{lat,i} - b_{lat,i})}{2}, \quad \
-        l_i= \\frac{\pi}{180} \
+        F_i = \\frac{\\pi}{180}
+                           \\frac{(a_{lat,i} + a_{lat,i})}{2}, \\quad
+        G_i = \\frac{\\pi}{180}
+                           \\frac{(a_{lat,i} - b_{lat,i})}{2}, \\quad
+        l_i= \\frac{\\pi}{180}
                             \\frac{(a_{lon,i} - b_{lon,i})}{2} \\\\[0.5cm]
-        S_i = \\sin^2(G_i) \\cdot \\cos^2(l_i) + \
-              \\cos^2(F_i) \\cdot \\sin^2(l_i), \quad \quad
-        C_i = \\cos^2(G_i) \\cdot \\cos^2(l_i) + \
+        S_i = \\sin^2(G_i) \\cdot \\cos^2(l_i) +
+              \\cos^2(F_i) \\cdot \\sin^2(l_i), \\quad \\quad
+        C_i = \\cos^2(G_i) \\cdot \\cos^2(l_i) +
                   \\sin^2(F_i) \\cdot \\sin^2(l_i)
 
     .. math::
 
-        w_i = \\arctan \\left( \\sqrt{\\frac{S_i}{C_i}} \\right), \quad \
+        w_i = \\arctan \\left( \\sqrt{\\frac{S_i}{C_i}} \\right), \\quad
         r_i =  \\sqrt{\\frac{S_i}{C_i} }
 
     The spherical-earth distance ``D`` between ``a`` and ``b``,
@@ -458,21 +459,21 @@ def distance_accurate50m_numpy(
 
     .. math::
 
-        D_{\\mathrm{sphere},i} = 2w_i \cdot R_{\\mathrm{equator}}
+        D_{\\mathrm{sphere},i} = 2w_i \\cdot R_{\\mathrm{equator}}
 
     The oblateness of the Earth requires some correction with
     correction factors ``h1`` and ``h2``:
 
      .. math::
 
-        h_{1.i} = \\frac{3r - 1}{2C_i}, \quad \
+        h_{1.i} = \\frac{3r - 1}{2C_i}, \\quad
         h_{2,i} = \\frac{3r +1 }{2S_i}\\\\[0.5cm]
 
-        D_{AB,i} = D_{\\mathrm{sphere},i} \cdot [1 + h_{1,i}
-            \,f_{\\mathrm{oblate}} \
-            \cdot \\sin^2(F_i) \
-            \\cos^2(G_i) - h_{2,i}\, f_{\\mathrm{oblate}} \
-            \cdot \\cos^2(F_i) \\sin^2(G_i)]
+        D_{AB,i} = D_{\\mathrm{sphere},i} \\cdot [1 + h_{1,i}
+            \\,f_{\\mathrm{oblate}}
+            \\cdot \\sin^2(F_i)
+            \\cos^2(G_i) - h_{2,i}\\, f_{\\mathrm{oblate}}
+            \\cdot \\cos^2(F_i) \\sin^2(G_i)]
 
     :param a_lats: Latitudes (degree) point A
     :param a_lons: Longitudes (degree) point A
@@ -547,10 +548,10 @@ def ne_to_latlon(lat0, lon0, north_m, east_m):
 
     .. math::
 
-        \\text{distance change:}\; \Delta {\\bf{a}} &= \sqrt{{\\bf{y}}^2 + \
-                                           {\\bf{x}}^2 }/ \mathrm{R_E},
+        \\text{distance change:}\\; \\Delta {\\bf{a}} &= \\sqrt{{\\bf{y}}^2 +
+                                           {\\bf{x}}^2 }/ \\mathrm{R_E},
 
-        \\text{azimuth change:}\; \Delta \\bf{\gamma} &= \\arctan( \\bf{x}  \
+        \\text{azimuth change:}\\; \\Delta \\bf{\\gamma} &= \\arctan( \\bf{x}
                                                          / \\bf{y}).
 
     The projection used preserves the azimuths of the input points.
@@ -592,36 +593,38 @@ def azidist_to_latlon_rad(lat0, lon0, azimuth_rad, distance_rad):
 
     .. math::
 
-        \Delta {\\bf a}_i \; \\text{and} \; \Delta \gamma_i \; \
-            \\text{are relative distances and azimuths from lat0 and lon0 for \
+        \\Delta {\\bf a}_i \\; \\text{and} \\; \\Delta \\gamma_i \\;
+            \\text{are relative distances and azimuths from lat0 and lon0 for
                 \\textit{i} source points of a finite source.}
 
     .. math::
 
-        \mathrm{b} &= \\frac{\pi}{2} -\\frac{\pi}{180} \;\mathrm{lat_0}\\\\
-        {\\bf c}_i &=\\arccos[\; \cos(\Delta {\\bf{a}}_i) \cos(\mathrm{b}) \
-              + |\Delta \gamma_i| \,\sin(\Delta {\\bf a}_i)
-                \sin(\mathrm{b})\; ] \\\\
-        \mathrm{lat}_i &=  \\frac{180}{\pi}  \
-                          \\left(\\frac{\pi}{2} - {\\bf c}_i \\right)
+        \\mathrm{b} &= \\frac{\\pi}{2} -\\frac{\\pi}{180}\\;\\mathrm{lat_0}\\\\
+        {\\bf c}_i &=\\arccos[\\; \\cos(\\Delta {\\bf{a}}_i)
+            \\cos(\\mathrm{b}) + |\\Delta \\gamma_i| \\,
+            \\sin(\\Delta {\\bf a}_i)
+                \\sin(\\mathrm{b})\\; ] \\\\
+        \\mathrm{lat}_i &=  \\frac{180}{\\pi}
+                          \\left(\\frac{\\pi}{2} - {\\bf c}_i \\right)
 
     .. math::
 
-         \\alpha_i &= \\arcsin \\left[ \; \\frac{ \sin(\Delta {\\bf a}_i ) \
-                         \sin(|\Delta \\gamma_i|)}{\sin({\\bf c}_i)}\;
+         \\alpha_i &= \\arcsin \\left[ \\; \\frac{ \\sin(\\Delta {\\bf a}_i )
+                         \\sin(|\\Delta \\gamma_i|)}{\\sin({\\bf c}_i)}\\;
                          \\right] \\\\
         \\alpha_i &= \\begin{cases}
-                 \\alpha_i, &\\text{if}  \; \cos(\Delta {\\bf a}_i) - \
-                 \cos(\mathrm{b}) \cos({\\bf{c}}_i) > 0, \; \
+                 \\alpha_i, &\\text{if}  \\; \\cos(\\Delta {\\bf a}_i) -
+                 \\cos(\\mathrm{b}) \\cos({\\bf{c}}_i) > 0, \\;
                  \\text{else} \\\\
-                 \pi - \\alpha_i, & \\text{if} \; \\alpha_i > 0,\;
+                 \\pi - \\alpha_i, & \\text{if} \\; \\alpha_i > 0,\\;
                  \\text{else}\\\\
-                -\pi - \\alpha_i, & \\text{if} \; \\alpha_i < 0.
+                -\\pi - \\alpha_i, & \\text{if} \\; \\alpha_i < 0.
                 \\end{cases} \\\\
-        \mathrm{lon}_i &=   \mathrm{lon_0} + \
-             \\frac{180}{\pi} \, \\frac{\Delta \gamma_i }{|\Delta \gamma_i|} \
-                            \cdot \\alpha_i  \
-                             \\text{, with $\\alpha_i \\in [-\pi,\pi]$}
+        \\mathrm{lon}_i &=   \\mathrm{lon_0} +
+             \\frac{180}{\\pi} \\,
+             \\frac{\\Delta \\gamma_i }{|\\Delta \\gamma_i|}
+                            \\cdot \\alpha_i
+                             \\text{, with $\\alpha_i \\in [-\\pi,\\pi]$}
 
     :param lat0: Latitude origin of the cartesian coordinate system.
     :param lon0: Longitude origin of the cartesian coordinate system.
@@ -672,46 +675,47 @@ def ne_to_latlon_alternative_method(lat0, lon0, north_m, east_m):
 
     .. math::
 
-        \\text{distance change:}\; \Delta {{\\bf a}_i} &=\sqrt{{\\bf{y}}^2_i +
-                                        {\\bf{x}}^2_i }/ \mathrm{R_E},\\\\
-        \\text{azimuth change:}\; \Delta {\\bf \gamma}_i &=
+        \\text{distance change:}\\; \\Delta {{\\bf a}_i} &=
+            \\sqrt{{\\bf{y}}^2_i + {\\bf{x}}^2_i }/ \\mathrm{R_E},\\\\
+        \\text{azimuth change:}\\; \\Delta {\\bf \\gamma}_i &=
                                         \\arctan( {\\bf x}_i {\\bf y}_i). \\\\
-        \mathrm{b} &= \\frac{\pi}{2} -\\frac{\pi}{180} \;\mathrm{lat_0}\\\\
+        \\mathrm{b} &=
+            \\frac{\\pi}{2} -\\frac{\\pi}{180} \\;\\mathrm{lat_0}\\\\
 
     .. math::
 
-        {{\\bf z}_1}_i &= \\cos{\\left( \\frac{\Delta {\\bf a}_i - \
-                            \\mathrm{b}}{2} \\right)} \
-                            \\cos {\\left( \\frac{|\gamma_i|}{2} \\right) }\\\\
-        {{\\bf n}_1}_i &= \\cos{\\left( \\frac{\Delta {\\bf a}_i + \
-                            \\mathrm{b}}{2} \\right)}\
-                            \\sin {\\left( \\frac{|\gamma_i|}{2} \\right) }\\\\
-        {{\\bf z}_2}_i &= \\sin{\\left( \\frac{\Delta {\\bf a}_i - \
-                            \\mathrm{b}}{2} \\right)}\
-                            \\cos {\\left( \\frac{|\gamma_i|}{2} \\right) }\\\\
-        {{\\bf n}_2}_i &= \\sin{\\left( \\frac{\Delta {\\bf a}_i + \
-                            \\mathrm{b}}{2} \\right)}\
-                            \\sin {\\left( \\frac{|\gamma_i|}{2} \\right) }\\\\
-        {{\\bf t}_1}_i &= \\arctan{\\left( \\frac{{{\\bf z}_1}_i} \
+        {{\\bf z}_1}_i &= \\cos{\\left( \\frac{\\Delta {\\bf a}_i -
+                        \\mathrm{b}}{2} \\right)}
+                        \\cos {\\left( \\frac{|\\gamma_i|}{2} \\right) }\\\\
+        {{\\bf n}_1}_i &= \\cos{\\left( \\frac{\\Delta {\\bf a}_i +
+                        \\mathrm{b}}{2} \\right)}
+                        \\sin {\\left( \\frac{|\\gamma_i|}{2} \\right) }\\\\
+        {{\\bf z}_2}_i &= \\sin{\\left( \\frac{\\Delta {\\bf a}_i -
+                        \\mathrm{b}}{2} \\right)}
+                        \\cos {\\left( \\frac{|\\gamma_i|}{2} \\right) }\\\\
+        {{\\bf n}_2}_i &= \\sin{\\left( \\frac{\\Delta {\\bf a}_i +
+                        \\mathrm{b}}{2} \\right)}
+                        \\sin {\\left( \\frac{|\\gamma_i|}{2} \\right) }\\\\
+        {{\\bf t}_1}_i &= \\arctan{\\left( \\frac{{{\\bf z}_1}_i}
                                     {{{\\bf n}_1}_i} \\right) }\\\\
-        {{\\bf t}_2}_i &= \\arctan{\\left( \\frac{{{\\bf z}_2}_i} \
+        {{\\bf t}_2}_i &= \\arctan{\\left( \\frac{{{\\bf z}_2}_i}
                                     {{{\\bf n}_2}_i} \\right) } \\\\[0.5cm]
         c &= \\begin{cases}
-              2 \cdot \\arccos \\left( {{\\bf z}_1}_i / \\sin({{\\bf t}_1}_i) \
-                              \\right),\; \\text{if } \
-                              |\\sin({{\\bf t}_1}_i)| > \
-                                |\\sin({{\\bf t}_2}_i)|,\; \\text{else} \\\\
-              2 \cdot \\arcsin{\\left( {{\\bf z}_2}_i / \
+              2 \\cdot \\arccos \\left( {{\\bf z}_1}_i / \\sin({{\\bf t}_1}_i)
+                              \\right),\\; \\text{if }
+                              |\\sin({{\\bf t}_1}_i)| >
+                                |\\sin({{\\bf t}_2}_i)|,\\; \\text{else} \\\\
+              2 \\cdot \\arcsin{\\left( {{\\bf z}_2}_i /
                                  \\sin({{\\bf t}_2}_i) \\right)}.
              \\end{cases}\\\\
 
     .. math::
 
-        {\\bf {lat}}_i  &= \\frac{180}{ \pi } \\left( \\frac{\pi}{2} \
+        {\\bf {lat}}_i  &= \\frac{180}{ \\pi } \\left( \\frac{\\pi}{2}
                                               - {\\bf {c}}_i \\right) \\\\
-        {\\bf {lon}}_i &=  {\\bf {lon}}_0 + \\frac{180}{ \pi } \
-                                      \\frac{\gamma_i}{|\gamma_i|}, \
-                                     \\text{ with}\; \gamma \\in [-\pi,\pi]
+        {\\bf {lon}}_i &=  {\\bf {lon}}_0 + \\frac{180}{ \\pi }
+                                      \\frac{\\gamma_i}{|\\gamma_i|},
+                                     \\text{ with}\\; \\gamma \\in [-\\pi,\\pi]
 
     :param lat0: Latitude origin of the cartesian coordinate system.
     :param lon0: Longitude origin of the cartesian coordinate system.
@@ -761,18 +765,19 @@ def latlon_to_ne(*args):
     For two locations, a reference location A and another location B, given in
     geographical coordinates in degrees, the corresponding cartesian
     coordinates are calculated.
-    Assisting functions are :py:func:`pyrocko.orthodrome.azimuth' and
-    :py:func:`pyrocko.orthodrome.distance_accurate50m`
+    Assisting functions are :py:func:`pyrocko.orthodrome.azimuth` and
+    :py:func:`pyrocko.orthodrome.distance_accurate50m`.
 
     .. math::
 
-        D_{AB} &= \\mathrm{distance\\_accurate50m(}A, B \\mathrm{)}, \quad \
-                        \\varphi_{\\mathrm{azi},AB} = \\mathrm{azimuth(}A,B \
+        D_{AB} &= \\mathrm{distance\\_accurate50m(}A, B \\mathrm{)}, \\quad
+                        \\varphi_{\\mathrm{azi},AB} = \\mathrm{azimuth(}A,B
                             \\mathrm{)}\\\\[0.3cm]
 
-        n &= D_{AB} \cdot \\cos( \\frac{\pi }{180} \
+        n &= D_{AB} \\cdot \\cos( \\frac{\\pi }{180}
                                     \\varphi_{\\mathrm{azi},AB} )\\\\
-        e &= D_{AB} \cdot \\sin( \\frac{\pi }{180} \\varphi_{\\mathrm{azi},AB})
+        e &= D_{AB} \\cdot
+            \\sin( \\frac{\\pi }{180} \\varphi_{\\mathrm{azi},AB})
 
     :param refloc: Location reference point
     :type refloc: :py:class:`pyrocko.orthodrome.Loc`
@@ -811,13 +816,13 @@ def latlon_to_ne_numpy(lat0, lon0, lat, lon):
 
        .. math::
 
-           D_{AB} &= \\mathrm{distance\\_accurate50m(}A, B \\mathrm{)}, \quad \
-           \\varphi_{\\mathrm{azi},AB} = \\mathrm{azimuth(}A,B \
+           D_{AB} &= \\mathrm{distance\\_accurate50m(}A, B \\mathrm{)}, \\quad
+           \\varphi_{\\mathrm{azi},AB} = \\mathrm{azimuth(}A,B
                                                 \\mathrm{)}\\\\[0.3cm]
 
-           n &= D_{AB} \cdot \\cos( \\frac{\pi }{180} \\varphi_{ \
+           n &= D_{AB} \\cdot \\cos( \\frac{\\pi }{180} \\varphi_{
                                                 \\mathrm{azi},AB} )\\\\
-           e &= D_{AB} \cdot \\sin( \\frac{\pi }{180} \\varphi_{ \
+           e &= D_{AB} \\cdot \\sin( \\frac{\\pi }{180} \\varphi_{
                                                 \\mathrm{azi},AB} )
     '''
 

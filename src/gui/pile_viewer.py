@@ -3372,8 +3372,8 @@ def MakePileViewerMainClass(base):
 
         def apply_scaling_hooks(self, data_ranges):
             for k in sorted(self.scaling_hooks.keys()):
-                    hook = self.scaling_hooks[k]
-                    hook(data_ranges)
+                hook = self.scaling_hooks[k]
+                hook(data_ranges)
 
         def set_scaling_hook(self, k, hook):
             self.scaling_hooks[k] = hook

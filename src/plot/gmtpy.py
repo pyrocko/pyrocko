@@ -3462,7 +3462,7 @@ class GMT(object):
 
     def __getattr__(self, command):
 
-        '''Maps to call self._gmtcommand(command, \*addargs, \*\*kwargs).
+        '''Maps to call self._gmtcommand(command, \\*addargs, \\*\\*kwargs).
 
         Execute arbitrary GMT command.
 

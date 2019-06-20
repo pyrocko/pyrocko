@@ -140,7 +140,7 @@ class TiledGlobalDataset(object):
         region2 = xmin, xmax, ymin2, ymax2
         t = self.get(region2)
         if t is not None and region2 != region:
-                t.yextend_with_repeat(ymin, ymax)
+            t.yextend_with_repeat(ymin, ymax)
 
         return t
 

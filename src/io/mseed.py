@@ -33,7 +33,7 @@ def iload(filename, load_data=True):
             tmax = float(tr[6])/float(mseed_ext.HPTMODULUS)
             try:
                 deltat = reuse(1.0/float(tr[7]))
-            except ZeroDivisionError as e:
+            except ZeroDivisionError:
                 have_zero_rate_traces = True
                 continue
 
