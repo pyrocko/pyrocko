@@ -1,6 +1,7 @@
 from __future__ import division, print_function, absolute_import
 from builtins import range
 
+import os
 import unittest
 import numpy as num
 from numpy.testing import assert_array_less
@@ -8,11 +9,11 @@ from numpy.testing import assert_array_less
 from pyrocko.dataset import gshhg
 from pyrocko import util
 
-plot = False
+plot = int(os.environ.get('MPL_SHOW', 0))
 
 
 class BB(object):
-    west = 5.
+    west = -10.
     east = 20.
     south = 35.
     north = 55.
@@ -53,6 +54,22 @@ class GSHHGTest(unittest.TestCase):
         for ipoly in range(10):
             self.gshhg.polygons[ipoly].points
 
+    def slow_bb_ranges(self):
+        for gs in [
+                gshhg.GSHHG.crude(),
+                gshhg.GSHHG.low(),
+                gshhg.GSHHG.intermediate(),
+                gshhg.GSHHG.high(),
+                gshhg.GSHHG.full()]:
+
+            for ipoly, poly in enumerate(gs.polygons):
+
+                assert gshhg.is_valid_polygon(poly.points)
+                assert gshhg.is_valid_bounding_box(poly.get_bounding_box())
+
+                assert gshhg.is_polygon_in_bounding_box(
+                    poly.points, poly.get_bounding_box())
+
     def test_polygon_contains_point(self):
         poly = self.gshhg.polygons[-1]
         p_within = num.array(
@@ -62,6 +79,17 @@ class GSHHGTest(unittest.TestCase):
         p_outside = num.array(
             [poly.north + (poly.north - poly.south) / 2,
              poly.east + (poly.east - poly.west) / 2])
+
+        if plot:
+            import matplotlib.pyplot as plt
+
+            ax = plt.axes()
+
+            self.plot_polygons([poly], ax)
+            ax.scatter(p_within[1], p_within[0], s=10.)
+            ax.scatter(p_outside[1], p_outside[0], s=10.)
+
+            plt.show()
 
         assert poly.contains_point(p_within) is True
         assert poly.contains_point(p_outside) is False
@@ -90,17 +118,15 @@ class GSHHGTest(unittest.TestCase):
 
         if plot:
             import matplotlib.pyplot as plt
-            import cartopy.crs as ccrs
 
             points = points[pts]
 
             colors = num.ones(points.shape[0]) * pts[pts]
-            ax = plt.axes(projection=ccrs.PlateCarree())
-            ax.set_global()
+            ax = plt.axes()
 
             self.plot_polygons([poly], ax)
-            ax.scatter(points[:, 1], points[:, 0], c=colors, s=.5,
-                       transform=ccrs.Geodetic())
+            ax.scatter(points[:, 1], points[:, 0], c=colors, s=.5)
+
             plt.show()
 
     def test_bounding_box_select(self):
@@ -108,12 +134,10 @@ class GSHHGTest(unittest.TestCase):
 
         if plot:
             import matplotlib.pyplot as plt
-            import cartopy.crs as ccrs
 
             from matplotlib.patches import Rectangle
 
-            ax = plt.axes(projection=ccrs.PlateCarree())
-            ax.set_global()
+            ax = plt.axes()
             self.plot_polygons(p, ax)
 
             ax.add_patch(
@@ -126,24 +150,22 @@ class GSHHGTest(unittest.TestCase):
         poly = self.gshhg.get_polygons_within(*BBPonds.tpl)
 
         points = num.array(
-                [num.random.uniform(BBPonds.south, BBPonds.north, size=1000),
-                 num.random.uniform(BBPonds.east, BBPonds.west, size=1000)]).T
+                [num.random.uniform(BBPonds.south, BBPonds.north, size=10000),
+                 num.random.uniform(BBPonds.east, BBPonds.west, size=10000)]).T
+
         pts = self.gshhg.get_land_mask(points)
 
         if plot:
-            import cartopy.crs as ccrs
             import matplotlib.pyplot as plt
 
             points = points
             colors = num.ones(points.shape[0]) * pts
 
             # colors = num.ones(points.shape[0]) * pts
-            ax = plt.axes(projection=ccrs.PlateCarree())
-            ax.set_global()
+            ax = plt.axes()
 
             self.plot_polygons(poly, ax)
-            ax.scatter(points[:, 1], points[:, 0], c=colors, s=.5,
-                       transform=ccrs.Geodetic(), zorder=2)
+            ax.scatter(points[:, 1], points[:, 0], c=colors, s=.5, zorder=2)
             plt.show()
 
     def test_is_point_on_land(self):
@@ -154,20 +176,16 @@ class GSHHGTest(unittest.TestCase):
 
         if plot:
             import matplotlib.pyplot as plt
-            import cartopy.crs as ccrs
 
-            ax = plt.axes(projection=ccrs.PlateCarree())
-            ax.set_global()
+            ax = plt.axes()
             self.plot_polygons(p, ax)
-            ax.scatter(point[1], point[0], transform=ccrs.Geodetic())
+            ax.scatter(point[1], point[0])
 
             plt.show()
 
     @staticmethod
     def plot_polygons(polygons, ax, **kwargs):
-        from matplotlib.patches import Polygon
-        import numpy as num
-        import cartopy.crs as ccrs
+        # from matplotlib.patches import Polygon
         from pyrocko.plot import mpl_color
 
         args = {
@@ -183,11 +201,15 @@ class GSHHGTest(unittest.TestCase):
             mpl_color('white'),
             mpl_color('aluminium1')]
 
-        map(ax.add_patch, [Polygon(num.fliplr(p.points),
-                                   transform=ccrs.Geodetic(),
-                                   facecolor=colormap[p.level_no-1],
-                                   **args)
-                           for p in polygons])
+        for p in polygons:
+            ax.plot(
+                p.points[:, 1], p.points[:, 0],
+                color=colormap[p.level_no-1])
+
+        # map(ax.add_patch, [Polygon(num.fliplr(p.points),
+        #                            facecolor=colormap[p.level_no-1],
+        #                            **args)
+        #                    for p in polygons])
 
     def test_pond(self):
         for poly in self.gshhg.polygons:
@@ -198,11 +220,11 @@ class GSHHGTest(unittest.TestCase):
 
                 if plot:
                     import matplotlib.pyplot as plt
-                    import cartopy.crs as ccrs
 
-                    ax = plt.axes(projection=ccrs.PlateCarree())
-                    ax.set_global()
+                    ax = plt.axes()
                     self.plot_polygons(polys2, ax)
+
+                    ax.autoscale_view()
 
                     plt.show()
 
@@ -216,19 +238,16 @@ class GSHHGTest(unittest.TestCase):
         pts = self.gshhg.get_land_mask(points)
 
         if plot:
-            import cartopy.crs as ccrs
             import matplotlib.pyplot as plt
 
             points = points
             colors = num.ones(points.shape[0]) * pts
 
             # colors = num.ones(points.shape[0]) * pts
-            ax = plt.axes(projection=ccrs.PlateCarree())
-            ax.set_global()
+            ax = plt.axes()
 
             self.plot_polygons(poly, ax)
-            ax.scatter(points[:, 1], points[:, 0], c=colors, s=.5,
-                       transform=ccrs.Geodetic(), zorder=2)
+            ax.scatter(points[:, 1], points[:, 0], c=colors, s=.5, zorder=2)
             plt.show()
 
 

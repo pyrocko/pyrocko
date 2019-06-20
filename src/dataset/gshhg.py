@@ -2,6 +2,29 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
+
+'''
+Interface to the GSHHG (coastlines, rivers and borders) database.
+
+The Global Self-consistent Hierarchical High-resolution Geography Database
+(GSHHG) is a collection of polygons representing land, lakes, rivers and
+political borders.
+
+If the database is not already available, it will be downloaded
+automatically on first use.
+
+For more information about GSHHG, see
+http://www.soest.hawaii.edu/pwessel/gshhg/.
+
+.. note::
+
+    **If you use this dataset, please cite:**
+
+    Wessel, P., and W. H. F.
+    Smith, A Global Self-consistent, Hierarchical, High-resolution
+    Shoreline Database, J. Geophys. Res., 101, #B4, pp. 8741-8743, 1996.
+'''
+
 from __future__ import absolute_import
 
 import logging
@@ -21,8 +44,152 @@ km = 1e3
 micro_deg = 1e-6
 
 
+def split_region_0_360(wesn):
+    west, east, south, north = wesn
+    if west < 0.:
+        if east <= 0:
+            return [(west+360., east+360., south, north)]
+        else:
+            return [(west+360., 360., south, north),
+                    (0., east, south, north)]
+    else:
+        return [wesn]
+
+
+def is_valid_bounding_box(wesn):
+    '''
+    Check if a given bounding box meets the GSHHG conventions.
+
+    :param wesn: bounding box as (west, east, south, north) in [deg]
+    '''
+
+    w, e, s, n = wesn
+
+    return (
+        w <= e
+        and s <= n
+        and -90.0 <= s <= 90.
+        and -90. <= n <= 90.
+        and -180. <= w < 360.
+        and -180. <= e < 360.)
+
+
+def is_valid_polygon(points):
+    '''
+    Check if polygon points meet the GSHHG conventions.
+
+    :param points: Array of (lat, lon) pairs, shape (N, 2).
+    '''
+
+    lats = points[:, 0]
+    lons = points[:, 1]
+
+    return (
+        num.all(-90. <= lats)
+        and num.all(lats <= 90.)
+        and num.all(-180. <= lons)
+        and num.all(lons < 360.))
+
+
+def points_in_bounding_box(points, wesn, tolerance=0.1):
+    '''
+    Check which points are contained in a given bounding box.
+
+    :param points: Array of (lat lon) pairs, shape (N, 2) [deg].
+    :param wesn: Region tuple (west, east, south, north) [deg]
+    :param tolerance: increase the size of the test bounding box by
+        *tolerance* [deg] on every side (Some GSHHG polygons have a too tight
+        bounding box).
+
+    :returns: Bool array of shape (N,).
+    '''
+    points_wrap = points.copy()
+    points_wrap[:, 1] %= 360.
+
+    mask = num.zeros(points_wrap.shape[0], dtype=num.bool)
+    for w, e, s, n in split_region_0_360(wesn):
+        mask = num.logical_or(
+            mask,
+            num.logical_and(
+                num.logical_and(
+                    w-tolerance <= points_wrap[:, 1],
+                    points_wrap[:, 1] <= e+tolerance),
+                num.logical_and(
+                    s-tolerance <= points_wrap[:, 0],
+                    points_wrap[:, 0] <= n+tolerance)))
+
+    return mask
+
+
+def point_in_bounding_box(point, wesn, tolerance=0.1):
+    '''
+    Check whether point is contained in a given bounding box.
+
+    :param points: Array of (lat lon) pairs, shape (N, 2) [deg].
+    :param wesn: Region tuple (west, east, south, north) [deg]
+    :param tolerance: increase the size of the test bounding box by
+        *tolerance* [deg] on every side (Some GSHHG polygons have a too tight
+        bounding box).
+
+    :rtype: bool
+    '''
+
+    lat, lon = point
+    lon %= 360.
+    for w, e, s, n in split_region_0_360(wesn):
+        if (w-tolerance <= lon
+                and lon <= e+tolerance
+                and s-tolerance <= lat
+                and lat <= n+tolerance):
+
+            return True
+
+    return False
+
+
+def bounding_boxes_overlap(wesn1, wesn2):
+    '''
+    Check whether two bounding boxes intersect.
+
+    :param wesn1, wesn2: Region tuples (west, east, south, north) [deg]
+
+    :rtype: bool
+    '''
+    for w1, e1, s1, n1 in split_region_0_360(wesn1):
+        for w2, e2, s2, n2 in split_region_0_360(wesn2):
+            if w2 <= e1 and w1 <= e2 and s2 <= n1 and s1 <= n2:
+                return True
+
+    return False
+
+
+def is_polygon_in_bounding_box(points, wesn, tolerance=0.1):
+    return num.all(points_in_bounding_box(points, wesn, tolerance=tolerance))
+
+
+def bounding_box_covering_points(points):
+    lats = points[:, 0]
+    lat_min, lat_max = num.min(lats), num.max(lats)
+
+    lons = points[:, 1]
+    lons = lons % 360.
+    lon_min, lon_max = num.min(lons), num.max(lons)
+    if lon_max - lon_min < 180.:
+        return lon_min, lon_max, lat_min, lat_max
+
+    lons = (lons - 180.) % 360. - 180.
+    lon_min, lon_max = num.min(lons), num.max(lons)
+    if lon_max - lon_min < 180.:
+        return lon_min, lon_max, lat_min, lat_max
+
+    return (-180., 180., lat_min, lat_max)
+
+
 class Polygon(object):
-    '''Representation of a GSHHG polygon. '''
+    '''
+    Representation of a GSHHG polygon.
+    '''
+
     RIVER_NOT_SET = 0
 
     LEVELS = ['LAND', 'LAKE', 'ISLAND_IN_LAKE', 'POND_IN_ISLAND_IN_LAKE',
@@ -31,11 +198,12 @@ class Polygon(object):
     SOURCE = ['CIA_WDBII', 'WVS', 'AC']
 
     def __init__(self, gshhg_file, offset, *attr):
-        '''Initialise a GSHHG polygon
+        '''
+        Initialise a GSHHG polygon
 
         :param gshhg_file: GSHHG binary file
         :type gshhg_file: str
-        :param offset: This polygons' offset in binary file
+        :param offset: This polygon's offset in binary file
         :type offset: int
         :param attr: Polygon attributes
              ``(pid, npoints, _flag, west, east, south, north,
@@ -76,7 +244,10 @@ class Polygon(object):
 
     @property
     def points(self):
-        '''Points of the polygon as Nx2 as ``[:,[lat,lon]]``
+        '''
+        Points of the polygon.
+
+        Array of (lat, lon) pairs, shape (N, 2).
 
         :rtype: :class:`numpy.ndarray`
         '''
@@ -109,77 +280,83 @@ class Polygon(object):
         return False
 
     def is_land(self):
-        ''' Check if the polygon is land.
+        '''
+        Check if the polygon is land.
 
         :rtype: bool
         '''
         return self._is_level(0)
 
     def is_lake(self):
-        ''' Check if the polygon is a lake.
+        '''
+        Check if the polygon is a lake.
 
         :rtype: bool
         '''
         return self._is_level(1)
 
     def is_island_in_lake(self):
-        ''' Check if the polygon is an island in a lake.
+        '''
+        Check if the polygon is an island in a lake.
 
         :rtype: bool
         '''
         return self._is_level(2)
 
     def is_pond_in_island_in_lake(self):
-        ''' Check if the polygon is pond on an island in a lake.
+        '''
+        Check if the polygon is pond on an island in a lake.
 
         :rtype: bool
         '''
         return self._is_level(3)
 
     def is_antarctic_icefront(self):
-        ''' Check if the polygon antarctic icefront.
+        '''
+        Check if the polygon is antarctic icefront.
 
         :rtype: bool
         '''
         return self._is_level(4)
 
     def is_antarctic_grounding_line(self):
-        ''' Check if the polygon is antarctic grounding line.
+        '''
+        Check if the polygon is antarctic grounding line.
+
         :rtype: bool
         '''
         return self._is_level(5)
 
     def contains_point(self, point):
-        ''' Check if the polygon contains a single `point`
+        '''
+        Check if point lies in polygon.
 
-        :param point: (lat, lon) of size 2
+        :param point: (lat, lon) [deg]
         :type point: tuple
         :rtype: bool
+
+        See :py:func:`pyrocko.orthodrome.contains_points`.
         '''
-        if self.south <= point[0] <= self.north and\
-           self.west <= point[1] <= self.east:
-            return orthodrome.contains_point(self.points, point)
-        return False
+        return bool(
+            self.contains_points(num.asarray(point)[num.newaxis, :])[0])
 
     def contains_points(self, points):
-        ''' Check if the polygon contains a `points`
-
-        :param points: Array of of size Nx2
-        :type point: :class:`numpy.ndarray`
-        :rtype: bool
         '''
-        cond = num.all([self.south <= points[:, 0],
-                        points[:, 0] <= self.north,
-                        self.west <= points[:, 1],
-                        points[:, 1] <= self.east],
-                       axis=0)
-        r = orthodrome.contains_points(self.points, points)
-        logger.debug('%s: points inside %d' % (self.level, r.sum()))
-        return r
-        if num.any(cond):
-            pass
+        Check if points lie in polygon.
 
-        return num.zeros(points.shape[0], dtype=num.bool)
+        :param points: Array of (lat lon) pairs, shape (N, 2) [deg].
+        :type points: :class:`numpy.ndarray`
+
+        See :py:func:`pyrocko.orthodrome.contains_points`.
+
+        :returns: Bool array of shape (N,)
+        '''
+        mask = points_in_bounding_box(points, self.get_bounding_box())
+        if num.any(mask):
+            mask[mask] = orthodrome.contains_points(
+                self.points, points[mask, :])
+
+        return mask
 
     def get_bounding_box(self):
         return (self.west, self.east, self.south, self.north)
@@ -203,22 +380,12 @@ Dateline crossed:   {p.dateline_crossed}
 
 
 class GSHHG(object):
-    '''Holding the Global Self-consistent Hierarchical High-resolutions
-        Geography Database (GSHHG)
+    '''
+    GSHHG database access.
 
-    The class offers methods to select :class:`~pyrocko.gshhg.Polygon` s and
-    crop/validate single points and point-clouds.
-
-    .. info:
-
-        If the database is not available it will be downloaded and cached
-        automatically
-
-    .. note:
-
-        Cite Wessel, P., and W. H. F. Smith, A Global Self-consistent,
-        Hierarchical, High-resolution Shoreline Database,
-        J. Geophys. Res., 101, #B4, pp. 8741-8743, 1996.
+    This class provides methods to select relevant polygons (land, lakes, etc.)
+    for given locations or regions. It also provides robust high-level
+    functions to test if the Earth is dry or wet at given coordinates.
     '''
 
     gshhg_url = 'http://www.soest.hawaii.edu/pwessel/gshhg/gshhg-bin-2.3.7.zip'
@@ -275,24 +442,25 @@ class GSHHG(object):
         return file
 
     def get_polygons_at(self, lat, lon):
-        '''Get all polygons that intersect with a point.
+        '''
+        Get all polygons whose bounding boxes contain point.
 
         :param lat: Latitude in [deg]
         :type lat: float
-        :param lat: Longitude in [deg]
-        :type lat: float
-        :returns: List of :class:`~pyrocko.gshhg.Polygon`
+        :param lon: Longitude in [deg]
+        :type lon: float
+        :returns: List of :class:`~pyrocko.dataset.gshhg.Polygon`
         :rtype: list
         '''
         rp = []
         for p in self.polygons:
-            if (p.west < lon and p.east > lon) and\
-               (p.south < lat and p.north > lat):
+            if point_in_bounding_box((lat, lon), p.get_bounding_box()):
                 rp.append(p)
         return rp
 
     def get_polygons_within(self, west, east, south, north):
-        '''Get all polygons that intersect with a bounding box.
+        '''
+        Get all polygons whose bounding boxes intersect with a bounding box.
 
         :param west: Western boundary in decimal degree
         :type west: float
@@ -302,31 +470,34 @@ class GSHHG(object):
         :type north: float
         :param south: Southern boundary in decimal degree
         :type south: float
-        :returns: List of :class:`~pyrocko.gshhg.Polygon`
+        :returns: List of :class:`~pyrocko.dataset.gshhg.Polygon`
         :rtype: list
         '''
+
+        assert is_valid_bounding_box((west, east, south, north))
+
         rp = []
         for p in self.polygons:
-            if ((p.west > west and p.east < east) or
-               (p.west < west and p.east > west) or
-               (p.west < east and p.east > east) or
-               (p.west > west and p.east < east)) and\
-               ((p.south > south and p.north < north) or
-               (p.south < south and p.north > south) or
-               (p.south < north and p.north > north) or
-               (p.north > north and p.south < south)):
+            if bounding_boxes_overlap(
+                    p.get_bounding_box(), (west, east, south, north)):
+
                 rp.append(p)
         return rp
 
     def is_point_on_land(self, lat, lon):
-        '''Check whether a point is on land. Consquently lakes are excluded.
+        '''
+        Check whether a point is on land.
+
+        Lakes are considered not land.
 
         :param lat: Latitude in [deg]
         :type lat: float
-        :param lon: Latitude in [deg]
+        :param lon: Longitude in [deg]
         :type lon: float
+
         :rtype: bool
         '''
+
         relevant_polygons = self.get_polygons_at(lat, lon)
         relevant_polygons.sort()
 
@@ -334,26 +505,25 @@ class GSHHG(object):
         for p in relevant_polygons:
             if (p.is_land() or p.is_antarctic_grounding_line() or
                p.is_island_in_lake()):
-                land = True
+                land = p.contains_point((lat, lon))
             elif (p.is_lake() or p.is_antarctic_icefront() or
                   p.is_pond_in_island_in_lake()):
-                land = False
+                land = not p.contains_point((lat, lon))
         return land
 
     def get_land_mask(self, points):
-        '''Get a landmask respecting lakes, and ponds in island in lake
-            as water
+        '''
+        Check whether given points are on land.
 
-        :param points: List of lat, lon pairs
-        :type points: :class:`numpy.ndarray` of shape Nx2
+        Lakes are considered not land.
+
+        :param points: Array of (lat, lon) pairs, shape (N, 2).
+        :type points: :class:`numpy.ndarray`
         :return: Boolean land mask
-        :rtype: :class:`numpy.ndarray` of shape N
+        :rtype: :class:`numpy.ndarray` of shape (N,)
         '''
 
-        lats = points[:, 0]
-        lons = points[:, 1]
-        west, east, south, north = (lons.min(), lons.max(),
-                                    lats.min(), lats.max())
+        west, east, south, north = bounding_box_covering_points(points)
 
         relevant_polygons = self.get_polygons_within(west, east, south, north)
         relevant_polygons.sort()
@@ -362,33 +532,44 @@ class GSHHG(object):
         for p in relevant_polygons:
             if (p.is_land() or p.is_antarctic_grounding_line() or
                p.is_island_in_lake()):
-                mask += p.contains_points(points)
+                land = p.contains_points(points)
+                mask[land] = True
             elif p.is_lake() or p.is_pond_in_island_in_lake():
                 water = p.contains_points(points)
-                num.logical_xor(mask, water, out=mask)
+                mask[water] = False
         return mask
 
     @classmethod
     def full(cls):
-        ''' Return the full-resolution GSHHG database'''
+        '''
+        Return the full-resolution GSHHG database.
+        '''
         return cls(cls._get_database('gshhs_f.b'))
 
     @classmethod
     def high(cls):
-        ''' Return the high-resolution GSHHG database'''
+        '''
+        Return the high-resolution GSHHG database.
+        '''
         return cls(cls._get_database('gshhs_h.b'))
 
     @classmethod
     def intermediate(cls):
-        ''' Return the intermediate-resolution GSHHG database'''
+        '''
+        Return the intermediate-resolution GSHHG database.
+        '''
         return cls(cls._get_database('gshhs_i.b'))
 
     @classmethod
     def low(cls):
-        ''' Return the low-resolution GSHHG database'''
+        '''
+        Return the low-resolution GSHHG database.
+        '''
         return cls(cls._get_database('gshhs_l.b'))
 
     @classmethod
     def crude(cls):
-        ''' Return the crude-resolution GSHHG database'''
+        '''
+        Return the crude-resolution GSHHG database.
+        '''
         return cls(cls._get_database('gshhs_c.b'))
