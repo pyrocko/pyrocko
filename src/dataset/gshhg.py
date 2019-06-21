@@ -505,10 +505,12 @@ class GSHHG(object):
         for p in relevant_polygons:
             if (p.is_land() or p.is_antarctic_grounding_line() or
                p.is_island_in_lake()):
-                land = p.contains_point((lat, lon))
+                if p.contains_point((lat, lon)):
+                    land = True
             elif (p.is_lake() or p.is_antarctic_icefront() or
                   p.is_pond_in_island_in_lake()):
-                land = not p.contains_point((lat, lon))
+                if p.contains_point((lat, lon)):
+                    land = False
         return land
 
     def get_land_mask(self, points):

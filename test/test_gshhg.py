@@ -168,6 +168,10 @@ class GSHHGTest(unittest.TestCase):
             ax.scatter(points[:, 1], points[:, 0], c=colors, s=.5, zorder=2)
             plt.show()
 
+        for is_land, point in zip(pts[:20], points[:20]):
+            is_land2 = self.gshhg.is_point_on_land(*point)
+            assert is_land == is_land2
+
     def test_is_point_on_land(self):
 
         point = (46.455289, 6.494283)
