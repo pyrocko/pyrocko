@@ -358,17 +358,6 @@ class ScenarioGenerator(LocationGenerator):
 
         scenario.update_hierarchy()
 
-        center_lat, center_lon = scenario.get_center_latlon()
-        radius = scenario.get_radius()
-
-        logger.info(
-            'Initialising new %sscenario, centered at (%g, %g)%s: %s'
-            % (
-                'global ' if radius is None else '',
-                center_lat, center_lon,
-                '' if radius is None else ' with radius %g km' % (radius / km),
-                path))
-
         scenario.get_targets()
         scenario.get_sources()
 
