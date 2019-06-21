@@ -323,18 +323,18 @@ class ScenarioGenerator(LocationGenerator):
 
         :param path: Path to create the scenerio in
         :type path: str
-        :param center_lat: Center latitude, defaults to None
+        :param center_lat: Center latitude [deg]
         :type center_lat: float, optional
-        :param center_lon: Center longitude, defaults to None
+        :param center_lon: Center longitude [deg]
         :type center_lon: float, optional
-        :param radius: Scenario's radius in [m], defaults to None
+        :param radius: Scenario's radius in [m]
         :type radius: float, optional
-        :param targets: Targets to thow into scenario,
+        :param targets: Targets to throw into scenario,
             defaults to AVAILABLE_TARGETS
-        :type targets: list of :class:`pyrocko.scenario.ScenarioTargets`,
-            optional
-        :param force: Overwrite directory, defaults to False
-        :type force: bool, optional
+        :type targets: list of :class:`pyrocko.scenario.TargetGenerator`
+            objects, optional
+        :param force: If set to ``True``, overwrite directory
+        :type force: bool
         :returns: Scenario
         :rtype: :class:`pyrocko.scenario.ScenarioGenerator`
         """
