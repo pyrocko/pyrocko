@@ -10,6 +10,7 @@ import os
 import os.path as op
 import shutil
 import random
+from functools import wraps
 
 import numpy as num
 
@@ -31,6 +32,9 @@ km = 1000.
 
 
 class ScenarioGenerator(LocationGenerator):
+    '''
+    Generator for synthetic seismo-geodetic scenarios.
+    '''
 
     target_generators = List.T(
         TargetGenerator.T(),
@@ -72,6 +76,7 @@ class ScenarioGenerator(LocationGenerator):
         if not callable(collector):
             raise AttributeError('This method should not be called directly.')
 
+        @wraps(collector)
         def method(self, *args, **kwargs):
             result = []
             func = collector(self, *args, **kwargs)
@@ -118,7 +123,36 @@ class ScenarioGenerator(LocationGenerator):
             self._engine, self.get_sources(),
             tmin=tmin, tmax=tmax)
 
+    def dump_data(self, path, overwrite=False):
+        '''
+        Invoke generators and dump the complete scenario.
+
+        :param path: Output directory
+        :type path: str
+        :param overwrite: If ``True`` remove all previously generated files
+            and recreating the scenario content. If ``False`` stop if
+            previously generated content is found.
+        :type overwrite: bool
+
+        Wrapper to call :py:meth:`prepare_data` followed by
+        :py:meth:`ensure_data` with default arguments.
+        '''
+
+        self.prepare_data(path, overwrite=False)
+        self.ensure_data(path)
+
     def prepare_data(self, path, overwrite):
+        '''
+        Prepare directory for scenario content storage.
+
+        :param path: Output directory
+        :type path: str
+        :param overwrite: If ``True``, remove all previously generated files
+            and recreate the scenario content. If ``False``, stop if
+            previously generated content is found.
+        :type overwrite: bool
+        '''
+
         for dentry in [
                 'meta',
                 'waveforms',
@@ -147,6 +181,27 @@ class ScenarioGenerator(LocationGenerator):
 
     @collect
     def ensure_data(self, path, tmin=None, tmax=None):
+
+        '''
+        Generate and output scenario content to files, as needed.
+
+        :param path: Output directory
+        :type path: str
+        :param tmin: Start of time interval to generate
+        :type tmin: timestamp, optional
+        :param tmax: End of time interval to generate
+        :type tmax: timestamp, optional
+
+        This method only generates the files which are relevant for the
+        given time interval, and which have not yet been generated. It is safe
+        to call this method several times, for different time windows, as
+        needed.
+
+        If no time interval is given, the origin times of the generated sources
+        and signal propagation times are taken into account to estimate a
+        reasonable default.
+        '''
+
         tmin, tmax = self._time_range_fill_defaults(tmin, tmax)
         self.source_generator.ensure_data(path)
 
