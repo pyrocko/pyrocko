@@ -2022,6 +2022,285 @@ class RectangularSource(SourceWithDerivedMagnitude):
         return super(RectangularSource, cls).from_pyrocko_event(ev, **d)
 
 
+
+
+
+class SlipPatchesSource(SourceWithDerivedMagnitude):
+    '''
+    Vallee and Bouchon, 2004
+    '''
+
+    discretized_source_class = meta.DiscretizedMTSource
+
+    strike = Float.T(
+        default=0.0,
+        help='strike direction in [deg], measured clockwise from north')
+
+    dip = Float.T(
+        default=90.0,
+        help='dip angle in [deg], measured downward from horizontal')
+
+    rake = Float.T(
+        default=0.0,
+        help='rake angle in [deg], '
+             'measured counter-clockwise from right-horizontal '
+             'in on-plane view')
+
+    length = Float.T(
+        default=0.,
+        help='length of rectangular source area [m]')
+
+    width = Float.T(
+        default=0.,
+        help='width of rectangular source area [m]')
+
+    anchor = StringChoice.T(
+        choices=['top', 'top_left', 'top_right', 'center', 'bottom',
+                 'bottom_left', 'bottom_right'],
+        default='center',
+        optional=True,
+        help='Anchor point for positioning the plane, can be: top, center or'
+             'bottom and also top_left, top_right,bottom_left,'
+             'bottom_right, center_left and center right')
+
+    nucleation_x = Float.T(
+        optional=True,
+        help='horizontal position of rupture nucleation in normalized fault '
+             'plane coordinates (-1 = left edge, +1 = right edge)')
+
+    nucleation_y = Float.T(
+        optional=True,
+        help='down-dip position of rupture nucleation in normalized fault '
+             'plane coordinates (-1 = upper edge, +1 = lower edge)')
+
+    center_ellipse_x = Float.T(
+        optional=True,
+        help='horizontal position of main ellipse y-coord in normalized fault '
+             'plane coordinates (-1 = left edge, +1 = right edge)')
+
+    center_ellipse_y = Float.T(
+        optional=True,
+        help='down-dip position of main ellipse y-coord in normalized fault '
+             'plane coordinates (-1 = upper edge, +1 = lower edge)')
+
+    ellipse_angle = Float.T(
+        optional=True,
+        help='orientation of ellipse')
+
+    ellipse_width = Float.T(
+        optional=True,
+        help='orientation of ellipse')
+
+    ellipse_length = Float.T(
+        optional=True,
+        help='orientation of ellipse')
+
+    ellipse_semimaj = Float.T(
+        optional=True,
+        help='Semimajor axis of ellipse')
+
+    ellipse_semimin = Float.T(
+        optional=True,
+        help='Semiminor axis of ellipse')
+
+    velocity = Float.T(
+        default=3500.,
+        help='speed of rupture front [m/s]')
+
+    slip = Float.T(
+        optional=True,
+        help='Slip on the rectangular source area [m]')
+
+    decimation_factor = Int.T(
+        optional=True,
+        default=1,
+        help='Sub-source decimation factor, a larger decimation will'
+             ' make the result inaccurate but shorten the necessary'
+             ' computation time (use for testing puposes only).')
+
+    def base_key(self):
+        return SourceWithDerivedMagnitude.base_key(self) + (
+            self.magnitude,
+            self.slip,
+            self.strike,
+            self.dip,
+            self.rake,
+            self.length,
+            self.width,
+            self.nucleation_x,
+            self.nucleation_y,
+            self.velocity,
+            self.decimation_factor,
+            self.anchor)
+
+    def ellipse(xy, width, height, semimaj, semimin, angle=0):
+        """
+        Parameters
+        ----------
+        xy : (float, float)
+            xy coordinates of ellipse centre.
+        width : float
+            Total length (diameter) of horizontal axis.
+        height : float
+            Total length (diameter) of vertical axis.
+        semimaj : float
+            length of semimajor axis (always taken to be some phi (-90<phi<90 deg) from positive x-axis!)
+        semimin : float
+            length of semiminor axis
+        angle : scalar, optional
+            Rotation in degrees anti-clockwise.
+
+        """
+        x_cent = xy[0]
+        y_cent = xy[1]
+        r = 1 / np.sqrt((num.cos(angle))**2 + (num.sin(angle))**2)
+        x = r*num.cos(angle)
+        y = r*num.sin(angle)
+        data = np.array([x,y])
+        S = np.array([[semimaj,0],[0,semimin]])
+        R = np.array([[np.cos(phi),-np.sin(phi)],[np.sin(phi),np.cos(phi)]])
+        T = np.dot(R,S)
+        data = np.dot(T,data)
+        data[0] += x_cent
+        data[1] += y_cent
+
+    def check_conflicts(self):
+        if self.magnitude is not None and self.slip is not None:
+            raise DerivedMagnitudeError(
+                'magnitude and slip are both defined')
+
+    def get_magnitude(self, store=None, target=None):
+        self.check_conflicts()
+        if self.magnitude is not None:
+            return self.magnitude
+
+        elif self.slip is not None:
+            if None in (store, target):
+                raise DerivedMagnitudeError(
+                    'magnitude for a rectangular source with slip defined '
+                    'can only be derived when earth model and target '
+                    'interpolation method are available')
+
+            amplitudes = self._discretize(store, target)[2]
+            return float(pmt.moment_to_magnitude(num.sum(amplitudes)))
+
+        else:
+            return float(pmt.moment_to_magnitude(1.0))
+
+    def get_factor(self):
+        return 1.0
+
+    def _discretize(self, store, target):
+        if self.nucleation_x is not None:
+            nucx = self.nucleation_x * 0.5 * self.length
+        else:
+            nucx = None
+
+        if self.nucleation_y is not None:
+            nucy = self.nucleation_y * 0.5 * self.width
+        else:
+            nucy = None
+
+        stf = self.effective_stf_pre()
+
+        points, times, amplitudes, dl, dw, nl, nw = discretize_rect_source(
+            store.config.deltas, store.config.deltat,
+            self.time, self.north_shift, self.east_shift, self.depth,
+            self.strike, self.dip, self.length, self.width, self.anchor,
+            self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy,
+            decimation_factor=self.decimation_factor)
+
+        if self.slip is not None:
+            if target is not None:
+                interpolation = target.interpolation
+            else:
+                interpolation = 'nearest_neighbor'
+                logger.warn(
+                    'no target information available, will use '
+                    '"nearest_neighbor" interpolation when extracting shear '
+                    'modulus from earth model')
+
+            shear_moduli = store.config.get_shear_moduli(
+                self.lat, self.lon,
+                points=points,
+                interpolation=interpolation)
+
+            amplitudes = dl * dw * shear_moduli * self.slip
+        else:
+            amplitudes *= self.get_moment(store, target)
+
+        return points, times, amplitudes, dl, dw
+
+    def discretize_basesource(self, store, target=None):
+
+        points, times, amplitudes, dl, dw = self._discretize(store, target)
+
+        mot = pmt.MomentTensor(
+            strike=self.strike, dip=self.dip, rake=self.rake)
+
+        m6s = num.repeat(mot.m6()[num.newaxis, :], times.size, axis=0)
+        m6s[:, :] *= amplitudes[:, num.newaxis]
+
+        ds = meta.DiscretizedMTSource(
+            lat=self.lat,
+            lon=self.lon,
+            times=times,
+            north_shifts=points[:, 0],
+            east_shifts=points[:, 1],
+            depths=points[:, 2],
+            m6s=m6s)
+
+        return ds
+
+    def outline(self, cs='xyz'):
+        points = outline_rect_source(self.strike, self.dip, self.length,
+                                     self.width, self.anchor)
+
+        points[:, 0] += self.north_shift
+        points[:, 1] += self.east_shift
+        points[:, 2] += self.depth
+        if cs == 'xyz':
+            return points
+        elif cs == 'xy':
+            return points[:, :2]
+        elif cs in ('latlon', 'lonlat'):
+            latlon = ne_to_latlon(
+                self.lat, self.lon, points[:, 0], points[:, 1])
+
+            latlon = num.array(latlon).T
+            if cs == 'latlon':
+                return latlon
+            else:
+                return latlon[:, ::-1]
+
+    def pyrocko_moment_tensor(self, store=None, target=None):
+        return pmt.MomentTensor(
+            strike=self.strike,
+            dip=self.dip,
+            rake=self.rake,
+            scalar_moment=self.get_moment(store, target))
+
+    def pyrocko_event(self, store=None, target=None, **kwargs):
+        return SourceWithDerivedMagnitude.pyrocko_event(
+            self, store, target,
+            **kwargs)
+
+    @classmethod
+    def from_pyrocko_event(cls, ev, **kwargs):
+        d = {}
+        mt = ev.moment_tensor
+        if mt:
+            (strike, dip, rake), _ = mt.both_strike_dip_rake()
+            d.update(
+                strike=float(strike),
+                dip=float(dip),
+                rake=float(rake),
+                magnitude=float(mt.moment_magnitude()))
+
+        d.update(kwargs)
+        return super(RectangularSource, cls).from_pyrocko_event(ev, **d)
+
+
 class DoubleDCSource(SourceWithMagnitude):
     '''
     Two double-couple point sources separated in space and time.
