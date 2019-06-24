@@ -225,6 +225,94 @@ def discretize_rect_source(deltas, deltat, time, north, east, depth,
     return points2, times2, amplitudes2, dl, dw, nl, nw
 
 
+
+
+def discretize_elliptical_source(deltas, deltat, time, north, east, depth,
+                           strike, dip, length, width,
+                           anchor, velocity, insides, npatches, stf=None,
+                           nucleation_x=None, nucleation_y=None,
+                           decimation_factor=1):
+
+    if stf is None:
+        stf = STF()
+
+    mindeltagf = num.min(deltas)
+    mindeltagf = min(mindeltagf, deltat * velocity[0])
+
+    ln = length
+    wd = width
+
+    nl = int((2. / decimation_factor) * num.ceil(ln / mindeltagf)) + 1
+    nw = int((2. / decimation_factor) * num.ceil(wd / mindeltagf)) + 1
+
+    n = int(nl * nw)
+
+    dl = ln / nl
+    dw = wd / nw
+
+    xl = num.linspace(-0.5 * (ln - dl), 0.5 * (ln - dl), nl)
+    xw = num.linspace(-0.5 * (wd - dw), 0.5 * (wd - dw), nw)
+    points = num.empty((n, 3), dtype=num.float)
+    points[:, 0] = num.tile(xl, nw)
+    points[:, 1] = num.repeat(xw, nl)
+    points[:, 2] = 0.0
+
+    if nucleation_x is not None:
+        dist_x = num.abs(nucleation_x - points[:, 0])
+    else:
+        dist_x = num.zeros(n)
+
+    if nucleation_y is not None:
+        dist_y = num.abs(nucleation_y - points[:, 1])
+    else:
+        dist_y = num.zeros(n)
+    dist = num.sqrt(dist_x**2 + dist_y**2)
+    times = dist/velocity[0]
+    dists_active = num.zeros(num.shape(points))
+    active = []
+    for i in range(0, len(points)):
+        if insides[0][i] == True:
+            dists_active[i] = points[i, :]
+            active.append(i)
+
+    if npatches > 1:
+        for n in range(1, npatches):
+            for i in range(0, len(points)):
+                if insides[n][i] == True:
+                    dist_near_x = num.argmin(num.abs(points[i, 0] - dists_active[:, 0]))
+                    dist_near_y = num.argmin(num.abs(points[i, 1] - dists_active[:, 1]))
+                    dist_near = num.sqrt(dist_near_x**2 + dist_near_y**2)
+                    times[i] = times[i] + dist_near/ velocity[n]
+                    active.append(i)
+    anch_x, anch_y = map_anchor[anchor]
+
+    points[:, 0] -= anch_x * 0.5 * length
+    points[:, 1] -= anch_y * 0.5 * width
+
+    rotmat = num.asarray(
+        pmt.euler_to_matrix(dip * d2r, strike * d2r, 0.0))
+
+    points = num.dot(rotmat.T, points.T).T
+
+    xtau, amplitudes = stf.discretize_t(deltat, time)
+    nt = xtau.size
+
+    points2 = num.repeat(points, nt, axis=0)
+    times2 = num.repeat(times, nt) + num.tile(xtau, n)
+    amplitudes2 = num.tile(amplitudes, n)
+    amplitudes2 /= num.sum(amplitudes2)
+    points2[:, 0] += north
+    points2[:, 1] += east
+    points2[:, 2] += depth
+    for i in range(0, len(points)):
+        if i not in active:
+            times2[i] = None
+    points2 = points2[num.logical_not(num.isnan(times2))]
+
+    times2 = times2[num.logical_not(num.isnan(times2))]
+    return points2, times2, amplitudes2, dl, dw, nl, nw
+
+
 def check_rect_source_discretisation(points2, nl, nw, store):
     # We assume a non-rotated fault plane
     N_CRITICAL = 8
@@ -2022,12 +2110,9 @@ class RectangularSource(SourceWithDerivedMagnitude):
         return super(RectangularSource, cls).from_pyrocko_event(ev, **d)
 
 
-
-
-
-class SlipPatchesSource(SourceWithDerivedMagnitude):
+class MultiEllipticalSource(SourceWithDerivedMagnitude):
     '''
-    Vallee and Bouchon, 2004
+    Valleé and Bouchon, 2004
     '''
 
     discretized_source_class = meta.DiscretizedMTSource
@@ -2065,13 +2150,15 @@ class SlipPatchesSource(SourceWithDerivedMagnitude):
 
     nucleation_x = Float.T(
         optional=True,
-        help='horizontal position of rupture nucleation in normalized fault '
-             'plane coordinates (-1 = left edge, +1 = right edge)')
+        help='horizontal position of rupture nucleation in main-slip patch of'
+             'normalized fault plane coordinates (-1 = left edge, +1 = right'
+             'edge)')
 
     nucleation_y = Float.T(
         optional=True,
-        help='down-dip position of rupture nucleation in normalized fault '
-             'plane coordinates (-1 = upper edge, +1 = lower edge)')
+        help='horizontal position of rupture nucleation in main-slip patch of'
+             'normalized fault plane coordinates (-1 = upper edge, +1 = lower'
+             'edge)')
 
     center_ellipse_x = Float.T(
         optional=True,
@@ -2083,33 +2170,34 @@ class SlipPatchesSource(SourceWithDerivedMagnitude):
         help='down-dip position of main ellipse y-coord in normalized fault '
              'plane coordinates (-1 = upper edge, +1 = lower edge)')
 
-    ellipse_angle = Float.T(
+    dists = List.T(Float.T(
         optional=True,
-        help='orientation of ellipse')
+        help='horizontal position of main ellipse y-coord in normalized fault '
+             'plane coordinates (-1 = left edge, +1 = right edge)'))
 
-    ellipse_width = Float.T(
+    ellipse_angle = List.T(Float.T(
         optional=True,
-        help='orientation of ellipse')
+        help='orientation of ellipse'))
 
-    ellipse_length = Float.T(
+    ellipse_length = List.T(Float.T(
         optional=True,
-        help='orientation of ellipse')
+        help='Semimajor axis of ellipse'))
 
-    ellipse_semimaj = Float.T(
+    ellipse_width = List.T(Float.T(
         optional=True,
-        help='Semimajor axis of ellipse')
+        help='Semiminor axis of ellipse'))
 
-    ellipse_semimin = Float.T(
-        optional=True,
-        help='Semiminor axis of ellipse')
-
-    velocity = Float.T(
+    velocity = List.T(Float.T(
         default=3500.,
-        help='speed of rupture front [m/s]')
+        help='List of speed of rupture front [m/s]'))
 
-    slip = Float.T(
+    slip = List.T(Float.T(
         optional=True,
-        help='Slip on the rectangular source area [m]')
+        help='Slip on the rectangular source area [m]'))
+
+    npatches = Int.T(
+        optional=True,
+        help='number of slip patches')
 
     decimation_factor = Int.T(
         optional=True,
@@ -2121,7 +2209,7 @@ class SlipPatchesSource(SourceWithDerivedMagnitude):
     def base_key(self):
         return SourceWithDerivedMagnitude.base_key(self) + (
             self.magnitude,
-            self.slip,
+            self.slip[0],
             self.strike,
             self.dip,
             self.rake,
@@ -2129,40 +2217,56 @@ class SlipPatchesSource(SourceWithDerivedMagnitude):
             self.width,
             self.nucleation_x,
             self.nucleation_y,
-            self.velocity,
+            self.velocity[0],
             self.decimation_factor,
             self.anchor)
 
-    def ellipse(xy, width, height, semimaj, semimin, angle=0):
-        """
-        Parameters
-        ----------
-        xy : (float, float)
-            xy coordinates of ellipse centre.
-        width : float
-            Total length (diameter) of horizontal axis.
-        height : float
-            Total length (diameter) of vertical axis.
-        semimaj : float
-            length of semimajor axis (always taken to be some phi (-90<phi<90 deg) from positive x-axis!)
-        semimin : float
-            length of semiminor axis
-        angle : scalar, optional
-            Rotation in degrees anti-clockwise.
+    def ellipse(self, length=1, width=1, angle=0, x_cent=0, y_cent=0,
+                sampling=1e3):
+        '''
+            length : float
+                length of semimajor axis
 
-        """
-        x_cent = xy[0]
-        y_cent = xy[1]
-        r = 1 / np.sqrt((num.cos(angle))**2 + (num.sin(angle))**2)
-        x = r*num.cos(angle)
-        y = r*num.sin(angle)
-        data = np.array([x,y])
-        S = np.array([[semimaj,0],[0,semimin]])
-        R = np.array([[np.cos(phi),-np.sin(phi)],[np.sin(phi),np.cos(phi)]])
-        T = np.dot(R,S)
-        data = np.dot(T,data)
-        data[0] += x_cent
-        data[1] += y_cent
+            width : float
+                length of semiminor axis
+
+            angle : float
+                angle in radians of semimajor axis above positive x axis
+
+            x_cent : float
+                X coordinate center shift
+
+            y_cent : float
+                Y coordinate center shift
+
+            sampling : int
+                Number of points to sample along ellipse from 0-2pi
+
+        '''
+        if x_cent is None:
+            x_cent = 0
+        if y_cent is None:
+            y_cent = 0
+        theta = num.linspace(0, 2*num.pi, sampling)
+        r = 1 / num.sqrt((num.cos(theta))**2 + (num.sin(theta))**2)
+        x = r*num.cos(theta)
+        y = r*num.sin(theta)
+        ell_coords = num.array([x, y])
+
+        S = num.array([[length, 0], [0, width]])
+        R = num.array([[num.cos(angle), -num.sin(angle)], [num.sin(angle),
+                                                           num.cos(angle)]])
+        T = num.dot(R, S)
+        ell_coords = num.dot(T, ell_coords)
+        ell_coords[0] += x_cent
+        ell_coords[1] += y_cent
+        ell_coords[0] += self.north_shift
+        ell_coords[1] += self.east_shift
+        ell_coords_list = []
+
+        for k in range(0, num.shape(ell_coords)[1]):
+            ell_coords_list.append((ell_coords[0, k], ell_coords[1, k]))
+        return ell_coords_list
 
     def check_conflicts(self):
         if self.magnitude is not None and self.slip is not None:
@@ -2190,44 +2294,98 @@ class SlipPatchesSource(SourceWithDerivedMagnitude):
     def get_factor(self):
         return 1.0
 
-    def _discretize(self, store, target):
+    def check_contains_point(self, p1, p2):
         if self.nucleation_x is not None:
             nucx = self.nucleation_x * 0.5 * self.length
         else:
             nucx = None
-
         if self.nucleation_y is not None:
             nucy = self.nucleation_y * 0.5 * self.width
         else:
             nucy = None
+        if self.center_ellipse_x is not None:
+            center_ellipse_x = self.center_ellipse_x * 0.5 * self.length
+        else:
+            center_ellipse_x = None
+        if self.center_ellipse_y is not None:
+            center_ellipse_y = self.center_ellipse_x * 0.5 * self.width
+        else:
+            center_ellipse_y = None
+        point = Point(p1, p2)
 
-        stf = self.effective_stf_pre()
+    def _discretize(self, store, target):
+        from matplotlib.path import Path
+        if self.nucleation_x is not None:
+            nucx = self.nucleation_x * 0.5 * self.length
+        else:
+            nucx = None
+        if self.nucleation_y is not None:
+            nucy = self.nucleation_y * 0.5 * self.width
+        else:
+            nucy = None
+        if self.center_ellipse_x is not None:
+            center_ellipse_x = self.center_ellipse_x * 0.5 * self.length
+        else:
+            center_ellipse_x = None
 
-        points, times, amplitudes, dl, dw, nl, nw = discretize_rect_source(
+        if self.center_ellipse_y is not None:
+            center_ellipse_y = self.center_ellipse_x * 0.5 * self.width
+        else:
+            center_ellipse_y = None
+
+        insides = []
+        inside_any = []
+        paths = []
+        for n in range(0, self.npatches):
+            ell_coords = self.ellipse(
+                                      length=self.ellipse_length[n],
+                                      width=self.ellipse_width[n],
+                                      angle=self.ellipse_angle[n],
+                                      x_cent=center_ellipse_x+self.dists[n],
+                                      y_cent=center_ellipse_x+self.dists[n])
+
+            stf = self.effective_stf_pre()
+
+            path = Path(ell_coords)
+            paths.append(path)
+            points, times, amplitudes, dl, dw, nl, nw = discretize_rect_source(
+                store.config.deltas, store.config.deltat,
+                self.time, self.north_shift, self.east_shift, self.depth,
+                self.strike, self.dip, self.length, self.width, self.anchor,
+                self.velocity[0], stf=stf, nucleation_x=nucx,
+                nucleation_y=nucy, decimation_factor=self.decimation_factor)
+            insides.append(path.contains_points(points[:, 0:2]))
+        points, times, amplitudes, dl, dw, nl, nw = discretize_elliptical_source(
             store.config.deltas, store.config.deltat,
             self.time, self.north_shift, self.east_shift, self.depth,
             self.strike, self.dip, self.length, self.width, self.anchor,
-            self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy,
-            decimation_factor=self.decimation_factor)
+            self.velocity, insides, self.npatches, stf=stf, nucleation_x=nucx,
+            nucleation_y=nucy, decimation_factor=self.decimation_factor)
+        amplitudes = num.zeros(num.shape(times))
+        for n in range(0, self.npatches):
+            if self.slip is not None:
+                if target is not None:
+                    interpolation = target.interpolation
+                else:
+                    interpolation = 'nearest_neighbor'
+                    logger.warn(
+                        'no target information available, will use '
+                        '"nearest_neighbor" interpolation when extracting '
+                        'shear modulus from earth model')
 
-        if self.slip is not None:
-            if target is not None:
-                interpolation = target.interpolation
+                shear_moduli = store.config.get_shear_moduli(
+                    self.lat, self.lon,
+                    points=points,
+                    interpolation=interpolation)
+
+                amplitudes_patch = dl * dw * shear_moduli * self.slip[n]
             else:
-                interpolation = 'nearest_neighbor'
-                logger.warn(
-                    'no target information available, will use '
-                    '"nearest_neighbor" interpolation when extracting shear '
-                    'modulus from earth model')
+                amplitudes_patch *= self.get_moment(store, target)
 
-            shear_moduli = store.config.get_shear_moduli(
-                self.lat, self.lon,
-                points=points,
-                interpolation=interpolation)
 
-            amplitudes = dl * dw * shear_moduli * self.slip
-        else:
-            amplitudes *= self.get_moment(store, target)
+            for i in range(0, len(points)):
+                if paths[n].contains_point(points[i, 0:2]) is True:
+                    amplitudes[i] = amplitudes_patch[0]
 
         return points, times, amplitudes, dl, dw
 
@@ -2298,7 +2456,7 @@ class SlipPatchesSource(SourceWithDerivedMagnitude):
                 magnitude=float(mt.moment_magnitude()))
 
         d.update(kwargs)
-        return super(RectangularSource, cls).from_pyrocko_event(ev, **d)
+        return super(MultiEllipticalSource, cls).from_pyrocko_event(ev, **d)
 
 
 class DoubleDCSource(SourceWithMagnitude):
@@ -3887,6 +4045,7 @@ source_classes = [
     VLVDSource,
     MTSource,
     RectangularSource,
+    MultiEllipticalSource,
     DoubleDCSource,
     RingfaultSource,
     CombiSource,
