@@ -43,14 +43,31 @@ def is_on_land(lat, lon, method='coastlines'):
             return topo.elevation(lat, lon) > 0.
 
     elif method == 'coastlines':
-        logger.debug('Testing %.4f %.4f' % (lat, lon))
-        return get_gsshg().is_point_on_land(lat, lon)
+        is_land = get_gsshg().is_point_on_land(lat, lon)
+        logger.debug(
+            'Testing %.4f %.4f: %s' % (lat, lon, 'dry' if is_land else 'wet'))
+
+        return is_land
 
 
 def random_lat(rstate, lat_min=-90., lat_max=90.):
     lat_min_ = 0.5*(math.sin(lat_min * math.pi/180.)+1.)
     lat_max_ = 0.5*(math.sin(lat_max * math.pi/180.)+1.)
     return math.asin(rstate.uniform(lat_min_, lat_max_)*2.-1.)*180./math.pi
+
+
+def random_latlon(rstate, avoid_water, ntries, label):
+    for itry in range(ntries):
+        logger.debug('%s: try %i' % (label, itry))
+        lat = random_lat(rstate)
+        lon = rstate.uniform(-180., 180.)
+        if not avoid_water or is_on_land(lat, lon):
+            return lat, lon
+
+    if avoid_water:
+        sadd = ' (avoiding water)'
+
+    raise LocationGenerationError('Could not generate location%s.' % sadd)
 
 
 class Generator(Object):
@@ -163,9 +180,9 @@ class LocationGenerator(Generator):
                     self._center_latlon = self._parent.get_center_latlon()
                 else:
                     rstate = self.get_rstate(0)
-                    lat = random_lat(rstate)
-                    lon = rstate.uniform(-180., 180.)
-                    self._center_latlon = lat, lon
+                    self._center_latlon = random_latlon(
+                        rstate, self.avoid_water, self.ntries,
+                        self.__class__.__name__)
 
         return self._center_latlon
 
@@ -180,6 +197,7 @@ class LocationGenerator(Generator):
     def get_latlon(self, i):
         rstate = self.get_rstate(i)
         for itry in range(self.ntries):
+            logger.debug('%s: try %i' % (self.__class__.__name__, itry))
             radius = self.get_radius()
             if radius is None:
                 lat = random_lat(rstate)
@@ -195,6 +213,7 @@ class LocationGenerator(Generator):
                 lat, lon = od.ne_to_latlon(lat_center, lon_center, north, east)
 
             if not self.avoid_water or is_on_land(lat, lon):
+                logger.debug('location ok: %g, %g' % (lat, lon))
                 return lat, lon
 
         if self.avoid_water:
