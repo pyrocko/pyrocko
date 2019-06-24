@@ -2160,22 +2160,12 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
              'normalized fault plane coordinates (-1 = upper edge, +1 = lower'
              'edge)')
 
-    center_ellipse_x = Float.T(
-        optional=True,
-        help='horizontal position of main ellipse y-coord in normalized fault '
-             'plane coordinates (-1 = left edge, +1 = right edge)')
-
-    center_ellipse_y = Float.T(
-        optional=True,
-        help='down-dip position of main ellipse y-coord in normalized fault '
-             'plane coordinates (-1 = upper edge, +1 = lower edge)')
-
     dists = List.T(Float.T(
         optional=True,
         help='horizontal position of main ellipse y-coord in normalized fault '
              'plane coordinates (-1 = left edge, +1 = right edge)'))
 
-    ellipse_angle = List.T(Float.T(
+    ellipse_angles = List.T(Float.T(
         optional=True,
         help='orientation of ellipse'))
 
@@ -2221,7 +2211,7 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
             self.decimation_factor,
             self.anchor)
 
-    def ellipse(self, length=1, width=1, angle=0, x_cent=0, y_cent=0,
+    def ellipse(self, length=1, width=1, angle=0, dist=0,
                 sampling=1e3):
         '''
             length : float
@@ -2233,20 +2223,10 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
             angle : float
                 angle in radians of semimajor axis above positive x axis
 
-            x_cent : float
-                X coordinate center shift
-
-            y_cent : float
-                Y coordinate center shift
-
             sampling : int
                 Number of points to sample along ellipse from 0-2pi
 
         '''
-        if x_cent is None:
-            x_cent = 0
-        if y_cent is None:
-            y_cent = 0
         theta = num.linspace(0, 2*num.pi, sampling)
         r = 1 / num.sqrt((num.cos(theta))**2 + (num.sin(theta))**2)
         x = r*num.cos(theta)
@@ -2258,10 +2238,8 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
                                                            num.cos(angle)]])
         T = num.dot(R, S)
         ell_coords = num.dot(T, ell_coords)
-        ell_coords[0] += x_cent
-        ell_coords[1] += y_cent
-        ell_coords[0] += self.north_shift
-        ell_coords[1] += self.east_shift
+        ell_coords[0] += self.north_shift+dist
+        ell_coords[1] += self.east_shift+dist
         ell_coords_list = []
 
         for k in range(0, num.shape(ell_coords)[1]):
@@ -2294,55 +2272,37 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
     def get_factor(self):
         return 1.0
 
-    def check_contains_point(self, p1, p2):
-        if self.nucleation_x is not None:
-            nucx = self.nucleation_x * 0.5 * self.length
-        else:
-            nucx = None
-        if self.nucleation_y is not None:
-            nucy = self.nucleation_y * 0.5 * self.width
-        else:
-            nucy = None
-        if self.center_ellipse_x is not None:
-            center_ellipse_x = self.center_ellipse_x * 0.5 * self.length
-        else:
-            center_ellipse_x = None
-        if self.center_ellipse_y is not None:
-            center_ellipse_y = self.center_ellipse_x * 0.5 * self.width
-        else:
-            center_ellipse_y = None
-        point = Point(p1, p2)
-
     def _discretize(self, store, target):
         from matplotlib.path import Path
+
         if self.nucleation_x is not None:
-            nucx = self.nucleation_x * 0.5 * self.length
+            angle = self.ellipse_angles[0]
+            x = self.nucleation_x*num.cos(angle)
+            y = self.nucleation_y*num.sin(angle)
+            ell_coords = num.array([x, y])
+            S = num.array([[self.ellipse_length[0], 0],
+                           [0, self.ellipse_width[0]]])
+            R = num.array([[num.cos(angle), -num.sin(angle)],
+                           [num.sin(angle), num.cos(angle)]])
+            T = num.dot(R, S)
+            ell_coords = num.dot(T, ell_coords)
+            nucx = ell_coords[0]+self.north_shift
+            nucy = ell_coords[1]+self.east_shift
         else:
             nucx = None
-        if self.nucleation_y is not None:
-            nucy = self.nucleation_y * 0.5 * self.width
-        else:
             nucy = None
-        if self.center_ellipse_x is not None:
-            center_ellipse_x = self.center_ellipse_x * 0.5 * self.length
-        else:
-            center_ellipse_x = None
 
-        if self.center_ellipse_y is not None:
-            center_ellipse_y = self.center_ellipse_x * 0.5 * self.width
-        else:
-            center_ellipse_y = None
-
+        import matplotlib.patches as patches
+        import matplotlib.pyplot as plt
+        fig,ax = plt.subplots()
         insides = []
-        inside_any = []
         paths = []
         for n in range(0, self.npatches):
             ell_coords = self.ellipse(
                                       length=self.ellipse_length[n],
                                       width=self.ellipse_width[n],
-                                      angle=self.ellipse_angle[n],
-                                      x_cent=center_ellipse_x+self.dists[n],
-                                      y_cent=center_ellipse_x+self.dists[n])
+                                      angle=self.ellipse_angles[n],
+                                      dist=self.dists[n])
 
             stf = self.effective_stf_pre()
 
@@ -2382,11 +2342,23 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
             else:
                 amplitudes_patch *= self.get_moment(store, target)
 
-
             for i in range(0, len(points)):
                 if paths[n].contains_point(points[i, 0:2]) is True:
                     amplitudes[i] = amplitudes_patch[0]
+            ell_coords = self.ellipse(
+                                      length=self.ellipse_length[n],
+                                      width=self.ellipse_width[n],
+                                      angle=self.ellipse_angles[n],
+                                      dist=self.dists[n])
 
+            path = Path(ell_coords)
+            patch = patches.PathPatch(path, facecolor='orange', lw=2, alpha=0.3)
+            ax.add_patch(patch)
+        cm = plt.cm.get_cmap('RdYlBu')
+        sc = ax.scatter(points[:,0], points[:,1], c=amplitudes, cmap=cm)
+        plt.colorbar(sc)
+        ax.scatter(nucx, nucy)
+        plt.show()
         return points, times, amplitudes, dl, dw
 
     def discretize_basesource(self, store, target=None):
