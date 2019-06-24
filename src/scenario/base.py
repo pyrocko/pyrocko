@@ -222,5 +222,5 @@ class LocationGenerator(Generator):
         raise LocationGenerationError('Could not generate location%s.' % sadd)
 
 
-class TargetGenerator(LocationGenerator):
+class TargetGenerator(Generator):
     pass
