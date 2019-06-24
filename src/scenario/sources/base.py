@@ -23,9 +23,6 @@ class SourceGenerator(LocationGenerator):
         default=False,
         help='Avoid sources offshore under the ocean / lakes.')
 
-    radius = Float.T(
-        default=10*km)
-
     time_min = Timestamp.T(default=util.str_to_time('2017-01-01 00:00:00'))
     time_max = Timestamp.T(default=util.str_to_time('2017-01-03 00:00:00'))
 
