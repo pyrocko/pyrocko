@@ -413,9 +413,6 @@ class ScenarioGenerator(LocationGenerator):
 
         scenario.update_hierarchy()
 
-        scenario.get_targets()
-        scenario.get_sources()
-
         scenario.dump(filename=fn)
         scenario.prepare_data(path, overwrite=force)
 
