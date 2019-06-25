@@ -225,13 +225,11 @@ def discretize_rect_source(deltas, deltat, time, north, east, depth,
     return points2, times2, amplitudes2, dl, dw, nl, nw
 
 
-
-
 def discretize_elliptical_source(deltas, deltat, time, north, east, depth,
-                           strike, dip, length, width,
-                           anchor, velocity, insides, npatches, stf=None,
-                           nucleation_x=None, nucleation_y=None,
-                           decimation_factor=1):
+                                 strike, dip, length, width, anchor, velocity,
+                                 insides, npatches, stf=None,
+                                 nucleation_x=None, nucleation_y=None,
+                                 decimation_factor=1, overtake=False):
 
     if stf is None:
         stf = STF()
@@ -269,23 +267,55 @@ def discretize_elliptical_source(deltas, deltat, time, north, east, depth,
     dist = num.sqrt(dist_x**2 + dist_y**2)
     times = dist/velocity[0]
     dists_active = num.zeros(num.shape(points))
+    times_active = num.zeros(num.shape(points))
     active = []
     for i in range(0, len(points)):
         if insides[0][i] == True:
             dists_active[i] = points[i, :]
+            times_active[i] = times[i]
             active.append(i)
 
     if npatches > 1:
         for n in range(1, npatches):
+            dist_min = None
             for i in range(0, len(points)):
                 if insides[n][i] == True:
-                    dist_near_x = num.argmin(num.abs(points[i, 0] - dists_active[:, 0]))
-                    dist_near_y = num.argmin(num.abs(points[i, 1] - dists_active[:, 1]))
+                    dist_near_x = min(num.abs(points[i, 0]-dists_active[:, 0]))
+                    dist_near_y = min(num.abs(points[i, 1]-dists_active[:, 1]))
                     dist_near = num.sqrt(dist_near_x**2 + dist_near_y**2)
-                    times[i] = times[i] + dist_near/ velocity[n]
+                    if dist_min is None:
+                        dist_min = dist_near
+                        idx = i
+                    if dist_near < dist_min:
+                        dist_min = dist_near
+                        idx = i
+            dists_active[idx] = points[idx, :]
+            for i in range(0, len(points)):
+                if insides[n][i] == True:
+                    if i == idx:
+                        times[i] = times[i]
+                        times_active[i] = times[i]
+                    else:
+                        dist_sub_x = num.abs(points[i, 0]-points[idx, 0])
+                        dist_sub_y = num.abs(points[i, 1]-points[idx, 1])
+                        dist_sub = num.sqrt(dist_sub_x**2 + dist_sub_y**2)
+                        times[i] = times[idx] + dist_sub / velocity[n]
                     active.append(i)
-    anch_x, anch_y = map_anchor[anchor]
 
+            if overtake is True:
+                for nsub in range(0, npatches):
+                    for i in range(0, len(points)):
+                        if insides[nsub][i] == True:
+                            dist_near_x = num.abs(points[i, 0]-dists_active[:, 0])
+                            dist_near_y = num.abs(points[i, 1]-dists_active[:, 1])
+                            dist_near = num.sqrt(dist_near_x**2 + dist_near_y**2)
+                            times_overtake = min(dist_near / velocity[nsub])
+                            if times_overtake > times[i]:
+                                times[i] = times_overtake
+                                dists_active[i] = points[i, :]
+                            active.append(i)
+
+    anch_x, anch_y = map_anchor[anchor]
     points[:, 0] -= anch_x * 0.5 * length
     points[:, 1] -= anch_y * 0.5 * width
 
@@ -305,10 +335,9 @@ def discretize_elliptical_source(deltas, deltat, time, north, east, depth,
     points2[:, 1] += east
     points2[:, 2] += depth
     for i in range(0, len(points)):
-        if i not in active:
-            times2[i] = None
+       if i not in active:
+           times2[i] = None
     points2 = points2[num.logical_not(num.isnan(times2))]
-
     times2 = times2[num.logical_not(num.isnan(times2))]
     return points2, times2, amplitudes2, dl, dw, nl, nw
 
@@ -2112,6 +2141,12 @@ class RectangularSource(SourceWithDerivedMagnitude):
 
 class MultiEllipticalSource(SourceWithDerivedMagnitude):
     '''
+    A fixed rectangular source with one or several slip patches.
+    Slip patches are ellipsis and are described by orientation angle and
+    major and minir semiaxis length.
+    Each slip patch indivudally has uniform slip and rupture velocity.
+    All secondary slip patches are placed in relation the first main patch, on
+    which nucleation occurs.
     Valleé and Bouchon, 2004
     '''
 
@@ -2148,6 +2183,14 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
              'bottom and also top_left, top_right,bottom_left,'
              'bottom_right, center_left and center right')
 
+    overtake = StringChoice.T(
+        choices=['True', 'False'],
+        default='True',
+        optional=True,
+        help='Indicator if source points on secondary slip patches can be'
+             'activated by the main slip patch or only the nearest source'
+             'point of the secondary slip patch.')
+
     nucleation_x = Float.T(
         optional=True,
         help='horizontal position of rupture nucleation in main-slip patch of'
@@ -2160,32 +2203,39 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
              'normalized fault plane coordinates (-1 = upper edge, +1 = lower'
              'edge)')
 
-    dists = List.T(Float.T(
-        optional=True,
-        help='horizontal position of main ellipse y-coord in normalized fault '
-             'plane coordinates (-1 = left edge, +1 = right edge)'))
-
     ellipse_angles = List.T(Float.T(
         optional=True,
-        help='orientation of ellipse'))
+        help='List of angles between ellipses (alpha). Secondary ellipsis will'
+             'be placed at minimum distance from the main ellipse at this'
+             'angle'))
+
+    ellipse_distances = List.T(Float.T(
+        optional=True,
+        default=None,
+        help='List of absolute distance offset between ellipses for x and y '
+             'in [m]. Either ellipse_angle or ellipse_distances can be given.')
+                                                                              )
+
+    ellipse_orientations = List.T(Float.T(
+        optional=True,
+        help='List of orientations for each slip patch.'))
 
     ellipse_length = List.T(Float.T(
-        optional=True,
-        help='Semimajor axis of ellipse'))
+        help='List of semimajor axis of ellipse for each slip patch.'))
 
     ellipse_width = List.T(Float.T(
-        optional=True,
-        help='Semiminor axis of ellipse'))
+        help='List of semiminor axis of ellipse for each slip patch.'))
 
     velocity = List.T(Float.T(
         default=3500.,
-        help='List of speed of rupture front [m/s]'))
+        help='List of speed of rupture front [m/s] for each slip patch.'))
 
     slip = List.T(Float.T(
         optional=True,
-        help='Slip on the rectangular source area [m]'))
+        help='List of slips of source area [m] for each slip patch.'))
 
     npatches = Int.T(
+        default=1,
         optional=True,
         help='number of slip patches')
 
@@ -2211,7 +2261,7 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
             self.decimation_factor,
             self.anchor)
 
-    def ellipse(self, length=1, width=1, angle=0, dist=0,
+    def ellipse(self, length=1, width=1, angle=0, dist=None, offset=[0, 0],
                 sampling=1e3):
         '''
             length : float
@@ -2232,14 +2282,18 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
         x = r*num.cos(theta)
         y = r*num.sin(theta)
         ell_coords = num.array([x, y])
-
+        angle = num.deg2rad(angle)
         S = num.array([[length, 0], [0, width]])
         R = num.array([[num.cos(angle), -num.sin(angle)], [num.sin(angle),
                                                            num.cos(angle)]])
         T = num.dot(R, S)
         ell_coords = num.dot(T, ell_coords)
-        ell_coords[0] += self.north_shift+dist
-        ell_coords[1] += self.east_shift+dist
+        if offset is None:
+            ell_coords[0] += self.north_shift+dist
+            ell_coords[1] += self.east_shift+dist
+        else:
+            ell_coords[0] += offset[0]
+            ell_coords[1] += offset[1]
         ell_coords_list = []
 
         for k in range(0, num.shape(ell_coords)[1]):
@@ -2272,11 +2326,82 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
     def get_factor(self):
         return 1.0
 
+    def ellipse_polyline(self, ellipses, n=100):
+        t = num.linspace(0, 2*num.pi, n, endpoint=False)
+        st = num.sin(t)
+        ct = num.cos(t)
+        result = []
+        for x0, y0, a, b, angle in ellipses:
+            angle = num.deg2rad(angle)
+            sa = num.sin(angle)
+            ca = num.cos(angle)
+            p = num.empty((n, 2))
+            p[:, 0] = x0 + a * ca * ct - b * sa * st
+            p[:, 1] = y0 + a * sa * ct + b * ca * st
+            result.append(p)
+        return result
+
+    def intersections(self, a, b):
+        from shapely.geometry.polygon import LinearRing
+        ea = LinearRing(a)
+        eb = LinearRing(b)
+        mp = ea.intersection(eb)
+
+        x = [p.x for p in mp]
+        y = [p.y for p in mp]
+        return x, y
+
+    def ellipsis_edge_orientation(self, n):
+        from matplotlib.path import Path
+        ell_coords_offset = self.ellipse(
+                                  length=self.ellipse_length[0],
+                                  width=self.ellipse_width[0],
+                                  angle=self.ellipse_orientations[0],
+                                  offset=[self.north_shift, self.east_shift],
+                                  sampling=1)
+        x1 = self.north_shift
+        y1 = self.east_shift
+        r = num.linspace(0, self.ellipse_length[0]+self.ellipse_width[0], 100)
+        x2 = x1+num.cos(num.deg2rad(self.ellipse_angles[n])) * r
+        y2 = y1+num.sin(num.deg2rad(self.ellipse_angles[n])) * r
+
+        angle = num.deg2rad(self.ellipse_orientations[0])
+        theta = num.linspace(0, 2*num.pi, 100)
+        r = 1 / num.sqrt((num.cos(num.deg2rad(self.ellipse_angles[n])))**2
+                         + (num.sin(num.deg2rad(self.ellipse_angles[n])))**2)
+
+        x = r*num.cos(theta)
+        y = r*num.sin(theta)
+        ell_coords_offset = num.array([x, y])
+
+        S = num.array([[self.ellipse_length[0], 0], [0,
+                                                     self.ellipse_width[0]]])
+        R = num.array([[num.cos(angle), -num.sin(angle)], [num.sin(angle),
+                                                           num.cos(angle)]])
+        T = num.dot(R, S)
+        ell_coords_offset = num.dot(T, ell_coords_offset)
+        ell_coords_offset[0] += self.north_shift
+        ell_coords_offset[1] += self.east_shift
+        ell_coords_offset_list = []
+
+        for k in range(0, num.shape(ell_coords_offset)[1]):
+            ell_coords_offset_list.append((ell_coords_offset[0, k],
+                                           ell_coords_offset[1, k]))
+
+        path = Path(ell_coords_offset_list)
+
+        for i in range(0, len(x2)):
+            if path.contains_point([x2[i], y2[i]]) is False:
+                x2 = x2[i]
+                y2 = y2[i]
+                break
+        return x2, y2, ell_coords_offset_list
+
     def _discretize(self, store, target):
         from matplotlib.path import Path
 
         if self.nucleation_x is not None:
-            angle = self.ellipse_angles[0]
+            angle = self.ellipse_orientations[0]
             x = self.nucleation_x*num.cos(angle)
             y = self.nucleation_y*num.sin(angle)
             ell_coords = num.array([x, y])
@@ -2286,26 +2411,46 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
                            [num.sin(angle), num.cos(angle)]])
             T = num.dot(R, S)
             ell_coords = num.dot(T, ell_coords)
-            nucx = ell_coords[0]+self.north_shift
-            nucy = ell_coords[1]+self.east_shift
+            nucx = ell_coords[0]
+            nucy = ell_coords[1]
         else:
             nucx = None
             nucy = None
 
-        import matplotlib.patches as patches
-        import matplotlib.pyplot as plt
-        fig,ax = plt.subplots()
         insides = []
         paths = []
+        offsets = []
         for n in range(0, self.npatches):
+            if n != 0:
+                x2, y2, ell_org_coords = self.ellipsis_edge_orientation(n)
+                move_iterative = True
+                i = 0.
+                while move_iterative is True:
+                    x2 = x2+num.cos(num.deg2rad(self.ellipse_angles[n])) * i
+                    y2 = y2+num.sin(num.deg2rad(self.ellipse_angles[n])) * i
+                    offset = [x2, y2]
+                    ellipses = [(self.north_shift, self.east_shift,
+                                 self.ellipse_length[0], self.ellipse_width[0],
+                                 self.ellipse_orientations[0]),
+                                 (offset[0], offset[1],
+                                 self.ellipse_length[n],
+                                 self.ellipse_width[n],
+                                 self.ellipse_orientations[1])]
+                    a, b = self.ellipse_polyline(ellipses)
+                    xs, ys = self.intersections(a, b)
+                    i = i+0.5
+                    if not xs:
+                        move_iterative = False
+            else:
+                offset = [self.north_shift, self.east_shift]
+            offsets.append(offset)
             ell_coords = self.ellipse(
                                       length=self.ellipse_length[n],
                                       width=self.ellipse_width[n],
-                                      angle=self.ellipse_angles[n],
-                                      dist=self.dists[n])
+                                      angle=self.ellipse_orientations[n],
+                                      offset=offset)
 
             stf = self.effective_stf_pre()
-
             path = Path(ell_coords)
             paths.append(path)
             points, times, amplitudes, dl, dw, nl, nw = discretize_rect_source(
@@ -2320,8 +2465,10 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
             self.time, self.north_shift, self.east_shift, self.depth,
             self.strike, self.dip, self.length, self.width, self.anchor,
             self.velocity, insides, self.npatches, stf=stf, nucleation_x=nucx,
-            nucleation_y=nucy, decimation_factor=self.decimation_factor)
+            nucleation_y=nucy, decimation_factor=self.decimation_factor,
+            overtake=self.overtake)
         amplitudes = num.zeros(num.shape(times))
+
         for n in range(0, self.npatches):
             if self.slip is not None:
                 if target is not None:
@@ -2348,17 +2495,10 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
             ell_coords = self.ellipse(
                                       length=self.ellipse_length[n],
                                       width=self.ellipse_width[n],
-                                      angle=self.ellipse_angles[n],
-                                      dist=self.dists[n])
+                                      angle=self.ellipse_orientations[n],
+                                      offset=offsets[n])
 
             path = Path(ell_coords)
-            patch = patches.PathPatch(path, facecolor='orange', lw=2, alpha=0.3)
-            ax.add_patch(patch)
-        cm = plt.cm.get_cmap('RdYlBu')
-        sc = ax.scatter(points[:,0], points[:,1], c=amplitudes, cmap=cm)
-        plt.colorbar(sc)
-        ax.scatter(nucx, nucy)
-        plt.show()
         return points, times, amplitudes, dl, dw
 
     def discretize_basesource(self, store, target=None):
