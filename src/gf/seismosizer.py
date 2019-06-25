@@ -335,8 +335,8 @@ def discretize_elliptical_source(deltas, deltat, time, north, east, depth,
     points2[:, 1] += east
     points2[:, 2] += depth
     for i in range(0, len(points)):
-       if i not in active:
-           times2[i] = None
+        if i not in active:
+            times2[i] = None
     points2 = points2[num.logical_not(num.isnan(times2))]
     times2 = times2[num.logical_not(num.isnan(times2))]
     return points2, times2, amplitudes2, dl, dw, nl, nw
@@ -2220,10 +2220,10 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
         optional=True,
         help='List of orientations for each slip patch.'))
 
-    ellipse_length = List.T(Float.T(
+    ellipse_lengths = List.T(Float.T(
         help='List of semimajor axis of ellipse for each slip patch.'))
 
-    ellipse_width = List.T(Float.T(
+    ellipse_widths = List.T(Float.T(
         help='List of semiminor axis of ellipse for each slip patch.'))
 
     velocity = List.T(Float.T(
@@ -2354,14 +2354,14 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
     def ellipsis_edge_orientation(self, n):
         from matplotlib.path import Path
         ell_coords_offset = self.ellipse(
-                                  length=self.ellipse_length[0],
-                                  width=self.ellipse_width[0],
+                                  length=self.ellipse_lengths[0],
+                                  width=self.ellipse_widths[0],
                                   angle=self.ellipse_orientations[0],
                                   offset=[self.north_shift, self.east_shift],
                                   sampling=1)
         x1 = self.north_shift
         y1 = self.east_shift
-        r = num.linspace(0, self.ellipse_length[0]+self.ellipse_width[0], 100)
+        r = num.linspace(0, self.ellipse_lengths[0]+self.ellipse_widths[0], 100)
         x2 = x1+num.cos(num.deg2rad(self.ellipse_angles[n])) * r
         y2 = y1+num.sin(num.deg2rad(self.ellipse_angles[n])) * r
 
@@ -2374,8 +2374,8 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
         y = r*num.sin(theta)
         ell_coords_offset = num.array([x, y])
 
-        S = num.array([[self.ellipse_length[0], 0], [0,
-                                                     self.ellipse_width[0]]])
+        S = num.array([[self.ellipse_lengths[0], 0], [0,
+                                                     self.ellipse_widths[0]]])
         R = num.array([[num.cos(angle), -num.sin(angle)], [num.sin(angle),
                                                            num.cos(angle)]])
         T = num.dot(R, S)
@@ -2401,12 +2401,12 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
         from matplotlib.path import Path
 
         if self.nucleation_x is not None:
-            angle = self.ellipse_orientations[0]
-            x = self.nucleation_x*num.cos(angle)
-            y = self.nucleation_y*num.sin(angle)
+            angle = num.deg2rad(self.ellipse_orientations[0])
+            x = num.sin(angle)*self.nucleation_x
+            y = num.cos(angle)*self.nucleation_y
             ell_coords = num.array([x, y])
-            S = num.array([[self.ellipse_length[0], 0],
-                           [0, self.ellipse_width[0]]])
+            S = num.array([[self.ellipse_lengths[0], 0],
+                           [0, self.ellipse_widths[0]]])
             R = num.array([[num.cos(angle), -num.sin(angle)],
                            [num.sin(angle), num.cos(angle)]])
             T = num.dot(R, S)
@@ -2430,11 +2430,11 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
                     y2 = y2+num.sin(num.deg2rad(self.ellipse_angles[n])) * i
                     offset = [x2, y2]
                     ellipses = [(self.north_shift, self.east_shift,
-                                 self.ellipse_length[0], self.ellipse_width[0],
+                                 self.ellipse_lengths[0], self.ellipse_widths[0],
                                  self.ellipse_orientations[0]),
                                  (offset[0], offset[1],
-                                 self.ellipse_length[n],
-                                 self.ellipse_width[n],
+                                 self.ellipse_lengths[n],
+                                 self.ellipse_widths[n],
                                  self.ellipse_orientations[1])]
                     a, b = self.ellipse_polyline(ellipses)
                     xs, ys = self.intersections(a, b)
@@ -2445,8 +2445,8 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
                 offset = [self.north_shift, self.east_shift]
             offsets.append(offset)
             ell_coords = self.ellipse(
-                                      length=self.ellipse_length[n],
-                                      width=self.ellipse_width[n],
+                                      length=self.ellipse_lengths[n],
+                                      width=self.ellipse_widths[n],
                                       angle=self.ellipse_orientations[n],
                                       offset=offset)
 
@@ -2493,8 +2493,8 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
                 if paths[n].contains_point(points[i, 0:2]) is True:
                     amplitudes[i] = amplitudes_patch[0]
             ell_coords = self.ellipse(
-                                      length=self.ellipse_length[n],
-                                      width=self.ellipse_width[n],
+                                      length=self.ellipse_lengths[n],
+                                      width=self.ellipse_widths[n],
                                       angle=self.ellipse_orientations[n],
                                       offset=offsets[n])
 
