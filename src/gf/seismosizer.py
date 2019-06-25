@@ -306,9 +306,12 @@ def discretize_elliptical_source(deltas, deltat, time, north, east, depth,
                 for nsub in range(0, npatches):
                     for i in range(0, len(points)):
                         if insides[nsub][i] == True:
-                            dist_near_x = num.abs(points[i, 0]-dists_active[:, 0])
-                            dist_near_y = num.abs(points[i, 1]-dists_active[:, 1])
-                            dist_near = num.sqrt(dist_near_x**2 + dist_near_y**2)
+                            dist_near_x = num.abs(points[i, 0]
+                                                  - dists_active[:, 0])
+                            dist_near_y = num.abs(points[i, 1]
+                                                  - dists_active[:, 1])
+                            dist_near = num.sqrt(dist_near_x**2
+                                                 + dist_near_y**2)
                             times_overtake = min(dist_near / velocity[nsub])
                             if times_overtake > times[i]:
                                 times[i] = times_overtake
@@ -2261,7 +2264,7 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
             self.decimation_factor,
             self.anchor)
 
-    def ellipse(self, length=1, width=1, angle=0, dist=None, offset=[0, 0],
+    def ellipse(self, length=1, width=1, angle=0, offset=[0, 0],
                 sampling=1e3):
         '''
             length : float
@@ -2288,12 +2291,8 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
                                                            num.cos(angle)]])
         T = num.dot(R, S)
         ell_coords = num.dot(T, ell_coords)
-        if offset is None:
-            ell_coords[0] += self.north_shift+dist
-            ell_coords[1] += self.east_shift+dist
-        else:
-            ell_coords[0] += offset[0]
-            ell_coords[1] += offset[1]
+        ell_coords[0] += offset[0]
+        ell_coords[1] += offset[1]
         ell_coords_list = []
 
         for k in range(0, num.shape(ell_coords)[1]):
@@ -2421,28 +2420,34 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
         paths = []
         offsets = []
         for n in range(0, self.npatches):
-            if n != 0:
-                x2, y2, ell_org_coords = self.ellipsis_edge_orientation(n)
-                move_iterative = True
-                i = 0.
-                while move_iterative is True:
-                    x2 = x2+num.cos(num.deg2rad(self.ellipse_angles[n])) * i
-                    y2 = y2+num.sin(num.deg2rad(self.ellipse_angles[n])) * i
-                    offset = [x2, y2]
-                    ellipses = [(self.north_shift, self.east_shift,
-                                 self.ellipse_lengths[0], self.ellipse_widths[0],
-                                 self.ellipse_orientations[0]),
-                                 (offset[0], offset[1],
-                                 self.ellipse_lengths[n],
-                                 self.ellipse_widths[n],
-                                 self.ellipse_orientations[1])]
-                    a, b = self.ellipse_polyline(ellipses)
-                    xs, ys = self.intersections(a, b)
-                    i = i+0.5
-                    if not xs:
-                        move_iterative = False
-            else:
-                offset = [self.north_shift, self.east_shift]
+            if self.ellipse_angles is not None:
+                if n != 0:
+                    x2, y2, ell_org_coords = self.ellipsis_edge_orientation(n)
+                    move_iterative = True
+                    i = 0.
+                    while move_iterative is True:
+                        x2 = x2+num.cos(num.deg2rad(self.ellipse_angles[n]))*i
+                        y2 = y2+num.sin(num.deg2rad(self.ellipse_angles[n]))*i
+                        offset = [x2, y2]
+                        ellipses = [(self.north_shift, self.east_shift,
+                                     self.ellipse_lengths[0],
+                                     self.ellipse_widths[0],
+                                     self.ellipse_orientations[0]),
+                                     (offset[0], offset[1],
+                                     self.ellipse_lengths[n],
+                                     self.ellipse_widths[n],
+                                     self.ellipse_orientations[1])]
+                        a, b = self.ellipse_polyline(ellipses)
+                        xs, ys = self.intersections(a, b)
+                        i = i+0.5 #TODO couple to GF sampling?
+                        if not xs:
+                            move_iterative = False
+                else:
+                    offset = [self.north_shift, self.east_shift]
+            if self.ellipse_distances is not None:
+                offset = [self.ellipse_distances[n][0],
+                          self.ellipse_distances[n][1]]
+
             offsets.append(offset)
             ell_coords = self.ellipse(
                                       length=self.ellipse_lengths[n],
@@ -2492,13 +2497,7 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
             for i in range(0, len(points)):
                 if paths[n].contains_point(points[i, 0:2]) is True:
                     amplitudes[i] = amplitudes_patch[0]
-            ell_coords = self.ellipse(
-                                      length=self.ellipse_lengths[n],
-                                      width=self.ellipse_widths[n],
-                                      angle=self.ellipse_orientations[n],
-                                      offset=offsets[n])
 
-            path = Path(ell_coords)
         return points, times, amplitudes, dl, dw
 
     def discretize_basesource(self, store, target=None):
