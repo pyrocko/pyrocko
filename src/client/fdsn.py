@@ -334,3 +334,41 @@ def dataselect(url=g_url, site=g_default_site, majorversion=1, selection=None,
                         timeout=params.get('timeout', g_timeout))
     else:
         return _request(url, user=user, passwd=passwd, **params)
+
+
+def event(url=g_url, site=g_default_site, majorversion=1, selection=None,
+          user=None, passwd=None, token=None, **kwargs):
+
+    '''Query FDSN web service for events
+
+    On success, will return a list of events in QuakeML format.
+
+    Check the documentation of FDSN for allowed arguments:
+    https://www.fdsn.org/webservices
+    '''
+
+    allowed_kwargs = {
+        'starttime', 'endtime', 'minlatitude', 'maxlatitue',
+        'minlongitude', 'maxlongitude', 'latitude', 'longitude',
+        'minradius', 'maxradius', 'mindepth', 'maxdepth', 'minmagnitude',
+        'maxmagnitude', 'magnitudetype', 'eventtype', 'includeallorigins',
+        'includeallmagnitudes', 'includearrivals', 'eventid'}
+
+    for k in kwargs.keys():
+        if k not in allowed_kwargs:
+            raise ValueError('invalid argument: %s' % k)
+
+    if user or token:
+        method = 'queryauth'
+    else:
+        method = 'query'
+
+    if token is not None:
+        user, passwd = get_auth_credentials(
+            token, url=url, site=site, majorversion=majorversion)
+
+    url = fillurl(url, site, 'event', majorversion, method=method)
+
+    params = fix_params(kwargs)
+
+    return _request(url, user=user, passwd=passwd, **params)

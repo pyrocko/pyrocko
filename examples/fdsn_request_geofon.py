@@ -1,15 +1,25 @@
 from pyrocko.client import fdsn
-from pyrocko import util, io, trace
+from pyrocko import util, io, trace, model
+from pyrocko.io import quakeml
 
 tmin = util.stt('2014-01-01 16:10:00.000')
 tmax = util.stt('2014-01-01 16:39:59.000')
 
-# select stations by their NSLC id and wildcards (asterisk)
+# request events at IRIS for the given time span
+request_event = fdsn.event(
+    site='iris', starttime=tmin, endtime=tmax)
+
+# parse QuakeML and extract pyrocko events
+events = quakeml.QuakeML.load_xml(request_event).get_pyrocko_events()
+model.dump_events(events, 'iris-events.pf')
+
+
+# select stations by their NSLC id and wildcards (asterisk) for waveform
+# download
 selection = [
     ('*', 'HMDT', '*', '*', tmin, tmax),    # all available components
     ('GE', 'EIL', '*', '*Z', tmin, tmax),   # all vertical components
 ]
-
 
 # Restricted access token
 # token = open('token.asc', 'rb').read()
