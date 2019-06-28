@@ -336,7 +336,7 @@ def dataselect(url=g_url, site=g_default_site, majorversion=1, selection=None,
         return _request(url, user=user, passwd=passwd, **params)
 
 
-def event(url=g_url, site=g_default_site, majorversion=1, selection=None,
+def event(url=g_url, site=g_default_site, majorversion=1,
           user=None, passwd=None, token=None, **kwargs):
 
     '''Query FDSN web service for events
@@ -348,7 +348,7 @@ def event(url=g_url, site=g_default_site, majorversion=1, selection=None,
     '''
 
     allowed_kwargs = {
-        'starttime', 'endtime', 'minlatitude', 'maxlatitue',
+        'starttime', 'endtime', 'minlatitude', 'maxlatitude',
         'minlongitude', 'maxlongitude', 'latitude', 'longitude',
         'minradius', 'maxradius', 'mindepth', 'maxdepth', 'minmagnitude',
         'maxmagnitude', 'magnitudetype', 'eventtype', 'includeallorigins',
