@@ -47,7 +47,7 @@ class UrlsTestCase(unittest.TestCase):
 
                 f = urlopen(req)
                 f.close()
-            except HTTPError as e:
+            except Exception as e:
                 logger.warn('%s - %s referenced in pyrocko.%s' %
                             (e, url, label))
 
