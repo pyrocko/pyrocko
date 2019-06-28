@@ -244,7 +244,7 @@ class Crust2(object):
         self._typemap = None
         self._load_crustal_model()
 
-    def get_profile(self, *args):
+    def get_profile(self, *args, **kwargs):
         '''
         Get crustal profile at a specific location or raw profile for given
         key.
@@ -255,8 +255,13 @@ class Crust2(object):
         :rtype: instance of :py:class:`Crust2Profile`
         '''
 
+        lat = kwargs.pop('lat', None)
+        lon = kwargs.pop('lon', None)
+
         if len(args) == 2:
             lat, lon = args
+
+        if lat is not None and lon is not None:
             return self._typemap[self._indices(float(lat), float(lon))]
         else:
             return self._raw_profiles[args[0]]
@@ -363,14 +368,14 @@ def get_profile_keys():
     return list(crust2.profile_keys)
 
 
-def get_profile(*args):
+def get_profile(*args, **kwargs):
     '''Get Crust2x2 profile for given location or profile key.
 
     Get profile for (lat,lon) or raw profile for given string key.
     '''
 
     crust2 = Crust2.instance()
-    return crust2.get_profile(*args)
+    return crust2.get_profile(*args, **kwargs)
 
 
 def plot_crustal_thickness(crust2=None, filename='crustal_thickness.pdf'):
