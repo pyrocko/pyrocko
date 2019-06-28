@@ -4,16 +4,18 @@ from pyrocko.guts import Float, Int
 from pyrocko import moment_tensor, gf
 
 from .base import SourceGenerator
-from ..base import ScenarioError
 
 km = 1e3
 guts_prefix = 'pf.scenario'
 
 
 class RectangularSourceGenerator(SourceGenerator):
-    depth_min = Float.T(default=0.0)
-    depth_max = Float.T(default=5*km)
-    decimation_factor = Int.T(default=2)
+    depth_min = Float.T(
+        default=0.0)
+    depth_max = Float.T(
+        default=5*km)
+    decimation_factor = Int.T(
+        default=4)
 
     strike = Float.T(
         optional=True)
@@ -23,6 +25,7 @@ class RectangularSourceGenerator(SourceGenerator):
         optional=True)
     depth = Float.T(
         optional=True)
+
     width = Float.T(
         optional=True)
     length = Float.T(
@@ -50,7 +53,7 @@ class RectangularSourceGenerator(SourceGenerator):
             dip = rstate.uniform(0., 90.)
         else:
             if None in (self.strike, self.dip, self.rake):
-                raise ScenarioError(
+                raise ValueError(
                     'RectangularFaultGenerator: '
                     'strike, dip, rake'
                     ' must be used in combination')
@@ -82,5 +85,5 @@ class RectangularSourceGenerator(SourceGenerator):
                 L='+p2p,black',
                 W='1p,black',
                 G='black',
-                t=60,
+                t=50,
                 *automap.jxyr)

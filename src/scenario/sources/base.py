@@ -22,15 +22,19 @@ class SourceGenerator(LocationGenerator):
     time_min = Timestamp.T(default=util.str_to_time('2017-01-01 00:00:00'))
     time_max = Timestamp.T(default=util.str_to_time('2017-01-03 00:00:00'))
 
-    magnitude_min = Float.T(default=4.0)
-    magnitude_max = Float.T(default=0.0)
+    magnitude_min = Float.T(default=1.0)
+    magnitude_max = Float.T(default=4.0)
     b_value = Float.T(
         optional=True, help='Gutenberg Richter magnitude distribution.')
 
     def __init__(self, *args, **kwargs):
         super(SourceGenerator, self).__init__(*args, **kwargs)
         if self.b_value and self.magnitude_max:
-            raise Exception('b_value and magnitude_max are mutually exclusive')
+            raise ValueError(
+                'b_value and magnitude_max are mutually exclusive')
+        if self.magnitude_min > self.magnitude_max:
+            raise ValueError(
+                'attribute_min is greater then magnitude_max')
 
     def draw_magnitude(self, rstate):
         if self.b_value is None:
