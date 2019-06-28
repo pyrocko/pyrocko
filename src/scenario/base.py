@@ -26,7 +26,7 @@ def get_gsshg():
     global coastlines
     if coastlines is None:
         logger.debug('Initialising GSHHG database.')
-        coastlines = gshhg.GSHHG.low()
+        coastlines = gshhg.GSHHG.intermediate()
     return coastlines
 
 

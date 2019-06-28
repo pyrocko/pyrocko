@@ -122,7 +122,7 @@ def command_init(args):
         parser.print_help()
         sys.exit(1)
 
-    scenario_dims = [52, 5.4, 90.]
+    scenario_dims = [52., 5.4, 90.]
     scenario_dims[:len(args[1:])] = map(float, args[1:])
 
     project_dir = args[0]
@@ -165,7 +165,9 @@ def command_fill(args):
     scenario.ensure_gfstores(interactive=True)
     scenario.dump_data(
         path=project_dir, overwrite=options.force)
-    scenario.make_map(op.join(project_dir, 'map.pdf'))
+
+    scenario.make_map([op.join(project_dir, 'map.pdf'),
+                       op.join(project_dir, 'map.ps')])
 
 
 def command_map(args):
@@ -187,7 +189,8 @@ def command_map(args):
 
     scenario = guts.load(filename=fn)
     scenario.init_modelling(engine)
-    scenario.make_map(op.join(project_dir, 'map.pdf'))
+    scenario.make_map([op.join(project_dir, 'map.pdf'),
+                       op.join(project_dir, 'map.ps')])
 
 
 def command_snuffle(args):

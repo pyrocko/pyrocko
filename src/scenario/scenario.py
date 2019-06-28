@@ -169,8 +169,11 @@ class ScenarioGenerator(LocationGenerator):
             logger.warning('Cannot download topography data (authentication '
                            'required). Could not plot map.')
 
-    def draw_map(self, fn):
+    def draw_map(self, fns):
         from pyrocko.plot import automap
+
+        if isinstance(fns, str):
+            fns = [fns]
 
         lat, lon = self.get_center_latlon()
         radius = self.get_radius()
@@ -201,7 +204,8 @@ class ScenarioGenerator(LocationGenerator):
         #                L=True,
         #                *m.jxyr)
 
-        m.save(fn)
+        for fn in fns:
+            m.save(fn)
 
     @property
     def stores_wanted(self):
