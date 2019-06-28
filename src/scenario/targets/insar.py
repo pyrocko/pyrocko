@@ -35,7 +35,6 @@ class ScenePatch(Object):
     apogee = Float.T(
         help='Apogee of the satellite in [m].')
     swath_width = Float.T(
-        default=250*km,
         help='Swath width in [m].')
     track_length = Float.T(
         help='Track length in [m].')
@@ -86,7 +85,7 @@ class ScenePatch(Object):
                     orbital_node=patch.orbital_node,
                     scene_id='pyrocko_scenario_%s'
                              % self.scene_patch.orbital_node,
-                    satellite_name='Sentinel-1 (Scenario)'),
+                    satellite_name='Sentinel-1 (pyrocko-scenario)'),
                 frame=FrameConfig(
                     llLat=float(llLat),
                     llLon=float(llLon),
@@ -231,6 +230,9 @@ class ScenePatch(Object):
             raise AttributeError(
                 'Orbital node %s not defined!' % self.orbital_node)
 
+        theta[~self.get_mask()] = num.nan
+        phi[~self.get_mask()] = num.nan
+
         return theta, phi
 
     def get_target(self):
@@ -356,7 +358,7 @@ class InSARGenerator(TargetGenerator):
              'Defaults to Sentinel-1 Interfeometric Wide Swath Mode (IW).'
              ' (IW; 250 km).')
     track_length = Float.T(
-        default=150*km,
+        default=250*km,
         help='Track length in [m]. Defaults to 200 km.')
     incident_angle = Float.T(
         default=29.1,
@@ -452,8 +454,8 @@ class InSARGenerator(TargetGenerator):
         tmin, tmax = self.get_time_range(sources)
         tts = util.time_to_str
 
-        fn_tpl = op.join(path_insar, 'insar-scene-{orbital_node}_%s_%s'
-                         % (tts(tmin), tts(tmax)))
+        fn_tpl = op.join(path_insar, 'colosseo-scene-{orbital_node}_%s_%s'
+                         % (tts(tmin, '%Y-%m-%d'), tts(tmax, '%Y-%m-%d')))
 
         def scene_fn(track):
             return fn_tpl.format(orbital_node=track.lower())
@@ -475,3 +477,4 @@ class InSARGenerator(TargetGenerator):
 
     def add_map_artists(self, engine, sources, automap):
         logger.warning('InSAR mapping is not implemented!')
+        return None
