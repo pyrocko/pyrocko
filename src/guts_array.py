@@ -9,6 +9,7 @@ from builtins import str as newstr
 import numpy as num
 from io import BytesIO
 from base64 import b64decode, b64encode
+import binascii
 
 from .guts import TBase, Object, ValidationError, literal
 
@@ -54,7 +55,8 @@ class Array(Object):
             self.shape = shape
             self.dtype = dtype
             assert serialize_as in (
-                'table', 'base64', 'list', 'npy', 'base64+meta')
+                'table', 'base64', 'list', 'npy',
+                'base64+meta', 'base64-compat')
             self.serialize_as = serialize_as
             self.serialize_dtype = serialize_dtype
 
@@ -81,6 +83,17 @@ class Array(Object):
                     data = b64decode(val)
                     val = num.fromstring(
                         data, dtype=self.serialize_dtype).astype(self.dtype)
+
+                elif self.serialize_as == 'base64-compat':
+                    try:
+                        data = b64decode(val)
+                        val = num.fromstring(
+                            data,
+                            dtype=self.serialize_dtype).astype(self.dtype)
+                    except binascii.Error:
+                        val = num.loadtxt(
+                            BytesIO(val.encode('utf-8')),
+                            dtype=self.dtype, ndmin=ndim)
 
                 elif self.serialize_as == 'npy':
                     data = b64decode(val)
@@ -166,7 +179,8 @@ class Array(Object):
                 out = BytesIO()
                 num.savetxt(out, val, fmt='%12.7g')
                 return literal(out.getvalue().decode('utf-8'))
-            elif self.serialize_as == 'base64':
+            elif self.serialize_as == 'base64' \
+                    or self.serialize_as == 'base64-compat':
                 data = val.astype(self.serialize_dtype).tostring()
                 return literal(b64encode(data).decode('utf-8'))
             elif self.serialize_as == 'list':

@@ -718,7 +718,8 @@ class GutsTestCase(unittest.TestCase):
 
         shapes = [(None,), (1,), (10,), (1000,)]
         for shape in shapes:
-            for serialize_as in ('base64', 'table', 'npy', 'base64+meta'):
+            for serialize_as in ('base64', 'table', 'npy',
+                                 'base64+meta', 'base64-compat'):
                 class A(Object):
                     xmltagname = 'aroot'
                     arr = Array.T(
