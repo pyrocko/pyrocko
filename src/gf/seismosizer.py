@@ -2191,8 +2191,11 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
         default='True',
         optional=True,
         help='Indicator if source points on secondary slip patches can be'
-             'activated by the main slip patch or only the nearest source'
-             'point of the secondary slip patch.')
+             'activated by any active near source point'
+             '(only one activation per source point) or if a slip patch can'
+             'be actived once from the outside and rupture propagtes only'
+             'in the slip patch by means of source points inside the slip'
+             'patch  the nearest.')
 
     nucleation_x = Float.T(
         optional=True,
@@ -2444,7 +2447,7 @@ class MultiEllipticalSource(SourceWithDerivedMagnitude):
                             move_iterative = False
                 else:
                     offset = [self.north_shift, self.east_shift]
-            if self.ellipse_distances is not None:
+            if len(self.ellipse_distances) != 0:
                 offset = [self.ellipse_distances[n][0],
                           self.ellipse_distances[n][1]]
 
