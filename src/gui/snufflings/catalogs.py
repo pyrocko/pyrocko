@@ -6,7 +6,8 @@ from __future__ import absolute_import
 from ..snuffling import Snuffling, Param, Choice
 from ..util import EventMarker
 
-from pyrocko.client import catalog
+from pyrocko.client import catalog, fdsn
+from pyrocko.io import quakeml
 
 
 class CatalogSearch(Snuffling):
@@ -60,7 +61,11 @@ class CatalogSearch(Snuffling):
             'Saxony (Uni-Leipzig)': catalog.Saxony(),
             }
 
+        fdsn_has_events = ['ISC', 'SCEDC', 'NCEDC', 'IRIS', 'GEONET']
+
         catkeys = sorted(self.catalogs.keys())
+        catkeys.extend(fdsn_has_events)
+
         self.set_name('Catalog Search')
         self.add_parameter(Choice('Catalog', 'catalog', catkeys[0], catkeys))
         self.add_parameter(Param('Min Magnitude', 'magmin', 0, 0, 10))
@@ -71,15 +76,26 @@ class CatalogSearch(Snuffling):
         viewer = self.get_viewer()
         tmin, tmax = viewer.get_time_range()
 
-        cat = self.catalogs[self.catalog]
-        event_names = cat.get_event_names(
-            time_range=(tmin, tmax),
-            magmin=self.magmin)
+        cat = self.catalogs.get(self.catalog, None)
+        if cat:
+            event_names = cat.get_event_names(
+                time_range=(tmin, tmax),
+                magmin=self.magmin)
+            for event_name in event_names:
+                event = cat.get_event(event_name)
+                marker = eventmarker(event)
+                self.add_markers([marker])
+        else:
+            request = fdsn.event(
+                starttime=tmin, endtime=tmax, site=self.catalog.lower(),
+                minmagnitude=self.magmin)
 
-        for event_name in event_names:
-            event = cat.get_event(event_name)
-            marker = EventMarker(event)
-            self.add_markers([marker])
+            qml = quakeml.QuakeML.load_xml(request)
+            events = qml.get_pyrocko_events()
+
+            for event in events:
+                marker = EventMarker(event)
+                self.add_markers([marker])
 
 
 def __snufflings__():
