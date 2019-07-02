@@ -107,9 +107,17 @@ class Material(object):
     :param qk: bulk attenuation Qk
     :param qmu: shear attenuation Qmu
 
+    :param eta1: Burgers rheology, transient viscosity,
+        <= 0 means infinite value
+    :param eta2: Burgers rheology, steady-state viscosity
+    :param alpha: Ratio between the effective and unreleaxed shear modulus,
+        mu1/(mu1 + mu2)
+
     If no velocities and no lame parameters are given, standard crustal values
     of vp = 5800 m/s and vs = 3200 m/s are used.  If no Q values are given,
-    standard crustal values of qp = 1456 and qs = 600 are used.
+    standard crustal values of qp = 1456 and qs = 600 are used. If no Burgers
+    material parameters are given, viscosities of eta1=0, eta2=0 and alpha=1
+    are used.
 
     Everything is in SI units (m/s, Pa, kg/m^3) unless explicitly stated.
 
@@ -124,7 +132,7 @@ class Material(object):
 
     def __init__(
             self, vp=None, vs=None, rho=2600., qp=None, qs=None, poisson=None,
-            lame=None, qk=None, qmu=None):
+            lame=None, qk=None, qmu=None, eta1=None, eta2=None, alpha=None):
 
         parstore_float(locals(), self, 'vp', 'vs', 'rho', 'qp', 'qs')
 
@@ -217,6 +225,20 @@ class Material(object):
         else:
             raise InvalidArguments(
                 'Invalid combination of input parameters in material '
+                'definition.')
+
+        if eta1 is None and eta2 is None and alpha is None:
+            self.eta1 = 0.
+            self.eta2 = 0.
+            self.alpha = 1.
+
+        elif eta1 is not None and eta2 is not None and alpha is not None:
+            self.eta1 = eta1
+            self.eta2 = eta2
+            self.alpha = alpha
+        else:
+            raise InvalidArguments(
+                'Invalid combination of Burgers materials parameters '
                 'definition.')
 
     def astuple(self):
@@ -3421,8 +3443,11 @@ class LayeredModel(object):
 
         return self
 
-    def to_scanlines(self):
+    def to_scanlines(self, burgers_material=False):
         def fmt(z, m):
+            if burgers_material:
+                return (z, m.vp, m.vs, m.rho, m.qp, m.qs, m.eta1, m.eta2,
+                        m.alpha)
             return (z, m.vp, m.vs, m.rho, m.qp, m.qs)
 
         last = None
@@ -3845,6 +3870,9 @@ def read_nd_model(fn):
 
     Interface names are translated as follows: ``'mantle'`` -> ``'moho'``,
     ``'outer-core'`` -> ``'cmb'``, ``'inner-core'`` -> ``'icb'``.
+
+    The format has been modified to include Burgers materials parameters in
+    columns 7 (eta1), 8 (eta2) and 9. eta(3).
     '''
     with open(fn, 'r') as f:
         for x in read_nd_model_fh(f):
@@ -3863,13 +3891,18 @@ def read_nd_model_fh(f):
     name = None
     for line in f:
         toks = line.split()
-        if len(toks) == 6 or len(toks) == 4:
+        if len(toks) == 9 or len(toks) == 6 or len(toks) == 4:
             z, vp, vs, rho = [float(x) for x in toks[:4]]
             qp, qs = None, None
-            if len(toks) == 6:
-                qp, qs = [float(x) for x in toks[4:]]
+            eta1, eta2, alpha = None, None, None
+            if len(toks) == 6 or len(toks) == 9:
+                qp, qs = [float(x) for x in toks[4:6]]
+            if len(toks) == 9:
+                eta1, eta2, alpha = [float(x) for x in toks[6:]]
 
-            material = Material(vp*1000., vs*1000., rho*1000., qp, qs)
+            material = Material(
+                vp*1000., vs*1000., rho*1000., qp, qs,
+                eta1=eta1, eta2=eta2, alpha=alpha)
             yield z*1000., material, name
             name = None
         elif len(toks) == 1:
@@ -3910,16 +3943,24 @@ def from_crust2x2_profile(profile, depthmantle=50000):
             z += dz
 
 
-def write_nd_model_fh(mod, fh):
+def write_nd_model_fh(mod, fh, burgers_material=False):
     def fmt(z, mat):
-        return ' '.join(
+        rstr = ' '.join(
             util.gform(x, 4)
-            for x in [
+            for x in (
                 z/1000.,
                 mat.vp/1000.,
                 mat.vs/1000.,
                 mat.rho/1000.,
-                mat.qp, mat.qs]).rstrip() + '\n'
+                mat.qp, mat.qs))
+        if burgers_material:
+            rstr += ' '.join(
+                util.gform(x, 4)
+                for x in (
+                    mat.eta1,
+                    mat.eta2,
+                    mat.alpha))
+        return rstr.rstrip() + '\n'
 
     translate = {
         'moho': 'mantle',
@@ -3945,15 +3986,15 @@ def write_nd_model_fh(mod, fh):
         fh.write(fmt(last.z, last.mbelow))
 
 
-def write_nd_model_str(mod):
+def write_nd_model_str(mod, burgers_material=False):
     f = StringIO()
-    write_nd_model_fh(mod, f)
+    write_nd_model_fh(mod, f, burgers_material)
     return f.getvalue()
 
 
-def write_nd_model(mod, fn):
+def write_nd_model(mod, fn, burgers_material=False):
     with open(fn, 'w') as f:
-        write_nd_model_fh(mod, f)
+        write_nd_model_fh(mod, f, burgers_material)
 
 
 def builtin_models():
