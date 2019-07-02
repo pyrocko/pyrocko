@@ -19,6 +19,7 @@ from tempfile import mkdtemp
 from subprocess import Popen, PIPE
 
 from pyrocko.guts import Float, Int, Tuple, List, Object, String
+from pyrocko.guts_array import literal
 from pyrocko.model import Location
 from pyrocko import gf, util, trace, cake
 
@@ -70,18 +71,12 @@ def str_str_vals(vals):
 
 
 def cake_model_to_config(mod):
-    # fix elasticity params here !!! todo future include properly into cake ...
-    eta1 = 0.
-    eta2 = 0.
-    alpha = 1.
-
-    k = 1000.
     srows = []
-    for i, row in enumerate(mod.to_scanlines()):
-        depth, vp, vs, rho, qp, qs = row
+    for ir, row in enumerate(mod.to_scanlines(burgers_material=True)):
+        depth, vp, vs, rho, qp, qs, eta1, eta2, alpha = row
         # replace qs with etas = 0.
-        row = [depth / k, vp / k, vs / k, rho, eta1, eta2, alpha]
-        srows.append('%i %15s' % (i + 1, str_float_vals(row)))
+        row = [depth / km, vp / km, vs / km, rho, eta1, eta2, alpha]
+        srows.append('%i %15s' % (ir + 1, str_float_vals(row)))
 
     return '\n'.join(srows), len(srows)
 
@@ -145,7 +140,7 @@ class PsGrnConfigFull(PsGrnConfig):
     @staticmethod
     def example():
         conf = PsGrnConfigFull()
-        conf.earthmodel_1d = cake.load_model().extract(depth_max=100 * km)
+        conf.earthmodel_1d = cake.load_model().extract(depth_max=100*km)
         conf.psgrn_outdir = 'TEST_psgrn_functions/'
         return conf
 
@@ -578,7 +573,7 @@ class PsCmpRectangularSource(Location, gf.seismosizer.Cloneable):
           >>> from pyrocko import gf
           >>> s = gf.DCSource()
           >>> s.update(strike=66., dip=33.)
-          >>> print s
+          >>> print(s)
           --- !pf.DCSource
           depth: 0.0
           time: 1970-01-01 00:00:00
@@ -1544,6 +1539,11 @@ def init(store_dir, variant):
         earthmodel_1d=cake.load_model(fn=None, crust2_profile=(54., 23.)),
         modelling_code_id='psgrn_pscmp.%s' % variant,
         tabulated_phases=[])    # dummy list
+
+    def to_save_burger(val):
+        return literal(cake.write_nd_model_str(val, burgers_material=True))
+
+    config._ConfigTypeA__T.cls.earthmodel_1d.to_save = to_save_burger
 
     c.validate()
     config.validate()
