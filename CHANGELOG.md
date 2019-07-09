@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [unreleased]
 
+### Added
+- `fdsn` adding event query
+- `snuffling.catalog` adding FDSN event query
+- Snuffler adding `trace_scale` to configuration
+
 ## [v2019.05.03] 2019-05-03
 
 ### Added
@@ -13,7 +18,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 - Improved compatibility with Anaconda.
-
 
 ## [v2019.05.02] 2019-05-02
 
@@ -29,7 +33,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - quakeml phase marker extraction
 - random draw of magnitude from gutenberg richter distribution and use of it in scenario
 - handling of sparse gnss components
-
 
 ### Changed
 - gf:
