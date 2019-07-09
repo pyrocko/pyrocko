@@ -70,6 +70,7 @@ class SnufflerConfig(ConfigBase):
     demean = Bool.T(default=True)
     show_scale_ranges = Bool.T(default=False)
     show_scale_axes = Bool.T(default=False)
+    trace_scale = String.T(default='individual_scale')
     show_boxes = Bool.T(default=True)
     clip_traces = Bool.T(default=True)
     first_start = Bool.T(default=True)
