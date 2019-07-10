@@ -820,6 +820,7 @@ def MakePileViewerMainClass(base):
 
             self.scaling_key = self.menuitems_scaling[0][1]
             self.scaling_hooks = {}
+            self.scalingmode_change()
 
             self.menu.addSeparator()
 
