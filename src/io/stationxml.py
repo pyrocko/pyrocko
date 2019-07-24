@@ -1431,6 +1431,11 @@ def load_channel_table(stream):
             scale_freq = None
 
         try:
+            depth = float(dep)
+        except ValueError:
+            depth = 0.0
+
+        try:
             if net not in networks:
                 network = Network(code=net)
             else:
@@ -1459,7 +1464,7 @@ def load_channel_table(stream):
                 latitude=lat,
                 longitude=lon,
                 elevation=ele,
-                depth=dep,
+                depth=depth,
                 azimuth=azi,
                 dip=dip,
                 sensor=Equipment(description=sens),
