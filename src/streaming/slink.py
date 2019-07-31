@@ -5,17 +5,16 @@
 from __future__ import absolute_import
 
 import subprocess
-import calendar
 import time
 import os
 import signal
 import logging
+import tempfile
 
-import numpy as num
-
-from pyrocko import trace
+from pyrocko.io import mseed
 
 logger = logging.getLogger('pyrocko.streaming.slink')
+RECORD_LENGTH = 512
 
 
 def preexec():
@@ -67,7 +66,7 @@ class SlowSlink(object):
         else:
             streams = []
 
-        cmd = ['slinktool', '-u'] + streams + [self.host+':'+str(self.port)]
+        cmd = ['slinktool', '-o', '-'] + streams + [self.host+':'+str(self.port)]
 
         logger.debug('Starting %s' % ' '.join(cmd))
         self.running = True
@@ -109,48 +108,20 @@ class SlowSlink(object):
 
     def process(self):
         try:
-            line = self.slink.stdout.readline().decode()
+            line = self.slink.stdout.read(RECORD_LENGTH)
 
             if not line:
                 return False
 
-            toks = line.split(', ')
-            if len(toks) != 1:
-                nslc = tuple(toks[0].split('_'))
-                if len(nslc) == 3:
-                    nslc = nslc[0], nslc[1], '', nslc[2]
+            with tempfile.NamedTemporaryFile(prefix='slink-stream') as f:
+                f.write(line)
+                f.flush()
 
-                nsamples = int(toks[1].split()[0])
-                rate = float(toks[2].split()[0])
-                st, sms = toks[3].split()[0].split('.')
-                us = int(sms)
-                tstamp = calendar.timegm(time.strptime(
-                    st, '%Y,%j,%H:%M:%S'))+us*0.000001
+                traces = mseed.iload(f.name)
+                for tr in traces:
+                    self.got_trace(tr)
 
-                if nsamples != 0:
-                    self.header = nslc, nsamples, rate, tstamp
-            else:
-                if self.header:
-                    self.vals.extend([float(x) for x in line.split()])
-
-                    if len(self.vals) == self.header[1]:
-                        nslc, nsamples, rate, tstamp = self.header
-                        deltat = 1.0/rate
-                        net, sta, loc, cha = nslc
-                        tr = trace.Trace(
-                            network=net,
-                            station=sta,
-                            location=loc,
-                            channel=cha,
-                            tmin=tstamp,
-                            deltat=deltat,
-                            ydata=num.array(self.vals))
-
-                        self.got_trace(tr)
-                        self.vals = []
-                        self.header = None
-
-            return True
+                return True
 
         except Exception as e:
             logger.debug(e)
