@@ -8,6 +8,7 @@ import subprocess
 import time
 import os
 import signal
+import select
 import logging
 import tempfile
 
@@ -108,10 +109,11 @@ class SlowSlink(object):
 
     def process(self):
         try:
-            line = self.slink.stdout.read(RECORD_LENGTH)
-
-            if not line:
+            ready, _, _ = select.select([self.slink.stdout], [], [], .2)
+            if not ready:
                 return False
+
+            line = self.slink.stdout.read(RECORD_LENGTH)
 
             with tempfile.NamedTemporaryFile(prefix='slink-stream') as f:
                 f.write(line)
