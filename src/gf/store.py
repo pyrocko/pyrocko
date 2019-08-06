@@ -1861,10 +1861,17 @@ use `fomosto tttlsd` to fix holes.''' % w
         ntargets = multi_location.ntargets
         source_terms = source.get_source_terms(self.config.component_scheme)
         # TODO: deal with delays for snapshots > 1 sample
+
         if itsnapshot is not None:
             delays = source.times
+
+            # Fringe case where we sample at sample 0 and sample 1
+            tsnapshot = itsnapshot * self.config.deltat
+            if delays.max() == tsnapshot and delays.min() != tsnapshot:
+                delays[delays == delays.max()] -= self.config.deltat
+
         else:
-            delays = source.times*0
+            delays = source.times * 0
             itsnapshot = 1
 
         if ntargets == 0:

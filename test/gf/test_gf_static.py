@@ -6,6 +6,7 @@ import cProfile
 import math
 import logging
 import shutil
+import time
 
 from tempfile import mkdtemp
 from ..common import Benchmark
@@ -453,6 +454,53 @@ mantle
             plt.show()
 
         # plot(res1['displacement.n'])
+
+    def test_static_timing(self):
+        src_length = 5 * km
+        src_width = 2 * km
+        nstations = 100
+        day = 3600 * 24
+        interp = ['nearest_neighbor', 'multilinear']
+        interpolation = interp[0]
+
+        source = gf.RectangularSource(
+            lat=0., lon=0.,
+            north_shift=0., east_shift=0., depth=6.5*km,
+            width=src_width, length=src_length,
+            dip=90., rake=90., strike=90.,
+            slip=1.,
+            time=time.time()-day)
+
+        source = gf.DCSource(
+            lat=0., lon=0.,
+            north_shift=0., east_shift=0., depth=6.5*km,
+            dip=90., rake=90., strike=90.,
+            time=time.time()-day)
+
+        lats = random.uniform(-.2, .2, nstations)
+        lons = random.uniform(-.2, .2, nstations)
+
+        target_1 = gf.StaticTarget(
+            lats=lats,
+            lons=lons,
+            interpolation=interpolation,
+            tsnapshot=time.time() + day)
+
+        target_2 = gf.StaticTarget(
+            lats=lats,
+            lons=lons,
+            interpolation=interpolation,
+            tsnapshot=time.time())
+        print('time.source', source.time)
+
+        engine = gf.LocalEngine(store_dirs=['/home/marius/Development/testing/gf/ak135_static/'])
+        # engine = gf.LocalEngine(store_dirs=[self.get_pscmp_store_dir()])W
+        res = engine.process(source, [target_1, target_2], nprocs=0)\
+
+        statics_1, statics_2 = res.static_results()
+        num.testing.assert_equal(
+            statics_1.result['displacement.n'],
+            statics_2.result['displacement.n'])
 
 
 if __name__ == '__main__':
