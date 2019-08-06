@@ -389,7 +389,7 @@ class PoelRunner(object):
 Available fomosto backends and download links to the modelling codes are listed
 on
 
-      https://pyrocko.org/current/apps/fomosto/backends.html
+      https://pyrocko.org/docs/current/apps/fomosto/backends.html
 
 ''' % program)
 
