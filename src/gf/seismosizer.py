@@ -216,7 +216,6 @@ def discretize_rect_source(deltas, deltat, time, north, east, depth,
     points2 = num.repeat(points, nt, axis=0)
     times2 = num.repeat(times, nt) + num.tile(xtau, n)
     amplitudes2 = num.tile(amplitudes, n)
-    amplitudes2 /= num.sum(amplitudes2)
 
     points2[:, 0] += north
     points2[:, 1] += east
@@ -1060,7 +1059,8 @@ class Source(Location, Cloneable):
         Return the STF applied before stacking of the Green's functions.
 
         This STF is used during discretization of the parameterized source
-        models, i.e. to produce a temporal distribution of point sources.
+        models, i.e. to produce a temporal distribution of point sources
+        (Not implemented yet).
 
         Handling of the STF before stacking of the GFs is less efficient but
         allows to use different source time functions for different parts of
@@ -1076,8 +1076,7 @@ class Source(Location, Cloneable):
         '''
         Return the STF applied after stacking of the Green's fuctions.
 
-        This STF is used in the post-processing of the synthetic seismograms
-        (Not implemented yet).
+        This STF is used in the post-processing of the synthetic seismograms.
 
         Handling of the STF after stacking of the GFs is usually more efficient
         but is only possible when a common STF is used for all subsources.
@@ -1970,8 +1969,10 @@ class RectangularSource(SourceWithDerivedMagnitude):
                 points=points,
                 interpolation=interpolation)
 
-            amplitudes = dl * dw * shear_moduli * self.slip
+            amplitudes *= dl * dw * shear_moduli * self.slip
         else:
+            # normalization to retain total moment
+            amplitudes /= num.sum(amplitudes)
             amplitudes *= self.get_moment(store, target)
 
         return points, times, amplitudes, dl, dw

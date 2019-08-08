@@ -58,6 +58,7 @@ class GFPsgrnPscmpTestCase(unittest.TestCase):
     tempdirs = []
 
     def __init__(self, *args, **kwargs):
+        self.pscmp_store_dir = None
         unittest.TestCase.__init__(self, *args, **kwargs)
 
     @classmethod
@@ -65,7 +66,13 @@ class GFPsgrnPscmpTestCase(unittest.TestCase):
         for d in cls.tempdirs:
             shutil.rmtree(d)
 
-    def test_fomosto_vs_psgrn_pscmp(self):
+    def get_pscmp_store_info(self):
+        if self.pscmp_store_dir is None:
+            self.pscmp_store_dir, self.psgrn_config = self._create_psgrn_pscmp_store()
+
+        return self.pscmp_store_dir, self.psgrn_config
+
+    def _create_psgrn_pscmp_store(self):
 
         mod = cake.LayeredModel.from_scanlines(cake.read_nd_model_str('''
  0. 5.8 3.46 2.6 1264. 600.
@@ -130,6 +137,12 @@ mantle
             else:
                 raise
 
+        return store_dir, c
+
+    def test_fomosto_vs_psgrn_pscmp(self):
+
+        store_dir, c = self.get_pscmp_store_info()
+
         origin = gf.Location(
             lat=10.,
             lon=-15.)
@@ -139,12 +152,13 @@ mantle
             lat=origin.lat,
             lon=origin.lon,
             depth=2. * km,
-            width=2. * km,
-            length=5. * km,
+            width=0.2 * km,
+            length=0.5 * km,
             rake=90., dip=45., strike=45.,
             slip=1.)
 
-        source = gf.RectangularSource(**TestRF)
+        source_plain = gf.RectangularSource(**TestRF)
+        source_with_time = gf.RectangularSource(time=123.5, **TestRF)
 
         neast = 40
         nnorth = 40
@@ -152,22 +166,7 @@ mantle
         N, E = num.meshgrid(num.linspace(-20. * km, 20. * km, nnorth),
                             num.linspace(-20. * km, 20. * km, neast))
 
-        starget = gf.StaticTarget(
-            lats=num.array([origin.lat] * N.size),
-            lons=num.array([origin.lon] * N.size),
-            north_shifts=N.flatten(),
-            east_shifts=E.flatten(),
-            interpolation='nearest_neighbor')
-        engine = gf.LocalEngine(store_dirs=[store_dir])
-        t0 = time()
-        r = engine.process(source, starget)
-        t1 = time()
-        logger.info('pyrocko stacking time %f' % (t1 - t0))
-        un_fomosto = r.static_results()[0].result['displacement.n']
-        ue_fomosto = r.static_results()[0].result['displacement.e']
-        ud_fomosto = r.static_results()[0].result['displacement.d']
-
-        # test against direct pscmp output
+        # direct pscmp output
         lats, lons = ortd.ne_to_latlon(
             origin.lat, origin.lon, N.flatten(), E.flatten())
         pscmp_sources = [psgrn_pscmp.PsCmpRectangularSource(**TestRF)]
@@ -191,46 +190,28 @@ mantle
         ue_pscmp = ps2du[:, 1]
         ud_pscmp = ps2du[:, 2]
 
-        num.testing.assert_allclose(un_fomosto, un_pscmp, atol=0.002)
-        num.testing.assert_allclose(ue_fomosto, ue_pscmp, atol=0.002)
-        num.testing.assert_allclose(ud_fomosto, ud_pscmp, atol=0.002)
+        # test against engine
+        starget = gf.StaticTarget(
+            lats=num.array([origin.lat] * N.size),
+            lons=num.array([origin.lon] * N.size),
+            north_shifts=N.flatten(),
+            east_shifts=E.flatten(),
+            interpolation='nearest_neighbor')
 
-        # plotting
+        engine = gf.LocalEngine(store_dirs=[store_dir])
 
-#        uz_min = num.min(uz)
-#        uz_max = num.max(uz)
-#        uz2d_min = num.min(uz2d)
-#        uz2d_max = num.max(uz2d)
+        for source in [source_plain, source_with_time]:
+            t0 = time()
+            r = engine.process(source, starget)
+            t1 = time()
+            logger.info('pyrocko stacking time %f' % (t1 - t0))
+            un_fomosto = r.static_results()[0].result['displacement.n']
+            ue_fomosto = r.static_results()[0].result['displacement.e']
+            ud_fomosto = r.static_results()[0].result['displacement.d']
 
-#        uz_absmax = max(abs(uz_min), abs(uz_max))
-#        uz2d_absmax = max(abs(uz2d_min), abs(uz2d_max))
-
-#        levels = num.linspace(-uz_absmax, uz_absmax, 21)
-#        levels2d = num.linspace(-uz2d_absmax, uz2d_absmax, 21)
-
-#        from matplotlib import pyplot as plt
-
-#        fontsize = 10.
-#        plot.mpl_init(fontsize=fontsize)
-
-#        cmap = plt.cm.get_cmap('coolwarm')
-#        fig = plt.figure(figsize=plot.mpl_papersize('a4', 'landscape'))
-#        plot.mpl_margins(fig, w=14., h=6., units=fontsize)
-
-#        axes1 = fig.add_subplot(1, 2, 1, aspect=1.0)
-#        cs1 = axes1.contourf(
-#            easts / km, norths / km, uz, levels=levels, cmap=cmap)
-#        plt.colorbar(cs1)
-
-#        axes2 = fig.add_subplot(1, 2, 2, aspect=1.0)
-#        cs2 = axes2.contourf(
-#            easts / km, norths / km, uz2d, levels=levels2d, cmap=cmap)
-#        plt.colorbar(cs2)
-
-#        axes1.set_xlabel('Easting [km]')
-#        axes1.set_ylabel('Northing [km]')
-
-#        fig.savefig('staticGFvs2d_Afmu_diff.pdf')
+            num.testing.assert_allclose(un_fomosto, un_pscmp, atol=0.002)
+            num.testing.assert_allclose(ue_fomosto, ue_pscmp, atol=0.002)
+            num.testing.assert_allclose(ud_fomosto, ud_pscmp, atol=0.002)
 
 
 if __name__ == '__main__':
