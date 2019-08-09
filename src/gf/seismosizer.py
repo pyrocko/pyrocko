@@ -1444,6 +1444,7 @@ class RectangularExplosionSource(ExplosionSource):
             self.strike, self.dip, self.length, self.width, self.anchor,
             self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy)
 
+        amplitudes /= num.sum(amplitudes)
         amplitudes *= self.get_moment(store, target)
 
         return meta.DiscretizedExplosionSource(
