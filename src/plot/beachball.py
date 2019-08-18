@@ -883,7 +883,7 @@ if __name__ == '__main__':
     axes.set_ylim(-0.05 - nrows, nrows + 0.05)
 
     for ibeach, (name, mt) in enumerate(data):
-        irow = ibeach / ncols
+        irow = ibeach // ncols
         icol = ibeach % ncols
         plot_beachball_mpl(
             mt, axes,
