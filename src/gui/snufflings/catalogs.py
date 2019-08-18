@@ -83,7 +83,7 @@ class CatalogSearch(Snuffling):
                 magmin=self.magmin)
             for event_name in event_names:
                 event = cat.get_event(event_name)
-                marker = eventmarker(event)
+                marker = EventMarker(event)
                 self.add_markers([marker])
         else:
             request = fdsn.event(
