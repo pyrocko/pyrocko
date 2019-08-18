@@ -797,12 +797,12 @@ class Snuffling(object):
 
             for tr in traces:
                 try:
-                    skey = v.station_key(tr)
-                    if skey in stations:
-                        continue
+                    for skey in v.station_keys(tr):
+                        if skey in stations:
+                            continue
 
-                    station = v.get_station(skey)
-                    stations[skey] = station
+                        station = v.get_station(skey)
+                        stations[skey] = station
 
                 except KeyError:
                     s = 'No station information for station key "%s".' \

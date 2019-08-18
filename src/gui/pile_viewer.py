@@ -1236,20 +1236,28 @@ def MakePileViewerMainClass(base):
         def station_key(self, x):
             return x.network, x.station
 
+        def station_keys(self, x):
+            return [
+                (x.network, x.station, x.location),
+                (x.network, x.station)]
+
         def station_attrib(self, tr, getter, default_getter):
-            sk = self.station_key(tr)
-            if sk in self.stations:
-                station = self.stations[sk]
-                return getter(station)
-            else:
-                return default_getter(tr)
+            for sk in self.station_keys(tr):
+                if sk in self.stations:
+                    station = self.stations[sk]
+                    return getter(station)
+
+            return default_getter(tr)
 
         def get_station(self, sk):
             return self.stations[sk]
 
         def has_station(self, station):
-            sk = self.station_key(station)
-            return sk in self.stations
+            for sk in self.station_keys(station):
+                if sk in self.stations:
+                    return True
+
+            return False
 
         def station_latlon(self, tr, default_getter=lambda tr: (0., 0.)):
             return self.station_attrib(
@@ -1261,8 +1269,8 @@ def MakePileViewerMainClass(base):
 
         def add_stations(self, stations):
             for station in stations:
-                sk = self.station_key(station)
-                self.stations[sk] = station
+                for sk in self.station_keys(station):
+                    self.stations[sk] = station
 
             ev = self.get_active_event()
             if ev:
