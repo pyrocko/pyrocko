@@ -21,6 +21,7 @@ km = 1000.
 r2d = 180. / math.pi
 d2r = 1.0 / r2d
 km = 1000.
+mm = 1e-3
 
 
 def statics(engine, source, starget):
@@ -68,7 +69,8 @@ class GFPsgrnPscmpTestCase(unittest.TestCase):
 
     def get_pscmp_store_info(self):
         if self.pscmp_store_dir is None:
-            self.pscmp_store_dir, self.psgrn_config = self._create_psgrn_pscmp_store()
+            self.pscmp_store_dir, self.psgrn_config = \
+                self._create_psgrn_pscmp_store()
 
         return self.pscmp_store_dir, self.psgrn_config
 
@@ -155,7 +157,7 @@ mantle
             width=0.2 * km,
             length=0.5 * km,
             rake=90., dip=45., strike=45.,
-            slip=1.)
+            slip=num.random.uniform(1., 5.))
 
         source_plain = gf.RectangularSource(**TestRF)
         source_with_time = gf.RectangularSource(time=123.5, **TestRF)
@@ -191,27 +193,35 @@ mantle
         ud_pscmp = ps2du[:, 2]
 
         # test against engine
-        starget = gf.StaticTarget(
-            lats=num.array([origin.lat] * N.size),
-            lons=num.array([origin.lon] * N.size),
+        starget_nn = gf.StaticTarget(
+            lats=num.full(N.size, origin.lat),
+            lons=num.full(N.size, origin.lon),
             north_shifts=N.flatten(),
             east_shifts=E.flatten(),
             interpolation='nearest_neighbor')
+
+        starget_ml = gf.StaticTarget(
+            lats=num.full(N.size, origin.lat),
+            lons=num.full(N.size, origin.lon),
+            north_shifts=N.flatten(),
+            east_shifts=E.flatten(),
+            interpolation='multilinear')
 
         engine = gf.LocalEngine(store_dirs=[store_dir])
 
         for source in [source_plain, source_with_time]:
             t0 = time()
-            r = engine.process(source, starget)
+            r = engine.process(source, [starget_nn, starget_ml])
             t1 = time()
             logger.info('pyrocko stacking time %f' % (t1 - t0))
-            un_fomosto = r.static_results()[0].result['displacement.n']
-            ue_fomosto = r.static_results()[0].result['displacement.e']
-            ud_fomosto = r.static_results()[0].result['displacement.d']
+            for static_result in r.static_results():
+                un_fomosto = static_result.result['displacement.n']
+                ue_fomosto = static_result.result['displacement.e']
+                ud_fomosto = static_result.result['displacement.d']
 
-            num.testing.assert_allclose(un_fomosto, un_pscmp, atol=0.002)
-            num.testing.assert_allclose(ue_fomosto, ue_pscmp, atol=0.002)
-            num.testing.assert_allclose(ud_fomosto, ud_pscmp, atol=0.002)
+                num.testing.assert_allclose(un_fomosto, un_pscmp, atol=1*mm)
+                num.testing.assert_allclose(ue_fomosto, ue_pscmp, atol=1*mm)
+                num.testing.assert_allclose(ud_fomosto, ud_pscmp, atol=1*mm)
 
 
 if __name__ == '__main__':
