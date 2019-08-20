@@ -435,6 +435,37 @@ class GFSourcesTestCase(unittest.TestCase):
             m2 = dsource.centroid().pyrocko_moment_tensor().scalar_moment()
             assert abs(m1 - m2) < abs(m1 + m2) * 1e-6
 
+    def test_discretize_rect_source_stf(self):
+
+        store = self.dummy_homogeneous_store()
+        target = gf.Target(interpolation='nearest_neighbor')
+        stf = gf.HalfSinusoidSTF(duration=3.)
+
+        for source in [
+                gf.RectangularSource(
+                    depth=10*km,
+                    slip=0.5,
+                    width=5*km,
+                    length=5*km,
+                    stf=stf,
+                    stf_mode='pre'),
+                gf.RectangularSource(
+                    depth=10*km,
+                    magnitude=5.0,
+                    width=5*km,
+                    length=5*km,
+                    decimation_factor=2,
+                    stf=stf,
+                    stf_mode='pre')]:
+
+            dsource = source.discretize_basesource(store, target)
+            amplitudes = source._discretize(store, target)[2]
+            assert amplitudes[0] != amplitudes[1]
+
+            m1 = source.get_moment(store, target)
+            m2 = dsource.centroid().pyrocko_moment_tensor().scalar_moment()
+            assert abs(m1 - m2) < abs(m1 + m2) * 1e-6
+
 
 if __name__ == '__main__':
     util.setup_logging('test_gf_sources', 'warning')

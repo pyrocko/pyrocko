@@ -11,6 +11,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `snuffling.catalog` adding FDSN event query
 - Snuffler adding `trace_scale` to configuration
 
+### Fixed
+- `seismosizer` STF timing of `RectangularSource`s.
+
 ## [v2019.05.03] 2019-05-03
 
 ### Added
