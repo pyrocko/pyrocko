@@ -822,6 +822,9 @@ class QSeisGFBuilder(gf.builder.Builder):
             # this value
             distances.append(self.gf_config.distance_max)
 
+        mex = (MomentTensor(m=symmat6(1, 1, 1, 0, 0, 0)),
+                {'r': (0, +1), 'z': (1, +1)})
+
         mmt1 = (MomentTensor(m=symmat6(1, 0, 0, 1, 0, 0)),
                 {'r': (0, +1), 't': (3, +1), 'z': (5, +1)})
         mmt2 = (MomentTensor(m=symmat6(0, 0, 0, 0, 1, 1)),
@@ -844,6 +847,9 @@ class QSeisGFBuilder(gf.builder.Builder):
             'fh.tt': (off+2, -1),
             'fz.tz': (off+3, +1),
             'fh.tz': (off+4, +1)})
+        if component_scheme == 'elastic2':
+            gfsneeded = (1, 0, 0, 0, 0, 0)
+            gfmapping = [mex]
 
         if component_scheme == 'elastic5':
             gfsneeded = (0, 0, 0, 0, 1, 1)
