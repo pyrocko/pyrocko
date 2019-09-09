@@ -1165,7 +1165,6 @@ class Store(BaseStore):
         return self.config.deltat
 
     def load_config(self):
-        logger.debug('loading config file ...')
         self.config = meta.load(filename=self.config_fn())
 
     def ensure_reference(self, force=False):
