@@ -772,9 +772,13 @@ class DiscretizedSource(Object):
     lons = Array.T(shape=(None,), dtype=float, optional=True)
     lat = Float.T(optional=True)
     lon = Float.T(optional=True)
-    north_shifts = Array.T(shape=(None,), dtype=float, optional=True)
-    east_shifts = Array.T(shape=(None,), dtype=float, optional=True)
-    depths = Array.T(shape=(None,), dtype=float)
+    north_shifts = Array.T(shape=(None,), dtype=num.float, optional=True)
+    east_shifts = Array.T(shape=(None,), dtype=num.float, optional=True)
+    depths = Array.T(shape=(None,), dtype=num.float)
+    dl = Float.T(optional=True)
+    dw = Float.T(optional=True)
+    nl = Float.T(optional=True)
+    nw = Float.T(optional=True)
 
     @classmethod
     def check_scheme(cls, scheme):
