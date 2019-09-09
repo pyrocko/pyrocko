@@ -9,6 +9,9 @@ import socket
 
 logger = logging.getLogger('pyrocko.test.common')
 
+mpl_logger = logging.getLogger('matplotlib')
+mpl_logger.setLevel(logging.WARNING)
+
 benchmark_results = []
 
 g_matplotlib_inited = False
