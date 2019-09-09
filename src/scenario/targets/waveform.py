@@ -19,7 +19,7 @@ from pyrocko import gf, model, util, trace, io
 from pyrocko.io_common import FileSaveError
 from pyrocko import pile
 
-from .station import StationGenerator, RandomStationGenerator
+from ..station import StationGenerator, RandomStationGenerator
 from .base import TargetGenerator, NoiseGenerator
 from ..error import ScenarioError
 

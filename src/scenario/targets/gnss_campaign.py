@@ -12,7 +12,7 @@ from pyrocko import gf, util
 from pyrocko.guts import Float
 
 from .base import TargetGenerator, NoiseGenerator
-from .station import RandomStationGenerator, StationGenerator
+from ..station import RandomStationGenerator, StationGenerator
 
 DEFAULT_STORE_ID = 'ak135_static'
 

@@ -220,7 +220,3 @@ class LocationGenerator(Generator):
             sadd = ' (avoiding water)'
 
         raise LocationGenerationError('Could not generate location%s.' % sadd)
-
-
-class TargetGenerator(Generator):
-    pass

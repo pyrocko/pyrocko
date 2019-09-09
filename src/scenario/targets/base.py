@@ -5,10 +5,10 @@
 from __future__ import absolute_import, division, print_function
 
 import numpy as num
-from ..base import LocationGenerator, Generator
+from ..base import Generator
 
 
-class TargetGenerator(LocationGenerator):
+class TargetGenerator(Generator):
 
     def get_time_range(self, sources):
         ''' Get the target's time range.

@@ -160,7 +160,6 @@ class ScenarioTestCase(unittest.TestCase):
             target_generators=[
                 targets.InSARGenerator(
                     resolution=(20, 20),
-                    avoid_water=False,
                     noise_generator=targets.insar.AtmosphericNoiseGenerator(
                         amplitude=1e-5))
                 ],
@@ -241,9 +240,6 @@ class ScenarioTestCase(unittest.TestCase):
             center_lon=13.3,
             radius=60*km,
             target_generators=[
-                targets.RandomStationGenerator(
-                    avoid_water=False,
-                    nstations=5),
                 targets.WaveformGenerator(
                     store_id=ScenarioTestCase.store_id,
                     station_generator=targets.RandomStationGenerator(
@@ -252,7 +248,6 @@ class ScenarioTestCase(unittest.TestCase):
                     seismogram_quantity='velocity'),
                 targets.InSARGenerator(
                     resolution=(20, 20),
-                    avoid_water=False,
                     noise_generator=targets.insar.AtmosphericNoiseGenerator(
                         amplitude=1e-5)),
                 targets.GNSSCampaignGenerator(
@@ -310,9 +305,6 @@ class ScenarioTestCase(unittest.TestCase):
             center_lon=13.3,
             radius=60*km,
             target_generators=[
-                targets.RandomStationGenerator(
-                    avoid_water=False,
-                    nstations=5),
                 targets.WaveformGenerator(
                     store_id=ScenarioTestCase.store_id,
                     station_generator=targets.RandomStationGenerator(
@@ -321,7 +313,6 @@ class ScenarioTestCase(unittest.TestCase):
                     seismogram_quantity='velocity'),
                 targets.InSARGenerator(
                     resolution=(20, 20),
-                    avoid_water=False,
                     noise_generator=targets.insar.AtmosphericNoiseGenerator(
                         amplitude=1e-5)),
                 targets.GNSSCampaignGenerator(

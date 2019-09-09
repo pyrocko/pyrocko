@@ -8,12 +8,12 @@ import numpy as num
 from pyrocko import model
 from pyrocko.guts import Int, String, List
 
-from .base import TargetGenerator
+from .base import LocationGenerator
 
 guts_prefix = 'pf.scenario'
 
 
-class StationGenerator(TargetGenerator):
+class StationGenerator(LocationGenerator):
     nstations = Int.T(
         default=10,
         help='Number of randomly distributed stations.')
