@@ -1,7 +1,6 @@
 from builtins import str
 from pyrocko.gui.snuffling import Snuffling, Param, Switch, Choice
 from pyrocko.gui.marker import PhaseMarker
-from pyrocko import orthodrome
 from pyrocko import gf
 from pyrocko import cake
 import numpy as num
@@ -128,7 +127,7 @@ class CakePhase(Snuffling):
         allrays = []
         alldists = []
         for station in stations:
-            dist = orthodrome.distance_accurate50m(event, station)
+            dist = event.distance_to(station)
             alldists.append(dist)
 
             if self.use_station_depth:

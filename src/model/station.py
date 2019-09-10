@@ -12,7 +12,7 @@ import numpy as num
 
 from pyrocko import orthodrome
 from pyrocko.orthodrome import wrap
-from pyrocko.guts import Object, Float, String, List
+from pyrocko.guts import Object, Float, String, List, dump_all
 
 from .location import Location
 
@@ -138,15 +138,20 @@ class Station(Location):
     name = String.T(default='')
     channels = List.T(Channel.T())
 
-    def __init__(self, network='', station='', location='', lat=0.0, lon=0.0,
-                 elevation=0.0, depth=0.0, name='', channels=None):
+    def __init__(self, network='', station='', location='',
+                 lat=0.0, lon=0.0,
+                 elevation=0.0, depth=0.0,
+                 north_shift=0.0, east_shift=0.0,
+                 name='', channels=None):
 
         Location.__init__(
             self,
             network=network, station=station, location=location,
             lat=float(lat), lon=float(lon),
-            elevation=elevation and float(elevation) or 0.0,
-            depth=depth and float(depth) or 0.0,
+            elevation=float(elevation),
+            depth=float(depth),
+            north_shift=float(north_shift),
+            east_shift=float(east_shift),
             name=name or '',
             channels=channels or [])
 
@@ -159,7 +164,7 @@ class Station(Location):
         return copy.deepcopy(self)
 
     def set_event_relative_data(self, event, distance_3d=False):
-        surface_dist = orthodrome.distance_accurate50m(event, self)
+        surface_dist = self.distance_to(event)
         if distance_3d:
             dd = event.depth - self.depth
             self.dist_m = math.sqrt(dd**2 + surface_dist**2)
@@ -168,8 +173,8 @@ class Station(Location):
 
         self.dist_deg = surface_dist / orthodrome.earthradius_equator * \
             orthodrome.r2d
-        self.azimuth = orthodrome.azimuth(event, self)
-        self.backazimuth = orthodrome.azimuth(self, event)
+
+        self.azimuth, self.backazimuth = event.azibazi_to(self)
 
     def set_channels_by_name(self, *args):
         self.set_channels([])
@@ -357,10 +362,21 @@ class Station(Location):
     def nsl(self):
         return self.network, self.station, self.location
 
+    def cannot_handle_offsets(self):
+        if self.north_shift != 0.0 or self.east_shift != 0.0:
+            logger.warn(
+                'Station %s.%s.%s has a non-zero Cartesian offset. Such '
+                'offsets cannot be saved in the basic station file format. '
+                'Effective lat/lons are saved only. Please save the stations '
+                'in YAML format to preserve the reference-and-offset '
+                'coordinates.' % self.nsl())
+
     def oldstr(self):
+        self.cannot_handle_offsets()
         nsl = '%s.%s.%s' % (self.network, self.station, self.location)
         s = '%-15s  %14.5f %14.5f %14.1f %14.1f %s' % (
-            nsl, self.lat, self.lon, self.elevation, self.depth, self.name)
+            nsl, self.effective_lat, self.effective_lon, self.elevation,
+            self.depth, self.name)
         return s
 
 
@@ -388,6 +404,16 @@ def dump_stations(stations, filename):
     f.close()
 
 
+def dump_stations_yaml(stations, filename):
+    '''Write stations file in YAML format.
+
+    :param stations: list of :py:class:`Station` objects
+    :param filename: filename as str
+    '''
+
+    dump_all(stations, filename=filename)
+
+
 def float_or_none(s):
     if s is None:
         return None
@@ -397,58 +423,89 @@ def float_or_none(s):
         return float(s)
 
 
-def load_stations(filename):
+def detect_format(filename):
+    with open(filename, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#') or line.startswith('%'):
+                continue
+            if line.startswith('--- !pf.Station'):
+                return 'yaml'
+            else:
+                return 'basic'
+
+    return 'basic'
+
+
+def load_stations(filename, format='detect'):
     '''Read stations file.
 
     :param filename: filename
     :returns: list of :py:class:`Station` objects
     '''
-    stations = []
-    f = open(filename, 'r')
-    station = None
-    channel_names = []
-    for (iline, line) in enumerate(f):
-        toks = line.split(None, 5)
-        if line.strip().startswith('#') or line.strip() == '':
-            continue
 
-        if len(toks) == 5 or len(toks) == 6:
-            net, sta, loc = toks[0].split('.')
-            lat, lon, elevation, depth = [float(x) for x in toks[1:5]]
-            if len(toks) == 5:
-                name = ''
+    if format == 'detect':
+        format = detect_format(filename)
+
+    if format == 'yaml':
+        from pyrocko import guts
+        stations = [
+            st for st in guts.load_all(filename=filename)
+            if isinstance(st, Station)]
+
+        return stations
+
+    elif format == 'basic':
+        stations = []
+        f = open(filename, 'r')
+        station = None
+        channel_names = []
+        for (iline, line) in enumerate(f):
+            toks = line.split(None, 5)
+            if line.strip().startswith('#') or line.strip() == '':
+                continue
+
+            if len(toks) == 5 or len(toks) == 6:
+                net, sta, loc = toks[0].split('.')
+                lat, lon, elevation, depth = [float(x) for x in toks[1:5]]
+                if len(toks) == 5:
+                    name = ''
+                else:
+                    name = toks[5].rstrip()
+
+                station = Station(
+                    net, sta, loc, lat, lon,
+                    elevation=elevation, depth=depth, name=name)
+
+                stations.append(station)
+                channel_names = []
+
+            elif len(toks) == 4 and station is not None:
+                name, azi, dip, gain = (
+                    toks[0],
+                    float_or_none(toks[1]),
+                    float_or_none(toks[2]),
+                    float(toks[3]))
+                if name in channel_names:
+                    logger.warning(
+                        'redefined channel! (line: %i, file: %s)' %
+                        (iline + 1, filename))
+                else:
+                    channel_names.append(name)
+
+                channel = Channel(name, azimuth=azi, dip=dip, gain=gain)
+                station.add_channel(channel)
+
             else:
-                name = toks[5].rstrip()
+                logger.warning('skipping invalid station/channel definition '
+                               '(line: %i, file: %s' % (iline + 1, filename))
 
-            station = Station(
-                net, sta, loc, lat, lon,
-                elevation=elevation, depth=depth, name=name)
+        f.close()
+        return stations
 
-            stations.append(station)
-            channel_names = []
-
-        elif len(toks) == 4 and station is not None:
-            name, azi, dip, gain = (
-                toks[0],
-                float_or_none(toks[1]),
-                float_or_none(toks[2]),
-                float(toks[3]))
-            if name in channel_names:
-                logger.warning(
-                    'redefined channel! (line: %i, file: %s)' %
-                    (iline + 1, filename))
-            else:
-                channel_names.append(name)
-
-            channel = Channel(name, azimuth=azi, dip=dip, gain=gain)
-            station.add_channel(channel)
-
-        else:
-            logger.warning('skipping invalid station/channel definition '
-                           '(line: %i, file: %s' % (iline + 1, filename))
-
-    f.close()
-    return stations
+    else:
+        from pyrocko.io.io_common import FileLoadError
+        raise FileLoadError('unknown event file format: %s' % format)
 
 
 def dump_kml(objects, filename):
@@ -458,7 +515,7 @@ def dump_kml(objects, filename):
     <description></description>
     <styleUrl>#msn_S</styleUrl>
     <Point>
-      <coordinates>%(lon)f,%(lat)f,%(elevation)f</coordinates>
+      <coordinates>%(elon)f,%(elat)f,%(elevation)f</coordinates>
     </Point>
   </Placemark>
 '''
@@ -509,7 +566,10 @@ def dump_kml(objects, filename):
     for obj in objects:
 
         if isinstance(obj, Station):
-            f.write(station_template % obj.__dict__)
+            d = obj.__dict__.copy()
+            d['elat'], d['elon'] = obj.effective_latlon
+            f.write(station_template % d)
+
     f.write('</Document>')
     f.write('</kml>\n')
     f.close()

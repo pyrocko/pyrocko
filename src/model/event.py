@@ -76,7 +76,8 @@ class Event(Location):
     tags = List.T(Tag.T(optional=True))
 
     def __init__(
-            self, lat=0., lon=0., time=0., name='', depth=None, elevation=None,
+            self, lat=0., lon=0., north_shift=0., east_shift=0., time=0.,
+            name='', depth=None, elevation=None,
             magnitude=None, magnitude_type=None, region=None, load=None,
             loadf=None, catalog=None, moment_tensor=None, duration=None,
             tags=[]):
@@ -88,11 +89,14 @@ class Event(Location):
             vals = Event.oldloadf(loadf)
 
         if vals:
-            lat, lon, time, name, depth, magnitude, magnitude_type, region, \
-                catalog, moment_tensor, duration, tags = vals
+            lat, lon, north_shift, east_shift, time, name, depth, magnitude, \
+                magnitude_type, region, catalog, moment_tensor, duration, \
+                tags = vals
 
         Location.__init__(
-            self, lat=lat, lon=lon, time=time, name=name, depth=depth,
+            self, lat=lat, lon=lon,
+            north_shift=north_shift, east_shift=east_shift,
+            time=time, name=name, depth=depth,
             elevation=elevation,
             magnitude=magnitude, magnitude_type=magnitude_type,
             region=region, catalog=catalog,
@@ -112,10 +116,17 @@ class Event(Location):
     def olddumpf(self, file):
         file.write('name = %s\n' % self.name)
         file.write('time = %s\n' % util.time_to_str(self.time))
-        if self.lat is not None:
+
+        if self.lat != 0.0:
             file.write('latitude = %.12g\n' % self.lat)
-        if self.lon is not None:
+        if self.lon != 0.0:
             file.write('longitude = %.12g\n' % self.lon)
+
+        if self.north_shift != 0.0:
+            file.write('north_shift = %.12g\n' % self.north_shift)
+        if self.east_shift != 0.0:
+            file.write('east_shift = %.12g\n' % self.east_shift)
+
         if self.magnitude is not None:
             file.write('magnitude = %g\n' % self.magnitude)
             file.write('moment = %g\n' %
@@ -256,6 +267,8 @@ class Event(Location):
         return (
             d.get('latitude', 0.0),
             d.get('longitude', 0.0),
+            d.get('north_shift', 0.0),
+            d.get('east_shift', 0.0),
             d.get('time', 0.0),
             d.get('name', ''),
             d.get('depth', None),
@@ -342,6 +355,8 @@ def detect_format(filename):
             else:
                 return 'basic'
 
+    return 'basic'
+
 
 def load_events(filename, format='detect'):
     '''Read events file.
@@ -352,22 +367,20 @@ def load_events(filename, format='detect'):
     '''
 
     if format == 'detect':
-        fmt = detect_format(filename)
+        format = detect_format(filename)
 
-    assert fmt in ('yaml', 'basic')
-
-    if fmt == 'yaml':
+    if format == 'yaml':
         from pyrocko import guts
         events = [
             ev for ev in guts.load_all(filename=filename)
             if isinstance(ev, Event)]
 
         return events
-    elif fmt == 'basic':
+    elif format == 'basic':
         return list(Event.load_catalog(filename))
     else:
         from pyrocko.io.io_common import FileLoadError
-        FileLoadError('unknown event file format: %s' % fmt)
+        raise FileLoadError('unknown event file format: %s' % format)
 
 
 class OneEventRequired(Exception):

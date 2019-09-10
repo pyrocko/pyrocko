@@ -584,13 +584,13 @@ class MarkerTableModel(qc.QAbstractTableModel):
             lats = num.zeros(nevents)
             lons = num.zeros(nevents)
             for i in range(nevents):
-                lats[i] = events[i].lat
-                lons[i] = events[i].lon
+                lats[i] = events[i].effective_lat
+                lons[i] = events[i].effective_lon
 
             olats = num.zeros(nevents)
             olons = num.zeros(nevents)
-            olats[:] = oevent.lat
-            olons[:] = oevent.lon
+            olats[:] = oevent.effective_lat
+            olons[:] = oevent.effective_lon
             dists = orthodrome.distance_accurate50m_numpy(
                 lats, lons, olats, olons)
             dists /= 1000.

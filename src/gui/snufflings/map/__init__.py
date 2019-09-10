@@ -60,8 +60,8 @@ def convert_event_marker(marker):
     ev_name = ev.name if ev.name else '(Event)'
     xmleventmarker = XMLEventMarker(
         eventname=ev_name,
-        longitude=float(ev.lon),
-        latitude=float(ev.lat),
+        longitude=float(ev.effective_lon),
+        latitude=float(ev.effective_lat),
         origintime=util.time_to_str(ev.time),
         depth=float(depth),
         magnitude=float(get_magnitude(ev)),
@@ -239,8 +239,8 @@ python $HOME/.snufflings/map/snuffling.py --stations=stations.pf
                 if (viewer and not is_blacklisted) or cli_mode:
                     xml_station_marker = XMLStationMarker(
                         nsl='.'.join(stat.nsl()),
-                        longitude=float(stat.lon),
-                        latitude=float(stat.lat),
+                        longitude=float(stat.effective_lon),
+                        latitude=float(stat.effective_lat),
                         active='yes')
 
                     station_list.append(xml_station_marker)
@@ -310,8 +310,8 @@ python $HOME/.snufflings/map/snuffling.py --stations=stations.pf
             slons = []
             slabels = []
             for s in active_stations:
-                slats.append(s.lat)
-                slons.append(s.lon)
+                slats.append(s.effective_lat)
+                slons.append(s.effective_lon)
                 slabels.append('.'.join(s.nsl()))
 
             elats = []
@@ -323,14 +323,15 @@ python $HOME/.snufflings/map/snuffling.py --stations=stations.pf
             for m in markers:
                 if isinstance(m, gui_util.EventMarker):
                     e = m.get_event()
-                    elats.append(e.lat)
-                    elons.append(e.lon)
+                    elats.append(e.effective_lat)
+                    elons.append(e.effective_lon)
                     if e.moment_tensor is not None:
                         mt = e.moment_tensor.m6()
                         psmeca_input.append(
-                            (e.lon, e.lat, e.depth/1000., mt[0], mt[1],
+                            (e.effective_lon, e.effective_lat,
+                             e.depth/1000., mt[0], mt[1],
                              mt[2], mt[3], mt[4], mt[5],
-                             1., e.lon, e.lat, e.name))
+                             1., e.effective_lon, e.effective_lat, e.name))
                     else:
                         if e.magnitude is None:
                             moment = -1.
@@ -338,9 +339,11 @@ python $HOME/.snufflings/map/snuffling.py --stations=stations.pf
                             moment = moment_tensor.magnitude_to_moment(
                                 e.magnitude)
                             psmeca_input.append(
-                                (e.lon, e.lat, e.depth/1000.,
+                                (e.effective_lon, e.effective_lat,
+                                 e.depth/1000.,
                                  moment/3., moment/3., moment/3.,
-                                 0., 0., 0., 1., e.lon, e.lat, e.name))
+                                 0., 0., 0., 1.,
+                                 e.effective_lon, e.effective_lat, e.name))
 
             lats_all.extend(elats)
             lons_all.extend(elons)

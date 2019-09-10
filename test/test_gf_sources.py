@@ -81,7 +81,17 @@ class GFSourcesTestCase(unittest.TestCase):
             else:
                 ev_mag = 'N/A'
 
+            assert ev.lat == s1.lat
+            assert ev.lon == s1.lon
+            assert ev.north_shift == s1.north_shift
+            assert ev.east_shift == s1.east_shift
+
             s2 = S.from_pyrocko_event(ev)
+
+            assert ev.lat == s2.lat
+            assert ev.lon == s2.lon
+            assert ev.north_shift == s2.north_shift
+            assert ev.east_shift == s2.east_shift
 
             if ev.moment_tensor:
                 mt_mag = ev.moment_tensor.magnitude

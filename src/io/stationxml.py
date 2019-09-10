@@ -1101,7 +1101,12 @@ class FDSNStationXML(Object):
         else:
             extra = {}
 
+        have_offsets = set()
         for s in pyrocko_stations:
+
+            if s.north_shift != 0.0 or s.east_shift != 0.0:
+                have_offsets.add(s.nsl())
+
             network, station, location = s.nsl()
             channel_list = []
             for c in s.channels:
@@ -1109,8 +1114,8 @@ class FDSNStationXML(Object):
                     Channel(
                         location_code=location,
                         code=c.name,
-                        latitude=Latitude(value=s.lat),
-                        longitude=Longitude(value=s.lon),
+                        latitude=Latitude(value=s.effective_lat),
+                        longitude=Longitude(value=s.effective_lon),
                         elevation=Distance(value=s.elevation),
                         depth=Distance(value=s.depth),
                         azimuth=Azimuth(value=c.azimuth),
@@ -1122,11 +1127,17 @@ class FDSNStationXML(Object):
             network_dict[network].append(
                 Station(
                     code=station,
-                    latitude=Latitude(value=s.lat),
-                    longitude=Longitude(value=s.lon),
+                    latitude=Latitude(value=s.effective_lat),
+                    longitude=Longitude(value=s.effective_lon),
                     elevation=Distance(value=s.elevation),
                     channel_list=channel_list)
             )
+
+        if have_offsets:
+            logger.warn(
+                'StationXML does not support Cartesian offsets in '
+                'coordinates. Storing effective lat/lon for stations: %s' %
+                ', '.join('.'.join(nsl) for nsl in sorted(have_offsets)))
 
         timestamp = time.time()
         network_list = []

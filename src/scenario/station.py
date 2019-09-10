@@ -51,13 +51,17 @@ class RandomStationGenerator(StationGenerator):
 
             stations = []
             for istation in range(self.nstations):
-                lat, lon = self.get_latlon(istation)
+                lat, lon, north_shift, east_shift, depth = map(
+                    float, self.get_coordinates(istation))
 
                 net, sta, loc = self.nsl(istation)
                 station = model.Station(
                     net, sta, loc,
                     lat=lat,
                     lon=lon,
+                    north_shift=north_shift,
+                    east_shift=east_shift,
+                    depth=depth,
                     channels=channels)
 
                 stations.append(station)

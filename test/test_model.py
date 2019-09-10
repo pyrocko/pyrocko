@@ -31,7 +31,9 @@ class ModelTestCase(unittest.TestCase):
         tempdir = tempfile.mkdtemp(prefix='pyrocko-model')
         fn = pjoin(tempdir, 'event.txt')
         e1 = model.Event(
-            10., 20., 1234567890., 'bubu', region='taka tuka land',
+            10., 20.,
+            time=1234567890.,
+            name='bubu', region='taka tuka land',
             magnitude=5.1, magnitude_type='Mw',
             tags=['cluster:-1', 'custom_magnitude:2.5'])
 
@@ -52,7 +54,8 @@ class ModelTestCase(unittest.TestCase):
         tempdir = tempfile.mkdtemp(prefix='pyrocko-model')
         fn = pjoin(tempdir, 'event.txt')
         e1 = model.Event(
-            10., 20., 1234567890., 'bubu', depth=10., region='taka tuka land',
+            10., 20., time=1234567890.,
+            name='bubu', depth=10., region='taka tuka land',
             moment_tensor=moment_tensor.MomentTensor(strike=45., dip=90),
             magnitude=5.1, magnitude_type='Mw',
             tags=['cluster:-1', 'custom_magnitude:2.5'])

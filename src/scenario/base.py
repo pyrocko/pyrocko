@@ -70,6 +70,13 @@ def random_latlon(rstate, avoid_water, ntries, label):
     raise LocationGenerationError('Could not generate location%s.' % sadd)
 
 
+def random_uniform(rstate, xmin, xmax, xdefault):
+    if None in (xmin, xmax):
+        return xdefault
+    else:
+        return rstate.uniform(xmin, xmax)
+
+
 class Generator(Object):
     seed = Int.T(
         optional=True,
@@ -155,6 +162,24 @@ class LocationGenerator(Generator):
         default=10,
         help='Maximum number of tries to find a location satisifying all '
              'given constraints')
+    north_shift_min = Float.T(
+        optional=True,
+        help='If given, lower bound of random northward cartesian offset [m].')
+    north_shift_max = Float.T(
+        optional=True,
+        help='If given, upper bound of random northward cartesian offset [m].')
+    east_shift_min = Float.T(
+        optional=True,
+        help='If given, lower bound of random eastward cartesian offset [m].')
+    east_shift_max = Float.T(
+        optional=True,
+        help='If given, upper bound of random eastward cartesian offset [m].')
+    depth_min = Float.T(
+        optional=True,
+        help='If given, minimum depth [m].')
+    depth_max = Float.T(
+        optional=True,
+        help='If given, maximum depth [m].')
 
     def __init__(self, **kwargs):
         Generator.__init__(self, **kwargs)
@@ -195,13 +220,15 @@ class LocationGenerator(Generator):
             return None
 
     def get_latlon(self, i):
-        rstate = self.get_rstate(i)
+        rstate = self.get_rstate((i+1)*3+0)
         for itry in range(self.ntries):
             logger.debug('%s: try %i' % (self.__class__.__name__, itry))
             radius = self.get_radius()
             if radius is None:
                 lat = random_lat(rstate)
                 lon = rstate.uniform(-180., 180.)
+            elif radius == 0.0:
+                lat, lon = self.get_center_latlon()
             else:
                 lat_center, lon_center = self.get_center_latlon()
                 while True:
@@ -220,3 +247,23 @@ class LocationGenerator(Generator):
             sadd = ' (avoiding water)'
 
         raise LocationGenerationError('Could not generate location%s.' % sadd)
+
+    def get_cartesian_offset(self, i):
+        rstate = self.get_rstate((i+1)*3+1)
+        north_shift = random_uniform(
+            rstate, self.north_shift_min, self.north_shift_max, 0.0)
+        east_shift = random_uniform(
+            rstate, self.east_shift_min, self.east_shift_max, 0.0)
+
+        return north_shift, east_shift
+
+    def get_depth(self, i):
+        rstate = self.get_rstate((i+1)*3+1)
+        return random_uniform(
+            rstate, self.depth_min, self.depth_max, 0.0)
+
+    def get_coordinates(self, i):
+        lat, lon = self.get_latlon(i)
+        north_shift, east_shift = self.get_cartesian_offset(i)
+        depth = self.get_depth(i)
+        return lat, lon, north_shift, east_shift, depth

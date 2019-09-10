@@ -168,7 +168,7 @@ class ScenarioGenerator(LocationGenerator):
 
         for fentry in [
                 'events.txt',
-                'sources.txt',
+                'sources.yml',
                 'map.pdf',
                 'README.md']:
 
@@ -212,6 +212,11 @@ class ScenarioGenerator(LocationGenerator):
         if not op.exists(fn_stations):
             model.station.dump_stations(
                 self.get_stations(), fn_stations)
+
+        fn_stations_yaml = op.join(meta_dir, 'stations.yml')
+        if not op.exists(fn_stations_yaml):
+            model.station.dump_stations_yaml(
+                self.get_stations(), fn_stations_yaml)
 
         fn_stations_kml = op.join(meta_dir, 'stations.kml')
         if not op.exists(fn_stations_kml):

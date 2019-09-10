@@ -29,7 +29,7 @@ class DCSourceGenerator(SourceGenerator):
     def get_source(self, ievent):
         rstate = self.get_rstate(ievent)
         time = rstate.uniform(self.time_min, self.time_max)
-        lat, lon = self.get_latlon(ievent)
+        lat, lon, north_shift, east_shift, depth = self.get_coordinates(ievent)
         depth = rstate.uniform(self.depth_min, self.depth_max)
         magnitude = self.draw_magnitude(rstate)
 
@@ -56,6 +56,8 @@ class DCSourceGenerator(SourceGenerator):
             time=float(time),
             lat=float(lat),
             lon=float(lon),
+            north_shift=float(north_shift),
+            east_shift=float(east_shift),
             depth=float(depth),
             magnitude=float(magnitude),
             strike=float(s),
@@ -80,6 +82,9 @@ class DCSourceGenerator(SourceGenerator):
             symbol_size = 20.
             automap.gmt.psmeca(
                 S='%s%g' % ('d', symbol_size / gmtpy.cm),
-                in_rows=[(source.lon, source.lat, 10) + m6 + (1, 0, 0)],
+                in_rows=[
+                    (source.effective_lon, source.effective_lat, 10)
+                    + m6
+                    + (1, 0, 0)],
                 M=True,
                 *automap.jxyr)

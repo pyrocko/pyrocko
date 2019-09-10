@@ -180,6 +180,8 @@ class WaveformGenerator(TargetGenerator):
                     quantity='displacement',
                     lat=station.lat,
                     lon=station.lon,
+                    north_shift=station.north_shift,
+                    east_shift=station.east_shift,
                     depth=station.depth,
                     store_id=self.store_id,
                     optimization='enable',

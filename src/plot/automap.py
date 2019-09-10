@@ -1065,17 +1065,17 @@ class Map(Object):
         }
         default_psxy_style.update(psxy_style)
 
-        lats, lons = zip(*[od.ne_to_latlon(
-                                s.lat, s.lon, s.north_shift, s.east_shift)
-                           for s in stations])
+        lats, lons = zip(*[s.effective_latlon for s in stations])
 
         self.gmt.psxy(
             in_columns=(lons, lats),
             *self.jxyr, **default_psxy_style)
 
         for station in stations:
-            self.add_label(station.lat, station.lon, '.'.join(
-                x for x in (station.network, station.station) if x))
+            self.add_label(
+                station.effective_lat,
+                station.effective_lon,
+                '.'.join(x for x in (station.network, station.station) if x))
 
     def add_kite_scene(self, scene):
         tile = FloatTile(
@@ -1104,9 +1104,7 @@ class Map(Object):
         logger.debug('GNSS: Using offset scale %f, map scale %f',
                      offset_scale, scale)
 
-        lats, lons = zip(
-            *[od.ne_to_latlon(s.lat, s.lon, s.north_shift, s.east_shift)
-              for s in stations])
+        lats, lons = zip(*[s.effective_latlon for s in stations])
 
         if vertical:
             rows = [[lons[ista], lats[ista],

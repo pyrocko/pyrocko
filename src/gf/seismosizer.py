@@ -1115,14 +1115,15 @@ class Source(Location, Cloneable):
             .provided_components
 
     def pyrocko_event(self, store=None, target=None, **kwargs):
-        lat, lon = self.effective_latlon
         duration = None
         if self.stf:
             duration = self.stf.effective_duration
 
         return model.Event(
-            lat=lat,
-            lon=lon,
+            lat=self.lat,
+            lon=self.lon,
+            north_shift=self.north_shift,
+            east_shift=self.east_shift,
             time=self.time,
             name=self.name,
             depth=self.depth,
@@ -1165,6 +1166,8 @@ class Source(Location, Cloneable):
             time=ev.time,
             lat=ev.lat,
             lon=ev.lon,
+            north_shift=ev.north_shift,
+            east_shift=ev.east_shift,
             depth=ev.depth,
             stf=stf)
         d.update(kwargs)

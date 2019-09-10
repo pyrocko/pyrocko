@@ -534,7 +534,7 @@ class Marker(object):
             self.convert_to_marker()
 
         self.__class__ = EventMarker
-        self._event = model.Event(lat, lon, self.tmin, name='Event')
+        self._event = model.Event(lat, lon, time=self.tmin, name='Event')
         self._event_hash = self._event.get_hash()
         self._active = False
         self.tmax = self.tmin
@@ -655,7 +655,7 @@ class EventMarker(Marker):
         catalog, name, region = [
             str_to_str_or_none(x) for x in vals[9:]]
         e = model.Event(
-            lat, lon, tmin, name, depth, magnitude,
+            lat, lon, time=tmin, name=name, depth=depth, magnitude=magnitude,
             region=region, catalog=catalog)
         marker = EventMarker(
             e, kind, event_hash=str_to_str_or_none(vals[4]))

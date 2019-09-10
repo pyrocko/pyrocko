@@ -28,7 +28,7 @@ description = '''Create a simple map with topography.'''
 
 def latlon_arrays(locs):
     return num.array(
-        [(x.lat, x.lon) for x in locs]).T
+        [(x.effective_lat, x.effective_lon) for x in locs]).T
 
 
 def main(args=None):
