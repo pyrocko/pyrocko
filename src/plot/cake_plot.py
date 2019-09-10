@@ -153,7 +153,8 @@ colors = [to01(tango_colors[x+i]) for i in '321' for x in
 shades = [light(to01(tango_colors['chocolate1']), i*0.1) for i in range(1, 9)]
 shades2 = [light(to01(tango_colors['orange1']), i*0.1) for i in range(1, 9)]
 
-shades_water = [light(to01(tango_colors['skyblue1']), i*0.1) for i in range(1, 9)]
+shades_water = [
+    light(to01(tango_colors['skyblue1']), i*0.1) for i in range(1, 9)]
 
 
 def plot_xt(

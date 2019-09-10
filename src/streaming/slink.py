@@ -67,7 +67,8 @@ class SlowSlink(object):
         else:
             streams = []
 
-        cmd = ['slinktool', '-o', '-'] + streams + [self.host+':'+str(self.port)]
+        cmd = ['slinktool', '-o', '-'] \
+            + streams + [self.host+':'+str(self.port)]
 
         logger.debug('Starting %s' % ' '.join(cmd))
         self.running = True

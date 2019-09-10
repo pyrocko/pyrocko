@@ -167,7 +167,7 @@ def command_init(args):
 
     project_dir = args[0]
     try:
-        sc = scenario.ScenarioGenerator.initialize(
+        scenario.ScenarioGenerator.initialize(
             project_dir,  lat, lon, radius, force=options.force)
 
         gf_stores_path = op.join(project_dir, 'gf_stores')

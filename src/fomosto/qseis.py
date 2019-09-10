@@ -823,7 +823,7 @@ class QSeisGFBuilder(gf.builder.Builder):
             distances.append(self.gf_config.distance_max)
 
         mex = (MomentTensor(m=symmat6(1, 1, 1, 0, 0, 0)),
-                {'r': (0, +1), 'z': (1, +1)})
+               {'r': (0, +1), 'z': (1, +1)})
 
         mmt1 = (MomentTensor(m=symmat6(1, 0, 0, 1, 0, 0)),
                 {'r': (0, +1), 't': (3, +1), 'z': (5, +1)})
