@@ -574,6 +574,20 @@ datacube_error_t datacube_read_diagnostics_block(reader_t *reader) {
     return SUCCESS;
 }
 
+datacube_error_t datacube_read_unknown_block_3(reader_t *reader) {
+    int i;
+    datacube_error_t err;
+
+    err = datacube_read(reader, 2);
+    if (err != SUCCESS) {
+        return err;
+    }
+
+    reader->buf_fill = 0;
+
+    return SUCCESS;
+}
+
 datacube_error_t datacube_init(reader_t *reader, int f) {
     *reader = ZERO_READER;
     reader->f = f;
@@ -729,7 +743,7 @@ datacube_error_t datacube_load(reader_t *reader) {
     /* block types:
      *
      * 0x00          skip
-     * 0x30   48   3: 
+     * 0x30   48   3:
      * 0x80  128   8: data block
      * 0x90  144   9: data block with pps
      * 0xa0  160  10: gps block
@@ -738,7 +752,7 @@ datacube_error_t datacube_load(reader_t *reader) {
      *                        if first byte is 1 should abort (buffer overrun in recorder)
      * 0xcf       12: diagnostics x byte ??? read while (byte >> 4) < 8
      * 0xd0  208  13: info block ascii ???
-     * 0xd1       13:  aux channel 
+     * 0xd1       13:  aux channel
      *                     read 1 byte -> (byte & 0xf) - 2 is number of bytes to read additionally
      * 0xe0  224  14: end block
      * 0xef         : header block (at end???)
@@ -812,6 +826,11 @@ datacube_error_t datacube_load(reader_t *reader) {
             }
         } else if (blocktype == 12) {
             err = datacube_read_diagnostics_block(reader);
+        } else if (blocktype == 0) {
+            fprintf(stderr, "skipping block type %i\n", blocktype);
+        } else if (blocktype == 3) {
+            fprintf(stderr, "skipping block type %i\n", blocktype);
+            datacube_read_unknown_block_3(reader);
         } else {
             fprintf(stderr, "unknown block type %i\n", blocktype);
             return UNKNOWN_BLOCK_TYPE;
@@ -1000,7 +1019,7 @@ static PyObject* w_datacube_load(PyObject *m, PyObject *args) {
     size_t nsamples_total;
     ssize_t offset_want, nsamples_want;
 
-    struct module_state *st = GETSTATE(m);    
+    struct module_state *st = GETSTATE(m);
 
     if (!PyArg_ParseTuple(args, "iinnO", &f, &load_data,
                           &offset_want, &nsamples_want, &barr)) {

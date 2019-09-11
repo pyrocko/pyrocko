@@ -54,19 +54,32 @@ def make_control_point(ipos_block, t_block, tref, deltat):
 def analyse_gps_tags(header, gps_tags, offset, nsamples):
 
     ipos, t, fix, nsvs = gps_tags
+    deltat = 1.0 / int(header['S_RATE'])
+
+    tquartz = offset + ipos * deltat
+
+    toff = t - tquartz
+    toff_median = num.median(toff)
 
     n = t.size
-    ok = num.logical_and(
-        abs(t[1:n-1] - t[0:n-2] - 1.0) < 0.1,
-        abs(t[2:n] - t[1:n-1] - 1.0) < 0.1)
 
-    ipos = ipos[1:-1][ok]
-    t = t[1:-1][ok]
-    fix = fix[1:-1][ok]
-    nsvs = nsvs[1:-1][ok]
+    dtdt = (t[1:n] - t[0:n-1]) / (tquartz[1:n] - tquartz[0:n-1])
+
+    ok = abs(toff_median - toff) < 10.
+
+    xok = num.abs(dtdt - 1.0) < 0.00001
+
+    ok[0] = False
+    ok[1:n] &= xok
+    ok[0:n-1] &= xok
+    ok[n-1] = False
+
+    ipos = ipos[ok]
+    t = t[ok]
+    fix = fix[ok]
+    nsvs = nsvs[ok]
 
     blocksize = N_GPS_TAGS_WANTED // 2
-    deltat = 1.0 / int(header['S_RATE'])
 
     if ipos.size < blocksize:
         tmin = util.str_to_time(header['S_DATE'] + header['S_TIME'],
