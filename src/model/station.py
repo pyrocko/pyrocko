@@ -166,7 +166,12 @@ class Station(Location):
     def set_event_relative_data(self, event, distance_3d=False):
         surface_dist = self.distance_to(event)
         if distance_3d:
-            dd = event.depth - self.depth
+            if event.depth is None:
+                logger.warn('No event depth given: using 0 m.')
+                dd = 0.0 - self.depth
+            else:
+                dd = event.depth - self.depth
+
             self.dist_m = math.sqrt(dd**2 + surface_dist**2)
         else:
             self.dist_m = surface_dist
