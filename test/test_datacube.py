@@ -24,7 +24,7 @@ class DataCubeTestCase(unittest.TestCase):
         mimas = [
             (30572, 87358),
             (46168, 80639),
-            (53107, 73119)]
+            (53108, 73114)]
 
         for tr_h, tr_d, (mi, ma) in zip(traces_h, traces_d, mimas):
             assert tr_h.tmin == tr_d.tmin
