@@ -575,7 +575,6 @@ datacube_error_t datacube_read_diagnostics_block(reader_t *reader) {
 }
 
 datacube_error_t datacube_read_unknown_block_3(reader_t *reader) {
-    int i;
     datacube_error_t err;
 
     err = datacube_read(reader, 2);
@@ -739,6 +738,8 @@ datacube_error_t datacube_load(reader_t *reader) {
     off_t roffset;
     int gps_ti, f_time, gps_on;
     backjump_t backjump;
+    float toffset;
+    int nblocks_needed;
 
     /* block types:
      *
@@ -791,6 +792,7 @@ datacube_error_t datacube_load(reader_t *reader) {
         if (err == READ_FAILED) {
             if (backjumpallowed && reader->gps_tags.fill < N_GPS_TAGS_WANTED*2) {
                 do_backjump(reader, &backjump);
+                continue;
             } else {
                 break;
             }
@@ -821,6 +823,7 @@ datacube_error_t datacube_load(reader_t *reader) {
             /*datacube_read_end_block(reader);*/
             if (backjumpallowed && reader->gps_tags.fill < N_GPS_TAGS_WANTED*2) {
                 do_backjump(reader, &backjump);
+                continue;
             } else {
                 break;
             }
@@ -838,6 +841,7 @@ datacube_error_t datacube_load(reader_t *reader) {
         if (err == READ_FAILED) {
             if (backjumpallowed && reader->gps_tags.fill < N_GPS_TAGS_WANTED*2) {
                 do_backjump(reader, &backjump);
+                continue;
             } else {
                 /* incomplete file? */
                 break;
@@ -854,8 +858,11 @@ datacube_error_t datacube_load(reader_t *reader) {
                 if (err != SUCCESS) jumpallowed = 0;
                 err = get_int_header(reader, "F_TIME", &f_time);
                 if (err != SUCCESS) jumpallowed = 0;
-                roffset = (int)((f_time + gps_ti) * 60.0 / reader->deltat) *
-                         (reader->nchannels * 4 + 1) + (gps_ti * N_GPS_TAGS_WANTED * 80);
+
+                nblocks_needed = (int)ceil(N_GPS_TAGS_WANTED / (gps_ti * 60.));
+                toffset = (gps_ti + f_time) * 60.0 * nblocks_needed;
+                roffset = toffset * 1.0/reader->deltat * (reader->nchannels * 4 + 1) + nblocks_needed * (gps_ti*60) * 80;
+
             } else if (gps_on == 1) { /* continuous GPS */
                 roffset = datacube_tell(reader) * 2;
             } else {

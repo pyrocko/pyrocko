@@ -12,6 +12,24 @@ static const int64_t NENTRIES = 1001;
 /*static const int64_t ORDER = 25;*/
 static const int64_t NCOEFFS = 25*2+1;
 
+typedef enum {
+    SUCCESS = 0,
+    INVALID_INPUT_EMPTY = 1,
+    INVALID_INPUT_SLOPE = 2,
+    INVALID_INPUT_NEED_MORE_CONTROL_POINTS = 3,
+    INVALID_INPUT_FIRST_CONTROL_POINT = 4,
+    INVALID_INPUT_LAST_CONTROL_POINT = 5,
+} signal_error_t;
+
+const char* signal_error_names[] = {
+    "success",
+    "antidrift: empty input array",
+    "antidrift: time correction slope too extreme (must be in range [0.9, 1.1])",
+    "antidrift: need at least 2 control points",
+    "antidrift: first control point must be at or before first sample",
+    "antidrift: last control point must be at after last sample",
+};
+
 #define INVALID_INPUT 1
 #define SUCCESS 0
 
@@ -66,7 +84,7 @@ static int64_t imax(int64_t i, int64_t j) {
     return i > j ? i : j;
 }
 
-static int antidrift(
+static signal_error_t antidrift(
         int64_t n_control,
         const int64_t *indices_control,
         const double *t_control,
@@ -87,15 +105,19 @@ static int antidrift(
 
 
     /* check inputs */
-    if (n_in < 1 || n_control < 2) {
-        return INVALID_INPUT;
+    if (n_in < 1) {
+        return INVALID_INPUT_EMPTY;
     }
 
-    if (indices_control[0] != 0) {
-        return INVALID_INPUT;
+    if (n_control < 2) {
+        return INVALID_INPUT_NEED_MORE_CONTROL_POINTS;
     }
-    if (indices_control[n_control-1] != n_in-1) {
-        return INVALID_INPUT;
+
+    if (indices_control[0] > 0) {
+        return INVALID_INPUT_FIRST_CONTROL_POINT;
+    }
+    if (indices_control[n_control-1] < n_in-1) {
+        return INVALID_INPUT_LAST_CONTROL_POINT;
     }
 
     slopes = calloc(n_control-1, sizeof(double));
@@ -104,7 +126,7 @@ static int antidrift(
                 ((t_control[ic+1] - t_control[ic])/deltat_out);
 
         if (slope < 0.9 || 1.1 < slope) {
-            return INVALID_INPUT;
+            return INVALID_INPUT_SLOPE;
         }
         slopes[ic] = slope;
     }
@@ -228,7 +250,7 @@ static PyObject* w_antidrift(PyObject *m, PyObject *args) {
             n_out, tmin_out, deltat_out, samples_out);
 
     if (err != 0) {
-        PyErr_SetString(st->error, "antidrift failed.");
+        PyErr_SetString(st->error, signal_error_names[err]);
         return NULL;
     }
 

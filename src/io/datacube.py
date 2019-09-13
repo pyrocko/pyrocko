@@ -7,6 +7,8 @@ from __future__ import absolute_import
 
 import os
 import math
+import logging
+
 import numpy as num
 from builtins import str as newstr
 
@@ -14,6 +16,8 @@ from pyrocko import trace, util, plot
 from pyrocko.guts import Object, Int, String, Timestamp
 
 from . import io_common
+
+logger = logging.getLogger('pyrocko.io.datacube')
 
 N_GPS_TAGS_WANTED = 200  # must match definition in datacube_ext.c
 
@@ -27,6 +31,10 @@ class DataCubeError(io_common.FileLoadError):
     pass
 
 
+class ControlPointError(Exception):
+    pass
+
+
 def make_control_point(ipos_block, t_block, tref, deltat):
 
     # reduce time (no drift would mean straight line)
@@ -34,7 +42,7 @@ def make_control_point(ipos_block, t_block, tref, deltat):
 
     # first round, remove outliers
     q25, q75 = num.percentile(tred, (25., 75.))
-    iok = num.where(num.logical_and(q25 <= tred, tred <= q75))[0]
+    iok = num.logical_and(q25 <= tred, tred <= q75)
 
     # detrend
     slope, offset = num.polyfit(ipos_block[iok], tred[iok], 1)
@@ -42,11 +50,25 @@ def make_control_point(ipos_block, t_block, tref, deltat):
 
     # second round, remove outliers based on detrended tred, refit
     q25, q75 = num.percentile(tred2, (25., 75.))
-    iok = num.where(num.logical_and(q25 <= tred2, tred2 <= q75))[0]
-    slope, offset = num.polyfit(ipos_block[iok], tred[iok], 1)
+    iok = num.logical_and(q25 <= tred2, tred2 <= q75)
+    x = ipos_block[iok].copy()
+    ipos0 = x[0]
+    x -= ipos0
+    y = tred[iok].copy()
+    (slope, offset), cov = num.polyfit(x, y, 1, cov=True)
+
+    slope_err, offset_err = num.sqrt(num.diag(cov))
+    slope_err_limit = 1.0e-10
+    offset_err_limit = 5.0e-3
+
+    if slope_err > slope_err_limit:
+        raise ControlPointError('slope error too large')
+
+    if offset_err > offset_err_limit:
+        raise ControlPointError('offset error too large')
 
     ic = ipos_block[ipos_block.size//2]
-    tc = offset + slope * ic
+    tc = offset + slope * (ic - ipos0)
 
     return ic, tc + ic * deltat + tref
 
@@ -81,29 +103,35 @@ def analyse_gps_tags(header, gps_tags, offset, nsamples):
 
     blocksize = N_GPS_TAGS_WANTED // 2
 
-    if ipos.size < blocksize:
-        tmin = util.str_to_time(header['S_DATE'] + header['S_TIME'],
-                                format='%y/%m/%d%H:%M:%S') + offset * deltat
+    try:
+        if ipos.size < blocksize:
+            raise ControlPointError(
+                'could not safely determine time corrections from gps')
 
-        tmax = tmin + (nsamples - 1) * deltat
-        icontrol, tcontrol = None, None
-        return tmin, tmax, icontrol, tcontrol
-
-    else:
         j = 0
         control_points = []
         tref = num.median(t - ipos*deltat)
         while j < ipos.size - blocksize:
             ipos_block = ipos[j:j+blocksize]
             t_block = t[j:j+blocksize]
-            ic, tc = make_control_point(ipos_block, t_block, tref, deltat)
-            control_points.append((ic, tc))
+            try:
+                ic, tc = make_control_point(ipos_block, t_block, tref, deltat)
+                control_points.append((ic, tc))
+            except ControlPointError:
+                pass
             j += blocksize
 
         ipos_last = ipos[-blocksize:]
         t_last = t[-blocksize:]
-        ic, tc = make_control_point(ipos_last, t_last, tref, deltat)
-        control_points.append((ic, tc))
+        try:
+            ic, tc = make_control_point(ipos_last, t_last, tref, deltat)
+            control_points.append((ic, tc))
+        except ControlPointError:
+            pass
+
+        if len(control_points) < 2:
+            raise ControlPointError(
+                'could not safely determine time corrections from gps')
 
         i0, t0 = control_points[0]
         i1, t1 = control_points[1]
@@ -113,8 +141,15 @@ def analyse_gps_tags(header, gps_tags, offset, nsamples):
             tmin = t0 - i0 * deltat - offset * deltat
             tmax = t3 + (nsamples - i3 - 1) * deltat
         else:
-            tmin = t0 + (offset - i0) * (t1 - t0) / (i1 - i0)
-            tmax = t2 + (offset + nsamples - 1 - i2) * (t3 - t2) / (i3 - i2)
+            icontrol = num.array([x[0] for x in control_points], dtype=num.int64)
+            tcontrol = num.array([x[1] for x in control_points], dtype=num.float)
+            # robust against steps:
+            slope = num.median(
+                (tcontrol[1:] - tcontrol[:-1])
+                / (icontrol[1:] - icontrol[:-1]))
+
+            tmin = t0 + (offset - i0) * slope
+            tmax = t2 + (offset + nsamples - 1 - i2) * slope
 
         if offset < i0:
             control_points[0:0] = [(offset, tmin)]
@@ -125,7 +160,22 @@ def analyse_gps_tags(header, gps_tags, offset, nsamples):
         icontrol = num.array([x[0] for x in control_points], dtype=num.int64)
         tcontrol = num.array([x[1] for x in control_points], dtype=num.float)
 
-        return tmin, tmax, icontrol, tcontrol
+        return tmin, tmax, icontrol, tcontrol, ok
+
+    except ControlPointError:
+
+        tmin = util.str_to_time(header['S_DATE'] + header['S_TIME'],
+                                format='%y/%m/%d%H:%M:%S')
+
+        idat = int(header['DAT_NO'])
+        if idat == 0:
+            tmin = tmin + util.gps_utc_offset(tmin)
+        else:
+            tmin = util.day_start(tmin + idat * 24.*3600.) + util.gps_utc_offset(tmin)
+
+        tmax = tmin + (nsamples - 1) * deltat
+        icontrol, tcontrol = None, None
+        return tmin, tmax, icontrol, tcontrol, None
 
 
 def plot_timeline(fns):
@@ -137,8 +187,17 @@ def plot_timeline(fns):
     h = 3600.
 
     if isinstance(fns, (str, newstr)):
-        ipos, t, fix, nsvs, header, offset, nsamples = \
-            get_extended_timing_context(fns)
+        fn = fns
+        if os.path.isdir(fn):
+            fns = [
+                os.path.join(fn, entry) for entry in sorted(os.listdir(fn))]
+
+            ipos, t, fix, nsvs, header, offset, nsamples = \
+                get_timing_context(fns)
+
+        else:
+            ipos, t, fix, nsvs, header, offset, nsamples = \
+                get_extended_timing_context(fn)
 
     else:
         ipos, t, fix, nsvs, header, offset, nsamples = \
@@ -152,27 +211,33 @@ def plot_timeline(fns):
     x = ipos*deltat
     y = (t - tref) - ipos*deltat
 
-    ifix = num.where(fix != 0)
-    inofix = num.where(fix == 0)
+    bfix = fix != 0
+    bnofix = fix == 0
 
-    axes.plot(x[ifix]/h, y[ifix], '+', ms=5, color=color('chameleon3'))
-    axes.plot(x[inofix]/h, y[inofix], 'x', ms=5, color=color('scarletred1'))
-
-    tmin, tmax, icontrol, tcontrol = analyse_gps_tags(
+    tmin, tmax, icontrol, tcontrol, ok = analyse_gps_tags(
         header, (ipos, t, fix, nsvs), offset, nsamples)
+
+    la = num.logical_and
+    nok = num.logical_not(ok)
+
+    axes.plot(x[la(bfix, ok)]/h, y[la(bfix, ok)], '+', ms=5, color=color('chameleon3'))
+    axes.plot(x[la(bfix, nok)]/h, y[la(bfix, nok)], '+', ms=5, color=color('aluminium4'))
+
+    axes.plot(x[la(bnofix, ok)]/h, y[la(bnofix, ok)], 'x', ms=5, color=color('chocolate3'))
+    axes.plot(x[la(bnofix, nok)]/h, y[la(bnofix, nok)], 'x', ms=5, color=color('aluminium4'))
 
     tred = tcontrol - icontrol*deltat - tref
     axes.plot(icontrol*deltat/h, tred, color=color('aluminium6'))
     axes.plot(icontrol*deltat/h, tred, 'o', ms=5, color=color('aluminium6'))
 
-    ymin = math.floor(tred.min() / deltat) * deltat - 0.1 * deltat
-    ymax = math.ceil(tred.max() / deltat) * deltat + 0.1 * deltat
+    ymin = (math.floor(tred.min() / deltat)-1) * deltat
+    ymax = (math.ceil(tred.max() / deltat)+1) * deltat
 
     # axes.set_ylim(ymin, ymax)
-    if ymax - ymin < 100 * deltat:
+    if ymax - ymin < 1000 * deltat:
         ygrid = math.floor(tred.min() / deltat) * deltat
         while ygrid < ymax:
-            axes.axhline(ygrid, color=color('aluminium4'))
+            axes.axhline(ygrid, color=color('aluminium4'), alpha=0.3)
             ygrid += deltat
 
     xmin = icontrol[0]*deltat/h
@@ -181,6 +246,8 @@ def plot_timeline(fns):
     xmin -= xsize * 0.1
     xmax += xsize * 0.1
     axes.set_xlim(xmin, xmax)
+
+    axes.set_ylim(ymin, ymax)
 
     axes.set_xlabel('Uncorrected (quartz) time [h]')
     axes.set_ylabel('Relative time correction [s]')
@@ -380,11 +447,7 @@ def iload(fn, load_data=True, interpolation='sinc'):
         if load_data:
             loadflag = 2
         else:
-            if interpolation == 'off':
-                loadflag = 0
-            else:
-                # must get correct nsamples if interpolation is off
-                loadflag = 1
+            loadflag = 1
 
         try:
             header, data_arrays, gps_tags, nsamples, _ = datacube_ext.load(
@@ -402,8 +465,13 @@ def iload(fn, load_data=True, interpolation='sinc'):
     ipos, t, fix, nsvs, header_, offset_, nsamples_ = \
         get_extended_timing_context(fn)
 
-    tmin, tmax, icontrol, tcontrol = analyse_gps_tags(
+    tmin, tmax, icontrol, tcontrol, _ = analyse_gps_tags(
         header_, (ipos, t, fix, nsvs), offset_, nsamples_)
+
+    if icontrol is None:
+        logger.warn(
+            'No usable GPS timestamps found. Using datacube header '
+            'information to guess time. (file: "%s")' % fn)
 
     tmin_ip = round(tmin / deltat) * deltat
     if interpolation != 'off':
@@ -419,16 +487,36 @@ def iload(fn, load_data=True, interpolation='sinc'):
         [x[0] + util.gps_utc_offset(x[0]) for x in util.read_leap_seconds2()],
         dtype=num.float)
 
+    if load_data and icontrol is not None:
+        ncontrol_this = num.sum(
+            num.logical_and(0 <= icontrol, icontrol < nsamples))
+
+        if ncontrol_this <= 1:
+            logger.warn(
+                'Extrapolating GPS time information from directory context '
+                '(insufficient number of GPS timestamps in file: "%s").' % fn)
+
     for i in range(nchannels):
         if load_data:
             arr = data_arrays[i]
             assert arr.size == nsamples
 
             if interpolation == 'sinc' and icontrol is not None:
+
                 ydata = num.empty(nsamples_ip, dtype=num.float)
-                signal_ext.antidrift(
-                    icontrol, tcontrol,
-                    arr.astype(num.float), tmin_ip, deltat, ydata)
+                try:
+                    signal_ext.antidrift(
+                        icontrol, tcontrol,
+                        arr.astype(num.float), tmin_ip, deltat, ydata)
+
+                except signal_ext.Error as e:
+                    e = DataCubeError(str(e))
+                    e.set_context('filename', fn)
+                    e.set_context('n_control_points', icontrol.size)
+                    e.set_context('n_samples_raw', arr.size)
+                    e.set_context('n_samples_ip', ydata.size)
+                    e.set_context('tmin_ip', util.time_to_str(tmin_ip))
+                    raise e
 
                 ydata = num.round(ydata).astype(arr.dtype)
             else:
