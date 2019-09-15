@@ -1505,6 +1505,47 @@ class RectangularExplosionSource(ExplosionSource):
             else:
                 return latlon[:, ::-1]
 
+    def get_nucleation_abs_coord(self, cs='xyz'):
+
+        if self.nucleation_x is None:
+            return None, None
+
+        ln = self.length
+        wd = self.width
+        nuc_x = self.nucleation_x
+        nuc_y = self.nucleation_y
+
+        points = num.array(
+            [[-0.5 * ln*nuc_x, -0.5 * wd*nuc_y, 0.],
+             [0.5 * ln*nuc_x, -0.5 * wd*nuc_y, 0.],
+             [0.5 * ln*nuc_x, 0.5 * wd*nuc_y, 0.],
+             [-0.5 * ln*nuc_x, 0.5 * wd*nuc_y, 0.],
+             [-0.5 * ln*nuc_x, -0.5 * wd*nuc_y, 0.]])
+
+        anch_x, anch_y = map_anchor[self.anchor]
+        points[:, 0] -= anch_x * 0.5 * self.length
+        points[:, 1] -= anch_y * 0.5 * self.width
+
+        rotmat = num.asarray(
+            pmt.euler_to_matrix(self.dip * d2r, self.strike * d2r, 0.0))
+
+        points = num.dot(rotmat.T, points.T).T
+        points[:, 0] += self.north_shift
+        points[:, 1] += self.east_shift
+        points[:, 2] += self.depth
+
+        x = points[1:2, 1]
+        y = points[2:3, 0]
+
+        if cs == 'latlon':
+            lat_nuc, lon_nuc = orthodrome.ne_to_latlon(self.lat, self.lon,
+                                                       x, y)
+            return lat_nuc, lon_nuc
+        else:
+            nuc_x_shift = x + self.north_shift
+            nuc_y_shift = y + self.east_shift
+            return nuc_x_shift, nuc_y_shift
+
 
 class DCSource(SourceWithMagnitude):
     '''
@@ -2047,6 +2088,47 @@ class RectangularSource(SourceWithDerivedMagnitude):
                 return latlon
             else:
                 return latlon[:, ::-1]
+
+    def get_nucleation_abs_coord(self, cs='xyz'):
+
+        if self.nucleation_x is None:
+            return None, None
+
+        ln = self.length
+        wd = self.width
+        nuc_x = self.nucleation_x
+        nuc_y = self.nucleation_y
+
+        points = num.array(
+            [[-0.5 * ln*nuc_x, -0.5 * wd*nuc_y, 0.],
+             [0.5 * ln*nuc_x, -0.5 * wd*nuc_y, 0.],
+             [0.5 * ln*nuc_x, 0.5 * wd*nuc_y, 0.],
+             [-0.5 * ln*nuc_x, 0.5 * wd*nuc_y, 0.],
+             [-0.5 * ln*nuc_x, -0.5 * wd*nuc_y, 0.]])
+
+        anch_x, anch_y = map_anchor[self.anchor]
+        points[:, 0] -= anch_x * 0.5 * self.length
+        points[:, 1] -= anch_y * 0.5 * self.width
+
+        rotmat = num.asarray(
+            pmt.euler_to_matrix(self.dip * d2r, self.strike * d2r, 0.0))
+
+        points = num.dot(rotmat.T, points.T).T
+        points[:, 0] += self.north_shift
+        points[:, 1] += self.east_shift
+        points[:, 2] += self.depth
+
+        x = points[1:2, 1]
+        y = points[2:3, 0]
+
+        if cs == 'latlon':
+            lat_nuc, lon_nuc = orthodrome.ne_to_latlon(self.lat, self.lon,
+                                                       x, y)
+            return lat_nuc, lon_nuc
+        else:
+            nuc_x_shift = x + self.north_shift
+            nuc_y_shift = y + self.east_shift
+            return nuc_x_shift, nuc_y_shift
 
     def pyrocko_moment_tensor(self, store=None, target=None):
         return pmt.MomentTensor(
