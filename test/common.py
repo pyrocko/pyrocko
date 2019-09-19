@@ -1,11 +1,14 @@
 from __future__ import division, print_function, absolute_import
 import unittest
 import os
+import sys
 import time
 from pyrocko import util
 import functools
 import logging
 import socket
+import shutil
+from io import StringIO
 
 logger = logging.getLogger('pyrocko.test.common')
 
@@ -154,3 +157,106 @@ class Benchmark(object):
 
     def clear(self):
         self.results = []
+
+
+class PyrockoExit(Exception):
+    def __init__(self, res):
+        Exception.__init__(self, str(res))
+        self.result = res
+
+
+class Capture(object):
+    def __init__(self, tee=False):
+        self.file = StringIO()
+        self.tee = tee
+
+    def __enter__(self):
+        self.orig_stdout = sys.stdout
+        self.orig_exit = sys.exit
+        sys.stdout = self
+
+        def my_exit(res):
+            raise PyrockoExit(res)
+
+        sys.exit = my_exit
+
+    def __exit__(self, *args):
+        sys.stdout = self.orig_stdout
+        sys.exit = self.orig_exit
+
+    def write(self, data):
+        self.file.write(data)
+        if self.tee:
+            self.orig_stdout.write(data)
+
+    def writelines(self, lines):
+        for l in lines:
+            self.write(l)
+
+    def flush(self):
+        self.file.flush()
+
+    def isatty(self):
+        return False
+
+    def getvalue(self):
+        return self.file.getvalue()
+
+
+def call(program, *args, **kwargs):
+    if program == 'fomosto':
+        from pyrocko.apps.fomosto import main
+    else:
+        assert False, 'program %s not available' % program
+
+    # tee = True
+    tee = kwargs.get('tee', False)
+    logger.info('Calling: %s %s' % (program, ' '.join(args)))
+    cap = Capture(tee=tee)
+    with cap:
+        main(list(args))
+
+    return cap.getvalue()
+
+
+def call_assert_usage(program, *args):
+    res = None
+    try:
+        call(program, *args)
+    except PyrockoExit as e:
+        res = e.result
+
+    assert res.startswith('Usage')
+
+
+class chdir(object):
+
+    def __init__(self, path):
+        self._path = path
+
+    def __enter__(self):
+        self._oldwd = os.getcwd()
+        os.chdir(self._path)
+
+    def __exit__(self, *args):
+        os.chdir(self._oldwd)
+
+
+class run_in_temp(object):
+    def __init__(self, path=None):
+        self._must_delete = False
+        self._path = path
+
+    def __enter__(self):
+        if self._path is None:
+            from tempfile import mkdtemp
+            self._path = mkdtemp(prefix='pyrocko-test')
+            self._must_delete = True
+
+        self._oldwd = os.getcwd()
+        os.chdir(self._path)
+
+    def __exit__(self, *args):
+        os.chdir(self._oldwd)
+        if self._must_delete:
+            shutil.rmtree(self._path)

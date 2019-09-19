@@ -198,8 +198,7 @@ Available modelling backends:
         details=details)
 
     if len(args) == 0:
-        parser.print_help()
-        sys.exit(1)
+        sys.exit(parser.format_help())
 
     if args[0] == 'redeploy':
         if len(args) != 3:
@@ -414,8 +413,7 @@ def command_redeploy(args):
     parser, options, args = cl_parse('redeploy', args)
 
     if not len(args) == 2:
-        parser.print_help()
-        sys.exit(1)
+        sys.exit(parser.format_help())
 
     source_store_dir, dest_store_dir = args
 
@@ -636,8 +634,7 @@ def command_import(args):
     show_progress = True
 
     if not len(args) == 2:
-        parser.print_help()
-        sys.exit(1)
+        sys.exit(parser.format_help())
 
     source_path, dest_store_dir = args
 
@@ -714,8 +711,7 @@ def command_export(args):
     show_progress = True
 
     if len(args) not in (1, 2):
-        parser.print_help()
-        sys.exit(1)
+        sys.exit(parser.format_help())
 
     target_path = args.pop()
     if op.isdir(target_path):
@@ -979,8 +975,7 @@ Browse pre-calculated Green's function stores online:
     parser, options, args = cl_parse(
         'download', args, setup=setup, details=details)
     if not len(args) in (1, 2):
-        parser.print_help()
-        sys.exit(1)
+        sys.exit(parser.format_help())
 
     if len(args) == 2:
         site, store_id = args
