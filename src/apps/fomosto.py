@@ -1136,7 +1136,7 @@ def command_addref(args):
         for filename in args:
             references.extend(gf.meta.Reference.from_bibtex(filename=filename))
     except ImportError:
-        die('pybtex module must be installed to use this function')
+        die('bibtexparser module must be installed to use this function')
 
     if not references:
         die('no references found')

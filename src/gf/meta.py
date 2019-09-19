@@ -3,7 +3,6 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
-from builtins import str as new_str
 from builtins import range, map, zip
 
 import math
@@ -307,7 +306,7 @@ class Reference(Object):
     doi = String.T(optional=True)
     url = String.T(optional=True)
     eprint = String.T(optional=True)
-    authors = List.T(Unicode.T())
+    author = Unicode.T(optional=True)
     publisher = Unicode.T(optional=True)
     keywords = Unicode.T(optional=True)
     note = Unicode.T(optional=True)
@@ -316,32 +315,33 @@ class Reference(Object):
     @classmethod
     def from_bibtex(cls, filename=None, stream=None):
 
-        from pybtex.database.input import bibtex
+        import bibtexparser
+        from bibtexparser.bparser import BibTexParser
 
-        parser = bibtex.Parser()
+        parser = BibTexParser()
+        parser.ignore_nonstandard_types = False
 
         if filename is not None:
-            bib_data = parser.parse_file(filename)
+            with open(filename, 'r') as stream:
+                bib_data = bibtexparser.load(stream, parser)
+
         elif stream is not None:
-            bib_data = parser.parse_stream(stream)
+            bib_data = bibtexparser.load(stream, parser)
+
+        else:
+            assert False
 
         references = []
 
-        for id_, entry in bib_data.entries.items():
+        for entry in bib_data.entries:
             d = {}
-            avail = entry.fields.keys()
             for prop in cls.T.properties:
-                if prop.name == 'authors' or prop.name not in avail:
+                if prop.name not in entry:
                     continue
 
-                d[prop.name] = entry.fields[prop.name]
+                d[prop.name] = entry[prop.name]
 
-            if 'author' in entry.persons:
-                d['authors'] = []
-                for person in entry.persons['author']:
-                    d['authors'].append(new_str(person))
-
-            c = Reference(id=id_, type=entry.type, **d)
+            c = Reference(id=entry['ID'], type=entry['ENTRYTYPE'], **d)
             references.append(c)
 
         return references
