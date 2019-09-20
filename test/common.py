@@ -10,6 +10,11 @@ import socket
 import shutil
 from io import StringIO
 
+try:
+    new_str = unicode
+except NameError:
+    new_str = str
+
 logger = logging.getLogger('pyrocko.test.common')
 
 mpl_logger = logging.getLogger('matplotlib')
@@ -185,6 +190,7 @@ class Capture(object):
         sys.exit = self.orig_exit
 
     def write(self, data):
+        data = new_str(data)
         self.file.write(data)
         if self.tee:
             self.orig_stdout.write(data)
