@@ -112,6 +112,11 @@ class WaveformGenerator(TargetGenerator):
         help='Calculate seismic phase arrivals for all travel-time tables '
              'defined in GF store.')
 
+    tabulated_phases_noise_scale = Float.T(
+        default=0.0,
+        help='Standard deviation of normally distributed noise added to '
+             'calculated phase arrivals.')
+
     taper = trace.Taper.T(
         optional=True,
         help='Time domain taper applied to synthetic waveforms.')
@@ -323,7 +328,11 @@ class WaveformGenerator(TargetGenerator):
                     t = store.t(phase.id, source, target)
                     if not t:
                         continue
-                    t += num.random.normal(scale=0.1)
+
+                    noise_scale = self.tabulated_phases_noise_scale
+                    if noise_scale != 0.0:
+                        t += num.random.normal(scale=noise_scale)
+
                     t += source.time
                     markers.append(
                         PhaseMarker(
