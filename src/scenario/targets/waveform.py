@@ -14,7 +14,7 @@ from os import path as op
 from functools import reduce
 
 from pyrocko.guts import StringChoice, Float, List, Bool
-from pyrocko.gui.marker import PhaseMarker
+from pyrocko.gui.marker import PhaseMarker, EventMarker
 from pyrocko import gf, model, util, trace, io
 from pyrocko.io_common import FileSaveError
 from pyrocko import pile
@@ -107,6 +107,10 @@ class WaveformGenerator(TargetGenerator):
     tabulated_phases = List.T(
         gf.meta.TPDef.T(), optional=True,
         help='Define seismic phases to be calculated.')
+
+    tabulated_phases_from_store = Bool.T(
+        help='Calculate seismic phase arrivals for all travel-time tables '
+             'defined in GF store.')
 
     taper = trace.Taper.T(
         optional=True,
@@ -300,22 +304,28 @@ class WaveformGenerator(TargetGenerator):
         return list(trs.values())
 
     def get_onsets(self, engine, sources, *args, **kwargs):
-        if not self.tabulated_phases:
-            return []
 
         targets = {t.codes[:3]: t for t in self.get_targets()}
 
-        phase_markers = []
-        for nsl, target in targets.items():
-            store = engine.get_store(target.store_id)
-            for source in sources:
-                d = source.distance_to(target)
-                for phase in self.tabulated_phases:
-                    t = store.t(phase.definition, (source.depth, d))
+        markers = []
+        for source in sources:
+            ev = source.pyrocko_event()
+            markers.append(EventMarker(ev))
+            for nsl, target in targets.items():
+                store = engine.get_store(target.store_id)
+                if self.tabulated_phases:
+                    tabulated_phases = self.tabulated_phases
+
+                elif self.tabulated_phases_from_store:
+                    tabulated_phases = store.config.tabulated_phases
+
+                for phase in tabulated_phases:
+                    t = store.t(phase.id, source, target)
                     if not t:
                         continue
+                    t += num.random.normal(scale=0.1)
                     t += source.time
-                    phase_markers.append(
+                    markers.append(
                         PhaseMarker(
                             phasename=phase.id,
                             tmin=t,
@@ -324,7 +334,7 @@ class WaveformGenerator(TargetGenerator):
                             nslc_ids=(nsl+('*',),)
                             )
                         )
-        return phase_markers
+        return markers
 
     def get_transfer_function(self, codes):
         if self.seismogram_quantity == 'displacement':
