@@ -26,8 +26,8 @@ For additional information, refer to :doc:`details`.
 Support
 -------
 
-If you run into problems during installation, please let us know `on GitHub
-<https://github.com/pyrocko/pyrocko/issues>`_ or join the `support forum
+If you run into problems during installation, please let us know via `Pyrocko
+Issues <https://git.pyrocko.org/pyrocko/pyrocko/issues>`_ or join our `support forum
 <https://hive.pyrocko.org/>`_.
 
 

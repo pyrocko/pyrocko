@@ -54,10 +54,10 @@ when you try to run ``python setup.py install``.
     sudo apt-get install -y python-pyqt5 python-pyqt5.qtopengl python-pyqt5.qtsvg
     sudo apt-get install -y python-pyqt5.qtwebengine || sudo apt-get install -y python-pyqt5.qtwebkit
 
-    # clean GitHub clone
+    # clean Git clone
     cd src
     rm -rf pyrocko
-    git clone https://github.com/pyrocko/pyrocko.git
+    git clone https://git.pyrocko.org/pyrocko/pyrocko.git
     cd pyrocko
     sudo python setup.py install  # on failure, reports <directory> to remove
     rm -rf <directory>
@@ -78,7 +78,7 @@ installation:
 
     cd ~/src/  # or wherever you keep your source packages
     rm -rf pyrocko
-    git clone git://github.com/pyrocko/pyrocko.git pyrocko
+    git clone git://git.pyrocko.org/pyrocko/pyrocko.git pyrocko
     cd pyrocko
     sudo python setup.py install --install-scripts=/usr/local/bin
 

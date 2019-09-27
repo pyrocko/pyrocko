@@ -25,7 +25,7 @@ Mac OS X with MacPorts (Python 3)
     sudo port install py35-numpy py35-scipy py35-matplotlib py35-yaml py35-pyqt5 py35-setuptools py35-jinja2 py35-requests py35-future
     sudo easy_install progressbar
     cd ~/src/   # or wherever you keep your source packages
-    git clone git://github.com/pyrocko/pyrocko.git pyrocko
+    git clone https://git.pyrocko.org/pyrocko/pyrocko.git pyrocko
     cd pyrocko
     sudo python setup.py install --install-scripts=/usr/local/bin
 
@@ -43,7 +43,7 @@ Mac OS X with MacPorts (Python 2.7)
     sudo easy_install progressbar
 
     cd ~/src/  # or wherever you keep your source packages
-    git clone git://github.com/pyrocko/pyrocko.git pyrocko
+    git clone https://git.pyrocko.org/pyrocko/pyrocko.git pyrocko
     cd pyrocko
     sudo python setup.py install --install-scripts=/usr/local/bin
 
@@ -78,7 +78,7 @@ use pip3 instead of pip.
     pip install --user Jinja2 
     easy_install --user pyavl
     cd ~/src/   # or wherever you keep your source packages   
-    git clone git://github.com/pyrocko/pyrocko.git pyrocko
+    git clone https://git.pyrocko.org/pyrocko/pyrocko.git pyrocko
     cd pyrocko
     python setup.py install --user --install-scripts=<path_to_your_local_binaries>
 

@@ -8,7 +8,7 @@ Snufflings can be reloaded at run-time using the menu entry 'Reload Snufflings'
 in the main menu of Snuffler - no need to restart Snuffler when a snuffling is
 modified or added.
 
-Already existing snufflings can be downloaded from the  `snuffling repository <https://github.com/pyrocko/contrib-snufflings>`_
+Already existing snufflings can be downloaded from the  `snuffling repository <https://git.pyrocko.org/pyrocko/contrib-snufflings>`_
 
 Example Snuffling to show earthquake catalog information within Snuffler
 ------------------------------------------------------------------------
@@ -88,9 +88,9 @@ snuffling class from the ``__snufflings__()`` function.
 
 The :py:class:`pyrocko.snuffling.Snuffling` base class documentation can also
 be accessed with the command ``pydoc pyrocko.snuffling.Snuffling`` from the
-shell. Example snufflings can be found in `src/snufflings/ <https://github.com/pyrocko/pyrocko/tree/master/src/snufflings>`_
+shell. Example snufflings can be found in `src/snufflings/ <https://git.pyrocko.org/pyrocko/pyrocko/src/master/src/gui/snufflings>`_
 in the pyrocko source code. More examples may be found in the 
-`contrib-snufflings <https://github.com/emolch/contrib-snufflings>`_ repository on GitHub.
+`contrib-snufflings repository <https://git.pyrocko.org/pyrocko/contrib-snufflings>`_ repository.
 
 More examples
 -------------

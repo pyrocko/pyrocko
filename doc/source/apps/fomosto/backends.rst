@@ -46,7 +46,7 @@ receiver structures should be considered. It can also be used to compute single
 force excitation Green's functions.
 
 The current version of QSEIS is ``2006a`` (at the time of writing, 2017-01-25),
-and can be downloaded from https://github.com/pyrocko/fomosto-qseis .
+and can be downloaded from https://git.pyrocko.org/pyrocko/fomosto-qseis .
 
 After downloading and installing, to initialize a Green's function store
 to be built with QSEIS, run::
@@ -69,7 +69,7 @@ core phases are involved or when the coupling of earth and atmosphere is of
 interest.
 
 The current version of QSSP is ``2010`` (at the time of writing, 2017-01-25),
-and can be downloaded from https://github.com/pyrocko/fomosto-qssp .
+and can be downloaded from https://git.pyrocko.org/pyrocko/fomosto-qssp .
 
 After downloading and installing, to initialize a Green's function store
 to be built with QSSP, run::
@@ -95,7 +95,7 @@ functions.
 
 The current version of PSGRN/PSCMP is ``2008a`` (at the time of writing,
 2017-02-14), and can be downloaded from
-https://github.com/pyrocko/fomosto-psgrn-pscmp .
+https://git.pyrocko.org/pyrocko/fomosto-psgrn-pscmp .
 
 After downloading and installing, to initialize a Green's function store to be
 built with PSGRN/PSCMP, run::

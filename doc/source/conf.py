@@ -118,7 +118,6 @@ html_theme = 'sphinx_sleekcat_theme'
 # further.  For a list of options available for each theme, see the
 # documentation.
 html_theme_options = {
-    # 'githuburl': 'https://github.com/pyrocko/pyrocko/',
     'bodyfont': '"Lucida Grande",Arial,sans-serif',
     'headfont': '"Lucida Grande",Arial,sans-serif',
     'codefont': 'monospace,sans-serif',

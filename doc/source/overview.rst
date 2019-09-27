@@ -18,7 +18,7 @@ standalone tools for everyday seismological practice:
 * :doc:`apps/jackseis/index`: a command-line tool for common waveform archive data manipulations
 
 To download the software or if you wish to contribute, please use the `Pyrocko
-project page on GitHub <https://github.com/pyrocko/pyrocko>`_. If you want to
-file a bug report or need help, please use the `GitHub issues page
-<https://github.com/pyrocko/pyrocko/issues>`_. Chat with us and other Pyrocko
-users our `support forum <https://hive.pyrocko.org/>`_.
+project page <https://git.pyrocko.org/pyrocko/pyrocko>`_. If you want to
+file a bug report or need help, please use the `Pyrocko Issues
+<https://git.pyrocko.org/pyrocko/pyrocko/issues>`_. Chat with us and other Pyrocko
+users at our `support forum <https://hive.pyrocko.org/>`_.

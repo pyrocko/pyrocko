@@ -21,23 +21,23 @@ As of Pyrocko 2017.11, pre-built packages are available for Linux 64-Bit and Mac
 
 More information available at https://anaconda.org/pyrocko/pyrocko
 
-Anaconda: update to latest Pyrocko version on GitHub (master branch)
---------------------------------------------------------------------
+Anaconda: update to latest Pyrocko version (master branch)
+----------------------------------------------------------
 
 **All dependencies should be resolved by a previous conda install**. You can
 then go ahead and use ``pip`` to update Pyrocko from source
 
 .. code-block:: bash
-    :caption: Anaconda's ``pip`` installs straight from GitHub
+    :caption: Anaconda's ``pip`` can install straight from the Git repository
 
-    pip install git+https://github.com/pyrocko/pyrocko.git
+    pip install git+https://git.pyrocko.org/pyrocko/pyrocko.git
 
 
 Anaconda (compilation from source)
 -----------------------------------
 
 .. code-block:: bash
-    :caption: Compile from GitHub sources
+    :caption: Compile from sources
 
     conda install pyqt=5
     conda install progressbar
@@ -45,7 +45,7 @@ Anaconda (compilation from source)
 
     mkdir src
     cd src
-    git clone https://github.com/pyrocko/pyrocko.git
+    git clone https://git.pyrocko.org/pyrocko/pyrocko.git
     cd pyrocko
     python setup.py install
 

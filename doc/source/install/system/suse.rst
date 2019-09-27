@@ -16,7 +16,7 @@ Python 3.4 and later
         python3-nose python3-coverage
 
     cd ~/src/   # or wherever you keep your source packages
-    git clone git://github.com/pyrocko/pyrocko.git pyrocko
+    git clone https://git.pyrocko.org/pyrocko/pyrocko.git pyrocko
     cd pyrocko
     sudo python3 setup.py install
 
@@ -35,7 +35,7 @@ Python 2.7
         python-nose python-coverage
 
     cd ~/src/   # or wherever you keep your source packages
-    git clone git://github.com/pyrocko/pyrocko.git pyrocko
+    git clone https://git.pyrocko.org/pyrocko/pyrocko.git pyrocko
     cd pyrocko
     sudo python setup.py install
 

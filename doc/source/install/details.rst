@@ -36,9 +36,9 @@ installed from source:
    * `GMT <http://gmt.soest.hawaii.edu/>`_ (4 or 5, only required for the :py:mod:`pyrocko.plot.automap` module)
    * `slinktool <http://www.iris.edu/data/dmc-seedlink.htm>`_ (optionally, if you want to use the :py:mod:`pyrocko.streaming.slink` module)
    * `rdseed <http://www.iris.edu/software/downloads/rdseed_request.htm>`_ (optionally, if you want to use the :py:mod:`pyrocko.io.rdseed` module)
-   * `QSEIS <https://github.com/pyrocko/fomosto-qseis>`_ (optional, needed for the Fomosto ``qseis.2006a`` backend)
-   * `QSSP <https://github.com/pyrocko/fomosto-qssp>`_ (optional, needed for the Fomosto ``qssp.2010`` backend)
-   * `PSGRN/PSCMP <https://github.com/pyrocko/fomosto-psgrn-pscmp>`_ (optional, needed for the Fomosto ``psgrn.pscmp`` backend)
+   * `QSEIS <https://git.pyrocko.org/pyrocko/fomosto-qseis>`_ (optional, needed for the Fomosto ``qseis.2006a`` backend)
+   * `QSSP <https://git.pyrocko.org/pyrocko/fomosto-qssp>`_ (optional, needed for the Fomosto ``qssp.2010`` backend)
+   * `PSGRN/PSCMP <https://git.pyrocko.org/pyrocko/fomosto-psgrn-pscmp>`_ (optional, needed for the Fomosto ``psgrn.pscmp`` backend)
 
 
 Download and install Pyrocko
@@ -50,7 +50,7 @@ Use ``git`` to download the software package and the included script ``setup.py`
 to install::
 
     cd ~/src/   # or wherever you keep your source packages
-    git clone https://github.com/pyrocko/pyrocko.git pyrocko
+    git clone https://git.pyrocko.org/pyrocko/pyrocko.git pyrocko
     cd pyrocko
     sudo python setup.py install
 

@@ -88,13 +88,13 @@ However, Fomosto provides a unified interface to configure and run these codes
 in order to make it simple to build a database of pre-calculated Green's
 functions.
 
-Four modelling codes, including python interfaces required for fomosto are
-available on GitHub:
+Four modelling codes, including Python interfaces required for Fomosto are
+hosted in the Pyrocko code repository:
 
- - https://github.com/pyrocko/fomosto-qssp
- - https://github.com/pyrocko/fomosto-qseis
- - https://github.com/pyrocko/fomosto-qseis2d
- - https://github.com/pyrocko/fomosto-psgrn-pscmp
+ - https://git.pyrocko.org/pyrocko/fomosto-qssp
+ - https://git.pyrocko.org/pyrocko/fomosto-qseis
+ - https://git.pyrocko.org/pyrocko/fomosto-qseis2d
+ - https://git.pyrocko.org/pyrocko/fomosto-psgrn-pscmp
 
 For detailled information regarding each computation code refer to the
 Downloads/Software website of section 2.1 (GFZ): https://www.gfz-potsdam.de/en/section/physics-of-earthquakes-and-volcanoes/data-products-services/downloads-software/.
@@ -338,7 +338,7 @@ The initial contents of the QSEIS specific configuration file ``extra/qseis``::
     example configuration is described in :py:class:`pyrocko.gf.meta.Timing`.
 
 If configuration values have been changed, it may be neccessary to rebuild the
-tabulated phase arrivals or the Green's functions. By default, fomosto will
+tabulated phase arrivals or the Green's functions. By default, Fomosto will
 refuse to overwrite any GF store content. Use the ``--force`` option to override
 this behaviour::
 

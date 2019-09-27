@@ -49,14 +49,14 @@ can use ``pip`` to manage the installation as well:
     pip install numpy>=1.8 scipy pyyaml matplotlib progressbar2 future jinja2 requests PyOpenGL
 
 
-Install from GitHub
--------------------
+Install latest version with pip
+-------------------------------
 
 If you want to install or update to the latest version of Pyrocko available on
-GitHub (``master`` branch) you can use ``pip`` to install directly from the
-repository:
+`git.pyrocko.org <https://git.pyrocko.org/pyrocko/pyrocko/>`_ (``master``
+branch) you can use ``pip`` to install directly from the repository:
 
 .. code-block:: bash
-    :caption: We install straight from GitHub
+    :caption: We install straight from the Git repository
 
-    sudo pip install git+https://github.com/pyrocko/pyrocko.git
+    sudo pip install git+https://git.pyrocko.org/pyrocko/pyrocko.git

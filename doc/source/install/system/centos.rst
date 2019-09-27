@@ -10,7 +10,7 @@ Installation on Centos systems
     sudo yum install python-future || sudo easy_install future
     sudo easy_install progressbar
     cd ~/src/   # or wherever you keep your source packages
-    git clone git://github.com/pyrocko/pyrocko.git pyrocko
+    git clone https://git.pyrocko.org/pyrocko/pyrocko.git pyrocko
     cd pyrocko
     sudo python setup.py install
 

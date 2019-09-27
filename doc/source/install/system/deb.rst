@@ -16,7 +16,7 @@ Python 3.4 and later
     sudo apt-get install -y python3-requests
     sudo apt-get install -y python3-future || sudo easy_install3 future
     cd ~/src/   # or wherever you keep your source packages
-    git clone https://github.com/pyrocko/pyrocko.git pyrocko
+    git clone https://git.pyrocko.org/pyrocko/pyrocko.git pyrocko
     cd pyrocko
     sudo python3 setup.py install
 
@@ -34,7 +34,7 @@ Python 2.7
     sudo apt-get install -y python-requests
     sudo apt-get install -y python-future || sudo easy_install future
     cd ~/src/   # or wherever you keep your source packages
-    git clone https://github.com/pyrocko/pyrocko.git pyrocko
+    git clone https://git.pyrocko.org/pyrocko/pyrocko.git pyrocko
     cd pyrocko
     sudo python setup.py install
 
@@ -65,7 +65,7 @@ Then install local Python Module dependencies and Pyrocko locally:
     easy_install --user progressbar || pip install --user progressbar
     pip install --user Jinja2 
     cd ~/src/   # or wherever you keep your source packages   
-    git clone https://github.com/pyrocko/pyrocko.git pyrocko
+    git clone https://git.pyrocko.org/pyrocko/pyrocko.git pyrocko
     cd pyrocko
     python setup.py install --user --install-scripts=<path_to_your_local_binaries>
 
