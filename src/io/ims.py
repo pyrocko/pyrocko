@@ -634,7 +634,7 @@ class DataType(Block):
 
     @classmethod
     def deserialize(cls, line, version_dialect):
-        pat = br'DATA_TYPE +([^ :]+)(:([^ :]+))? +([^ :]+)(:([^ :]+))?'
+        pat = br'DATA_TYPE +([^ :]+)(:([^ :]+))?( +([^ :]+)(:([^ :]+))?)?'
         m = re.match(pat, line)
         if not m:
             raise DeserializeError('invalid DATA_TYPE line')
@@ -642,8 +642,8 @@ class DataType(Block):
         return cls.validated(
             type=str((m.group(1) or b'').decode('ascii')),
             subtype=str((m.group(3) or b'').decode('ascii')),
-            format=str((m.group(4) or b'').decode('ascii')),
-            subformat=str((m.group(6) or b'').decode('ascii')))
+            format=str((m.group(5) or b'').decode('ascii')),
+            subformat=str((m.group(7) or b'').decode('ascii')))
 
     def serialize(self, version_dialect):
         s = self.type
