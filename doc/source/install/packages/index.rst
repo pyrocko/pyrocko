@@ -16,6 +16,6 @@ built on your system during the installation:
 
     <h3>Support</h3>
 
-If you run into problems during installation, please let us know via `Pyrocko Issues
- <https://git.pyrocko.org/pyrocko/pyrocko/issues>`_ or join the `support forum
-<https://hive.pyrocko.org/>`_.
+If you run into problems during installation, please let us know via
+`Pyrocko Issues <https://git.pyrocko.org/pyrocko/pyrocko/issues>`_ or join the
+`support forum <https://hive.pyrocko.org/>`_.
