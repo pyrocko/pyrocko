@@ -38,11 +38,18 @@ class IMSTestCase(unittest.TestCase):
         from pyrocko import ims_ext
         # a = num.random.randint(-2**31, 2**31-1, 10000).astype(num.int32)
         m = 100000000
-        vs = [m, m-1, m+1, 0, -1, 1, -m, -m-1, -m+1]
+        vs = [m, m-1, m+1, 0, -1, 1, -m, -m-1, -m+1, 2**31-1]
         for v1 in vs:
             for v2 in vs:
                 a = num.array([v1, v2], dtype=num.int32)
                 assert ims_ext.checksum(a) == ims_ext.checksum_ref(a)
+
+    @unittest.skip('known problem with checksum == -2^31')
+    def test_checksum_nasty(self):
+        vs = [-2**31]
+        for v in vs:
+            a = num.array([v], dtype=num.int32)
+            assert ims_ext.checksum(a) == ims_ext.checksum_ref(a)
 
     def test_read_write(self):
         fns = [
