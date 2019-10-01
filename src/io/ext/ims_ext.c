@@ -75,6 +75,44 @@ static PyObject* ims_checksum(PyObject *m, PyObject *args) {
     return Py_BuildValue("i", abs(checksum));
 }
 
+static PyObject* ims_checksum_ref(PyObject *m, PyObject *args) {
+    int checksum, length, i;
+    PyObject *array = NULL;
+    PyArrayObject *carray = NULL;
+    int *data;
+    int v;
+
+    struct module_state *st = GETSTATE(m);
+
+    if (!PyArg_ParseTuple(args, "O", &array )) {
+        PyErr_SetString(st->error, "usage checksum2(array)" );
+        return NULL;
+    }
+
+    carray = get_good_array(array);
+    if (carray == NULL) {
+        return NULL;
+    }
+
+    length = PyArray_SIZE(carray);
+    data = (int*)PyArray_DATA(carray);
+
+    checksum = 0;
+    for (i=0; i<length; i++) {
+        v = data[i];
+        if (abs(v) >= MODULUS) {
+            v = v - (v/MODULUS)*MODULUS;
+        }
+        checksum += v;
+        if (abs(checksum) >= MODULUS) {
+            checksum = checksum - (checksum/MODULUS) * MODULUS;
+        }
+    }
+    Py_DECREF(carray);
+
+    return Py_BuildValue("i", abs(checksum));
+}
+
 static PyObject* ims_decode_cm6(PyObject *m, PyObject *args) {
     char *in_data;
     int *out_data = NULL;
@@ -252,6 +290,9 @@ static PyMethodDef ims_ext_methods[] = {
         "Encode integers to CM6." },
 
     {"checksum", ims_checksum, METH_VARARGS,
+        "Calculate IMS/GSE checksum."},
+
+    {"checksum_ref", ims_checksum_ref, METH_VARARGS,
         "Calculate IMS/GSE checksum."},
 
     {NULL, NULL, 0, NULL}        /* Sentinel */

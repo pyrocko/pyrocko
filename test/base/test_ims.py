@@ -34,6 +34,16 @@ class IMSTestCase(unittest.TestCase):
             assert values.size == values2.size
             assert num.all(values == values2)
 
+    def test_checksum(self):
+        from pyrocko import ims_ext
+        # a = num.random.randint(-2**31, 2**31-1, 10000).astype(num.int32)
+        m = 100000000
+        vs = [m, m-1, m+1, 0, -1, 1, -m, -m-1, -m+1]
+        for v1 in vs:
+            for v2 in vs:
+                a = num.array([v1, v2], dtype=num.int32)
+                assert ims_ext.checksum(a) == ims_ext.checksum_ref(a)
+
     def test_read_write(self):
         fns = [
             'test.iris.channel.ims',
