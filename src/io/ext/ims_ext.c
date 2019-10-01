@@ -45,10 +45,11 @@ PyArrayObject *get_good_array(PyObject *array) {
 }
 
 static PyObject* ims_checksum(PyObject *m, PyObject *args) {
-    int checksum, length, i;
+    npy_intp length, i;
     PyObject *array = NULL;
     PyArrayObject *carray = NULL;
     int *data;
+    int checksum;
 
     struct module_state *st = GETSTATE(m);
 
@@ -76,11 +77,11 @@ static PyObject* ims_checksum(PyObject *m, PyObject *args) {
 }
 
 static PyObject* ims_checksum_ref(PyObject *m, PyObject *args) {
-    int checksum, length, i;
+    npy_intp length, i;
     PyObject *array = NULL;
     PyArrayObject *carray = NULL;
     int *data;
-    int v;
+    int checksum, v;
 
     struct module_state *st = GETSTATE(m);
 
@@ -119,23 +120,35 @@ static PyObject* ims_decode_cm6(PyObject *m, PyObject *args) {
     int *out_data_new = NULL;
     char *pos;
     char v;
-    int sample, isample, ibyte, sign;
-    int bufsize, previous1, previous2;
+    int sample, ibyte, sign;
+    int previous1, previous2;
+    Py_ssize_t sbufsize;
+    size_t bufsize;
     char imore = 32, isign = 16;
-    PyObject      *array = NULL;
-    npy_intp      array_dims[1] = {0};
+    PyObject *array = NULL;
+    size_t isample;
+    npy_intp array_dims[1] = {0};
 
     struct module_state *st = GETSTATE(m);
 #if PY_MAJOR_VERSION >= 3
-    if (!PyArg_ParseTuple(args, "yi", &in_data, &bufsize)) {
+    if (!PyArg_ParseTuple(args, "yn", &in_data, &sbufsize)) {
 #else
-    if (!PyArg_ParseTuple(args, "si", &in_data, &bufsize)) {
+    if (!PyArg_ParseTuple(args, "sn", &in_data, &sbufsize)) {
 #endif
         PyErr_SetString(st->error, "invalid arguments in decode_cm6(data, sizehint)" );
         return NULL;
     }
 
-    if (bufsize <= 1) bufsize = 64;
+    if (sbufsize > 0) {
+        bufsize = (size_t)sbufsize;
+    } else {
+        bufsize = 64;
+    }
+
+    if (bufsize > SIZE_MAX / sizeof(int)) {
+        PyErr_SetString(st->error, "cannot allocate memory");
+        return NULL;
+    }
 
     out_data = (int*)malloc(bufsize*sizeof(int));
     if (out_data == NULL) {
@@ -157,6 +170,10 @@ static PyObject* ims_decode_cm6(PyObject *m, PyObject *args) {
             sample += v & ((ibyte == 0) ? 0xf : 0x1f);
             if ((v & imore) == 0) {
                 if (isample >= bufsize) {
+                    if (isample > SIZE_MAX / (2 * sizeof(int))) {
+                        free(out_data);
+                        PyErr_SetString(st->error, "cannot allocate memory");
+                    }
                     bufsize = isample*2;
                     out_data_new = (int*)realloc(out_data, sizeof(int) * bufsize);
                     if (out_data_new == NULL) {
@@ -178,7 +195,12 @@ static PyObject* ims_decode_cm6(PyObject *m, PyObject *args) {
         }
         pos++;
     }
-    array_dims[0] = isample;
+    if (isample > NPY_MAX_INTP) {
+        free(out_data);
+        PyErr_SetString(st->error, "too many samples" );
+        return NULL;
+    }
+    array_dims[0] = (npy_intp)isample;
     array = PyArray_SimpleNew(1, array_dims, NPY_INT32);
     memcpy(PyArray_DATA((PyArrayObject*)array), out_data, isample*sizeof(int32_t));
     free(out_data);
@@ -194,7 +216,8 @@ static PyObject* ims_encode_cm6(PyObject *m, PyObject *args) {
     long long int sample;
     int v;
     int isign, imore;
-    size_t nsamples, bufsize, isample, ipos, iout, i;
+    size_t bufsize, ipos, iout, i;
+    npy_intp nsamples, isample;
     char temp;
     char rtranslate[64];
 
@@ -219,12 +242,12 @@ static PyObject* ims_encode_cm6(PyObject *m, PyObject *args) {
     nsamples  = PyArray_SIZE(contiguous_array);
     in_data = PyArray_DATA(contiguous_array);
 
-    if (nsamples >= SIZE_MAX / 7) {
+    if (nsamples >= NPY_MAX_INTP / 7) {
         PyErr_SetString(st->error, "too many samples.");
         Py_DECREF(contiguous_array);
         return NULL;
     }
-    bufsize = nsamples * 7;
+    bufsize = (size_t)nsamples * 7;
     out_data = (char*)malloc(bufsize);
     if (out_data == NULL) {
         PyErr_SetString(st->error, "cannot allocate memory");
