@@ -547,25 +547,34 @@ class PolesZeros(BaseFilter):
             cfactor = (2. * math.pi)**(
                 len(self.pole_list) - len(self.zero_list))
 
+        if self.normalization_factor is None \
+                or self.normalization_factor == 0.0:
+
+            logger.warn(
+                'no pole-zero normalization factor given. Assuming a value of '
+                '1.0 (%s)' % '.'.join(nslc))
+
+            nfactor = 1.0
+        else:
+            nfactor = self.normalization_factor
+
         resp = trace.PoleZeroResponse(
-            constant=self.normalization_factor*cfactor,
+            constant=nfactor*cfactor,
             zeros=[z.value()*factor for z in self.zero_list],
             poles=[p.value()*factor for p in self.pole_list])
 
-        if not self.normalization_frequency.value \
-                or not self.normalization_factor:
-
+        if not self.normalization_frequency.value:
             logger.warn(
                 'cannot check pole-zero normalization factor (%s)'
                 % '.'.join(nslc))
 
         else:
-            computed_normalization_factor = self.normalization_factor / abs(
+            computed_normalization_factor = nfactor / abs(
                 resp.evaluate(
                     num.array([self.normalization_frequency.value]))[0])
 
             db = 20.0 * num.log10(
-                computed_normalization_factor / self.normalization_factor)
+                computed_normalization_factor / nfactor)
 
             if abs(db) > 0.17:
                 logger.warn(
@@ -573,7 +582,7 @@ class PolesZeros(BaseFilter):
                     '%g dB: computed: %g, reported: %g (%s)' % (
                         db,
                         computed_normalization_factor,
-                        self.normalization_factor,
+                        nfactor,
                         '.'.join(nslc)))
 
         return [resp]
