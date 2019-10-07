@@ -19,13 +19,38 @@ static struct module_state _state;
    #define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
 #endif
 
+static int good_array(const PyObject* o, int typenum) {
+    if (!PyArray_Check(o)) {
+        PyErr_SetString(PyExc_AttributeError, "not a NumPy array" );
+        return 0;
+    }
+
+    if (PyArray_TYPE((PyArrayObject*)o) != typenum) {
+        PyErr_SetString(PyExc_ValueError, "array of unexpected type");
+        return 0;
+    }
+
+    if (!PyArray_ISCARRAY((PyArrayObject*)o)) {
+        PyErr_SetString(PyExc_ValueError, "array is not contiguous or not behaved");
+        return 0;
+    }
+
+    return 1;
+}
 
 int autopick_recursive_stalta( int ns, int nl, float ks, float kl, float k, int nsamples, float *inout, float *intermediates, int init)
 {
     int i, istart;
     float eps = 1.0e-7;
     float scf0, lcf0, sta0, lta0, nshort, nlong, maxlta;
-    float cf[nsamples], sta[nsamples], lta[nsamples]; /* da sistemare */
+    float *cf, *sta, *lta;
+
+    cf = (float*)calloc(nsamples*3, sizeof(float));
+    if (cf == NULL) {
+        return 1;
+    }
+    sta = cf + nsamples;
+    lta = cf + 2*nsamples;
 
     cf[0] = inout[0];
     if (init == 0) {
@@ -40,6 +65,7 @@ int autopick_recursive_stalta( int ns, int nl, float ks, float kl, float k, int 
     if (init == 1)
     {
         if (nsamples <= ns + nl) {
+            free(cf);
             return 1;
         }
 
@@ -73,6 +99,7 @@ int autopick_recursive_stalta( int ns, int nl, float ks, float kl, float k, int 
     } else {
 
         if (nsamples <= ns) {
+            free(cf);
             return 1;
         }
 
@@ -112,6 +139,7 @@ int autopick_recursive_stalta( int ns, int nl, float ks, float kl, float k, int 
     intermediates[ns] = sta[nsamples-1];
     intermediates[ns+1] = lta[nsamples-1];
 
+    free(cf);
     return 0;
 }
 
@@ -127,37 +155,33 @@ static PyObject* autopick_recursive_stalta_wrapper(PyObject *module, PyObject *a
         PyErr_SetString(st->error, "invalid arguments in recursive_stalta(ns, nl, ks, kl, inout_data, temp_data, initialize)" );
         return NULL;
     }
-    inout_array = (PyArrayObject*)PyArray_ContiguousFromAny(inout_array_obj, NPY_FLOAT32, 1, 1);
-    if (inout_array == NULL) {
-        PyErr_SetString(st->error, "cannot create a contiguous float array from inout_data." );
-        return NULL;
-    }
 
-    temp_array = (PyArrayObject*)PyArray_ContiguousFromAny(temp_array_obj, NPY_FLOAT32, 1, 1);
-    if (temp_array == NULL) {
-        PyErr_SetString(st->error, "cannot create a contiguous float array from temp_data." );
-        Py_DECREF(inout_array);
+    if (!good_array(inout_array_obj, NPY_FLOAT32)) {
+        PyErr_SetString(st->error, "recursive_stalta: inout_data must be float32 and contiguous." );
         return NULL;
     }
+    inout_array = (PyArrayObject*)(inout_array_obj);
+
+    if (!good_array(temp_array_obj, NPY_FLOAT32)) {
+        PyErr_SetString(st->error, "recursive_stalta: temp_data must be float32 and contiguous." );
+        return NULL;
+    }
+    temp_array = (PyArrayObject*)(temp_array_obj);
+
+
     nsamples = PyArray_SIZE(inout_array);
     ntemp = PyArray_SIZE(temp_array);
 
     if (ntemp != ns+2) {
         PyErr_SetString(st->error, "temp_data must have length of ns+2.");
-        Py_DECREF(temp_array);
-        Py_DECREF(inout_array);
         return NULL;
     }
 
     if (0 != autopick_recursive_stalta(ns, nl, ks, kl, k, nsamples, (float*)PyArray_DATA(inout_array), (float*)PyArray_DATA(temp_array), initialize)) {
         PyErr_SetString(st->error, "running STA/LTA failed.");
-        Py_DECREF(temp_array);
-        Py_DECREF(inout_array);
         return NULL;
     }
 
-    Py_DECREF(temp_array);
-    Py_DECREF(inout_array);
     Py_INCREF(Py_None);
     return Py_None;
 }
