@@ -226,6 +226,7 @@ class Event(Location):
                     if k in ('name', 'region', 'catalog', 'magnitude_type'):
                         d[k] = v
                     if k in (('latitude longitude magnitude depth duration '
+                              'north_shift east_shift '
                               'mnn mee mdd mne mnd med strike1 dip1 rake1 '
                               'strike2 dip2 rake2 duration').split()):
                         d[k] = float(v)
