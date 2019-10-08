@@ -1440,6 +1440,8 @@ class Sole(object):
         self._other_running = False
         ensuredirs(self._pid_path)
         self._lockfile = None
+        self._os = os
+        self._fcntl = fcntl
 
         try:
             self._lockfile = os.open(self._pid_path, os.O_CREAT | os.O_WRONLY)
@@ -1473,13 +1475,11 @@ class Sole(object):
 
     def __del__(self):
         if not self._other_running:
-            import os
-            import fcntl
             if self._lockfile is not None:
-                fcntl.lockf(self._lockfile, fcntl.LOCK_UN)
-                os.close(self._lockfile)
+                self._fcntl.lockf(self._lockfile, self._fcntl.LOCK_UN)
+                self._os.close(self._lockfile)
             try:
-                os.unlink(self._pid_path)
+                self._os.unlink(self._pid_path)
             except Exception:
                 pass
 
