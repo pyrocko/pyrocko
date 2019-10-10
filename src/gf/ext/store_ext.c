@@ -247,6 +247,9 @@ static store_error_t vicinity_function_type_a(const mapping_t*, const float64_t*
 static store_error_t irecord_function_type_b(const mapping_t*, const float64_t*, const float64_t*, uint64_t*);
 static store_error_t vicinity_function_type_b(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
 
+static store_error_t irecord_function_type_c(const mapping_t*, const float64_t*, const float64_t*, uint64_t*);
+static store_error_t vicinity_function_type_c(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
+
 typedef struct {
     const char *name;
     const size_t vicinity_nip;
@@ -266,6 +269,7 @@ const mapping_scheme_t mapping_schemes[] = {
     {"type_0", 2, 1, irecord_function_type_0, vicinity_function_type_0},
     {"type_a", 4, 2, irecord_function_type_a, vicinity_function_type_a},
     {"type_b", 8, 3, irecord_function_type_b, vicinity_function_type_b},
+    {"type_c", 8, 3, irecord_function_type_c, vicinity_function_type_c},
     {NULL, 0, 0, NULL, NULL},
 };
 
@@ -335,6 +339,7 @@ static void make_weights_elastic2(const float64_t*, const float64_t*, const floa
 static void make_weights_elastic5(const float64_t*, const float64_t*, const float64_t*, float64_t*);
 static void make_weights_elastic8(const float64_t*, const float64_t*, const float64_t*, float64_t*);
 static void make_weights_elastic10(const float64_t*, const float64_t*, const float64_t*, float64_t*);
+static void make_weights_elastic18(const float64_t*, const float64_t*, const float64_t*, float64_t*);
 /*static void make_weights_poroelastic10(const float64_t*, const float64_t*, const float64_t*, float64_t*);*/
 
 typedef struct {
@@ -375,12 +380,19 @@ static const uint64_t igs_elastic10_1[] = {0, 1, 2, 8, 3, 4};
 static const uint64_t igs_elastic10_2[] = {5, 6, 7, 9};
 static const uint64_t *igs_elastic10[] = {igs_elastic10_0, igs_elastic10_1, igs_elastic10_2};
 
+const size_t nsummands_elastic18[] = {6, 6, 6};
+static const uint64_t igs_elastic18_0[] = {0, 1, 2, 3, 4, 5};
+static const uint64_t igs_elastic18_1[] = {6, 7, 8, 9, 10, 11};
+static const uint64_t igs_elastic18_2[] = {12, 13, 14, 15, 16, 17};
+static const uint64_t *igs_elastic18[] = {igs_elastic18_0, igs_elastic18_1, igs_elastic18_2};
+
 typedef enum {
     DUMMY = 0,
     ELASTIC2,
     ELASTIC5,
     ELASTIC8,
     ELASTIC10,
+    ELASTIC18,
     /*POROELASTIC10,*/
 } component_scheme_id;
 
@@ -390,6 +402,7 @@ const component_scheme_t component_schemes[] = {
     {"elastic5", 3, 3, 3, nsummands_elastic5, igs_elastic5, make_weights_elastic5},
     {"elastic8", 6, 3, 5, nsummands_elastic8, igs_elastic8, make_weights_elastic8},
     {"elastic10", 6, 3, 6, nsummands_elastic10, igs_elastic10, make_weights_elastic10},
+    {"elastic18", 6, 3, 6, nsummands_elastic18, igs_elastic18, make_weights_elastic18},
     /* {"poroelastic10", 1, 9, nsummands_poroelastic10, igs_poroelastic10, make_weights_poroelastic10}, */
     {NULL, 0, 0, 0, NULL, NULL, NULL},
 };
@@ -2127,6 +2140,43 @@ static void make_weights_elastic10(
     ws[ioff + 3] = f5;
 }
 
+static void make_weights_elastic18(
+        const float64_t *source_coords,
+        const float64_t *ms,
+        const float64_t *receiver_coords,
+        float64_t *ws) {
+
+    size_t ioff;
+    size_t nsummands_max = component_schemes[ELASTIC18].nsummands_max;
+
+    (void) source_coords;
+    (void) receiver_coords;
+
+    ioff = 0 * nsummands_max;
+    ws[ioff + 0] = ms[0];
+    ws[ioff + 1] = ms[1];
+    ws[ioff + 2] = ms[2];
+    ws[ioff + 3] = ms[3];
+    ws[ioff + 4] = ms[4];
+    ws[ioff + 5] = ms[5];
+
+    ioff = 1 * nsummands_max;
+    ws[ioff + 0] = ms[0];
+    ws[ioff + 1] = ms[1];
+    ws[ioff + 2] = ms[2];
+    ws[ioff + 3] = ms[3];
+    ws[ioff + 4] = ms[4];
+    ws[ioff + 5] = ms[5];
+
+    ioff = 2 * nsummands_max;
+    ws[ioff + 0] = ms[0];
+    ws[ioff + 1] = ms[1];
+    ws[ioff + 2] = ms[2];
+    ws[ioff + 3] = ms[3];
+    ws[ioff + 4] = ms[4];
+    ws[ioff + 5] = ms[5];
+}
+
 static store_error_t irecord_function_type_0(
         const mapping_t *mapping,
         const float64_t *source_coords,
@@ -2295,6 +2345,89 @@ static store_error_t vicinity_function_type_b(
     v[0] = receiver_coords[4];
     v[1] = source_coords[4];
     distance4(source_coords, receiver_coords, &v[2]);
+
+    ns = mapping->ns;
+
+    for (k=0; k<3; k++) {
+        x = (v[k] - mapping->mins[k]) / mapping->deltas[k];
+        x_fl = floor(x);
+        x_ce = ceil(x);
+
+        w_fl[k] = 1.0 - (x - x_fl);
+        w_ce[k] = (1.0 - (x_ce - x)) * (x_ce - x_fl);
+
+        i_fl[k] = (uint64_t)x_fl;
+        i_ce[k] = (uint64_t)x_ce;
+
+        if (i_fl[k] >= ns[k] || i_ce[k] >= ns[k]) {
+            return INDEX_OUT_OF_BOUNDS;
+        }
+    }
+
+    /* irecords[0::8] = ia_fl*nb*nc*ng + ib_fl*nc*ng + ic_fl*ng + ig */
+    irecords[0] = mapping->ng * (i_fl[0]*ns[1]*ns[2] + i_fl[1]*ns[2] + i_fl[2]);
+    irecords[1] = mapping->ng * (i_ce[0]*ns[1]*ns[2] + i_fl[1]*ns[2] + i_fl[2]);
+    irecords[2] = mapping->ng * (i_fl[0]*ns[1]*ns[2] + i_ce[1]*ns[2] + i_fl[2]);
+    irecords[3] = mapping->ng * (i_ce[0]*ns[1]*ns[2] + i_ce[1]*ns[2] + i_fl[2]);
+    irecords[4] = mapping->ng * (i_fl[0]*ns[1]*ns[2] + i_fl[1]*ns[2] + i_ce[2]);
+    irecords[5] = mapping->ng * (i_ce[0]*ns[1]*ns[2] + i_fl[1]*ns[2] + i_ce[2]);
+    irecords[6] = mapping->ng * (i_fl[0]*ns[1]*ns[2] + i_ce[1]*ns[2] + i_ce[2]);
+    irecords[7] = mapping->ng * (i_ce[0]*ns[1]*ns[2] + i_ce[1]*ns[2] + i_ce[2]);
+
+    weights[0] = w_fl[0] * w_fl[1] * w_fl[2];
+    weights[1] = w_ce[0] * w_fl[1] * w_fl[2];
+    weights[2] = w_fl[0] * w_ce[1] * w_fl[2];
+    weights[3] = w_ce[0] * w_ce[1] * w_fl[2];
+    weights[4] = w_fl[0] * w_fl[1] * w_ce[2];
+    weights[5] = w_ce[0] * w_fl[1] * w_ce[2];
+    weights[6] = w_fl[0] * w_ce[1] * w_ce[2];
+    weights[7] = w_ce[0] * w_ce[1] * w_ce[2];
+    return SUCCESS;
+}
+
+static store_error_t irecord_function_type_c(
+        const mapping_t *mapping,
+        const float64_t *source_coords,
+        const float64_t *receiver_coords,
+        uint64_t *irecord) {
+
+    float64_t v[3];
+    uint64_t i[3];
+
+    (void)receiver_coords;
+
+    v[0] = source_coords[4];
+    v[1] = source_coords[3];
+    v[2] = source_coords[2];
+
+    i[0] = (uint64_t)(round((v[0] - mapping->mins[0]) / mapping->deltas[0]));
+    i[1] = (uint64_t)(round((v[1] - mapping->mins[1]) / mapping->deltas[1]));
+    i[2] = (uint64_t)(round((v[2] - mapping->mins[2]) / mapping->deltas[2]));
+    if (i[0] >= mapping->ns[0] || i[1] >= mapping->ns[1] || i[2] >= mapping->ns[2]) {
+        return INDEX_OUT_OF_BOUNDS;
+    }
+    *irecord = (i[0]*mapping->ns[1]*mapping->ns[2] + i[1]*mapping->ns[2] + i[2]) * mapping->ng;
+    return SUCCESS;
+}
+
+static store_error_t vicinity_function_type_c(
+        const mapping_t *mapping,
+        const float64_t *source_coords,
+        const float64_t *receiver_coords,
+        uint64_t *irecords,
+        float64_t *weights) {
+
+    float64_t v[3], w_fl[3], w_ce[3];
+    float64_t x, x_fl, x_ce;
+    uint64_t i_fl[3], i_ce[3];
+    const uint64_t *ns;
+    size_t k;
+
+    (void)receiver_coords;
+
+    v[0] = source_coords[4];
+    v[1] = source_coords[3];
+    v[2] = source_coords[2];
 
     ns = mapping->ns;
 

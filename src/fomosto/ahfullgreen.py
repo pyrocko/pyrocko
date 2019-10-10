@@ -10,7 +10,7 @@ import os
 import math
 import signal
 
-from pyrocko.guts import Object
+from pyrocko.guts import Object, clone
 from pyrocko import trace, cake, gf
 from pyrocko.ahfullgreen import add_seismogram, AhfullgreenSTFImpulse, \
     AhfullgreenSTF
@@ -27,7 +27,7 @@ program_bins = {
     'ahfullgreen': 'ahfullgreen',
 }
 
-components = 'r t z'.split()
+components = 'x y z'.split()
 
 
 def example_model():
@@ -60,7 +60,7 @@ def make_traces(material, source_mech, deltat, norths, easts,
     npad = 120
 
     traces = []
-    for i_distance, (north, east) in enumerate(zip(norths, easts)):
+    for isource, (north, east) in enumerate(zip(norths, easts)):
         d3d = math.sqrt(
             north**2 + east**2 + (receiver_depth - source_depth)**2)
 
@@ -82,11 +82,9 @@ def make_traces(material, source_mech, deltat, norths, easts,
 
         for i_comp, o in enumerate((outx, outy, outz)):
             comp = components[i_comp]
-            tr = trace.Trace('', '%04i' % i_distance, '', comp,
+            tr = trace.Trace('', '%04i' % isource, '', comp,
                              tmin=tmin, ydata=o, deltat=deltat,
-                             meta=dict(
-                                 distance=math.sqrt(north**2 + east**2),
-                                 azimuth=0.))
+                             meta=dict(isource=isource))
 
             traces.append(tr)
 
@@ -98,11 +96,10 @@ class AhfullGFBuilder(gf.builder.Builder):
 
         self.store = gf.store.Store(store_dir, 'w')
 
-        if block_size is None:
-            block_size = (1, 1, 2000)
-
-        if len(self.store.config.ns) == 2:
-            block_size = block_size[1:]
+        block_size = {
+            'A': (1, 2000),
+            'B': (1, 1, 2000),
+            'C': (1, 1, 2)}[self.store.config.short_type]
 
         gf.builder.Builder.__init__(
             self, self.store.config, step, block_size=block_size, force=force)
@@ -113,32 +110,40 @@ class AhfullGFBuilder(gf.builder.Builder):
         self.store.close()
 
     def work_block(self, index):
-        if len(self.store.config.ns) == 2:
+        store_type = self.store.config.short_type
+
+        if store_type == 'A':
             (sz, firstx), (sz, lastx), (ns, nx) = \
                 self.get_block_extents(index)
 
             rz = self.store.config.receiver_depth
-        else:
+            sy = 0.0
+        elif store_type == 'B':
             (rz, sz, firstx), (rz, sz, lastx), (nr, ns, nx) = \
                 self.get_block_extents(index)
+            sy = 0.0
+        elif store_type == 'C':
+            (sz, sy, firstx), (sz, sy, lastx), (nz, ny, nx) = \
+                self.get_block_extents(index)
+            rz = self.store.config.receiver.depth
 
         logger.info('Starting block %i / %i' %
                     (index+1, self.nblocks))
 
-        dx = self.gf_config.distance_delta
+        dx = self.gf_config.deltas[-1]
 
-        distances = num.linspace(firstx, firstx + (nx-1)*dx, nx).tolist()
+        xs = num.linspace(firstx, firstx + (nx-1)*dx, nx).tolist()
 
         mmt1 = (MomentTensor(m=symmat6(1, 0, 0, 1, 0, 0)),
-                {'r': (0, +1), 't': (3, +1), 'z': (5, +1)})
+                {'x': (0, +1), 'y': (3, +1), 'z': (5, +1)})
         mmt2 = (MomentTensor(m=symmat6(0, 0, 0, 0, 1, 1)),
-                {'r': (1, +1), 't': (4, +1), 'z': (6, +1)})
+                {'x': (1, +1), 'y': (4, +1), 'z': (6, +1)})
         mmt3 = (MomentTensor(m=symmat6(0, 0, 1, 0, 0, 0)),
-                {'r': (2, +1), 'z': (7, +1)})
+                {'x': (2, +1), 'z': (7, +1)})
         mmt4 = (MomentTensor(m=symmat6(0, 1, 0, 0, 0, 0)),
-                {'r': (8, +1), 'z': (9, +1)})
+                {'x': (8, +1), 'z': (9, +1)})
         mmt0 = (MomentTensor(m=symmat6(1, 1, 1, 0, 0, 0)),
-                {'r': (0, +1), 'z': (1, +1)})
+                {'x': (0, +1), 'z': (1, +1)})
 
         component_scheme = self.store.config.component_scheme
 
@@ -153,8 +158,19 @@ class AhfullGFBuilder(gf.builder.Builder):
 
         elif component_scheme == 'elastic5':
             gfmapping = [
-                ((1., 1., 0.), {'r': (1, +1), 'z': (4, +1), 't': (2, +1)}),
-                ((0., 0., 1.), {'r': (0, +1), 'z': (3, +1)})]
+                ((1., 1., 0.), {'x': (1, +1), 'z': (4, +1), 'y': (2, +1)}),
+                ((0., 0., 1.), {'x': (0, +1), 'z': (3, +1)})]
+        elif component_scheme == 'elastic18':
+            gfmapping = []
+            for im in range(6):
+                m6 = [0.0] * 6
+                m6[im] = 1.0
+
+                gfmapping.append(
+                    (MomentTensor(m=symmat6(*m6)),
+                     {'x': (im, +1),
+                      'y': (6+im, +1),
+                      'z': (12+im, +1)}))
 
         else:
             raise gf.UnavailableScheme(
@@ -163,11 +179,25 @@ class AhfullGFBuilder(gf.builder.Builder):
 
         for source_mech, gfmap in gfmapping:
 
+            if component_scheme != 'elastic18':
+                norths = xs
+                easts = num.zeros_like(xs)
+            else:
+                receiver = self.store.config.receiver
+                data = []
+                for x in xs:
+                    source = clone(self.store.config.source_origin)
+                    source.north_shift = x
+                    source.east_shift = sy
+                    source.depth = sz
+                    data.append(receiver.offset_to(source))
+
+                norths, easts = -num.array(data).T
+
             rawtraces = make_traces(
                 self.store.config.earthmodel_1d.require_homogeneous(),
                 source_mech, 1.0/self.store.config.sample_rate,
-                distances, num.zeros_like(distances), sz, rz,
-                self.ahfullgreen_config.stf)
+                norths, easts, sz, rz, self.ahfullgreen_config.stf)
 
             interrupted = []
 
@@ -183,17 +213,17 @@ class AhfullGFBuilder(gf.builder.Builder):
                         logger.debug('%s not in gfmap' % tr.channel)
                         continue
 
-                    x = tr.meta['distance']
+                    x = xs[tr.meta['isource']]
                     if x > firstx + (nx-1)*dx:
                         logger.error("x out of range")
                         continue
 
                     ig, factor = gfmap[tr.channel]
 
-                    if len(self.store.config.ns) == 2:
-                        args = (sz, x, ig)
-                    else:
-                        args = (rz, sz, x, ig)
+                    args = {
+                        'A': (sz, x, ig),
+                        'B': (rz, sz, x, ig),
+                        'C': (sz, sy, x, ig)}[store_type]
 
                     tr = tr.snap()
 

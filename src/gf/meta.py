@@ -632,7 +632,7 @@ class OutOfBounds(Exception):
 
         if self.values:
             return 'out of bounds: (%s)%s' % (
-                ','.join('%g' % x for x in self.values), scontext)
+                ', '.join('%g' % x for x in self.values), scontext)
         else:
             return 'out of bounds%s' % scontext
 
@@ -2525,17 +2525,16 @@ class ConfigTypeB(Config):
 
 class ConfigTypeC(Config):
     '''
-    No symmetrical constraints but fixed receiver positions.
+    No symmetrical constraints, one fixed receiver position.
 
     * Cartesian 3D source volume around a reference point
 
-    * High level index variables: ``(ireceiver, source_depth,
+    * High level index variables: ``(source_depth,
       source_east_shift, source_north_shift, component)``
     '''
 
-    receivers = List.T(
-        Receiver.T(),
-        help='List of fixed receivers.')
+    receiver = Receiver.T(
+        help='Receiver location')
 
     source_origin = Location.T(
         help='Origin of the source volume grid.')
@@ -2572,7 +2571,7 @@ class ConfigTypeC(Config):
     provided_schemes = ['elastic18']
 
     def get_surface_distance(self, args):
-        ireceiver, _, source_east_shift, source_north_shift, _ = args
+        _, source_east_shift, source_north_shift, _ = args
         sorig = self.source_origin
         sloc = Location(
             lat=sorig.lat,
@@ -2580,11 +2579,10 @@ class ConfigTypeC(Config):
             north_shift=sorig.north_shift + source_north_shift,
             east_shift=sorig.east_shift + source_east_shift)
 
-        return self.receivers[args[0]].distance_to(sloc)
+        return self.receiver.distance_to(sloc)
 
     def get_distance(self, args):
-        # to be improved...
-        ireceiver, sdepth, source_east_shift, source_north_shift, _ = args
+        sdepth, source_east_shift, source_north_shift, _ = args
         sorig = self.source_origin
         sloc = Location(
             lat=sorig.lat,
@@ -2592,14 +2590,13 @@ class ConfigTypeC(Config):
             north_shift=sorig.north_shift + source_north_shift,
             east_shift=sorig.east_shift + source_east_shift)
 
-        return math.sqrt(
-            self.receivers[args[0]].distance_to(sloc)**2 + sdepth**2)
+        return self.receiver.distance_3d_to(sloc)
 
     def get_source_depth(self, args):
-        return args[1]
+        return args[0]
 
     def get_receiver_depth(self, args):
-        return self.receivers[args[0]].depth
+        return self.receiver.depth
 
     def get_source_depths(self):
         return self.coords[0]
@@ -2627,17 +2624,12 @@ class ConfigTypeC(Config):
                             vicinity_eps).astype(int) + 1
         self.effective_maxs = self.mins + self.deltas * (self.ns - 1)
         self.deltat = 1.0/self.sample_rate
-        self.nreceivers = len(self.receivers)
-        self.nrecords = \
-            self.nreceivers * num.product(self.ns) * self.ncomponents
+        self.nrecords = num.product(self.ns) * self.ncomponents
 
-        self.coords = (num.arange(self.nreceivers),) + \
-            tuple(num.linspace(mi, ma, n) for (mi, ma, n) in
-                  zip(self.mins, self.effective_maxs, self.ns)) + \
+        self.coords = tuple(
+            num.linspace(mi, ma, n) for (mi, ma, n) in
+            zip(self.mins, self.effective_maxs, self.ns)) + \
             (num.arange(self.ncomponents),)
-        self.nreceiver_depths, self.nsource_depths, self.ndistances = self.ns
-
-        self._distances_cache = {}
 
     def _make_index_functions(self):
 
@@ -2645,54 +2637,49 @@ class ConfigTypeC(Config):
         da, db, dc = self.deltas
         na, nb, nc = self.ns
         ng = self.ncomponents
-        nr = self.nreceivers
 
-        def index_function(ir, a, b, c, ig):
+        def index_function(a, b, c, ig):
             ia = int(round((a - amin) / da))
             ib = int(round((b - bmin) / db))
             ic = int(round((c - cmin) / dc))
             try:
-                return num.ravel_multi_index((ir, ia, ib, ic, ig),
-                                             (nr, na, nb, nc, ng))
+                return num.ravel_multi_index((ia, ib, ic, ig),
+                                             (na, nb, nc, ng))
             except ValueError:
-                raise OutOfBounds()
+                raise OutOfBounds(values=(a, b, c, ig))
 
-        def indices_function(ir, a, b, c, ig):
+        def indices_function(a, b, c, ig):
             ia = num.round((a - amin) / da).astype(int)
             ib = num.round((b - bmin) / db).astype(int)
             ic = num.round((c - cmin) / dc).astype(int)
 
             try:
-                return num.ravel_multi_index((ir, ia, ib, ic, ig),
-                                             (nr, na, nb, nc, ng))
+                return num.ravel_multi_index((ia, ib, ic, ig),
+                                             (na, nb, nc, ng))
             except ValueError:
                 raise OutOfBounds()
 
-        def vicinity_function(ir, a, b, c, ig):
+        def vicinity_function(a, b, c, ig):
             ias = indi12((a - amin) / da, na)
             ibs = indi12((b - bmin) / db, nb)
             ics = indi12((c - cmin) / dc, nc)
-
-            if not (0 <= ir < nr):
-                raise OutOfBounds()
 
             if not (0 <= ig < ng):
                 raise OutOfBounds()
 
             indis = []
             weights = []
-            iir = ir*na*nb*nc*ng
             for ia, va in ias:
                 iia = ia*nb*nc*ng
                 for ib, vb in ibs:
                     iib = ib*nc*ng
                     for ic, vc in ics:
-                        indis.append(iir + iia + iib + ic*ng + ig)
+                        indis.append(iia + iib + ic*ng + ig)
                         weights.append(va*vb*vc)
 
             return num.array(indis), num.array(weights)
 
-        def vicinities_function(ir, a, b, c, ig):
+        def vicinities_function(a, b, c, ig):
 
             xa = (a-amin) / da
             xb = (b-bmin) / db
@@ -2736,17 +2723,15 @@ class ConfigTypeC(Config):
             if num.any(ic_ce < 0) or num.any(ic_ce >= nc):
                 raise OutOfBounds()
 
-            irig = ir*na*nb*nc*ng + ig
-
             irecords = num.empty(a.size*8, dtype=int)
-            irecords[0::8] = ia_fl*nb*nc*ng + ib_fl*nc*ng + ic_fl*ng + irig
-            irecords[1::8] = ia_ce*nb*nc*ng + ib_fl*nc*ng + ic_fl*ng + irig
-            irecords[2::8] = ia_fl*nb*nc*ng + ib_ce*nc*ng + ic_fl*ng + irig
-            irecords[3::8] = ia_ce*nb*nc*ng + ib_ce*nc*ng + ic_fl*ng + irig
-            irecords[4::8] = ia_fl*nb*nc*ng + ib_fl*nc*ng + ic_ce*ng + irig
-            irecords[5::8] = ia_ce*nb*nc*ng + ib_fl*nc*ng + ic_ce*ng + irig
-            irecords[6::8] = ia_fl*nb*nc*ng + ib_ce*nc*ng + ic_ce*ng + irig
-            irecords[7::8] = ia_ce*nb*nc*ng + ib_ce*nc*ng + ic_ce*ng + irig
+            irecords[0::8] = ia_fl*nb*nc*ng + ib_fl*nc*ng + ic_fl*ng + ig
+            irecords[1::8] = ia_ce*nb*nc*ng + ib_fl*nc*ng + ic_fl*ng + ig
+            irecords[2::8] = ia_fl*nb*nc*ng + ib_ce*nc*ng + ic_fl*ng + ig
+            irecords[3::8] = ia_ce*nb*nc*ng + ib_ce*nc*ng + ic_fl*ng + ig
+            irecords[4::8] = ia_fl*nb*nc*ng + ib_fl*nc*ng + ic_ce*ng + ig
+            irecords[5::8] = ia_ce*nb*nc*ng + ib_fl*nc*ng + ic_ce*ng + ig
+            irecords[6::8] = ia_fl*nb*nc*ng + ib_ce*nc*ng + ic_ce*ng + ig
+            irecords[7::8] = ia_ce*nb*nc*ng + ib_ce*nc*ng + ic_ce*ng + ig
 
             weights = num.empty(a.size*8, dtype=float)
             weights[0::8] = va_fl * vb_fl * vc_fl
@@ -2765,25 +2750,6 @@ class ConfigTypeC(Config):
         self._vicinity_function = vicinity_function
         self._vicinities_function = vicinities_function
 
-    def lookup_ireceiver(self, receiver):
-        k = (receiver.lat, receiver.lon,
-             receiver.north_shift, receiver.east_shift)
-        dh = min(self.source_north_shift_delta, self.source_east_shift_delta)
-        dv = self.source_depth_delta
-
-        for irec, rec in enumerate(self.receivers):
-            if (k, irec) not in self._distances_cache:
-                self._distances_cache[k, irec] = math.sqrt(
-                    (receiver.distance_to(rec)/dh)**2 +
-                    ((rec.depth - receiver.depth)/dv)**2)
-
-            if self._distances_cache[k, irec] < 0.1:
-                return irec
-
-        raise OutOfBounds(
-            reason='No GFs available for receiver at (%g, %g).' %
-            receiver.effective_latlon)
-
     def make_indexing_args(self, source, receiver, icomponents):
         nc = icomponents.size
 
@@ -2795,11 +2761,8 @@ class ConfigTypeC(Config):
         source_depths = source.depths - self.source_origin.depth
 
         n = dists.size
-        ireceivers = num.empty(nc, dtype=int)
-        ireceivers.fill(self.lookup_ireceiver(receiver))
 
-        return (ireceivers,
-                num.tile(source_depths, nc//n),
+        return (num.tile(source_depths, nc//n),
                 num.tile(source_east_shifts, nc//n),
                 num.tile(source_north_shifts, nc//n),
                 icomponents)
@@ -2812,8 +2775,7 @@ class ConfigTypeC(Config):
         source_east_shift = - num.sin(d2r*azi) * dist
         source_depth = source.depth - self.source_origin.depth
 
-        return (self.lookup_ireceiver(receiver),
-                source_depth,
+        return (source_depth,
                 source_east_shift,
                 source_north_shift)
 

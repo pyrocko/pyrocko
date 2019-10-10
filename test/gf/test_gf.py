@@ -1376,9 +1376,7 @@ class GFTestCase(unittest.TestCase):
             component_scheme,
             discretized_source_class):
 
-        if config_type_class.short_type == 'C' \
-                or component_scheme.startswith('poro'):
-
+        if component_scheme.startswith('poro'):
             assert False
 
         store_id = 'homogeneous_%s_%s' % (
@@ -1386,6 +1384,23 @@ class GFTestCase(unittest.TestCase):
 
         vp = 5.8 * km
         vs = 3.46 * km
+
+        snorth = 2.0*km
+        seast = 2.0*km
+        sdepth = 1.0*km
+
+        rnorth = snorth + 3.*km
+        reast = seast + 4.*km
+        rdepth = 3.0*km
+
+        origin = gf.Location(lat=63.98561, lon=-21.50150)
+
+        receiver = gf.Receiver(
+            lat=origin.lat,
+            lon=origin.lon,
+            north_shift=rnorth,
+            east_shift=reast,
+            depth=rdepth)
 
         mod = cake.LayeredModel.from_scanlines(cake.read_nd_model_str('''
   0. %(vp)g %(vs)g 2.6 1264. 600.
@@ -1420,14 +1435,16 @@ class GFTestCase(unittest.TestCase):
 
         if store_type == 'C':
             params.update(
+                receiver=receiver,
+                source_origin=origin,
                 source_depth_min=1.*km,
                 source_depth_max=2.*km,
                 source_depth_delta=0.5*km,
-                source_east_shift_min=1.*km,
-                source_east_shift_max=2.*km,
+                source_east_shift_min=2.*km,
+                source_east_shift_max=3.*km,
                 source_east_shift_delta=0.5*km,
                 source_north_shift_min=2.*km,
-                source_north_shift_max=3.*km,
+                source_north_shift_max=5.*km,
                 source_north_shift_delta=0.5*km)
 
         config = config_type_class(**params)
@@ -1468,26 +1485,16 @@ class GFTestCase(unittest.TestCase):
             params.update(
                 pp=num.array([3., 3.]))
 
-        snorth = 2.0*km
-        seast = 2.0*km
-        sdepth = 1.0*km
-        rnorth = snorth + 3.*km
-        reast = seast + 4.*km
-        rdepth = 3.0*km
-
         t0 = 10.0 * store.config.deltat
 
         dsource = discretized_source_class(
+            lat=origin.lat,
+            lon=origin.lon,
             times=num.array([t0, t0+5.*store.config.deltat]),
             north_shifts=num.array([snorth, snorth]),
             east_shifts=num.array([seast, seast]),
             depths=num.array([sdepth, sdepth]),
             **params)
-
-        receiver = gf.Receiver(
-            north_shift=rnorth,
-            east_shift=reast,
-            depth=rdepth)
 
         components = gf.component_scheme_to_description[
             component_scheme].provided_components
@@ -1567,9 +1574,8 @@ for config_type_class in gf.config_type_classes:
                         config_type_class, scheme, discretized_source_class):
 
                     @unittest.skipIf(
-                        scheme.startswith('poro')
-                        or config_type_class.short_type == 'C',
-                        'todo: test poro and store type C')
+                        scheme.startswith('poro'),
+                        'todo: test poro')
                     def test_homogeneous_scenario(self):
                         return self._test_homogeneous_scenario(
                             config_type_class,
@@ -1579,6 +1585,7 @@ for config_type_class in gf.config_type_classes:
                     test_homogeneous_scenario.__name__ = name
 
                     return test_homogeneous_scenario
+
                 setattr(GFTestCase, name, make_method(
                     config_type_class, scheme, discretized_source_class))
 
