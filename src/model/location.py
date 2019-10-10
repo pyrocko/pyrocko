@@ -12,12 +12,8 @@ r2d = 1.0 / d2r
 km = 1000.
 
 
-def latlondepth_to_carthesian(lat, lon, depth):
-    radius = config.config().earthradius - depth
-    x = radius * math.cos(d2r*lat) * math.cos(d2r*lon)
-    y = radius * math.cos(d2r*lat) * math.sin(d2r*lon)
-    z = radius * math.sin(d2r*lat)
-    return x, y, z
+def latlondepth_to_cartesian(lat, lon, depth):
+    return orthodrome.geodetic_to_ecef(lat, lon, -depth)
 
 
 class Location(Object):
@@ -117,18 +113,14 @@ class Location(Object):
         '''
 
         if self.same_origin(other):
-            if isinstance(other, Location):
-                return math.sqrt((self.north_shift - other.north_shift)**2 +
-                                 (self.east_shift - other.east_shift)**2)
-            else:
-                return 0.0
+            other_north_shift, other_east_shift = get_offset(other)
+
+            return math.sqrt((self.north_shift - other_north_shift)**2 +
+                             (self.east_shift - other_east_shift)**2)
 
         else:
             slat, slon = self.effective_latlon
-            try:
-                rlat, rlon = other.effective_latlon
-            except AttributeError:
-                rlat, rlon = other.lat, other.lon
+            rlat, rlon = get_effective_latlon(other)
 
             return float(orthodrome.distance_accurate50m_numpy(
                 slat, slon, rlat, rlon)[0])
@@ -148,23 +140,31 @@ class Location(Object):
         '''
 
         if self.same_origin(other):
-            if isinstance(other, Location):
-                return math.sqrt((self.north_shift - other.north_shift)**2 +
-                                 (self.east_shift - other.east_shift)**2 +
-                                 (self.depth - other.depth)**2)
-            else:
-                return 0.0
+            other_north_shift, other_east_shift = get_offset(other)
+            return math.sqrt((self.north_shift - other_north_shift)**2 +
+                             (self.east_shift - other_east_shift)**2 +
+                             (self.depth - other.depth)**2)
+
         else:
             slat, slon = self.effective_latlon
-            try:
-                rlat, rlon = other.effective_latlon
-            except AttributeError:
-                rlat, rlon = other.lat, other.lon
+            rlat, rlon = get_effective_latlon(other)
 
-            sx, sy, sz = latlondepth_to_carthesian(slat, slon, self.depth)
-            rx, ry, rz = latlondepth_to_carthesian(rlat, rlon, other.depth)
+            sx, sy, sz = latlondepth_to_cartesian(slat, slon, self.depth)
+            rx, ry, rz = latlondepth_to_cartesian(rlat, rlon, other.depth)
 
             return math.sqrt((sx-rx)**2 + (sy-ry)**2 + (sz-rz)**2)
+
+    def offset_to(self, other):
+        if self.same_origin(other):
+            other_north_shift, other_east_shift = get_offset(other)
+            return (
+                other_north_shift - self.north_shift,
+                other_east_shift - self.east_shift)
+
+        else:
+            azi, bazi = self.azibazi_to(other)
+            dist = self.distance_to(other)
+            return dist*math.cos(azi*d2r), dist*math.sin(azi*d2r)
 
     def azibazi_to(self, other):
         '''
@@ -172,20 +172,14 @@ class Location(Object):
         '''
 
         if self.same_origin(other):
-            if isinstance(other, Location):
-                azi = r2d * math.atan2(other.east_shift - self.east_shift,
-                                       other.north_shift - self.north_shift)
-            else:
-                azi = 0.0
+            other_north_shift, other_east_shift = get_offset(other)
+            azi = r2d * math.atan2(other_east_shift - self.east_shift,
+                                   other_north_shift - self.north_shift)
 
             bazi = azi + 180.
         else:
             slat, slon = self.effective_latlon
-            try:
-                rlat, rlon = other.effective_latlon
-            except AttributeError:
-                rlat, rlon = other.lat, other.lon
-
+            rlat, rlon = get_effective_latlon(other)
             azi, bazi = orthodrome.azibazi_numpy(slat, slon, rlat, rlon)
 
         return float(azi), float(bazi)
@@ -205,3 +199,17 @@ class Location(Object):
     def coords5(self):
         return num.array([
             self.lat, self.lon, self.north_shift, self.east_shift, self.depth])
+
+
+def get_offset(obj):
+    try:
+        return obj.north_shift, obj.east_shift
+    except AttributeError:
+        return 0.0, 0.0
+
+
+def get_effective_latlon(obj):
+    try:
+        return obj.effective_latlon
+    except AttributeError:
+        return obj.lat, obj.lon

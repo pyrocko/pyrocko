@@ -11,6 +11,8 @@ from pyrocko import orthodrome, util
 from pyrocko import orthodrome_ext
 from .common import Benchmark
 from pyrocko import config
+from pyrocko import guts
+from pyrocko.model.location import Location
 
 logger = logging.getLogger('pyrocko.test.test_orthodrome')
 benchmark = Benchmark()
@@ -24,6 +26,9 @@ d2r = 1./r2d
 km = 1000.
 
 plot = int(os.environ.get('MPL_SHOW', 0))
+
+assert_ae = num.testing.assert_almost_equal
+assert_allclose = num.testing.assert_allclose
 
 
 def random_lat(mi=-90., ma=90., rstate=None, size=None):
@@ -149,7 +154,7 @@ class OrthodromeTestCase(unittest.TestCase):
                 lats1[i], lons1[i], lats2[i], lons2[i],
                 implementation='c')
 
-            num.testing.assert_almost_equal(azibazi_py, azibazi_c)
+            assert_ae(azibazi_py, azibazi_c)
 
     @benchmark
     def testAziBaziArrayPython(self):
@@ -190,13 +195,13 @@ class OrthodromeTestCase(unittest.TestCase):
                 lats1[i], lons1[i], lats2[i], lons2[i],
                 implementation='c')
 
-            num.testing.assert_almost_equal(azi_py, azis_py[i])
-            num.testing.assert_almost_equal(bazi_py, bazis_py[i])
-            num.testing.assert_almost_equal(azi_c, azis_c[i])
-            num.testing.assert_almost_equal(bazi_c, bazis_c[i])
+            assert_ae(azi_py, azis_py[i])
+            assert_ae(bazi_py, bazis_py[i])
+            assert_ae(azi_c, azis_c[i])
+            assert_ae(bazi_c, bazis_c[i])
 
-        num.testing.assert_almost_equal(azis_py, azis_c)
-        num.testing.assert_almost_equal(bazis_py, bazis_c)
+        assert_ae(azis_py, azis_c)
+        assert_ae(bazis_py, bazis_c)
 
     @benchmark
     def testDistancePython(self):
@@ -230,7 +235,7 @@ class OrthodromeTestCase(unittest.TestCase):
             dist_c = orthodrome.distance_accurate50m(
                 lats1[i], lons1[i], lats2[i], lons2[i],
                 implementation='c')
-            num.testing.assert_almost_equal(dist_py, dist_c)
+            assert_ae(dist_py, dist_c)
 
     @benchmark
     def testDistanceArrayPython(self):
@@ -284,6 +289,62 @@ class OrthodromeTestCase(unittest.TestCase):
                 d = num.arccos(cd)*earthradius
                 d2 = math.sqrt(no**2+ea**2)
                 assert not (abs(d-d2) > 1.0e-3 and d2 > 1.)
+
+    def testLocationObjects(self):
+
+        class Dummy(object):
+            def __init__(self, lat, lon, depth):
+                self.lat = lat
+                self.lon = lon
+                self.depth = depth
+
+        a0 = Location(lat=10., lon=12., depth=1100.)
+        a1 = guts.clone(a0)
+        a1.set_origin(lat=9., lon=11)
+
+        b0 = Location(lat=11., lon=13., depth=2100.)
+        b1 = guts.clone(b0)
+        b1.set_origin(lat=9., lon=11)
+        b2 = Dummy(b0.lat, b0.lon, b0.depth)
+
+        dist_ab = orthodrome.distance_accurate50m(
+            a0.lat, a0.lon, b0.lat, b0.lon)
+
+        azi_ab, bazi_ab = orthodrome.azibazi(
+            a0.lat, a0.lon, b0.lat, b0.lon)
+
+
+        def g_to_e(*args):
+            return num.array(orthodrome.geodetic_to_ecef(*args))
+
+        a_vec = g_to_e(a0.lat, a0.lon, -a0.depth)
+        b_vec = g_to_e(b0.lat, b0.lon, -b0.depth)
+
+        dist_3d_compare = math.sqrt(num.sum((a_vec - b_vec)**2))
+
+        north_shift_compare, east_shift_compare = orthodrome.latlon_to_ne(
+            a0.lat, a0.lon, b0.lat, b0.lon)
+
+        for a in [a0, a1]:
+            for b in [b0, b1, b2]:
+                dist = a.distance_to(b)
+                assert_allclose(dist, dist_ab)
+
+                dist_3d = a.distance_3d_to(b)
+                assert_allclose(dist_3d, dist_3d_compare, rtol=0.001)
+
+                azi, bazi = a.azibazi_to(b)
+                assert_allclose(azi % 360., azi_ab % 360., rtol=1e-2)
+                assert_allclose(bazi % 360., bazi_ab % 360., rtol=1e-2)
+
+                north_shift, east_shift = a.offset_to(b)
+                assert_allclose(
+                    (north_shift, east_shift),
+                    (north_shift_compare, east_shift_compare), rtol=5e-3)
+
+        for x, y in [(a0, a1), (b0, b1), (b0, b2), (b1, b2)]:
+            dist = x.distance_to(y)
+            assert_allclose(dist, 0.0)
 
     def test_wrap(self):
         assert orthodrome.wrap(11, -10, 10) == -9
@@ -358,8 +419,7 @@ class OrthodromeTestCase(unittest.TestCase):
             ((0., 0., 0.), (a, 0., 0.))]
 
         for p in points:
-            num.testing.assert_almost_equal(orthodrome.geodetic_to_ecef(*p[0]),
-                                            p[1])
+            assert_ae(orthodrome.geodetic_to_ecef(*p[0]), p[1])
 
     @unittest.skipUnless(have_geographiclib(), 'geographiclib not available')
     def test_ecef_to_geodetic(self):
@@ -374,7 +434,7 @@ class OrthodromeTestCase(unittest.TestCase):
             xyz = orthodrome.geodetic_to_ecef(*coords[ic, :])
             latlonalt = orthodrome.ecef_to_geodetic(*xyz)
 
-            num.testing.assert_almost_equal(coords[ic, :], latlonalt)
+            assert_ae(coords[ic, :], latlonalt)
 
     def test_rotations(self):
         for lat in num.linspace(-90., 90., 20):
