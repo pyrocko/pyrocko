@@ -54,11 +54,11 @@ int autopick_recursive_stalta( int ns, int nl, float ks, float kl, float k, int 
 
     cf[0] = inout[0];
     if (init == 0) {
-        cf[0] = inout[0] + abs(k*(inout[0]-intermediates[ns-1]));
+        cf[0] = inout[0] + fabs(k*(inout[0]-intermediates[ns-1]));
     }
     for (i=1;i<nsamples;i++)
     {
-        cf[i]=inout[i]+abs(k*(inout[i]-inout[i-1]));
+        cf[i]=inout[i]+fabs(k*(inout[i]-inout[i-1]));
     }
 
     maxlta = 0.;
