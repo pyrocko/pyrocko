@@ -43,16 +43,6 @@ def port_in_use(port):
         return s.connect_ex(('localhost', port)) == 0
 
 
-def get_magnitude(event):
-    if event.magnitude:
-        mag = event.magnitude
-    elif event.moment_tensor:
-        mag = event.moment_tensor.moment_magnitude()
-    else:
-        mag = 0.
-    return float(mag)
-
-
 def get_port():
     port = 9998
     while port < 11000:
@@ -64,6 +54,16 @@ def get_port():
         raise Exception('No free port found')
 
     return port
+
+
+def get_magnitude(event):
+    if event.magnitude:
+        mag = event.magnitude
+    elif event.moment_tensor:
+        mag = event.moment_tensor.moment_magnitude()
+    else:
+        mag = 0.
+    return float(mag)
 
 
 def convert_event_marker(marker):
