@@ -13,6 +13,7 @@ import numpy as num
 import logging
 import posixpath
 import shutil
+import socket
 
 if sys.version_info >= (3, 0):  # noqa
     from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -37,6 +38,11 @@ g_counter = 0
 logger = logging.getLogger('pyrocko.snuffling.map')
 
 
+def port_in_use(port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('localhost', port)) == 0
+
+
 def get_magnitude(event):
     if event.magnitude:
         mag = event.magnitude
@@ -45,6 +51,19 @@ def get_magnitude(event):
     else:
         mag = 0.
     return float(mag)
+
+
+def get_port():
+    port = 9998
+    while port < 11000:
+        if port_in_use(port):
+            port += 1
+        else:
+            break
+    else:
+        raise Exception('No free port found')
+
+    return port
 
 
 def convert_event_marker(marker):
@@ -197,11 +216,14 @@ python $HOME/.snufflings/map/snuffling.py --stations=stations.pf
         self.data_proxy.content_to_serve.connect(
             self.file_serving_worker.run)
         self.thread.start()
-        self.port = 9998
+        self.port = None
 
         self.viewer_connected = False
 
     def call(self):
+        if self.port is None:
+            self.port = get_port()
+
         if not self.viewer_connected:
             self.get_viewer().about_to_close.connect(
                 self.file_serving_worker.stop)
