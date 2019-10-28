@@ -764,8 +764,8 @@ class Map(Object):
 
             n = len(self._labels)
 
-            lons, lats, texts, sx, sy, colors, fonts, font_sizes, styles = \
-                list(zip(*self._labels))
+            lons, lats, texts, sx, sy, colors, fonts, font_sizes, \
+                angles, styles = list(zip(*self._labels))
 
             font_sizes = [
                 (font_size or label_font_size) for font_size in font_sizes]
@@ -882,11 +882,11 @@ class Map(Object):
                             anchor,
                             texts[i])
 
-                        farg = ['-F+f+j']
+                        farg = ['-F+f+j+a%g' % angles[i]]
                     else:
                         row = (
                             lons[i], lats[i],
-                            font_sizes[i], 0, fonts[i], anchor,
+                            font_sizes[i], angles[i], fonts[i], anchor,
                             texts[i])
                         farg = ['-G%s' % color]
 
@@ -983,6 +983,7 @@ class Map(Object):
             color=None,
             font='1',
             font_size=None,
+            angle=0,
             style={}):
 
         if 'G' in style:
@@ -991,7 +992,7 @@ class Map(Object):
 
         self._labels.append(
             (lon, lat, text, offset_x, offset_y, color, font, font_size,
-             style))
+             angle, style))
 
     def add_area_label(
             self, lat, lon, text,
