@@ -107,17 +107,17 @@ class Material(object):
     :param qk: bulk attenuation Qk
     :param qmu: shear attenuation Qmu
 
-    :param eta1: Burgers rheology, transient viscosity,
+    :param burger_eta1: Burgers rheology, transient viscosity,
         <= 0 means infinite value [Pa]
-    :param eta2: Burgers rheology, steady-state viscosity [Pa]
-    :param valpha: Ratio between the effective and unreleaxed shear modulus,
-        mu1/(mu1 + mu2)
+    :param burger_eta2: Burgers rheology, steady-state viscosity [Pa]
+    :param burger_valpha: Ratio between the effective and unreleaxed shear
+        modulus, mu1/(mu1 + mu2)
 
     If no velocities and no lame parameters are given, standard crustal values
     of vp = 5800 m/s and vs = 3200 m/s are used.  If no Q values are given,
     standard crustal values of qp = 1456 and qs = 600 are used. If no Burgers
-    material parameters are given, viscosities of eta1=0, eta2=0 and valpha=1
-    are used.
+    material parameters are given, viscosities of burger_eta1=0, burger_eta2=0
+    and burger_valpha=1 are used.
 
     Everything is in SI units (m/s, Pa, kg/m^3) unless explicitly stated.
 
@@ -132,7 +132,8 @@ class Material(object):
 
     def __init__(
             self, vp=None, vs=None, rho=2600., qp=None, qs=None, poisson=None,
-            lame=None, qk=None, qmu=None, eta1=None, eta2=None, valpha=None):
+            lame=None, qk=None, qmu=None,
+            burger_eta1=None, burger_eta2=None, burger_valpha=None):
 
         parstore_float(locals(), self, 'vp', 'vs', 'rho', 'qp', 'qs')
 
@@ -227,15 +228,17 @@ class Material(object):
                 'Invalid combination of input parameters in material '
                 'definition.')
 
-        if eta1 is None and eta2 is None and valpha is None:
-            self.eta1 = 0.
-            self.eta2 = 0.
-            self.valpha = 1.
+        if burger_eta1 is None and burger_eta2 is None \
+                and burger_valpha is None:
+            self.burger_eta1 = 0.
+            self.burger_eta2 = 0.
+            self.burger_valpha = 1.
 
-        elif eta1 is not None and eta2 is not None and valpha is not None:
-            self.eta1 = eta1
-            self.eta2 = eta2
-            self.valpha = valpha
+        elif burger_eta1 is not None and burger_eta2 is not None \
+                and burger_valpha is not None:
+            self.burger_eta1 = burger_eta1
+            self.burger_eta2 = burger_eta2
+            self.burger_valpha = burger_valpha
         else:
             raise InvalidArguments(
                 'Invalid combination of Burgers materials parameters '
@@ -307,6 +310,10 @@ class Material(object):
             else:
                 return (1.-s)/(1.0/self.qp - s/self.qs)
 
+    def burgers(self):
+        '''Get Burger parameters.'''
+        return self.burger_eta1, self.burger_eta2, self.burger_valpha
+
     def _rayleigh_equation(self, cr):
         cr_a = (cr/self.vp)**2
         cr_b = (cr/self.vs)**2
@@ -339,7 +346,7 @@ Qs S-wave attenuation (Qmu)   : %12g
 Qk bulk attenuation           : %12g
 transient viscos., eta1 [GPa] : %12g
 st.-state viscos., eta2 [GPa] : %12g
-valpha                        : %12g
+relaxation: valpha            : %12g
 '''.strip()
 
         return template % (
@@ -356,9 +363,9 @@ valpha                        : %12g
             self.qp,
             self.qs,
             self.qk(),
-            self.eta1*1e-9,
-            self.eta2*1e-9,
-            self.valpha)
+            self.burger_eta1*1e-9,
+            self.burger_eta2*1e-9,
+            self.burger_valpha)
 
     def __str__(self):
         vp, vs, rho, qp, qs = self.astuple()
@@ -1458,8 +1465,8 @@ class Layer(object):
 
         r1 = radius(zbot)
         r2 = radius(ztop)
-        eta1 = r1 * ubot
-        eta2 = r2 * utop
+        burger_eta1 = r1 * ubot
+        burger_eta2 = r2 * utop
         if b != 1:
             def cpe(eta):
                 return num.arccos(num.minimum(p/num.maximum(eta, p/2), 1.0))
@@ -1467,8 +1474,8 @@ class Layer(object):
             def sep(eta):
                 return num.sqrt(num.maximum(eta**2 - p**2, 0.0))
 
-            x = (cpe(eta2)-cpe(eta1))/(1.0-b)
-            t = (sep(eta2)-sep(eta1))/(1.0-b)
+            x = (cpe(burger_eta2)-cpe(burger_eta1))/(1.0-b)
+            t = (sep(burger_eta2)-sep(burger_eta1))/(1.0-b)
         else:
             lr = math.log(r2/r1)
             sap = num.sqrt(1.0/a**2 - p**2)
@@ -3452,8 +3459,8 @@ class LayeredModel(object):
     def to_scanlines(self, burgers_material=False):
         def fmt(z, m):
             if burgers_material:
-                return (z, m.vp, m.vs, m.rho, m.qp, m.qs, m.eta1, m.eta2,
-                        m.valpha)
+                return (z, m.vp, m.vs, m.rho, m.qp, m.qs,
+                        m.burger_eta1, m.burger_eta2, m.burger_valpha)
             return (z, m.vp, m.vs, m.rho, m.qp, m.qs)
 
         last = None
@@ -3878,7 +3885,7 @@ def read_nd_model(fn):
     ``'outer-core'`` -> ``'cmb'``, ``'inner-core'`` -> ``'icb'``.
 
     The format has been modified to include Burgers materials parameters in
-    columns 7 (eta1), 8 (eta2) and 9. eta(3).
+    columns 7 (burger_eta1), 8 (burger_eta2) and 9. eta(3).
     '''
     with open(fn, 'r') as f:
         for x in read_nd_model_fh(f):
@@ -3900,15 +3907,18 @@ def read_nd_model_fh(f):
         if len(toks) == 9 or len(toks) == 6 or len(toks) == 4:
             z, vp, vs, rho = [float(x) for x in toks[:4]]
             qp, qs = None, None
-            eta1, eta2, valpha = None, None, None
+            burger_eta1, burger_eta2, burger_valpha = None, None, None
             if len(toks) == 6 or len(toks) == 9:
                 qp, qs = [float(x) for x in toks[4:6]]
             if len(toks) == 9:
-                eta1, eta2, valpha = [float(x) for x in toks[6:]]
+                burger_eta1, burger_eta2, burger_valpha = \
+                    [float(x) for x in toks[6:]]
 
             material = Material(
                 vp*1000., vs*1000., rho*1000., qp, qs,
-                eta1=eta1, eta2=eta2, valpha=valpha)
+                burger_eta1=burger_eta1, burger_eta2=burger_eta2,
+                burger_valpha=burger_valpha)
+
             yield z*1000., material, name
             name = None
         elif len(toks) == 1:
@@ -3963,9 +3973,9 @@ def write_nd_model_fh(mod, fh, burgers_material=False):
             rstr += ' '.join(
                 util.gform(x, 4)
                 for x in (
-                    mat.eta1,
-                    mat.eta2,
-                    mat.valpha))
+                    mat.burger_eta1,
+                    mat.burger_eta2,
+                    mat.burger_valpha))
         return rstr.rstrip() + '\n'
 
     translate = {

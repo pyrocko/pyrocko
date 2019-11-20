@@ -1525,7 +1525,7 @@ def init(store_dir, variant):
 
     store_id = os.path.basename(os.path.realpath(store_dir))
 
-    config = gf.meta.ConfigTypeA(
+    config = gf.meta.ConfigTypeABurger(
         id=store_id,
         ncomponents=10,
         sample_rate=1. / (3600. * 24.),
@@ -1538,12 +1538,7 @@ def init(store_dir, variant):
         distance_delta=1. * km,
         earthmodel_1d=cake.load_model(fn=None, crust2_profile=(54., 23.)),
         modelling_code_id='psgrn_pscmp.%s' % variant,
-        tabulated_phases=[])    # dummy list
-
-    def to_save_burger(val):
-        return literal(cake.write_nd_model_str(val, burgers_material=True))
-
-    config._ConfigTypeA__T.cls.earthmodel_1d.to_save = to_save_burger
+        tabulated_phases=[])  # dummy list
 
     c.validate()
     config.validate()

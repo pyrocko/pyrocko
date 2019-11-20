@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `fdsn` adding event query
 - `snuffling.catalog` adding FDSN event query
 - Snuffler adding `trace_scale` to configuration
+- Added Burger elasticity parameters to cake and `gf.psgrn_pscmp`
 
 ### Fixed
 - `seismosizer` STF timing of `RectangularSource`s.
