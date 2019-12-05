@@ -73,6 +73,8 @@ S = 2
 DOWN = 4
 UP = -4
 
+DEFAULT_BURGERS = (0., 0., 1.)
+
 earthradius = config.config().earthradius
 
 r2d = 180./math.pi
@@ -107,17 +109,17 @@ class Material(object):
     :param qk: bulk attenuation Qk
     :param qmu: shear attenuation Qmu
 
-    :param burger_eta1: Burgers rheology, transient viscosity,
-        <= 0 means infinite value [Pa]
-    :param burger_eta2: Burgers rheology, steady-state viscosity [Pa]
-    :param burger_valpha: Ratio between the effective and unreleaxed shear
-        modulus, mu1/(mu1 + mu2)
+    :param burgers: Burgers rheology paramerters as `tuple`.
+        `transient viscosity` [Pa], <= 0 means infinite value,
+        `steady-state viscosity` [Pa] and `alpha`, the ratio between the
+        effective and unreleaxed shear modulus, mu1/(mu1 + mu2).
+    :type burgers: tuple
 
     If no velocities and no lame parameters are given, standard crustal values
     of vp = 5800 m/s and vs = 3200 m/s are used.  If no Q values are given,
     standard crustal values of qp = 1456 and qs = 600 are used. If no Burgers
-    material parameters are given, viscosities of burger_eta1=0, burger_eta2=0
-    and burger_valpha=1 are used.
+    material parameters are given, transient and steady-state viscosities are
+    0 and alpha=1.
 
     Everything is in SI units (m/s, Pa, kg/m^3) unless explicitly stated.
 
@@ -132,8 +134,7 @@ class Material(object):
 
     def __init__(
             self, vp=None, vs=None, rho=2600., qp=None, qs=None, poisson=None,
-            lame=None, qk=None, qmu=None,
-            burger_eta1=None, burger_eta2=None, burger_valpha=None):
+            lame=None, qk=None, qmu=None, burgers=None):
 
         parstore_float(locals(), self, 'vp', 'vs', 'rho', 'qp', 'qs')
 
@@ -228,21 +229,10 @@ class Material(object):
                 'Invalid combination of input parameters in material '
                 'definition.')
 
-        if burger_eta1 is None and burger_eta2 is None \
-                and burger_valpha is None:
-            self.burger_eta1 = 0.
-            self.burger_eta2 = 0.
-            self.burger_valpha = 1.
-
-        elif burger_eta1 is not None and burger_eta2 is not None \
-                and burger_valpha is not None:
-            self.burger_eta1 = burger_eta1
-            self.burger_eta2 = burger_eta2
-            self.burger_valpha = burger_valpha
-        else:
-            raise InvalidArguments(
-                'Invalid combination of Burgers materials parameters '
-                'definition.')
+        if burgers is None:
+            self.burger_eta1 = DEFAULT_BURGERS[0]
+            self.burger_eta2 = DEFAULT_BURGERS[1]
+            self.burger_valpha = DEFAULT_BURGERS[2]
 
     def astuple(self):
         '''Get independant material properties as a tuple.
@@ -327,6 +317,13 @@ class Material(object):
 
         Returned units are [m/s].'''
         return bisect(self._rayleigh_equation, 0.001*self.vs, self.vs)
+
+    def _has_default_burgers(self):
+        if self.burger_eta1 == DEFAULT_BURGERS[0] and \
+                self.burger_eta2 == DEFAULT_BURGERS[1] and \
+                self.burger_valpha == DEFAULT_BURGERS[2]:
+            return True
+        return False
 
     def describe(self):
         '''Get a readable listing of the material properties.'''
@@ -3456,9 +3453,9 @@ class LayeredModel(object):
 
         return self
 
-    def to_scanlines(self, burgers_material=False):
+    def to_scanlines(self, get_burgers=False):
         def fmt(z, m):
-            if burgers_material:
+            if not m._has_default_burgers() or get_burgers:
                 return (z, m.vp, m.vs, m.rho, m.qp, m.qs,
                         m.burger_eta1, m.burger_eta2, m.burger_valpha)
             return (z, m.vp, m.vs, m.rho, m.qp, m.qs)
@@ -3907,17 +3904,16 @@ def read_nd_model_fh(f):
         if len(toks) == 9 or len(toks) == 6 or len(toks) == 4:
             z, vp, vs, rho = [float(x) for x in toks[:4]]
             qp, qs = None, None
-            burger_eta1, burger_eta2, burger_valpha = None, None, None
+            burgers = None
             if len(toks) == 6 or len(toks) == 9:
                 qp, qs = [float(x) for x in toks[4:6]]
             if len(toks) == 9:
-                burger_eta1, burger_eta2, burger_valpha = \
+                burgers = \
                     [float(x) for x in toks[6:]]
 
             material = Material(
                 vp*1000., vs*1000., rho*1000., qp, qs,
-                burger_eta1=burger_eta1, burger_eta2=burger_eta2,
-                burger_valpha=burger_valpha)
+                burgers=burgers)
 
             yield z*1000., material, name
             name = None
@@ -3959,7 +3955,7 @@ def from_crust2x2_profile(profile, depthmantle=50000):
             z += dz
 
 
-def write_nd_model_fh(mod, fh, burgers_material=False):
+def write_nd_model_fh(mod, fh):
     def fmt(z, mat):
         rstr = ' '.join(
             util.gform(x, 4)
@@ -3969,7 +3965,7 @@ def write_nd_model_fh(mod, fh, burgers_material=False):
                 mat.vs/1000.,
                 mat.rho/1000.,
                 mat.qp, mat.qs))
-        if burgers_material:
+        if not mat._has_default_burgers():
             rstr += ' '.join(
                 util.gform(x, 4)
                 for x in (
@@ -4002,15 +3998,15 @@ def write_nd_model_fh(mod, fh, burgers_material=False):
         fh.write(fmt(last.z, last.mbelow))
 
 
-def write_nd_model_str(mod, burgers_material=False):
+def write_nd_model_str(mod):
     f = StringIO()
-    write_nd_model_fh(mod, f, burgers_material)
+    write_nd_model_fh(mod, f)
     return f.getvalue()
 
 
-def write_nd_model(mod, fn, burgers_material=False):
+def write_nd_model(mod, fn):
     with open(fn, 'w') as f:
-        write_nd_model_fh(mod, f, burgers_material)
+        write_nd_model_fh(mod, f)
 
 
 def builtin_models():
