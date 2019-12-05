@@ -251,21 +251,6 @@ class Earthmodel1D(Object):
             return literal(cake.write_nd_model_str(val))
 
 
-class Earthmodel1DBurger(Earthmodel1D):
-
-    class __T(TBase):
-
-        def regularize_extra(self, val):
-            if isinstance(val, str):
-                val = cake.LayeredModel.from_scanlines(
-                    cake.read_nd_model_str(val))
-
-            return val
-
-        def to_save(self, val):
-            return literal(cake.write_nd_model_str(val, burgers_material=True))
-
-
 class StringID(StringPattern):
     pattern = r'^[A-Za-z][A-Za-z0-9._]{0,64}$'
 
@@ -2005,14 +1990,6 @@ class ConfigTypeA(Config):
             self.distance_min/km,
             self.distance_max/km,
             self.distance_delta/km)
-
-
-class ConfigTypeABurger(ConfigTypeA):
-
-    earthmodel_1d = Earthmodel1DBurger.T(
-        optional=True,
-        help='Layered earth model in ND (named discontinuity) format,'
-             ' including Burger viscosity parameters.')
 
 
 class ConfigTypeB(Config):

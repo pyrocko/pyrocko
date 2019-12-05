@@ -72,7 +72,7 @@ def str_str_vals(vals):
 
 def cake_model_to_config(mod):
     srows = []
-    for ir, row in enumerate(mod.to_scanlines(burgers_material=True)):
+    for ir, row in enumerate(mod.to_scanlines(get_burgers=True)):
         depth, vp, vs, rho, qp, qs, eta1, eta2, alpha = row
         # replace qs with etas = 0.
         row = [depth / km, vp / km, vs / km, rho, eta1, eta2, alpha]
@@ -1525,7 +1525,14 @@ def init(store_dir, variant):
 
     store_id = os.path.basename(os.path.realpath(store_dir))
 
-    config = gf.meta.ConfigTypeABurger(
+    # Initialising a viscous mantle
+    cake_mod = cake.load_model(fn=None, crust2_profile=(54., 23.))
+    mantle = cake_mod.material(z=45*km)
+    mantle.burger_eta1 = 5e17
+    mantle.burger_eta2 = 1e19
+    mantle.burger_alpha = 1.
+
+    config = gf.meta.ConfigTypeA(
         id=store_id,
         ncomponents=10,
         sample_rate=1. / (3600. * 24.),
@@ -1536,7 +1543,7 @@ def init(store_dir, variant):
         distance_min=0. * km,
         distance_max=50. * km,
         distance_delta=1. * km,
-        earthmodel_1d=cake.load_model(fn=None, crust2_profile=(54., 23.)),
+        earthmodel_1d=cake_mod,
         modelling_code_id='psgrn_pscmp.%s' % variant,
         tabulated_phases=[])  # dummy list
 
