@@ -230,9 +230,11 @@ class Material(object):
                 'definition.')
 
         if burgers is None:
-            self.burger_eta1 = DEFAULT_BURGERS[0]
-            self.burger_eta2 = DEFAULT_BURGERS[1]
-            self.burger_valpha = DEFAULT_BURGERS[2]
+            burgers = DEFAULT_BURGERS
+
+        self.burger_eta1 = burgers[0]
+        self.burger_eta2 = burgers[1]
+        self.burger_valpha = burgers[2]
 
     def astuple(self):
         '''Get independant material properties as a tuple.
