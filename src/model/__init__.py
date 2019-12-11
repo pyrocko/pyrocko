@@ -8,6 +8,7 @@ from .location import *  # noqa
 from .station import *  # noqa
 from .event import *  # noqa
 from .gnss import *  # noqa
+from .geometry import *  # noqa
 
 from pyrocko.util import parse_md
 
