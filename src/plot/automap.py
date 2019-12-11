@@ -1371,6 +1371,20 @@ class CPT(Object):
 
         return colors
 
+    @classmethod
+    def from_numpy(cls, colors):
+        nbins = colors.shape[0]
+        vs = num.linspace(0., 1., nbins)
+        cpt_data = num.hstack((num.atleast_2d(vs).T, colors))
+        return cls(
+            levels=[
+                CPTLevel(
+                    vmin=a[0],
+                    vmax=b[0],
+                    color_min=[255*x for x in a[1:]],
+                    color_max=[255*x for x in b[1:]])
+                for (a, b) in zip(cpt_data[:-1], cpt_data[1:])])
+
 
 class CPTParseError(Exception):
     pass
