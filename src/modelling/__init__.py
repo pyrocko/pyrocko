@@ -6,6 +6,7 @@
 from __future__ import absolute_import, print_function, division
 
 from .okada import *  # noqa
+from .cracksol import *  # noqa
 
 # from pyrocko.util import parse_md
 

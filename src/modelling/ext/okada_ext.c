@@ -716,14 +716,13 @@ static okada_error_t dc3d(
                 du[i+2] = (dua[i+1] + dub[i+1] - z*duc[i+1])*c0.sd + (dua[i+2] + dub[i+2] - z*duc[i+2])*c0.cd;
             }
             du[9] = du[9] + duc[0];
-            du[10] = du[10] + duc[0]*c0.cd - duc[1]*c0.sd;
-            du[11] = du[11] - duc[0]*c0.sd - duc[1]*c0.cd;
+            du[10] = du[10] + duc[1]*c0.cd - duc[2]*c0.sd;
+            du[11] = du[11] - duc[1]*c0.sd - duc[2]*c0.cd;
 
             for (i=0; i<12; i++) {
                 if (j == k) u[i] = u[i] + du[i];
                 if (j != k) u[i] = u[i] - du[i];
             }
-
         }
     }
 
@@ -865,7 +864,7 @@ static okada_error_t dc3d_flexi(
     rot_vec31(r, rotmat, rrot);
 
     if (dip == 90.) {
-        dip -= 1E-3;
+        dip -= 1E-2;
     }
     iret = dc3d(alpha, rrot[0], rrot[1], rrot[2], ds, dip, al1, al2, aw1, aw2, disl1, disl2, disl3, uokada);
     
@@ -882,11 +881,11 @@ static okada_error_t dc3d_flexi(
 
 int good_array(
         PyObject* o,
-        int typenum,
-        int ndim_want,
+        npy_intp typenum,
+        npy_intp ndim_want,
         npy_intp* shape_want) {
 
-    int i;
+    signed long i;
 
     if (!PyArray_Check(o)) {
         PyErr_SetString(PyExc_AttributeError, "not a NumPy array" );
@@ -920,23 +919,41 @@ int good_array(
 }
 
 
-int source_receiver_pair_check(
-    double source_n,
-    double source_e,
-    double source_d,
-    double source_aw1,
-    double source_aw2,
-    double source_dip) {
+int halfspace_check(
+    double *source_patches,
+    double *receiver_coords,
+    unsigned long nsources,
+    unsigned long nreceivers) {
 
     /*
      * Check for Okada source below z=0
     */
 
-    if ((source_d - sin(source_dip*D2R) * source_aw1) < 0 || (source_d - sin(source_dip*D2R) * source_aw2) < 0 ) {
-        printf("Source %g, %g, %g (N, E, D) is (partially) above z=0 and therefore excluded\n", source_n, source_e, source_d);
-        return 0;
+    unsigned long irec, isrc, src_idx;
+    char msg[1024];
+
+
+    for (isrc=0; isrc<nsources; isrc++) {
+        src_idx = isrc * 9;
+        if ((source_patches[src_idx + 2] - sin(source_patches[src_idx + 4]*D2R) * source_patches[src_idx + 7]) < 0 || (source_patches[src_idx + 2] - sin(source_patches[src_idx + 4]*D2R) * source_patches[src_idx + 8]) < 0 ) {
+            sprintf(msg, "Source %g, %g, %g (N, E, D) is (partially) above z=0.\nCalculation was terminated. Please check.", source_patches[src_idx], source_patches[src_idx + 1], source_patches[src_idx + 2]);
+            PyErr_SetString(PyExc_ValueError, msg);
+            return 0;
+        }
+        if (source_patches[src_idx + 2] < 0) {
+            sprintf(msg, "Source %g, %g, %g (N, E, D) is (partially) above z=0.\nCalculation was terminated. Please check.", source_patches[src_idx], source_patches[src_idx + 1], source_patches[src_idx + 2]);
+            PyErr_SetString(PyExc_ValueError, msg);
+            return 0;
+        }
     }
 
+    for (irec=0; irec<nreceivers; irec++) {
+        if (receiver_coords[irec * 3 + 2] < 0) {
+            sprintf(msg, "Receiver %g, %g, %g (N, E, D) is above z=0.\nCalculation was terminated.  Please check!", receiver_coords[irec * 3], receiver_coords[irec * 3 + 1], receiver_coords[irec * 3 + 2]);
+            PyErr_SetString(PyExc_ValueError, msg);
+            return 0;
+        }
+    }
     return 1;
 }
 
@@ -945,19 +962,20 @@ static PyObject* w_dc3d_flexi(
     PyObject *m,
     PyObject *args) {
 
-    int nrec, nsources, irec, isource, i, nthreads;
+    int nthreads;
+    unsigned long nrec, nsources, irec, isource, i;
     PyObject *source_patches_arr, *source_disl_arr, *receiver_coords_arr, *output_arr;
     npy_float64  *source_patches, *source_disl, *receiver_coords;
     npy_float64 *output;
-    npy_float64 poisson;
-    double uout[12];
+    double lambda, mu;
+    double uout[12], alpha;
     npy_intp shape_want[2];
     npy_intp output_dims[2];
 
     struct module_state *st = GETSTATE(m);
 
-    if (! PyArg_ParseTuple(args, "OOOdI", &source_patches_arr, &source_disl_arr, &receiver_coords_arr, &poisson, &nthreads)) {
-        PyErr_SetString(st->error, "usage: okada(Sourcepatches(north, east, down, strike, dip, al1, al2, aw1, aw2), Dislocation(strike, dip, opening), ReceiverCoords(north, east, down), Poisson, NumThreads(0 equals all)");
+    if (! PyArg_ParseTuple(args, "OOOddI", &source_patches_arr, &source_disl_arr, &receiver_coords_arr, &lambda, &mu, &nthreads)) {
+        PyErr_SetString(st->error, "usage: okada(Sourcepatches(north, east, down, strike, dip, al1, al2, aw1, aw2), Dislocation(strike, dip, opening), ReceiverCoords(north, east, down), Lambda, Mu, NumThreads(0 equals all)");
         return NULL;
     }
 
@@ -985,21 +1003,24 @@ static PyObject* w_dc3d_flexi(
     output_arr = PyArray_ZEROS(2, output_dims, NPY_FLOAT64, 0);
     output = PyArray_DATA((PyArrayObject*) output_arr);
 
+    if (!halfspace_check(source_patches, receiver_coords, nsources, nrec))
+        return NULL;
+
     #if defined(_OPENMP)
         Py_BEGIN_ALLOW_THREADS
         if (nthreads == 0)
             nthreads = omp_get_num_procs();
         #pragma omp parallel\
-            shared(nrec, nsources, poisson, receiver_coords, source_patches, source_disl, output)\
-            private(uout, irec, isource, i)\
+            shared(nrec, nsources, lambda, mu, receiver_coords, source_patches, source_disl, output)\
+            private(uout, irec, isource, i, alpha)\
             num_threads(nthreads)
         {
         #pragma omp for schedule(static) nowait
     #endif
         for (irec=0; irec<nrec; irec++) {
             for (isource=0; isource<nsources; isource++) {
-                if (!source_receiver_pair_check(source_patches[isource*9], source_patches[isource*9+1], source_patches[isource*9+2], source_patches[isource*9+7], source_patches[isource*9+8], source_patches[isource*9+4])) continue;
-                dc3d_flexi(1.0 - 2.0 * poisson, receiver_coords[irec*3], receiver_coords[irec*3+1], receiver_coords[irec*3+2], source_patches[isource*9], source_patches[isource*9+1], source_patches[isource*9+2], source_patches[isource*9+3], source_patches[isource*9+4], source_patches[isource*9+5], source_patches[isource*9+6], source_patches[isource*9+7], source_patches[isource*9+8], source_disl[isource*3], source_disl[isource*3+1], source_disl[isource*3+2], uout);
+                alpha = (lambda + mu) / (lambda + 2. * mu);
+                dc3d_flexi(alpha, receiver_coords[irec*3], receiver_coords[irec*3+1], receiver_coords[irec*3+2], source_patches[isource*9], source_patches[isource*9+1], source_patches[isource*9+2], source_patches[isource*9+3], source_patches[isource*9+4], source_patches[isource*9+5], source_patches[isource*9+6], source_patches[isource*9+7], source_patches[isource*9+8], source_disl[isource*3], source_disl[isource*3+1], source_disl[isource*3+2], uout);
 
                 for (i=0; i<12; i++) {
                     output[irec*12+i] += uout[i];

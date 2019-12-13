@@ -254,72 +254,6 @@ def check_rect_source_discretisation(points2, nl, nw, store):
     return True
 
 
-def outline_rect_source(strike, dip, length, width, anchor):
-    ln = length
-    wd = width
-    points = num.array(
-        [[-0.5 * ln, -0.5 * wd, 0.],
-         [0.5 * ln, -0.5 * wd, 0.],
-         [0.5 * ln, 0.5 * wd, 0.],
-         [-0.5 * ln, 0.5 * wd, 0.],
-         [-0.5 * ln, -0.5 * wd, 0.]])
-
-    anch_x, anch_y = map_anchor[anchor]
-    points[:, 0] -= anch_x * 0.5 * length
-    points[:, 1] -= anch_y * 0.5 * width
-
-    rotmat = num.asarray(
-        pmt.euler_to_matrix(dip * d2r, strike * d2r, 0.0))
-
-    return num.dot(rotmat.T, points.T).T
-
-
-def points_on_rect_source(
-        strike, dip, length, width, anchor,
-        discretized_basesource=None, points_x=None, points_y=None):
-
-    ln = length
-    wd = width
-
-    if discretized_basesource:
-        ds = discretized_basesource
-
-        nl_patches = ds.nl + 1
-        nw_patches = ds.nw + 1
-        
-        npoints = nl_patches * nw_patches
-        points = num.zeros(shape=(npoints, 3))
-        ln_patches = num.array([il for il in range(nl_patches)])
-        wd_patches = num.array([iw for iw in range(nw_patches)])
-
-        points_ln =\
-            2 * ((ln_patches - num.min(ln_patches)) / num.ptp(ln_patches)) - 1
-        points_wd =\
-            2 * ((wd_patches - num.min(wd_patches)) / num.ptp(wd_patches)) - 1
-
-        for il in range(nl_patches):
-            for iw in range(nw_patches):
-                points[il * nw_patches + iw, :] = num.array([
-                    points_ln[il] * ln * 0.5,
-                    points_wd[iw] * wd * 0.5, 0.0])
-
-    elif points_x and points_y:
-        points = num.zeros(shape=((len(points_x), 3)))
-        for i, (x, y) in enumerate(zip(points_x, points_y)):
-            points[i, :] = num.array(
-                [x * 0.5 * ln, y * 0.5 * wd, 0.0])
-
-    anch_x, anch_y = map_anchor[anchor]
-    
-    points[:, 0] -= anch_x * 0.5 * ln
-    points[:, 1] -= anch_y * 0.5 * wd
-
-    rotmat = num.asarray(
-        mt.euler_to_matrix(dip * d2r, strike * d2r, 0.0))
-
-    return num.dot(rotmat.T, points.T).T
-
-
 def lists_to_c5(
         ref_lat, ref_lon,
         points=[], north_shifts=[], east_shifts=[], depths=[]):
@@ -358,7 +292,7 @@ class Patch(Object):
         self.faces = faces
 
 
-class Geometry(Object):
+class OldGeometry(Object):
     centroid = Any.T(default=Table())
     outline = None
     patches = None
@@ -1340,7 +1274,7 @@ class Source(Location, Cloneable):
             **kwargs)
 
     def geometry(self, **kwargs):
-        geom = Geometry()
+        geom = OldGeometry()
         geom.set_centroid(self.pyrocko_event(**kwargs))
         geom.set_outline(self.lat, self.lon, self.outline(cs='xyz'))
 
@@ -2222,80 +2156,96 @@ class RectangularSource(SourceWithDerivedMagnitude):
 
         return ds
 
+    def xy_to_coord(self, x, y, cs='xyz'):
+        ln, wd = self.length, self.width
+        strike, dip = self.strike, self.dip
+
+        def array_check(variable):
+            if not isinstance(variable, num.ndarray):
+                return num.array(variable)
+            else:
+                return variable
+
+        x, y = array_check(x), array_check(y)
+
+        if x.shape[0] != y.shape[0]:
+            raise ValueError('Shapes of x and y mismatch')
+
+        x, y =  x * 0.5 * ln, y * 0.5 * wd
+
+        points = num.hstack((
+            x.reshape(-1, 1), y.reshape(-1, 1), num.zeros((x.shape[0], 1))))
+
+        anch_x, anch_y = map_anchor[self.anchor]
+        points[:, 0] -= anch_x * 0.5 * ln
+        points[:, 1] -= anch_y * 0.5 * wd
+
+        rotmat = num.asarray(
+            pmt.euler_to_matrix(dip * d2r, strike * d2r, 0.0))
+
+        points_rot = num.dot(rotmat.T, points.T).T
+
+        points_rot[:, 0] += self.north_shift
+        points_rot[:, 1] += self.east_shift
+        points_rot[:, 2] += self.depth
+
+        if cs == 'xyz':
+            return points_rot
+        elif cs == 'xy':
+            return points_rot[:, :2]
+        elif cs in ('latlon', 'lonlat', 'latlondepth'):
+            latlon = ne_to_latlon(
+                self.lat, self.lon, points_rot[:, 0], points_rot[:, 1])
+            latlon = num.array(latlon).T
+            if cs == 'latlon':
+                return latlon
+            elif cs == 'lonlat':
+                return latlon[:, ::-1]
+            else:
+                return num.concatenate(
+                    (latlon, points_rot[:, 2].reshape((len(points_rot),1))),
+                    axis=1)
+
+    def outline(self, **kwargs):
+        x = num.array([-1., 1., 1., -1., -1.])
+        y = num.array([-1., -1., 1., 1., -1.])
+
+        return self.xy_to_coord(x, y, **kwargs)
+
     def geometry(self, *args, **kwargs):
-        geom = Geometry()
+        geom = OldGeometry()
         geom.set_centroid(self.pyrocko_event(**kwargs))
         geom.set_outline(self.lat, self.lon, self.outline(cs='xyz'), **kwargs)
 
         ds = self.discretize_basesource(*args)
-        vertices = self.points_on_source(
-            cs='xyz', discretized_basesource=ds)
+        nx, ny = ds.nl, ds.nw
+
+        def patch_outlines_xy(nx, ny):
+            points = num.zeros((nx * ny, 2))
+            points[:, 0] = num.tile(num.linspace(-1., 1., nx), ny)
+            points[:, 1] = num.repeat(num.linspace(-1., 1., ny), nx)
+
+            return points
+
+        points_ds = patch_outlines_xy(nx + 1, ny + 1)
+
+        vertices = self.xy_to_coord(points_ds[:, 0], points_ds[:, 1], cs='xyz')
 
         faces = []
-        for iw in range(ds.nw):
-            for il in range(ds.nl):
+        for iy in range(ny):
+            for ix in range(nx):
                 faces.append((
-                    il * (ds.nw + 1) + iw,
-                    il * (ds.nw + 1) + iw + 1,
-                    (il + 1) * (ds.nw + 1) + iw + 1,
-                    (il + 1) * (ds.nw + 1) + iw,
-                    il * (ds.nw + 1) + iw))
+                    iy * (nx + 1) + ix,
+                    iy * (nx + 1) + ix + 1,
+                    (iy + 1) * (nx + 1) + ix + 1,
+                    (iy + 1) * (nx + 1) + ix,
+                    iy * (nx + 1) + ix))
 
         faces = num.array(faces, dtype=num.dtype(('int,int,int,int,int')))
 
         geom.set_patches(ds, vertices, faces, **kwargs)
 
         return geom
-
-    def outline(self, cs='xyz'):
-        points = outline_rect_source(self.strike, self.dip, self.length,
-                                     self.width, self.anchor)
-        points[:, 0] += self.north_shift
-        points[:, 1] += self.east_shift
-        points[:, 2] += self.depth
-        if cs == 'xyz':
-            return points
-        elif cs == 'xy':
-            return points[:, :2]
-        elif cs in ('latlon', 'lonlat', 'latlondepth'):
-            latlon = ne_to_latlon(
-                self.lat, self.lon, points[:, 0], points[:, 1])
-            latlon = num.array(latlon).T
-            if cs == 'latlon':
-                return latlon
-            elif cs == 'lonlat':
-                return latlon[:, ::-1]
-            else:
-                return num.concatenate(
-                    (latlon,points[:, 2].reshape((len(points),1))),
-                    axis=1)
-
-    def points_on_source(self, cs='xyz', **kwargs):
-
-        points = points_on_rect_source(
-            self.strike, self.dip, self.length, self.width,
-            self.anchor, **kwargs)
-        
-        points[:, 0] += self.north_shift
-        points[:, 1] += self.east_shift
-        points[:, 2] += self.depth
-        if cs == 'xyz':
-            return points
-        elif cs == 'xy':
-            return points[:, :2]
-        elif cs in ('latlon', 'lonlat', 'latlondepth'):
-            latlon = ne_to_latlon(
-                self.lat, self.lon, points[:, 0], points[:, 1])
-
-            latlon = num.array(latlon).T
-            if cs == 'latlon':
-                return latlon
-            elif cs == 'lonlat':
-                return latlon[:, ::-1]
-            else:
-                return num.concatenate(
-                    (latlon,points[:, 2].reshape((len(points),1))),
-                    axis=1)
 
     def pyrocko_moment_tensor(self, store=None, target=None):
         return pmt.MomentTensor(
