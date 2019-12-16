@@ -27,6 +27,12 @@ class Geometry(Object):
         help='Face integer indexes to the respective vertices. '
              'Indexes belonging to one polygon have to be given row-wise.',
         optional=True)
+    outlines = List.T(Table.T(),
+        default=[],
+        help='List of vertices of the mesh of the outlines of the geometry. '
+             'Expected to be (lat,lon,north,east,depth) for each vertex'
+             '(outline).',
+        optional=True)
     event = Event.T(default=Event.D())
     times = Array.T(
         shape=(None,),
@@ -35,6 +41,10 @@ class Geometry(Object):
              'properties have value',
         optional=True)
 
+    def __init__(self, **kwargs):
+        Object.__init__(self, **kwargs)
+        self._ntimes = None
+
     @property
     def deltat(self):
         if self.times.size > 2:
@@ -42,14 +52,31 @@ class Geometry(Object):
         else:
             return 1.
 
-    def time2idx(self, time, dtype='int'):
+    @property
+    def ntimes(self):
+        if self._ntimes is None:
+            if self.times is not None:
+                self._ntimes = len(self.times)
+            else:
+                return 0
+
+        return self._ntimes
+
+    def time2idx(self, time):
         if self.times.size > 2:
-            return round((time - self.times.min() - (
-                self.deltat / 2.)) / self.deltat).astype(dtype)
+            idx = int(round((time - self.times.min() - (
+                    self.deltat / 2.)) / self.deltat))
+
+            if idx < 0:
+                return 0
+            elif idx > self.ntimes:
+                return self.ntimes
+            else:
+                return idx
         else:
             return 0
 
-    def setup(self, vertices, faces):
+    def setup(self, vertices, faces, outlines=None):
 
         self.vertices = Table()
         self.vertices.add_recipe(LocationRecipe())
@@ -62,6 +89,18 @@ class Geometry(Object):
         ncorners = faces.shape[1]
         sub_headers = tuple(['f{}'.format(i) for i in range(ncorners)])
         self.faces.add_col(('faces', '', sub_headers), faces)
+
+        if outlines is not None:
+            self.outlines = []
+            for outline in outlines:
+                outl = Table()
+                outl.add_recipe(LocationRecipe())
+                outl.add_col((
+                    'c5', '',
+                    ('ref_lat', 'ref_lon', 'north_shift', 'east_shift',
+                     'depth')),
+                    outline)
+                self.outlines.append(outl)
 
     def add_property(self, name, values):
         self.properties.add_col(name, values)
