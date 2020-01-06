@@ -28,6 +28,7 @@ Annotated scripts and real-world use cases using Pyrocko.
     catalog_search
     moment_tensor
     plotting
+    gmtpy/index
     snuffler_markers
     cake_raytracing
     gf_forward

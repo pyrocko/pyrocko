@@ -7,4 +7,3 @@ Here we explain the use of the pyrocko software toolbox for particular problems.
    :maxdepth: 2
 
    pyrocko-gf
-

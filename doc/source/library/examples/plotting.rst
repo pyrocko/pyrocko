@@ -10,8 +10,8 @@ for the `Generic Mapping Tool (GMT) <http://gmt.soest.hawaii.edu/>`_ [#f1]_.
 Classes covered in these examples:
  * :class:`pyrocko.plot.automap.Map`
 
-For details on GMT wrapping module:
- * :mod:`pyrocko.plot.gmtpy`
+For details on our approach in calling GMT from Python:
+ * :doc:`gmtpy/index`
 
  .. note ::
 
