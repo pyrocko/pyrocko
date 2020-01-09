@@ -64,8 +64,11 @@ def as_tuple(tr):
             itmin, itmax, srate, tr.get_ydata())
 
 
-def save(traces, filename_template, additional={}, overwrite=True):
+def save(traces, filename_template, additional={}, overwrite=True,
+         record_length=4096):
     from pyrocko import mseed_ext
+
+    assert record_length in (2**exp for exp in range(8, 20))
 
     fn_tr = {}
     for tr in traces:
@@ -96,7 +99,7 @@ def save(traces, filename_template, additional={}, overwrite=True):
 
         ensuredirs(fn)
         try:
-            mseed_ext.store_traces(trtups, fn)
+            mseed_ext.store_traces(trtups, fn, record_length)
         except mseed_ext.MSeedError as e:
             raise FileSaveError(
                 str(e) + ' (while storing traces to file \'%s\')' % fn)

@@ -115,6 +115,16 @@ class IOTestCase(unittest.TestCase):
         except mseed.CodeTooLong as e:
             assert isinstance(e, mseed.CodeTooLong)
 
+    def testMSeedRecordLength(self):
+        c = '1234567'
+        tr = trace.Trace(c, c, c, c, ydata=num.zeros(10))
+        e = None
+        try:
+            for exp in range(8, 20):
+                io.save(tr, 'test.mseed', record_length=2**exp)
+        except mseed.CodeTooLong as e:
+            assert isinstance(e, mseed.CodeTooLong)
+
     def testMSeedDetect(self):
         fpath = common.test_data_file('test2.mseed')
         io.load(fpath, format='detect')

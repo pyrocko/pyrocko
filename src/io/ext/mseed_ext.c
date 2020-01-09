@@ -164,12 +164,13 @@ mseed_store_traces (PyObject *m, PyObject *args)
     int64_t       psamples;
     int           numpytype;
     int           length;
+    size_t        record_length = 4096;
     FILE          *outfile;
 
     struct module_state *st = GETSTATE(m);
 
-    if (!PyArg_ParseTuple(args, "Os", &in_traces, &filename)) {
-        PyErr_SetString(st->error, "usage store_traces(traces, filename)" );
+    if (!PyArg_ParseTuple(args, "Os|n", &in_traces, &filename, &record_length)) {
+        PyErr_SetString(st->error, "usage store_traces(traces, filename, record_length)" );
         return NULL;
     }
     if (!PySequence_Check( in_traces )) {
@@ -270,7 +271,7 @@ mseed_store_traces (PyObject *m, PyObject *args)
         memcpy(mst->datasamples, PyArray_DATA(contiguous_array), length*ms_samplesize(mstype));
         Py_DECREF(contiguous_array);
 
-        mst_pack (mst, &record_handler, outfile, 4096, msdetype,
+        mst_pack (mst, &record_handler, outfile, record_length, msdetype,
                                      1, &psamples, 1, 0, NULL);
         mst_free( &mst );
         Py_DECREF(in_trace);

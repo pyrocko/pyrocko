@@ -165,7 +165,7 @@ def iload(filename, format='mseed', getdata=True, substitutions=None):
 
 
 def save(traces, filename_template, format='mseed', additional={},
-         stations=None, overwrite=True):
+         stations=None, overwrite=True, **kwargs):
     '''Save traces to file(s).
 
     :param traces: a trace or an iterable of traces to store
@@ -195,11 +195,11 @@ def save(traces, filename_template, format='mseed', additional={},
 
     if format == 'mseed':
         return mseed.save(traces, filename_template, additional,
-                          overwrite=overwrite)
+                          overwrite=overwrite, **kwargs)
 
     elif format == 'gse2':
         return gse2.save(traces, filename_template, additional,
-                         overwrite=overwrite)
+                         overwrite=overwrite, **kwargs)
 
     elif format == 'sac':
         fns = []
@@ -250,7 +250,7 @@ def save(traces, filename_template, format='mseed', additional={},
 
     elif format == 'yaff':
         return yaff.save(traces, filename_template, additional,
-                         overwrite=overwrite)
+                         overwrite=overwrite, **kwargs)
     else:
         raise UnsupportedFormat(format)
 
