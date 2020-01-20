@@ -30,7 +30,7 @@ import pyrocko.gui.marker_editor
 
 from pyrocko.util import hpfloat, gmtime_x, mystrftime
 
-from .marker import associate_phases_to_events
+from .marker import associate_phases_to_events, MarkerOneNSLCRequired
 
 from .util import (ValControl, LinValControl, Marker, EventMarker,
                    PhaseMarker, make_QPolygonF, draw_label, Label,
@@ -767,7 +767,7 @@ def MakePileViewerMainClass(base):
 
             self.setSizePolicy(poli)
             self.setMinimumSize(300, 200)
-            self.setFocusPolicy(qc.Qt.StrongFocus)
+            self.setFocusPolicy(qc.Qt.ClickFocus)
 
             self.menu = qw.QMenu(self)
 
@@ -1331,6 +1331,19 @@ def MakePileViewerMainClass(base):
                 return m.get_event()
             else:
                 return None
+
+        def get_active_markers(self):
+            emarker = self.get_active_event_marker()
+            if emarker is None:
+                return None, []
+
+            else:
+                ev = emarker.get_event()
+                pmarkers = [
+                    m for m in self.markers
+                    if isinstance(m, PhaseMarker) and m.get_event() is ev]
+
+                return emarker, pmarkers
 
         def set_origin(self, location):
             for station in self.stations.values():
@@ -1952,6 +1965,13 @@ def MakePileViewerMainClass(base):
             if needupdate:
                 self.update()
 
+        def event(self, event):
+            if event.type() == qc.QEvent.KeyPress:
+                self.keyPressEvent(event)
+                return True
+            else:
+                return base.event(self, event)
+
         def keyPressEvent(self, key_event):
             self.show_all = False
             dt = self.tmax - self.tmin
@@ -1991,6 +2011,69 @@ def MakePileViewerMainClass(base):
                 dt = self.tmax - self.tmin
                 self.interrupt_following()
                 self.set_time_range(self.tmin-dt, self.tmax-dt)
+
+            elif key_event.key() in (qc.Qt.Key_Tab, qc.Qt.Key_Backtab):
+                self.interrupt_following()
+
+                tgo = None
+
+                class TraceDummy(object):
+                    def __init__(self, marker):
+                        self._marker = marker
+
+                    @property
+                    def nslc_id(self):
+                        return self._marker.one_nslc()
+
+                def marker_to_itrack(marker):
+                    try:
+                        return self.key_to_row.get(
+                            self.gather(TraceDummy(marker)), -1)
+
+                    except MarkerOneNSLCRequired:
+                        return -1
+
+                emarker, pmarkers = self.get_active_markers()
+                pmarkers = [
+                    m for m in pmarkers if m.kind in self.visible_marker_kinds]
+                pmarkers.sort(key=lambda m: (
+                    marker_to_itrack(m), (m.tmin + m.tmax) / 2.0))
+
+                if key_event.key() == qc.Qt.Key_Backtab:
+                    pmarkers.reverse()
+
+                smarkers = self.selected_markers()
+                iselected = []
+                for sm in smarkers:
+                    try:
+                        iselected.append(pmarkers.index(sm))
+                    except ValueError:
+                        pass
+
+                if iselected:
+                    icurrent = max(iselected) + 1
+                else:
+                    icurrent = 0
+
+                if icurrent < len(pmarkers):
+                    self.deselect_all()
+                    cmarker = pmarkers[icurrent]
+                    cmarker.set_selected(True)
+                    tgo = cmarker.tmin
+                    if not self.tmin < tgo < self.tmax:
+                        self.set_time_range(tgo-dt/2., tgo+dt/2.)
+
+                    itrack = marker_to_itrack(cmarker)
+                    if itrack != -1:
+                        if itrack < self.shown_tracks_range[0]:
+                            self.scroll_tracks(
+                                - (self.shown_tracks_range[0] - itrack))
+                        elif self.shown_tracks_range[1] <= itrack:
+                            self.scroll_tracks(
+                                itrack - self.shown_tracks_range[1]+1)
+
+                    if itrack not in self.track_to_nslc_ids:
+                        self.go_to_selection()
 
             elif keytext in ('p', 'n', 'P', 'N'):
                 smarkers = self.selected_markers()
@@ -3465,10 +3548,7 @@ def MakePileViewerMainClass(base):
 
         def get_nslc_ids_for_track(self, ftrack):
             itrack = int(ftrack)
-            if itrack in self.track_to_nslc_ids:
-                return self.track_to_nslc_ids[int(ftrack)]
-            else:
-                return []
+            return self.track_to_nslc_ids.get(itrack, [])
 
         def stop_picking(self, x, y, abort=False):
             if self.picking:
