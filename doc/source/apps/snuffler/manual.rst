@@ -133,6 +133,8 @@ Key                         Effect
 :kbd:`r`                    Reload modified files 
 :kbd:`R`                    Reload snufflings
 :kbd:`f`                    Toggle full screen mode 
+:kbd:`m`                    Toggle marker sidebar
+:kbd:`c`                    Toggle main controls
 :kbd:`:`                    Enter command 
 :kbd:`<space>`              Forward one page in time 
 :kbd:`b`                    Backward one page in time 
@@ -142,10 +144,13 @@ Key                         Effect
 :kbd:`-`                    Show one track less
 :kbd:`=`                    Show initial number of tracks
 :kbd:`g`                    Go to selection / show all
+:kbd:`G`                    Zoom to selection / zoom to trace visibility
 :kbd:`n`                    Go to next marker 
 :kbd:`p`                    Go to previous marker 
 :kbd:`N`                    Go to next event marker
 :kbd:`P`                    Go to previous event marker 
+:kbd:`<tab>`                Go to next marker of active event
+:kbd:`<shift> + <tab>`      Go to previous marker of active event
 :kbd:`a`                    Select all markers currently visible 
 :kbd:`A`                    Select all markers 
 :kbd:`d`                    Deselect all markers 
@@ -154,6 +159,8 @@ Key                         Effect
 :kbd:`e`                    Convert to event marker / set active event / associate to event
 :kbd:`<f10>`                Convert phase marker to normal marker
 :kbd:`<backspace>`          Delete marker
+:kbd:`<up>`, :kbd:`<down>`  Set first motion polarity on selected marker
+:kbd:`<shift> + <up>`       Unset first motion polarity on selected marker
 :kbd:`<escape>`             Abort picking 
 :kbd:`?`                    Help
 =========================== ===============================================================
