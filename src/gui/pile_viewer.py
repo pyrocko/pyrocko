@@ -747,6 +747,7 @@ def MakePileViewerMainClass(base):
             self.rotate = 0.0
             self.picking_down = None
             self.picking = None
+            self.batch_picking = False
             self.floating_marker = None
             self.markers = []
             self.all_marker_kinds = (0, 1, 2, 3, 4, 5)
@@ -1815,6 +1816,13 @@ def MakePileViewerMainClass(base):
         def selected_markers(self):
             return [marker for marker in self.markers if marker.is_selected()]
 
+        def floating_or_selected_markers(self):
+            if self.floating_marker:
+                return [self.floating_marker]
+            else:
+                return [
+                    marker for marker in self.markers if marker.is_selected()]
+
         def get_markers(self):
             return self.markers
 
@@ -1862,7 +1870,7 @@ def MakePileViewerMainClass(base):
 
         def mouseDoubleClickEvent(self, mouse_ev):
             self.show_all = False
-            self.start_picking(None)
+            self.start_picking()
             self.ignore_releases = 1
 
         def mouseMoveEvent(self, mouse_ev):
@@ -1990,7 +1998,7 @@ def MakePileViewerMainClass(base):
                 self.set_time_range(self.tmin+dt, self.tmax+dt)
 
             elif key_event.key() == qc.Qt.Key_Up:
-                for m in self.selected_markers():
+                for m in self.floating_or_selected_markers():
                     if isinstance(m, PhaseMarker):
                         if key_event.modifiers() & qc.Qt.ShiftModifier:
                             p = 0
@@ -1999,7 +2007,7 @@ def MakePileViewerMainClass(base):
                         m.set_polarity(p)
 
             elif key_event.key() == qc.Qt.Key_Down:
-                for m in self.selected_markers():
+                for m in self.floating_or_selected_markers():
                     if isinstance(m, PhaseMarker):
                         if key_event.modifiers() & qc.Qt.ShiftModifier:
                             p = 0
@@ -2190,7 +2198,7 @@ def MakePileViewerMainClass(base):
                         marker.convert_to_event_marker()
 
             elif keytext in ('0', '1', '2', '3', '4', '5'):
-                for marker in self.selected_markers():
+                for marker in self.floating_or_selected_markers():
                     marker.set_kind(int(keytext))
                 self.emit_selected_markers()
 
@@ -2200,6 +2208,8 @@ def MakePileViewerMainClass(base):
             elif key_event.key() == qc.Qt.Key_Escape:
                 if self.picking:
                     self.stop_picking(0, 0, abort=True)
+                else:
+                    self.start_picking(batch=True)
 
             elif key_event.key() == qc.Qt.Key_PageDown:
                 self.scroll_tracks(
@@ -2263,10 +2273,12 @@ def MakePileViewerMainClass(base):
             self.update_status()
 
         def handle_fkeys(self, key):
-            self.set_phase_kind(
-                self.selected_markers(),
-                fkey_map[key] + 1)
-            self.emit_selected_markers()
+            markers = self.floating_or_selected_markers()
+
+            self.set_phase_kind(markers, fkey_map[key] + 1)
+
+            if not self.floating_marker:
+                self.emit_selected_markers()
 
         def emit_selected_markers(self):
             _indexes = []
@@ -2548,7 +2560,7 @@ def MakePileViewerMainClass(base):
             return tmin, tmax
 
         def go_to_selection(self, tight=False):
-            markers = self.selected_markers()
+            markers = self.floating_or_selected_markers()
             if markers:
                 tmax, tmin = self.content_time_range()
                 for marker in markers:
@@ -3553,10 +3565,11 @@ def MakePileViewerMainClass(base):
         def stop_picking(self, x, y, abort=False):
             if self.picking:
                 self.update_picking(x, y, doshift=False)
-                self.picking = None
                 self.picking_down = None
+                self.picking = None
                 self.picking_timer.stop()
                 self.picking_timer = None
+
                 if not abort:
                     self.add_marker(self.floating_marker)
                     self.floating_marker.set_selected(True)
@@ -3564,9 +3577,14 @@ def MakePileViewerMainClass(base):
 
                 self.floating_marker = None
 
-        def start_picking(self, ignore):
+                if self.batch_picking and not abort:
+                    self.start_picking(batch=True)
+                else:
+                    self.batch_picking = False
 
+        def start_picking(self, batch=False):
             if not self.picking:
+                self.batch_picking = batch
                 self.deselect_all()
                 self.picking = qw.QRubberBand(qw.QRubberBand.Rectangle)
                 point = self.mapFromGlobal(qg.QCursor.pos())
