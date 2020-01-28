@@ -21,11 +21,11 @@ class Location(Object):
     Geographical location.
 
     The location is given by a reference point at the earth's surface
-    (:py:attr:`lat`, :py:attr:`lon`) and a cartesian offset from this point
-    (:py:attr:`north_shift`, :py:attr:`east_shift`, :py:attr:`depth`). The
-    offset corrected lat/lon coordinates of the location can be accessed though
-    the :py:attr:`effective_latlon`, :py:attr:`effective_lat`, and
-    :py:attr:`effective_lon` properties.
+    (:py:attr:`lat`, :py:attr:`lon`, :py:attr:`elevation`) and a cartesian
+    offset from this point (:py:attr:`north_shift`, :py:attr:`east_shift`,
+    :py:attr:`depth`). The offset corrected lat/lon coordinates of the location
+    can be accessed though the :py:attr:`effective_latlon`,
+    :py:attr:`effective_lat`, and :py:attr:`effective_lon` properties.
     '''
 
     lat = Float.T(
@@ -51,11 +51,11 @@ class Location(Object):
     elevation = Float.T(
         default=0.0,
         optional=True,
-        help='elevation, above the surface [m]')
+        help='surface elevation, above sea level [m]')
 
     depth = Float.T(
         default=0.0,
-        help='depth, below the surface [m]')
+        help='depth, below surface [m]')
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
