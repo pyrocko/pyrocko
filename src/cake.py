@@ -3733,13 +3733,14 @@ class LayeredModel(object):
                     newmod.append(element)
         return newmod
 
-    def perturbate(self, rstate=None, keep_vp_vs=False, **kwargs):
-        '''Perturbate the earthmodel's parameters.
+    def perturb(self, rstate=None, keep_vp_vs=False, **kwargs):
+        '''
+        Create a perturbed variant of the earth model.
 
         Randomly change the thickness and material parameters of the earth
         model from a uniform distribution.
 
-        :param kwargs: Maximum change in percent (e.g. 0.1) of the parameter.
+        :param kwargs: Maximum change fraction (e.g. 0.1) of the parameters.
             Name the parameter, prefixed by ``p``. Supported parameters are
             ``ph, pvp, pvs, prho, pqs, pqp``.
         :type kwargs: dict
@@ -3748,12 +3749,12 @@ class LayeredModel(object):
         :param keep_vp_vs: Keep the Vp/Vs ratio, defaults to False
         :type keep_vp_vs: bool, optional
 
-        :returns: A new, perturbated earth model
+        :returns: A new, perturbed earth model
         :rtype: :class:`~pyrocko.cake.LayeredModel`
 
         .. code-block :: python
 
-            peturbated_model = earthmodel.peturbate(ph=.1, pvp=.05, prho=.1)
+            perturbed_model = model.perturb(ph=.1, pvp=.05, prho=.1)
         '''
         _pargs = set(['ph', 'pvp', 'pvs', 'prho', 'pqs', 'pqp'])
         earthmod = copy.deepcopy(self)
