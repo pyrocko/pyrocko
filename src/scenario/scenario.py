@@ -264,7 +264,6 @@ class ScenarioGenerator(LocationGenerator):
         if not gmtpy.have_gmt():
             logger.warning('Cannot plot map, GMT is not installed.')
             return
-
         if self.radius is None or self.radius > 5000*km:
             logger.info(
                 'Drawing map for scenarios with a radius > 5000 km is '
@@ -378,7 +377,7 @@ class ScenarioGenerator(LocationGenerator):
     def initialize(
             cls, path,
             center_lat=None, center_lon=None, radius=None,
-            targets=AVAILABLE_TARGETS, force=False):
+            targets=AVAILABLE_TARGETS, stationxml=None, force=False):
         """Initialize a Scenario and create a ``scenario.yml``
 
         :param path: Path to create the scenerio in
@@ -395,6 +394,9 @@ class ScenarioGenerator(LocationGenerator):
             objects, optional
         :param force: If set to ``True``, overwrite directory
         :type force: bool
+        :param stationxml: path to a StationXML to be used by the
+            :class:`pyrocko.scenario.targets.WaveformGenerator`.
+        :type stationxml: str
         :returns: Scenario
         :rtype: :class:`pyrocko.scenario.ScenarioGenerator`
         """

@@ -117,6 +117,12 @@ class Generator(Object):
                     if isinstance(el, Generator):
                         el.update_hierarchy(parent=self)
 
+    def get_root(self):
+        if self._parent is None:
+            return self
+        else:
+            return self._parent.get_root()
+
     def get_seed(self):
         if self._seed is None:
             if self.seed is None:
