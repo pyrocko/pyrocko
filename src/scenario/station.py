@@ -10,8 +10,12 @@ from pyrocko.guts import Int, String, List
 
 from pyrocko.model.station import load_stations
 from pyrocko.io import stationxml
+<<<<<<< HEAD
 from pyrocko.orthodrome import distance_accurate50m, \
     distance_accurate50m_numpy, geographic_midpoint_locations
+=======
+from pyrocko.orthodrome import distance_accurate50m
+>>>>>>> scenario: added ImportStationGenerator
 
 from .base import LocationGenerator
 
