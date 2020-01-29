@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Support querying all stations with `GLOBAL` from ISC.
 - Support event queries in `client.fdsn`.
 - Catalog snuffling: support FDSN event queries.
-- Add `trace_scale` setting in Snuffler config file.
+- Add `trace_scale` setting in Snuffler configuration file.
 - Support 1-2-3 as a valid channel triplet.
 - Support `elastic2` component scheme in Fomosto QSEIS backend (pure explosion
   sources).
@@ -18,6 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Include updated old GmtPy tutorial it documentation.
 - Snuffler: can now use `<tab>` and `<shift>-<tab>` to iterate through phase
   markers of active event.
+- New dataset: Pleistocene and Holocene volcano database from Smithsonian
+  Institution.
 
 ### Changed
 - All location-based objects like events and stations should now fully support
@@ -62,36 +64,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [v2019.05.02] - 2019-05-02
 
 ### Added
-- gf:
-  - CombiSource, which can handle a set of different sources as a single source object
+- `gf`:
+  - CombiSource, which can handle a set of different sources as a single source
+    object
   - resonator stf
-- guts:
-  - Function to get guts attributes
-  - ypath functions
-- snuffler: `clip_traces` configurable by config
-- client: ISC catalog interface
-- quakeml phase marker extraction
-- random draw of magnitude from gutenberg richter distribution and use of it in scenario
-- handling of sparse gnss components
+- `guts`:
+  - Function to get Guts attributes.
+  - `ypath` functions to set Guts attributes via pattern.
+- Snuffler: `clip_traces` configurable in configuration file.
+- New client: ISC catalog interface.
+- Add a function to create phase markers from QuakeML.
+- Can now use Gutenberg Richter magnitude distribution when creating synthetic
+  scenario events.
+- Support for handling of sparse gnss components.
 
 ### Changed
 - gf:
-  - Now the discretized point sources have their true time set, time shifting is done only before and afther c function calls.
-  - Source times are handled on double precision
-  - Static store requests fallback to zero time to handle absolute source times
-  - Store ext gives indivudal index out of bounds error for targets
-- Geofon catalog web format changed, parse geojson instead of html
-- Instrument response deconvolutions gives more explicit warnings about inconsistencies
-- model.gnss correlation factor default of 0.
-- Added flag to dump progressbar instead of showing the progressbar
-- Can now handle and plot GNSS stations lacking complete set of component orientations.
-- Event depth is now optional (model)
+  - Now the discretised point sources have their true time set, time shifting
+    is done only before and after c function calls.
+  - Source times are handled in double precision.
+  - Static store requests fallback to zero time to handle absolute source
+    times.
+  - Store ext gives individual index for out of bounds error for targets.
+- Geofon catalog web format changed, now parsing GeoJSON instead of HTML.
+- Instrument response deconvolution gives more explicit warnings about
+  inconsistencies.
+- Changed default of `model.gnss` correlation factor to 0.0.
+- Add flag to dump progressbar instead of showing the progressbar.
+- Can now handle and plot GNSS stations lacking complete set of component
+  orientations.
+- Event depth is now optional (model).
 
 ### Fixed
 - gf:
   - low level errors in time handling
   - ExplosionSource for non-volume sources
-- obspy_compat event conversion
+- `obspy_compat` event conversion
 - Problem with numpy scalars in source and target objects
 - Conversion of quakeml piks to pyrocko phasepiks use phase polarities strings
 - snuffling broken load dialogs (QT5)
