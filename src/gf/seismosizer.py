@@ -1059,8 +1059,7 @@ class Source(Location, Cloneable):
         Return the STF applied before stacking of the Green's functions.
 
         This STF is used during discretization of the parameterized source
-        models, i.e. to produce a temporal distribution of point sources
-        (Not implemented yet).
+        models, i.e. to produce a temporal distribution of point sources.
 
         Handling of the STF before stacking of the GFs is less efficient but
         allows to use different source time functions for different parts of
