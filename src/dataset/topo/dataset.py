@@ -12,6 +12,7 @@ import os.path as op
 import numpy as num
 
 from . import tile
+from ..util import get_download_callback
 from pyrocko import util
 
 logger = logging.getLogger('pyrocko.dataset.topo.dataset')
@@ -66,7 +67,10 @@ class TiledGlobalDataset(object):
         return self.covers(region) and dmin <= d <= dmax
 
     def download_file(self, url, fpath, username=None, password=None):
-        util.download_file(url, fpath, username, password)
+        util.download_file(
+            url, fpath, username, password,
+            status_callback=get_download_callback(
+                'Downloading %s topography...' % self.__class__.__name__))
 
     def x(self):
         return self.xmin + num.arange(self.nx) * self.dx

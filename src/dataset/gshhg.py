@@ -36,6 +36,8 @@ import numpy as num
 from os import path
 
 from pyrocko import config, orthodrome
+from .util import get_download_callback
+
 
 logger = logging.getLogger('pyrocko.dataset.gshhg')
 config = config.config()
@@ -431,7 +433,10 @@ class GSHHG(object):
 
             archive_path = path.join(config.gshhg_dir,
                                      path.basename(cls.gshhg_url))
-            util.download_file(cls.gshhg_url, archive_path)
+            util.download_file(
+                cls.gshhg_url, archive_path,
+                status_callback=get_download_callback(
+                    'Downloading GSHHG database...'))
             if not zipfile.is_zipfile(archive_path):
                 raise util.DownloadError('GSHHG file is corrupted!')
             logger.info('Unzipping GSHHG database...')

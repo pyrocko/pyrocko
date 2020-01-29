@@ -17,6 +17,7 @@ from pyrocko import util, config
 from pyrocko import orthodrome as od
 from pyrocko.guts_array import Array
 from pyrocko.guts import Object, String
+from .util import get_download_callback
 
 
 PI = math.pi
@@ -155,7 +156,10 @@ class PeterBird2003(PlatesDataset):
         for fn in self.filenames:
             fpath = self.fpath(fn)
             if not op.exists(fpath):
-                self.download_file(self.raw_data_url % fn, fpath)
+                self.download_file(
+                    self.raw_data_url % fn, fpath,
+                    status_callback=get_download_callback(
+                        'Downloading Bird 2003 plate database...'))
 
     def get_boundaries(self):
         self.download_if_needed()

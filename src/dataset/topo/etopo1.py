@@ -11,6 +11,7 @@ import os.path as op
 import numpy as num
 
 from . import tile, dataset
+from ..util import get_download_callback
 
 citation = '''
 Amante, C. and B.W. Eakins, 2009. ETOPO1 1 Arc-Minute Global Relief Model:
@@ -44,7 +45,8 @@ class ETOPO1(dataset.TiledGlobalDataset):
     def download(self):
         fpath = op.join(self.data_dir, '%s.zip' % self.base_fn)
         if not op.exists(fpath):
-            self.download_file(self.raw_data_url % self.base_fn, fpath)
+            self.download_file(
+                self.raw_data_url % self.base_fn, fpath)
 
         self.make_tiles()
 

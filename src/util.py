@@ -119,16 +119,18 @@ def _download(url, fpath, username=None, password=None,
     session.auth = None if username is None\
         else HTTPBasicAuth(username, password)
 
-    try:
+    status = {
+        'ntotal_files': 0,
+        'nread_files': 0,
+        'ntotal_bytes_all_files': 0,
+        'nread_bytes_all_files': 0,
+        'ntotal_bytes_current_file': 0,
+        'nread_bytes_current_file': 0,
+        'finished': False
+    }
 
+    try:
         url_to_size = {}
-        status = dict(
-            ntotal_files=0,
-            nread_files=0,
-            ntotal_bytes_all_files=0,
-            nread_bytes_all_files=0,
-            ntotal_bytes_current_file=0,
-            nread_bytes_current_file=0)
 
         if callable(status_callback):
             status_callback(status)
@@ -260,6 +262,9 @@ def _download(url, fpath, username=None, password=None,
         raise DownloadError('could not download file(s) from: %s' % url)
 
     finally:
+        status['finished'] = True
+        if callable(status_callback):
+            status_callback(status)
         session.close()
 
 
