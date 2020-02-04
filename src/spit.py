@@ -110,12 +110,16 @@ class Cell(object):
                 return result
 
     def slice(self, x):
+        x = num.array(x, dtype=num.float)
+        x_mask = not_(num.isfinite(x))
+        x_ = x.copy()
+        x_[x_mask] = 0.0
         return [
             cell for cell in self.children if all_(or_(
-                not_(num.isfinite(x)),
+                x_mask,
                 and_(
-                    cell.xbounds[:, 0] <= x,
-                    x <= cell.xbounds[:, 1])))]
+                    cell.xbounds[:, 0] <= x_,
+                    x_ <= cell.xbounds[:, 1])))]
 
     def plot_rects(self, axes, x, dims):
         if self.children:
