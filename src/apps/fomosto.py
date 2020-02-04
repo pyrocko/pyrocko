@@ -825,8 +825,12 @@ def command_tttview(args):
 
     def setup(parser):
         parser.add_option(
-            '--source-depth', dest='depth', type=float,
+            '--source-depth', dest='source_depth', type=float,
             help='Source depth in km')
+
+        parser.add_option(
+            '--receiver-depth', dest='receiver_depth', type=float,
+            help='Receiver depth in km')
 
     parser, options, args = cl_parse(
         'tttview', args, setup=setup,
@@ -842,12 +846,29 @@ def command_tttview(args):
     for phase_id in phase_ids:
         try:
             store = gf.Store(store_dir)
+
+            if options.receiver_depth is not None:
+                receiver_depth = options.receiver_depth * 1000.0
+            else:
+                if isinstance(store.config, (gf.ConfigTypeA, gf.ConfigTypeC)):
+                    receiver_depth = store.config.receiver_depth
+
+                elif isinstance(store.config, gf.ConfigTypeB):
+                    receiver_depth = store.config.receiver_depth_min
+
+                else:
+                    receiver_depth = 0.0
+
             phase = store.get_stored_phase(phase_id)
             axes = plt.subplot(2, len(phase_ids), np)
             labelspace(axes)
             xscaled(1./km, axes)
             yscaled(1./km, axes)
-            phase.plot_2d(axes)
+            x = None
+            if isinstance(store.config, gf.ConfigTypeB):
+                x = (receiver_depth, None, None)
+
+            phase.plot_2d(axes, x=x)
             axes.set_title(phase_id)
             np += 1
         except gf.StoreError as e:
@@ -858,11 +879,11 @@ def command_tttview(args):
     distances = num.linspace(store.config.distance_min,
                              store.config.distance_max,
                              num_d)
-    if options.depth:
-        depth = options.depth
-        depth *= 1000
+
+    if options.source_depth is not None:
+        source_depth = options.source_depth * 1000.0
     else:
-        depth = store.config.source_depth_min + (
+        source_depth = store.config.source_depth_min + (
             store.config.source_depth_max - store.config.source_depth_min)/2.
 
     if isinstance(store.config, gf.ConfigTypeA):
@@ -870,9 +891,9 @@ def command_tttview(args):
         for phase_id in phase_ids:
             arrivals[:] = num.NAN
             for i, d in enumerate(distances):
-                arrivals[i] = store.t(phase_id, (depth, d))
-            axes.plot(distances/1000, arrivals, label=phase_id)
-        axes.set_title('source depth %s km' % (depth/1000))
+                arrivals[i] = store.t(phase_id, (source_depth, d))
+            axes.plot(distances/1000.0, arrivals, label=phase_id)
+        axes.set_title('source source_depth %s km' % (source_depth/1000.0))
         axes.set_xlabel('distance [km]')
         axes.set_ylabel('TT [s]')
         axes.legend()
