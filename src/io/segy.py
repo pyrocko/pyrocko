@@ -82,6 +82,9 @@ def iload(filename, load_data, endianness='>'):
         (segy_revision, fixed_length_traces, nextended_headers) = \
             struct.unpack(endianness+'3H', binary_file_header[100:100+3*2])
 
+        if ntraces == 0 and nauxtraces == 0:
+            ntraces = 1
+
         formats = {
             1: (unpack_ibm_f4,  4, "4-byte IBM floating-point"),
             2: (endianness+'i4', 4, "4-byte, two's complement integer"),
