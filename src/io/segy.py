@@ -133,6 +133,9 @@ def iload(filename, load_data, endianness='>'):
                 (ortrace_num,) = \
                     struct.unpack(endianness+'1I', trace_header[12:16])
 
+                # don't know if this is standard: distance to shot [m] as int
+                (idist,) = struct.unpack(endianness+'1I', trace_header[36:40])
+
                 tvals = struct.unpack(
                     endianness+'12H', trace_header[94:94+12*2])
 
@@ -207,7 +210,9 @@ def iload(filename, load_data, endianness='>'):
                     tmax=tmax,
                     deltat=deltat_us_this/1000000.,
                     ydata=data,
-                    meta=dict(orfield_num=orfield_num))
+                    meta=dict(
+                        orfield_num=orfield_num,
+                        distance=float(idist)))
 
                 yield tr
 
