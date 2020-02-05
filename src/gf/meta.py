@@ -23,6 +23,8 @@ from pyrocko.model import Location, gnss
 
 from pyrocko import cake, orthodrome, spit, moment_tensor, trace
 
+from .error import StoreError
+
 
 guts_prefix = 'pf'
 
@@ -1641,6 +1643,12 @@ class Config(Object):
     def vicinities(self, *args):
         return self._vicinities_function(*args)
 
+    def grid_interpolation_coefficients(self, *args):
+        return self._grid_interpolation_coefficients(*args)
+
+    def nodes(self, level=None, minlevel=None):
+        return nodes(self.coords[minlevel:level])
+
     def iter_nodes(self, level=None, minlevel=None):
         return nditer_outer(self.coords[minlevel:level])
 
@@ -1773,7 +1781,7 @@ class Config(Object):
                             "multilinear", "nearest_neighbor")
 
         earthmod = self.earthmodel_1d
-        store_depth_profile = self.coords[0]
+        store_depth_profile = self.get_source_depths()
         z_profile = earthmod.profile('z')
 
         if parameter == 'vs':
@@ -1829,6 +1837,25 @@ class Config(Object):
     def is_dynamic(self):
         return not self.is_static()
 
+    def get_source_depths(self):
+        raise NotImplementedError('must be implemented in subclass')
+
+    def get_tabulated_phase(self, phase_id):
+        '''
+        Get tabulated phase definition.
+        '''
+
+        for pdef in self.tabulated_phases:
+            if pdef.id == phase_id:
+                return pdef
+
+        raise StoreError('No such phase: %s' % phase_id)
+
+    def fix_ttt_holes(self, sptree, mode):
+        raise StoreError(
+            'Cannot fix travel time table holes in GF stores of type %s.'
+            % self.short_type)
+
 
 class ConfigTypeA(Config):
     '''
@@ -1881,6 +1908,9 @@ class ConfigTypeA(Config):
     def get_source_depth(self, args):
         return args[0]
 
+    def get_source_depths(self):
+        return self.coords[0]
+
     def get_receiver_depth(self, args):
         return self.receiver_depth
 
@@ -1932,9 +1962,13 @@ class ConfigTypeA(Config):
                     except ValueError:
                         raise OutOfBounds()
 
-        def vicinity_function(a, b, ig):
+        def grid_interpolation_coefficients(a, b):
             ias = indi12((a - amin) / da, na)
             ibs = indi12((b - bmin) / db, nb)
+            return ias, ibs
+
+        def vicinity_function(a, b, ig):
+            ias, ibs = grid_interpolation_coefficients(a, b)
 
             if not (0 <= ig < ng):
                 raise OutOfBounds()
@@ -1996,6 +2030,7 @@ class ConfigTypeA(Config):
 
         self._index_function = index_function
         self._indices_function = indices_function
+        self._grid_interpolation_coefficients = grid_interpolation_coefficients
         self._vicinity_function = vicinity_function
         self._vicinities_function = vicinities_function
 
@@ -2019,6 +2054,60 @@ class ConfigTypeA(Config):
             self.distance_min/km,
             self.distance_max/km,
             self.distance_delta/km)
+
+    def fix_ttt_holes(self, sptree, mode):
+        from pyrocko import eikonal_ext, spit
+
+        nodes = self.nodes(level=-1)
+
+        delta = self.deltas[-1]
+        assert num.all(delta == self.deltas)
+
+        nsources, ndistances = self.ns
+
+        points = num.zeros((nodes.shape[0], 3))
+        points[:, 0] = nodes[:, 1]
+        points[:, 2] = nodes[:, 0]
+
+        speeds = self.get_material_property(
+            0., 0., points,
+            parameter='vp' if mode == cake.P else 'vs',
+            interpolation='multilinear')
+
+        speeds = speeds.reshape((nsources, ndistances))
+
+        times = sptree.interpolate_many(nodes)
+
+        times[num.isnan(times)] = -1.
+        times = times.reshape(speeds.shape)
+
+        try:
+            eikonal_ext.eikonal_solver_fmm_cartesian(
+                speeds, times, delta)
+        except eikonal_ext.EikonalExtError as e:
+            if str(e).endswith('please check results'):
+                logger.debug(
+                    'Got a warning from eikonal solver '
+                    '- may be ok...')
+            else:
+                raise
+
+        def func(x):
+            ibs, ics = \
+                self.grid_interpolation_coefficients(*x)
+
+            t = 0
+            for ib, vb in ibs:
+                for ic, vc in ics:
+                    t += times[ib, ic] * vb * vc
+
+            return t
+
+        return spit.SPTree(
+            f=func,
+            ftol=sptree.ftol,
+            xbounds=sptree.xbounds,
+            xtols=sptree.xtols)
 
 
 class ConfigTypeB(Config):
@@ -2075,6 +2164,9 @@ class ConfigTypeB(Config):
 
     def get_receiver_depth(self, args):
         return args[0]
+
+    def get_source_depths(self):
+        return self.coords[1]
 
     def _update(self):
         self.mins = num.array([
@@ -2133,10 +2225,14 @@ class ConfigTypeB(Config):
             except ValueError:
                 raise OutOfBounds()
 
-        def vicinity_function(a, b, c, ig):
+        def grid_interpolation_coefficients(a, b, c):
             ias = indi12((a - amin) / da, na)
             ibs = indi12((b - bmin) / db, nb)
             ics = indi12((c - cmin) / dc, nc)
+            return ias, ibs, ics
+
+        def vicinity_function(a, b, c, ig):
+            ias, ibs, ics = grid_interpolation_coefficients(a, b, c)
 
             if not (0 <= ig < ng):
                 raise OutOfBounds()
@@ -2221,6 +2317,7 @@ class ConfigTypeB(Config):
 
         self._index_function = index_function
         self._indices_function = indices_function
+        self._grid_interpolation_coefficients = grid_interpolation_coefficients
         self._vicinity_function = vicinity_function
         self._vicinities_function = vicinities_function
 
@@ -2252,6 +2349,73 @@ class ConfigTypeB(Config):
             self.distance_min/km,
             self.distance_max/km,
             self.distance_delta/km)
+
+    def fix_ttt_holes(self, sptree, mode):
+        from pyrocko import eikonal_ext, spit
+
+        nodes_sr = self.nodes(minlevel=1, level=-1)
+
+        delta = self.deltas[-1]
+        assert num.all(delta == self.deltas[1:])
+
+        nreceivers, nsources, ndistances = self.ns
+
+        points = num.zeros((nodes_sr.shape[0], 3))
+        points[:, 0] = nodes_sr[:, 1]
+        points[:, 2] = nodes_sr[:, 0]
+
+        speeds = self.get_material_property(
+            0., 0., points,
+            parameter='vp' if mode == cake.P else 'vs',
+            interpolation='multilinear')
+
+        speeds = speeds.reshape((nsources, ndistances))
+
+        receiver_times = []
+        for ireceiver in range(nreceivers):
+            nodes = num.hstack([
+                num.full(
+                    (nodes_sr.shape[0], 1),
+                    self.coords[0][ireceiver]),
+                nodes_sr])
+
+            times = sptree.interpolate_many(nodes)
+
+            times[num.isnan(times)] = -1.
+
+            times = times.reshape(speeds.shape)
+
+            try:
+                eikonal_ext.eikonal_solver_fmm_cartesian(
+                    speeds, times, delta)
+            except eikonal_ext.EikonalExtError as e:
+                if str(e).endswith('please check results'):
+                    logger.debug(
+                        'Got a warning from eikonal solver '
+                        '- may be ok...')
+                else:
+                    raise
+
+            receiver_times.append(times)
+
+        def func(x):
+            ias, ibs, ics = \
+                self.grid_interpolation_coefficients(*x)
+
+            t = 0
+            for ia, va in ias:
+                times = receiver_times[ia]
+                for ib, vb in ibs:
+                    for ic, vc in ics:
+                        t += times[ib, ic] * va * vb * vc
+
+            return t
+
+        return spit.SPTree(
+            f=func,
+            ftol=sptree.ftol,
+            xbounds=sptree.xbounds,
+            xtols=sptree.xtols)
 
 
 class ConfigTypeC(Config):
@@ -2331,6 +2495,9 @@ class ConfigTypeC(Config):
 
     def get_receiver_depth(self, args):
         return self.receivers[args[0]].depth
+
+    def get_source_depths(self):
+        return self.coords[0]
 
     def _update(self):
         self.mins = num.array([
@@ -2742,6 +2909,20 @@ def start_stop_num(start, stop, step, num, mi, ma, inc, eps=1e-5):
 def nditer_outer(x):
     return num.nditer(
         x, op_axes=(num.identity(len(x), dtype=num.int)-1).tolist())
+
+
+def nodes(xs):
+    ns = [x.size for x in xs]
+    nnodes = num.prod(ns)
+    ndim = len(xs)
+    nodes = num.empty((nnodes, ndim), dtype=xs[0].dtype)
+    for idim in range(ndim-1, -1, -1):
+        x = xs[idim]
+        nrepeat = num.prod(ns[idim+1:], dtype=num.int)
+        ntile = num.prod(ns[:idim], dtype=num.int)
+        nodes[:, idim] = num.repeat(num.tile(x, ntile), nrepeat)
+
+    return nodes
 
 
 def filledi(x, n):

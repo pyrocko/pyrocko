@@ -346,14 +346,14 @@ static eikonal_error_t update_neighbors(
                 index-stride, speeds, ndim, shape, delta, times, 
                 backpointers, heap, times[index]);
 
-            retval = retval || retval_temp;
+            retval = retval != SUCCESS ? retval : retval_temp;
         }
         if (ix+1 < shape[idim]) { 
             retval_temp = update_neighbor(
                 index+stride, speeds, ndim, shape, delta, times,
                 backpointers, heap, times[index]);
 
-            retval = retval || retval_temp;
+            retval = retval != SUCCESS ? retval : retval_temp;
         }
 
         stride *= shape[idim];
@@ -413,7 +413,7 @@ static eikonal_error_t eikonal_solver_fmm_cartesian(
                 index, speeds, ndim, shape, delta, times, 
                 backpointers, heap);
 
-            retval = retval || retval_temp;
+            retval = retval != SUCCESS ? retval : retval_temp;
         }
     }
 
@@ -429,7 +429,7 @@ static eikonal_error_t eikonal_solver_fmm_cartesian(
             index, speeds, ndim, shape, delta, times, 
             backpointers, heap);
 
-        retval = retval || retval_temp;
+        retval = retval != SUCCESS ? retval : retval_temp;
     }
 
     free(backpointers);

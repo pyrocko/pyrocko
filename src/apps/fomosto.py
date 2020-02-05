@@ -39,6 +39,7 @@ subcommand_descriptions = {
     'ttt':           'create travel time tables',
     'tttview':       'plot travel time table',
     'tttextract':    'extract selected travel times',
+    'tttlsd':        'fix holes in travel time tables',
     'server':        'run seismosizer server',
     'download':      'download GF store from a server',
     'modelview':     'plot earthmodels',
@@ -63,6 +64,7 @@ subcommand_usages = {
     'ttt':           'ttt [store-dir] [options]',
     'tttview':       'tttview [store-dir] <phase-ids> [options]',
     'tttextract':    'tttextract [store-dir] <phase> <selection>',
+    'tttlsd':        'tttlsd [store-dir] <phase>',
     'server':        'server [options] <store-super-dir> ...',
     'download':      'download [options] <site> <store-id>',
     'modelview':     'modelview <selection>',
@@ -93,6 +95,7 @@ Subcommands:
     ttt           %(ttt)s
     tttview       %(tttview)s
     tttextract    %(tttextract)s
+    tttlsd        %(tttlsd)s
     server        %(server)s
     download      %(download)s
     modelview     %(modelview)s
@@ -957,6 +960,34 @@ def command_tttextract(args):
                 print(' '.join(s))
 
     except (gf.meta.GridSpecError, gf.StoreError, gf.meta.OutOfBounds) as e:
+        die(e)
+
+
+def command_tttlsd(args):
+
+    def setup(parser):
+        pass
+
+    parser, options, args = cl_parse('tttlsd', args, setup=setup)
+
+    try:
+        sphase_ids = args.pop()
+    except Exception:
+        parser.error('cannot get <phase> argument')
+
+    try:
+        phase_ids = [x.strip() for x in sphase_ids.split(',')]
+    except gf.meta.InvalidTimingSpecification:
+        parser.error('invalid phase specification: "%s"' % sphase_ids)
+
+    store_dir = get_store_dir(args)
+
+    try:
+        store = gf.Store(store_dir)
+        for phase_id in phase_ids:
+            store.fix_ttt_holes(phase_id)
+
+    except gf.StoreError as e:
         die(e)
 
 

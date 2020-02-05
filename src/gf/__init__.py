@@ -4,6 +4,7 @@
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
 
+from .error import *  # noqa
 from .meta import *  # noqa
 from .store import *  # noqa
 from .builder import *  # noqa

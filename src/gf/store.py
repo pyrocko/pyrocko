@@ -22,6 +22,7 @@ import numpy as num
 from scipy import signal
 
 from . import meta
+from .error import StoreError
 from . import store_ext
 from pyrocko import util, spit
 
@@ -237,10 +238,6 @@ def make_same_span(tracesdict):
         out[k] = tr
 
     return out
-
-
-class StoreError(Exception):
-    pass
 
 
 class CannotCreate(StoreError):
@@ -1484,7 +1481,8 @@ class Store(BaseStore):
         if have_holes:
             for phase_id in have_holes:
                 logger.warn(
-                    'travel time table of phase "{}" contains holes'.format(
+                    'Travel time table of phase "{}" contains holes. You can '
+                    ' use `fomosto tttlsd` to fix holes.'.format(
                         phase_id))
         else:
             logger.info('No holes in travel time tables')
@@ -1536,14 +1534,9 @@ class Store(BaseStore):
 
             return store, 1
 
-    def _phase_filename(self, phase_id):
+    def phase_filename(self, phase_id):
         check_string_id(phase_id)
-
-        fn = os.path.join(self.store_dir, 'phases', phase_id + '.phase')
-        if not os.path.isfile(fn):
-            raise NoSuchPhase(phase_id)
-
-        return fn
+        return os.path.join(self.store_dir, 'phases', phase_id + '.phase')
 
     def get_stored_phase(self, phase_id):
         """Get stored phase from GF store
@@ -1552,7 +1545,10 @@ class Store(BaseStore):
         :rtype: :py:class:`pyrocko.spit.SPTree`
         """
         if phase_id not in self._phases:
-            fn = self._phase_filename(phase_id)
+            fn = self.phase_filename(phase_id)
+            if not os.path.isfile(fn):
+                raise NoSuchPhase(phase_id)
+
             spt = spit.SPTree(filename=fn)
             self._phases[phase_id] = spt
 
@@ -1695,7 +1691,8 @@ class Store(BaseStore):
         if len(warned):
             w = ' | '.join(list(warned))
             msg = '''determination of time window failed using phase
-definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
+definitions: %s.\n Travel time table contains holes in probed ranges. You can
+use `fomosto tttlsd` to fix holes.''' % w
             if force:
                 logger.warn(msg)
             else:
@@ -1773,7 +1770,7 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
             phases = pdef.phases
             horvels = pdef.horizontal_velocities
 
-            fn = os.path.join(self.store_dir, 'phases', '%s.phase' % phase_id)
+            fn = self.phase_filename(phase_id)
 
             if os.path.exists(fn) and not force:
                 logger.info('file already exists: %s' % fn)
@@ -1833,6 +1830,27 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
             return [
                 quantity + '.' + comp
                 for comp in scheme_desc.provided_components]
+
+    def fix_ttt_holes(self, phase_id):
+
+        pdef = self.config.get_tabulated_phase(phase_id)
+        mode = None
+        for phase in pdef.phases:
+            for leg in phase.legs():
+                if mode is None:
+                    mode = leg.mode
+
+                else:
+                    if mode != leg.mode:
+                        raise StoreError(
+                            'Can only fix holes in pure P or pure S phases.')
+
+        sptree = self.get_stored_phase(phase_id)
+        sptree_lsd = self.config.fix_ttt_holes(sptree, mode)
+
+        phase_lsd = phase_id + '.lsd'
+        fn = self.phase_filename(phase_lsd)
+        sptree_lsd.dump(fn)
 
     def statics(self, source, multi_location, itsnapshot, components,
                 interpolation='nearest_neighbor', nthreads=0):
@@ -2031,7 +2049,6 @@ __all__ = '''
 gf_dtype
 NotMultipleOfSamplingInterval
 GFTrace
-StoreError
 CannotCreate
 CannotOpen
 DuplicateInsert

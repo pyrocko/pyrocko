@@ -137,7 +137,7 @@ class GFTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.pulse_store_dir = None
-        cls.regional_ttt_store_dir = None
+        cls.regional_ttt_store_dir = {}
         cls.benchmark_store_dir = None
         cls._dummy_store = None
 
@@ -168,11 +168,12 @@ class GFTestCase(unittest.TestCase):
 
         return self.pulse_store_dir
 
-    def get_regional_ttt_store_dir(self):
-        if self.regional_ttt_store_dir is None:
-            self.regional_ttt_store_dir = self._create_regional_ttt_store()
+    def get_regional_ttt_store_dir(self, typ='a'):
+        if typ not in self.regional_ttt_store_dir:
+            self.regional_ttt_store_dir[typ] = \
+                self._create_regional_ttt_store(typ)
 
-        return self.regional_ttt_store_dir
+        return self.regional_ttt_store_dir[typ]
 
     def get_benchmark_store_dir(self):
         if self.benchmark_store_dir is None:
@@ -209,27 +210,52 @@ class GFTestCase(unittest.TestCase):
         store.close()
         return store_dir
 
-    def _create_regional_ttt_store(self):
+    def _create_regional_ttt_store(self, typ):
 
-        conf = gf.ConfigTypeA(
-            id='empty_regional',
-            source_depth_min=0.,
-            source_depth_max=20*km,
-            source_depth_delta=10*km,
-            distance_min=1000*km,
-            distance_max=2000*km,
-            distance_delta=10*km,
-            sample_rate=2.0,
-            ncomponents=10,
-            earthmodel_1d=cake.load_model(),
-            tabulated_phases=[
-                gf.TPDef(id=id, definition=defi) for (id, defi) in [
-                    ('depthp', 'p'),
-                    ('pS', 'pS'),
-                    ('P', 'P'),
-                    ('S', 'S')
-                ]
-            ])
+        if typ == 'a':
+            conf = gf.ConfigTypeA(
+                id='empty_regional',
+                source_depth_min=0.,
+                source_depth_max=20*km,
+                source_depth_delta=10*km,
+                distance_min=10*km,
+                distance_max=2000*km,
+                distance_delta=10*km,
+                sample_rate=2.0,
+                ncomponents=10,
+                earthmodel_1d=cake.load_model(),
+                tabulated_phases=[
+                    gf.TPDef(id=id, definition=defi) for (id, defi) in [
+                        ('depthp', 'p'),
+                        ('pS', 'pS'),
+                        ('P', 'P'),
+                        ('S', 'S')
+                    ]
+                ])
+
+        elif typ == 'b':
+            conf = gf.ConfigTypeB(
+                id='empty_regional_b',
+                receiver_depth_min=0.,
+                receiver_depth_max=5*km,
+                receiver_depth_delta=5*km,
+                source_depth_min=0.,
+                source_depth_max=20*km,
+                source_depth_delta=10*km,
+                distance_min=10*km,
+                distance_max=2000*km,
+                distance_delta=10*km,
+                sample_rate=2.0,
+                ncomponents=10,
+                earthmodel_1d=cake.load_model(),
+                tabulated_phases=[
+                    gf.TPDef(id=id, definition=defi) for (id, defi) in [
+                        ('depthp', 'p'),
+                        ('pS', 'pS'),
+                        ('P', 'P'),
+                        ('S', 'S')
+                    ]
+                ])
 
         store_dir = mkdtemp(prefix='gfstore')
         self.tempdirs.append(store_dir)
@@ -320,18 +346,19 @@ class GFTestCase(unittest.TestCase):
         store.close()
 
     def test_get_shear_moduli(self):
-        store_dir = self.get_regional_ttt_store_dir()
-        store = gf.Store(store_dir)
+        for typ in ['a', 'b']:
+            store_dir = self.get_regional_ttt_store_dir(typ)
+            store = gf.Store(store_dir)
 
-        sample_points = num.empty((20, 3))
-        sample_points[:, 2] = num.linspace(
-            0, store.config.coords[0].max(), 20)
+            sample_points = num.empty((20, 3))
+            sample_points[:, 2] = num.linspace(
+                0, store.config.coords[0].max(), 20)
 
-        for interp in ('nearest_neighbor', 'multilinear'):
-            store.config.get_shear_moduli(
-                lat=0., lon=0.,
-                points=sample_points,
-                interpolation=interp)
+            for interp in ('nearest_neighbor', 'multilinear'):
+                store.config.get_shear_moduli(
+                    lat=0., lon=0.,
+                    points=sample_points,
+                    interpolation=interp)
 
     def test_partial_get(self):
         nrecords = 8
@@ -818,43 +845,64 @@ class GFTestCase(unittest.TestCase):
                 self.assertEqual(d['select'], t.select)
 
     def test_timing(self):
-        store_dir = self.get_regional_ttt_store_dir()
+        for typ, args, args_out_list in [
+                ('a', (10*km, 1500*km),
+                 [(10*km, 5000*km), (30*km, 1500*km)]),
+                ('b', (5*km, 10*km, 1500*km),
+                 [(100*km, 10*km, 1500*km),
+                  (5*km, 10*km, 5000*km),
+                  (5*km, 30*km, 1500*km)])]:
+            store_dir = self.get_regional_ttt_store_dir(typ)
 
-        store = gf.Store(store_dir)
+            store = gf.Store(store_dir)
 
-        args = (10*km, 1500*km)
-        assert(store.t('P', args) is not None)
-        self.assertEqual(store.t('last(S|P)', args), store.t('S', args))
-        self.assertEqual(store.t('(S|P)', args), store.t('S', args))
-        self.assertEqual(store.t('(P|S)', args), store.t('P', args))
-        self.assertEqual(store.t('first(S|P)', args), store.t('P', args))
+            assert(store.t('P', args) is not None)
+            self.assertEqual(store.t('last(S|P)', args), store.t('S', args))
+            self.assertEqual(store.t('(S|P)', args), store.t('S', args))
+            self.assertEqual(store.t('(P|S)', args), store.t('P', args))
+            self.assertEqual(store.t('first(S|P)', args), store.t('P', args))
 
-        with self.assertRaises(gf.NoSuchPhase):
-            store.t('nonexistant', args)
+            with self.assertRaises(gf.NoSuchPhase):
+                store.t('nonexistant', args)
 
-        with self.assertRaises(AssertionError):
-            store.t('P', (10*km,))
+            with self.assertRaises(AssertionError):
+                store.t('P', (10*km,))
 
-        with self.assertRaises(gf.OutOfBounds):
-            print(store.t('P', (10*km, 5000*km)))
-
-        with self.assertRaises(gf.OutOfBounds):
-            print(store.t('P', (30*km, 1500*km)))
+            for args_out in args_out_list:
+                with self.assertRaises(gf.OutOfBounds):
+                    store.t('P', args_out)
 
     def test_timing_new_syntax(self):
-        store_dir = self.get_regional_ttt_store_dir()
+        for typ, args in [
+                ('a', (10*km, 1500*km)),
+                ('b', (5*km, 10*km, 1500*km))]:
 
-        store = gf.Store(store_dir)
+            store_dir = self.get_regional_ttt_store_dir(typ)
 
-        args = (10*km, 1500*km)
+            store = gf.Store(store_dir)
 
-        assert numeq(store.t('stored:P', args), store.t('cake:P', args), 0.1)
-        assert numeq(store.t('vel_surface:15', args), 100., 0.1)
-        assert numeq(store.t('+0.1S', args), 150., 0.1)
-        assert numeq(
-            store.t('{stored:P}+0.1S', args),
-            store.t('{cake:P}', args) + store.t('{vel_surface:10}', args),
-            0.1)
+            assert numeq(
+                store.t('stored:P', args), store.t('cake:P', args), 0.1)
+            assert numeq(store.t('vel_surface:15', args), 100., 0.1)
+            assert numeq(store.t('+0.1S', args), 150., 0.1)
+            assert numeq(
+                store.t('{stored:P}+0.1S', args),
+                store.t('{cake:P}', args) + store.t('{vel_surface:10}', args),
+                0.1)
+
+    def test_ttt_lsd(self):
+        for typ in ['a', 'b']:
+            store_dir = self.get_regional_ttt_store_dir(typ)
+
+            phase_id = 'P'
+
+            store = gf.Store(store_dir)
+            ph = store.get_stored_phase(phase_id)
+            assert ph.check_holes()
+            store.fix_ttt_holes(phase_id)
+
+            ph = store.get_stored_phase(phase_id + '.lsd')
+            assert not ph.check_holes()
 
     def dummy_store(self):
         if self._dummy_store is None:
@@ -1353,6 +1401,18 @@ class GFTestCase(unittest.TestCase):
                     trace.snuffle(trs1+trs2)
 
                 assert num.all(ds < limit)
+
+    def test_nodes(x):
+        from pyrocko.gf.meta import nodes, nditer_outer
+
+        xs = [
+            num.linspace(0., 2., 3),
+            num.linspace(0., 3., 4),
+            num.linspace(0., 4., 5)]
+
+        ps = nodes(xs)
+        for i, p in enumerate(nditer_outer(xs)):
+            assert num.all(p == ps[i])
 
 
 for config_type_class in gf.config_type_classes:
