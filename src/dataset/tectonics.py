@@ -100,8 +100,12 @@ class Dataset(object):
     def fpath(self, filename):
         return op.join(self.data_dir, filename)
 
-    def download_file(self, url, fpath, username=None, password=None):
-        util.download_file(url, fpath, username, password)
+    def download_file(
+            self, url, fpath, username=None, password=None,
+            status_callback=None):
+
+        util.download_file(
+            url, fpath, username, password, status_callback=status_callback)
 
 
 class PlatesDataset(Dataset):
@@ -309,7 +313,10 @@ class GSRM1(StrainRateDataset):
     def download_if_needed(self, fn):
         fpath = self.fpath(fn)
         if not op.exists(fpath):
-            self.download_file(self.raw_data_url % fn, fpath)
+            self.download_file(
+                self.raw_data_url % fn, fpath,
+                status_callback=get_download_callback(
+                    'Downloading global strain rate map...'))
 
     def get_velocities(self, reference_name=None, region=None):
         reference_name = self.plate_alt_names().get(
