@@ -24,6 +24,7 @@ rm -f log.out
 echo "testing branch $branch" >> log.out
 date -uIseconds >> log.out
 vagrant up
+vagrant ssh -- sudo pacman -Syu --noconfirm --needed vim netctl
 vagrant ssh -- -X /vagrant/inside.sh "$branch" "$thetest" > >(tee -a "log.out") 2> >(tee -a "log.out" >&2) || /bin/true
 vagrant halt
 date -uIseconds >> log.out
