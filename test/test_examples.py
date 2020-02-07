@@ -12,6 +12,7 @@ from pyrocko import ExternalProgramMissing
 from pyrocko import util
 from pyrocko import example
 from pyrocko import pile
+from pyrocko.plot import gmtpy
 
 from pyrocko.gui import snuffler
 from pyrocko.dataset import topo
@@ -100,6 +101,9 @@ def _make_function(test_name, fn):
 
         except topo.AuthenticationRequired as e:
             raise unittest.SkipTest('cannot download topo data (no auth credentials)')
+
+        except gmtpy.GMTInstallationProblem as e:
+            raise unittest.SkipTest('GMT not installed or not usable')
 
         except Exception as e:
             raise e
