@@ -323,7 +323,11 @@ class InstallPrerequisits(Command):
         from subprocess import Popen, PIPE, STDOUT
         import platform
 
-        distribution = platform.linux_distribution()[0].lower().rstrip()
+        try:
+            distribution = platform.linux_distribution()[0].lower().rstrip()
+        except:
+            if platform.uname().release.find('arch') != -1:
+                distribution = 'arch'
 
         if distribution == 'ubuntu':
             distribution = 'debian'
@@ -336,11 +340,11 @@ class InstallPrerequisits(Command):
 
         if not self.force_yes:
             try:
-                input = raw_input
+                input_func = raw_input
             except NameError:
-                pass
+                input_func = input
 
-            confirm = input('Execute: %s \n\
+            confirm = input_func('Execute: %s \n\
 proceed? [y/n]' % open(fn, 'r').read())
             if not confirm.lower() == 'y':
                 sys.exit(0)
