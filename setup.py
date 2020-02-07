@@ -323,11 +323,23 @@ class InstallPrerequisits(Command):
         from subprocess import Popen, PIPE, STDOUT
         import platform
 
+        distribution = ''
         try:
             distribution = platform.linux_distribution()[0].lower().rstrip()
         except:
-            if platform.uname().release.find('arch') != -1:
-                distribution = 'arch'
+            pass
+
+        if not distribution:
+            try:
+                if platform.uname()[2].find('arch') != -1:
+                    distribution = 'arch'
+            except:
+                pass
+
+        if not distribution:
+            sys.exit(
+                'cannot determine platform for automatic prerequisite '
+                'installation')
 
         if distribution == 'ubuntu':
             distribution = 'debian'
