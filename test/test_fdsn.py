@@ -5,8 +5,8 @@ standard_library.install_aliases()  # noqa
 import unittest
 import tempfile
 import numpy as num
-import urllib
 import logging
+import os
 from pyrocko import util, trace
 from pyrocko.io import stationxml
 from pyrocko.client import fdsn, iris
@@ -16,6 +16,16 @@ from . import common
 logger = logging.getLogger('pyrocko.test.test_fdsn')
 
 stt = util.str_to_time
+
+
+def fix_resp_units(fn):
+    with open(fn, 'r') as fin:
+        with open(fn + '.temp', 'w') as fout:
+            for line in fin:
+                line = line.replace('count - ', 'counts - ')
+                fout.write(line)
+
+    os.rename(fn + '.temp', fn)
 
 
 class FDSNStationTestCase(unittest.TestCase):
@@ -134,6 +144,8 @@ class FDSNStationTestCase(unittest.TestCase):
                 fo.write(d)
 
             fo.close()
+
+            fix_resp_units(fn)
 
             resp_sx = sxr.get_pyrocko_response(
                 nslc, timespan=(tmin, tmax),
