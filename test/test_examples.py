@@ -49,8 +49,9 @@ class ExamplesTestCase(unittest.TestCase):
         sys.stdout = cls.dn
         os.chdir(cls.run_dir)
 
-        cls._mpl_show_orig = plt.show
-        plt.show = noop
+        if cls._mpl_show_orig is not noop:
+            cls._mpl_show_orig = plt.show
+            plt.show = noop
 
         cls._snuffle_orig = snuffler.snuffle
         snuffler.snuffle = noop
