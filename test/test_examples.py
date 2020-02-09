@@ -49,13 +49,10 @@ class ExamplesTestCase(unittest.TestCase):
         sys.stdout = cls.dn
         os.chdir(cls.run_dir)
 
-        if not hasattr(cls, '_mpl_show_orig') \
-                or cls._mpl_show_orig is not noop:
+        plt.show_orig_testex = plt.show
+        plt.show = noop
 
-            cls._mpl_show_orig = plt.show
-            plt.show = noop
-
-        cls._snuffle_orig = snuffler.snuffle
+        snuffler.snuffle_orig_testex = snuffler.snuffle
         snuffler.snuffle = noop
 
         cls._show_progress_force_off_orig = pile.show_progress_force_off
@@ -69,8 +66,8 @@ class ExamplesTestCase(unittest.TestCase):
         sys.stdout = sys.__stdout__
         os.chdir(cls.cwd)
 
-        snuffler.snuffle = cls._snuffle_orig
-        plt.show = cls._mpl_show_orig
+        snuffler.snuffle = snuffler.snuffle_orig_testex
+        plt.show = plt.show_orig_testex
         pile.show_progress_force_off = cls._show_progress_force_off_orig
 
 
@@ -102,10 +99,11 @@ def _make_function(test_name, fn):
         except ImportError as e:
             raise unittest.SkipTest(str(e))
 
-        except topo.AuthenticationRequired as e:
-            raise unittest.SkipTest('cannot download topo data (no auth credentials)')
+        except topo.AuthenticationRequired:
+            raise unittest.SkipTest(
+                'cannot download topo data (no auth credentials)')
 
-        except gmtpy.GMTInstallationProblem as e:
+        except gmtpy.GMTInstallationProblem:
             raise unittest.SkipTest('GMT not installed or not usable')
 
         except Exception as e:
