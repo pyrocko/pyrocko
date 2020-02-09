@@ -49,7 +49,9 @@ class ExamplesTestCase(unittest.TestCase):
         sys.stdout = cls.dn
         os.chdir(cls.run_dir)
 
-        if cls._mpl_show_orig is not noop:
+        if not hasattr(cls, '_mpl_show_orig') \
+                or cls._mpl_show_orig is not noop:
+
             cls._mpl_show_orig = plt.show
             plt.show = noop
 
