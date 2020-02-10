@@ -11,7 +11,7 @@ if [ -e "$pyrockodir" ] ; then
     sudo rm -rf "$pyrockodir"
 fi
 
-git clone "https://github.com/pyrocko/pyrocko.git" "$pyrockodir"
+git clone "https://git.pyrocko.org/pyrocko/pyrocko.git" "$pyrockodir"
 cd "$pyrockodir/maintenance"
 
 anaconda/deploy_anaconda3.sh
