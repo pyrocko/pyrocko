@@ -1,0 +1,11 @@
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  config.vm.box = "debian/contrib-buster64"
+  config.vm.synced_folder "../../../test/data", "/pyrocko-test-data"
+  config.vm.provider "virtualbox" do |vb|
+     vb.customize ["modifyvm", :id, "--memory", "3072"]
+  end
+  config.vm.network :private_network, ip: '192.168.115.13'
+  config.vm.network :forwarded_port, guest: 22, host: 22013, id: 'ssh'
+end
