@@ -30,6 +30,7 @@ fi
 git clone -b $branch "/vagrant/pyrocko.git" "$pyrockodir"
 cd "$pyrockodir"
 ln -s "/pyrocko-test-data" "test/data"
+ln -s "/vagrant/example_run_dir" "test/example_run_dir"
 
 mkdir -p "$HOME/.config/matplotlib"
 echo "backend : qt4agg" > "$HOME/.config/matplotlib/matplotlibrc"

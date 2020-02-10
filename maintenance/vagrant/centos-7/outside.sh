@@ -5,7 +5,7 @@ set -e
 branch="$1"
 
 if [ -z "$branch" ]; then
-    branch=master
+    branch=`git rev-parse --abbrev-ref HEAD`
 fi
 
 thetest="$2"
@@ -22,8 +22,10 @@ if [ -d "pyrocko.git" ]; then
     rm -rf "pyrocko.git"
 fi
 git clone --bare "../../.." "pyrocko.git"
+cp -r "../../../test/example_run_dir" "."
 
-echo "testing branch $branch"
+echo "testing branch: $branch"
+echo "running test: $thetest"
 rm -f log.out
 echo "testing branch $branch" >> log.out
 date -uIseconds >> log.out

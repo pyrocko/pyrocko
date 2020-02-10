@@ -38,6 +38,7 @@ fi
 git clone -b "$branch" "/vagrant/pyrocko.git" "$pyrockodir"
 cd "$pyrockodir"
 ln -s "/vagrant/pyrocko-test-data" "test/data"
+ln -s "/vagrant/example_run_dir" "test/example_run_dir"
 
 python setup.py install -f && \
     python -m pyrocko.print_version deps >> "$outfile_py3" && \
