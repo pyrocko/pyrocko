@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+*empty*
+
+## [v2020.02.10] - 2020-02-10
+
 ### Added
 - Support querying all stations with `GLOBAL` from ISC.
 - Support event queries in `client.fdsn`.
