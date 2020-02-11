@@ -1136,11 +1136,7 @@ class Source(Location, Cloneable):
             **kwargs)
 
     def geometry(self, **kwargs):
-        geom = OldGeometry()
-        geom.set_centroid(self.pyrocko_event(**kwargs))
-        geom.set_outline(self.lat, self.lon, self.outline(cs='xyz'))
-
-        return geom
+        raise NotImplementedError
 
     def outline(self, cs='xyz'):
         points = num.atleast_2d(num.zeros([1, 3]))
@@ -2168,7 +2164,7 @@ class RectangularSource(SourceWithDerivedMagnitude):
 
         geom = Geometry()
         geom.setup(vertices, faces)
-        geom.set_outline(face_outline)
+        geom.set_outlines(face_outline)
 
         if self.stf:
             geom.times = num.unique(ds.times)
