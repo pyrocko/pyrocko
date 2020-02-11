@@ -275,165 +275,6 @@ def outline_rect_source(strike, dip, length, width, anchor):
     return num.dot(rotmat.T, points.T).T
 
 
-def lists_to_c5(
-        ref_lat, ref_lon,
-        points=[], north_shifts=[], east_shifts=[], depths=[]):
-    
-    if len(north_shifts) != 0:
-        npoints = len(north_shifts)
-    else:
-        npoints = len(points)
-
-    def to_arr(list):
-        arr = num.asarray(list)
-
-        if arr.ndim == 1:
-            return arr.reshape(len(arr), 1)
-        else:
-            return arr
-
-    if len(points) == 0:
-        points = num.concatenate((
-            to_arr(north_shifts), to_arr(east_shifts), to_arr(depths)), axis=1)
-
-    if isinstance(ref_lat, list) and isinstance(ref_lon, list):
-        return num.concatenate((
-            to_arr(ref_lat), to_arr(ref_lon),
-            to_arr(points)), axis=1)
-    elif isinstance(ref_lat, float) and isinstance(ref_lon, float): 
-        return num.concatenate((
-            to_arr([ref_lat] * npoints), to_arr([ref_lon] * npoints),
-            to_arr(points)), axis=1)
-
-
-class Patch(Object):
-    def __init__(self, points, vertices=None, faces=None):
-        self.points = points
-        self.vertices = vertices
-        self.faces = faces
-
-
-class OldGeometry(Object):
-    centroid = Any.T(default=Table())
-    outline = None
-    patches = None
-
-    def set_centroid(self, event, **kwargs):
-        for prop in event.T.propnames:
-            value = getattr(event, prop)
-            if value or value==0.:
-                self.centroid.add_col(prop, [value])
-
-    def set_outline(self, ref_lat, ref_lon, points):
-        coords = lists_to_c5(ref_lat, ref_lon, points=points)
-
-        vertices = Table()
-        vertices.add_recipe(LocationRecipe())
-        vertices.add_col((
-            'c5', '',
-            ('ref_lat', 'ref_lon', 'north_shift', 'east_shift', 'depth')),
-            coords)
-
-        fcs = [tuple([i for i in range(-1, len(coords))])]
-        fcs = num.array(fcs, dtype=num.dtype(','.join(['int'] * len(fcs[0]))))
-        faces = Table()
-        faces.add_col('outline', fcs)
-
-        self.outline = Patch(self.centroid, vertices=vertices, faces=faces)
-
-    def refine_outline(self, deltadeg):
-        import math
-
-        assert self.outline
-
-        deg2m = 111120.
-
-        verts = self.outline.vertices
-        latlon = verts.get_col('latlon')
-        ref_lat = verts.get_col('ref_lat')
-        ref_lon = verts.get_col('ref_lon')
-        depth = verts.get_col('depth')
-
-        points = []
-
-        for i in range(len(latlon) - 1):
-            azim, dist = azidist_numpy(
-                latlon[i, 0], latlon[i, 1], latlon[i + 1, 0], latlon[i + 1, 1])
-
-            delta_z = depth[i + 1] - depth[i]
-            total_dist = math.sqrt(dist**2 + (delta_z / deg2m)**2)
-
-            numint = int(math.ceil(total_dist / deltadeg))
-
-            for ii in range(numint):
-                factor = float(ii) / float(numint)
-
-                point = [None] * 3
-
-                point[:2] = azidist_to_latlon(
-                    latlon[i, 0], latlon[i, 1], azim, dist * factor)
-                point[2] =\
-                    depth[i] + delta_z * factor
-
-                points.append(point)
-
-        points.append(points[-1][:])
-        points = num.array(points)
-
-        norths, easts = latlon_to_ne_numpy(
-            ref_lat[0], ref_lon[0], points[:, 0], points[:, 1])
-        depths_new = num.array(points[:, 2]).reshape(len(points[:, 2]), 1)
-
-        coords = num.concatenate(
-            (norths.reshape(len(norths), 1), easts.reshape(len(norths), 1),
-                depths_new),
-            axis=1)
-
-        self.set_outline(ref_lat[0], ref_lon[0], coords)
-
-    def set_patches(self, discretized_basesource, vertices, faces, **kwargs):
-        ds = discretized_basesource
-
-        points = Table()
-        points.add_recipe(LocationRecipe())
-        coords = lists_to_c5(
-            ds.lat, ds.lon,
-            north_shifts=ds.north_shifts,
-            east_shifts=ds.east_shifts,
-            depths=ds.depths)
-        points.add_col((
-            'c5', '',
-            ('ref_lat', 'ref_lon', 'north_shift', 'east_shift', 'depth')),
-            coords)
-
-        verts = Table()
-        verts.add_recipe(LocationRecipe())
-        coords = lists_to_c5(ds.lat, ds.lon, vertices)
-        verts.add_col((
-            'c5', '',
-            ('ref_lat', 'ref_lon', 'north_shift', 'east_shift', 'depth')),
-            coords)
-
-        fcs = Table()
-        fcs.add_col((
-            'patch_faces', ''), faces)
-
-        props = ds.T.propnames
-        for prop, unit, sub_header in zip(
-            ['times', 'm6s'], ['s', 'Pa'],
-            [(), ('mnn', 'mee', 'mdd', 'mne', 'mnd', 'med')]):
-
-            if prop in props:
-                values = getattr(ds, prop)
-                points.add_col((prop, unit, sub_header), values)
-                fcs.add_col((prop, unit, sub_header), values)
-
-        self.patches = Patch(points, vertices=verts, faces=fcs)
-
-        for prop in ['dl', 'dw', 'nl', 'nw']:
-            setattr(self.patches, prop, getattr(ds, prop))
-
- 
 class InvalidGridDef(Exception):
     pass
 
@@ -2291,11 +2132,9 @@ class RectangularSource(SourceWithDerivedMagnitude):
         return self.xy_to_coord(x, y, cs=cs)
 
     def geometry(self, *args, **kwargs):
-        geom = OldGeometry()
-        geom.set_centroid(self.pyrocko_event(**kwargs))
-        geom.set_outline(self.lat, self.lon, self.outline(cs='xyz'), **kwargs)
+        from pyrocko.model import Geometry
 
-        ds = self.discretize_basesource(*args)
+        ds = self.discretize_basesource(*args, **kwargs)
         nx, ny = ds.nl, ds.nw
 
         def patch_outlines_xy(nx, ny):
@@ -2306,22 +2145,39 @@ class RectangularSource(SourceWithDerivedMagnitude):
             return points
 
         points_ds = patch_outlines_xy(nx + 1, ny + 1)
+        npoints = (nx + 1) * (ny + 1)
 
-        vertices = self.xy_to_coord(points_ds[:, 0], points_ds[:, 1], cs='xyz')
+        vertices = num.hstack((
+            num.ones((npoints, 1)) * self.lat,
+            num.ones((npoints, 1)) * self.lon,
+            self.xy_to_coord(points_ds[:, 0], points_ds[:, 1], cs='xyz')))
 
-        faces = []
-        for iy in range(ny):
-            for ix in range(nx):
-                faces.append((
-                    iy * (nx + 1) + ix,
-                    iy * (nx + 1) + ix + 1,
-                    (iy + 1) * (nx + 1) + ix + 1,
-                    (iy + 1) * (nx + 1) + ix,
-                    iy * (nx + 1) + ix))
+        faces = num.array([[
+                iy * (nx + 1) + ix,
+                iy * (nx + 1) + ix + 1,
+                (iy + 1) * (nx + 1) + ix + 1,
+                (iy + 1) * (nx + 1) + ix,
+                iy * (nx + 1) + ix]
+            for iy in range(ny) for ix in range(nx)])
 
-        faces = num.array(faces, dtype=num.dtype(('int,int,int,int,int')))
+        face_outline = num.concatenate([
+            num.arange(nx + 1),
+            num.arange(2 * nx + 1, (ny + 1) * nx + 1, nx + 1),
+            num.arange((nx + 1) * (ny + 1) - 1, (nx + 1) * ny - 1, -1),
+            num.arange((nx + 1) * (ny - 1), 0, -(nx + 1))]).reshape(1, -1)
 
-        geom.set_patches(ds, vertices, faces, **kwargs)
+        geom = Geometry()
+        geom.setup(vertices, faces)
+        geom.set_outline(face_outline)
+
+        if self.stf:
+            geom.times = num.unique(ds.times)
+
+        if self.nucleation_x is not None and self.nucleation_y is not None:
+            geom.add_property('t_arrival', ds.times)
+
+        geom.add_property(
+            'moment', ds.moments().reshape(ds.nl*ds.nw, -1))
 
         return geom
 

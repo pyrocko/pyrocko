@@ -10,20 +10,17 @@ import numpy as num
 
 import vtk
 
-from pyrocko.guts import Bool, Float, Object, String, Tuple
+from pyrocko.guts import Bool, Float, Object, String
 
-from pyrocko import cake, geometry, gf, table
-from pyrocko.orthodrome import latlon_to_ne_numpy
-from pyrocko.modelling import okada_ext
-from pyrocko.gui.qt_compat import qw, qc, fnpatch
+from pyrocko import cake, geometry, gf
+from pyrocko.gui.qt_compat import qc, qw, fnpatch
 
-from pyrocko.gui.vtk_util import\
-    ArrowPipe, Glyph3DPipe, PolygonPipe, ScatterPipe,\
+from pyrocko.gui.vtk_util import \
+    ArrowPipe, ColorbarPipe, Glyph3DPipe, PolygonPipe, ScatterPipe,\
     make_multi_polyline, vtk_set_input
 from .. import state as vstate
 from .. import common
-
-from .base import Element, ElementState
+from . import base
 
 guts_prefix = 'sparrow'
 
@@ -43,192 +40,6 @@ map_anchor = {
     'bottom_right': (1.0, 1.0)}
 
 
-def get_shift_zero_coord(source, *args):
-    """Relative cartesian coordinates with respect to nucleation point.
-
-    Get the north and east shift [m] between the nucleation point and the
-    reference point of a rectangular fault (important for Okada routine)
-
-    :param source: Rectangular Source
-    ;type source: :py:class:`pyrocko.gf.RectangularSource`
-    :param refloc: Location reference point
-    :type refloc: :py:class:`pyrocko.orthodrome.Loc`
-
-    :return: Northin and easting from nucleation point to ref_loc
-    :rtype: tuple, float
-    """
-    ref_pt = source.xy_to_coord(
-        x=[0.], y=[-1.],
-        cs='latlon')
-
-    return ref_pt, latlon_to_ne_numpy(ref_pt[0, 0], ref_pt[0, 1], *args)
-
-
-def patches_to_okadasources(source_geom, source, **kwargs):
-    """Compute list of Okada Sources out of given fault patches.
-
-    For a given fault geometry with sub fault (patches), a list of Okada Source
-    segments is populated and returned
-
-    :param source_geom: Source geometry of extended source
-    :type source_geom: :py:class:`pyrocko.gf.Geometry`
-    :param source: Rectangular Source
-    ;type source: :py:class:`pyrocko.gf.RectangularSource`
-
-    :return: list of Okada Sources
-    ;rtype: list
-    """
-    points = source_geom.patches.points
-    npoints = points.get_col('ref_lat').shape[0]
-    ref_lat = points.get_col('ref_lat')[0]
-    ref_lon = points.get_col('ref_lon')[0]
-
-    ref_pt, (north_shift_diff, east_shift_diff) = get_shift_zero_coord(
-        source, ref_lat, ref_lon)
-
-    north_shift = points.get_col('north_shift') + north_shift_diff
-    east_shift = points.get_col('east_shift') + east_shift_diff
-    depth = points.get_col('depth')
-    # times = points.get_col('times')
-
-    length = num.array([source_geom.patches.dl] * npoints)
-    width = num.array([source_geom.patches.dw] * npoints)
-
-    al1 = -length / 2.
-    al2 = length / 2.
-    aw1 = -width / 2.
-    aw2 = width / 2.
-
-    slip = num.array([source.slip] * npoints)
-
-    source_patches = num.zeros((npoints, 9))
-    source_patches[:, 0] = north_shift
-    source_patches[:, 1] = east_shift
-    source_patches[:, 2] = depth
-    source_patches[:, 3] = source.strike
-    source_patches[:, 4] = source.dip
-    source_patches[:, 5] = al1
-    source_patches[:, 6] = al2
-    source_patches[:, 7] = aw1
-    source_patches[:, 8] = aw2
-
-    source_disl = num.zeros((npoints, 3))
-    source_disl[:, 0] = num.cos(source.rake * d2r) * slip
-    source_disl[:, 1] = num.sin(source.rake * d2r) * slip
-    source_disl[:, 2] = 0.
-
-    return source_patches, source_disl, ref_pt
-
-
-def receiver_to_okadacoords(receiver_geom, dim=2):
-    """Build array of coordinate tuples (triples) for each receiver
-
-    For a given receiver geometry, the north and east shift (in 2D) or the
-    north, the east shift and the depth are concatenated in array
-
-    :param receiver_geom: Receiver geometry containing lat, lon, depth
-    :type receiver_geom: :py:class:`pyrocko.table.Table`
-    :param dim: Dimension of coordinate array: 2 - easting, northing,
-        3 - easting, northing, depth
-    ;type dim: :py:class:`int`
-
-    :return: array of receiver coordinates
-    ;rtype: :py:class:`numpy.ndarray`, ``(Nxdim)
-    """
-    coords = num.empty((len(receiver_geom.get_col('north_shift')), dim))
-    coords[:, 0] = receiver_geom.get_col('north_shift')
-    coords[:, 1] = receiver_geom.get_col('east_shift')
-
-    if dim == 3:
-        coords[:, 2] = receiver_geom.get_col('depth')
-
-    return coords
-
-
-def okada_surface_displacement(
-        source_geom, disp_window, source, dim=2, **kwargs):
-    """Calculate Displacement due to Okada Sources for in certain window
-
-    For a given source geometry and source, the surface displacements in 3D are
-    calculated. The grid for displacement calculation is defined via a
-    LatLonWindow.
-    Assisiting functions are `:py:func:`patches_to_okadasources`,
-    :py:func:`receiver_to_okadacoords`,
-    :py:func:`DisplacementWindow.get_raster` and
-    :py:func:`pyrocko.modelling.okada.DislocProcessor.process
-
-    :param source_geom: Geometry of the source and its patches
-    :type source_geom: :py:class:`pyrocko.gf.Geometry`
-    :param disp_window: Definition of the Displacement Calculation Grid
-    :type disp_window:
-        :py:class:`pyrocko.gui.sparrow.elements.source.DisplacementWindow`
-    :param source: Given extended source model
-    :type source: :py:class:`pyrocko.gf.Source`
-    :param dim: Dimension of the receiver coordinates
-    :type dim: :py:class:`int`
-
-    :return: Geometry of the Receiver and the calculated dislocations
-    :rtype: :py:class:`pyrocko.table.Table` and :py:class:`dict`
-    """
-    source_patches, source_disl, ref_pt = patches_to_okadasources(
-        source_geom, source, **kwargs)
-
-    receiver_geom = disp_window.get_raster(ref_pt[0, 0], ref_pt[0, 1])
-
-    receiver_coords = receiver_to_okadacoords(
-        receiver_geom, dim=dim)
-
-    return receiver_geom, okada_ext.okada(
-        source_patches, source_disl, receiver_coords, 32.e9, 32.e9, 0)
-
-class LatLonWindow(ElementState):
-    pass
-
-
-class DisplacementWindow(LatLonWindow):
-    ne_corner = Tuple.T(default=(0.1, 0.1))
-    sw_corner = Tuple.T(default=(-0.1, -0.1))
-    n_grdpoints = Tuple.T(default=(10, 10))
-
-    @property
-    def corners(self):
-        return num.vstack((self.ne_corner, self.sw_corner))
-
-    def get_raster(self, ref_lat, ref_lon):
-        raster = table.Table()
-        raster.add_recipe(table.LocationRecipe())
-
-        diff = num.array(latlon_to_ne_numpy(
-            ref_lat, ref_lon, self.corners[:, 0], self.corners[:, 1]))
-        north_diff = diff[0, 0] - diff[0, 1]
-        east_diff = diff[1, 0] - diff[1, 1]
-
-        n_north = int(self.n_grdpoints[0])
-        n_east = int(self.n_grdpoints[1])
-
-        dn = north_diff / (n_north - 1)
-        de = east_diff / (n_east - 1)
-
-        c5 = num.empty((n_north * n_east, 5))
-        c5[:, 0] = ref_lat
-        c5[:, 1] = ref_lon
-
-        for inorth in range(n_north):
-            for ieast in range(n_east):
-                idx = inorth * n_east + ieast
-                c5[idx, 2] = diff[0, 0] - inorth * dn
-                c5[idx, 3] = diff[1, 0] - ieast * de
-
-        c5[:, 4] = 0.
-
-        raster.add_col((
-            'c5', '',
-            ('ref_lat', 'ref_lon', 'north_shift', 'east_shift', 'depth')),
-            c5)
-
-        return raster
-
-
 class SourceOutlinesPipe(object):
     def __init__(self, source_geom, RGB, cs='latlondepth'):
 
@@ -237,8 +48,9 @@ class SourceOutlinesPipe(object):
 
         lines = []
 
-        latlon = source_geom.outline.vertices.get_col('latlon')
-        depth = source_geom.outline.vertices.get_col('depth')
+        outline = source_geom.get_outline()
+        latlon = source_geom.get_vertices(col='latlon')[outline]
+        depth = source_geom.get_vertices(col='depth')[outline]
 
         points = num.concatenate(
             (latlon, depth.reshape(len(depth), 1)),
@@ -266,7 +78,7 @@ class SourceOutlinesPipe(object):
         self.actor = actor
 
 
-class ProxySource(ElementState):
+class ProxySource(base.ElementState):
     pass
 
 
@@ -338,17 +150,14 @@ class ProxyStore(Object):
 
 
 parameter_label = {
-    'Time (s)': 'times'}
+    'time (s)': 'times'}
 
 
-class SourceState(ElementState):
+class SourceState(base.CPTState):
     visible = Bool.T(default=True)
-    contour = Bool.T(default=False)
     source_selection = ProxySource.T(default=ProxyRectangularSource())  # noqa
     deltat = Float.T(default=0.5)
-    display_parameter = String.T(default='Time (s)')
-    disp_window = LatLonWindow.T(default=DisplacementWindow())
-    disp_arrow_size = Float.T(default=1.)
+    display_parameter = String.T(default='time (s)')
 
     @classmethod
     def get_name(self):
@@ -360,14 +169,20 @@ class SourceState(ElementState):
         return element
 
 
-class SourceElement(Element):
+class SourceElement(base.Element):
 
     def __init__(self):
-        Element.__init__(self)
+        base.Element.__init__(self)
         self._parent = None
         self._pipe = []
         self._controls = None
         self._points = num.array([])
+
+        self._cpts = {}
+        self._values = None
+        self._lookuptable = None
+
+        self._autoscaler = None
 
     def _state_bind_source(self, *args, **kwargs):
         vstate.state_bind(self, self._state.source_selection, *args, **kwargs)
@@ -379,16 +194,18 @@ class SourceElement(Element):
         upd = self.update
         self._listeners.append(upd)
         state.add_listener(upd, 'visible')
-        state.add_listener(upd, 'contour')
         state.add_listener(upd, 'source_selection')
         state.add_listener(upd, 'deltat')
         state.add_listener(upd, 'display_parameter')
-        state.add_listener(upd, 'disp_window')
-        state.add_listener(upd, 'disp_arrow_size')
+        base.bind_state_cpt(state, upd)
+
         self._state = state
 
     def unbind_state(self):
+        self._cpts = {}
+        self._lookuptable = None
         self._listeners = []
+        self._state = None
 
     def get_name(self):
         return 'Source'
@@ -418,81 +235,21 @@ class SourceElement(Element):
             self._parent.update_view()
             self._parent = None
 
-    def open_set_displacement_dialog(self):
-        from ..state import state_bind_slider
-        disp_win = self._state.disp_window
-
-        dialog = qw.QDialog(self._parent)
-        dialog.setWindowTitle('Set corners of displacement calculation window')
-
-        def lineedit_to_tuple(widget):
-            sel = str(widget.text())
-            return tuple(map(float, sel.split(', ')))
-
-        def tuple_to_lineedit(tuple, widget):
-            sel = widget.selectedText() == widget.text()
-            widget.setText('%g, %g' % (tuple[0], tuple[1]))
-            if sel:
-                widget.selectAll()
-
-        layout = qw.QGridLayout(dialog)
-
-        layout.addWidget(qw.QLabel('N-E corner:'), 0, 0)
-        le_ne = qw.QLineEdit()
-        tuple_to_lineedit(disp_win.ne_corner, le_ne)
-        layout.addWidget(le_ne, 0, 1)
-
-        layout.addWidget(qw.QLabel('S-W corner:'), 1, 0)
-        le_sw = qw.QLineEdit()
-        tuple_to_lineedit(disp_win.sw_corner, le_sw)
-        layout.addWidget(le_sw, 1, 1)
-
-        layout.addWidget(qw.QLabel('Num. grid points (N, E):'), 2, 0)
-        le_grd = qw.QLineEdit()
-        tuple_to_lineedit(disp_win.n_grdpoints, le_grd)
-        layout.addWidget(le_grd, 2, 1)
-
-        layout.addWidget(qw.QLabel('Arrow size:'), 3, 0)
-        slider = qw.QSlider(qc.Qt.Horizontal)
-        slider.setSizePolicy(
-            qw.QSizePolicy(
-                qw.QSizePolicy.Expanding, qw.QSizePolicy.Fixed))
-        slider.setMinimum(1)
-        slider.setMaximum(5)
-        slider.setSingleStep(1)
-        slider.setPageStep(1)
-        state_bind_slider(self, self._state, 'disp_arrow_size', slider)
-        layout.addWidget(slider, 3, 1)
-
-        pb = qw.QPushButton('Cancel')
-        pb.clicked.connect(dialog.reject)
-        layout.addWidget(pb, 4, 0)
-
-        pb = qw.QPushButton('Ok')
-        pb.clicked.connect(dialog.accept)
-        layout.addWidget(pb, 4, 1)
-
-        dialog.exec_()
-
-        if dialog.result() == qw.QDialog.Accepted:
-            ne_c = lineedit_to_tuple(le_ne)
-            sw_c = lineedit_to_tuple(le_sw)
-            n_grdpoints = lineedit_to_tuple(le_grd)
-
-            self._state.disp_window = DisplacementWindow(
-                ne_corner=ne_c, sw_corner=sw_c, n_grdpoints=n_grdpoints)
-
     def open_file_load_dialog(self):
         caption = 'Select one file to open'
         fns, _ = fnpatch(qw.QFileDialog.getOpenFileNames(
             self._parent, caption, options=common.qfiledialog_options))
 
         if fns:
-            self.load_file(str(fns[0]))
+            try:
+                self.load_file(str(fns[0]))
+            except gf.FileNotFoundError as e:
+                raise e
+
         else:
             return
 
-    def load_file(self, path):
+    def load_source_file(self, path):
         loaded_source = gf.load(filename=path)
         source = ProxyRectangularSource(
             **{prop: getattr(loaded_source, prop)
@@ -537,54 +294,88 @@ class SourceElement(Element):
 
         self.update()
 
-    def update_disloc(self, source_geom, source, dim=2, **kwargs):
+    def update_source(self, store):
         state = self._state
-        receiver_geom, disloc = okada_surface_displacement(
-            source_geom, state.disp_window, source, dim=dim, **kwargs)
 
-        vertices = geometry.arr_vertices(
-            receiver_geom.get_col('xyz'))
+        source = state.source_selection
+        source_list = gf.source_classes
 
-        vectors = disloc[:, :3].copy()
+        for i, a in enumerate(source_list):
+            if a.__name__ is source._name:
+                fault = a(
+                    **{prop: source.__dict__[prop]
+                        for prop in source.T.propnames})
 
-        vectors = geometry.ned2xyz(
-            vectors, num.concatenate((
-                receiver_geom.get_col('latlon'),
-                receiver_geom.get_col('depth')[:, num.newaxis]), axis=1),
-            planetradius=cake.earthradius)
-        vectors = geometry.arr_vertices(vectors)
+                source_geom = fault.geometry(store)
+
+                self._update_outlines(source_geom)
+                self._update_scatter(source, fault)
+                self._update_raster(source_geom, state.display_parameter)
+                self._update_rake_arrow(fault)
+
+    def _update_outlines(self, source_geom):
+        self._pipe.append(
+            SourceOutlinesPipe(
+                source_geom, (1., 1., 1.),
+                cs='latlondepth'))
+        self._parent.add_actor(self._pipe[-1].actor)
 
         self._pipe.append(
-            Glyph3DPipe(
-                vertices, vectors,
-                sizefactor=state.disp_arrow_size))
+            SourceOutlinesPipe(
+                source_geom, (.6, .6, .6),
+                cs='latlon'))
+        self._parent.add_actor(self._pipe[-1].actor)
 
-        if isinstance(self._pipe[-1].actor, list):
-            self._parent.add_actor_list(self._pipe[-1].actor)
-        else:
-            self._parent.add_actor(self._pipe[-1].actor)
+    def _update_scatter(self, source, fault):
+        for point, color in zip(
+                ((source.nucleation_x,
+                  source.nucleation_y),
+                 map_anchor[source.anchor]),
+                (num.array([[1., 0., 0.]]),
+                 num.array([[0., 0., 1.]]))):
 
-    def update_raster(self, source_geom, param):
-        patches = source_geom.patches
+            points = geometry.latlondepth2xyz(
+                fault.xy_to_coord(
+                    x=[point[0]], y=[point[1]],
+                    cs='latlondepth'),
+                planetradius=cake.earthradius)
 
+            vertices = geometry.arr_vertices(points)
+            p = ScatterPipe(vertices)
+            p.set_symbol('sphere')
+            p.set_colors(color)
+            self._pipe.append(p)
+            self._parent.add_actor(p.actor)
+
+    def _update_raster(self, source_geom, param):
         vertices = geometry.arr_vertices(
-            patches.vertices.get_col('xyz'))
+            source_geom.get_vertices(col='xyz'))
 
-        values = patches.faces.get_col(parameter_label[param])
-        faces = num.array([
-            list(face) for face in patches.faces.get_col('patch_faces')])
+        faces = source_geom.get_faces()
 
-        self._pipe.append(
-            PolygonPipe(
-                vertices, faces,
-                values=values, contour=self._state.contour, cbar_title=param))
+        if parameter_label[param] is 'times' and \
+                source_geom.has_property('t_arrival'):
 
-        if isinstance(self._pipe[-1].actor, list):
-            self._parent.add_actor_list(self._pipe[-1].actor)
-        else:
+            self._values = source_geom.get_property('t_arrival')
+            cbar_title = 'T arr [s]'
+
+        base.update_cpt(self)
+
+        poly_pipe = PolygonPipe(
+            vertices, faces, values=self._values, lut=self._lookuptable)
+
+        self._pipe.append(poly_pipe)
+        self._parent.add_actor(self._pipe[-1].actor)
+
+        if cbar_title is not None:
+            cbar_pipe = ColorbarPipe(
+                parent_pipe=poly_pipe, cbar_title=cbar_title,
+                lut=self._lookuptable)
+
+            self._pipe.append(cbar_pipe)
             self._parent.add_actor(self._pipe[-1].actor)
 
-    def update_rake_arrow(self, fault):
+    def _update_rake_arrow(self, fault):
         source = self._state.source_selection
         rake = source.rake * d2r
 
@@ -610,75 +401,30 @@ class SourceElement(Element):
 
     def update(self, *args):
         state = self._state
-        source = state.source_selection
-        source_list = gf.source_classes
 
         store = ProxyStore(
-            deltat=self._state.deltat)
+            deltat=state.deltat)
         store.config.deltas = num.array(
             [(store.config.deltat * store.config.vs) + 1] * 2)
 
         if self._pipe:
             for pipe in self._pipe:
-                try:
-                    self._parent.remove_actor(pipe.actor)
-                except Exception:
-                    for actor in pipe.actor:
-                        self._parent.remove_actor(actor)
+                self._parent.remove_actor(pipe.actor)
 
             self._pipe = []
 
         if state.visible:
-            for i, a in enumerate(source_list):
-                if a.__name__ is source._name:
-                    fault = a(
-                        **{prop: source.__dict__[prop]
-                            for prop in source.T.propnames})
-                    source_geom = fault.geometry(store)
-
-                    source_geom.refine_outline(0.1)
-                    self._pipe.append(
-                        SourceOutlinesPipe(
-                            source_geom, (1., 1., 1.),
-                            cs='latlondepth'))
-                    self._parent.add_actor(self._pipe[-1].actor)
-
-                    self._pipe.append(
-                        SourceOutlinesPipe(
-                            source_geom, (.6, .6, .6),
-                            cs='latlon'))
-                    self._parent.add_actor(self._pipe[-1].actor)
-
-                    for point, color in zip((
-                            (source.nucleation_x,
-                             source.nucleation_y),
-                            map_anchor[source.anchor]),
-                            (num.array([[1., 0., 0.]]),
-                             num.array([[0., 0., 1.]]))):
-
-                        points = geometry.latlondepth2xyz(
-                            fault.xy_to_coord(
-                                x=[point[0]], y=[point[1]],
-                                cs='latlondepth'),
-                            planetradius=cake.earthradius)
-
-                        vertices = geometry.arr_vertices(points)
-                        self._pipe.append(ScatterPipe(vertices))
-                        self._pipe[-1].set_colors(color)
-                        self._parent.add_actor(self._pipe[-1].actor)
-
-
-                    self.update_disloc(source_geom, fault, dim=3)
-                    self.update_raster(source_geom, state.display_parameter)
-                    self.update_rake_arrow(fault)
+            self.update_source(store)
 
         self._parent.update_view()
 
     def _get_controls(self):
         if not self._controls:
             from ..state import \
+                state_bind, \
                 state_bind_checkbox, state_bind_slider, state_bind_combobox
             from pyrocko import gf
+
             source = self._state.source_selection
 
             frame = qw.QFrame()
@@ -772,20 +518,17 @@ class SourceElement(Element):
             cb = qw.QComboBox()
             for i, s in enumerate(parameter_label.keys()):
                 cb.insertItem(i, s)
-            layout.addWidget(cb, il, 1, 1, 2)
+            layout.addWidget(cb, il, 1)
             state_bind_combobox(
                 self, self._state, 'display_parameter', cb)
 
-            il += 1
-            pb = qw.QPushButton('Displacement Win.')
-            layout.addWidget(pb, il, 1)
-            pb.clicked.connect(self.open_set_displacement_dialog)
+            base.cpt_controls(self, self._state, layout)
 
+            il = layout.rowCount() + 1
             pb = qw.QPushButton('Move Source Here')
-            layout.addWidget(pb, il, 2)
+            layout.addWidget(pb, il, 0)
             pb.clicked.connect(self.update_loc)
 
-            il += 1
             pb = qw.QPushButton('Load')
             layout.addWidget(pb, il, 1)
             pb.clicked.connect(self.open_file_load_dialog)
@@ -799,10 +542,6 @@ class SourceElement(Element):
             layout.addWidget(cb, il, 0)
             state_bind_checkbox(self, self._state, 'visible', cb)
 
-            cb = qw.QCheckBox('Contour')
-            layout.addWidget(cb, il, 1)
-            state_bind_checkbox(self, self._state, 'contour', cb)
-
             pb = qw.QPushButton('Remove')
             layout.addWidget(pb, il, 2)
             pb.clicked.connect(self.remove)
@@ -811,6 +550,9 @@ class SourceElement(Element):
             layout.addWidget(qw.QFrame(), il, 0, 1, 3)
 
         self._controls = frame
+
+        base._update_cpt_combobox(self)
+        base._update_cptscale_lineedit(self)
 
         return self._controls
 

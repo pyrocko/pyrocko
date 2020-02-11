@@ -296,8 +296,8 @@ class GeometryElement(Element):
                 values = self.get_values(geo)
                 lut = self._lookuptables[cpt_name]
                 if not isinstance(self._pipe[i], TrimeshPipe):
-                    vertices = arr_vertices(geo.vertices.get_col('xyz'))
-                    faces = arr_faces(geo.faces.get_col('faces'))
+                    vertices = arr_vertices(geo.get_vertices('xyz'))
+                    faces = arr_faces(geo.get_faces())
                     self._pipe[i] = TrimeshPipe(
                             vertices, faces,
                             values=values,
@@ -329,13 +329,14 @@ class GeometryElement(Element):
         state = self._state
         if not self._controls:
             from ..state import state_bind_checkbox, state_bind_combobox, \
-                                state_bind_slider
+                state_bind_slider
 
             frame = qw.QFrame()
             layout = qw.QGridLayout()
+            layout.setAlignment(qc.Qt.AlignTop)
             frame.setLayout(layout)
 
-            # load geometrie
+            # load geometry
             pb = qw.QPushButton('Load')
             layout.addWidget(pb, 0, 0)
 
