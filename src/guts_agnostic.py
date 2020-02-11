@@ -1,4 +1,7 @@
 from __future__ import absolute_import, print_function
+
+import copy
+
 try:
     from yaml import CSafeLoader as SafeLoader, CSafeDumper as SafeDumper
 except ImportError:
@@ -66,6 +69,10 @@ class Object(object):
     def drop_attribute(self, k):
         self._data = [kv for kv in self._data if kv[0] != k]
 
+    def replace(self, other):
+        self._tagname = other._tagname
+        self._data = copy.deepcopy(other._data)
+
     def __setitem__(self, k, v):
         for kv in self._data:
             if kv[0] == k:
@@ -78,6 +85,17 @@ class Object(object):
         for kv in self._data:
             if kv[0] == item:
                 return kv[1]
+
+        raise KeyError(item)
+
+    def get(self, *args):
+        if len(args) == 1:
+            return self.__getitem__(args[0])
+        else:
+            try:
+                return self.__getitem__(args[0])
+            except KeyError:
+                return args[1]
 
 
 def multi_representer(dumper, data):
