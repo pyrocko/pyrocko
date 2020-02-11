@@ -1440,7 +1440,8 @@ def load_channel_table(stream):
         t = line.rstrip().split('|')
 
         if len(t) != 17:
-            raise InvalidRecord(line)
+            logger.warn('Invalid channel record: %s' % line)
+            continue
 
         (net, sta, loc, cha, lat, lon, ele, dep, azi, dip, sens, scale,
             scale_freq, scale_units, sample_rate, start_date, end_date) = t
@@ -1459,6 +1460,13 @@ def load_channel_table(stream):
             depth = float(dep)
         except ValueError:
             depth = 0.0
+
+        try:
+            azi = float(azi)
+            dip = float(dip)
+        except ValueError:
+            azi = None
+            dip = None
 
         try:
             if net not in networks:
