@@ -22,12 +22,9 @@ rm -rf $srcdir
 git clone -b $branch ../.. pyrocko
 echo "creating pip wheels for branch $branch"
 
-sudo docker run  \
+docker run  \
     --mount type=bind,source="$srcdir",destination=/src \
     --mount type=bind,source="$outdir",destination=/wheels \
     --env PLAT=$plat \
     quay.io/pypa/$plat \
     /src/maintenance/pip/build_wheels.sh
-
-sudo chown -R `id -u` wheels
-sudo chgrp -R `id -g` wheels

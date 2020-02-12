@@ -40,7 +40,8 @@ cd "$pyrockodir"
 ln -s "/vagrant/pyrocko-test-data" "test/data"
 ln -s "/vagrant/example_run_dir" "test/example_run_dir"
 
-python setup.py install -f && \
+#python setup.py install -f && \
+# using anaconda install with new tests...
     python -m pyrocko.print_version deps >> "$outfile_py3" && \
     python -m nose "$thetest" > >(tee -a "$outfile_py3") 2> >(tee -a "$outfile_py3" >&2) || \
     /bin/true

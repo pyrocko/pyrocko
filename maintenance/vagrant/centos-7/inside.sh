@@ -44,3 +44,10 @@ python setup.py install -f && \
     python -m pyrocko.print_version deps >> "$outfile_py3" && \
     python -m nose "$thetest" > >(tee -a "$outfile_py3") 2> >(tee -a "$outfile_py3" >&2) || \
     /bin/true
+
+python2=/usr/bin/python2
+"$python2" setup.py install_prerequisites
+"$python2" setup.py install -f && \
+    "$python2" -m pyrocko.print_version deps >> "$outfile_py2" && \
+    "$python2" -m nose "$thetest" > >(tee -a "$outfile_py2") 2> >(tee -a "$outfile_py2" >&2) || \
+    /bin/true

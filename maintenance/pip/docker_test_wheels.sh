@@ -19,19 +19,20 @@ cp -r ../../test/data $srcdir/test/
 cp -r ../../test/example_run_dir $srcdir/test/
 
 
-for image in python:3.7-buster ; do
+for image in python:2.7-buster python:3.8-buster python:3.7-buster python:3.6-buster python:3.5-buster; do
     volume="pyrocko_src_data_${image/:/_}"
 
-    sudo docker volume create $volume
-    sudo docker run --rm -v "$srcdir":/src -v $volume:/dst busybox cp -r /src /dst
+    docker volume create $volume
+    docker run --rm -v "$srcdir":/src -v $volume:/dst busybox cp -r /src/. /dst/
 
-    sudo docker run \
+    docker run \
+        --rm \
         --mount source=$volume,destination=/src \
         --mount type=bind,source="$wheeldir",destination=/wheels \
         $image \
         /src/maintenance/pip/test_wheels.sh
 
-    sudo docker volume rm $volume
+    docker volume rm $volume
 done
 
-rm $srcdir
+rm -rf $srcdir

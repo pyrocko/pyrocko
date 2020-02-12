@@ -1,4 +1,7 @@
 #!/bin/bash
+
+set -e
+
 if [ ! -f deploy-pypi.sh ] ; then
     echo "must be run from pyrocko's maintenance directory"
     exit 1
@@ -6,12 +9,12 @@ fi
 
 branch="$1"
 if [ -z "$branch" ]; then
-    branch=master
+    branch=`git rev-parse --abbrev-ref HEAD`
 fi
 
-if [ ! -e ~/.pypirc ] ; then
-    echo "!! NO ~/.pypirc found !!
-Create a ~/.pypirc with the following content:
+if [ ! -e pypirc ] ; then
+    echo "!! NO pypirc found !!
+Create a 'pypirc' with the following content:
 
 '''
 [distutils]
@@ -30,17 +33,11 @@ username = pyrocko
 password = <password>
 '''
     "
-    exit
+    exit 1
 fi
 
-read -r -p "Do you want to deploy local branch $branch on https://pypi.python.org [y/N]?" resp
-case $resp in
-    [yY][eE][sS]|[yY] )
-        git clone -b $branch "../" "pip-pyrocko.git"
-        cd "pip-pyrocko.git"
-        python setup.py sdist upload -r pypi
-        cd -
-        rm -rf "pip-pyrocko.git"
-        ;;
-    * ) ;;
-esac
+cd pip-boxes/centos-7
+
+vagrant halt
+echo "Building Pip packages on $box"
+./outside.sh $branch
