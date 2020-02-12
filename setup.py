@@ -22,6 +22,18 @@ from setuptools import setup, Extension, Command
 from setuptools.command.build_py import build_py
 from setuptools.command.build_ext import build_ext
 from setuptools.command.install import install
+running_bdist_wheel = False
+try:
+    from wheel.bdist_wheel import bdist_wheel
+
+    class CustomBDistWheelCommand(bdist_wheel):
+        def run(self):
+            global running_bdist_wheel
+            running_bdist_wheel = True
+            bdist_wheel.run(self)
+
+except ImportError:
+    CustomBDistWheelCommand = None
 
 packname = 'pyrocko'
 version = '2020.02.10'
@@ -283,7 +295,10 @@ No Pyrocko installations found with the currently running Python interpreter.
 class CustomInstallCommand(install):
 
     def symlink_interpreter(self):
-        if hasattr(self, 'install_scripts') and sys.executable:
+        if not running_bdist_wheel \
+                and hasattr(self, 'install_scripts') \
+                and sys.executable:
+
             target = os.path.join(self.install_scripts, 'pyrocko-python')
             if os.path.exists(target):
                 os.unlink(target)
@@ -326,14 +341,14 @@ class InstallPrerequisits(Command):
         distribution = ''
         try:
             distribution = platform.linux_distribution()[0].lower().rstrip()
-        except:
+        except Exception:
             pass
 
         if not distribution:
             try:
                 if platform.uname()[2].find('arch') != -1:
                     distribution = 'arch'
-            except:
+            except Exception:
                 pass
 
         if not distribution:
@@ -595,22 +610,25 @@ subpacknames = [
     'pyrocko.obspy_compat',
 ]
 
+cmdclass = {
+    'install': CustomInstallCommand,
+    'build_py': CustomBuildPyCommand,
+    # 'py2app': CustomBuildAppCommand,
+    'build_ext': CustomBuildExtCommand,
+    'check_multiple_install': CheckInstalls,
+    'install_prerequisites': InstallPrerequisits,
+    'uninstall': Uninstall}
+
+if CustomBDistWheelCommand:
+    cmdclass['bdist_wheel'] = CustomBDistWheelCommand
 
 setup(
-    cmdclass={
-        'install': CustomInstallCommand,
-        'build_py': CustomBuildPyCommand,
-        # 'py2app': CustomBuildAppCommand,
-        'build_ext': CustomBuildExtCommand,
-        'check_multiple_install': CheckInstalls,
-        'install_prerequisites': InstallPrerequisits,
-        'uninstall': Uninstall,
-    },
-
+    cmdclass=cmdclass,
     name=packname,
     version=version,
     description='A versatile seismology toolkit for Python.',
-    long_description=open('maintenance/readme-pip.rst', 'rb').read().decode('utf8'),
+    long_description=open(
+        'maintenance/readme-pip.rst', 'rb').read().decode('utf8'),
     author='The Pyrocko Developers',
     author_email='info@pyrocko.org',
     url='https://pyrocko.org',
