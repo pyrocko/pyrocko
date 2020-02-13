@@ -123,7 +123,7 @@ class PeterBird2003(PlatesDataset):
             self,
             name='PeterBird2003',
             data_dir=None,
-            raw_data_url=('http://peterbird.name/oldFTP/PB2002/%s')):
+            raw_data_url=('https://mirror.pyrocko.org/peterbird.name/oldFTP/PB2002/%s')):  # noqa
 
         if data_dir is None:
             data_dir = op.join(config.config().tectonics_dir, name)
@@ -271,7 +271,8 @@ class GSRM1(StrainRateDataset):
             self,
             name='GSRM1.2',
             data_dir=None,
-            raw_data_url=('http://gsrm.unavco.org/model/files/1.2/%s')):
+            raw_data_url=('https://mirror.pyrocko.org/gsrm.unavco.org/model'
+                          '/files/1.2/%s')):
 
         if data_dir is None:
             data_dir = op.join(config.config().tectonics_dir, name)

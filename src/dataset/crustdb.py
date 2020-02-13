@@ -24,7 +24,7 @@ from .crustdb_abbr import ageKey, provinceKey, referenceKey, pubYear  # noqa
 logger = logging.getLogger('pyrocko.dataset.crustdb')
 THICKNESS_HALFSPACE = 2
 
-db_url = 'http://kinherd.org/pyrocko_data/gsc20130501.txt'
+db_url = 'https://mirror.pyrocko.org/gsc20130501.txt'
 km = 1e3
 vel_labels = {
     'vp': '$V_P$',

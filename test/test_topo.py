@@ -1,21 +1,12 @@
 from __future__ import division, print_function, absolute_import
 import unittest
 import numpy as num
-from pyrocko import util, config
+from pyrocko import util
 from pyrocko.dataset import topo
-
-
-def have_srtm_credentials():
-    if config.config().earthdata_credentials is None:
-        return False
-    return True
 
 
 class TopoTestCase(unittest.TestCase):
 
-    @unittest.skipUnless(
-        have_srtm_credentials(),
-        'No Earthdata credentials in config.')
     def test_srtm(self):
         srtm = topo.srtmgl3
         tiles = list(srtm.available_tilenames())

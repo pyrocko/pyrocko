@@ -44,8 +44,8 @@ class SRTMGL3(dataset.TiledGlobalDataset):
             self,
             name='SRTMGL3',
             data_dir=op.join(op.dirname(__file__), 'data', 'SRTMGL3'),
-            raw_data_url='https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3.003/'
-                         '2000.02.11'):
+            raw_data_url='https://mirror.pyrocko.org/e4ftl01.cr.usgs.gov/'
+                         'MEASURES/SRTMGL3.003/2000.02.11'):
 
         dataset.TiledGlobalDataset.__init__(
             self,
@@ -83,7 +83,8 @@ class SRTMGL3(dataset.TiledGlobalDataset):
                 # remote structure changed, we would have to clawl through
                 # many pages. Now keeping tile index here:
                 self.download_file(
-                    'http://data.pyrocko.org/scratch/available.list', fpath)
+                    'https://mirror.pyrocko.org/e4ftl01.cr.usgs.gov/'
+                    'MEASURES/SRTMGL3.003/2000.02.11/available.list', fpath)
 
                 # url = self.raw_data_url + '/'
                 # f = urlopen(url)
@@ -113,37 +114,14 @@ class SRTMGL3(dataset.TiledGlobalDataset):
         return op.join(self.data_dir, fn)
 
     def download_tile(self, tilename):
-        import requests
-
         fpath = self.tilepath(tilename)
         fn = self.tilefilename(tilename)
         url = self.raw_data_url + '/' + fn
-        if self.config.earthdata_credentials:
-            cred = self.config.earthdata_credentials
-        else:
-            raise AuthenticationRequired(
-                '\n\nRegister at https://urs.earthdata.nasa.gov/users/new'
-                ' and provide credentials in your local ~/.pyrocko/config.pf'
-                ' as follows:\n' +
-                'earthdata_credentials: [username, password]')
-
         try:
             # we have to follow the oauth redirect here...
-            r = requests.get(url, auth=cred)
-            self.download_file(
-                r.url, fpath, username=cred[0], password=cred[1])
+            self.download_file(url, fpath)
         except Exception as e:
-            if hasattr(e.response, 'status_code'):
-                if e.response.status_code == 401:
-                    raise AuthenticationRequired(
-                        '\n\nWe could not login to earthdata given the'
-                        ' credentials in ~/.pyrocko/config.pf!\n'
-                        'Register at https://urs.earthdata.nasa.gov/users/new'
-                        ' and provide credentials in your local '
-                        ' ~/.pyrocko/config.pf as follows:\n' +
-                        'earthdata_credentials: [username, password]')
-                else:
-                    raise e
+            raise e
 
     def download(self):
         for tn in self.available_tilenames():

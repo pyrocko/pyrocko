@@ -48,7 +48,7 @@ population
 feature_code
 '''.split())
 
-base_url = 'http://download.geonames.org/export/dump/'
+base_url = 'https://mirror.pyrocko.org/download.geonames.org/export/dump/'
 
 
 def download_file(fn, dirpath):

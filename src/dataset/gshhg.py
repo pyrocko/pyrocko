@@ -390,7 +390,7 @@ class GSHHG(object):
     functions to test if the Earth is dry or wet at given coordinates.
     '''
 
-    gshhg_url = 'http://www.soest.hawaii.edu/pwessel/gshhg/gshhg-bin-2.3.7.zip'
+    gshhg_url = 'https://mirror.pyrocko.org/www.soest.hawaii.edu/pwessel/gshhg/gshhg-bin-2.3.7.zip'  # noqa
     _header_struct = struct.Struct('>IIIiiiiIIii')
 
     def __init__(self, gshhg_file):

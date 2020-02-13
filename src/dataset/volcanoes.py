@@ -92,8 +92,8 @@ class VolcanoPleistocene(Volcano):
 
 
 class Volcanoes(object):
-    URL_HOLOCENE = 'https://webservices.volcano.si.edu/geoserver/GVP-VOTW/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=GVP-VOTW:Smithsonian_VOTW_Holocene_Volcanoes&maxFeatures=5000&outputFormat=csv'  # noqa
-    URL_PLEISTOCENE = 'https://webservices.volcano.si.edu/geoserver/GVP-VOTW/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=GVP-VOTW:Smithsonian_VOTW_Pleistocene_Volcanoes&maxFeatures=5000&outputFormat=csv'  # noqa
+    URL_HOLOCENE = 'https://mirror.pyrocko.org/smithsonian/smithsonian-holocene.csv'  # noqa
+    URL_PLEISTOCENE = 'https://mirror.pyrocko.org/smithsonian/smithsonian-pleistocene.csv'  # noqa
 
     def __init__(self):
         self.fname_holocene = op.join(

@@ -1,4 +1,3 @@
-
 import unittest
 import logging
 from pyrocko import util
@@ -25,15 +24,15 @@ class UrlsTestCase(unittest.TestCase):
              'pyrocko.config'),
             ('http://stackoverflow.com/questions/2417794/', 'cake_plot'),
             ('http://igppweb.ucsd.edu/~gabi/rem.html', 'crust2x2_data'),
-            ('http://kinherd.org/pyrocko_data/gsc20130501.txt', 'crustdb'),
-            ('http://download.geonames.org/export/dump/', 'geonames'),
+            ('https://mirror.pyrocko.org/gsc20130501.txt', 'crustdb'),
+            ('https://mirror.pyrocko.org/download.geonames.org/export/dump/', 'geonames'),  # noqa
             ('http://emolch.github.io/gmtpy/', 'gmtpy'),
             ('http://www.apache.org/licenses/LICENSE-2.0', 'kagan.py'),
             ('http://www.opengis.net/kml/2.2', 'model'),
             ('http://maps.google.com/mapfiles/kml/paddle/S.png', 'model'),
             ('http://de.wikipedia.org/wiki/Orthodrome', 'orthodrome'),
-            ('http://peterbird.name/oldFTP/PB2002', 'tectonics'),
-            ('http://gsrm.unavco.org/model', 'tectonics'),
+            ('https://mirror.pyrocko.org/peterbird.name/oldFTP/PB2002', 'tectonics'),  # noqa
+            ('https://mirror.pyrocko.org/gsrm.unavco.org/model', 'tectonics'),
             ('http://stackoverflow.com/questions/19332902/', 'util'),
         ]
 

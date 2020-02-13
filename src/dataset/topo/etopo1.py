@@ -27,8 +27,9 @@ class ETOPO1(dataset.TiledGlobalDataset):
             name='ETOPO1',
             data_dir=op.join(op.dirname(__file__), 'data', 'ETOPO1'),
             base_fn='etopo1_ice_g_i2',
-            raw_data_url=('http://www.ngdc.noaa.gov/mgg/global/relief/ETOPO1'
-                          '/data/ice_surface/grid_registered/binary/%s.zip')):
+            raw_data_url=('https://mirror.pyrocko.org/www.ngdc.noaa.gov/mgg'
+                          '/global/relief/ETOPO1/data/ice_surface/'
+                          'grid_registered/binary/%s.zip')):
 
         dataset.TiledGlobalDataset.__init__(
             self,
