@@ -116,6 +116,29 @@ def topo_to_vertices(lat, lon, ele, planetradius):
     return vertices
 
 
+g_slab_faces_quad = {}
+
+
+def slab_to_faces_quad(nlat, nlon, nan_array, prefix):
+
+    if prefix not in g_slab_faces_quad:
+
+        nfaces = (nlat - 1) * (nlon - 1)
+        faces = num.empty((nfaces, 4), dtype=num.int)
+        ilon = num.arange(nlon - 1)
+        for ilat in range(nlat - 1):
+            ibeg = ilat * (nlon - 1)
+            iend = (ilat + 1) * (nlon - 1)
+            faces[ibeg:iend, 0] = ilat * nlon + ilon
+            faces[ibeg:iend, 1] = ilat * nlon + ilon + 1
+            faces[ibeg:iend, 2] = ilat * nlon + ilon + nlon + 1
+            faces[ibeg:iend, 3] = ilat * nlon + ilon + nlon
+
+        g_slab_faces_quad[prefix] = faces
+
+    return g_slab_faces_quad[prefix]
+
+
 g_topo_faces = {}
 
 
