@@ -123,6 +123,7 @@ Further elements allow display of
 * InSAR displacements
 * source models
 * faults
+* subduction zone slabs (Slab2)
 * volcanoes
 * and more...
 

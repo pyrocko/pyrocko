@@ -65,6 +65,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `--cookie-secret-path` option to control where the session cookie
   secret is stored, and `--help-port-forwarding` for guidance on
   remote/forwarded access.
+- New dataset module `pyrocko.dataset.slab2` giving access to the USGS Slab2
+  subduction zone geometries, and a matching *Slabs* element in Sparrow.
 
 ### Changed
 - `squirrel jackseis`: chopped output traces are now clipped exactly to
