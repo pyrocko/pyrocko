@@ -102,6 +102,8 @@ class PyrockoConfig(ConfigBase):
         default=os.path.join(pyrocko_dir_tmpl, 'volcanoes'))
     fault_lines_dir = PathWithPlaceholders.T(
         default=os.path.join(pyrocko_dir_tmpl, 'fault_lines'))
+    slab2_dir = PathWithPlaceholders.T(
+        default=os.path.join(pyrocko_dir_tmpl, 'slab2'))
     colortables_dir = PathWithPlaceholders.T(
         default=os.path.join(pyrocko_dir_tmpl, 'colortables'))
     leapseconds_path = PathWithPlaceholders.T(
