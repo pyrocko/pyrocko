@@ -90,7 +90,7 @@ def iload(filename, load_data, endianness='>'):
             2: (endianness+'i4', 4, "4-byte, two's complement integer"),
             3: (endianness+'i4', 2, "2-byte, two's complement integer"),
             4: (None,  4, "4-byte fixed-point with gain (obolete)"),
-            5: ('f4',  4, "4-byte IEEE floating-point"),
+            5: (endianness+'f4',  4, "4-byte IEEE floating-point"),
             6: (None,  0, "not currently used"),
             7: (None,  0, "not currently used"),
             8: ('i1',  1, "1-byte, two's complement integer")}
