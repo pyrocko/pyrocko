@@ -722,7 +722,7 @@ class TraceTestCase(unittest.TestCase):
             deltat=deltat,
             tmin=0.0)
         tr2 = tr1.transfer()
-        tr2.ydata += tr1.ydata.mean()
+        # tr2.ydata += tr1.ydata.mean()
         assert numeq(tr1.ydata, tr2.ydata, 0.01)
 
     def test_muliply_taper(self):
