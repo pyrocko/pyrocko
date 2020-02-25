@@ -1131,10 +1131,10 @@ static store_error_t store_calc_timeseries(
                     &receiver_coords[ireceiver*5],
                     irecord_bases);
 
-                if (!inlimits(idelay_floor) || !inlimits(idelay_ceil)) {
+                if (err != SUCCESS) {
                     for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
                         result = results[icomponent+ireceiver*cscheme->ncomponents];
-                        result->err = BAD_REQUEST;
+                        result->err = err;
                     }
                     continue;
                 }
