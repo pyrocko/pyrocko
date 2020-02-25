@@ -1050,13 +1050,31 @@ def init(store_dir, variant):
         raise gf.store.StoreError('unsupported qssp variant: %s' % variant)
 
     qssp = QSSPConfig(qssp_version=variant)
-    qssp.time_region = (
-        gf.Timing('begin-50'),
-        gf.Timing('end+100'))
+    if variant != 'ppeg2017':
+        qssp.time_region = (
+            gf.Timing('begin-50'),
+            gf.Timing('end+100'))
 
-    qssp.cut = (
-        gf.Timing('begin-50'),
-        gf.Timing('end+100'))
+        qssp.cut = (
+            gf.Timing('begin-50'),
+            gf.Timing('end+100'))
+
+    else:  # variant == 'ppeg2017':
+        qssp.frequency_max = 0.5
+        qssp.time_region = [
+            gf.Timing('-100'), gf.Timing('{stored:begin}+100')]
+        qssp.cut = [
+            gf.Timing('-100'), gf.Timing('{stored:begin}+100')]
+        qssp.antialiasing_factor = 1.0e-10
+        qssp.toroidal_modes = False
+        qssp.cutoff_harmonic_degree_min = 2500
+        qssp.cutoff_harmonic_degree_max = 2500
+        qssp.crit_frequency_sge = 5.0
+        qssp.crit_harmonic_degree_sge = 50000
+        qssp.source_patch_radius = 10.0
+        qssp.bandpass_order = 6
+        qssp.bandpass_corner_low = 0.0
+        qssp.bandpass_corner_high = 0.125
 
     store_id = os.path.basename(os.path.realpath(store_dir))
     if variant == 'ppeg2017':
@@ -1064,12 +1082,17 @@ def init(store_dir, variant):
     else:
         quantity = None
 
+    if variant == 'ppeg2017':
+        sample_rate = 4.0
+    else:
+        sample_rate = 0.2
+
     config = gf.meta.ConfigTypeA(
         id=store_id,
         ncomponents=10,
         component_scheme='elastic10',
         stored_quantity=quantity,
-        sample_rate=0.2,
+        sample_rate=sample_rate,
         receiver_depth=0*km,
         source_depth_min=10*km,
         source_depth_max=20*km,
