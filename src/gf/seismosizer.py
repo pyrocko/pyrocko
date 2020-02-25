@@ -1117,12 +1117,6 @@ class Source(Location, Cloneable):
                     east_shifts=east_shifts,
                     depths=depths)
 
-    @classmethod
-    def provided_components(cls, component_scheme):
-        cls = cls.discretized_source_class
-        return meta.component_scheme_to_description[component_scheme]\
-            .provided_components
-
     def pyrocko_event(self, store=None, target=None, **kwargs):
         duration = None
         if self.stf:
@@ -2845,7 +2839,13 @@ class StaticDisplacement(Rule):
 
 channel_rules = {
     'displacement': [VectorRule('displacement')],
-    'velocity': [VectorRule('displacement', differentiate=1)],
+    'velocity': [
+        VectorRule('velocity'),
+        VectorRule('displacement', differentiate=1)],
+    'acceleration': [
+        VectorRule('acceleration'),
+        VectorRule('velocity', differentiate=1),
+        VectorRule('displacement', differentiate=2)],
     'pore_pressure': [ScalarRule('pore_pressure')],
     'vertical_tilt': [HorizontalVectorRule('vertical_tilt')],
     'darcy_velocity': [VectorRule('darcy_velocity')],
@@ -3181,8 +3181,7 @@ class LocalEngine(Engine):
             self._open_stores.pop(store_id)
 
     def get_rule(self, source, target):
-        store_ = self.get_store(target.store_id)
-        cprovided = source.provided_components(store_.config.component_scheme)
+        cprovided = self.get_store(target.store_id).get_provided_components()
 
         if isinstance(target, StaticTarget):
             quantity = target.quantity

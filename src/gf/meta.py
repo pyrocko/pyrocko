@@ -146,6 +146,7 @@ class ComponentSchemeDescription(Object):
     name = String.T()
     source_terms = List.T(String.T())
     ncomponents = Int.T()
+    default_stored_quantity = String.T(optional=True)
     provided_components = List.T(String.T())
 
 
@@ -154,36 +155,42 @@ component_scheme_descriptions = [
         name='elastic2',
         source_terms=['m0'],
         ncomponents=2,
+        default_stored_quantity='displacement',
         provided_components=[
-            'displacement.n', 'displacement.e', 'displacement.d']),
+            'n', 'e', 'd']),
     ComponentSchemeDescription(
         name='elastic8',
         source_terms=['mnn', 'mee', 'mdd', 'mne', 'mnd', 'med'],
         ncomponents=8,
+        default_stored_quantity='displacement',
         provided_components=[
-            'displacement.n', 'displacement.e', 'displacement.d']),
+            'n', 'e', 'd']),
     ComponentSchemeDescription(
         name='elastic10',
         source_terms=['mnn', 'mee', 'mdd', 'mne', 'mnd', 'med'],
         ncomponents=10,
+        default_stored_quantity='displacement',
         provided_components=[
-            'displacement.n', 'displacement.e', 'displacement.d']),
+            'n', 'e', 'd']),
     ComponentSchemeDescription(
         name='elastic18',
         source_terms=['mnn', 'mee', 'mdd', 'mne', 'mnd', 'med'],
         ncomponents=18,
+        default_stored_quantity='displacement',
         provided_components=[
-            'displacement.n', 'displacement.e', 'displacement.d']),
+            'n', 'e', 'd']),
     ComponentSchemeDescription(
         name='elastic5',
         source_terms=['fn', 'fe', 'fd'],
         ncomponents=5,
+        default_stored_quantity='displacement',
         provided_components=[
-            'displacement.n', 'displacement.e', 'displacement.d']),
+            'n', 'e', 'd']),
     ComponentSchemeDescription(
         name='poroelastic10',
         source_terms=['pore_pressure'],
         ncomponents=10,
+        default_stored_quantity=None,
         provided_components=[
             'displacement.n', 'displacement.e', 'displacement.d',
             'vertical_tilt.n', 'vertical_tilt.e',
@@ -999,6 +1006,8 @@ class DiscretizedExplosionSource(DiscretizedSource):
             m6s = num.zeros((self.m0s.size, 6))
             m6s[:, 0:3] = self.m0s[:, num.newaxis]
             return m6s
+        else:
+            assert False
 
     def make_weights(self, receiver, scheme):
         self.check_scheme(scheme)
@@ -1251,6 +1260,9 @@ class DiscretizedMTSource(DiscretizedSource):
                 g_e = rep((0, 1, 2, 8, 3, 4), n)
                 w_d = cat((f0, f1, f2, f5))
                 g_d = rep((5, 6, 7, 9), n)
+
+            else:
+                assert False
 
         return (
             ('displacement.n', w_n, g_n),
@@ -1554,6 +1566,13 @@ class Config(Object):
     component_scheme = ComponentScheme.T(
         default='elastic10',
         help='GF component scheme (%s).' % fmt_choices(ComponentScheme))
+
+    stored_quantity = QuantityType.T(
+        optional=True,
+        help='Physical quantity of stored values (%s). If not given, a '
+             'default is used based on the GF component scheme. The default '
+             'for the ``"elastic*"`` family of component schemes is '
+             '``"displacement"``.' % fmt_choices(QuantityType))
 
     tabulated_phases = List.T(
         TPDef.T(),

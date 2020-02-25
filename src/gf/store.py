@@ -1819,6 +1819,21 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
             util.ensuredirs(fn)
             ip.dump(fn)
 
+    def get_provided_components(self):
+
+        scheme_desc = meta.component_scheme_to_description[
+            self.config.component_scheme]
+
+        quantity = self.config.stored_quantity \
+            or scheme_desc.default_stored_quantity
+
+        if not quantity:
+            return scheme_desc.provided_components
+        else:
+            return [
+                quantity + '.' + comp
+                for comp in scheme_desc.provided_components]
+
     def statics(self, source, multi_location, itsnapshot, components,
                 interpolation='nearest_neighbor', nthreads=0):
         if not self._f_index:
@@ -1833,9 +1848,6 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
         else:
             delays = source.times*0
             itsnapshot = 1
-
-        scheme_desc = meta.component_scheme_to_description[
-            self.config.component_scheme]
 
         if ntargets == 0:
             raise StoreError('MultiLocation.coords5 is empty')
@@ -1853,7 +1865,7 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
 
         out = {}
         for icomp, (comp, comp_res) in enumerate(
-                zip(scheme_desc.provided_components, res)):
+                zip(self.get_provided_components(), res)):
             if comp not in components:
                 continue
             out[comp] = res[icomp]
@@ -1887,8 +1899,6 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
             store.open()
 
         scheme = config.component_scheme
-        scheme_desc = meta.component_scheme_to_description[
-            config.component_scheme]
 
         source_coords_arr = source.coords5()
         source_terms = source.get_source_terms(scheme)
@@ -1928,7 +1938,7 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
         except Exception as e:
             raise e
 
-        provided_components = scheme_desc.provided_components
+        provided_components = self.get_provided_components()
         ncomponents = len(provided_components)
 
         seismograms = [dict() for _ in range(nreceiver)]
@@ -1976,8 +1986,6 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
             store.open()
 
         scheme = config.component_scheme
-        scheme_desc = meta.component_scheme_to_description[
-            config.component_scheme]
 
         source_coords_arr = source.coords5()
         source_terms = source.get_source_terms(scheme)
@@ -1995,7 +2003,7 @@ definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
         except store_ext.StoreExtError:
             raise meta.OutOfBounds()
 
-        provided_components = scheme_desc.provided_components
+        provided_components = self.get_provided_components()
 
         out = {}
         for icomp, comp in enumerate(provided_components):
