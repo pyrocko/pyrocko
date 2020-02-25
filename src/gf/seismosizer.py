@@ -826,6 +826,10 @@ class HalfSinusoidSTF(STF):
              ' 0.0: center -> source duration [-T/2, T/2] ~ centroid time, '
              '+1.0: right -> source duration [-T, 0] ~ rupture end time)')
 
+    exponent = Int.T(
+        default=1,
+        help='set to 2 to use square of the half-period sinusoidal function.')
+
     @classmethod
     def factor_duration_to_effective(cls):
         return math.sqrt((3.0 * math.pi**2 - 24.0) / math.pi**2)
@@ -842,7 +846,13 @@ class HalfSinusoidSTF(STF):
         if nt > 1:
             t_edges = num.maximum(tmin_stf, num.minimum(tmax_stf, num.linspace(
                 tmin - 0.5 * deltat, tmax + 0.5 * deltat, nt + 1)))
-            fint = -num.cos((t_edges - tmin_stf) * (math.pi / self.duration))
+            if self.exponent == 1:
+                fint = -num.cos(
+                    (t_edges - tmin_stf) * (math.pi / self.duration))
+            elif self.exponent == 2:
+                fint = (t_edges - tmin_stf) / self.duration \
+                    - 1.0 / (2.0 * math.pi) * num.sin(
+                        (t_edges - tmin_stf) * (2.0 * math.pi / self.duration))
             amplitudes = fint[1:] - fint[:-1]
             amplitudes /= num.sum(amplitudes)
         else:
