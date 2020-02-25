@@ -1054,6 +1054,15 @@ def rand_to_gutenberg_richter(rand, b_value, magnitude_min):
     return magnitude_min + num.log10(1.-rand) / -b_value
 
 
+def magnitude_to_duration_gcmt(magnitudes):
+    '''
+    Scaling relation used by Global CMT catalog for most of its events.
+    '''
+
+    mom = magnitude_to_moment(magnitudes)
+    return (mom / 1.1e16)**(1./3.)
+
+
 if __name__ == '__main__':
 
     import sys
