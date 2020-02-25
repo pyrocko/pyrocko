@@ -1452,24 +1452,51 @@ class Trace(object):
                 'trace length = %g, fading length = %g'
                 % (self.nslc_id + (self.tmax-self.tmin, tfade)))
 
-        ndata = self.ydata.size
-        ntrans = nextpow2(ndata*1.2)
-        coefs = self._get_tapered_coefs(
-            ntrans, freqlimits, transfer_function, invert=invert)
+        if freqlimits is None and (
+                transfer_function is None or transfer_function.is_scalar()):
 
-        data = self.ydata
-        data_pad = num.zeros(ntrans, dtype=num.float)
-        data_pad[:ndata] = data - data.mean()
-        if tfade != 0.0:
-            data_pad[:ndata] *= costaper(
-                0., tfade, self.deltat*(ndata-1)-tfade, self.deltat*ndata,
-                ndata, self.deltat)
+            # special case for flat responses
 
-        fdata = num.fft.rfft(data_pad)
-        fdata *= coefs
-        ddata = num.fft.irfft(fdata)
-        output = self.copy()
-        output.ydata = ddata[:ndata]
+            output = self.copy()
+            data = self.ydata
+            ndata = data.size
+
+            if transfer_function is not None:
+                c = num.abs(transfer_function.evaluate(num.ones(1))[0])
+
+                if invert:
+                    c = 1.0/c
+
+                data *= c
+
+            if tfade != 0.0:
+                data *= costaper(
+                    0., tfade, self.deltat*(ndata-1)-tfade, self.deltat*ndata,
+                    ndata, self.deltat)
+
+            output.ydata = data
+
+        else:
+            ndata = self.ydata.size
+            ntrans = nextpow2(ndata*1.2)
+            coefs = self._get_tapered_coefs(
+                ntrans, freqlimits, transfer_function, invert=invert)
+
+            data = self.ydata
+
+            data_pad = num.zeros(ntrans, dtype=num.float)
+            data_pad[:ndata] = data - data.mean()
+            if tfade != 0.0:
+                data_pad[:ndata] *= costaper(
+                    0., tfade, self.deltat*(ndata-1)-tfade, self.deltat*ndata,
+                    ndata, self.deltat)
+
+            fdata = num.fft.rfft(data_pad)
+            fdata *= coefs
+            ddata = num.fft.irfft(fdata)
+            output = self.copy()
+            output.ydata = ddata[:ndata]
+
         if cut_off_fading and tfade != 0.0:
             try:
                 output.chop(output.tmin+tfade, output.tmax-tfade, inplace=True)
@@ -2689,6 +2716,16 @@ class FrequencyResponse(Object):
         coefs = num.ones(freqs.size, dtype=num.complex)
         return coefs
 
+    def is_scalar(self):
+        '''
+        Check if this is a flat response.
+        '''
+
+        if type(self) == FrequencyResponse:
+            return True
+        else:
+            return False  # default for derived classes
+
 
 class Evalresp(FrequencyResponse):
     '''
@@ -2815,6 +2852,9 @@ class PoleZeroResponse(FrequencyResponse):
             a /= jomeg-p
 
         return a
+
+    def is_scalar(self):
+        return len(self.zeros) == 0 and len(self.poles) == 0
 
 
 class ButterworthResponse(FrequencyResponse):
@@ -2968,6 +3008,9 @@ class MultiplyResponse(FrequencyResponse):
             a *= resp.evaluate(freqs)
 
         return a
+
+    def is_scalar(self):
+        return all(resp.is_scalar() for resp in self.responses)
 
 
 def asarray_1d(x, dtype):
