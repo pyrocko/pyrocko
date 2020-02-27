@@ -9,7 +9,7 @@ fi
 
 wd=`pwd`
 
-plat=manylinux2010_x86_64 
+plat=manylinux1_x86_64 
 
 srcdir="$wd/pyrocko"
 outdir="$wd/wheels"

@@ -11,6 +11,11 @@ __pycache__
 doc/_build
 maintenance/vagrant/*/*.out
 maintenance/vagrant/*/.vagrant
+maintenance/vagrant/*/example_run_dir
+maintenance/mattermost_webhook.link
+maintenance/pypirc
+maintenance/pip/pyrocko/
+maintenance/pip/wheels/
 src/info.py
 pages
 tags
