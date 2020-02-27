@@ -6,4 +6,23 @@ steps:
 - name: flake8
   image: python:3.7-buster
   commands:
-  - flake8 src/
+  - apt-get update
+  - apt-get install -y python3-flake8 flake8
+  - flake8 src test setup.py
+
+---
+
+kind: pipeline
+type: docker
+name: tests
+
+steps:
+- name: tests
+  image: python:3.7-buster
+  commands:
+  - apt-get update
+  - apt-get upgrade -y
+  - apt-get install -y xvfb libgles2-mesa
+  - pip install -r requirements-all.txt
+  - python3 setup.py install -f
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
