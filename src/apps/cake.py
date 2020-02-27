@@ -631,13 +631,15 @@ To get further help and a list of available options for any subcommand run:
         sys.exit('Usage: %s' % usage)
 
     command = args[0]
+
+    args[0:0] = ['cake']
     descr = subcommand_descriptions.get(command, None)
     subusage = usage_sub % command
 
     if command == 'print':
         c = optparse(
             (), ('model', 'phases', 'material', 'output_format'),
-            usage=subusage, descr=descr)
+            usage=subusage, descr=descr, args=args)
 
         if 'model' in c:
             if c.output_format == 'textual':
@@ -658,7 +660,8 @@ To get further help and a list of available options for any subcommand run:
     elif command == 'arrivals':
         c = optparse(
             ('model', 'phases', 'distances'),
-            ('zstart', 'zstop', 'as_degrees'), usage=subusage, descr=descr)
+            ('zstart', 'zstop', 'as_degrees'),
+            usage=subusage, descr=descr, args=args)
 
         print_arrivals(
             c.model,
@@ -668,7 +671,7 @@ To get further help and a list of available options for any subcommand run:
         c = optparse(
             ('model', 'phases'),
             ('zstart', 'zstop', 'as_degrees'),
-            usage=subusage, descr=descr)
+            usage=subusage, descr=descr, args=args)
 
         mod = c.model
         for path in mod.gather_paths(**c.getn('phases', 'zstart', 'zstop')):
@@ -680,13 +683,13 @@ To get further help and a list of available options for any subcommand run:
                 ('model', 'phases'),
                 ('zstart', 'zstop', 'distances', 'as_degrees', 'vred',
                  'phase_colors'),
-                usage=subusage, descr=descr)
+                usage=subusage, descr=descr, args=args)
         else:
             c = optparse(
                 ('model', 'phases'),
                 ('zstart', 'zstop', 'distances', 'as_degrees', 'aspect',
                  'shade_model', 'phase_colors'),
-                usage=subusage, descr=descr)
+                usage=subusage, descr=descr, args=args)
 
         mod = c.model
         paths = mod.gather_paths(**c.getn('phases', 'zstart', 'zstop'))
@@ -722,21 +725,22 @@ To get further help and a list of available options for any subcommand run:
                 c.as_degrees, vred=c.vred, phase_colors=c.phase_colors)
 
     elif command in ('plot-model',):
-        c = optparse(('model',), (), usage=subusage, descr=descr)
+        c = optparse(('model',), (), usage=subusage, descr=descr, args=args)
         mod = c.model
         plot.my_model_plot(mod)
 
     elif command in ('simplify-model',):
-        c = optparse(('model',), ('accuracy',), usage=subusage, descr=descr)
+        c = optparse(('model',), ('accuracy',),
+                     usage=subusage, descr=descr, args=args)
         my_simplify_model(c.model, c.accuracy)
 
     elif command in ('list-models',):
-        c = optparse((), (), usage=subusage, descr=descr)
+        c = optparse((), (), usage=subusage, descr=descr, args=args)
         for x in cake.builtin_models():
             print(x)
 
     elif command in ('list-phase-map',):
-        c = optparse((), (), usage=subusage, descr=descr)
+        c = optparse((), (), usage=subusage, descr=descr, args=args)
         defs = cake.PhaseDef.classic_definitions()
         for k in sorted(defs.keys()):
             print('%-15s: %s' % (k, ', '.join(defs[k])))
@@ -745,7 +749,7 @@ To get further help and a list of available options for any subcommand run:
         c = optparse(
             ('model',),
             ('slowness', 'interface', 'as_degrees'),
-            usage=subusage, descr=descr)
+            usage=subusage, descr=descr, args=args)
 
         print_scatter(c.model, p=c.slowness, interface=c.interface)
 
@@ -755,7 +759,8 @@ To get further help and a list of available options for any subcommand run:
             ('model', 'accuracy', 'slowness', 'interface', 'phases',
              'distances', 'zstart', 'zstop', 'distances', 'as_degrees',
              'material', 'vred'),
-            usage='cake help-options', descr='list all available options')
+            usage='cake help-options', descr='list all available options',
+            args=args)
 
     elif command in ('--help', '-h', 'help'):
         sys.exit('Usage: %s' % usage)

@@ -1,9 +1,15 @@
+import sys
+
 def _run_main(app, arguments_list):
     for args in arguments_list:
+        argv = sys.argv
         try:
+            sys.argv = ['prog']
             app.main(args=args)
         except SystemExit:
             pass
+        finally:
+            sys.argv = argv
 
 
 def test_fomosto():
