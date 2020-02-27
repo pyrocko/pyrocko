@@ -28,29 +28,22 @@ km = 1000.
     psgrn_pscmp.have_backend(), 'backend psgrn_pscmp not available')
 class GFStaticTest(unittest.TestCase):
     tempdirs = []
-
-    def __init__(self, *args, **kwargs):
-        self._dummy_store = None
-        self.qseis_store_dir = None
-        self.pscmp_store_dir = None
-        unittest.TestCase.__init__(self, *args, **kwargs)
+    stores = {}
 
     @classmethod
     def tearDownClass(cls):
         for d in cls.tempdirs:
             shutil.rmtree(d)
 
-    def get_qseis_store_dir(self):
-        if self.qseis_store_dir is None:
-            self.qseis_store_dir = self._create_qseis_store()
+    def get_store_dir(self, name):
+        create = {
+            'qseis': self._create_qseis_store,
+            'pscmp': self._create_psgrn_pscmp_store}
 
-        return self.qseis_store_dir
+        if name not in self.stores:
+            self.stores[name] = create[name]()
 
-    def get_pscmp_store_dir(self):
-        if self.pscmp_store_dir is None:
-            self.pscmp_store_dir = self._create_psgrn_pscmp_store()
-
-        return self.pscmp_store_dir
+        return self.stores[name]
 
     def setUp(self):
         return False
@@ -97,10 +90,10 @@ mantle
             receiver_depth=0.*km,
             source_depth_min=0.*km,
             source_depth_max=20.*km,
-            source_depth_delta=0.25*km,
+            source_depth_delta=0.5*km,
             distance_min=0.*km,
             distance_max=40.*km,
-            distance_delta=0.25*km,
+            distance_delta=0.5*km,
             modelling_code_id='psgrn_pscmp.%s' % version,
             earthmodel_1d=mod,
             tabulated_phases=[])
@@ -113,6 +106,7 @@ mantle
         store.close()
 
         psgrn_pscmp.build(store_dir, nworkers=4)
+
         return store_dir
 
     def _create_qseis_store(self):
@@ -120,20 +114,7 @@ mantle
  0. 5.8 3.46 2.6 1264. 600.
  20. 5.8 3.46 2.6 1264. 600.
  20. 6.5 3.85 2.9 1283. 600.
- 35. 6.5 3.85 2.9 1283. 600.
-mantle
- 35. 8.04 4.48 3.58 1449. 600.
- 77.5 8.045 4.49 3.5 1445. 600.
- 77.5 8.045 4.49 3.5 180.6 75.
- 120. 8.05 4.5 3.427 180. 75.
- 120. 8.05 4.5 3.427 182.6 76.06
- 165. 8.175 4.509 3.371 188.7 76.55
- 210. 8.301 4.518 3.324 201. 79.4
- 210. 8.3 4.52 3.321 336.9 133.3
- 410. 9.03 4.871 3.504 376.5 146.1
- 410. 9.36 5.08 3.929 414.1 162.7
- 660. 10.2 5.611 3.918 428.5 172.9
- 660. 10.79 5.965 4.229 1349. 549.6'''.lstrip()))
+ 35. 6.5 3.85 2.9 1283. 600.'''.lstrip()))
         store_dir = mkdtemp(prefix='gfstore')
         self.tempdirs.append(store_dir)
 
@@ -156,9 +137,9 @@ mantle
             ncomponents=10,
             sample_rate=0.25,
             receiver_depth=0.*km,
-            source_depth_min=0*km,
+            source_depth_min=2.5*km,
             source_depth_max=10*km,
-            source_depth_delta=1*km,
+            source_depth_delta=2.5*km,
             distance_min=0*km,
             distance_max=20*km,
             distance_delta=2.5*km,
@@ -180,7 +161,6 @@ mantle
         store = gf.store.Store(store_dir, 'r')
         store.make_ttt()
         store.close()
-
         qseis.build(store_dir, nworkers=1)
         return store_dir
 
@@ -217,7 +197,7 @@ mantle
             tsnapshot=20,
             interpolation=interpolation)
 
-        engine = gf.LocalEngine(store_dirs=[self.get_pscmp_store_dir()])
+        engine = gf.LocalEngine(store_dirs=[self.get_store_dir('pscmp')])
 
         def process_target(nprocs):
 
@@ -274,7 +254,7 @@ mantle
         from pyrocko.gf import store_ext
         benchmark.show_factor = True
 
-        store = gf.Store(self.get_qseis_store_dir())
+        store = gf.Store(self.get_store_dir('qseis'))
         store.open()
         src_length = 2 * km
         src_width = 5 * km
@@ -360,8 +340,8 @@ mantle
             lons=(random.uniform(-.2, .2, nstations)),
             interpolation=interpolation)
 
-        engine = gf.LocalEngine(store_dirs=[self.get_pscmp_store_dir()])
-        res = engine.process(source, gnss_target, nprocs=0)
+        engine = gf.LocalEngine(store_dirs=[self.get_store_dir('pscmp')])
+        res = engine.process(source, gnss_target, nprocs=2)
 
         statics = res.static_results()
         for static in statics:
@@ -371,7 +351,7 @@ mantle
         from pyrocko.gf import store_ext
         benchmark.show_factor = True
 
-        store = gf.Store(self.get_pscmp_store_dir())
+        store = gf.Store(self.get_store_dir('pscmp'))
         store.open()
         src_length = 2 * km
         src_width = 2 * km
@@ -458,11 +438,11 @@ mantle
             continue
             for nthreads in [1, 2, 4, 8, 0]:
                 run(interpolation, nthreads)
-            print(benchmark)
+            # print(benchmark)
             benchmark.clear()
 
         run(interpolation, nthreads=0, niter=30)
-        print(benchmark)
+        # print(benchmark)
 
         def plot(displ):
             import matplotlib.pyplot as plt
