@@ -32,9 +32,9 @@ class ISC(EarthquakeCatalog):
 
     def append_time_params(self, a, time_range):
         date_start_s, tstart_s = util.time_to_str(
-            time_range[0], format='%Y-%m-%d %H:%H:%S').split()
+            time_range[0], format='%Y-%m-%d %H:%M:%S').split()
         date_end_s, tend_s = util.time_to_str(
-            time_range[1], format='%Y-%m-%d %H:%H:%S').split()
+            time_range[1], format='%Y-%m-%d %H:%M:%S').split()
         date_start_s = date_start_s.split('-')
         date_end_s = date_end_s.split('-')
 
