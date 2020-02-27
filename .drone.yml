@@ -1,0 +1,9 @@
+kind: pipeline
+type: docker
+name: flake8
+
+steps:
+- name: flake8
+  image: python:3.7-buster
+  commands:
+  - flake8 src/
