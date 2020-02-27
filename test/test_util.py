@@ -202,7 +202,7 @@ class UtilTestCase(unittest.TestCase):
 
     def test_download(self):
         fn = self.fpath('responses.xml')
-        url = 'http://data.pyrocko.org/examples/responses.xml'
+        url = 'https://data.pyrocko.org/examples/responses.xml'
 
         stat = []
 
@@ -211,7 +211,7 @@ class UtilTestCase(unittest.TestCase):
 
         util.download_file(url, fn, status_callback=status)
 
-        url = 'http://data.pyrocko.org/testing/my_test_dir'
+        url = 'https://data.pyrocko.org/testing/my_test_dir'
         dn = self.fpath('my_test_dir')
         util.download_dir(url, dn, status_callback=status)
 
