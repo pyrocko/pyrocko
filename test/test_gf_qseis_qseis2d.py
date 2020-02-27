@@ -48,16 +48,7 @@ class GFQSeis2dTestCase(unittest.TestCase):
  35. 6.5 3.85 2.9 1283. 600.
 mantle
  35. 8.04 4.48 3.58 1449. 600.
- 77.5 8.045 4.49 3.5 1445. 600.
- 77.5 8.045 4.49 3.5 180.6 75.
- 120. 8.05 4.5 3.427 180. 75.
- 120. 8.05 4.5 3.427 182.6 76.06
- 165. 8.175 4.509 3.371 188.7 76.55
- 210. 8.301 4.518 3.324 201. 79.4
- 210. 8.3 4.52 3.321 336.9 133.3
- 410. 9.03 4.871 3.504 376.5 146.1
- 410. 9.36 5.08 3.929 414.1 162.7
- 660. 10.2 5.611 3.918 428.5 172.9
+ 660. 8.04 4.48 3.58 1449. 600.
  660. 10.79 5.965 4.229 1349. 549.6'''.lstrip()))
 
         receiver_mod = cake.LayeredModel.from_scanlines(
@@ -95,13 +86,13 @@ mantle
         config_q2 = gf.meta.ConfigTypeA(
             id='qseis2d_test_q2',
             ncomponents=10,
-            sample_rate=0.25,
+            sample_rate=0.1,
             receiver_depth=0. * km,
             source_depth_min=10. * km,
             source_depth_max=10. * km,
             source_depth_delta=1. * km,
-            distance_min=5528. * km,
-            distance_max=5532. * km,
+            distance_min=5529. * km,
+            distance_max=5531. * km,
             distance_delta=1. * km,
             modelling_code_id='qseis2d',
             earthmodel_1d=mod,
@@ -231,7 +222,7 @@ mantle
                 q2trcs.append(trc)
 
         for q, q2 in zip(qtrcs, q2trcs):
-            num.testing.assert_allclose(q.ydata, q2.ydata, atol=4e-24)
+            num.testing.assert_allclose(q.ydata, q2.ydata, atol=4e-23)
 
 #        trace.snuffle(qtrcs + q2trcs)
 
