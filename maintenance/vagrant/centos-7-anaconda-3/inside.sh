@@ -21,7 +21,7 @@ cd $HOME
 sudo yum -y install git make gcc mesa-libGL
 
 if [ ! -f "anaconda3.sh" ] ; then
-    curl 'https://repo.anaconda.com/archive/Anaconda3-5.2.0-Linux-x86_64.sh' -o anaconda3.sh
+    curl 'https://repo.anaconda.com/archive/Anaconda3-2019.10-Linux-x86_64.sh' -o anaconda3.sh
 fi
 
 if [ ! -d "anaconda3" ] ; then
