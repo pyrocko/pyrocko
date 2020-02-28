@@ -20,4 +20,8 @@ RUN apt-get install -y xvfb libgles2-mesa \
     apt-get install -y python-pyqt5.qtwebengine || apt-get install -y python-pyqt5.qtwebkit ; \
     apt-get install -y python-future || easy_install future ; \
     apt-get install -y python3-pyqt5.qtwebengine || apt-get install -y python3-pyqt5.qtwebkit ; \
-    apt-get install -y python3-future || easy_install3 future
+    apt-get install -y python3-future || easy_install3 future ; \
+    apt-get install -y python-pip python3-pip
+RUN pip3 install flake8
+
+
