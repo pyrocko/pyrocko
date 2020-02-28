@@ -22,7 +22,10 @@ steps:
   commands:
   - apt-get update
   - apt-get upgrade -y
-  - apt-get install -y xvfb libgles2-mesa
+  - apt-get install -y xvfb libgles2-mesa ghostscript gmt gmt-gshhg poppler-utils
   - pip install -r requirements-all.txt
   - python3 setup.py install -f
+  - pip install utm
+  - pip install git+https://github.com/pyrocko/kite
+  - pip install obspy
   - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
