@@ -453,6 +453,7 @@ class GUITest(unittest.TestCase):
         self.viewer.go_to_event_by_name(event.name)
         self.viewer.go_to_time(tinit, tinitlen)
 
+    @unittest.skipIf(os.getuid() == 0, 'does not like to run as root')
     def test_frames(self):
         frame_snuffling = TestSnuffling()
 
