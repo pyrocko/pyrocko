@@ -109,6 +109,7 @@ class WaveformGenerator(TargetGenerator):
         help='Define seismic phases to be calculated.')
 
     tabulated_phases_from_store = Bool.T(
+        default=False,
         help='Calculate seismic phase arrivals for all travel-time tables '
              'defined in GF store.')
 
@@ -323,6 +324,8 @@ class WaveformGenerator(TargetGenerator):
 
                 elif self.tabulated_phases_from_store:
                     tabulated_phases = store.config.tabulated_phases
+                else:
+                    tabulated_phases = []
 
                 for phase in tabulated_phases:
                     t = store.t(phase.id, source, target)
