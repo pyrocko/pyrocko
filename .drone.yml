@@ -4,10 +4,9 @@ name: flake8
 
 steps:
 - name: flake8
-  image: python:3.7-buster
+  image: pyrocko-nest
+  pull: never
   commands:
-  - apt-get update
-  - apt-get install -y python3-flake8 flake8
   - flake8 src test setup.py
 
 ---
@@ -18,16 +17,26 @@ name: tests
 
 steps:
 - name: tests
-  image: python:3.7-buster
+  image: pyrocko-nest
+  pull: never
   commands:
-  - apt-get update
-  - apt-get upgrade -y
-  - apt-get install -y xvfb libgles2-mesa ghostscript gmt gmt-gshhg poppler-utils
-  - apt-get install -y python3-pyqt5
-  - pip install -r requirements-all.txt
-  - pip install PyQt5
   - python3 setup.py install -f
-  - pip install utm
-  - pip install git+https://github.com/pyrocko/kite
-  - pip install obspy
-  - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
+  - pip3 install utm
+  - pip3 install git+https://github.com/pyrocko/kite
+  - pip3 install obspy
+  - python3 -m nose test
+
+---
+
+kind: pipeline
+type: docker
+name: tests-gui
+
+steps:
+- name: tests-gui
+  image: pyrocko-nest
+  pull: never
+  commands:
+  - python3 setup.py install -f
+  - pip3 install obspy
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test.test_gui test.test_obspy_compat:ObsPyCompatTestCase.test_obspy_fiddle
