@@ -72,7 +72,7 @@ class FomostoTestCase(unittest.TestCase):
 
             with common.chdir('my_gfs2'):
                 try:
-                    from pybtex.database.input import bibtex
+                    from pybtex.database.input import bibtex  # noqa
                     with open('refs.bib', 'w') as f:
                         f.write(refs)
                     fomosto('addref', 'refs.bib')

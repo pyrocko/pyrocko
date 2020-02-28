@@ -141,8 +141,10 @@ def analyse_gps_tags(header, gps_tags, offset, nsamples):
             tmin = t0 - i0 * deltat - offset * deltat
             tmax = t3 + (nsamples - i3 - 1) * deltat
         else:
-            icontrol = num.array([x[0] for x in control_points], dtype=num.int64)
-            tcontrol = num.array([x[1] for x in control_points], dtype=num.float)
+            icontrol = num.array(
+                [x[0] for x in control_points], dtype=num.int64)
+            tcontrol = num.array(
+                [x[1] for x in control_points], dtype=num.float)
             # robust against steps:
             slope = num.median(
                 (tcontrol[1:] - tcontrol[:-1])
@@ -171,7 +173,8 @@ def analyse_gps_tags(header, gps_tags, offset, nsamples):
         if idat == 0:
             tmin = tmin + util.gps_utc_offset(tmin)
         else:
-            tmin = util.day_start(tmin + idat * 24.*3600.) + util.gps_utc_offset(tmin)
+            tmin = util.day_start(tmin + idat * 24.*3600.) \
+                + util.gps_utc_offset(tmin)
 
         tmax = tmin + (nsamples - 1) * deltat
         icontrol, tcontrol = None, None
@@ -220,11 +223,19 @@ def plot_timeline(fns):
     la = num.logical_and
     nok = num.logical_not(ok)
 
-    axes.plot(x[la(bfix, ok)]/h, y[la(bfix, ok)], '+', ms=5, color=color('chameleon3'))
-    axes.plot(x[la(bfix, nok)]/h, y[la(bfix, nok)], '+', ms=5, color=color('aluminium4'))
+    axes.plot(
+        x[la(bfix, ok)]/h, y[la(bfix, ok)], '+',
+        ms=5, color=color('chameleon3'))
+    axes.plot(
+        x[la(bfix, nok)]/h, y[la(bfix, nok)], '+',
+        ms=5, color=color('aluminium4'))
 
-    axes.plot(x[la(bnofix, ok)]/h, y[la(bnofix, ok)], 'x', ms=5, color=color('chocolate3'))
-    axes.plot(x[la(bnofix, nok)]/h, y[la(bnofix, nok)], 'x', ms=5, color=color('aluminium4'))
+    axes.plot(
+        x[la(bnofix, ok)]/h, y[la(bnofix, ok)], 'x',
+        ms=5, color=color('chocolate3'))
+    axes.plot(
+        x[la(bnofix, nok)]/h, y[la(bnofix, nok)], 'x',
+        ms=5, color=color('aluminium4'))
 
     tred = tcontrol - icontrol*deltat - tref
     axes.plot(icontrol*deltat/h, tred, color=color('aluminium6'))

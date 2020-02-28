@@ -313,7 +313,6 @@ class OrthodromeTestCase(unittest.TestCase):
         azi_ab, bazi_ab = orthodrome.azibazi(
             a0.lat, a0.lon, b0.lat, b0.lon)
 
-
         def g_to_e(*args):
             return num.array(orthodrome.geodetic_to_ecef(*args))
 

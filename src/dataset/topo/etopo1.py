@@ -11,7 +11,6 @@ import os.path as op
 import numpy as num
 
 from . import tile, dataset
-from ..util import get_download_callback
 
 citation = '''
 Amante, C. and B.W. Eakins, 2009. ETOPO1 1 Arc-Minute Global Relief Model:

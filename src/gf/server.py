@@ -286,7 +286,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
                     # allocations of buffers when they are enabled
                     out.appendleft(a)
                 elif self.use_buffer:
-                    out.appendleft(buffer(a, num_sent))
+                    out.appendleft(buffer(a, num_sent))  # noqa
                 else:
                     out.appendleft(a[num_sent:])
 

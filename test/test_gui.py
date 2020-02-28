@@ -292,7 +292,7 @@ class GUITest(unittest.TestCase):
                     self.assertEqual(m.get_phasename(), want)
 
     def test_load_waveforms(self):
-        self.viewer.load('data', regex='\w*.mseed')
+        self.viewer.load('data', regex=r'\w+.mseed')
         self.assertFalse(self.viewer.get_pile().is_empty())
 
     def test_add_traces(self):

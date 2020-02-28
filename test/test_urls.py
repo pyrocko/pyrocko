@@ -7,10 +7,9 @@ from . import common
 logger = logging.getLogger('pyrocko.test.test_urls')
 
 try:
-    from urllib2 import (Request, HTTPError, urlopen)
+    from urllib2 import (Request, urlopen)
 except ImportError:
     from urllib.request import (Request, urlopen)
-    from urllib.error import HTTPError
 
 
 class UrlsTestCase(unittest.TestCase):

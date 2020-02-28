@@ -19,7 +19,6 @@ from tempfile import mkdtemp
 from subprocess import Popen, PIPE
 
 from pyrocko.guts import Float, Int, Tuple, List, Object, String
-from pyrocko.guts_array import literal
 from pyrocko.model import Location
 from pyrocko import gf, util, trace, cake
 

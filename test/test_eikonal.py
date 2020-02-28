@@ -23,6 +23,7 @@ km = 1000.
 
 show_plot = int(os.environ.get('MPL_SHOW', 0))
 
+
 def is_64bits():
     return sys.maxsize > 2**32
 

@@ -1,7 +1,7 @@
 import numpy as num
 import math
 
-from pyrocko import orthodrome, config
+from pyrocko import orthodrome
 from pyrocko.guts import Object, Float
 
 

@@ -78,10 +78,10 @@ class GFSTFTestCase(unittest.TestCase):
         duration = 30.
         frequency = 1./15
         tref = 20.
-        deltat = 1.0
+        deltat = 0.1
 
         stf = gf.ResonatorSTF(duration=duration, frequency=frequency)
-        t, a = stf.discretize_t(deltat=0.1, tref=tref)
+        t, a = stf.discretize_t(deltat=deltat, tref=tref)
         if show_plot:
             plt.title('Resonator')
             plt.plot(t, a)

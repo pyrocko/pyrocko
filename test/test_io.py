@@ -110,7 +110,6 @@ class IOTestCase(unittest.TestCase):
     def testLongCode(self):
         c = '1234567'
         tr = trace.Trace(c, c, c, c, ydata=num.zeros(10))
-        e = None
         try:
             io.save(tr, 'test.mseed')
         except mseed.CodeTooLong as e:
