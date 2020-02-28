@@ -88,7 +88,7 @@ class CatalogTestCase(unittest.TestCase):
         markers = cat.get_phase_markers(
             (tmin, tmax), phases=['P', 'PcP'], station_codes=['WRA'])
 
-        self.assertEqual(len(markers), 75)
+        self.assertEqual(len(markers), 76)
 
     @common.require_internet
     def testGlobalCMT(self):
