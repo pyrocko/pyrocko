@@ -23,7 +23,9 @@ steps:
   - apt-get update
   - apt-get upgrade -y
   - apt-get install -y xvfb libgles2-mesa ghostscript gmt gmt-gshhg poppler-utils
+  - apt-get install -y python3-pyqt5
   - pip install -r requirements-all.txt
+  - pip install PyQt5
   - python3 setup.py install -f
   - pip install utm
   - pip install git+https://github.com/pyrocko/kite

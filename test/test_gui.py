@@ -40,7 +40,10 @@ if common.have_gui():  # noqa
             self.enable_pile_changed_notifications()
 
             self.pixmap_frame()
-            self.web_frame()
+            try:
+                self.web_frame()
+            except ImportError as e:
+                raise unittest.SkipTest(str(e))
 
             self.get_pile()
 
