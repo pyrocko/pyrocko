@@ -76,7 +76,7 @@ def equal_tree(tree1, tree2, compare=cmp):
     i1 = iter(tree1)
     i2 = iter(tree2)
     try:
-        while compare(next(i1), next(i2)) is 0:
+        while compare(next(i1), next(i2)) is 0:  # noqa
             pass
         return 0
     except StopIteration:
