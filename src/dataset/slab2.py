@@ -71,6 +71,9 @@ class Slab2(object):
 
         self.slabs = []
 
+    def n_parameters(self):
+        return len(self.slab_parameters) + 2   # location
+
     def download(self):
         logger.info('Downloading Slab2 geometry data...')
         util.download_file(self.SLAB2_URL, self.fname_slab2)
@@ -83,6 +86,11 @@ class Slab2(object):
                     logger.debug('Unpacking %s ...' % op.basename(tarinfo.name))
                     yield tarinfo
 
+        if not op.exists(self.fname_slab2):
+            raise ValueError(
+                'The raw file does not exist at %s. Please download first!'
+                % self.fname_slab2)
+
         tar = tarfile.open(self.fname_slab2, mode='r|gz')
         tar.extractall(path=self.tmp_xyz_slab2, members=xyz_files(tar))
         tar.close()
@@ -90,7 +98,15 @@ class Slab2(object):
     def convert_to_bin(self):
 
         for slab in self.slab_prefixes:
-            location = glob('{]*{}*'.format(slab, 'dep'))
-            slab_files = glob('{]*'.format(slab))
+            slab_path = op.join(self.tmp_xyz_slab2, slab)
+            location = glob('{]*{}*'.format(slab_path, 'dep'))
+            slab_files = glob('{]*'.format(slab_path))
+            
             latlondepth = num.loadtxt(location, delimiter=',', dtype='float64')
-            for param in self.slab_parameters:
+            npoints = latlondepth.shape[0]
+            slab_data = num.empty((npoints, self.n_parameters, dtype='float64'))
+            slab_data[:, 0:2] = latlondepth
+            for i, param in enumerate(self.slab_parameters):
+                tmp = num.loadtxt(param, delimiter=',', dtype='float64')
+                slab_data[:, i + 2] = tmp[:, 2]    # just extract parameter
+
