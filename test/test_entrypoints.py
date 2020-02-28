@@ -1,5 +1,6 @@
 import sys
 
+
 def _run_main(app, arguments_list):
     for args in arguments_list:
         argv = sys.argv
