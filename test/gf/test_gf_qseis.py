@@ -10,7 +10,7 @@ import shutil
 
 import numpy as num
 
-from .common import Benchmark
+from ..common import Benchmark
 from multiprocessing import cpu_count
 
 from pyrocko import util, trace, gf, cake  # noqa

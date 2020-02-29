@@ -1,9 +1,6 @@
 from __future__ import division, print_function, absolute_import
 import unittest
-try:
-    from . import common
-except Exception:
-    import common
+from .. import common
 import numpy as num
 import tempfile
 import os

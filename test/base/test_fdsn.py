@@ -11,7 +11,7 @@ from pyrocko import util, trace
 from pyrocko.io import stationxml
 from pyrocko.client import fdsn, iris
 
-from . import common
+from .. import common
 
 logger = logging.getLogger('pyrocko.test.test_fdsn')
 

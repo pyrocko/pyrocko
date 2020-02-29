@@ -8,7 +8,7 @@ from collections import defaultdict
 
 import numpy as num
 
-from . import common
+from .. import common
 from pyrocko import util, io, datacube_ext
 from pyrocko.io import datacube
 

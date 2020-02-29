@@ -1,7 +1,7 @@
 import unittest
 import logging
 from pyrocko import util
-from . import common
+from .. import common
 
 logger = logging.getLogger('pyrocko.test.test_urls')
 

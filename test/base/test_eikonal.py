@@ -9,7 +9,7 @@ import numpy as num
 from pyrocko import util
 from pyrocko import eikonal_ext
 
-from . import common
+from .. import common
 
 assert_ae = num.testing.assert_almost_equal
 

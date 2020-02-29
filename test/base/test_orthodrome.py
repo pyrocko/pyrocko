@@ -9,7 +9,7 @@ import logging
 
 from pyrocko import orthodrome, util
 from pyrocko import orthodrome_ext
-from .common import Benchmark
+from ..common import Benchmark
 from pyrocko import config
 from pyrocko import guts
 from pyrocko.model.location import Location

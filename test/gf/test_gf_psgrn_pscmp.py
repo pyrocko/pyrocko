@@ -11,7 +11,7 @@ import shutil
 from pyrocko import orthodrome as ortd
 from pyrocko import util, gf, cake  # noqa
 from pyrocko.fomosto import psgrn_pscmp
-from .common import Benchmark
+from ..common import Benchmark
 
 logger = logging.getLogger('pyrocko.test.test_gf_psgrn_pscmp')
 benchmark = Benchmark()

@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 
 import unittest
 
-from . import common
+from .. import common
 from pyrocko import util
 
 util.force_dummy_progressbar = True

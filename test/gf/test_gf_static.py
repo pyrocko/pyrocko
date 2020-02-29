@@ -8,7 +8,7 @@ import logging
 import shutil
 
 from tempfile import mkdtemp
-from .common import Benchmark
+from ..common import Benchmark
 from pyrocko import gf, util, cake
 from pyrocko.fomosto import qseis, psgrn_pscmp
 

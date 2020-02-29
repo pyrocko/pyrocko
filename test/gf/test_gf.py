@@ -15,7 +15,7 @@ from pyrocko import guts
 from pyrocko import gf, util, cake, ahfullgreen, trace
 from pyrocko.fomosto import ahfullgreen as fomosto_ahfullgreen
 
-from .common import Benchmark
+from ..common import Benchmark
 
 assert_ae = num.testing.assert_almost_equal
 

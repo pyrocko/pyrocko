@@ -9,7 +9,7 @@ import logging
 import shutil
 
 from tempfile import mkdtemp
-from .common import Benchmark
+from ..common import Benchmark
 from pyrocko import gf, util
 
 random = num.random

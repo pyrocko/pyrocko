@@ -2,7 +2,7 @@ from __future__ import division, print_function, absolute_import
 import os
 import tempfile
 import unittest
-from . import common
+from .. import common
 
 from pyrocko import util, trace
 from pyrocko.io import rdseed

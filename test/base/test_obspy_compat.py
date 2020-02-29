@@ -1,6 +1,6 @@
 from __future__ import division, print_function, absolute_import
 import unittest
-from . import common
+from .. import common
 
 import pyrocko.trace
 from pyrocko import util, io, model, pile

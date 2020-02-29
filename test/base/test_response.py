@@ -4,7 +4,7 @@ import unittest
 import numpy as num
 from pyrocko import util, evalresp, pz, trace, guts
 
-from . import common
+from .. import common
 
 
 def plot_tfs(freqs, tfs):

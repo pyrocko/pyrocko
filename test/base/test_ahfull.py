@@ -15,7 +15,7 @@ import numpy as num
 from pyrocko import util, ahfullgreen, trace, io
 from pyrocko.guts import Object, Float, Tuple, List, load
 
-from . import common
+from .. import common
 
 guts_prefix = 'test_ahfull'
 

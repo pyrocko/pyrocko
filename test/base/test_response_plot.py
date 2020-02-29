@@ -9,7 +9,7 @@ from matplotlib import image, pyplot as plt
 from pyrocko import util
 from pyrocko.plot import response
 
-from . import common
+from .. import common
 
 noshow = True
 

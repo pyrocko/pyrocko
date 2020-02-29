@@ -5,7 +5,7 @@ import unittest
 import os
 import glob
 
-from . import common
+from .. import common
 
 from pyrocko import ExternalProgramMissing
 

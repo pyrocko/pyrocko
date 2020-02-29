@@ -6,7 +6,7 @@ import multiprocessing
 import time
 from collections import defaultdict
 import numpy as num
-from . import common
+from .. import common
 
 from pyrocko import util, trace, autopick
 

@@ -11,7 +11,7 @@ import time
 import numpy as num
 import pickle as pickle
 
-from . import common
+from .. import common
 
 sometime = 1234567890.
 d2r = num.pi/180.

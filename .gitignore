@@ -27,7 +27,7 @@ htmlcov
 .coverage.*
 
 .cache
-test/example_run_dir
+test/examples/example_run_dir
 
 # Anaconda
 miniconda.sh
