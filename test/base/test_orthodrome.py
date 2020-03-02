@@ -288,7 +288,7 @@ class OrthodromeTestCase(unittest.TestCase):
                 assert cd <= 1.0
                 d = num.arccos(cd)*earthradius
                 d2 = math.sqrt(no**2+ea**2)
-                assert not (abs(d-d2) > 1.0e-3 and d2 > 1.)
+                assert abs(d-d2) < 1.0e-3 or d2 < 10.
 
     def testLocationObjects(self):
 
