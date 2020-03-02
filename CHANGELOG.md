@@ -29,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Fix scenario generator crashes.
 - Fix incorrect error handling in GF waveform synthesis
   (`store_calc_timeseries`).
+- Fix failing maps snuffling when running multiple Snuffler instances.
 
 ## [v2020.02.10] - 2020-02-10
 
