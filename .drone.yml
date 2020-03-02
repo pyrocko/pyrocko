@@ -73,4 +73,4 @@ steps:
   commands:
   - python3 setup.py install -f
   - pip3 install obspy
-  - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test.gui test.base.test_obspy_compat:ObsPyCompatTestCase.test_obspy_fiddle
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test.gui test.base.test_obspy_compat:ObsPyCompatTestCase.test_obspy_fiddle test.base.test_obspy_compat:ObsPyCompatTestCase.test_obspy_snuffle
