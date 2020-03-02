@@ -6,7 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-*empty*
+### Fixed
+- Fix problems with corrupt channel info text tables from FDSN.
+- Correct reading of SEGY files with IEEE floating point values.
+- Correct query parameters for ISC catalog, previous versions where querying
+  for HH:HH:SS instead of HH:MM:SS.
+- Fix scenario generator crashes.
 
 ## [v2020.02.10] - 2020-02-10
 
