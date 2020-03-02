@@ -6,12 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- `fomosto`:
+  - Support QSSP 2017
+  - Support QSSP PPEG variant
+- `gf`:
+  - Support ``velocity`` and ``acceleration`` as stored GF quantities.
+  - Support squared half-sinusoid source time function.
+
+### Changed
+- In `trace.transfer`, bypass FFTs for flat responses.
+
 ### Fixed
 - Fix problems with corrupt channel info text tables from FDSN.
 - Correct reading of SEGY files with IEEE floating point values.
 - Correct query parameters for ISC catalog, previous versions where querying
   for HH:HH:SS instead of HH:MM:SS.
 - Fix scenario generator crashes.
+- Fix incorrect error handling in GF waveform synthesis
+  (`store_calc_timeseries`).
 
 ## [v2020.02.10] - 2020-02-10
 
