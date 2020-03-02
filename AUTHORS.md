@@ -19,4 +19,5 @@ It is not a complete list, in the sense that many others have influenced the dev
 * Andreas Steinberg
 * Henriette Sudhaus
 * Timothy Willey
+* Thoralf Dietrich
 * Torsten Dahm
