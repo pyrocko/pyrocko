@@ -16,7 +16,8 @@ RUN apt-get install -y xvfb libgles2-mesa \
         python3-pyqt5 python3-pyqt5.qtopengl python3-pyqt5.qtsvg \
         python3-yaml python3-progressbar python3-jinja2 \
         python3-requests \
-        python3-coverage python3-nose ; \
+        python3-coverage python3-nose \
+        gmt gmt-gshhg poppler-utils imagemagick ffmpeg ; \
     apt-get install -y python-pyqt5.qtwebengine || apt-get install -y python-pyqt5.qtwebkit ; \
     apt-get install -y python-future || easy_install future ; \
     apt-get install -y python3-pyqt5.qtwebengine || apt-get install -y python3-pyqt5.qtwebkit ; \
