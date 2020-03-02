@@ -10,6 +10,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `fomosto`:
   - Support QSSP 2017
   - Support QSSP PPEG variant
+  - Add subcommand `tttlsd` to fill holes in travel time tables. Uses eikonal
+    solver to fill the holes.
+  - Allow setting receiver depth for `tttview`.
 - `gf`:
   - Support ``velocity`` and ``acceleration`` as stored GF quantities.
   - Support squared half-sinusoid source time function.
