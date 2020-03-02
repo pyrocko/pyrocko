@@ -270,50 +270,53 @@ def outline_rect_source(strike, dip, length, width, anchor):
     return num.dot(rotmat.T, points.T).T
 
 
-def from_plane_coords(strike, dip, length, width, depth, x_plane_coords,
-                      y_plane_coords, lat=0., lon=0., north_shift=0,
-                      east_shift=0, anchor='top', cs='xy'):
-        ln = length
-        wd = width
-        x_abs = []
-        y_abs = []
-        if not isinstance(x_plane_coords, list):
-            x_plane_coords = [x_plane_coords]
-            y_plane_coords = [y_plane_coords]
+def from_plane_coords(
+        strike, dip, length, width, depth, x_plane_coords, y_plane_coords,
+        lat=0., lon=0.,
+        north_shift=0, east_shift=0,
+        anchor='top', cs='xy'):
 
-        for x_plane, y_plane in zip(x_plane_coords, y_plane_coords):
-            points = num.array(
-                [[-0.5 * ln*x_plane, -0.5 * wd*y_plane, 0.],
-                 [0.5 * ln*x_plane, -0.5 * wd*y_plane, 0.],
-                 [0.5 * ln*x_plane, 0.5 * wd*y_plane, 0.],
-                 [-0.5 * ln*x_plane, 0.5 * wd*y_plane, 0.],
-                 [-0.5 * ln*x_plane, -0.5 * wd*y_plane, 0.]])
+    ln = length
+    wd = width
+    x_abs = []
+    y_abs = []
+    if not isinstance(x_plane_coords, list):
+        x_plane_coords = [x_plane_coords]
+        y_plane_coords = [y_plane_coords]
 
-            anch_x, anch_y = map_anchor[anchor]
-            points[:, 0] -= anch_x * 0.5 * length
-            points[:, 1] -= anch_y * 0.5 * width
+    for x_plane, y_plane in zip(x_plane_coords, y_plane_coords):
+        points = num.array(
+            [[-0.5 * ln*x_plane, -0.5 * wd*y_plane, 0.],
+             [0.5 * ln*x_plane, -0.5 * wd*y_plane, 0.],
+             [0.5 * ln*x_plane, 0.5 * wd*y_plane, 0.],
+             [-0.5 * ln*x_plane, 0.5 * wd*y_plane, 0.],
+             [-0.5 * ln*x_plane, -0.5 * wd*y_plane, 0.]])
 
-            rotmat = num.asarray(
-                pmt.euler_to_matrix(dip * d2r, strike * d2r, 0.0))
+        anch_x, anch_y = map_anchor[anchor]
+        points[:, 0] -= anch_x * 0.5 * length
+        points[:, 1] -= anch_y * 0.5 * width
 
-            points = num.dot(rotmat.T, points.T).T
-            points[:, 0] += north_shift
-            points[:, 1] += east_shift
-            points[:, 2] += depth
-            if cs in ('latlon', 'lonlat'):
-                latlon = ne_to_latlon(lat, lon,
-                                      points[:, 0], points[:, 1])
-                latlon = num.array(latlon).T
-                x_abs.append(latlon[1:2, 1])
-                y_abs.append(latlon[2:3, 0])
-            if cs == 'xy':
-                x_abs.append(points[1:2, 1])
-                y_abs.append(points[2:3, 0])
+        rotmat = num.asarray(
+            pmt.euler_to_matrix(dip * d2r, strike * d2r, 0.0))
 
-        if cs == 'lonlat':
-            return y_abs, x_abs
-        else:
-            return x_abs, y_abs
+        points = num.dot(rotmat.T, points.T).T
+        points[:, 0] += north_shift
+        points[:, 1] += east_shift
+        points[:, 2] += depth
+        if cs in ('latlon', 'lonlat'):
+            latlon = ne_to_latlon(lat, lon,
+                                  points[:, 0], points[:, 1])
+            latlon = num.array(latlon).T
+            x_abs.append(latlon[1:2, 1])
+            y_abs.append(latlon[2:3, 0])
+        if cs == 'xy':
+            x_abs.append(points[1:2, 1])
+            y_abs.append(points[2:3, 0])
+
+    if cs == 'lonlat':
+        return y_abs, x_abs
+    else:
+        return x_abs, y_abs
 
 
 class InvalidGridDef(Exception):
