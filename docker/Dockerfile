@@ -23,6 +23,11 @@ RUN apt-get install -y xvfb libgles2-mesa \
     apt-get install -y python3-pyqt5.qtwebengine || apt-get install -y python3-pyqt5.qtwebkit ; \
     apt-get install -y python3-future || easy_install3 future ; \
     apt-get install -y python-pip python3-pip
+RUN apt-get install -y autoconf gfortran
+RUN mkdir /src ; cd /src ; git clone https://git.pyrocko.org/pyrocko/fomosto-qseis.git ; cd fomosto-qseis ; autoreconf -i ; ./configure ; make ; make install
+RUN cd /src ; git clone https://git.pyrocko.org/pyrocko/fomosto-psgrn-pscmp.git ; cd fomosto-psgrn-pscmp ; autoreconf -i ; ./configure ; make ; make install
+RUN cd /src ; git clone https://git.pyrocko.org/pyrocko/fomosto-qseis2d.git ; cd fomosto-qseis2d ; autoreconf -i ; ./configure ; make ; make install
+RUN cd /src ; git clone https://git.pyrocko.org/pyrocko/fomosto-qssp.git ; cd fomosto-qssp ; autoreconf -i ; ./configure ; make ; make install
 RUN pip3 install flake8
 
 
