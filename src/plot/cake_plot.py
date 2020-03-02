@@ -10,8 +10,6 @@ import numpy as num
 from pyrocko import cake
 from . import mpl_labelspace as labelspace, mpl_init,\
     mpl_color as str_to_mpl_color, InvalidColorDef
-from pyrocko.plot import mpl_init, mpl_papersize, mpl_margins, \
-    mpl_graph_color, mpl_color
 
 str_to_mpl_color
 InvalidColorDef

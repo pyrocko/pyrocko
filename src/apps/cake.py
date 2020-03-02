@@ -8,13 +8,12 @@ from builtins import str
 import sys
 import re
 import numpy as num
-#import logger
+# import logger
 from pyrocko import cake, util, orthodrome
 from pyrocko.plot import cake_plot as plot
 from optparse import OptionParser, OptionGroup
 import matplotlib.pyplot as plt
-from pyrocko.plot import mpl_init, mpl_papersize, mpl_margins, \
-    mpl_graph_color, mpl_color
+from pyrocko.plot import mpl_init, mpl_papersize, mpl_margins
 
 r2d = cake.r2d
 
@@ -762,9 +761,9 @@ To get further help and a list of available options for any subcommand run:
         fig, axes, showplt = plot_init(c.size, c.save, c.show)
 
         if command == 'plot-xp':
-                plot.my_xp_plot(
-                    paths, c.zstart, c.zstop, c.distances,
-                    c.as_degrees, show=showplt, phase_colors=c.phase_colors)
+            plot.my_xp_plot(
+                paths, c.zstart, c.zstop, c.distances,
+                c.as_degrees, show=showplt, phase_colors=c.phase_colors)
 
         elif command == 'plot-xt':
             plot.my_xt_plot(
@@ -845,6 +844,7 @@ To get further help and a list of available options for any subcommand run:
 
     else:
         sys.exit('cake: no such subcommand: %s' % command)
+
 
 if __name__ == '__main__':
     main(sys.argv[1:])
