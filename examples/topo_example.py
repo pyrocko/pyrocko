@@ -20,8 +20,8 @@ easts = easts.reshape((lats.size, lons.size))
 plt = plot.mpl_init(fontsize=10.)
 fig = plt.figure(figsize=plot.mpl_papersize('a5', 'landscape'))
 axes = fig.add_subplot(1, 1, 1, aspect=1.0)
-cbar  = axes.pcolormesh(easts, norths, tile.data,
-                        cmap='gray', shading='gouraud')
+cbar = axes.pcolormesh(easts, norths, tile.data,
+                       cmap='gray', shading='gouraud')
 fig.colorbar(cbar, label='Altitude [m]')
 axes.set_title(dem_name)
 axes.set_xlim(easts.min(), easts.max())

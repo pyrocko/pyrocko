@@ -7,7 +7,7 @@ steps:
   image: pyrocko-nest
   pull: never
   commands:
-  - flake8 src test setup.py
+  - flake8 src test examples setup.py
 
 ---
 

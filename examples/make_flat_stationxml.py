@@ -16,7 +16,7 @@ for network in station_xml.network_list:
                     frequency=1.0,
                     input_units=fdsn.Units('M'),
                     output_units=fdsn.Units('COUNTS')))
-                    
+
 station_xml.validate()
 # print(station_xml.dump_xml())
 station_xml.dump_xml(filename='stations_flat_displacement.xml')

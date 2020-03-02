@@ -1,5 +1,6 @@
 import numpy as num
 from pyrocko.dataset.gshhg import GSHHG
+from matplotlib import pyplot as plt
 
 gshhg = GSHHG.intermediate()
 # gshhg = GSHHG.full()
@@ -17,6 +18,5 @@ coordinates = num.array([lat_grid.ravel(), lon_grid.ravel()]).T
 
 land_mask = gshhg.get_land_mask(coordinates).reshape(*lat_grid.shape)
 
-from matplotlib import pyplot as plt
 plt.pcolormesh(lons, lats, land_mask, cmap='Greys')
 plt.show()

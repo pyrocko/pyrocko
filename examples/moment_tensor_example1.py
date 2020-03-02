@@ -6,12 +6,12 @@ exp = mtm.magnitude_to_moment(magnitude)  # convert the mag to moment in [Nm]
 
 # init pyrocko moment tensor
 m = mtm.MomentTensor(
-    mnn = 2.34*exp,
-    mee = -2.64*exp,
-    mdd = 0.295*exp,
-    mne = 1.49*exp,
-    mnd = 0.182*exp,
-    med = -0.975*exp)
+    mnn=2.34*exp,
+    mee=-2.64*exp,
+    mdd=0.295*exp,
+    mne=1.49*exp,
+    mnd=0.182*exp,
+    med=-0.975*exp)
 
 print(m)  # print moment tensor
 
