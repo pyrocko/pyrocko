@@ -830,9 +830,26 @@ class HalfSinusoidSTF(STF):
         default=1,
         help='set to 2 to use square of the half-period sinusoidal function.')
 
+    def __init__(self, effective_duration=None, **kwargs):
+        if effective_duration is not None:
+            kwargs['duration'] = effective_duration / \
+                self.factor_duration_to_effective(
+                    kwargs.get('exponent', 1))
+
+        STF.__init__(self, **kwargs)
+
     @classmethod
-    def factor_duration_to_effective(cls):
-        return math.sqrt((3.0 * math.pi**2 - 24.0) / math.pi**2)
+    def factor_duration_to_effective(cls, exponent):
+        if exponent == 1:
+            return math.sqrt(3.0 * math.pi**2 - 24.0) / math.pi
+        elif exponent == 2:
+            return math.sqrt(math.pi**2 - 6) / math.pi
+        else:
+            raise ValueError('exponent for HalfSinusoidSTF must be 1 or 2')
+
+    @property
+    def effective_duration(self):
+        return self.duration * self.factor_duration_to_effective(self.exponent)
 
     def centroid_time(self, tref):
         return tref - 0.5 * self.duration * self.anchor
@@ -846,13 +863,18 @@ class HalfSinusoidSTF(STF):
         if nt > 1:
             t_edges = num.maximum(tmin_stf, num.minimum(tmax_stf, num.linspace(
                 tmin - 0.5 * deltat, tmax + 0.5 * deltat, nt + 1)))
+
             if self.exponent == 1:
                 fint = -num.cos(
                     (t_edges - tmin_stf) * (math.pi / self.duration))
+
             elif self.exponent == 2:
                 fint = (t_edges - tmin_stf) / self.duration \
                     - 1.0 / (2.0 * math.pi) * num.sin(
                         (t_edges - tmin_stf) * (2.0 * math.pi / self.duration))
+            else:
+                raise ValueError('exponent for HalfSinusoidSTF must be 1 or 2')
+
             amplitudes = fint[1:] - fint[:-1]
             amplitudes /= num.sum(amplitudes)
         else:

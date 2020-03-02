@@ -94,6 +94,7 @@ class GFSTFTestCase(unittest.TestCase):
         deltat = 1e-4
         for stf in [
                 gf.HalfSinusoidSTF(duration=2.0),
+                gf.HalfSinusoidSTF(duration=2.0, exponent=2),
                 gf.TriangularSTF(duration=2.0, peak_ratio=0.),
                 gf.TriangularSTF(duration=2.0, peak_ratio=1.),
                 gf.TriangularSTF(duration=2.0, peak_ratio=0.5),
