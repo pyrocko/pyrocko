@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Support ``velocity`` and ``acceleration`` as stored GF quantities.
   - Support squared half-sinusoid source time function.
 - Allow specifying record length when saving MiniSEED files.
+- New command line options to save cake plots.
 
 ### Changed
 - In `trace.transfer`, bypass FFTs for flat responses.
