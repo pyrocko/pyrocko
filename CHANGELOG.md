@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+*empty*
+
+## [v2020.03.03] - 2020-03-03
+
 ### Added
 - `fomosto`:
   - Support QSSP 2017
