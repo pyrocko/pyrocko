@@ -46,6 +46,7 @@ class IMSTestCase(unittest.TestCase):
 
     @unittest.skip('known problem with checksum == -2^31')
     def test_checksum_nasty(self):
+        from pyrocko import ims_ext
         vs = [-2**31]
         for v in vs:
             a = num.array([v], dtype=num.int32)
