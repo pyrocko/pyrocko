@@ -36,7 +36,7 @@ class FileParseError(Exception):
     pass
 
 
-class EventExtrasDumpError(Exception):
+class EventExtraDumpError(Exception):
     pass
 
 
@@ -67,7 +67,8 @@ class Event(Location):
         :py:class:`moment_tensor.MomentTensor` instance (optional)
     :param duration: source duration as float (optional)
     :param tags: list of tags describing event (optional)
-    :param extra: dictionary for event description (optional)
+    :param extra: dictionary for user defined event attributes (optional). Keys
+        must be strings, values must be YAML serializable.
     '''
 
     time = Timestamp.T(default=util.str_to_time('1970-01-01 00:00:00'))
@@ -79,7 +80,7 @@ class Event(Location):
     catalog = String.T(optional=True)
     moment_tensor = moment_tensor.MomentTensor.T(optional=True)
     duration = Float.T(optional=True)
-    tags = List.T(Tag.T(optional=True))
+    tags = List.T(Tag.T())
     extra = Dict.T(String.T(), Any.T())
 
     def __init__(
@@ -87,7 +88,13 @@ class Event(Location):
             name='', depth=None, elevation=None,
             magnitude=None, magnitude_type=None, region=None, load=None,
             loadf=None, catalog=None, moment_tensor=None, duration=None,
-            tags=[], extra={}):
+            tags=None, extra=None):
+
+        if tags is None:
+            tags = []
+
+        if extra is None:
+            extra = {}
 
         vals = None
         if load is not None:
@@ -122,6 +129,12 @@ class Event(Location):
         file.close()
 
     def olddumpf(self, file):
+        if self.extra:
+            raise EventExtraDumpError(
+                'Event user-defined extra attributes cannot be dumped in the '
+                '"basic" event file format. Use '
+                'dump_events(..., format="yaml").')
+
         file.write('name = %s\n' % self.name)
         file.write('time = %s\n' % util.time_to_str(self.time))
 
@@ -162,11 +175,6 @@ class Event(Location):
 
         if self.tags:
             file.write('tags = %s\n' % ', '.join(self.tags))
-
-        if self.extra:
-            raise EventExtrasDumpError('Event attribute extra cannot be' +
-                                       ' dumped using this method. Use' +
-                                       ' dump_events with format=yaml.')
 
     @staticmethod
     def unique(events, deltat=10., group_cmp=(lambda a, b:

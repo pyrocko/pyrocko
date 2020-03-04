@@ -26,9 +26,20 @@ def near(a, b, eps):
 
 
 class ModelTestCase(unittest.TestCase):
+    _tempdirs = []
+
+    @classmethod
+    def tearDownClass(cls):
+        for tempdir in cls._tempdirs:
+            shutil.rmtree(tempdir)
+
+    def make_tempdir(self):
+        tempdir = tempfile.mkdtemp(prefix='pyrocke_test_model')
+        self._tempdirs.append(tempdir)
+        return tempdir
 
     def testIOEventOld(self):
-        tempdir = tempfile.mkdtemp(prefix='pyrocko-model')
+        tempdir = self.make_tempdir()
         fn = pjoin(tempdir, 'event.txt')
         e1 = model.Event(
             10., 20.,
@@ -48,10 +59,9 @@ class ModelTestCase(unittest.TestCase):
         assert e1.magnitude == e2.magnitude
         assert e1.magnitude_type == e2.magnitude_type
         assert e1.tags == e2.tags
-        shutil.rmtree(tempdir)
 
     def testIOEvent(self):
-        tempdir = tempfile.mkdtemp(prefix='pyrocko-model')
+        tempdir = self.make_tempdir()
         fn = pjoin(tempdir, 'event.txt')
         e1 = model.Event(
             10., 20., time=1234567890.,
@@ -79,8 +89,6 @@ class ModelTestCase(unittest.TestCase):
         with self.assertRaises(model.OneEventRequired):
             model.load_one_event(fn2)
 
-        shutil.rmtree(tempdir)
-
     def testMissingComponents(self):
 
         ne = model.Channel('NE', azimuth=45., dip=0.)
@@ -97,7 +105,7 @@ class ModelTestCase(unittest.TestCase):
         assertOrtho(mat[:, 0], mat[:, 1], mat[:, 2])
 
     def testIOStations(self):
-        tempdir = tempfile.mkdtemp(prefix='pyrocko-model')
+        tempdir = self.make_tempdir()
         fn = pjoin(tempdir, 'stations.txt')
 
         ne = model.Channel('NE', azimuth=45., dip=0.)
@@ -108,8 +116,6 @@ class ModelTestCase(unittest.TestCase):
 
         model.dump_stations(stations, fn)
         stations = model.load_stations(fn)
-
-        shutil.rmtree(tempdir)
 
     def testProjections(self):
         km = 1000.
@@ -237,7 +243,7 @@ class ModelTestCase(unittest.TestCase):
         return campaign
 
     def testGNSSCampaign(self):
-        tempdir = tempfile.mkdtemp(prefix='pyrocko-model')
+        tempdir = self.make_tempdir()
         fn = pjoin(tempdir, 'gnss_campaign.yml')
 
         campaign = self.getGNSSCampaign()
@@ -251,7 +257,6 @@ class ModelTestCase(unittest.TestCase):
         assert s_add.shift == (s1.north.shift + s1.north.shift)
 
         assert len(campaign.stations) == len(campaign2.stations)
-        shutil.rmtree(tempdir)
 
     def testGNSSCampaignCorrelationMatrix(self):
         campaign = self.getGNSSCampaign()
@@ -334,6 +339,37 @@ class ModelTestCase(unittest.TestCase):
         comp_mask = num.concatenate(
             [s.get_component_mask() for s in campaign.stations])
         assert comp_mask.sum() == campaign.ncomponents
+
+    def testEventExtra(self):
+        tempdir = self.make_tempdir()
+
+        eextra = model.Event(lat=12., lon=12.)
+        data = [
+            (dict(i=1, f=1.0, n=None, b=True, s='abc', e=eextra), None),
+            ({1: 'abc'}, guts.ValidationError),
+            ({'e': model.Event(lat=1, lon=1)}, guts.ValidationError)]
+
+        for d, exc in data:
+            ev1 = model.Event(
+                lat=10.,
+                lon=11.,
+                depth=4000.,
+                magnitude=5.,
+                extra=d)
+
+            fn = pjoin(tempdir, 'test.events')
+            with self.assertRaises(model.EventExtraDumpError):
+                model.dump_events([ev1], fn)
+
+            if exc is None:
+                ev1.validate()
+                ev2 = guts.load(string=ev1.dump())
+                for k in d:
+                    assert isinstance(ev2.extra[k], type(d[k]))
+
+            else:
+                with self.assertRaises(exc):
+                    ev1.validate()
 
 
 if __name__ == "__main__":
