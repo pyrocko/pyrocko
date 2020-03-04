@@ -13,6 +13,19 @@ steps:
 
 kind: pipeline
 type: docker
+name: docs
+
+steps:
+- name: docs
+  image: pyrocko-docs
+  pull: never
+  commands:
+  - python3 setup.py install && cd doc && make html
+
+---
+
+kind: pipeline
+type: docker
 name: tests-base
 
 steps:
