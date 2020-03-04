@@ -13,7 +13,7 @@ import base64
 from pyrocko import util, moment_tensor
 
 from pyrocko.guts import Float, String, Timestamp, Unicode, \
-    StringPattern, List
+    StringPattern, List, Dict, Any
 from .location import Location
 
 logger = logging.getLogger('pyrocko.model.event')
@@ -33,6 +33,10 @@ def float_or_none_to_str(x, prec=9):
 
 
 class FileParseError(Exception):
+    pass
+
+
+class EventExtrasDumpError(Exception):
     pass
 
 
@@ -62,6 +66,8 @@ class Event(Location):
     :param moment_tensor: moment tensor as
         :py:class:`moment_tensor.MomentTensor` instance (optional)
     :param duration: source duration as float (optional)
+    :param tags: list of tags describing event (optional)
+    :param extra: dictionary for event description (optional)
     '''
 
     time = Timestamp.T(default=util.str_to_time('1970-01-01 00:00:00'))
@@ -74,13 +80,14 @@ class Event(Location):
     moment_tensor = moment_tensor.MomentTensor.T(optional=True)
     duration = Float.T(optional=True)
     tags = List.T(Tag.T(optional=True))
+    extra = Dict.T(String.T(), Any.T())
 
     def __init__(
             self, lat=0., lon=0., north_shift=0., east_shift=0., time=0.,
             name='', depth=None, elevation=None,
             magnitude=None, magnitude_type=None, region=None, load=None,
             loadf=None, catalog=None, moment_tensor=None, duration=None,
-            tags=[]):
+            tags=[], extra={}):
 
         vals = None
         if load is not None:
@@ -100,7 +107,8 @@ class Event(Location):
             elevation=elevation,
             magnitude=magnitude, magnitude_type=magnitude_type,
             region=region, catalog=catalog,
-            moment_tensor=moment_tensor, duration=duration, tags=tags)
+            moment_tensor=moment_tensor, duration=duration, tags=tags,
+            extra=extra)
 
     def time_as_string(self):
         return util.time_to_str(self.time)
@@ -154,6 +162,11 @@ class Event(Location):
 
         if self.tags:
             file.write('tags = %s\n' % ', '.join(self.tags))
+
+        if self.extra:
+            raise EventExtrasDumpError('Event attribute extra cannot be' +
+                                       ' dumped using this method. Use' +
+                                       ' dump_events with format=yaml.')
 
     @staticmethod
     def unique(events, deltat=10., group_cmp=(lambda a, b:
@@ -397,13 +410,25 @@ def load_one_event(filename, format='detect'):
     return events[0]
 
 
-def dump_events(events, filename=None, stream=None):
+def dump_events(events, filename, stream=None, format='basic'):
     '''Write events file.
 
     :param events: list of :py:class:`Event` objects
     :param filename: name of file as str
+    :param format: file format: ``'basic'``, or ``'yaml'``
     '''
-    Event.dump_catalog(events, filename=filename, stream=stream)
+
+    if format == 'basic':
+        Event.dump_catalog(events, filename=filename, stream=stream)
+
+    elif format == 'yaml':
+        from pyrocko import guts
+        events = [ev for ev in events if isinstance(ev, Event)]
+        guts.dump_all(object=events, filename=filename, stream=None)
+
+    else:
+        from pyrocko.io.io_common import FileSaveError
+        raise FileSaveError('unknown event file format: %s' % format)
 
 
 def load_kps_event_list(filename):
