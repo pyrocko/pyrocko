@@ -8,6 +8,7 @@ from .base import *  # noqa
 from .waveform import *  # noqa
 from .insar import *  # noqa
 from .gnss_campaign import *  # noqa
+from ..station import *  # noqa
 
 AVAILABLE_TARGETS =\
     [WaveformGenerator, InSARGenerator,  # noqa

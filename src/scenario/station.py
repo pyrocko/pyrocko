@@ -10,7 +10,8 @@ from pyrocko.guts import Int, String, List
 
 from pyrocko.model.station import load_stations
 from pyrocko.io import stationxml
-from pyrocko.orthodrome import distance_accurate50m
+from pyrocko.orthodrome import distance_accurate50m, \
+    distance_accurate50m_numpy, geographic_midpoint_locations
 
 from .base import LocationGenerator
 
@@ -48,6 +49,11 @@ class ImportStationGenerator(StationGenerator):
         optional=True,
         help='List of files with station coordinates in StationXML format.')
 
+    pyrocko_stations = List.T(
+        model.Station.T(),
+        optional=True,
+        help='List of Pyrocko stations')
+
     def __init__(self, **kwargs):
         StationGenerator.__init__(self, **kwargs)
         self._stations = None
@@ -62,28 +68,20 @@ class ImportStationGenerator(StationGenerator):
         if not stations:
             return self._parent.get_center_latlon()
 
-        lats = [st.lat for st in stations]
-        lons = [st.lon for st in stations]
-        lat_min = min(lats)
-        lat_max = max(lats)
-        lon_min = min(lons)
-        lon_max = max(lons)
-
-        return (lat_max - lat_min)/2, (lon_max - lon_min)/2
+        return geographic_midpoint_locations(self.get_stations())
 
     def get_radius(self):
         stations = self.get_stations()
         if not stations:
-            return 10000.
+            return self._parent.get_radius()
 
-        lats = [st.lat for st in stations]
-        lons = [st.lon for st in stations]
-        lat_min = min(lats)
-        lat_max = max(lats)
-        lon_min = min(lons)
-        lon_max = max(lons)
+        clat, clon = self.get_center_latlon()
+        radii = distance_accurate50m_numpy(
+                clat, clon,
+                [st.effective_lat for st in stations],
+                [st.effective_lon for st in stations])
 
-        return distance_accurate50m(lat_min, lon_min, lat_max, lon_max) / 2.
+        return float(radii.max())
 
     def get_stations(self):
         if self._stations is None:
@@ -100,6 +98,9 @@ class ImportStationGenerator(StationGenerator):
                     sxml = stationxml.load_xml(filename=filename)
                     stations.extend(
                         sxml.get_pyrocko_stations())
+
+            if self.pyrocko_stations:
+                stations.extend(self.pyrocko_stations)
 
             self._stations = stations
 
