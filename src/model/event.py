@@ -418,7 +418,7 @@ def load_one_event(filename, format='detect'):
     return events[0]
 
 
-def dump_events(events, filename, stream=None, format='basic'):
+def dump_events(events, filename=None, stream=None, format='basic'):
     '''Write events file.
 
     :param events: list of :py:class:`Event` objects
