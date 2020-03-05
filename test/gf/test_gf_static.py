@@ -491,10 +491,8 @@ mantle
             lons=lons,
             interpolation=interpolation,
             tsnapshot=time.time())
-        print('time.source', source.time)
 
-        engine = gf.LocalEngine(store_dirs=['/home/marius/Development/testing/gf/ak135_static/'])
-        # engine = gf.LocalEngine(store_dirs=[self.get_pscmp_store_dir()])W
+        engine = gf.LocalEngine(store_dirs=[self.get_store_dir('pscmp')])
         res = engine.process(source, [target_1, target_2], nprocs=0)\
 
         statics_1, statics_2 = res.static_results()
