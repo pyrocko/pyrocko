@@ -7,6 +7,7 @@ It is not a complete list, in the sense that many others have influenced the dev
 * Marius Kriegerowski
 * Marius Isken
 * Hannes Bathke
+* Malte Metz
 * Simone Cesca
 * Simon Daout
 * Francesco Grigoli
