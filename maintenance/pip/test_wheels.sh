@@ -2,8 +2,6 @@
 
 set -e
 
-cd /src
-
-pip install -r requirements-all.txt
-pip install -f /wheels --no-index pyrocko
-python -m nose test.test_util:UtilTestCase.testTime
+pip3 install -r requirements-all.txt
+pip3 install -f wheels --no-index pyrocko
+python3 -m nose test.base.test_util test.base.test_eikonal

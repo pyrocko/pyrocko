@@ -39,6 +39,48 @@ steps:
 
 kind: pipeline
 type: docker
+name: pip-wheels
+
+trigger:
+  branch:
+  - master
+  - pip-wheels
+
+steps:
+- name: build-manylinux1_x86_64
+  image: quay.io/pypa/manylinux1_x86_64
+  commands:
+  - maintenance/pip/build_wheels.sh
+  environment:
+    PLAT: manylinux1_x86_64
+
+- name: test-manylinux1_x86_64
+  image: pyrocko-nest
+  pull: never
+  commands:
+  - apt-get -y update
+  - apt-get -y install python3-pip
+  - pip3 install -r requirements-all.txt
+  - pip3 install -f wheels --no-index pyrocko
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
+
+- name: stage-manylinux1_x86_64
+  image: pyrocko-aux
+  pull: never
+  commands:
+  - maintenance/drone-rsync.sh wheels/ ${DRONE_COMMIT}/wheels/
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
+
+---
+
+kind: pipeline
+type: docker
 name: tests-base
 
 steps:

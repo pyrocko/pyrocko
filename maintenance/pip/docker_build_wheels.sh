@@ -26,5 +26,6 @@ docker run  \
     --mount type=bind,source="$srcdir",destination=/src \
     --mount type=bind,source="$outdir",destination=/wheels \
     --env PLAT=$plat \
+    -w /src \
     quay.io/pypa/$plat \
     /src/maintenance/pip/build_wheels.sh
