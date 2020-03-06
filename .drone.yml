@@ -43,7 +43,7 @@ name: pip-wheels
 
 trigger:
   branch:
-  - master
+  - candidate
   - pip-wheels
 
 steps:

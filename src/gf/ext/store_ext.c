@@ -28,9 +28,23 @@
     #include <omp.h>
 #endif
 
-
-#if defined(__linux__)
+#if defined(__GLIBC__)
   #include <endian.h>
+  #ifndef be64toh
+    /* Support older glibc (<2.9) which lack be64toh */
+    #include <byteswap.h>
+    #if __BYTE_ORDER == __BIG_ENDIAN
+      #define be32toh(x) (x)
+      #define le32toh(x) __bswap_32 (x)
+      #define be64toh(x) (x)
+      #define le64toh(x) __bswap_64 (x)
+    #else
+      #define be32toh(x) __bswap_32 (x)
+      #define le32toh(x) (x)
+      #define be64toh(x) __bswap_64 (x)
+      #define le64toh(x) (x)
+    #endif
+  #endif
 #elif defined (__APPLE__)
   #include <libkern/OSByteOrder.h>
   #define be32toh(x) OSSwapBigToHostInt32(x)
