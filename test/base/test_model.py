@@ -340,7 +340,7 @@ class ModelTestCase(unittest.TestCase):
             [s.get_component_mask() for s in campaign.stations])
         assert comp_mask.sum() == campaign.ncomponents
 
-    def testEventExtra(self):
+    def testEventExtras(self):
         tempdir = self.make_tempdir()
 
         eextra = model.Event(lat=12., lon=12.)
@@ -355,17 +355,17 @@ class ModelTestCase(unittest.TestCase):
                 lon=11.,
                 depth=4000.,
                 magnitude=5.,
-                extra=d)
+                extras=d)
 
             fn = pjoin(tempdir, 'test.events')
-            with self.assertRaises(model.EventExtraDumpError):
+            with self.assertRaises(model.EventExtrasDumpError):
                 model.dump_events([ev1], fn)
 
             if exc is None:
                 ev1.validate()
                 ev2 = guts.load(string=ev1.dump())
                 for k in d:
-                    assert isinstance(ev2.extra[k], type(d[k]))
+                    assert isinstance(ev2.extras[k], type(d[k]))
 
             else:
                 with self.assertRaises(exc):

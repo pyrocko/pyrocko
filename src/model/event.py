@@ -36,7 +36,7 @@ class FileParseError(Exception):
     pass
 
 
-class EventExtraDumpError(Exception):
+class EventExtrasDumpError(Exception):
     pass
 
 
@@ -67,8 +67,8 @@ class Event(Location):
         :py:class:`moment_tensor.MomentTensor` instance (optional)
     :param duration: source duration as float (optional)
     :param tags: list of tags describing event (optional)
-    :param extra: dictionary for user defined event attributes (optional). Keys
-        must be strings, values must be YAML serializable.
+    :param extras: dictionary for user defined event attributes (optional).
+        Keys must be strings, values must be YAML serializable.
     '''
 
     time = Timestamp.T(default=util.str_to_time('1970-01-01 00:00:00'))
@@ -81,20 +81,20 @@ class Event(Location):
     moment_tensor = moment_tensor.MomentTensor.T(optional=True)
     duration = Float.T(optional=True)
     tags = List.T(Tag.T())
-    extra = Dict.T(String.T(), Any.T())
+    extras = Dict.T(String.T(), Any.T())
 
     def __init__(
             self, lat=0., lon=0., north_shift=0., east_shift=0., time=0.,
             name='', depth=None, elevation=None,
             magnitude=None, magnitude_type=None, region=None, load=None,
             loadf=None, catalog=None, moment_tensor=None, duration=None,
-            tags=None, extra=None):
+            tags=None, extras=None):
 
         if tags is None:
             tags = []
 
-        if extra is None:
-            extra = {}
+        if extras is None:
+            extras = {}
 
         vals = None
         if load is not None:
@@ -115,7 +115,7 @@ class Event(Location):
             magnitude=magnitude, magnitude_type=magnitude_type,
             region=region, catalog=catalog,
             moment_tensor=moment_tensor, duration=duration, tags=tags,
-            extra=extra)
+            extras=extras)
 
     def time_as_string(self):
         return util.time_to_str(self.time)
@@ -129,9 +129,9 @@ class Event(Location):
         file.close()
 
     def olddumpf(self, file):
-        if self.extra:
-            raise EventExtraDumpError(
-                'Event user-defined extra attributes cannot be dumped in the '
+        if self.extras:
+            raise EventExtrasDumpError(
+                'Event user-defined extras attributes cannot be dumped in the '
                 '"basic" event file format. Use '
                 'dump_events(..., format="yaml").')
 
