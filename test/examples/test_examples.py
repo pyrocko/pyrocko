@@ -4,6 +4,10 @@ import sys
 import unittest
 import os
 import glob
+try:
+    from urllib2 import HTTPError
+except ImportError:
+    from urllib.error import HTTPError
 
 from .. import common
 
@@ -92,6 +96,10 @@ def _make_function(test_name, fn):
 
         except example.util.DownloadError:
             raise unittest.SkipTest('could not download required data file')
+
+        except HTTPError as e:
+            raise unittest.SkipTest('skipped due to %s: "%s"' % (
+                e.__class__.__name__, str(e)))
 
         except ExternalProgramMissing as e:
             raise unittest.SkipTest(str(e))
