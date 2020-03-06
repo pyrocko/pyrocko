@@ -16,11 +16,24 @@ type: docker
 name: docs
 
 steps:
-- name: docs
+- name: build
   image: pyrocko-docs
   pull: never
   commands:
   - python3 setup.py install && cd doc && make html
+
+- name: stage
+  image: pyrocko-aux
+  pull: never
+  commands:
+  - maintenance/drone-rsync.sh doc/build/html/ ${DRONE_COMMIT}/doc/
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
 
 ---
 
