@@ -6,7 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-*empty*
+### Added
+- Event objects now have an `extras` dict to hold user defined attributes.
+
+### Fixed
+- Fix a bug in static modelling time handling.
 
 ## [v2020.03.03] - 2020-03-03
 
