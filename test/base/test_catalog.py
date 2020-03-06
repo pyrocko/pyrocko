@@ -1,4 +1,8 @@
 from __future__ import division, print_function, absolute_import
+try:
+    from urllib2 import HTTPError
+except ImportError:
+    from urllib.error import HTTPError
 from pyrocko import util
 from pyrocko.client import catalog
 from pyrocko import moment_tensor
@@ -22,6 +26,7 @@ def is_the_haiti_event_geofon(ev):
 class CatalogTestCase(unittest.TestCase):
 
     @common.require_internet
+    @common.skip_on(HTTPError)
     def testGeofon(self):
 
         cat = catalog.Geofon()
@@ -45,6 +50,7 @@ class CatalogTestCase(unittest.TestCase):
         cat.flush()
 
     @common.require_internet
+    @common.skip_on(HTTPError)
     def testGeofonSingleEvent(self):
         cat = catalog.Geofon()
         ev = cat.get_event('gfz2010avtm')
@@ -55,6 +61,7 @@ class CatalogTestCase(unittest.TestCase):
         assert ev.name == 'gfz2019hkck'
 
     @common.require_internet
+    @common.skip_on(HTTPError)
     def testGeofonMT(self):
         cat = catalog.Geofon()
         tmin = util.str_to_time('2014-01-01 00:00:00')
@@ -66,6 +73,7 @@ class CatalogTestCase(unittest.TestCase):
         self.assertEqual(round(angle - 7.7, 1), 0.0)
 
     @unittest.skip("don't want to annoy our colleagues at GEOFON")
+    @common.skip_on(HTTPError)
     def testGeofonMassive(self):
         cat = catalog.Geofon(get_moment_tensors=False)
         tmin = util.str_to_time('2010-01-01 00:00:00')
@@ -74,6 +82,7 @@ class CatalogTestCase(unittest.TestCase):
         print(len(events))
 
     @common.require_internet
+    @common.skip_on(HTTPError)
     def testISC(self):
         cat = catalog.ISC()
         tmin = util.stt('2009-02-22 05:00:00')
@@ -91,6 +100,7 @@ class CatalogTestCase(unittest.TestCase):
         self.assertEqual(len(markers), 76)
 
     @common.require_internet
+    @common.skip_on(HTTPError)
     def testGlobalCMT(self):
 
         def is_the_haiti_event(ev):
@@ -119,6 +129,7 @@ class CatalogTestCase(unittest.TestCase):
         is_the_haiti_event(ev)
 
     @common.require_internet
+    @common.skip_on(HTTPError)
     def testUSGS(self):
 
         def is_the_haiti_event(ev):

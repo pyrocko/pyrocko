@@ -64,6 +64,22 @@ def have_internet():
 require_internet = unittest.skipUnless(have_internet(), 'need internet access')
 
 
+def skip_on(*exceptions):
+
+    def skip_on(f):
+        @functools.wraps(f)
+        def wrap_f(*args, **kwargs):
+            try:
+                return f(*args, **kwargs)
+            except exceptions as e:
+                raise unittest.SkipTest('skipped due to %s: "%s"' % (
+                    e.__class__.__name__, str(e)))
+
+        return wrap_f
+
+    return skip_on
+
+
 def skip_on_download_error(f):
 
     @functools.wraps(f)
