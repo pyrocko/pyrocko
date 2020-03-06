@@ -26,7 +26,7 @@ steps:
   image: pyrocko-aux
   pull: never
   commands:
-  - maintenance/drone-rsync.sh doc/build/html/ ${DRONE_COMMIT}/doc/
+  - maintenance/drone-rsync.sh doc/build/html/ ${DRONE_COMMIT}/docs/
   environment:
     RSYNC_HOST:
       from_secret: rsync-host
@@ -92,7 +92,21 @@ steps:
   - pip3 install utm
   - pip3 install git+https://github.com/pyrocko/kite
   - pip3 install obspy
-  - python3 -m nose test.base
+  - python3 -m coverage run --parallel-mode -m nose test.base
+  - for x in .coverage.* ; do mv $x $${x#.} ; done
+
+- name: stage
+  image: pyrocko-aux
+  pull: never
+  commands:
+  - maintenance/drone-rsync.sh coverage.*  ${DRONE_COMMIT}/coverage/data/
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
 
 ---
 
@@ -109,7 +123,21 @@ steps:
   - pip3 install utm
   - pip3 install git+https://github.com/pyrocko/kite
   - pip3 install obspy
-  - python3 -m nose test.gf
+  - python3 -m coverage run --parallel-mode -m nose test.gf
+  - for x in .coverage.* ; do mv $x $${x#.} ; done
+
+- name: stage
+  image: pyrocko-aux
+  pull: never
+  commands:
+  - maintenance/drone-rsync.sh coverage.*  ${DRONE_COMMIT}/coverage/data/
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
 
 ---
 
@@ -126,7 +154,21 @@ steps:
   - pip3 install utm
   - pip3 install git+https://github.com/pyrocko/kite
   - pip3 install obspy
-  - python3 -m nose test.examples
+  - python3 -m coverage run --parallel-mode -m nose test.examples
+  - for x in .coverage.* ; do mv $x $${x#.} ; done
+
+- name: stage
+  image: pyrocko-aux
+  pull: never
+  commands:
+  - maintenance/drone-rsync.sh coverage.*  ${DRONE_COMMIT}/coverage/data/
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
 
 ---
 
@@ -141,7 +183,21 @@ steps:
   commands:
   - python3 setup.py install -f
   - pip3 install obspy
-  - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test.gui test.base.test_obspy_compat:ObsPyCompatTestCase.test_obspy_fiddle test.base.test_obspy_compat:ObsPyCompatTestCase.test_obspy_snuffle
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m nose test.gui test.base.test_obspy_compat:ObsPyCompatTestCase.test_obspy_fiddle test.base.test_obspy_compat:ObsPyCompatTestCase.test_obspy_snuffle
+  - for x in .coverage.* ; do mv $x $${x#.} ; done
+
+- name: stage
+  image: pyrocko-aux
+  pull: never
+  commands:
+  - maintenance/drone-rsync.sh coverage.*  ${DRONE_COMMIT}/coverage/data/
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
 
 ---
 
@@ -149,10 +205,11 @@ kind: pipeline
 type: docker
 name: coverage
 
-trigger:
-  branch:
-  - candidate
-  - coverage
+depends_on:
+- tests-base
+- tests-gf
+- tests-examples
+- tests-gui
 
 steps:
 - name: build
@@ -163,7 +220,8 @@ steps:
   - pip3 install utm
   - pip3 install git+https://github.com/pyrocko/kite
   - pip3 install obspy
-  - xvfb-run -s '-screen 0 640x480x24' python3 -m nose --with-coverage test
+  - wget -r -nH --cut-dirs=2 --no-parent --reject="index.html*" https://data.pyrocko.org/builds/${DRONE_COMMIT}/coverage/data/
+  - python3 -m coverage combine coverage/data/coverage.*
   - python3 -m coverage html
 
 - name: stage
@@ -178,3 +236,30 @@ steps:
       from_secret: rsync-user
     RSYNC_KEY:
       from_secret: rsync-key
+
+---
+
+kind: pipeline
+type: docker
+name: publish
+
+depends_on:
+- coverage
+- flake8
+- docs
+- pip-wheels
+
+trigger:
+  status:
+  - success
+  - failure
+
+steps:
+- name: post
+  image: pyrocko-nest
+  pull: never
+  commands:
+  - maintenance/drone-matterpost.py
+  environment:
+    WEBHOOK:
+      from_secret: hive-webhook

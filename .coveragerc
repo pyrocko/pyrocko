@@ -1,0 +1,14 @@
+[run]
+source = pyrocko
+
+[report]
+exclude_lines =
+    def __repr__
+    def __str__
+    raise AssertionError
+    raise NotImplementedError
+    raise ValueError
+    raise
+    if __name__ == .__main__.:
+    logger.error
+    if pyrocko.grumpy:
