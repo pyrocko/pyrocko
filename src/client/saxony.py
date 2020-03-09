@@ -6,7 +6,7 @@ from __future__ import absolute_import, division
 
 from pyrocko import util, model
 from .base_catalog import EarthquakeCatalog
-from .kinherd import ws_request
+from pyrocko.util import urlopen
 
 import logging
 
@@ -23,7 +23,7 @@ class Saxony(EarthquakeCatalog):
     def retrieve(self):
         url = 'http://home.uni-leipzig.de/collm/auswertung_temp.html'
 
-        f = ws_request(url)
+        f = urlopen(url)
         text = f.read()
         sec = 0
         events = {}

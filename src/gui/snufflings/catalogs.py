@@ -36,8 +36,6 @@ class CatalogSearch(Snuffling):
         <a href="http://www.globalcmt.org/">Global CMT</a><br />
         &middot;
         <a href="http://earthquake.usgs.gov/regional/neic/">USGS</a><br />
-        &middot;
-        <a href="http://kinherd.org/quakes/KPS/">Kinherd</a><br />
     </p>
     <p>
         The USGS catalog allows to destinguish between 'Preliminary
@@ -57,7 +55,6 @@ class CatalogSearch(Snuffling):
             'Geofon': catalog.Geofon(),
             'USGS/NEIC US': catalog.USGS('us'),
             'Global-CMT': catalog.GlobalCMT(),
-            'Kinherd': catalog.Kinherd(),
             'Saxony (Uni-Leipzig)': catalog.Saxony(),
             }
 
