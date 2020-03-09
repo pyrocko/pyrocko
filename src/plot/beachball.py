@@ -5,7 +5,6 @@
 # python 2/3
 from __future__ import absolute_import
 
-from builtins import zip, map, range
 from math import pi as PI
 import logging
 import numpy as num

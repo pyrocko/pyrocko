@@ -3,9 +3,6 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
-from builtins import filter
-
-from past.builtins import cmp
 
 import os
 import sys
@@ -23,6 +20,10 @@ from pyrocko.io import eventdata
 
 pjoin = os.path.join
 logger = logging.getLogger('pyrocko.io.rdseed')
+
+
+def cmp(a, b):
+    return (a > b) - (a < b)
 
 
 def read_station_header_file(fn):

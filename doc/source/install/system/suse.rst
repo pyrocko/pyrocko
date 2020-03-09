@@ -12,7 +12,7 @@ Python 3.4 and later
         python3-qt5 python3-qt4 \
         python3-matplotlib-qt4 \
         python3-PyYAML python3-progressbar python3-Jinja2 \
-        python3-future python3-requests \
+        python3-requests \
         python3-nose python3-coverage
 
     cd ~/src/   # or wherever you keep your source packages
@@ -31,7 +31,7 @@ Python 2.7
         python-matplotlib-qt5 python-matplotlib-qt4 python-matplotlib-tk \
         python-qt5 python-qt4 \
         python-PyYAML python-progressbar python-Jinja2 \
-        python-future python-requests \
+        python-requests \
         python-nose python-coverage
 
     cd ~/src/   # or wherever you keep your source packages

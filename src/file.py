@@ -12,7 +12,6 @@
 # * A record payload consists of a sequence of record entries.
 # * A record entry consists of a key, a type, and a value.
 from __future__ import absolute_import, division
-from builtins import range
 
 from struct import unpack, pack
 from io import BytesIO
@@ -28,6 +27,12 @@ except ImportError:
     SEEK_CUR = 1
 
 from . import util
+
+try:
+    range = xrange
+except NameError:
+    pass
+
 
 size_record_header = 64
 no_hash = '\0' * 20

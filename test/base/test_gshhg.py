@@ -1,5 +1,4 @@
 from __future__ import division, print_function, absolute_import
-from builtins import range
 
 import os
 import unittest

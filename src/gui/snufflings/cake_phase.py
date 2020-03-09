@@ -1,9 +1,13 @@
-from builtins import str
 from pyrocko.gui.snuffling import Snuffling, Param, Switch, Choice
 from pyrocko.gui.marker import PhaseMarker
 from pyrocko import gf
 from pyrocko import cake
 import numpy as num
+
+try:
+    newstr = unicode
+except NameError:
+    newstr = str
 
 
 class CakePhase(Snuffling):

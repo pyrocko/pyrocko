@@ -3,15 +3,13 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
-from builtins import zip
-from builtins import str as newstr
 
 import numpy as num
 from io import BytesIO
 from base64 import b64decode, b64encode
 import binascii
 
-from .guts import TBase, Object, ValidationError, literal
+from .guts import TBase, Object, ValidationError, literal, newstr
 
 
 try:

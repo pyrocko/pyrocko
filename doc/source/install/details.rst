@@ -23,7 +23,6 @@ installed from source:
    * `matplotlib <http://matplotlib.sourceforge.net/>`_ (with Qt4 or Qt5 backend)
    * `pyyaml <https://bitbucket.org/xi/pyyaml>`_
    * `PyQt4 or PyQt5 <http://www.riverbankcomputing.co.uk/software/pyqt/intro>`_ (only needed for the GUI apps)
-   * `future <https://pypi.python.org/pypi/future>`_ (Python2/3 compatibility layer)
    * `requests <http://docs.python-requests.org/en/master/>`_
 
 * Optional Python modules:

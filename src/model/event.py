@@ -4,7 +4,6 @@
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
 
-from past.builtins import cmp
 import logging
 import numpy as num
 import hashlib
@@ -21,6 +20,10 @@ logger = logging.getLogger('pyrocko.model.event')
 guts_prefix = 'pf'
 
 d2r = num.pi / 180.
+
+
+def cmp(a, b):
+    return (a > b) - (a < b)
 
 
 def ehash(s):

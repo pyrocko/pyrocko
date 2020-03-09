@@ -10,7 +10,6 @@ import math
 import logging
 
 import numpy as num
-from builtins import str as newstr
 
 from pyrocko import trace, util, plot
 from pyrocko.guts import Object, Int, String, Timestamp
@@ -189,7 +188,7 @@ def plot_timeline(fns):
 
     h = 3600.
 
-    if isinstance(fns, (str, newstr)):
+    if isinstance(fns, str):
         fn = fns
         if os.path.isdir(fn):
             fns = [

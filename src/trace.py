@@ -5,11 +5,6 @@
 '''This module provides basic signal processing for seismic traces.'''
 from __future__ import division, absolute_import
 
-from builtins import zip
-from builtins import map
-from builtins import range
-from builtins import str as newstr
-
 import time
 import math
 import copy
@@ -23,6 +18,11 @@ from .util import reuse, hpfloat, UnavailableDecimation
 from .guts import Object, Float, Int, String, Complex, Tuple, List, \
     StringChoice
 from .guts_array import Array
+
+try:
+    newstr = unicode
+except NameError:
+    newstr = str
 
 
 UnavailableDecimation  # noqa

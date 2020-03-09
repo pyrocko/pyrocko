@@ -3,7 +3,6 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import division, absolute_import
-from builtins import object
 
 import math
 import numpy as num

@@ -3,8 +3,6 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from builtins import range
-from builtins import str
 import sys
 import re
 import numpy as num

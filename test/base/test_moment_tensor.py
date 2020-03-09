@@ -1,6 +1,4 @@
 from __future__ import division, print_function, absolute_import
-from builtins import str
-from builtins import range
 import unittest
 import random
 import math

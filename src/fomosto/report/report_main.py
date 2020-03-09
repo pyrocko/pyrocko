@@ -3,9 +3,6 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import, print_function, division
-from builtins import range, map
-from future import standard_library
-standard_library.install_aliases()  # noqa
 
 import os
 import sys

@@ -4,9 +4,6 @@
 # ---|P------/S----------~Lg----------
 '''Utility functions for Pyrocko.'''
 from __future__ import division, print_function
-from past.builtins import zip, long
-from builtins import range
-from builtins import object
 
 import time
 import logging
@@ -37,6 +34,13 @@ except ImportError:
     from urllib import urlencode, quote, unquote # noqa
     from urllib2 import (Request, build_opener, HTTPDigestAuthHandler,   # noqa
                          HTTPError, URLError, urlopen)  # noqa
+
+
+try:
+    long
+except NameError:
+    long = int
+
 
 force_dummy_progressbar = False
 
@@ -1947,7 +1951,7 @@ def consistency_merge(list_of_tuples,
         elif error == 'warn':
             logger.warning(str(e))
 
-        return tuple([merge(x) for x in zip(*list_of_tuples)[1:]])
+        return tuple([merge(x) for x in list(zip(*list_of_tuples))[1:]])
 
 
 def parse_md(f):

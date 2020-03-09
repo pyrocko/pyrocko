@@ -30,7 +30,7 @@ Tagged builds are available for download from https://pypi.python.org/.
     sudo pip install pyrocko
 
     # Install requirements
-    sudo pip install numpy>=1.8 scipy pyyaml matplotlib progressbar2 future jinja2 requests PyOpenGL
+    sudo pip install numpy>=1.8 scipy pyyaml matplotlib progressbar2 jinja2 requests PyOpenGL
 
 
 User local installation (no sudo)
@@ -46,7 +46,7 @@ can use ``pip`` to manage the installation as well:
     pip install pyrocko
 
     # Install requirements
-    pip install numpy>=1.8 scipy pyyaml matplotlib progressbar2 future jinja2 requests PyOpenGL
+    pip install numpy>=1.8 scipy pyyaml matplotlib progressbar2 jinja2 requests PyOpenGL
 
 
 Install latest version with pip

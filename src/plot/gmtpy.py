@@ -8,7 +8,6 @@
 # See there for copying and licensing information.
 
 from __future__ import print_function, absolute_import
-from builtins import zip, str as text
 import subprocess
 try:
     from StringIO import StringIO as BytesIO
@@ -29,6 +28,11 @@ from select import select
 from scipy.io import netcdf
 
 from pyrocko import ExternalProgramMissing
+
+try:
+    newstr = unicode
+except NameError:
+    newstr = str
 
 find_bb = re.compile(br'%%BoundingBox:((\s+[-0-9]+){4})')
 find_hiresbb = re.compile(br'%%HiResBoundingBox:((\s+[-0-9.]+){4})')
@@ -3101,12 +3105,12 @@ class TableLiner(object):
     def __iter__(self):
         if self.in_columns is not None:
             for row in zip(*self.in_columns):
-                yield (' '.join([text(x) for x in row])+'\n').encode(
+                yield (' '.join([newstr(x) for x in row])+'\n').encode(
                     self.encoding)
 
         if self.in_rows is not None:
             for row in self.in_rows:
-                yield (' '.join([text(x) for x in row])+'\n').encode(
+                yield (' '.join([newstr(x) for x in row])+'\n').encode(
                     self.encoding)
 
 

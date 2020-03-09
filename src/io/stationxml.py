@@ -3,7 +3,6 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
-from builtins import str as newstr
 
 import sys
 import time
@@ -22,6 +21,11 @@ from pyrocko.guts import load_xml  # noqa
 
 import pyrocko.model
 from pyrocko import trace, util
+
+try:
+    newstr = unicode
+except NameError:
+    newstr = str
 
 guts_prefix = 'sx'
 

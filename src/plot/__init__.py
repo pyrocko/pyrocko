@@ -50,10 +50,15 @@ from __future__ import absolute_import
 from pyrocko.util import parse_md
 from pyrocko.guts import StringChoice, Float, Int, Bool, Tuple, Object
 
-from builtins import str as newstr
-
 import math
 import random
+
+
+try:
+    newstr = unicode
+except NameError:
+    newstr = str
+
 
 __doc__ += parse_md(__file__)
 

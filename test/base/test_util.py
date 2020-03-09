@@ -1,6 +1,4 @@
 from __future__ import division, print_function, absolute_import
-from builtins import zip
-from builtins import range
 from pyrocko import util
 import re
 import unittest
@@ -10,6 +8,11 @@ import time
 import os
 from random import random
 import numpy as num
+
+try:
+    range = xrange
+except NameError:
+    pass
 
 
 class UtilTestCase(unittest.TestCase):

@@ -4,11 +4,6 @@
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import, print_function
 
-from builtins import str as newstr
-from builtins import zip
-from builtins import map
-from builtins import range
-
 import math
 import random
 import logging
@@ -26,6 +21,11 @@ from pyrocko.guts_array import Array
 from pyrocko.dataset import topo
 from pyrocko import orthodrome as od
 from . import gmtpy
+
+try:
+    newstr = unicode
+except NameError:
+    newstr = str
 
 points_in_region = od.points_in_region
 

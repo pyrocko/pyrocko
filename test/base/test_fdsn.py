@@ -1,6 +1,4 @@
 from __future__ import division, print_function, absolute_import
-from future import standard_library
-standard_library.install_aliases()  # noqa
 
 import unittest
 import tempfile

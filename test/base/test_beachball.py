@@ -1,9 +1,6 @@
 # python 2/3
 
 from __future__ import division, print_function, absolute_import
-from future import standard_library
-standard_library.install_aliases()  # noqa
-from builtins import range
 import unittest
 import math
 import numpy as num

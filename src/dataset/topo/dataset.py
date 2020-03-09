@@ -3,7 +3,6 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
-from builtins import range
 
 import math
 import logging
@@ -14,6 +13,11 @@ import numpy as num
 from . import tile
 from ..util import get_download_callback
 from pyrocko import util
+
+try:
+    range = xrange
+except NameError:
+    pass
 
 logger = logging.getLogger('pyrocko.dataset.topo.dataset')
 

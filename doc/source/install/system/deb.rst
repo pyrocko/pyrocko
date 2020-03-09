@@ -14,7 +14,6 @@ Python 3.4 and later
     sudo apt-get install -y python3-pyqt5.qtwebengine || sudo apt-get install -y python3-pyqt5.qtwebkit
     sudo apt-get install -y python3-yaml python3-progressbar python3-jinja2
     sudo apt-get install -y python3-requests
-    sudo apt-get install -y python3-future || sudo easy_install3 future
     cd ~/src/   # or wherever you keep your source packages
     git clone https://git.pyrocko.org/pyrocko/pyrocko.git pyrocko
     cd pyrocko
@@ -32,7 +31,6 @@ Python 2.7
     sudo apt-get install -y python-pyqt5.qtwebengine || sudo apt-get install -y python-pyqt5.qtwebkit
     sudo apt-get install -y python-yaml python-progressbar python-jinja2
     sudo apt-get install -y python-requests
-    sudo apt-get install -y python-future || sudo easy_install future
     cd ~/src/   # or wherever you keep your source packages
     git clone https://git.pyrocko.org/pyrocko/pyrocko.git pyrocko
     cd pyrocko

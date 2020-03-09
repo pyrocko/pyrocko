@@ -14,10 +14,6 @@ which is based on this one:
     http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/259148
 """
 from __future__ import absolute_import
-from future import standard_library
-standard_library.install_aliases()  # noqa
-from builtins import range
-from builtins import str as newstr
 
 import asynchat
 import asyncore
@@ -44,6 +40,10 @@ from pyrocko.plot import cake_plot
 from pyrocko import gf, util
 from pyrocko.util import quote, unquote
 
+try:
+    newstr = unicode
+except NameError:
+    newstr = str
 
 logger = logging.getLogger('pyrocko.gf.server')
 

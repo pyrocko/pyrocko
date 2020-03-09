@@ -3,7 +3,6 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
-from builtins import str
 
 import re
 import logging
@@ -16,6 +15,11 @@ from pyrocko import config
 
 from pyrocko.util import \
     urlencode, Request, build_opener, HTTPDigestAuthHandler, urlopen, HTTPError
+
+try:
+    newstr = unicode
+except NameError:
+    newstr = str
 
 logger = logging.getLogger('pyrocko.client.fdsn')
 
@@ -117,7 +121,7 @@ def _request(url, post=False, user=None, passwd=None,
 
     req = Request(url)
     if post:
-        if isinstance(post, str):
+        if isinstance(post, newstr):
             post = post.encode('utf8')
         logger.debug('POST data: \n%s' % post.decode('utf8'))
         req.data = post

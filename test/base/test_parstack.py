@@ -1,5 +1,4 @@
 from __future__ import division, print_function, absolute_import
-from builtins import zip
 import random
 import unittest
 import multiprocessing

@@ -7,7 +7,6 @@ Installation on Centos systems
     sudo yum install make gcc git python python-yaml python-matplotlib 
     sudo yum install numpy scipy python-requests python-coverage 
     sudo yum install python-jinja2 PyQt4 python-matplotlib-qt4
-    sudo yum install python-future || sudo easy_install future
     sudo easy_install progressbar
     cd ~/src/   # or wherever you keep your source packages
     git clone https://git.pyrocko.org/pyrocko/pyrocko.git pyrocko

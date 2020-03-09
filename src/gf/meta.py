@@ -3,8 +3,6 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
-from builtins import str as new_str
-from builtins import range, map, zip
 
 import math
 import re
@@ -25,6 +23,10 @@ from pyrocko import cake, orthodrome, spit, moment_tensor, trace
 
 from .error import StoreError
 
+try:
+    new_str = unicode
+except NameError:
+    new_str = str
 
 guts_prefix = 'pf'
 

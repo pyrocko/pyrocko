@@ -1,9 +1,6 @@
 # python 2/3
 from __future__ import division, print_function, absolute_import
-from future import standard_library
-standard_library.install_aliases()  # noqa
 
-from builtins import range
 from pyrocko import trace, util, model, pile
 import unittest
 import math
@@ -12,6 +9,11 @@ import numpy as num
 import pickle as pickle
 
 from .. import common
+
+try:
+    range = xrange
+except NameError:
+    pass
 
 sometime = 1234567890.
 d2r = num.pi/180.

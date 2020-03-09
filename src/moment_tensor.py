@@ -22,8 +22,6 @@ output of :py:meth:`MomentTensor.standard_decomposition`.
 '''
 
 from __future__ import division, print_function, absolute_import
-from builtins import map
-from builtins import zip
 
 import math
 import numpy as num

@@ -3,7 +3,6 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division, print_function
-from builtins import range, map, zip
 
 from collections import defaultdict
 from functools import cmp_to_key

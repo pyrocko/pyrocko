@@ -1,7 +1,6 @@
 # python 2/3
 from __future__ import division, print_function, absolute_import
 
-from builtins import range
 import time
 import unittest
 from collections import defaultdict

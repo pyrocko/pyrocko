@@ -4,7 +4,6 @@
 # ---|P------/S----------~Lg----------
 '''Module to read and write GSE2.0, GSE2.1, and IMS1.0 files.'''
 from __future__ import print_function, absolute_import
-from builtins import range, object
 
 import sys
 import re
@@ -16,6 +15,10 @@ from pyrocko.guts import (
     Object, String, StringChoice, Timestamp, Int, Float, List, Bool, Complex,
     ValidationError)
 
+try:
+    range = xrange
+except NameError:
+    pass
 
 logger = logging.getLogger('pyrocko.io.ims')
 
@@ -2431,6 +2434,9 @@ class Reader(object):
 
     def __iter__(self):
         return self
+
+    def next(self):
+        return self.__next__()
 
     def __next__(self):
         try:

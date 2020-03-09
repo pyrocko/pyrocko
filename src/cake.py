@@ -44,9 +44,6 @@ The main classes defined in this module are:
 
 from __future__ import absolute_import
 from functools import reduce
-from future import standard_library
-standard_library.install_aliases()  # noqa
-from builtins import range, zip, str as newstr
 
 import os
 import logging
@@ -64,6 +61,11 @@ import numpy as num
 from scipy.optimize import bisect, brentq
 
 from . import util, config
+
+try:
+    newstr = unicode
+except NameError:
+    newstr = str
 
 logger = logging.getLogger('cake')
 

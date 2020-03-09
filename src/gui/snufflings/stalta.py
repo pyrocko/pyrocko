@@ -3,7 +3,6 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import print_function, absolute_import
-from builtins import zip
 import numpy as num
 
 from pyrocko.gui.snuffling import Param, Snuffling, Switch, Choice

@@ -2,10 +2,6 @@
 # tested with Python 2.4, september-2007 (1.12)
 # tested with Python 2.5, december-2008 (1.12_1)
 from __future__ import division, print_function, absolute_import
-from builtins import range
-from builtins import next
-from builtins import zip
-from past.builtins import cmp
 
 import sys  # noqa
 import unittest
@@ -15,6 +11,10 @@ import pickle
 from io import BytesIO
 
 from pyrocko import avl
+
+
+def cmp(a, b):
+    return (a > b) - (a < b)
 
 
 def verify_empty(tree):

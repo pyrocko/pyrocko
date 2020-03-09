@@ -1,6 +1,4 @@
 from __future__ import division, print_function, absolute_import
-from builtins import range
-from builtins import map
 
 import random
 import time

@@ -2,8 +2,6 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from future import standard_library
-standard_library.install_aliases()  # noqa
 
 import time
 import requests

@@ -3,7 +3,6 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import, print_function
-from builtins import range
 
 import sys
 import os
@@ -40,6 +39,11 @@ from .qt_compat import qc, qg, qw, qgl, qsvg, use_pyqt5
 
 import scipy.stats as sstats
 import platform
+
+try:
+    newstr = unicode
+except NameError:
+    newstr = str
 
 
 def fnpatch(x):
@@ -684,7 +688,7 @@ def sort_actions(menu):
     actions = menu.actions()
     for action in actions:
         menu.removeAction(action)
-    actions.sort(key=lambda x: str(x.text()))
+    actions.sort(key=lambda x: newstr(x.text()))
 
     help_action = [a for a in actions if a.text() == 'Snuffler Controls']
     if help_action:

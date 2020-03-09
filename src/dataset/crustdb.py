@@ -5,8 +5,6 @@
 '''Access to the USGS Global Crustal Database.
 Simple queries and statistical analysis'''
 from __future__ import absolute_import
-from builtins import range
-from builtins import map
 
 import numpy as num
 import copy

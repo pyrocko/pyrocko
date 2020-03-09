@@ -3,7 +3,6 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
-from builtins import range
 
 import zipfile
 import os.path as op
@@ -11,6 +10,11 @@ import os.path as op
 import numpy as num
 
 from . import tile, dataset
+
+try:
+    range = xrange
+except NameError:
+    pass
 
 citation = '''
 Amante, C. and B.W. Eakins, 2009. ETOPO1 1 Arc-Minute Global Relief Model:

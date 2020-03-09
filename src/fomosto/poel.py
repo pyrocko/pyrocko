@@ -4,7 +4,6 @@
 # ---|P------/S----------~Lg----------
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division
-from builtins import zip, range
 
 import logging
 import os

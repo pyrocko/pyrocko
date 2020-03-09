@@ -3,7 +3,6 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
-from builtins import zip, range
 
 import sys
 
@@ -596,7 +595,7 @@ class MarkerTableModel(qc.QAbstractTableModel):
             dists /= 1000.
 
             dists = [round(x, 1) for x in dists]
-            self.distances = dict(list(zip(emarkers, dists)))
+            self.distances = dict(zip(emarkers, dists))
 
         if want_angles:
             if oevent.moment_tensor:

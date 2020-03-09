@@ -4,9 +4,6 @@
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
 
-from builtins import range
-from builtins import map
-
 import os.path as op
 import math
 from collections import defaultdict

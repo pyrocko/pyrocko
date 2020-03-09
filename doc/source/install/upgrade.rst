@@ -50,7 +50,7 @@ when you try to run ``python setup.py install``.
     :caption: Ubuntu, Debian, etc.: install new prerequisites and purge old install
 
     # upgrade to PyQt5 and other depedencies
-    sudo apt-get install -y python-requests python-pyqt5 python-future
+    sudo apt-get install -y python-requests python-pyqt5
     sudo apt-get install -y python-pyqt5 python-pyqt5.qtopengl python-pyqt5.qtsvg
     sudo apt-get install -y python-pyqt5.qtwebengine || sudo apt-get install -y python-pyqt5.qtwebkit
 
@@ -74,7 +74,7 @@ installation:
     :caption: MacPorts has to install new dependencies 
 
     sudo rm -rf /opt/local/lib/python2.7/dist-packages/pyrocko*
-    sudo port install py27-pyqt5 py27-requests py27-future
+    sudo port install py27-pyqt5 py27-requests
 
     cd ~/src/  # or wherever you keep your source packages
     rm -rf pyrocko

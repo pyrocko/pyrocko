@@ -3,10 +3,14 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import division
-from builtins import range
 import struct
 import logging
 import numpy as num
+
+try:
+    range = xrange
+except NameError:
+    pass
 
 logger = logging.getLogger('pyrocko.spit')
 

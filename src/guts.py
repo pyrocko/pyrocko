@@ -5,9 +5,6 @@
 # ---|P------/S----------~Lg----------
 '''Lightweight declarative YAML and XML data binding for Python.'''
 from __future__ import absolute_import, print_function
-from builtins import str as newstr
-from builtins import range
-from future.utils import with_metaclass
 
 import datetime
 import calendar
@@ -31,6 +28,12 @@ except ImportError:
     from yaml import SafeLoader, SafeDumper
 
 from .util import time_to_str, str_to_time, TimeStrError
+
+try:
+    newstr = unicode
+    range = xrange
+except NameError:
+    newstr = str
 
 
 class GutsSafeDumper(SafeDumper):
@@ -761,6 +764,20 @@ class DefaultMaker(object):
         return self.cls(
             *[make_default(x) for x in self.args],
             **dict((k, make_default(v)) for (k, v) in self.kwargs.items()))
+
+
+def with_metaclass(meta, *bases):
+    # inlined py2/py3 compat solution from python-future
+    class metaclass(meta):
+        __call__ = type.__call__
+        __init__ = type.__init__
+
+        def __new__(cls, name, this_bases, d):
+            if this_bases is None:
+                return type.__new__(cls, name, (), d)
+            return meta(name, bases, d)
+
+    return metaclass('temp', None, {})
 
 
 class Object(with_metaclass(ObjectMetaClass, object)):
