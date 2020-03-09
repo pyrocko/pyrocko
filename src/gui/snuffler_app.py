@@ -706,7 +706,10 @@ class SnufflerWindow(qw.QMainWindow):
             w.setMinimumHeight(w.sizeHint().height() + 5)
 
             def reset_minimum_size():
-                w.setMinimumSize(minsize)
+                try:
+                    w.setMinimumSize(minsize)
+                except RuntimeError:
+                    pass
 
             qc.QTimer.singleShot(200, reset_minimum_size)
 
