@@ -1970,3 +1970,11 @@ def parse_md(f):
     # Convert Subsections to toc-less rubrics
     mdstr = re.sub(r'## (.*)\n', r'.. rubric:: \1\n', mdstr)
     return mdstr
+
+
+def mpl_show(plt):
+    import matplotlib
+    if matplotlib.get_backend().lower() == 'agg':
+        logger.warning('Cannot show() when using matplotlib "agg" backend')
+    else:
+        plt.show()

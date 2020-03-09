@@ -7,6 +7,7 @@ from __future__ import absolute_import
 import math
 import numpy as num
 from pyrocko import cake
+from pyrocko.util import mpl_show
 from . import mpl_labelspace as labelspace, mpl_init,\
     mpl_color as str_to_mpl_color, InvalidColorDef
 
@@ -551,7 +552,7 @@ def plot_surface_efficiency(mat):
     plt.xlabel('Incident Angle')
     plt.ylabel('Energy Normalized Coefficient', position=(-2., 0.5))
     plt.legend()
-    plt.show()
+    mpl_show(plt)
 
 
 def my_xp_plot(
@@ -581,7 +582,7 @@ def my_xp_plot(
 
     if plt:
         if show is True:
-            plt.show()
+            mpl_show(plt)
 
 
 def my_xt_plot(
@@ -618,7 +619,7 @@ def my_xt_plot(
     labels_xt(as_degrees=as_degrees, vred=vred, axes=axes)
     if plt:
         if show is True:
-            plt.show()
+            mpl_show(plt)
 
 
 def my_rays_plot_gcs(
@@ -642,7 +643,7 @@ def my_rays_plot_gcs(
 
     if plt:
         if show is True:
-            plt.show()
+            mpl_show(plt)
 
 
 def my_rays_plot(
@@ -685,7 +686,7 @@ def my_rays_plot(
 
     if plt:
         if show is True:
-            plt.show()
+            mpl_show(plt)
 
 
 def my_combi_plot(
@@ -731,7 +732,7 @@ def my_combi_plot(
     ax2.set_ylim(ymax+my, ymin-my)
 
     if show is True:
-        plt.show()
+        mpl_show(plt)
 
 
 def my_model_plot(mod, axes=None, show=True):
@@ -760,4 +761,4 @@ def my_model_plot(mod, axes=None, show=True):
     axes.set_xlim(xmin, xmax+mx)
     if plt:
         if show is True:
-            plt.show()
+            mpl_show(plt)

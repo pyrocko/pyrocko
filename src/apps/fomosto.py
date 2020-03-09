@@ -15,6 +15,7 @@ from optparse import OptionParser
 
 from pyrocko import util, trace, gf, cake, io, config, fomosto
 from pyrocko.gui import marker
+from pyrocko.util import mpl_show
 
 logger = logging.getLogger('pyrocko.apps.fomosto')
 km = 1e3
@@ -901,7 +902,7 @@ def command_tttview(args):
         axes.legend()
 
     plt.tight_layout()
-    plt.show()
+    mpl_show(plt)
 
 
 def command_tttextract(args):
@@ -1141,7 +1142,7 @@ def command_modelview(args):
     plt.subplots_adjust(bottom=0.22,
                         wspace=0.05)
 
-    plt.show()
+    mpl_show(plt)
 
 
 def command_upgrade(args):

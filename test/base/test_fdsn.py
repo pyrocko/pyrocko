@@ -15,6 +15,8 @@ logger = logging.getLogger('pyrocko.test.test_fdsn')
 
 stt = util.str_to_time
 
+show_plot = int(os.environ.get('MPL_SHOW', 0))
+
 
 def fix_resp_units(fn):
     with open(fn, 'r') as fin:
@@ -187,7 +189,8 @@ class FDSNStationTestCase(unittest.TestCase):
                 lab.plot(f, num.angle(t_sx), color='black')
                 lab.plot(f, num.angle(t_er), color='red')
                 lab.xscale('log')
-                lab.show()
+                if show_plot:
+                    lab.show()
 
                 assert False, \
                     'evalresp and stationxml responses differ: %s' % str(nslc)

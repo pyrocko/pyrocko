@@ -118,6 +118,5 @@ class GFSTFTestCase(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    show_plot = True
     util.setup_logging('test_gf_stf', 'warning')
     unittest.main()
