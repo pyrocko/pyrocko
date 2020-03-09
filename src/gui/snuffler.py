@@ -34,6 +34,16 @@ logger = logging.getLogger('pyrocko.gui.snuffler')
 app = None
 
 
+def get_snuffler_instance():
+    from .snuffler_app import Snuffler
+    import locale
+    locale.setlocale(locale.LC_ALL, 'C')
+    global app
+    if app is None:
+        app = Snuffler()
+    return app
+
+
 def extend_paths(paths):
     paths_r = []
     for p in paths:
@@ -68,17 +78,13 @@ def snuffle(pile=None, **kwargs):
     :param launch_hook: callback function called before snuffler window is
         shown
     '''
-    from .snuffler_app import Snuffler, SnufflerWindow, \
+    from .snuffler_app import SnufflerWindow, \
         setup_acquisition_sources, PollInjector
 
     if pile is None:
         pile = pile.make_pile()
 
-    global app
-    if app is None:
-        import locale
-        locale.setlocale(locale.LC_ALL, 'C')
-        app = Snuffler()
+    app = get_snuffler_instance()
 
     kwargs_load = {}
     for k in ('paths', 'regex', 'format', 'cache_dir', 'force_cache'):

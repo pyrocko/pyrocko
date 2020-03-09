@@ -18,7 +18,7 @@ if common.have_gui():  # noqa
         from PyQt4.QtTest import QTest
         Qt = qc.Qt
 
-    from pyrocko.gui.snuffler_app import Snuffler, SnufflerWindow
+    from pyrocko.gui.snuffler_app import SnufflerWindow
     from pyrocko.gui import pile_viewer as pyrocko_pile_viewer
     from pyrocko.gui import util as gui_util
     from pyrocko.gui import snuffling
@@ -61,7 +61,10 @@ class GUITest(unittest.TestCase):
         if no_gui:  # nosetests runs this even when class is has @skip
             return
 
-        cls.snuffler = Snuffler()  # noqa
+        from pyrocko.gui import snuffler as sm
+
+        cls.snuffler = sm.get_snuffler_instance()
+
         fpath = common.test_data_file('test2.mseed')
         p = make_pile(fpath, show_progress=False)
         cls.win = SnufflerWindow(pile=p)
