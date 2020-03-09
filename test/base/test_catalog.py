@@ -1,9 +1,6 @@
 from __future__ import division, print_function, absolute_import
-try:
-    from urllib2 import HTTPError
-except ImportError:
-    from urllib.error import HTTPError
 from pyrocko import util
+from pyrocko.util import HTTPError
 from pyrocko.client import catalog
 from pyrocko import moment_tensor
 import unittest

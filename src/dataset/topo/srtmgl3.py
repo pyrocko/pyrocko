@@ -8,10 +8,7 @@ import zipfile
 import os.path as op
 import os
 import re
-# try:
-#     from urllib2 import urlopen
-# except ImportError:
-#     from urllib.request import urlopen
+# from pyrocko.util import urlopen
 
 import numpy as num
 

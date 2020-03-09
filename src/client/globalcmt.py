@@ -4,12 +4,6 @@
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
 
-try:
-    from urllib.request import Request
-    from future.moves.urllib.request import urlopen
-except ImportError:
-    from urllib2 import Request, urlopen
-
 import time
 import calendar
 import re
@@ -17,6 +11,7 @@ import logging
 
 from pyrocko import model
 from pyrocko.moment_tensor import MomentTensor
+from pyrocko.util import Request, urlopen
 from .base_catalog import EarthquakeCatalog
 
 

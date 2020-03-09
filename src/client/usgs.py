@@ -4,15 +4,11 @@
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
 
-try:
-    from future.moves.urllib.request import urlopen
-except ImportError:
-    from urllib2 import urlopen
-
 import time
 import logging
 
 from pyrocko import util, model
+from pyrocko.util import urlopen
 from .base_catalog import EarthquakeCatalog
 
 logger = logging.getLogger('pyrocko.client.usgs')

@@ -4,14 +4,10 @@
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
 
-try:
-    from future.moves.urllib.request import urlopen
-except ImportError:
-    from urllib2 import urlopen
-
 import logging
 
 from pyrocko import util
+from pyrocko.util import urlopen
 from pyrocko.io import quakeml
 from .base_catalog import EarthquakeCatalog
 

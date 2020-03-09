@@ -1,14 +1,10 @@
 import unittest
 import logging
 from pyrocko import util
+from pyrocko.util import Request, urlopen
 from .. import common
 
 logger = logging.getLogger('pyrocko.test.test_urls')
-
-try:
-    from urllib2 import (Request, urlopen)
-except ImportError:
-    from urllib.request import (Request, urlopen)
 
 
 class UrlsTestCase(unittest.TestCase):

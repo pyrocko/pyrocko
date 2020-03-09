@@ -19,10 +19,12 @@ import tempfile
 from .qt_compat import qc, qw, getSaveFileName, use_pyqt5
 
 from pyrocko import pile, config
+from pyrocko.util import quote
 
 from .util import (ValControl, LinValControl, FigureFrame, WebKitFrame,
                    VTKFrame, PixmapFrame, Marker, EventMarker, PhaseMarker,
                    load_markers, save_markers)
+
 
 if sys.version_info >= (3, 0):
     from importlib import reload
@@ -1452,7 +1454,6 @@ class Snuffling(object):
 
         if self._filename:
             import cgi
-            import urllib.parse
             code = open(self._filename, 'r').read()
 
             doc_src = qw.QLabel(
@@ -1465,7 +1466,7 @@ class Snuffling(object):
 <pre style="white-space: pre-wrap"><code>%s
 </code></pre></p></body></html>'''
                 % (
-                    urllib.parse.quote(self._filename),
+                    quote(self._filename),
                     cgi.escape(self._filename),
                     cgi.escape(code)))
 

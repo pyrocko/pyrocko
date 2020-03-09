@@ -15,6 +15,7 @@ import numpy as num
 
 from pyrocko import util, config
 from pyrocko import orthodrome as od
+from pyrocko.util import urlopen
 
 logger = logging.getLogger('pyrocko.dataset.geonames')
 
@@ -52,13 +53,12 @@ base_url = 'https://mirror.pyrocko.org/download.geonames.org/export/dump/'
 
 
 def download_file(fn, dirpath):
-    import urllib.request
     url = base_url + '/' + fn
     fpath = op.join(dirpath, fn)
     logger.info('starting download of %s' % url)
 
     util.ensuredirs(fpath)
-    f = urllib.request.urlopen(url)
+    f = urlopen(url)
     fpath_tmp = fpath + '.%i.temp' % os.getpid()
     g = open(fpath_tmp, 'wb')
     while True:

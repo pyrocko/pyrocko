@@ -13,7 +13,6 @@ import signal
 import logging
 import time
 import re
-import urllib.parse  # noqa
 import zlib
 import struct
 import pickle

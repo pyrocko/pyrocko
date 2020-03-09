@@ -27,6 +27,16 @@ import numpy as num
 from scipy import signal
 from pyrocko import dummy_progressbar
 
+try:
+    from urllib.parse import urlencode, quote, unquote  # noqa
+    from urllib.request import (
+        Request, build_opener, HTTPDigestAuthHandler, urlopen)  # noqa
+    from urllib.error import HTTPError, URLError  # noqa
+
+except ImportError:
+    from urllib import urlencode, quote, unquote # noqa
+    from urllib2 import (Request, build_opener, HTTPDigestAuthHandler,   # noqa
+                         HTTPError, URLError, urlopen)  # noqa
 
 force_dummy_progressbar = False
 
@@ -109,7 +119,7 @@ def _download(url, fpath, username=None, password=None,
 
     import requests
     from requests.auth import HTTPBasicAuth
-    from requests.exceptions import HTTPError
+    from requests.exceptions import HTTPError as req_HTTPError
 
     requests.adapters.DEFAULT_RETRIES = 5
     urljoin = requests.compat.urljoin
@@ -257,7 +267,7 @@ def _download(url, fpath, username=None, password=None,
             else:
                 download_file(url, fpath)
 
-    except HTTPError as e:
+    except req_HTTPError as e:
         logging.warn("http error: %s" % e)
         raise DownloadError('could not download file(s) from: %s' % url)
 

@@ -8,14 +8,9 @@ from __future__ import absolute_import
 import logging
 import re
 from xml.parsers.expat import ParserCreate
-try:
-    from urllib2 import Request, HTTPError, urlopen
-except ImportError:
-    from urllib.request import Request, urlopen
-    from urllib.error import HTTPError
-from urllib import parse
 
 from pyrocko import util, pz, model
+from pyrocko.util import Request, HTTPError, urlopen, urlencode
 
 
 logger = logging.getLogger('pyrocko.client.iris')
@@ -128,7 +123,7 @@ class NotFound(Exception):
 
 
 def ws_request(url, post=False, **kwargs):
-    url_values = parse.urlencode(kwargs)
+    url_values = urlencode(kwargs)
     url = url + '?' + url_values
     logger.debug('Accessing URL %s' % url)
 

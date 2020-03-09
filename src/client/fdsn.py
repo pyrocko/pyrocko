@@ -8,22 +8,14 @@ from builtins import str
 import re
 import logging
 import ssl
-try:
-    from urllib.parse import urlencode
-except ImportError:
-    from urllib import urlencode
 
-try:
-    from urllib2 import (Request, build_opener, HTTPDigestAuthHandler,
-                         HTTPError, urlopen)
-except ImportError:
-    from urllib.request import (Request, build_opener, HTTPDigestAuthHandler,
-                                urlopen)
-    from urllib.error import HTTPError
 
 from pyrocko import util
 from pyrocko.util import DownloadError
 from pyrocko import config
+
+from pyrocko.util import \
+    urlencode, Request, build_opener, HTTPDigestAuthHandler, urlopen, HTTPError
 
 logger = logging.getLogger('pyrocko.client.fdsn')
 

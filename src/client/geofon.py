@@ -4,11 +4,6 @@
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
 
-try:
-    from future.moves.urllib.request import urlopen
-except ImportError:
-    from urllib2 import urlopen
-
 import time
 import re
 import logging
@@ -17,6 +12,8 @@ import json
 from pyrocko import model, util
 from pyrocko.moment_tensor import MomentTensor, symmat6
 from .base_catalog import EarthquakeCatalog, NotFound
+
+from pyrocko.util import urlopen
 
 logger = logging.getLogger('pyrocko.client.geofon')
 

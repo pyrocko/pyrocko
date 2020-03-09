@@ -14,7 +14,6 @@ import gc
 import tempfile
 import shutil
 import glob
-import urllib.parse  # noqa
 
 from os.path import join as pjoin
 from optparse import OptionParser

@@ -32,9 +32,6 @@ import io
 import os
 import traceback
 import posixpath
-import urllib.request
-import urllib.parse
-import urllib.error
 import re
 from collections import deque
 import logging
@@ -45,6 +42,7 @@ matplotlib.use('Agg')  # noqa
 import matplotlib.pyplot as plt
 from pyrocko.plot import cake_plot
 from pyrocko import gf, util
+from pyrocko.util import quote, unquote
 
 
 logger = logging.getLogger('pyrocko.gf.server')
@@ -337,7 +335,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
 
         list.sort(key=lambda a: a.lower())
         f = BytesIO()
-        displaypath = html.escape(urllib.parse.unquote(self.path))
+        displaypath = html.escape(unquote(self.path))
         f.write(enc('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">'))
         f.write(enc("<html>\n<title>Directory listing for %s</title>\n"
                 % displaypath))
@@ -355,7 +353,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
                 displayname = name + "@"
                 # Note: a link to a directory displays with @ and links with /
             f.write(enc('<li><a href="%s">%s</a>\n' %
-                        (urllib.parse.quote(linkname),
+                        (quote(linkname),
                          html.escape(displayname))))
         f.write(enc("</ul>\n<hr>\n</body>\n</html>\n"))
         length = f.tell()
@@ -458,7 +456,7 @@ class SeismosizerHandler(RequestHandler):
     def translate_path(self, path):
         path = path.split('?', 1)[0]
         path = path.split('#', 1)[0]
-        path = posixpath.normpath(urllib.parse.unquote(path))
+        path = posixpath.normpath(unquote(path))
         words = path.split('/')
         words = [_f for _f in words if _f]
 
