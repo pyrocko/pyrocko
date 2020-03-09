@@ -29,7 +29,10 @@ def to_message():
         build_number build_link build_status
     '''.split()
 
-    env = dict((k, os.environ['DRONE_' + k.upper()]) for k in keys)
+    env = dict(
+        (k, os.environ.get(
+            'DRONE_%s' % k.upper(), 'DRONE_' + k.upper() + ' undefined'))
+        for k in keys)
 
     emos_success = [':%s:' % s for s in '''
         sunny star hatched_chick hamster dog butterfly sunglasses smile
