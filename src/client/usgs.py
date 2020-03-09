@@ -67,7 +67,7 @@ class USGS(EarthquakeCatalog):
         if magmax != 10.:
             a('maxmagnitude=%g' % magmax)
 
-        url = 'https://earthquake.usgs.gov/fdsnws/event/1/query?' + '&'.join(p)
+        url = 'http://earthquake.usgs.gov/fdsnws/event/1/query?' + '&'.join(p)
 
         logger.debug('Opening URL: %s' % url)
         page = urlopen(url).read()
