@@ -8,7 +8,7 @@ import time
 import logging
 
 from pyrocko import util, model
-from pyrocko.util import urlopen
+from pyrocko.util import urlopen_ssl_check
 from .base_catalog import EarthquakeCatalog
 
 logger = logging.getLogger('pyrocko.client.usgs')
@@ -66,7 +66,7 @@ class USGS(EarthquakeCatalog):
         url = 'https://earthquake.usgs.gov/fdsnws/event/1/query?' + '&'.join(p)
 
         logger.debug('Opening URL: %s' % url)
-        page = urlopen(url).read()
+        page = urlopen_ssl_check(url).read()
         logger.debug('Received page (%i bytes)' % len(page))
 
         events = self._parse_events_page(page)

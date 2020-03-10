@@ -36,6 +36,30 @@ except ImportError:
                          HTTPError, URLError, urlopen)  # noqa
 
 
+class URLErrorSSL(URLError):
+
+    def __init__(self, urlerror):
+        self.__dict__ = urlerror.__dict__.copy()
+
+    def __str__(self):
+        return (
+            'Requesting web resource failed and the problem could be '
+            'related to SSL. Python standard libraries on some older '
+            'systems (like Ubuntu 14.04) are known to have trouble '
+            'with some SSL setups of today\'s servers: %s'
+            % URLError.__str__(self))
+
+
+def urlopen_ssl_check(*args, **kwargs):
+    try:
+        return urlopen(*args, **kwargs)
+    except URLError as e:
+        if str(e).find('SSL') != -1:
+            raise URLErrorSSL(e)
+        else:
+            raise
+
+
 try:
     long
 except NameError:

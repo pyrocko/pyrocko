@@ -1,6 +1,6 @@
 from __future__ import division, print_function, absolute_import
 from pyrocko import util
-from pyrocko.util import HTTPError
+from pyrocko.util import HTTPError, URLErrorSSL
 from pyrocko.client import catalog
 from pyrocko import moment_tensor
 import unittest
@@ -126,7 +126,7 @@ class CatalogTestCase(unittest.TestCase):
         is_the_haiti_event(ev)
 
     @common.require_internet
-    @common.skip_on(HTTPError)
+    @common.skip_on(HTTPError, URLErrorSSL)
     def testUSGS(self):
 
         def is_the_haiti_event(ev):
