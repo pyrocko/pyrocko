@@ -263,3 +263,85 @@ steps:
   environment:
     WEBHOOK:
       from_secret: hive-webhook
+
+---
+
+kind: pipeline
+type: exec
+name: conda-packages-linux
+
+trigger:
+  branch:
+    - candidate
+    - release
+    - conda
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: build-test
+  commands:
+  - ln -s /data/local/home/pyrocko-testing/.vagrant.d $HOME/.vagrant.d
+  - cd maintenance/conda/boxes/centos-7
+  - ./outside.sh dryrun
+  when:
+    branch:
+      - candidate
+      - conda
+
+- name: build-test-upload
+  commands:
+  - ln -s /data/local/home/pyrocko-testing/.vagrant.d $HOME/.vagrant.d
+  - cd maintenance/conda/boxes/centos-7
+  - ./outside.sh upload
+  environment:
+    CONDA_USERNAME:
+      from_secret: conda-username
+    CONDA_PASSWORD:
+      from_secret: conda-password
+  when:
+    branch:
+      - release
+
+---
+
+kind: pipeline
+type: exec
+name: conda-packages-osx
+
+trigger:
+  branch:
+    - candidate
+    - release
+    - conda
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: build-test
+  commands:
+  - ln -s /data/local/home/pyrocko-testing/.vagrant.d $HOME/.vagrant.d
+  - cd maintenance/conda/boxes/osx
+  - ./outside.sh dryrun
+  when:
+    branch:
+      - candidate
+      - conda
+
+- name: build-test-upload
+  commands:
+  - ln -s /data/local/home/pyrocko-testing/.vagrant.d $HOME/.vagrant.d
+  - cd maintenance/conda/boxes/osx
+  - ./outside.sh upload
+  environment:
+    CONDA_USERNAME:
+      from_secret: conda-username
+    CONDA_PASSWORD:
+      from_secret: conda-password
+  when:
+    branch:
+      - release

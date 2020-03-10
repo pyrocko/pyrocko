@@ -23,20 +23,19 @@ requirements:
     - pyqt
     - pyyaml
     - progressbar2
-    - future
     - requests
     - jinja2
     - nose
 
-# test:
-#   source_files:
-#     - test
-#   requires:
-#     - nose
-#   imports:
-#     - pyrocko
-#   commands:
-#     - nosetests --verbosity=2 --detailed-errors test
+test:
+  source_files:
+    - test
+  requires:
+    - nose
+  imports:
+    - pyrocko
+  commands:
+    - nosetests --verbosity=2 --detailed-errors test.base.test_util
 
 about:
   home: https://pyrocko.org
