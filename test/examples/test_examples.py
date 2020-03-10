@@ -33,7 +33,7 @@ skip_examples = [
 
 
 def tutorial_run_dir():
-    return op.join(test_dir, 'example_run_dir')
+    return op.join(test_dir, '..', 'example_run_dir')
 
 
 def noop(*args, **kwargs):
