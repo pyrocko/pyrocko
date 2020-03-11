@@ -12,9 +12,9 @@ import numpy as num
 from scipy import stats
 import threading
 try:
-    import Queue as queue
-except ImportError:
     import queue
+except ImportError:
+    import Queue as queue
 
 from pyrocko import trace, util
 

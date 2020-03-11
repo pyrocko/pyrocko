@@ -3,7 +3,12 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
-import queue
+try:
+    import queue
+except ImportError:
+    import Queue as queue
+
+
 import multiprocessing
 import traceback
 import errno
