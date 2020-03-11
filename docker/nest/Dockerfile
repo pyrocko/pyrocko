@@ -67,3 +67,5 @@ RUN git clone https://git.pyrocko.org/pyrocko/fomosto-qseis2d.git \
 WORKDIR /src
 RUN git clone https://git.pyrocko.org/pyrocko/fomosto-qssp.git \
     && cd fomosto-qssp && autoreconf -i && ./configure && make && make install
+
+RUN pip3 install twine
