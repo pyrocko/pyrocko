@@ -62,6 +62,8 @@ def to_message():
     env['artifacts'] = ' '.join(
         '[%s](%s)' % (name, link) for (name, link) in artifacts.items())
 
+    env['commit_message'] = '\n'.join(env['commit_message'].splitlines()[:1])
+
     total_coverage = None
     if 'coverage' in artifacts:
         r = requests.get(os.path.join(
@@ -82,7 +84,7 @@ def to_message():
             total_coverage = (statements - missing) / statements
 
     text = '''{emo} **Build [{build_number}]({build_link}): {build_status}**
-[{commit:.7s}]({commit_link}): {commit_message} - {commit_author} ([{commit_author_name}](mailto:{commit_author_email}))
+[{commit:.7s}]({commit_link}): {commit_message} - [{commit_author_name}](mailto:{commit_author_email})
 
 Artifacts: {artifacts}
 '''.format(**env)  # noqa
