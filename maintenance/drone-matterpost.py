@@ -48,7 +48,7 @@ def to_message():
     env['emo'] = random.choice(
         emos_success if env['build_status'] == 'success' else emos_failure)
 
-    artifacts = []
+    artifacts = {}
     for name, link in [
             ('docs', 'https://data.pyrocko.org/builds/%s/docs/'),
             ('coverage', 'https://data.pyrocko.org/builds/%s/coverage/'),
@@ -57,10 +57,27 @@ def to_message():
         link = link % env['commit']
         r = requests.get(link)
         if r.status_code == 200:
-            artifacts.append((name, link))
+            artifacts[name] = link
 
     env['artifacts'] = ' '.join(
-        '[%s](%s)' % (name, link) for (name, link) in artifacts)
+        '[%s](%s)' % (name, link) for (name, link) in artifacts.items())
+
+    total_coverage = None
+    if 'coverage' in artifacts:
+        r = requests.get(os.path.join(artifacts['coverage'], 'status.json'))
+        coverage = r.json()
+
+        statements = 0
+        missing = 0
+        excluded = 0
+
+        for file in coverage['files'].values():
+            statements += file['index']['nums'][1]
+            excluded += file['index']['nums'][1]
+            missing += file['index']['nums'][3]
+
+        if statements > 0:
+            total_coverage = (statements - missing) / statements
 
     text = '''{emo} **Build [{build_number}]({build_link}): {build_status}**
 Commit: [{commit}]({commit_link}) by {commit_author} ([{commit_author_name}](mailto:{commit_author_email}))
@@ -69,6 +86,9 @@ Commit: [{commit}]({commit_link}) by {commit_author} ([{commit_author_name}](mai
 
 Artifacts: {artifacts}
 '''.format(**env)  # noqa
+
+    if total_coverage:
+        text += 'Total coverage: %.1f%%\n' % (total_coverage * 100.)
 
     attachment = {
         'fallback': 'test',
