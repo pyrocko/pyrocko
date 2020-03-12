@@ -80,18 +80,33 @@ steps:
     RSYNC_KEY:
       from_secret: rsync-key
 
+- name: upload-testing-manylinux1_x86_64
+  image: pyrocko-nest
+  pull: never
+  when:
+    branch:
+    - candidate
+    - pip-wheels
+  commands:
+  - maintenance/pip/upload_wheels.sh testing
+  environment:
+    PYPI_USERNAME:
+      from_secret: pypi-username
+    PYPI_PASSWORD:
+      from_secret: pypi-password
+
 - name: upload-manylinux1_x86_64
-  image: pyrocko-aux
+  image: pyrocko-nest
   pull: never
   when:
     branch:
     - release
   commands:
-  - maintenance/pip/upload_wheels.sh
+  - maintenance/pip/upload_wheels.sh live
   environment:
     PYPI_USERNAME:
       from_secret: pypi-username
-    PYPI_USERNAME:
+    PYPI_PASSWORD:
       from_secret: pypi-password
 
 ---

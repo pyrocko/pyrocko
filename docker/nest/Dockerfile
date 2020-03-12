@@ -6,6 +6,8 @@ RUN apt-get upgrade -y
 # env requirements
 RUN apt-get install -y python-pip
 RUN apt-get install -y python3-pip
+RUN pip3 install twine
+RUN apt-get install -y wget
 
 # linter requirements
 RUN pip3 install flake8
@@ -68,5 +70,3 @@ WORKDIR /src
 RUN git clone https://git.pyrocko.org/pyrocko/fomosto-qssp.git \
     && cd fomosto-qssp && autoreconf -i && ./configure && make && make install
 
-RUN pip3 install twine
-RUN apt-get install -y wget
