@@ -51,7 +51,7 @@ def to_message():
     artifacts = {}
     for name, link in [
             ('docs', 'https://data.pyrocko.org/builds/%s/docs/'),
-            ('coverage', 'https://data.pyrocko.org/builds/%s/coverage/'),
+            ('coverage', 'https://data.pyrocko.org/builds/%s/coverage/index.html'),  # noqa
             ('wheels', 'https://data.pyrocko.org/builds/%s/wheels/')]:
 
         link = link % env['commit']
@@ -64,7 +64,9 @@ def to_message():
 
     total_coverage = None
     if 'coverage' in artifacts:
-        r = requests.get(os.path.join(artifacts['coverage'], 'status.json'))
+        r = requests.get(os.path.join(
+            os.path.dirname(artifacts['coverage']), 'status.json'))
+
         coverage = r.json()
 
         statements = 0
@@ -80,9 +82,7 @@ def to_message():
             total_coverage = (statements - missing) / statements
 
     text = '''{emo} **Build [{build_number}]({build_link}): {build_status}**
-Commit: [{commit}]({commit_link}) by {commit_author} ([{commit_author_name}](mailto:{commit_author_email}))
-
-{commit_message}
+[{commit:.7s}]({commit_link}): {commit_message} - {commit_author} ([{commit_author_name}](mailto:{commit_author_email}))
 
 Artifacts: {artifacts}
 '''.format(**env)  # noqa
