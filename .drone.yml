@@ -97,6 +97,10 @@ steps:
 - name: test-pure-pip-manylinux1_x86_64
   image: pyrocko-aux
   pull: never
+  when:
+    branch:
+      exclude:
+      - release
   commands:
   - pip3 install -f wheels pyrocko --no-index --no-deps
   - pip3 install -f wheels pyrocko
@@ -106,6 +110,10 @@ steps:
 - name: test-mixed-pip-manylinux1_x86_64
   image: pyrocko-nest
   pull: never
+  when:
+    branch:
+      exclude:
+      - release
   commands:
   - pip3 install -f wheels --no-index --no-deps pyrocko
   - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
