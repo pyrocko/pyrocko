@@ -41,9 +41,9 @@ steps:
   pull: never
 
   when:
-  branch:
-  - release
-  - deploy-docs
+    branch:
+    - release
+    - deploy-docs
 
   commands:
   - maintenance/drone-rsync.sh doc/build/html/ ${DRONE_COMMIT}/docs/
@@ -60,9 +60,9 @@ steps:
   pull: never
 
   when:
-  branch:
-  - release
-  - deploy-docs
+    branch:
+    - release
+    - deploy-docs
 
   commands:
   - maintenance/drone-deploy-docs.sh
