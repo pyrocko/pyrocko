@@ -66,7 +66,7 @@ for VERSION in 3 2 ; do
     rm -rf build/pyrocko.git/.git
     rm -rf build/pyrocko.git/maintenance/conda
 
-    if [ "$ACTION" == "UPLOAD" ] ; then
+    if [ "$ACTION" == "upload" ] ; then
         anaconda logout
         anaconda login --username "$CONDA_USERNAME" --password "$CONDA_PASSWORD"
         conda config --set anaconda_upload yes
