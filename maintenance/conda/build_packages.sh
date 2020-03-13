@@ -68,7 +68,7 @@ for VERSION in 3 2 ; do
 
     if [ "$ACTION" == "upload" ] ; then
         anaconda logout
-        anaconda login --username "$CONDA_USERNAME" --password "$CONDA_PASSWORD"
+        anaconda login --username "$CONDA_USERNAME" --password "$CONDA_PASSWORD" --hostname host-`uname`
         conda config --set anaconda_upload yes
     else
         conda config --set anaconda_upload no
