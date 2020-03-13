@@ -10,7 +10,7 @@ third-party package managers often leads to conflicts. Follow the instructions
 in :doc:`system/index`.
 
 For **Anaconda** users, prebuilt packages are available (see
-:doc:`packages/anaconda`). Also source packages for PIP are available
+:doc:`packages/anaconda`). Also packages for **pip** are available
 (see :doc:`packages/pip`).
 
 For additional information, refer to :doc:`details`.

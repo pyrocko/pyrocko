@@ -55,12 +55,20 @@ steps:
   environment:
     PLAT: manylinux1_x86_64
 
-- name: test-manylinux1_x86_64
+- name: test-pure-pip-manylinux1_x86_64
+  image: pyrocko-aux
+  pull: never
+  commands:
+  - pip3 install -f wheels pyrocko --no-index --no-deps
+  - pip3 install -f wheels pyrocko
+  - pip3 install 'PyQt5!=5.14.1' jinja2
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
+
+- name: test-mixed-pip-manylinux1_x86_64
   image: pyrocko-nest
   pull: never
   commands:
-  - pip3 install -r requirements-all.txt
-  - pip3 install -f wheels --no-index pyrocko
+  - pip3 install -f wheels --no-index --no-deps pyrocko
   - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
   - python setup.py sdist
 

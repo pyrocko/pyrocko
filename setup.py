@@ -652,11 +652,23 @@ setup(
     keywords=[
         'seismology, waveform analysis, earthquake modelling, geophysics,'
         ' geophysical inversion'],
-    python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, <4',
-    install_requires=[],
+    python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, <4',
+    setup_requires=[
+        'numpy>=1.8'
+    ],
+    install_requires=[
+        'numpy>=1.8',
+        'scipy',
+        'pyyaml',
+        'matplotlib',
+        'progressbar2',
+        'requests',
+        'nose',
+        'PyOpenGL',
+    ],
 
     extras_require={
-        'gui_scripts': ['PyQt4'],
+        'gui_scripts': ['PyQt5'],
     },
 
     packages=[packname] + subpacknames,

@@ -1,62 +1,61 @@
 Installation with pip
 =====================
 
-When installing Pyrocko through ``pip`` we do not allow the installer to
-resolve dependencies automatically. We think it is up to you, to decide which
-prerequisites to install with the system's native package manager and which
-ones to install through ``pip``.
+Using pip, Pyrocko can be installed from source or binary packages which we
+have uploaded to the Python Package Index (`PyPI <https://pypi.org/>`_).
 
-Install from PyPI (Python Package Index)
-----------------------------------------
+Depending on your attitude, different install variants are possible (see
+following sections).
 
-Tagged builds are available for download from https://pypi.python.org/.
+**Good to know:**
 
-.. note :: 
+- Consequently use ``pip3`` instead of ``pip`` if you want to be sure that
+  Python3 versions are installed.
+- Add the ``--user`` to all pip commands if you want to install into your home
+  directory.
+- Consider using `virtual environments
+  <https://docs.python.org/3/tutorial/venv.html>`_ when using pip to lower the
+  risk of package conflicts.
 
-    Pyrocko's build depends on Python and NumPy development header files,
-    please install those through your system's package manager. Please see
-    :doc:`../system/index` for more information.
-
-.. warning ::
-    
-    Dependency for **Qt** is not resolved, please use your system package manager to install _PyQt4_ or _PyQt5_!
-    For more information see :doc:`../system/index`
+Variant 1: allow pip to resolve dependencies
+--------------------------------------------
 
 .. code-block:: bash
-    :caption: Source packages for Pyrocko are available on `pypi.python.org <https://pypi.python.org>`_
 
-    # Install build requirements
-    sudo apt-get install python3-dev python3-numpy
-    sudo pip install pyrocko
-
-    # Install requirements
-    sudo pip install numpy>=1.8 scipy pyyaml matplotlib progressbar2 jinja2 requests PyOpenGL
-
-
-User local installation (no sudo)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-If you want to install Pyrocko in a user environment without root access you
-can use ``pip`` to manage the installation as well:
-
-.. code-block:: bash
-    :caption: ``pip`` allows to install into user's home directory - **dangerous for system integrity**
-
-    # We assume the build requirements are already installed, see above
     pip install pyrocko
 
-    # Install requirements
-    pip install numpy>=1.8 scipy pyyaml matplotlib progressbar2 jinja2 requests PyOpenGL
+    # and, (only) if you want to use Snuffler:
+
+    pip install --only-binary :all: PyQt5
+
+**Advantages:**
+
+- Quick and easy.
+
+**Disadvantages:**
+
+- Dependencies installed by pip may shadow native system packages.
+- May turn your system into a big mess.
 
 
-Install latest version with pip
--------------------------------
+Variant 2: use your system's package manager to install dependencies
+--------------------------------------------------------------------
 
-If you want to install or update to the latest version of Pyrocko available on
-`git.pyrocko.org <https://git.pyrocko.org/pyrocko/pyrocko/>`_ (``master``
-branch) you can use ``pip`` to install directly from the repository:
+Install Pyrocko's requirements through your system's package manager (see
+:doc:`/install/system/index`), then use pip with the ``--no-deps`` option to
+install Pyrocko:
 
 .. code-block:: bash
-    :caption: We install straight from the Git repository
 
-    sudo pip install git+https://git.pyrocko.org/pyrocko/pyrocko.git
+    # first use apt-get/yum/pacman to install prerequisites (see above), then:
+
+    pip install --no-deps pyrocko
+
+**Advantages:**
+
+- Prevents package dependency conflicts.
+
+**Disadvantages:**
+
+- Need root access.
+- A bit more work to set up.
