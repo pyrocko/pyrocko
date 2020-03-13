@@ -18,7 +18,10 @@ from __future__ import absolute_import
 import asynchat
 import asyncore
 import socket
-from http.server import SimpleHTTPRequestHandler as SHRH
+try:
+    from http.server import SimpleHTTPRequestHandler as SHRH
+except ImportError:
+    from SimpleHTTPServer import SimpleHTTPRequestHandler as SHRH
 import sys
 import html
 import json
