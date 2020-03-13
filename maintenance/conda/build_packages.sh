@@ -86,4 +86,9 @@ for VERSION in 3 2 ; do
     if [ "$VERSION" == "2" ] ; then
         conda-build build
     fi
+
+    if [ "$ACTION" == "upload" ] ; then
+        trap - EXIT
+        anaconda_logout
+    fi
 done
