@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - Event objects now have an `extras` dict to hold user defined attributes.
 
+### Changed
+- Removed dependency on 'future' package.
+- On installation with pip we now allow automatic dependency resolution.
+- We now additionally provide binary 'manylinux1' pip wheels for Python 2.7,
+  3.5, 3.6, 3.7, and 3.8.
+- Improved testing, CI, deployment.
+
 ### Fixed
 - Fix a bug in static modelling time handling.
 
