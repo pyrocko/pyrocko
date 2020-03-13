@@ -118,7 +118,7 @@ steps:
   - pip3 install -f wheels --no-index --no-deps pyrocko
   - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
 
-- name: test-mixed-pip-manylinux1_x86_64
+- name: sdist-pip
   image: pyrocko-nest
   pull: never
   commands:
