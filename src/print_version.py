@@ -15,5 +15,7 @@ if __name__ == '__main__':
         print('PyQt: %s' % Qt.PYQT_VERSION_STR)
         print('Qt: %s' % Qt.QT_VERSION_STR)
         print('python: %s.%s.%s' % sys.version_info[:3])
+    elif sys.argv[1:] == ['short']:
+        print(pyrocko.version)
     else:
         print(pyrocko.long_version)

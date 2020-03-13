@@ -21,6 +21,7 @@ steps:
   pull: never
   commands:
   - python3 setup.py install && cd doc && make html
+  - python3 -m pyrocko.print_version short > build/html/version.txt
 
 - name: stage
   image: pyrocko-aux
@@ -34,6 +35,44 @@ steps:
       from_secret: rsync-user
     RSYNC_KEY:
       from_secret: rsync-key
+
+- name: stage-www
+  image: pyrocko-aux
+  pull: never
+
+  when:
+  branch:
+  - release
+  - deploy-docs
+
+  commands:
+  - maintenance/drone-rsync.sh doc/build/html/ ${DRONE_COMMIT}/docs/
+  environment:
+    RSYNC_HOST:
+      from_secret: www-host
+    RSYNC_USER:
+      from_secret: www-user
+    RSYNC_KEY:
+      from_secret: rsync-key
+
+- name: deploy-www
+  image: pyrocko-aux
+  pull: never
+
+  when:
+  branch:
+  - release
+  - deploy-docs
+
+  commands:
+  - maintenance/drone-deploy-docs.sh
+  environment:
+    WWW_HOST:
+      from_secret: www-host
+    WWW_USER:
+      from_secret: www-user
+    WWW_KEY:
+      from_secret: www-key
 
 ---
 
