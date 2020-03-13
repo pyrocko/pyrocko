@@ -7,11 +7,11 @@ if [ -z "$destination" ] ; then
 fi
 
 if [ "$destination" == 'live' ] ; then
-    twine upload wheels/* dist/* \
+    twine upload wheels/pyrocko-* dist/pyrocko-* \
         --username="$PYPI_USERNAME" --password="$PYPI_PASSWORD" \
         --skip-existing --disable-progress-bar --comment='*grunz-grunz*'
 else
-    twine upload --repository-url https://test.pypi.org/legacy/ wheels/* dist/* \
+    twine upload --repository-url https://test.pypi.org/legacy/ wheels/pyrocko-* dist/pyrocko-* \
         --username="$PYPI_USERNAME" --password="$PYPI_PASSWORD" \
         --skip-existing --disable-progress-bar --comment='*grunz-grunz*'
 fi
