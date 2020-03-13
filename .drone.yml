@@ -331,33 +331,6 @@ steps:
 ---
 
 kind: pipeline
-type: docker
-name: publish
-
-depends_on:
-- coverage
-- flake8
-- docs
-- pip-wheels
-
-trigger:
-  status:
-  - success
-  - failure
-
-steps:
-- name: post
-  image: pyrocko-nest
-  pull: never
-  commands:
-  - maintenance/drone-matterpost.py
-  environment:
-    WEBHOOK:
-      from_secret: hive-webhook
-
----
-
-kind: pipeline
 type: exec
 name: conda-packages-linux
 
@@ -436,3 +409,32 @@ steps:
   when:
     branch:
       - release
+
+---
+
+kind: pipeline
+type: docker
+name: notify-hive
+
+depends_on:
+- coverage
+- flake8
+- docs
+- pip-wheels
+- conda-packages-linux
+- conda-packages-osx
+
+trigger:
+  status:
+  - success
+  - failure
+
+steps:
+- name: post
+  image: pyrocko-nest
+  pull: never
+  commands:
+  - maintenance/drone-matterpost.py
+  environment:
+    WEBHOOK:
+      from_secret: hive-webhook
