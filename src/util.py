@@ -763,6 +763,75 @@ def zfmt(n):
     return '%%0%ii' % (int(math.log10(n - 1)) + 1)
 
 
+def _year_to_time(year):
+    tt = (year, 1, 1, 0, 0, 0)
+    return calendar.timegm(tt)
+
+
+def _working_year(year):
+    try:
+        tt = (year, 1, 1, 0, 0, 0)
+        t = calendar.timegm(tt)
+        tt2 = tuple(time.gmtime(t)[:6])
+        if tt != tt2:
+            return False
+
+    except Exception:
+        return False
+
+    return True
+
+
+g_working_system_time_range = None
+
+
+def get_working_system_time_range():
+    '''
+    Check time range supported by the systems's time conversion functions.
+
+    Returns system time stamps of start of year of first/last fully supported
+    year span. If this is before 1900 or after 2100, return first/last century
+    which is fully supported.
+
+    :returns: ``(tmin, tmax, year_min, year_max)``
+    '''
+
+    global g_working_system_time_range
+
+    if g_working_system_time_range is None:
+        year0 = 2000
+        year_min = year0
+        year_max = year0
+
+        itests = list(range(101))
+        for i in range(19):
+            itests.append(200 + i*100)
+
+        for i in itests:
+            if not _working_year(year0 - i):
+                break
+            else:
+                year_min = year0 - i
+
+        for i in itests:
+            if not _working_year(year0 + i + 1):
+                break
+            else:
+                year_max = year0 + i
+
+        g_working_system_time_range = (
+            _year_to_time(year_min),
+            _year_to_time(year_max),
+            year_min, year_max)
+
+    return g_working_system_time_range
+
+
+def is_working_time(t):
+    tmin, tmax, _, _ = get_working_system_time_range()
+    return tmin <= t <= tmax
+
+
 def julian_day_of_year(timestamp):
     '''
     Get the day number after the 1st of January of year in ``timestamp``.

@@ -1,6 +1,6 @@
 from __future__ import division, print_function, absolute_import
-from pyrocko import util
 import re
+import sys
 import unittest
 import tempfile
 import shutil
@@ -8,6 +8,7 @@ import time
 import os
 from random import random
 import numpy as num
+from pyrocko import util
 
 try:
     range = xrange
@@ -48,10 +49,25 @@ class UtilTestCase(unittest.TestCase):
                 t3 = util.str_to_time(s, format=fmt_opt)
                 assert abs(t1 - t3) < accu
 
+    def testTimeRange(self):
+        tmin, tmax = util.get_working_system_time_range()[:2]
+        stmin, stmax = map(util.time_to_str, (tmin, tmax))
+        tmin2, tmax2 = map(util.str_to_time, (stmin, stmax))
+        assert tmin == tmin2
+        assert tmax == tmax2
+        if sys.maxsize > 2**32:
+            assert tmax - tmin > 200*365*24*60*60
+
     def testBigTime(self):
+        ymin, ymax = util.get_working_system_time_range()[2:]
         s = '2500-01-01 00:00:00.000'
-        tx = util.str_to_time(s)
-        assert s == util.time_to_str(tx)
+        if ymin <= 2500 <= ymax:
+            tx = util.str_to_time(s)
+            assert s == util.time_to_str(tx)
+
+        else:
+            with self.assertRaises(util.TimeStrError):
+                util.str_to_time(s)
 
     def testIterTimes(self):
 
