@@ -20,10 +20,13 @@ import asyncore
 import socket
 try:
     from http.server import SimpleHTTPRequestHandler as SHRH
+    from html import escape
 except ImportError:
     from SimpleHTTPServer import SimpleHTTPRequestHandler as SHRH
+    from cgi import escape
+
 import sys
-import html
+
 import json
 import cgi
 from io import BytesIO
@@ -338,7 +341,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
 
         list.sort(key=lambda a: a.lower())
         f = BytesIO()
-        displaypath = html.escape(unquote(self.path))
+        displaypath = escape(unquote(self.path))
         f.write(enc('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">'))
         f.write(enc("<html>\n<title>Directory listing for %s</title>\n"
                 % displaypath))
@@ -357,7 +360,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
                 # Note: a link to a directory displays with @ and links with /
             f.write(enc('<li><a href="%s">%s</a>\n' %
                         (quote(linkname),
-                         html.escape(displayname))))
+                         escape(displayname))))
         f.write(enc("</ul>\n<hr>\n</body>\n</html>\n"))
         length = f.tell()
         f.seek(0)
