@@ -772,8 +772,14 @@ def _working_year(year):
     try:
         tt = (year, 1, 1, 0, 0, 0)
         t = calendar.timegm(tt)
-        tt2 = tuple(time.gmtime(t)[:6])
+        tt2_ = time.gmtime(t)
+        tt2 = tuple(tt2_)[:6]
         if tt != tt2:
+            return False
+
+        s = '%i-01-01 00:00:00' % year
+        s2 = time.strftime('%Y-%m-%d %H:%M:%S', tt2_)
+        if s != s2:
             return False
 
     except Exception:
