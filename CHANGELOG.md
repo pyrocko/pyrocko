@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+*empty*
+
+## [2020.03.30] - 2020-03-30
+
 - Fix Python 2 issue affecting `fomosto server`
 
 ## [2020.03.13] - 2020-03-13
