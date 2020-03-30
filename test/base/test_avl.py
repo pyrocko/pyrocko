@@ -76,7 +76,7 @@ def equal_tree(tree1, tree2, compare=cmp):
     i1 = iter(tree1)
     i2 = iter(tree2)
     try:
-        while compare(next(i1), next(i2)) is 0:  # noqa
+        while compare(next(i1), next(i2)) == 0:  # noqa
             pass
         return 0
     except StopIteration:
@@ -491,7 +491,8 @@ class Test_avl_sequence(unittest.TestCase):
     def testseq_remove(self):
         n = 5000
         t = range_tree(0, n)
-        self.assertRaises(IndexError, t.remove_at, -n-random.randint(0, 100))
+        irem = -n-random.randint(1, 100)
+        self.assertRaises(IndexError, t.remove_at, irem)
         for i in gen_ints_perm(29, n):
             t.remove_at(i)
             self.assertFalse(i in t)
