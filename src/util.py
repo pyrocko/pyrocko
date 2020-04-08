@@ -1,4 +1,5 @@
 # http://pyrocko.org - GPLv3
+
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
@@ -2661,3 +2662,33 @@ def qsplit(s):
     return [
         (unescape_d(x[0]) or unescape_s(x[1]) or x[2])
         for x in g_re_qsplit.findall(s)]
+
+
+class threadpool_limits_dummy(object):
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def __enter__(self):
+        logger.warning(
+            'Cannot control number of BLAS threads because `threadpoolctl` '
+            'module is not available. You may want to install '
+            '`threadpoolctl`.')
+
+        return self
+
+    def __exit__(self, type, value, traceback):
+        pass
+
+
+def get_threadpool_limits():
+    '''
+    Try to import threadpoolctl.threadpool_limits, provide dummy if not avail.
+    '''
+
+    try:
+        from threadpoolctl import threadpool_limits
+        return threadpool_limits
+
+    except ImportError:
+        return threadpool_limits_dummy
