@@ -661,7 +661,6 @@ setup(
         'scipy',
         'pyyaml',
         'matplotlib',
-        'progressbar2',
         'requests',
         'nose',
         'PyOpenGL',
