@@ -662,8 +662,6 @@ setup(
         'pyyaml',
         'matplotlib',
         'requests',
-        'nose',
-        'PyOpenGL',
     ],
 
     extras_require={
