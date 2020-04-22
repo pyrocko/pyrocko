@@ -17,14 +17,12 @@ import numpy as num
 
 from pyrocko.guts import (Object, Float, String, StringChoice, List,
                           Timestamp, Int, SObject, ArgumentError, Dict,
-                          ValidationError, Any)
+                          ValidationError)
 from pyrocko.guts_array import Array
 
 from pyrocko import moment_tensor as pmt
 from pyrocko import trace, util, config, model
-from pyrocko.table import Table, LocationRecipe
-from pyrocko.orthodrome import (ne_to_latlon, azidist_numpy,
-                                azidist_to_latlon, latlon_to_ne_numpy)
+from pyrocko.orthodrome import ne_to_latlon
 from pyrocko.model import Location
 
 from . import meta, store, ws
@@ -333,7 +331,7 @@ def points_on_rect_source(
 
         nl_patches = ds.nl + 1
         nw_patches = ds.nw + 1
-        
+
         npoints = nl_patches * nw_patches
         points = num.zeros(shape=(npoints, 3))
         ln_patches = num.array([il for il in range(nl_patches)])
@@ -357,12 +355,12 @@ def points_on_rect_source(
                 [x * 0.5 * ln, y * 0.5 * wd, 0.0])
 
     anch_x, anch_y = map_anchor[anchor]
-    
+
     points[:, 0] -= anch_x * 0.5 * ln
     points[:, 1] -= anch_y * 0.5 * wd
 
     rotmat = num.asarray(
-        mt.euler_to_matrix(dip * d2r, strike * d2r, 0.0))
+        pmt.euler_to_matrix(dip * d2r, strike * d2r, 0.0))
 
     return num.dot(rotmat.T, points.T).T
 
@@ -1584,7 +1582,6 @@ class RectangularExplosionSource(ExplosionSource):
             depths=points[:, 2],
             m0s=amplitudes)
 
-
     def xy_to_coord(self, x, y, cs='xyz'):
         ln, wd = self.length, self.width
         strike, dip = self.strike, self.dip
@@ -1600,7 +1597,7 @@ class RectangularExplosionSource(ExplosionSource):
         if x.shape[0] != y.shape[0]:
             raise ValueError('Shapes of x and y mismatch')
 
-        x, y =  x * 0.5 * ln, y * 0.5 * wd
+        x, y = x * 0.5 * ln, y * 0.5 * wd
 
         points = num.hstack((
             x.reshape(-1, 1), y.reshape(-1, 1), num.zeros((x.shape[0], 1))))
@@ -1632,7 +1629,7 @@ class RectangularExplosionSource(ExplosionSource):
                 return latlon[:, ::-1]
             else:
                 return num.concatenate(
-                    (latlon, points_rot[:, 2].reshape((len(points_rot),1))),
+                    (latlon, points_rot[:, 2].reshape((len(points_rot), 1))),
                     axis=1)
 
     def outline(self, cs='xyz'):
@@ -1659,7 +1656,7 @@ class RectangularExplosionSource(ExplosionSource):
     #         if cs == 'latlon':
     #             return latlon
     #         else:
-                # return latlon[:, ::-1]
+    #             return latlon[:, ::-1]
 
     def get_nucleation_abs_coord(self, cs='xy'):
 
@@ -2215,7 +2212,7 @@ class RectangularSource(SourceWithDerivedMagnitude):
         if x.shape[0] != y.shape[0]:
             raise ValueError('Shapes of x and y mismatch')
 
-        x, y =  x * 0.5 * ln, y * 0.5 * wd
+        x, y = x * 0.5 * ln, y * 0.5 * wd
 
         points = num.hstack((
             x.reshape(-1, 1), y.reshape(-1, 1), num.zeros((x.shape[0], 1))))
@@ -2247,7 +2244,7 @@ class RectangularSource(SourceWithDerivedMagnitude):
                 return latlon[:, ::-1]
             else:
                 return num.concatenate(
-                    (latlon, points_rot[:, 2].reshape((len(points_rot),1))),
+                    (latlon, points_rot[:, 2].reshape((len(points_rot), 1))),
                     axis=1)
 
     def outline(self, cs='xyz'):
