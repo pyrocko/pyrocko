@@ -18,7 +18,7 @@ from pyrocko import example
 from pyrocko import pile
 from pyrocko.plot import gmtpy
 
-from pyrocko.gui import snuffler
+from pyrocko.gui.snuffler import snuffler
 from pyrocko.dataset import topo
 
 
