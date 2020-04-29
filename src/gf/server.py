@@ -139,7 +139,10 @@ class RequestHandler(asynchat.async_chat, SHRH):
 
     def prepare_POST(self):
         """Prepare to read the request body"""
-        bytesToRead = int(self.headers.getheader('Content-length'))
+        try:
+            bytesToRead = int(self.headers.getheader('Content-length'))
+        except AttributeError:
+            bytesToRead = int(self.headers['Content-length'])
         # set terminator to length (will read bytesToRead bytes)
         self.set_terminator(bytesToRead)
         self.incoming.clear()
@@ -177,8 +180,15 @@ class RequestHandler(asynchat.async_chat, SHRH):
     def do_POST(self):
         """Begins serving a POST request. The request data must be readable
         on a file-like object called self.rfile"""
-        ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
-        length = int(self.headers.getheader('content-length'))
+        try:
+            data = cgi.parse_header(self.headers.getheader('content-type'))
+            length = int(self.headers.getheader('content-length', 0))
+        except AttributeError:
+            data = cgi.parse_header(self.headers.get('content-type'))
+            length = int(self.headers.get('content-length', 0))
+
+        ctype, pdict = data if data else (None, None)
+
         if ctype == 'multipart/form-data':
             self.body = cgi.parse_multipart(self.rfile, pdict)
         elif ctype == 'application/x-www-form-urlencoded':
@@ -237,7 +247,13 @@ class RequestHandler(asynchat.async_chat, SHRH):
             self.send_error(501, "Unsupported method (%s)" % self.command)
 
     def handle_error(self):
-        traceback.print_exc(sys.stderr)
+        try:
+            traceback.print_exc(sys.stderr)
+        except Exception:
+            logger.error(
+                'An error occurred and another one while printing the '
+                'traceback. Please debug me...')
+
         self.close()
 
     def writable(self):
@@ -645,6 +661,11 @@ class SeismosizerHandler(RequestHandler):
         try:
             store = engine.get_store(store_id)
         except Exception:
+            self.send_error(404)
+            self.end_headers()
+            return
+
+        if store.config.earthmodel_1d is None:
             self.send_error(404)
             self.end_headers()
             return
