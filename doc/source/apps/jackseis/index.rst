@@ -38,7 +38,7 @@ and station and create files as follows:
    2017/7G/STA1/7G.STA1.HHZ.2017-01-01_00-00-00.mseed
 
 we would use
-``--template='%(wmin_year)s/%(network)s/%(station)s/%(network)s.%(station)s.%(channel)s.%(wmin)s.mseed'``.
+``--output='%(wmin_year)s/%(network)s/%(station)s/%(network)s.%(station)s.%(channel)s.%(wmin)s.mseed'``.
 Jackseis will use the meta information in the waveform files to fill the
 template placeholders. It will create sub-directories as neccessary. Running
 Jackseis several times with the same output template will add new data to an
