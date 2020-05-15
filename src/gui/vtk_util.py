@@ -41,10 +41,18 @@ def cpt_to_vtk_lookuptable(cpt):
     lut.Allocate(n, n)
     values = num.linspace(cpt.vmin, cpt.vmax, n)
     colors = cpt(values)
+    err = values[1] - values[0]
+    zeroinds = num.argwhere(values < 0. + err)
     lut.SetTableRange(cpt.vmin, cpt.vmax)
     for i in range(n):
         lut.SetTableValue(
-            i, colors[i, 0]/255., colors[i, 1]/255., colors[i, 2]/255.)
+            i, colors[i, 0]/255., colors[i, 1]/255., colors[i, 2]/255., 1.)
+
+    # set zero to transparent
+    for zi in zeroinds:
+        lut.SetTableValue(
+            zi, colors[zi, 0]/255., colors[zi, 1]/255.,
+            colors[zi, 2]/255., 0.)
 
     return lut
 
@@ -438,7 +446,9 @@ class PolygonPipe(object):
 
 class ColorbarPipe(object):
 
-    def __init__(self, parent_pipe=None, cbar_title=None, cpt=None, lut=None):
+    def __init__(
+            self, parent_pipe=None, cbar_title=None, cpt=None, lut=None,
+            position=None):
         act = vtk.vtkScalarBarActor()
 
         act.SetMaximumHeightInPixels(500)
@@ -453,7 +463,10 @@ class ColorbarPipe(object):
         self.actor = act
 
         self._format_text()
-        self._set_position(0.95, 0.05)
+        if position is not None:
+            self._set_position(*position)
+        else:
+            self._set_position(0.95, 0.05)
 
         if cbar_title is not None:
             self.set_title(cbar_title)

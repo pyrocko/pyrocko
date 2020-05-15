@@ -824,7 +824,7 @@ class Viewer(qw.QMainWindow):
                 widget.setText('')
             else:
                 widget.setText('%s' % (time_to_str(
-                    getattr(state, attribute), format='%Y-%m-%d %H:%M')))
+                    getattr(state, attribute), format='%Y-%m-%d %H:%M:%S')))
             if sel:
                 widget.selectAll()
 
@@ -836,7 +836,7 @@ class Viewer(qw.QMainWindow):
                 setattr(state, attribute, None)
             else:
                 m = re.match(
-                    r'^\d\d\d\d-\d\d-\d\d( \d\d:\d\d+)?$', s)
+                    r'^\d\d\d\d-\d\d-\d\d( \d\d:\d\d:\d\d+)?$', s)
                 if m:
                     if not m.group(1):
                         time_str = m.group(0) + ' 00:00'
@@ -845,9 +845,9 @@ class Viewer(qw.QMainWindow):
                     setattr(
                         state,
                         attribute,
-                        str_to_time(time_str, format='%Y-%m-%d %H:%M'))
+                        str_to_time(time_str, format='%Y-%m-%d %H:%M:%S'))
                 else:
-                    raise ValueError('Use time format: YYYY-mm-dd [HH:MM]')
+                    raise ValueError('Use time format: YYYY-mm-dd [HH:MM:SS]')
 
         self._state_bind(
             ['tmin'], lineedit_to_time, le_tmin,

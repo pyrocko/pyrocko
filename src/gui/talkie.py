@@ -148,7 +148,7 @@ class Talkie(Object):
 
         for (s_prop, s_val), (o_prop, o_val) in zip(
                 self.T.ipropvals(self), other.T.ipropvals(other)):
-
+            #print(s_prop, o_val)
             if not s_prop.multivalued:
                 if isinstance(s_val, Talkie) \
                         and type(s_val) is type(o_val):

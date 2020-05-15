@@ -20,6 +20,7 @@ from pyrocko.gui.vtk_util import cpt_to_vtk_lookuptable
 
 from .. import common
 from ..state import state_bind_combobox, state_bind
+from matplotlib.pyplot import colormaps
 
 
 class ElementState(TalkieRoot):
@@ -60,8 +61,9 @@ class Element(object):
 
 
 class CPTChoice(StringChoice):
-    choices = ['slip_colors', 'seismic', 'jet', 'hot_r', 'gist_earth_r']
-
+   # choices = [
+   #     'slip_colors', 'seismic', 'jet', 'hot_r', 'gist_earth_r']
+    choices = ['slip_colors'] + colormaps()
 
 class CPTState(ElementState):
     cpt_name = String.T(default=CPTChoice.choices[0])

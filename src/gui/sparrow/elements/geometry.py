@@ -25,6 +25,20 @@ guts_prefix = 'sparrow'
 km = 1e3
 
 
+cbar_positions = {
+    1: (0.95, 0.05),
+    2: (0.05, 0.05),
+    3: (0.75, 0.05),
+    4: (0.25, 0.05),
+}
+
+
+global geometry_counter
+
+
+geometry_counter = 0
+
+
 class CPTChoices(StringChoice):
 
     choices = ['slip_colors', 'seismic', 'jet', 'hot_r', 'gist_earth_r']
@@ -47,6 +61,7 @@ class GeometryState(base.ElementState):
 class GeometryElement(base.Element):
 
     def __init__(self):
+        global geometry_counter
         self._listeners = []
         self._parent = None
         self._state = None
@@ -57,6 +72,8 @@ class GeometryElement(base.Element):
         self._outlines_pipe = []
 
         self.cpt_handler = base.CPTHandler()
+        geometry_counter += 1
+        self.geometry_number = geometry_counter
 
     def remove(self):
         if self._parent and self._state:
@@ -241,8 +258,11 @@ class GeometryElement(base.Element):
                         vertices, faces,
                         values=values,
                         lut=lut)
+                    
+                    cbar_pos = cbar_positions[self.geometry_number]
                     self._cbar_pipe = ColorbarPipe(
-                        lut=lut, cbar_title=state.display_parameter)
+                        lut=lut,
+                        cbar_title=state.display_parameter, position=cbar_pos)
                     self._parent.add_actor(self._pipe.actor)
                     self._parent.add_actor(self._cbar_pipe.actor)
 
