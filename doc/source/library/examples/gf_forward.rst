@@ -90,6 +90,82 @@ Download :download:`gf_forward_example4.py </../../examples/gf_forward_example4.
     :language: python
 
 
+Viscoelastic static forward modelling
+-------------------------------------
+
+In this advanced example we leverage the viscoelastic forward modelling capabilities of the `psgrn_pscmp` backend.
+
+.. raw:: html
+
+    <video style="width: 80%; margin: auto" controls>
+        <source src="https://pyrocko.org/media/gf-viscoelastic-response.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+Viscoelastic static GF store forward-modeling the transient effects of a deep dislocation source, mimicking a transform plate boundary. Together with a shallow seismic source. The cross denotes the tracked pixel location. (Top) Displacement of the tracked pixel in time.
+
+The static store has to be setup with Burger material describing the viscoelastic properties of the medium, see this `config` for the fomosto store:
+
+.. code-block:: yaml
+
+    --- !pf.ConfigTypeA
+    id: static_t
+    modelling_code_id: psgrn_pscmp.2008a
+    regions: []
+    references: []
+    earthmodel_1d: |2
+          0.             2.5            1.2            2.1           50.            50.
+          1.             2.5            1.2            2.1           50.            50.
+          1.             6.2            3.6            2.8          600.           400.
+         17.             6.2            3.6            2.8          600.           400.
+         17.             6.6            3.7            2.9         1432.           600.
+         32.             6.6            3.7            2.9         1432.           600.
+         32.             7.3            4.             3.1         1499.           600.            1e30            1e20           1.
+         41.             7.3            4.             3.1         1499.           600.            1e30            1e20           1.
+      mantle
+         41.             8.2            4.7            3.4         1370.           600.            1e19            5e17           1.
+         91.             8.2            4.7            3.4         1370.           600.            1e19            5e17           1.
+    sample_rate: 1.1574074074074074e-06
+    component_scheme: elastic10
+    tabulated_phases: []
+    ncomponents: 10
+    receiver_depth: 0.0
+    source_depth_min: 0.0
+    source_depth_max: 40000.0
+    source_depth_delta: 500.0
+    distance_min: 0.0
+    distance_max: 150000.0
+    distance_delta: 1000.0
+
+
+In the `extra/psgrn_pscmp` configruation file we have to define the number of timesteps. Here we use 64 timesteps within 600 days after time of the dislocation for `psgrn` and 600 days with a deltat of 10 days for `pscmp`.
+
+.. code-block:: yaml
+
+    --- !pf.PsGrnPsCmpConfig
+    psgrn_config: !pf.PsGrnConfig
+      version: 2008a
+      sampling_interval: 1.0
+      n_time_samples: 64
+      max_time: 600
+      gf_depth_spacing: 1.0
+      gf_distance_spacing: 10.0
+      observation_depth: 0.0
+    pscmp_config: !pf.PsCmpConfig
+      version: 2008a
+      observation: !pf.PsCmpScatter {}
+      rectangular_fault_size_factor: 1.0
+      snapshots: !pf.PsCmpSnapshots
+        tmin: 0.0
+        tmax: 600
+        deltatdays: 10
+      rectangular_source_patches: []
+    gf_outdir: psgrn_functions
+
+
+.. literalinclude :: /../../examples/gf_forward_viscoelastic.py
+    :language: python
+
 Creating a custom Source Time Function (STF)
 --------------------------------------------
 

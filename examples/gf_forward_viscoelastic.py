@@ -1,3 +1,7 @@
+'''
+An advanced example requiring a viscoelastic static store.
+See https://pyrocko.org for detailed instructions.
+'''
 import logging
 import os.path as op
 import matplotlib.pyplot as plt
@@ -8,7 +12,7 @@ import numpy as num
 from pyrocko import gf
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger('static-test')
+logger = logging.getLogger('static-viscoelastic')
 
 km = 1e3
 d2r = num.pi/180.
@@ -95,6 +99,7 @@ def get_displacement(sources, targets, component='los'):
 component = 'los'
 fn = 'displacement_%s' % component
 
+# Use cached displacements
 if not op.exists('%s.npy' % fn):
     logger.info('Calculating scenario for %s.npy ...', fn)
     displacement_creep = get_displacement(
