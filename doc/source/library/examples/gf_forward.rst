@@ -90,8 +90,8 @@ Download :download:`gf_forward_example4.py </../../examples/gf_forward_example4.
     :language: python
 
 
-Viscoelastic static forward modelling
--------------------------------------
+Modelling viscoelastic static displacement
+------------------------------------------
 
 In this advanced example we leverage the viscoelastic forward modelling capabilities of the `psgrn_pscmp` backend.
 
@@ -138,7 +138,7 @@ The static store has to be setup with Burger material describing the viscoelasti
     distance_delta: 1000.0
 
 
-In the `extra/psgrn_pscmp` configruation file we have to define the number of timesteps. Here we use 64 timesteps within 600 days after time of the dislocation for `psgrn` and 600 days with a deltat of 10 days for `pscmp`.
+In the `extra/psgrn_pscmp` configruation file we have to define the number and spacing of timesteps. Here we use 64 timesteps within 600 days after time of the dislocation for `psgrn` and 600 days with a deltat of 10 days for `pscmp`.
 
 .. code-block:: yaml
 
@@ -162,6 +162,8 @@ In the `extra/psgrn_pscmp` configruation file we have to define the number of ti
       rectangular_source_patches: []
     gf_outdir: psgrn_functions
 
+
+Download :download:`gf_forward_viscoelastic.py </../../examples/gf_forward_viscoelastic.py>`
 
 .. literalinclude :: /../../examples/gf_forward_viscoelastic.py
     :language: python
