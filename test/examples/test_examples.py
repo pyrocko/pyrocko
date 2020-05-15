@@ -28,7 +28,8 @@ test_dir = op.dirname(op.abspath(__file__))
 
 
 skip_examples = [
-    'examples/trace_restitution_dseed.py'
+    'trace_restitution_dseed.py',
+    'gf_forward_viscoelastic.py'
 ]
 
 
@@ -76,7 +77,7 @@ class ExamplesTestCase(unittest.TestCase):
 
 
 example_files = [fn for fn in glob.glob(op.join(test_dir, 'examples', '*.py'))
-                 if fn not in skip_examples]
+                 if os.basename(fn) not in skip_examples]
 
 
 def _make_function(test_name, fn):
