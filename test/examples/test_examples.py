@@ -77,7 +77,7 @@ class ExamplesTestCase(unittest.TestCase):
 
 
 example_files = [fn for fn in glob.glob(op.join(test_dir, 'examples', '*.py'))
-                 if os.basename(fn) not in skip_examples]
+                 if os.path.basename(fn) not in skip_examples]
 
 
 def _make_function(test_name, fn):
