@@ -76,15 +76,15 @@ class Event(Location):
 
     time = Timestamp.T(default=util.str_to_time('1970-01-01 00:00:00'))
     depth = Float.T(optional=True)
-    name = String.T(default='', optional=True)
+    name = String.T(default='', optional=True, yamlstyle="'")
     magnitude = Float.T(optional=True)
-    magnitude_type = String.T(optional=True)
-    region = Unicode.T(optional=True)
-    catalog = String.T(optional=True)
+    magnitude_type = String.T(optional=True, yamlstyle="'")
+    region = Unicode.T(optional=True, yamlstyle="'")
+    catalog = String.T(optional=True, yamlstyle="'")
     moment_tensor = moment_tensor.MomentTensor.T(optional=True)
     duration = Float.T(optional=True)
-    tags = List.T(Tag.T())
-    extras = Dict.T(String.T(), Any.T())
+    tags = List.T(Tag.T(), default=[])
+    extras = Dict.T(Any.T(), default={})
 
     def __init__(
             self, lat=0., lon=0., north_shift=0., east_shift=0., time=0.,
