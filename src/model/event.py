@@ -84,7 +84,7 @@ class Event(Location):
     moment_tensor = moment_tensor.MomentTensor.T(optional=True)
     duration = Float.T(optional=True)
     tags = List.T(Tag.T(), default=[])
-    extras = Dict.T(Any.T(), default={})
+    extras = Dict.T(String.T(), Any.T(), default={})
 
     def __init__(
             self, lat=0., lon=0., north_shift=0., east_shift=0., time=0.,
