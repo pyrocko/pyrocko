@@ -18,6 +18,12 @@ from pyrocko.guts import StringPattern, Object, Bool, Int, Float, String, \
     get_elements, YPathError
 
 
+try:
+    unicode
+except NameError:
+    unicode = str
+
+
 guts_prefix = 'guts_test'
 
 
@@ -1177,30 +1183,32 @@ xmlns:f="https://www.w3schools.com/furniture">
         assert isinstance(o3.tables1[0], Table1)
 
     def testStyles(self):
-        class A(Object):
-            s = String.T(yamlstyle=None)
-            s_singlequoted = String.T(yamlstyle="'")
-            s_doublequoted = String.T(yamlstyle='"')
-            s_literal = String.T(yamlstyle='|')
-            s_folded = String.T(yamlstyle='>')
-            l_block = List.T(String.T(yamlstyle="'"), yamlstyle='block')
-            l_flow = List.T(String.T(yamlstyle="'"), yamlstyle='flow')
+        for cls, Class in [(str, String), (unicode, Unicode)]:
+            class A(Object):
+                s = Class.T(yamlstyle=None)
+                s_singlequoted = Class.T(yamlstyle="'")
+                s_doublequoted = Class.T(yamlstyle='"')
+                s_literal = Class.T(yamlstyle='|')
+                s_folded = Class.T(yamlstyle='>')
+                l_block = List.T(Class.T(yamlstyle="'"), yamlstyle='block')
+                l_flow = List.T(Class.T(yamlstyle="'"), yamlstyle='flow')
 
-        a = A(
-            s='hello',
-            s_singlequoted='hello',
-            s_doublequoted='hello',
-            s_literal='hello\nhello\n',
-            s_folded='hello',
-            l_block=['a', 'b', 'c'],
-            l_flow=['a', 'b', 'c'])
+            a = A(
+                s=cls('hello'),
+                s_singlequoted=cls('hello'),
+                s_doublequoted=cls('hello'),
+                s_literal=cls('hello\nhello\n'),
+                s_folded=cls('hello'),
+                l_block=[cls('a'), cls('b'), cls('c')],
+                l_flow=[cls('a'), cls('b'), cls('c')])
 
-        a.validate()
+            a.validate()
 
-        a2 = load_string(a.dump())
-        s2 = ('\n'.join(a2.dump().splitlines()[1:]))
+            a2 = load_string(a.dump())
+            s2 = ('\n'.join(a2.dump().splitlines()[1:]))
+            assert type(a2.s) == cls
 
-        assert s2 == '''
+            assert s2 == '''
 s: hello
 s_singlequoted: 'hello'
 s_doublequoted: "hello"

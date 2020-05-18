@@ -104,6 +104,42 @@ for (style, cls) in str_style_map.items():
         GutsSafeDumper.add_representer(cls, make_str_presenter(style))
 
 
+class uliteral(unicode):
+    pass
+
+
+class ufolded(unicode):
+    pass
+
+
+class usinglequoted(unicode):
+    pass
+
+
+class udoublequoted(unicode):
+    pass
+
+
+def make_unicode_presenter(style):
+    def presenter(dumper, data):
+        return dumper.represent_scalar(
+            'tag:yaml.org,2002:str', unicode(data), style=style)
+
+    return presenter
+
+
+unicode_style_map = {
+    None: lambda x: x,
+    '|': literal,
+    '>': folded,
+    "'": singlequoted,
+    '"': doublequoted}
+
+for (style, cls) in unicode_style_map.items():
+    if style:
+        GutsSafeDumper.add_representer(cls, make_unicode_presenter(style))
+
+
 class blist(list):
     pass
 
@@ -956,6 +992,15 @@ class String(Object):
 class Unicode(Object):
     dummy_for = newstr
 
+    class __T(TBase):
+        def __init__(self, *args, **kwargs):
+            yamlstyle = kwargs.pop('yamlstyle', None)
+            TBase.__init__(self, *args, **kwargs)
+            self.style_cls = unicode_style_map[yamlstyle]
+
+        def to_save(self, val):
+            return self.style_cls(val)
+
 
 guts_plain_dummy_types = (String, Unicode, Int, Float, Complex, Bool)
 
@@ -1246,9 +1291,9 @@ class StringPattern(String):
     dummy_for = str
     pattern = '.*'
 
-    class __T(TBase):
+    class __T(String.T):
         def __init__(self, pattern=None, *args, **kwargs):
-            TBase.__init__(self, *args, **kwargs)
+            String.T.__init__(self, *args, **kwargs)
 
             if pattern is not None:
                 self.pattern = pattern
@@ -1305,9 +1350,9 @@ class StringChoice(String):
     choices = []
     ignore_case = False
 
-    class __T(TBase):
+    class __T(String.T):
         def __init__(self, choices=None, ignore_case=None, *args, **kwargs):
-            TBase.__init__(self, *args, **kwargs)
+            String.T.__init__(self, *args, **kwargs)
 
             if choices is not None:
                 self.choices = choices
