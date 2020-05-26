@@ -5,6 +5,7 @@
 from __future__ import absolute_import, division
 
 import logging
+import warnings
 import os
 from os.path import join as pjoin
 import signal
@@ -35,6 +36,7 @@ psgrn_gravity_names = ('gd', 'gr')
 psgrn_components = 'ep ss ds cl'.split()
 
 km = 1000.
+day = 3600. * 24
 
 guts_prefix = 'pf'
 logger = logging.getLogger('pyrocko.fomosto.psgrn_pscmp')
@@ -98,20 +100,23 @@ class PsGrnConfig(Object):
         help='exponential sampling 1.- equidistant, > 1. decreasing sampling'
              ' with distance')
     n_time_samples = Int.T(
-        default=1,
+        optional=True,
         help='Number of temporal GF samples up to max_time. Has to be equal'
              ' to a power of 2! If not, next power of 2 is taken.')
     max_time = Float.T(
-        default=1.,
+        optional=True,
         help='Maximum time [days] after seismic event.')
 
     gf_depth_spacing = Float.T(
-        default=1.,
-        help='spatial depth spacing [km] for the medium properties.')
+        default=-1.,
+        help='depth spacing [km] for the observation points. '
+             '-1 is using the distance spacing from the store\'s config')
     gf_distance_spacing = Float.T(
-        default=10.,
-        help='spatial distance spacing [km] for the medium properties.')
-    observation_depth = Float.T(default=0.)
+        default=-1.,
+        help='spatial spacing [km] for the observation points. '
+             '-1 is using the distance spacing from the store\'s config')
+    observation_depth = Float.T(
+        default=0.)
 
     def items(self):
         return dict(self.T.inamevals(self))
@@ -760,7 +765,8 @@ class PsCmpConfig(Object):
              ' spacing of the GF database. This factor is applied to the'
              ' relationship in i.e. fault length & width = f * dx.')
 
-    snapshots = PsCmpSnapshots.T(PsCmpSnapshots.D())
+    snapshots = PsCmpSnapshots.T(
+        optional=True)
 
     rectangular_source_patches = List.T(PsCmpRectangularSource.T())
 
@@ -1113,10 +1119,16 @@ class PsGrnPsCmpConfig(Object):
     '''
     Combined config Object of PsGrn and PsCmp.
     '''
+    tmin_days = Float.T(
+        default=0.,
+        help='Min. time in days')
+    tmax_days = Float.T(
+        default=1.,
+        help='Max. time in days')
+    gf_outdir = String.T(default='psgrn_functions')
+
     psgrn_config = PsGrnConfig.T(PsGrnConfig.D())
     pscmp_config = PsCmpConfig.T(PsCmpConfig.D())
-
-    gf_outdir = String.T(default='psgrn_functions')
 
 
 class PsCmpError(gf.store.StoreError):
@@ -1354,7 +1366,30 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
         baseconf = self.store.get_extra('psgrn_pscmp')
 
         cg = PsGrnConfigFull(**baseconf.psgrn_config.items())
+        if cg.n_time_samples is None or cg.max_time is None:
+            deltat_days = 1. / storeconf.sample_rate / day
+
+            cg.n_time_samples = int(baseconf.tmax_days // deltat_days)
+            cg.max_time = baseconf.tmax_days
+        else:
+            warnings.warn(
+                'PsGrnConfig is defining n_times_samples and max_time,'
+                ' this will be replaced by PsGrnPsCmpConfig tmin and tmax.',
+                FutureWarning)
+
         cc = PsCmpConfigFull(**baseconf.pscmp_config.items())
+        if cc.snapshots is None:
+            deltat_days = 1. / storeconf.sample_rate / day
+
+            cc.snapshots = PsCmpSnapshots(
+                tmin=baseconf.tmin_days,
+                tmax=baseconf.tmax_days,
+                deltatdays=deltat_days)
+        else:
+            warnings.warn(
+                'PsCmpConfig is defining snapshots,'
+                ' this will be replaced by PsGrnPsCmpConfig tmin and tmax.',
+                FutureWarning)
 
         cg.earthmodel_1d = storeconf.earthmodel_1d
 
@@ -1394,10 +1429,17 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
             (self.step + 1, self.nsteps, iblock + 1, self.nblocks))
 
         if self.step == 0:
+            gf_depth_spacing = cg.gf_depth_spacing * km
+            if cg.gf_depth_spacing == -1.:
+                gf_depth_spacing = fc.source_depth_delta
             n_steps_depth = int((fc.source_depth_max - fc.source_depth_min) /
-                                (cg.gf_depth_spacing * km)) + 1
+                                gf_depth_spacing) + 1
+
+            gf_distance_spacing = cg.gf_distance_spacing * km
+            if cg.gf_distance_spacing == -1.:
+                gf_distance_spacing = fc.distance_delta
             n_steps_distance = int((fc.distance_max - fc.distance_min) /
-                                   (cg.gf_distance_spacing * km)) + 1
+                                   gf_distance_spacing) + 1
 
             cg.depth_grid = PsGrnSpatialSampling(
                 n_steps=n_steps_depth,

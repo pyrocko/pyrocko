@@ -15,6 +15,7 @@ from ..common import Benchmark
 
 logger = logging.getLogger('pyrocko.test.test_gf_psgrn_pscmp')
 benchmark = Benchmark()
+uniform = num.random.uniform
 
 km = 1000.
 
@@ -22,6 +23,9 @@ r2d = 180. / math.pi
 d2r = 1.0 / r2d
 km = 1000.
 mm = 1e-3
+
+neast = 40
+nnorth = 40
 
 
 def statics(engine, source, starget):
@@ -74,7 +78,7 @@ class GFPsgrnPscmpTestCase(unittest.TestCase):
 
         return self.pscmp_store_dir, self.psgrn_config
 
-    def _create_psgrn_pscmp_store(self):
+    def _create_psgrn_pscmp_store(self, extra_config=None):
 
         mod = cake.LayeredModel.from_scanlines(cake.read_nd_model_str('''
  0. 5.8 3.46 2.6 1264. 600.
@@ -99,10 +103,13 @@ mantle
         self.tempdirs.append(store_dir)
         store_id = 'psgrn_pscmp_test'
 
-        version = '2008a'
+        if not extra_config:
+            c = psgrn_pscmp.PsGrnPsCmpConfig()
+            c.psgrn_config.sampling_interval = 1.
+        else:
+            c = extra_config
 
-        c = psgrn_pscmp.PsGrnPsCmpConfig()
-        c.psgrn_config.sampling_interval = 1.
+        version = '2008a'
         c.psgrn_config.version = version
         c.pscmp_config.version = version
 
@@ -112,10 +119,10 @@ mantle
             sample_rate=1. / (3600. * 24.),
             receiver_depth=0. * km,
             source_depth_min=0. * km,
-            source_depth_max=5. * km,
+            source_depth_max=15. * km,
             source_depth_delta=0.1 * km,
             distance_min=0. * km,
-            distance_max=40. * km,
+            distance_max=60. * km,
             distance_delta=0.1 * km,
             modelling_code_id='psgrn_pscmp.%s' % version,
             earthmodel_1d=mod,
@@ -142,7 +149,6 @@ mantle
         return store_dir, c
 
     def test_fomosto_vs_psgrn_pscmp(self):
-
         store_dir, c = self.get_pscmp_store_info()
 
         origin = gf.Location(
@@ -156,14 +162,13 @@ mantle
             depth=2. * km,
             width=0.2 * km,
             length=0.5 * km,
-            rake=90., dip=45., strike=45.,
-            slip=num.random.uniform(1., 5.))
+            rake=uniform(-90., 90.),
+            dip=uniform(0., 90.),
+            strike=uniform(0., 360.),
+            slip=uniform(1., 5.))
 
         source_plain = gf.RectangularSource(**TestRF)
         source_with_time = gf.RectangularSource(time=123.5, **TestRF)
-
-        neast = 40
-        nnorth = 40
 
         N, E = num.meshgrid(num.linspace(-20. * km, 20. * km, nnorth),
                             num.linspace(-20. * km, 20. * km, neast))
@@ -185,8 +190,7 @@ mantle
         runner = psgrn_pscmp.PsCmpRunner(keep_tmp=False)
         runner.run(ccf)
         ps2du = runner.get_results(component='displ')[0]
-        t3 = time()
-        logger.info('pscmp stacking time %f' % (t3 - t2))
+        logger.info('pscmp stacking time %f s' % (time() - t2))
 
         un_pscmp = ps2du[:, 0]
         ue_pscmp = ps2du[:, 1]
@@ -212,8 +216,7 @@ mantle
         for source in [source_plain, source_with_time]:
             t0 = time()
             r = engine.process(source, [starget_nn, starget_ml])
-            t1 = time()
-            logger.info('pyrocko stacking time %f' % (t1 - t0))
+            logger.info('pyrocko stacking time %f' % (time() - t0))
             for static_result in r.static_results():
                 un_fomosto = static_result.result['displacement.n']
                 ue_fomosto = static_result.result['displacement.e']
@@ -222,6 +225,142 @@ mantle
                 num.testing.assert_allclose(un_fomosto, un_pscmp, atol=1*mm)
                 num.testing.assert_allclose(ue_fomosto, ue_pscmp, atol=1*mm)
                 num.testing.assert_allclose(ud_fomosto, ud_pscmp, atol=1*mm)
+
+    def test_gf_distance_sampling(self):
+        origin = gf.Location(
+            lat=10.,
+            lon=-15.)
+
+        # test GF store
+        TestRF = dict(
+            lat=origin.lat,
+            lon=origin.lon,
+            depth=2. * km,
+            width=1. * km,
+            length=3. * km,
+            rake=uniform(-90., 90.),
+            dip=uniform(0., 90.),
+            strike=uniform(0., 360.),
+            slip=uniform(1., 5.))
+
+        source_plain = gf.RectangularSource(**TestRF)
+
+        N, E = num.meshgrid(num.linspace(-40. * km, 40. * km, nnorth),
+                            num.linspace(-40. * km, 40. * km, neast))
+
+        starget_ml = gf.StaticTarget(
+            lats=num.full(N.size, origin.lat),
+            lons=num.full(N.size, origin.lon),
+            north_shifts=N.flatten(),
+            east_shifts=E.flatten(),
+            interpolation='multilinear')
+
+        # Getting reference gf_distance_sampling = 10.
+
+        def get_displacements(source):
+            store_dir, c = self.get_pscmp_store_info()
+            engine = gf.LocalEngine(store_dirs=[store_dir])
+            r = engine.process(source, starget_ml)
+            ref_result = r.static_results()[0]
+
+            compare_results = {}
+            for gf_dist_spacing in (0.25, .5, 1., 2., 4., 8., 10.,):
+                extra_config = psgrn_pscmp.PsGrnPsCmpConfig()
+                extra_config.psgrn_config.gf_distance_spacing = gf_dist_spacing
+                extra_config.psgrn_config.gf_depth_spacing = .5
+
+                store_dir, c = self._create_psgrn_pscmp_store(extra_config)
+                engine = gf.LocalEngine(store_dirs=[store_dir])
+                t0 = time()
+                r = engine.process(source, starget_ml)
+                logger.info('pyrocko stacking time %f s' % (time() - t0))
+
+                static_result = r.static_results()[0]
+                compare_results[gf_dist_spacing] = static_result
+
+                num.testing.assert_allclose(
+                    ref_result.result['displacement.n'],
+                    static_result.result['displacement.n'],
+                    atol=1*mm)
+                num.testing.assert_allclose(
+                    ref_result.result['displacement.e'],
+                    static_result.result['displacement.e'],
+                    atol=1*mm)
+                num.testing.assert_allclose(
+                    ref_result.result['displacement.d'],
+                    static_result.result['displacement.d'],
+                    atol=1*mm)
+
+            return ref_result, compare_results
+
+        # ref_result, compare_results = get_displacements(source_plain)
+        # self.plot_displacement_differences(ref_result, compare_results)
+
+        if True:
+            import matplotlib
+            matplotlib.use('Qt5Agg')
+            import matplotlib.pyplot as plt
+
+            fig = plt.figure()
+            ax = fig.gca()
+
+            for depth in (2., 4., 8., 12.):
+                source_plain.depth = depth * km
+                ref_result, compare_results = get_displacements(source_plain)
+                self.plot_differences(
+                    ax, ref_result, compare_results,
+                    label='Source Depth %.2f km' % depth)
+
+            ax.legend()
+            plt.show()
+
+    def plot_displacement_differences(self, reference, compare):
+        import matplotlib
+        matplotlib.use('Qt5Agg')
+        import matplotlib.pyplot as plt
+
+        ncompare = len(compare)
+        fig, axes = plt.subplots(ncompare + 1, 1)
+
+        ax = axes[0]
+        ref_displ = reference.result['displacement.d'].reshape(nnorth, neast)
+        ax.imshow(ref_displ, cmap='seismic')
+        ax.set_title('Reference displacement')
+
+        for (gf_distance, comp), ax in zip(compare.items(), axes[1:]):
+            displ = comp.result['displacement.d'].reshape(nnorth, neast)
+            displ -= ref_displ
+            ax.imshow(displ, cmap='seismic')
+            ax.set_title('GF Distance %.2f' % gf_distance)
+
+        ax.legend()
+        plt.show()
+
+    def plot_differences(self, ax, reference, compare, **kwargs):
+        from matplotlib.ticker import FuncFormatter
+
+        for key, comp in compare.items():
+            print(key, comp.result['displacement.n'].shape)
+
+        ref_displ = num.linalg.norm(tuple(reference.result.values()), axis=0)
+        print(ref_displ.shape)
+
+        differences = num.array([
+            num.linalg.norm(tuple(comp.result.values()), axis=0)
+            for comp in compare.values()])
+
+        differences = num.abs(differences)
+        differences /= num.abs(ref_displ)
+        differences -= 1.
+
+        ax.plot(tuple(compare.keys()), differences.max(axis=1)*100., **kwargs)
+        ax.set_ylabel('% Difference')
+        ax.set_xlabel('gf_distance_spacing [km]')
+        # ax.xaxis.set_major_formatter(
+        #     FuncFormatter(lambda x, v: '%.1f%' % v))
+        # ax.set_xticks(tuple(compare.keys()))
+        ax.grid(alpha=.3)
+        return ax
 
 
 if __name__ == '__main__':

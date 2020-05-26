@@ -97,6 +97,55 @@ The stresses, tilts and geoidal changes can still be computed but are (not yet)
 supported by a Fomosto Green's function store and the respective stacking
 functions.
 
+Viscoelastic media are defined by Burger's parameters, these are columns 
+7, 8 and 9 in the stores' ``earthmodel_1d``. See this example with a viscoelastic
+mantle rheology.
+
+.. code-block :: yaml
+
+    earthmodel_1d: |2
+          0.             2.5            1.2            2.1           50.            50.
+          1.             2.5            1.2            2.1           50.            50.
+          1.             6.2            3.6            2.8          600.           400.
+         17.             6.2            3.6            2.8          600.           400.
+         17.             6.6            3.7            2.9         1432.           600.
+         32.             6.6            3.7            2.9         1432.           600.
+         32.             7.3            4.             3.1         1499.           600.
+         41.             7.3            4.             3.1         1499.           600.
+      mantle
+         41.             8.2            4.7            3.4         1370.           600.            5.000E+17      1.000E+19      1.
+         91.             8.2            4.7            3.4         1370.           600.            5.000E+17      1.000E+19      1.
+
+
+The time span which is covered in the static displacement series is defined in
+``extra/psgrn_pscmp`` file (default is only coseismic displacement).
+Change `tmin_days` and `tmax_days` for the time of interest.
+The sampling rate is taken from the ``config`` file's definition of `sampling_rate`.
+
+.. note ::
+
+    Static stores define the sampling rate in Hz.
+    ``sampling_rate: 1.157e-05 Hz`` is a sampling rate of one day!
+
+.. code-block :: yaml
+
+    --- !pf.PsGrnPsCmpConfig
+    tmin_days: 0.0
+    tmax_days: 1000.0
+    gf_outdir: psgrn_functions
+    psgrn_config: !pf.PsGrnConfig
+      version: 2008a
+      sampling_interval: 1.0
+      gf_depth_spacing: -1.0
+      gf_distance_spacing: -1.0
+      observation_depth: 0.0
+    pscmp_config: !pf.PsCmpConfig
+      version: 2008a
+      observation: !pf.PsCmpScatter {}
+      rectangular_fault_size_factor: 1.0
+      rectangular_source_patches: []
+
+
 The current version of PSGRN/PSCMP is ``2008a`` (at the time of writing,
 2017-02-14), and can be downloaded from
 https://git.pyrocko.org/pyrocko/fomosto-psgrn-pscmp .

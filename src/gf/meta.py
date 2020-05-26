@@ -1851,8 +1851,9 @@ class Config(Object):
             raise OutOfBounds()
 
     def is_static(self):
-        if self.modelling_code_id in ('psgrn_pscmp', 'poel'):
-            return True
+        for code in ('psgrn_pscmp', 'poel'):
+            if self.modelling_code_id.startswith(code):
+                return True
         return False
 
     def is_dynamic(self):

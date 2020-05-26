@@ -104,7 +104,12 @@ In this advanced example we leverage the viscoelastic forward modelling capabili
 
 Viscoelastic static GF store forward-modeling the transient effects of a deep dislocation source, mimicking a transform plate boundary. Together with a shallow seismic source. The cross denotes the tracked pixel location. (Top) Displacement of the tracked pixel in time.
 
-The static store has to be setup with Burger material describing the viscoelastic properties of the medium, see this `config` for the fomosto store:
+The static store has to be setup with Burger material describing the viscoelastic properties of the medium, see this ``config`` for the fomosto store:
+
+.. note ::
+
+    Static stores define the sampling rate in Hz.
+    ``sampling_rate: 1.157e-06 Hz`` is a sampling rate of 10 days!
 
 .. code-block:: yaml
 
@@ -138,29 +143,25 @@ The static store has to be setup with Burger material describing the viscoelasti
     distance_delta: 1000.0
 
 
-In the `extra/psgrn_pscmp` configruation file we have to define the number and spacing of timesteps. Here we use 64 timesteps within 600 days after time of the dislocation for `psgrn` and 600 days with a deltat of 10 days for `pscmp`.
+In the ``extra/psgrn_pscmp`` configruation file we have to define the timespan from `tmin_days` to `tmax_days`, covered by the `sampling_rate` (see above)
 
 .. code-block:: yaml
 
     --- !pf.PsGrnPsCmpConfig
+    tmin_days: 0.0
+    tmax_days: 600.0
+    gf_outdir: psgrn_functions
     psgrn_config: !pf.PsGrnConfig
       version: 2008a
       sampling_interval: 1.0
-      n_time_samples: 64
-      max_time: 600
-      gf_depth_spacing: 1.0
-      gf_distance_spacing: 10.0
+      gf_depth_spacing: -1.0
+      gf_distance_spacing: -1.0
       observation_depth: 0.0
     pscmp_config: !pf.PsCmpConfig
       version: 2008a
       observation: !pf.PsCmpScatter {}
       rectangular_fault_size_factor: 1.0
-      snapshots: !pf.PsCmpSnapshots
-        tmin: 0.0
-        tmax: 600
-        deltatdays: 10
       rectangular_source_patches: []
-    gf_outdir: psgrn_functions
 
 
 Download :download:`gf_forward_viscoelastic.py </../../examples/gf_forward_viscoelastic.py>`
