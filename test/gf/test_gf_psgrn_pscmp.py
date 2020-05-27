@@ -226,7 +226,7 @@ mantle
                 num.testing.assert_allclose(ue_fomosto, ue_pscmp, atol=1*mm)
                 num.testing.assert_allclose(ud_fomosto, ud_pscmp, atol=1*mm)
 
-    def test_gf_distance_sampling(self):
+    def plot_gf_distance_sampling(self):
         origin = gf.Location(
             lat=10.,
             lon=-15.)
@@ -337,13 +337,10 @@ mantle
         plt.show()
 
     def plot_differences(self, ax, reference, compare, **kwargs):
-        from matplotlib.ticker import FuncFormatter
-
         for key, comp in compare.items():
             print(key, comp.result['displacement.n'].shape)
 
         ref_displ = num.linalg.norm(tuple(reference.result.values()), axis=0)
-        print(ref_displ.shape)
 
         differences = num.array([
             num.linalg.norm(tuple(comp.result.values()), axis=0)

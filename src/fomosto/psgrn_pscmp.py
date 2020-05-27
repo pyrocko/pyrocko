@@ -1374,7 +1374,7 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
         else:
             warnings.warn(
                 'PsGrnConfig is defining n_times_samples and max_time,'
-                ' this will be replaced by PsGrnPsCmpConfig tmin and tmax.',
+                ' this is replaced by PsGrnPsCmpConfig tmin and tmax.',
                 FutureWarning)
 
         cc = PsCmpConfigFull(**baseconf.pscmp_config.items())
@@ -1388,7 +1388,7 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
         else:
             warnings.warn(
                 'PsCmpConfig is defining snapshots,'
-                ' this will be replaced by PsGrnPsCmpConfig tmin and tmax.',
+                ' this is replaced by PsGrnPsCmpConfig tmin and tmax.',
                 FutureWarning)
 
         cg.earthmodel_1d = storeconf.earthmodel_1d
