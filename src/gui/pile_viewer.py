@@ -787,6 +787,10 @@ def MakePileViewerMainClass(base):
             self.menu.addAction(mi)
             mi.triggered.connect(self.open_stations)
 
+            mi = qw.QAction('Open station XML files...', self.menu)
+            self.menu.addAction(mi)
+            mi.triggered.connect(self.open_stations_xml)
+
             mi = qw.QAction('Save markers...', self.menu)
             self.menu.addAction(mi)
             mi.triggered.connect(self.write_markers)
@@ -1558,6 +1562,22 @@ def MakePileViewerMainClass(base):
                     self, caption, options=qfiledialog_options))
 
             stations = [pyrocko.model.load_stations(str(x)) for x in fns]
+            for stat in stations:
+                self.add_stations(stat)
+
+        def open_stations_xml(self, fns=None):
+            from pyrocko.io import stationxml
+
+            caption = 'Select one or more files to open'
+
+            if not fns:
+                fns, _ = fnpatch(qw.QFileDialog.getOpenFileNames(
+                    self, caption, options=qfiledialog_options))
+
+            stations = [
+                stationxml.load_xml(filename=str(x)).get_pyrocko_stations()
+                for x in fns]
+
             for stat in stations:
                 self.add_stations(stat)
 
