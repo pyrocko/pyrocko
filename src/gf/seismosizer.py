@@ -3027,6 +3027,7 @@ def process_dynamic_timeseries(work, psources, ptargets, engine, nthreads=0):
                         raise e
 
             for seismogram, target in zip(base_seismograms, store_targets):
+
                 try:
                     result = engine._post_process_dynamic(
                             seismogram, source, target)
@@ -3329,6 +3330,7 @@ class LocalEngine(Engine):
                          nthreads=0):
 
         target = targets[0]
+
         interp = set([t.interpolation for t in targets])
         if len(interp) > 1:
             logging.warning('Targets have different interpolation schemes!'
@@ -3338,7 +3340,18 @@ class LocalEngine(Engine):
         store_ = self.get_store(target.store_id)
         receivers = [t.receiver(store_) for t in targets]
 
-        rate = store_.config.sample_rate
+        if target.sample_rate is not None:
+            deltat = 1. / target.sample_rate
+            rate = target.sample_rate
+        else:
+            deltat = None
+            rate = store_.config.sample_rate
+
+        rates = set([t.sample_rate for t in targets])
+        if len(rates) > 1:
+            logging.warning('Targets have different sample rates!'
+                            ' Choosing %g for all targets.'
+                            % rate)
 
         tmin = num.fromiter(
             (t.tmin for t in targets), dtype=num.float, count=len(targets))
@@ -3355,11 +3368,6 @@ class LocalEngine(Engine):
 
         base_source = self._cached_discretize_basesource(
             source, store_, dsource_cache, target)
-
-        if target.sample_rate is not None:
-            deltat = 1. / target.sample_rate
-        else:
-            deltat = None
 
         base_seismograms = store_.calc_seismograms(
             base_source, receivers, components,
