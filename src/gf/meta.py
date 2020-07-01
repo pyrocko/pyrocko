@@ -306,6 +306,7 @@ class NearfieldTermsType(StringChoice):
 class QuantityType(StringChoice):
     choices = [
         'displacement',
+        'rotation',
         'velocity',
         'acceleration',
         'pressure',

@@ -54,7 +54,8 @@ qssp_components = {
     2: 'ar at ap gr sd tt tp ur ut up vr vt vp'.split(),
     3: '_disp_e _disp_n _disp_z'.split(),
     4: '_gravitation_e _gravitation_n _gravitation_z '
-       '_acce_e _acce_n _acce_z'.split()
+       '_acce_e _acce_n _acce_z'.split(),
+    5: '_rota_e _rota_n _rota_z'.split()
 }
 
 
@@ -190,6 +191,7 @@ class QSSPConfigFull(QSSPConfig):
     receiver_depth = Float.T(default=0.0)
     sampling_interval = Float.T(default=5.0)
 
+    stored_quantity = String.T(default='displacement')
     output_filename = String.T(default='receivers')
     output_format = Int.T(default=1)
     output_time_window = Float.T(optional=True)
@@ -214,7 +216,10 @@ class QSSPConfigFull(QSSPConfig):
     @property
     def components(self):
         if self.qssp_version == '2017':
-            fmt = 3
+            if self.stored_quantity == "rotation":
+                fmt = 5
+            else:
+                fmt = 3
         elif self.qssp_version == 'ppeg2017':
             fmt = 4
         else:
@@ -263,6 +268,12 @@ class QSSPConfigFull(QSSPConfig):
         model_str, nlines = cake_model_to_config(self.earthmodel_1d)
         d['n_model_lines'] = nlines
         d['model_lines'] = model_str
+        if self.stored_quantity == "rotation":
+            d['output_rotation'] = 1
+            d['output_displacement'] = 0
+        else:
+            d['output_displacement'] = 1
+            d['output_rotation'] = 0
 
         if len(self.sources) == 0 or isinstance(self.sources[0], QSSPSourceMT):
             d['point_source_type'] = 1
@@ -454,7 +465,8 @@ class QSSPConfigFull(QSSPConfig):
 # disp | velo | acce | strain | strain_rate | stress | stress_rate | rotation | rot_rate | gravitation | gravity
 #---------------------------------------------------------------------------------------------------------------
 # 1      1      1      1        1             1        1             1          1          1             1
-  1      0      1      0        0             0        0             0          0          1             0
+  %(output_displacement)i      0      0      0        0             0        0             %(output_rotation)i          0          0             0
+
   '%(output_filename)s'
   %(output_time_window)e
   %(sfilter)s
@@ -641,6 +653,7 @@ class QSSPRunner(object):
         input_fn = pjoin(self.tempdir, 'input')
 
         with open(input_fn, 'wb') as f:
+            from pyrocko import guts
             input_str = config.string_for_config()
             logger.debug('===== begin qssp input =====\n'
                          '%s===== end qssp input =====' % input_str.decode())
@@ -773,18 +786,34 @@ class QSSPGFBuilder(gf.builder.Builder):
 
         self.store = gf.store.Store(store_dir, 'w')
         baseconf = self.store.get_extra('qssp')
-
         if baseconf.qssp_version == '2017':
-            self.gfmapping = [
-                (MomentTensor(m=symmat6(1, 0, 0, 1, 0, 0)),
-                 {'_disp_n': (0, -1), '_disp_e': (3, -1), '_disp_z': (5, -1)}),
-                (MomentTensor(m=symmat6(0, 0, 0, 0, 1, 1)),
-                 {'_disp_n': (1, -1), '_disp_e': (4, -1), '_disp_z': (6, -1)}),
-                (MomentTensor(m=symmat6(0, 0, 1, 0, 0, 0)),
-                 {'_disp_n': (2, -1), '_disp_z': (7, -1)}),
-                (MomentTensor(m=symmat6(0, 1, 0, 0, 0, 0)),
-                 {'_disp_n': (8, -1), '_disp_z': (9, -1)}),
-            ]
+            if self.store.config.stored_quantity == "rotation":
+                self.gfmapping = [
+                    (MomentTensor(m=symmat6(1, 0, 0, 1, 0, 0)),
+                     {'_rota_n': (0, -1), '_rota_e': (3, -1),
+                      '_rota_z': (5, -1)}),
+                    (MomentTensor(m=symmat6(0, 0, 0, 0, 1, 1)),
+                     {'_rota_n': (1, -1), '_rota_e': (4, -1),
+                      '_rota_z': (6, -1)}),
+                    (MomentTensor(m=symmat6(0, 0, 1, 0, 0, 0)),
+                     {'_rota_n': (2, -1), '_rota_z': (7, -1)}),
+                    (MomentTensor(m=symmat6(0, 1, 0, 0, 0, 0)),
+                     {'_rota_n': (8, -1), '_rota_z': (9, -1)}),
+                ]
+            else:
+                self.gfmapping = [
+                    (MomentTensor(m=symmat6(1, 0, 0, 1, 0, 0)),
+                     {'_disp_n': (0, -1), '_disp_e': (3, -1),
+                      '_disp_z': (5, -1)}),
+                    (MomentTensor(m=symmat6(0, 0, 0, 0, 1, 1)),
+                     {'_disp_n': (1, -1), '_disp_e': (4, -1),
+                      '_disp_z': (6, -1)}),
+                    (MomentTensor(m=symmat6(0, 0, 1, 0, 0, 0)),
+                     {'_disp_n': (2, -1), '_disp_z': (7, -1)}),
+                    (MomentTensor(m=symmat6(0, 1, 0, 0, 0, 0)),
+                     {'_disp_n': (8, -1), '_disp_z': (9, -1)}),
+                ]
+
         elif baseconf.qssp_version == 'ppeg2017':
             self.gfmapping = [
                 (MomentTensor(m=symmat6(1, 0, 0, 1, 0, 0)),
@@ -824,7 +853,6 @@ class QSSPGFBuilder(gf.builder.Builder):
         conf.gf_directory = pjoin(store_dir, 'qssp_green')
         conf.earthmodel_1d = self.store.config.earthmodel_1d
         deltat = self.store.config.deltat
-
         if 'time_window' not in shared:
             d = self.store.make_timing_params(
                 conf.time_region[0], conf.time_region[1],
@@ -882,8 +910,8 @@ class QSSPGFBuilder(gf.builder.Builder):
         runner = QSSPRunner(tmp=self.tmp)
 
         conf.receiver_depth = rz/km
+        conf.stored_quantity = self.store.config.stored_quantity
         conf.sampling_interval = 1.0 / self.gf_config.sample_rate
-
         dx = self.gf_config.distance_delta
 
         if self.step == 0:
@@ -1142,3 +1170,14 @@ def build(
     return QSSPGFBuilder.build(
         store_dir, force=force, nworkers=nworkers, continue_=continue_,
         step=step, iblock=iblock)
+
+
+def get_conf(
+        store_dir,
+        force=False,
+        nworkers=None,
+        continue_=False,
+        step=None,
+        iblock=None):
+
+    return QSSPGFBuilder.get_conf()
