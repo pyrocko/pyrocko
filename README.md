@@ -13,7 +13,7 @@ https://pyrocko.org/docs/current/install/.
 ### Installation from source
 
 ```
-git clone https://github.com/pyrocko/pyrocko
+git clone https://git.pyrocko.org/pyrocko/pyrocko
 cd pyrocko
 sudo python setup.py install_prerequisites
 sudo python setup.py install
@@ -35,7 +35,7 @@ sudo pip install pyrocko
 or from source
 
 ```
-git clone https://github.com/pyrocko/pyrocko
+git clone https://git.pyrocko.org/pyrocko/pyrocko
 cd pyrocko
 sudo pip install -r requirements.txt
 sudo pip install .
