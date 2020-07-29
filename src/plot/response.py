@@ -205,22 +205,23 @@ def plot(
     if have_labels:
         axes_amplitude.legend(loc='lower right', prop=dict(size=fontsize))
 
-    a_ranges = num.array(a_ranges)
-    p_ranges = num.array(p_ranges)
+    if a_ranges:
+        a_ranges = num.array(a_ranges)
+        p_ranges = num.array(p_ranges)
 
-    amin, amax = num.min(a_ranges), num.max(a_ranges)
-    pmin, pmax = num.min(p_ranges), num.max(p_ranges)
+        amin, amax = num.min(a_ranges), num.max(a_ranges)
+        pmin, pmax = num.min(p_ranges), num.max(p_ranges)
 
-    amin *= 0.5
-    amax *= 2.0
+        amin *= 0.5
+        amax *= 2.0
 
-    pmin -= 0.5
-    pmax += 0.5
+        pmin -= 0.5
+        pmax += 0.5
 
-    axes_amplitude.set_ylim(amin, amax)
-    axes_phase.set_ylim(pmin, pmax)
-    axes_amplitude.set_xlim(fmin, fmax)
-    axes_phase.set_xlim(fmin, fmax)
+        axes_amplitude.set_ylim(amin, amax)
+        axes_phase.set_ylim(pmin, pmax)
+        axes_amplitude.set_xlim(fmin, fmax)
+        axes_phase.set_xlim(fmin, fmax)
 
     if filename is not None:
         fig.savefig(filename, dpi=dpi)
