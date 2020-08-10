@@ -550,6 +550,15 @@ def make_stationxml(pyrocko_stations, channel_responses):
         net, sta, loc, cha = cr.codes
         if (net, sta, loc) in pstations:
             pstation = pstations[net, sta, loc]
+            pchannel = pstation.get_channel(cha)
+            extra = {}
+            if pchannel is not None:
+                if pchannel.azimuth is not None:
+                    extra['azimuth'] = sxml.Azimuth(pchannel.azimuth)
+
+                if pchannel.dip is not None:
+                    extra['dip'] = sxml.Dip(pchannel.dip)
+
             channel = sxml.Channel(
                 code=cha,
                 location_code=loc,
@@ -559,7 +568,8 @@ def make_stationxml(pyrocko_stations, channel_responses):
                 longitude=sxml.Longitude(pstation.lon),
                 elevation=sxml.Distance(pstation.elevation),
                 depth=sxml.Distance(pstation.depth),
-                response=cr.response)
+                response=cr.response,
+                **extra)
 
             stations[net, sta].channel_list.append(channel)
         else:

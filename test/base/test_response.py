@@ -77,6 +77,21 @@ class ResponseTestCase(unittest.TestCase):
         sx_resp = resp.make_stationxml(
             stations, resp.iload_filename(resp_fpath))
 
+        sx_resp.validate()
+
+        assert sx_resp.network_list[0].station_list[0].channel_list[0] \
+            .dip is None
+
+        stations[0].set_channels_by_name('BHE', 'BHN', 'BHZ')
+
+        sx_resp2 = resp.make_stationxml(
+            stations, resp.iload_filename(resp_fpath))
+
+        sx_resp2.validate()
+
+        assert sx_resp2.network_list[0].station_list[0].channel_list[0] \
+            .dip.value == -90.0
+
         pr_sx_resp = sx_resp.get_pyrocko_response(
             codes, time=t, fake_input_units='M/S')
         pr_evresp = trace.Evalresp(
