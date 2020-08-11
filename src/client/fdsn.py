@@ -7,6 +7,7 @@ from __future__ import absolute_import
 import re
 import logging
 import ssl
+import socket
 
 
 from pyrocko import util
@@ -24,6 +25,7 @@ except NameError:
 logger = logging.getLogger('pyrocko.client.fdsn')
 
 g_url = '%(site)s/fdsnws/%(service)s/%(majorversion)i/%(method)s'
+g_url_wadl = '%(site)s/fdsnws/%(service)s/%(majorversion)i/application.wadl'
 
 g_site_abbr = {
     'geofon': 'https://geofon.gfz-potsdam.de',
@@ -49,6 +51,26 @@ g_site_abbr = {
 }
 
 g_default_site = 'geofon'
+
+
+def strip_html(s):
+    s = s.decode('utf-8')
+    s = re.sub(r'<[^>]+>', '', s)
+    s = re.sub(r'\r', '', s)
+    s = re.sub(r'\s*\n', '\n', s)
+    return s
+
+
+def indent(s, ind='  '):
+    return '\n'.join(ind + line for line in s.splitlines())
+
+
+def get_sites():
+    '''
+    Get sorted list of registered site names.
+    '''
+    return sorted(g_site_abbr.keys())
+
 
 if config.config().fdsn_timeout is None:
     g_timeout = 20.
@@ -99,6 +121,10 @@ class RequestEntityTooLarge(DownloadError):
 
 
 class InvalidRequest(DownloadError):
+    pass
+
+
+class Timeout(DownloadError):
     pass
 
 
@@ -165,17 +191,24 @@ def _request(url, post=False, user=None, passwd=None,
                     opener = build_opener(auth_handler)
                     continue
                 else:
-                    logger.error(
-                        'authentication failed for realm "%s" when '
-                        'accessing url "%s"' % (realm, url))
-
-                    raise DownloadError('Original error was: %s' % str(e))
+                    raise DownloadError(
+                        'Authentication failed for realm "%s" when accessing '
+                        'url "%s". Original error was: %s' % (
+                            realm, url, str(e)))
 
             else:
-                logger.error(
-                    'error content returned by server:\n%s' % e.read())
+                raise DownloadError(
+                    'Error content returned by server (HTML stripped):\n%s\n'
+                    '  Original error was: %s' % (
+                        indent(
+                            strip_html(e.read()),
+                            '  !  '),
+                        str(e)))
 
-                raise DownloadError('Original error was: %s' % str(e))
+        except socket.timeout:
+            raise Timeout(
+                'Timeout error. No response received within %i s. You '
+                'may want to retry with a longer timeout setting.' % timeout)
 
         break
 
@@ -368,3 +401,40 @@ def event(url=g_url, site=g_default_site, majorversion=1,
     params = fix_params(kwargs)
 
     return _request(url, user=user, passwd=passwd, **params)
+
+
+def wadl(service, url=g_url_wadl, site=g_default_site, majorversion=1,
+         timeout=g_timeout):
+
+    from pyrocko.client.wadl import load_xml
+
+    url = fillurl(url, site, service, majorversion)
+
+    return load_xml(stream=_request(url, timeout=timeout))
+
+
+if __name__ == '__main__':
+    import sys
+
+    util.setup_logging('pyrocko.client.fdsn', 'info')
+
+    if len(sys.argv) == 1:
+        sites = get_sites()
+    else:
+        sites = sys.argv[1:]
+
+    for site in sites:
+        print('=== %s (%s) ===' % (site, g_site_abbr[site]))
+
+        for service in ['station', 'dataselect', 'event']:
+            try:
+                app = wadl(service, site=site, timeout=2.0)
+                print(indent(str(app)))
+
+            except Timeout as e:
+                logger.error(str(e))
+                print('%s: timeout' % (service,))
+
+            except util.DownloadError as e:
+                logger.error(str(e))
+                print('%s: no wadl' % (service,))

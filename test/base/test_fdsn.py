@@ -28,7 +28,7 @@ def fix_resp_units(fn):
     os.rename(fn + '.temp', fn)
 
 
-class FDSNStationTestCase(unittest.TestCase):
+class FDSNTestCase(unittest.TestCase):
 
     def test_read_samples(self):
         ok = False
@@ -194,6 +194,22 @@ class FDSNStationTestCase(unittest.TestCase):
 
                 assert False, \
                     'evalresp and stationxml responses differ: %s' % str(nslc)
+
+    @common.require_internet
+    def test_wadl(self):
+        for site in ['geofon']:  # fdsn.get_sites():
+            logger.info(site)
+            for service in ['dataselect', 'station', 'dataselect', 'event']:
+                try:
+                    wadl = fdsn.wadl(service, site=site, timeout=2.0)
+                    str(wadl)
+                    logger.info('  %s: OK' % (service,))
+
+                except fdsn.Timeout:
+                    logger.info('  %s: timeout' % (service,))
+
+                except util.DownloadError:
+                    logger.info('  %s: no wadl' % (service,))
 
 
 if __name__ == '__main__':
