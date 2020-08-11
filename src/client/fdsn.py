@@ -342,12 +342,6 @@ def dataselect(url=g_url, site=g_default_site, majorversion=1, selection=None,
     if selection:
         lst = []
 
-        if 'minimumlength' not in params:
-            params['minimumlength'] = 0.0
-
-        if 'longestonly' not in params:
-            params['longestonly'] = 'FALSE'
-
         for k, v in params.items():
             lst.append('%s=%s' % (k, v))
 
