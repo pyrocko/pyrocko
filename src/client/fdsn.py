@@ -25,7 +25,6 @@ except NameError:
 logger = logging.getLogger('pyrocko.client.fdsn')
 
 g_url = '%(site)s/fdsnws/%(service)s/%(majorversion)i/%(method)s'
-g_url_wadl = '%(site)s/fdsnws/%(service)s/%(majorversion)i/application.wadl'
 
 g_site_abbr = {
     'geofon': 'https://geofon.gfz-potsdam.de',
@@ -51,6 +50,30 @@ g_site_abbr = {
 }
 
 g_default_site = 'geofon'
+
+
+g_default_query_args = {
+    'station': {
+        'starttime', 'endtime', 'startbefore', 'startafter', 'endbefore',
+        'endafter', 'network', 'station', 'location', 'channel', 'minlatitude',
+        'maxlatitude', 'minlongitude', 'maxlongitude', 'latitude', 'longitude',
+        'minradius', 'maxradius', 'level', 'includerestricted',
+        'includeavailability', 'updatedafter', 'matchtimeseries', 'format',
+        'nodata'},
+    'dataselect': {
+        'starttime', 'endtime', 'network', 'station', 'location', 'channel',
+        'quality', 'minimumlength', 'longestonly', 'format', 'nodata'},
+    'event': {
+        'starttime', 'endtime', 'minlatitude', 'maxlatitude', 'minlongitude',
+        'maxlongitude', 'latitude', 'longitude', 'minradius', 'maxradius',
+        'mindepth', 'maxdepth', 'minmagnitude', 'maxmagnitude', 'eventtype',
+        'includeallorigins', 'includeallmagnitudes', 'includearrivals',
+        'eventid', 'limit', 'offset', 'orderby', 'catalog', 'contributor',
+        'updatedafter', 'format', 'nodata'},
+    'availability': {
+        'starttime', 'endtime', 'network', 'station', 'location', 'channel',
+        'quality', 'merge', 'orderby', 'limit', 'includerestricted', 'format',
+        'nodata', 'mergegaps', 'show'}}
 
 
 def strip_html(s):
@@ -128,9 +151,15 @@ class Timeout(DownloadError):
     pass
 
 
-def _request(url, post=False, user=None, passwd=None,
-             allow_TLSv1=False, **kwargs):
-    timeout = float(kwargs.pop('timeout', g_timeout))
+def _request(
+        url,
+        post=False,
+        user=None,
+        passwd=None,
+        allow_TLSv1=False,
+        timeout=g_timeout,
+        **kwargs):
+
     url_values = urlencode(kwargs)
     if url_values:
         url += '?' + url_values
@@ -213,7 +242,7 @@ def _request(url, post=False, user=None, passwd=None,
         break
 
 
-def fillurl(url, site, service, majorversion, method='query'):
+def fillurl(service, site, url, majorversion, method):
     return url % dict(
         site=g_site_abbr.get(site, site),
         service=service,
@@ -224,7 +253,7 @@ def fillurl(url, site, service, majorversion, method='query'):
 def fix_params(d):
 
     params = dict(d)
-    for k in '''start end starttime endtime startbefore startafter endbefore
+    for k in '''starttime endtime startbefore startafter endbefore
             endafter'''.split():
 
         if k in params:
@@ -240,10 +269,11 @@ def fix_params(d):
     return params
 
 
-def make_data_selection(stations, tmin, tmax,
-                        channel_prio=[['BHZ', 'HHZ'],
-                                      ['BH1', 'BHN', 'HH1', 'HHN'],
-                                      ['BH2', 'BHE', 'HH2', 'HHE']]):
+def make_data_selection(
+        stations, tmin, tmax,
+        channel_prio=[['BHZ', 'HHZ'],
+                      ['BH1', 'BHN', 'HH1', 'HHN'],
+                      ['BH2', 'BHE', 'HH2', 'HHE']]):
 
     selection = []
     for station in stations:
@@ -265,13 +295,24 @@ def make_data_selection(stations, tmin, tmax,
     return selection
 
 
-def station(url=g_url, site=g_default_site, majorversion=1, parsed=True,
-            selection=None, **kwargs):
+def station(
+        site=g_default_site,
+        url=g_url,
+        majorversion=1,
+        parsed=True,
+        selection=None,
+        timeout=g_timeout,
+        check=True,
+        **kwargs):
 
-    url = fillurl(url, site, 'station', majorversion)
+    service = 'station'
+
+    if check:
+        check_params(service, site, url, majorversion, timeout, **kwargs)
 
     params = fix_params(kwargs)
 
+    url = fillurl(service, site, url, majorversion, 'query')
     if selection:
         lst = []
         for k, v in params.items():
@@ -293,26 +334,26 @@ def station(url=g_url, site=g_default_site, majorversion=1, parsed=True,
         if format == 'text':
             if kwargs.get('level', 'station') == 'channel':
                 return stationxml.load_channel_table(
-                    stream=_request(url, **params))
+                    stream=_request(url, timeout=timeout, **params))
             else:
                 raise InvalidRequest('if format="text" shall be parsed, '
                                      'level="channel" is required')
 
         elif format == 'xml':
             assert kwargs.get('format', 'xml') == 'xml'
-            return stationxml.load_xml(stream=_request(url, **params))
+            return stationxml.load_xml(
+                stream=_request(url, timeout=timeout, **params))
         else:
             raise InvalidRequest('format must be "xml" or "text"')
     else:
-        return _request(url, **params)
+        return _request(url, timeout=timeout, **params)
 
 
-def get_auth_credentials(
-        token, url=g_url, site=g_default_site, majorversion=1):
+def get_auth_credentials(service, site, url, majorversion, token, timeout):
 
-    url = fillurl(url, site, 'dataselect', majorversion, method='auth')
+    url = fillurl(service, site, url, majorversion, 'auth')
 
-    f = _request(url, post=token)
+    f = _request(url, timeout=timeout, post=token)
     s = f.read().decode()
     try:
         user, passwd = s.strip().split(':')
@@ -322,9 +363,19 @@ def get_auth_credentials(
     return user, passwd
 
 
-def dataselect(url=g_url, site=g_default_site, majorversion=1, selection=None,
-               user=None, passwd=None, token=None,
-               **kwargs):
+def dataselect(
+        site=g_default_site,
+        url=g_url,
+        majorversion=1,
+        selection=None,
+        user=None,
+        passwd=None,
+        token=None,
+        timeout=g_timeout,
+        check=True,
+        **kwargs):
+
+    service = 'dataselect'
 
     if user or token:
         method = 'queryauth'
@@ -333,12 +384,14 @@ def dataselect(url=g_url, site=g_default_site, majorversion=1, selection=None,
 
     if token is not None:
         user, passwd = get_auth_credentials(
-            token, url=url, site=site, majorversion=majorversion)
+            service, site, url, majorversion, token, timeout)
 
-    url = fillurl(url, site, 'dataselect', majorversion, method=method)
+    if check:
+        check_params(service, site, url, majorversion, timeout, **kwargs)
 
     params = fix_params(kwargs)
 
+    url = fillurl(service, site, url, majorversion, method)
     if selection:
         lst = []
 
@@ -353,16 +406,25 @@ def dataselect(url=g_url, site=g_default_site, majorversion=1, selection=None,
                                  sdatetime(tmin), sdatetime(tmax))))
 
         post = '\n'.join(lst)
-        return _request(url, user=user, passwd=passwd, post=post.encode(),
-                        timeout=params.get('timeout', g_timeout))
+        return _request(
+            url, user=user, passwd=passwd, post=post.encode(), timeout=timeout)
     else:
-        return _request(url, user=user, passwd=passwd, **params)
+        return _request(
+            url, user=user, passwd=passwd, timeout=timeout, **params)
 
 
-def event(url=g_url, site=g_default_site, majorversion=1,
-          user=None, passwd=None, token=None, **kwargs):
+def event(
+        site=g_default_site,
+        url=g_url,
+        majorversion=1,
+        user=None,
+        passwd=None,
+        token=None,
+        timeout=g_timeout,
+        check=True,
+        **kwargs):
 
-    '''Query FDSN web service for events
+    '''Query FDSN web service for events.
 
     On success, will return a list of events in QuakeML format.
 
@@ -370,16 +432,7 @@ def event(url=g_url, site=g_default_site, majorversion=1,
     https://www.fdsn.org/webservices
     '''
 
-    allowed_kwargs = {
-        'starttime', 'endtime', 'minlatitude', 'maxlatitude',
-        'minlongitude', 'maxlongitude', 'latitude', 'longitude',
-        'minradius', 'maxradius', 'mindepth', 'maxdepth', 'minmagnitude',
-        'maxmagnitude', 'magnitudetype', 'eventtype', 'includeallorigins',
-        'includeallmagnitudes', 'includearrivals', 'eventid'}
-
-    for k in kwargs.keys():
-        if k not in allowed_kwargs:
-            raise ValueError('invalid argument: %s' % k)
+    service = 'event'
 
     if user or token:
         method = 'queryauth'
@@ -388,21 +441,126 @@ def event(url=g_url, site=g_default_site, majorversion=1,
 
     if token is not None:
         user, passwd = get_auth_credentials(
-            token, url=url, site=site, majorversion=majorversion)
+            service, site, url, majorversion, token, timeout)
 
-    url = fillurl(url, site, 'event', majorversion, method=method)
+    if check:
+        check_params(service, site, url, majorversion, timeout, **kwargs)
 
     params = fix_params(kwargs)
 
-    return _request(url, user=user, passwd=passwd, **params)
+    url = fillurl(service, site, url, majorversion, method)
+    return _request(url, user=user, passwd=passwd, timeout=timeout, **params)
 
 
-def wadl(service, url=g_url_wadl, site=g_default_site, majorversion=1,
-         timeout=g_timeout):
+def availability(
+        method='query',
+        site=g_default_site,
+        url=g_url,
+        majorversion=1,
+        user=None,
+        passwd=None,
+        token=None,
+        timeout=g_timeout,
+        check=True,
+        **kwargs):
+
+    service = 'availability'
+
+    assert method in ('query', 'extent')
+
+    if user or token:
+        method += 'auth'
+
+    if token is not None:
+        user, passwd = get_auth_credentials(
+            service, site, url, majorversion, token, timeout)
+
+    if check:
+        check_params(service, site, url, majorversion, timeout, **kwargs)
+
+    params = fix_params(kwargs)
+
+    url = fillurl(service, site, url, majorversion, method)
+    return _request(url, user=user, passwd=passwd, timeout=timeout, **params)
+
+
+def check_params(
+        service,
+        site=g_default_site,
+        url=g_url,
+        majorversion=1,
+        timeout=g_timeout,
+        method='query',
+        **kwargs):
+
+    avail = supported_params_wadl(
+        service, site, url, majorversion, timeout, method)
+
+    unavail = sorted(set(kwargs.keys()) - avail)
+    if unavail:
+        raise ValueError(
+            'Unsupported parameter%s for service "%s" at site "%s": %s' % (
+                '' if len(unavail) == 1 else 's',
+                service,
+                site,
+                ', '.join(unavail)))
+
+
+def supported_params_wadl(
+        service,
+        site=g_default_site,
+        url=g_url,
+        majorversion=1,
+        timeout=g_timeout,
+        method='query'):
+
+    wadl = cached_wadl(service, site, url, majorversion, timeout)
+
+    if wadl:
+        url = fillurl(service, site, url, majorversion, method)
+        return set(wadl.supported_param_names(url))
+    else:
+        return g_default_query_args[service]
+
+
+g_wadls = {}
+
+
+def cached_wadl(
+        service,
+        site=g_default_site,
+        url=g_url,
+        majorversion=1,
+        timeout=g_timeout):
+
+    k = (service, site, url, majorversion)
+    if k not in g_wadls:
+        try:
+            g_wadls[k] = wadl(service, site, url, majorversion, timeout)
+
+        except Timeout:
+            raise
+
+        except DownloadError:
+            logger.info(
+                'No service description (WADL) found for "%s" at site "%s".'
+                % (service, site))
+
+            g_wadls[k] = None
+
+    return g_wadls[k]
+
+
+def wadl(
+        service,
+        site=g_default_site,
+        url=g_url,
+        majorversion=1,
+        timeout=g_timeout):
 
     from pyrocko.client.wadl import load_xml
 
-    url = fillurl(url, site, service, majorversion)
+    url = fillurl(service, site, url, majorversion, 'application.wadl')
 
     return load_xml(stream=_request(url, timeout=timeout))
 

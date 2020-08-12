@@ -12,7 +12,17 @@ ResourceTypeList = make_typed_list_class(String)
 guts_prefix = 'wadl'
 guts_xmlns = 'http://wadl.dev.java.net/2009/02'
 
-multisl = re.compile(r'/+')
+re_rmsite = re.compile(r'https?://[^/]+')
+re_multisl = re.compile(r'/+')
+
+
+def clean_path(p):
+    p = re_rmsite.sub('', p)
+    p = re_multisl.sub('/', p)
+    if not p.startswith('/'):
+        p = '/' + p
+
+    return p
 
 
 class HTTPMethods(StringChoice):
@@ -103,14 +113,22 @@ class Element(Object):
         if not self._hyper:
             raise Exception('Must call _update() before calling deref()')
 
-        href = getattr(self, 'href', None)
-        if href:
-            try:
-                return self._hyper[self.xmltagname][href.lstrip('#')]
-            except KeyError:
-                raise DerefError(href)
+        obj = self
+        seen = set()
+        while True:
+            seen.add(obj)
+            href = getattr(obj, 'href', None)
+            if href:
+                try:
+                    obj = obj._hyper[obj.xmltagname][href.lstrip('#')]
+                    if obj in seen:
+                        raise DerefError('cyclic reference')
 
-        return self
+                except KeyError:
+                    raise DerefError(href)
+
+            else:
+                return obj
 
 
 class Param(Element):
@@ -130,8 +148,7 @@ class Param(Element):
     link = Link.T(optional=True)
 
     def describe(self, indent):
-        obj = self.deref()
-        return indent + obj.name
+        return indent + self.name
 
     def get_children(self):
         return []
@@ -157,9 +174,14 @@ class Request(Element):
     param_list = List.T(Param.T())
     representation_list = List.T(Representation.T())
 
+    def iter_params(self):
+        for param in self.param_list:
+            param = param.deref()
+            yield param
+
     def describe(self, indent):
         lines = []
-        for param in self.param_list:
+        for param in self.iter_params():
             lines.append(param.describe(indent))
 
         return lines
@@ -189,10 +211,9 @@ class Method(Element):
     response_list = List.T(Response.T())
 
     def describe(self, indent):
-        obj = self.deref()
-        lines = [indent + (obj.name or '<unnamed method>')]
-        if obj.request:
-            lines.extend(obj.request.describe('  ' + indent))
+        lines = [indent + self.name]
+        if self.request:
+            lines.extend(self.request.describe('  ' + indent))
 
         return lines
 
@@ -221,6 +242,7 @@ class Resource(Element):
 
     def iter_methods(self):
         for method in self.method_list:
+            method = method.deref()
             yield method
 
     def describe(self, indent):
@@ -290,12 +312,24 @@ class Application(Element):
             self._update(hyper)
 
     def iter_resources(self):
+        self.update()
         for rs in self.resources_list:
             for p, res in rs.iter_resources():
-                yield multisl.sub('/', p), res
+                yield clean_path(p), res
+
+    def iter_requests(self):
+        for res_path, res in self.iter_resources():
+            for method in res.iter_methods():
+                if method.request:
+                    yield res_path, method.name, method.request
+
+    def supported_param_names(self, path, method='GET'):
+        path = clean_path(path)
+        for res_path, method_name, request in self.iter_requests():
+            if res_path == path and method_name == method:
+                return [param.name for param in request.param_list]
 
     def describe(self, indent=''):
-        self.update()
         lines = []
         for res_path, res in self.iter_resources():
             lines.append(indent + res_path)
