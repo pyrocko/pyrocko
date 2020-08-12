@@ -230,7 +230,7 @@ def moment_to_magnitude(moment):
 
     .. math::
 
-        M_\\mathrm{w} = {\\frac{2}{3}}\\log_{10}(M_0 \cdot 10^7) - 10.7
+        M_\\mathrm{w} = {\\frac{2}{3}}\\log_{10}(M_0 \\cdot 10^7) - 10.7
 
     where :math:`M_0` is the scalar moment given in [Nm].
 
