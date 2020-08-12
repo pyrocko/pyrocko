@@ -253,8 +253,13 @@ def fillurl(service, site, url, majorversion, method):
 def fix_params(d):
 
     params = dict(d)
-    for k in '''starttime endtime startbefore startafter endbefore
-            endafter'''.split():
+    for k in ['starttime',
+              'endtime',
+              'startbefore',
+              'startafter',
+              'endbefore',
+              'endafter',
+              'updatedafter']:
 
         if k in params:
             params[k] = sdatetime(params[k])
