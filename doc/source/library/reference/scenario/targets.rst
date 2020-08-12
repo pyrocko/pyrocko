@@ -1,10 +1,10 @@
 Scenario's TargetGenerators
 =============================
 
-``RandomStationGenerator``
+``StationGenerator``
 --------------------------
 
-.. automodule :: pyrocko.scenario.targets.station
+.. automodule :: pyrocko.scenario.station
     :members:
     :show-inheritance:
 

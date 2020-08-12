@@ -5,10 +5,9 @@ Colosseo - *earthquake scenario generator*
 
 Use :mod:`pyrocko.gf` Green's Function databases to generate earthquake data from picture-book scenarios.
 
-``colosseo`` is a CLI for :mod:`pyrocko.scenario` that orchestrates different generators to randomly (yet seeded) create synthetic data of randomised sources.
-Point sources or finite sources are generated with the :class:`~pyrocko.scenario.sources.SourceGenerator`
+``colosseo`` is a CLI for :mod:`pyrocko.scenario` that orchestrates different generators to randomly (yet seeded) create synthetic data of randomised sources, as well as constrained sources and fixed network geometries. Point sources or finite sources are generated with the :class:`~pyrocko.scenario.sources.SourceGenerator`
 
-At generated stations from the :class:`~pyrocko.scenario.targets.station.StationGenerator`, dynamic or static synthetic data are created with the :class:`~pyrocko.scenario.targets.waveform.WaveformGenerator` and the :class:`~pyrocko.scenario.targets.gnss_campaign.GNSSCampaignGenerator`. Also InSAR data scenarios using `kite <https://pyrocko.org/docs/kite/>`_ are possible with the :class:`~pyrocko.scenario.targets.insar.InSARGenerator`.
+Stations are created by the :class:`~pyrocko.scenario.station.StationGenerator`, dynamic or static synthetic data use the :class:`~pyrocko.scenario.targets.waveform.WaveformGenerator` and the :class:`~pyrocko.scenario.targets.gnss_campaign.GNSSCampaignGenerator`. Also InSAR data scenarios using `kite <https://pyrocko.org/docs/kite/>`_ are possible with the :class:`~pyrocko.scenario.targets.insar.InSARGenerator`. Network geometries can be import by :class:`~pyrocko.scenario.station.ImportStationGenerator`.
 
 Creating a scenario with ``colosseo`` is straight forward, but in any case you get help with subcommands using:
 
@@ -45,7 +44,7 @@ The database to utilize for forward modelling is defined in variable ``store_id`
 
 The you can either copy the database into folder :file:`gf_stores` or have them in your ``gf_store_superdirs`` config variable (see :file:`~/.pyrocko/config.pf`).
 
-The scenario is built from a YAML configuration file, which looks like this:
+The scenario is built from a YAML configuration file, which can look like this:
 
 .. code-block:: yaml
     :caption: Example scenario configuration file
