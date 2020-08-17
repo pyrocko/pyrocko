@@ -227,10 +227,12 @@ class VelocityProfile(Object):
     def _csv(self):
         output = ''
         for d in range(len(self.h)):
-            output += ('{p.uid}, {p.lat}, {p.lon},'
-                       ' {vp}, {vs}, {h}, {d}, {self.reference}').format(
+            output += (
+                    '{p.uid}, {p.lat}, {p.lon},'
+                    ' {vp}, {vs}, {h}, {d}, {p.publication_reference}\n'
+            ).format(
                 p=self,
-                vp=self.vs[d], vs=self.vp[d], h=self.h[d], d=self.d[d])
+                vp=self.vp[d], vs=self.vs[d], h=self.h[d], d=self.d[d])
         return output
 
 

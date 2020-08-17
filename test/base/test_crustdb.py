@@ -36,6 +36,16 @@ class CrustDBTestCase(unittest.TestCase):
         self.db.selectMaxDepth(40.)
         self.db.selectMinDepth(20.)
 
+    def test_csv(self):
+        fn = pjoin(self.tmpdir, 'x.csv')
+        self.db.exportCSV(fn)
+        with open(fn, 'r') as f:
+            for line in f:
+                if line.strip().startswith('#'):
+                    continue
+
+                assert len(line.split(',')) == 8
+
     @unittest.skip('Plotting not tested atm.')
     def test_ploting(self):
         import matplotlib.pyplot as plt
