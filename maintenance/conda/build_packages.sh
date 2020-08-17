@@ -32,7 +32,7 @@ ORIGPATH="$PATH"
 
 for VERSION in 3 2 ; do
 
-    CONDA_URL="https://repo.continuum.io/miniconda"
+    CONDA_URL="https://repo.anaconda.com/miniconda"
     HERE=`pwd`
     CONDA_PREFIX="$HERE/miniconda${VERSION}"
     CONDA_INSTALLER="miniconda${VERSION}.sh"
@@ -48,7 +48,8 @@ for VERSION in 3 2 ; do
     # Install Miniconda
 
     if [ ! -f "$CONDA_INSTALLER" ] ; then
-        curl "$CONDA_URL/$CONDA_FILE" -o "$CONDA_INSTALLER";
+        echo "getting conda from:" "$CONDA_URL/$CONDA_FILE"
+        curl "$CONDA_URL/$CONDA_FILE" -o "$CONDA_INSTALLER"
         chmod +x "$CONDA_INSTALLER"
         rm -rf "$CONDA_PREFIX"
     fi
