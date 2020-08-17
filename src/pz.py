@@ -105,12 +105,12 @@ def read_sac_zpk(filename=None, file=None, string=None, get_comments=False):
     if not num.all(num.isfinite(poles)):
         raise SacPoleZeroError(
             'Not finite pole(s) found in pole-zero file "%s"'
-            % (constant, filename))
+            % filename)
 
     if not num.all(num.isfinite(zeros)):
         raise SacPoleZeroError(
             'Not finite zero(s) found in pole-zero file "%s"'
-            % (constant, filename))
+            % filename)
 
     if not num.isfinite(constant):
         raise SacPoleZeroError(
