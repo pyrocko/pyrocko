@@ -6,7 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-*empty*
+### Added
+- Respect sensor azimuth and dip when converting RESP to StationXML.
+- Scenario-generator (Colosseo) now supports user-specified lists of stations.
+
+### Changed
+- FDSN client now checks arguments against service description (WADL) by 
+  default.
+- Improved FDSN client and documentation.
+
+### Fixed
+- Fix Py2/Py3 related crashes of `fomosto server`.
+- Fix installation dependency issues.
+- Fix error in EPS export of GmtPy (GMT5).
+- Fix broken CSV export in CrustDB.
+- Various small bug fixes and documentation improvements.
 
 ## [2020.03.30] - 2020-03-30
 
