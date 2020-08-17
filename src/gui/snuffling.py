@@ -1453,7 +1453,13 @@ class Snuffling(object):
         labels = [doc]
 
         if self._filename:
-            import cgi
+            if sys.version_info >= (3, 0):
+                import html
+                escape = html.escape
+            else:
+                import cgi
+                escape = cgi.escape
+
             code = open(self._filename, 'r').read()
 
             doc_src = qw.QLabel(
@@ -1467,8 +1473,8 @@ class Snuffling(object):
 </code></pre></p></body></html>'''
                 % (
                     quote(self._filename),
-                    cgi.escape(self._filename),
-                    cgi.escape(code)))
+                    escape(self._filename),
+                    escape(code)))
 
             labels.append(doc_src)
 
