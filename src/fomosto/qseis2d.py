@@ -191,8 +191,9 @@ class QSeisSConfigFull(QSeisSConfig):
 
     def string_for_config(self):
 
-        def aggregate(l):
-            return len(l), '\n'.join([''] + [x.string_for_config() for x in l])
+        def aggregate(xx):
+            return len(xx), '\n'.join(
+                [''] + [x.string_for_config() for x in xx])
 
         assert self.earthmodel_1d is not None
         assert self.slowness_window is not None or self.calc_slowness_window,\
@@ -398,8 +399,9 @@ class QSeisRConfigFull(QSeisRConfig):
 
     def string_for_config(self):
 
-        def aggregate(l):
-            return len(l), '\n'.join([''] + [x.string_for_config() for x in l])
+        def aggregate(xx):
+            return len(xx), '\n'.join(
+                [''] + [x.string_for_config() for x in xx])
 
         assert self.earthmodel_receiver_1d is not None
 

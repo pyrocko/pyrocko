@@ -23,8 +23,8 @@ def numeq(a, b, eps):
     return num.all(num.abs(num.array(a) - num.array(b)) <= eps)
 
 
-def floats(l):
-    return num.array(l, dtype=num.float)
+def floats(list_):
+    return num.array(list_, dtype=num.float)
 
 
 def is_multiple(x, d, eps):

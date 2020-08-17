@@ -3042,9 +3042,9 @@ class LayeredModel(object):
         Returns first layer which touches depth ``z`` (tolerant at boundaries).
         '''
 
-        for l in self.layers(direction):
-            if l.contains(z):
-                return l
+        for layer in self.layers(direction):
+            if layer.contains(z):
+                return layer
         else:
             raise CakeError('Failed extracting layer at depth z=%s' % z)
 
@@ -3294,11 +3294,11 @@ class LayeredModel(object):
                         pmax = min(pmax_start, pmax_stop)
 
                         pedges = [0.]
-                        for l in self.layers():
-                            for z in (l.ztop, l.zbot):
+                        for layer in self.layers():
+                            for z in (layer.ztop, layer.zbot):
                                 for mode in (P, S):
                                     for eps2 in [eps]:
-                                        v = l.v(mode, z)
+                                        v = layer.v(mode, z)
                                         if v != 0.0:
                                             p = radius(z)/v
                                             if p <= pmax:
@@ -3529,7 +3529,7 @@ class LayeredModel(object):
 
         ztop = layers[0].ztop
         zbot = layers[-1].zbot
-        zorigs = [l.ztop for l in layers]
+        zorigs = [layer.ztop for layer in layers]
         zorigs.append(zbot)
         zs = num.linspace(ztop, zbot, 100)
         data = []
@@ -3641,18 +3641,19 @@ class LayeredModel(object):
         for element in self.elements():
 
             if isinstance(element, Discontinuity):
-                for l in self.simplify_layers(
+                for layer in self.simplify_layers(
                         glayers, max_rel_error=max_rel_error):
 
-                    mod_simple.append(l)
+                    mod_simple.append(layer)
 
                 glayers = []
                 mod_simple.append(element)
             else:
                 glayers.append(element)
 
-        for l in self.simplify_layers(glayers, max_rel_error=max_rel_error):
-            mod_simple.append(l)
+        for layer in self.simplify_layers(
+                glayers, max_rel_error=max_rel_error):
+            mod_simple.append(layer)
 
         return mod_simple
 

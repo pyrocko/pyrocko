@@ -99,8 +99,8 @@ g_default_query_args = {
         'nodata', 'mergegaps', 'show'}}
 
 
-def doc_escape_slist(l):
-    return ', '.join("``'%s'``" % s for s in l)
+def doc_escape_slist(li):
+    return ', '.join("``'%s'``" % s for s in li)
 
 
 def doc_table_dict(d, khead, vhead, indent=''):

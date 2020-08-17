@@ -212,8 +212,8 @@ class Capture(object):
             self.orig_stdout.write(data)
 
     def writelines(self, lines):
-        for l in lines:
-            self.write(l)
+        for line in lines:
+            self.write(line)
 
     def flush(self):
         self.file.flush()

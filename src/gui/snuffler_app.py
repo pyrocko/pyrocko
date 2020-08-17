@@ -247,8 +247,8 @@ class PollInjector(qc.QObject):
     # following methods needed because mulitple inheritance does not seem
     # to work anymore with QObject in Python3 or PyQt5
 
-    def set_fixation_length(self, l):
-        return self._injector.set_fixation_length(l)
+    def set_fixation_length(self, length):
+        return self._injector.set_fixation_length(length)
 
     def set_save_path(
             self,

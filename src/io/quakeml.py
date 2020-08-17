@@ -26,13 +26,13 @@ class NoPreferredOriginSet(QuakeMLError):
     pass
 
 
-def one_element_or_none(l):
-    if len(l) == 1:
-        return l[0]
-    elif len(l) == 0:
+def one_element_or_none(li):
+    if len(li) == 1:
+        return li[0]
+    elif len(li) == 0:
         return None
     else:
-        logger.warning('More than one element in list: {}'.format(l))
+        logger.warning('More than one element in list: {}'.format(li))
         return None
 
 

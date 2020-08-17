@@ -25,7 +25,7 @@ print('Loading Ridgecrest GNSS data from %s (max_dist = %.1f km)' %
 with open(fname, 'r') as f:
     for header in range(2):
         next(f)
-    names = [l.split(' ')[0] for l in f]
+    names = [line.split(' ')[0] for line in f]
 gnss_data = num.loadtxt(fname, skiprows=2, usecols=(1, 2, 3, 4, 5, 6, 7, 8))
 
 for ista, sta_data in enumerate(gnss_data):

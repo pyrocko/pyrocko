@@ -109,7 +109,7 @@ sources = CombiSource(subsources=patches)
 result = engine.process(sources, [satellite_target])
 
 
-def plot_static_los_profile(result, strike, l, w, x0, y0):
+def plot_static_los_profile(result, strike, l, w, x0, y0):  # noqa
     import matplotlib.pyplot as plt
     import matplotlib.cm as cm
     import matplotlib.colors as mcolors

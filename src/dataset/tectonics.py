@@ -196,8 +196,8 @@ class PeterBird2003(PlatesDataset):
         d2 = {}
         for k in d:
             d2[k] = (
-                num.array([l[:2] for l in d[k]], dtype=num.float),
-                num.array([l[2] for l in d[k]], dtype=num.int))
+                num.array([x[:2] for x in d[k]], dtype=num.float),
+                num.array([x[2] for x in d[k]], dtype=num.int))
 
         fpath = self.fpath('PB2002_boundaries.dig.txt')
         boundaries = []

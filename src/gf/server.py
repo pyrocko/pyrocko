@@ -41,10 +41,10 @@ import logging
 import matplotlib
 matplotlib.use('Agg')  # noqa
 
-import matplotlib.pyplot as plt
-from pyrocko.plot import cake_plot
-from pyrocko import gf, util
-from pyrocko.util import quote, unquote
+import matplotlib.pyplot as plt  # noqa
+from pyrocko.plot import cake_plot  # noqa
+from pyrocko import gf, util  # noqa
+from pyrocko.util import quote, unquote  # noqa
 
 try:
     newstr = unicode

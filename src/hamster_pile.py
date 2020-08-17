@@ -144,13 +144,13 @@ class HamsterPile(pile.Pile):
             for p in processors:
                 self.add_processor(p)
 
-    def set_fixation_length(self, l):
+    def set_fixation_length(self, length):
         '''Set length after which the fixation method is called on buffer traces.
 
         The length should be given in seconds. Give None to disable.
         '''
         self.fixate_all()
-        self._fixation_length = l   # in seconds
+        self._fixation_length = length   # in seconds
 
     def set_save_path(
             self,

@@ -4119,7 +4119,7 @@ class PileViewer(qw.QFrame):
                 f.write('\n')
 
         with open(fn_hist, 'r') as f:
-            self.history = [l.strip() for l in f.readlines()]
+            self.history = [line.strip() for line in f.readlines()]
 
         self.hist_ind = len(self.history)
 

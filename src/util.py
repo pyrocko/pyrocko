@@ -740,14 +740,14 @@ def mk_decitab(nmax=100):
     for i in range(1, 10):
         for j in range(1, i+1):
             for k in range(1, j+1):
-                for l in range(1, k+1):
-                    for m in range(1, l+1):
-                        p = i*j*k*l*m
+                for l_ in range(1, k+1):
+                    for m in range(1, l_+1):
+                        p = i*j*k*l_*m
                         if p > nmax:
                             break
                         if p not in tab:
-                            tab[p] = (i, j, k, l, m)
-                    if i*j*k*l > nmax:
+                            tab[p] = (i, j, k, l_, m)
+                    if i*j*k*l_ > nmax:
                         break
                 if i*j*k > nmax:
                     break

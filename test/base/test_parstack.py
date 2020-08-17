@@ -18,8 +18,8 @@ def numeq(a, b, eps):
             num.abs(num.asarray(a) - num.asarray(b)) < eps))
 
 
-def g(l, a):
-    return num.array([getattr(x, a) for x in l])
+def g(list_, a):
+    return num.array([getattr(x, a) for x in list_])
 
 
 class ParstackTestCase(unittest.TestCase):

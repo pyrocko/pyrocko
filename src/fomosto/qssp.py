@@ -237,8 +237,8 @@ class QSSPConfigFull(QSSPConfig):
 
     def string_for_config(self):
 
-        def aggregate(l):
-            return len(l), '\n'.join(x.string_for_config() for x in l)
+        def aggregate(xx):
+            return len(xx), '\n'.join(x.string_for_config() for x in xx)
 
         assert len(self.greens_functions) > 0
         assert len(self.sources) > 0

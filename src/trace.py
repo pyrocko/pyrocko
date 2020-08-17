@@ -2643,18 +2643,18 @@ class CosFader(Taper):
         return None, None
 
 
-def none_min(l):
-    if None in l:
+def none_min(li):
+    if None in li:
         return None
     else:
-        return min(x for x in l if x is not None)
+        return min(x for x in li if x is not None)
 
 
-def none_max(l):
-    if None in l:
+def none_max(li):
+    if None in li:
         return None
     else:
-        return max(x for x in l if x is not None)
+        return max(x for x in li if x is not None)
 
 
 class MultiplyTaper(Taper):
