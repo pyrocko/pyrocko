@@ -3638,7 +3638,11 @@ class GMT(object):
         else:
             shutil.move(tempfn, tempfn + '.eps')
 
-        if filename.endswith('.pdf'):
+        if filename.endswith('.eps'):
+            shutil.move(tempfn + '.eps', filename)
+            return
+
+        elif filename.endswith('.pdf'):
             if psconvert:
                 gmt_bin = pjoin(self.installation['bin'], 'gmt')
                 subprocess.call([gmt_bin, 'psconvert', tempfn, '-Tf',
