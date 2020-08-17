@@ -1759,8 +1759,8 @@ def MakePileViewerMainClass(base):
         def add_marker(self, marker):
             if marker not in self.markers:
                 self.markers.append(marker)
-            self.markers_added.emit(
-                len(self.markers)-1, len(self.markers)-1)
+                self.markers_added.emit(
+                    len(self.markers)-1, len(self.markers)-1)
 
         def add_markers(self, markers):
             len_before = len(self.markers)
@@ -1774,16 +1774,12 @@ def MakePileViewerMainClass(base):
             '''Remove a ``marker`` from the :py:class:`PileViewer`.
 
             :param marker: :py:class:`Marker` (or subclass) instance'''
-            try:
-                indx = self.markers.index(marker)
-                self.remove_marker_from_menu(indx, indx)
-                self.markers.remove(marker)
-                if marker is self.active_event_marker:
-                    self.deactivate_event_marker()
-                    self.active_event_marker = None
+            if marker is self.active_event_marker:
+                self.deactivate_event_marker()
 
-            except ValueError:
-                pass
+            indx = self.markers.index(marker)
+            self.remove_marker_from_menu(indx, indx)
+            self.markers.remove(marker)
 
         def remove_markers(self, markers):
             '''Remove a list of ``markers`` from the :py:class:`PileViewer`.
@@ -1791,24 +1787,21 @@ def MakePileViewerMainClass(base):
             :param markers: list of :py:class:`Marker` (or subclass)
                             instances'''
             try:
-                indxs = [self.markers.index(m) for m in markers]
+                indxs = sorted(list(set([self.markers.index(m) for m in markers])))
             except ValueError:
                 return
 
+            if self.get_active_event_marker():
+                iactive = self.markers.index(self.active_event_marker)
+                if iactive in indxs:
+                    self.deactivate_event_marker()
+
             chunks = make_chunks(indxs)
             for chunk in chunks[::-1]:
-                try:
-                    self.remove_marker_from_menu(min(chunk), max(chunk))
-                    about_to_remove = [self.markers[i_m] for i_m in chunk]
-
-                    for marker in about_to_remove:
-                        self.markers.remove(marker)
-                        if marker is self.active_event_marker:
-                            self.deactivate_event_marker()
-                            self.active_event_marker = None
-
-                except ValueError:
-                    pass
+                    istart, istop = min(chunk), max(chunk)
+                    self.remove_marker_from_menu(istart, istop)
+                    for i_m in chunk[::-1]:
+                        self.markers.pop(i_m)
 
         def remove_marker_from_menu(self, istart, istop):
             self.markers_removed.emit(istart, istop)
