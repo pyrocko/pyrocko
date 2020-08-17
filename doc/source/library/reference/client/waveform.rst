@@ -1,12 +1,12 @@
-Online Waveform Archives (``client``)
-=====================================
+Online waveform and station metadata archives (``client``)
+==========================================================
 
 ``client.fdsn``
 ---------------
 
 .. automodule :: pyrocko.client.fdsn
     :members:
-    :undoc-members:
+    :show-inheritance:
 
 
 ``client.iris``
@@ -14,4 +14,3 @@ Online Waveform Archives (``client``)
 
 .. automodule:: pyrocko.client.iris
     :members:
-    :undoc-members:

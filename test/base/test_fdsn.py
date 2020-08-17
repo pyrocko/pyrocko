@@ -95,6 +95,32 @@ class FDSNTestCase(unittest.TestCase):
         fdsn.dataselect(site='geofon', selection=selection)
         fdsn.station(site='geofon', selection=selection, level='response')
 
+    @common.require_internet
+    @common.skip_on_download_error
+    def test_availability(self):
+        tmin = stt('2010-01-15 10:00:00')
+        tmax = stt('2010-01-15 10:01:00')
+        selection = [
+            ('GE', 'EIL', '*', 'SHZ', tmin, tmax),
+        ]
+
+        xx = fdsn.availability('query', site='iris', selection=selection)
+        assert xx.read().decode('utf8').splitlines()[1].startswith('GE')
+
+        xx = fdsn.availability('extent', site='iris', selection=selection)
+        assert xx.read().decode('utf8').splitlines()[1].startswith('GE')
+
+    @common.require_internet
+    @common.skip_on_download_error
+    def test_check_params(self):
+        for site in ['geofon']:
+            with self.assertRaises(ValueError):
+                fdsn.station(site=site,
+                             network='GE',
+                             station='EIL',
+                             level='channel',
+                             no_such_parameter=True)
+
     def test_read_big(self):
         for site in ['iris']:
             fpath = common.test_data_file('%s_1014-01-01_all.xml' % site)

@@ -2,6 +2,29 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
+
+'''
+Low-level FDSN web service client.
+
+This module provides basic functionality to download station metadata, time
+series data and event information from FDSN web services. Password and token
+authentication are supported. Query responses are returned as open file-like
+objects or can be parsed into Pyrocko's native data structures where
+appropriate.
+
+.. _registered-site-names:
+
+Registered site names
+.....................
+
+A list of known FDSN site names is maintained within the module for quick
+selection by the user. This list currently contains the following sites:
+
+%s
+
+Any other site can be specified by providing its full URL.
+'''
+
 from __future__ import absolute_import
 
 import re
@@ -76,6 +99,30 @@ g_default_query_args = {
         'nodata', 'mergegaps', 'show'}}
 
 
+def doc_escape_slist(l):
+    return ', '.join("``'%s'``" % s for s in l)
+
+
+def doc_table_dict(d, khead, vhead, indent=''):
+    keys, vals = zip(*sorted(d.items()))
+
+    lk = max(max(len(k) for k in keys), len(khead))
+    lv = max(max(len(v) for v in vals), len(vhead))
+
+    hr = '=' * lk + ' ' + '=' * lv
+
+    lines = [
+        hr,
+        '%s %s' % (khead.ljust(lk), vhead.ljust(lv)),
+        hr]
+
+    for k, v in zip(keys, vals):
+        lines.append('%s %s' % (k.ljust(lk), v.ljust(lv)))
+
+    lines.append(hr)
+    return '\n'.join(indent + line for line in lines)
+
+
 def strip_html(s):
     s = s.decode('utf-8')
     s = re.sub(r'<[^>]+>', '', s)
@@ -104,10 +151,16 @@ re_realm_from_auth_header = re.compile(r'(realm)\s*[:=]\s*"([^"]*)"?')
 
 
 class CannotGetRealmFromAuthHeader(DownloadError):
+    '''
+    Raised when failing to parse server response during authentication.
+    '''
     pass
 
 
 class CannotGetCredentialsFromAuthRequest(DownloadError):
+    '''
+    Raised when failing to parse server response during token authentication.
+    '''
     pass
 
 
@@ -126,6 +179,9 @@ def sdatetime(t):
 
 
 class EmptyResult(DownloadError):
+    '''
+    Raised when an empty server response is retrieved.
+    '''
     def __init__(self, url):
         DownloadError.__init__(self)
         self._url = url
@@ -135,6 +191,9 @@ class EmptyResult(DownloadError):
 
 
 class RequestEntityTooLarge(DownloadError):
+    '''
+    Raised when the server indicates that too much data was requested.
+    '''
     def __init__(self, url):
         DownloadError.__init__(self)
         self._url = url
@@ -144,10 +203,16 @@ class RequestEntityTooLarge(DownloadError):
 
 
 class InvalidRequest(DownloadError):
+    '''
+    Raised when an invalid request would be sent / has been sent.
+    '''
     pass
 
 
 class Timeout(DownloadError):
+    '''
+    Raised when the server does not respond within the allowed timeout period.
+    '''
     pass
 
 
@@ -304,11 +369,56 @@ def station(
         site=g_default_site,
         url=g_url,
         majorversion=1,
-        parsed=True,
-        selection=None,
         timeout=g_timeout,
         check=True,
+        selection=None,
+        parsed=True,
         **kwargs):
+
+    '''
+    Query FDSN web service for station metadata.
+
+    :param site:
+        :ref:`Registered site name <registered-site-names>` or full base URL of
+        the service (e.g. ``'https://geofon.gfz-potsdam.de'``).
+    :type site: str, optional
+    :param url:
+        URL template (default should work in 99% of cases).
+    :type url: str, optional
+    :param majorversion:
+        Major version of the service to query (always ``1`` at the time of
+        writing).
+    :type majorversion: int, optional
+    :param timeout:
+        Network timeout in [s]. Global default timeout can be configured in
+        Pyrocko's configuration file under ``fdsn_timeout``.
+    :type timeout: float, optional
+    :param check:
+        If ``True`` arguments are checked against self-description (WADL) of
+        the queried web service if available or FDSN specification.
+    :type check: bool, optional
+    :param selection:
+        If given, selection to be queried as a list of tuples
+        ``(network, station, location, channel, tmin, tmax)``. Useful for
+        detailed queries.
+    :type selection: list of tuples, optional
+    :param parsed:
+        If ``True`` parse received content into
+        :py:class:`~pyrocko.io.stationxml.FDSNStationXML`
+        object, otherwise return open file handle to raw data stream.
+    :type parsed: bool, optional
+    :param \\*\\*kwargs:
+        Parameters passed to the server (see `FDSN web services specification
+        <https://www.fdsn.org/webservices>`_).
+
+    :returns:
+        See description of ``parsed`` argument above.
+
+    :raises:
+        On failure, :py:exc:`~pyrocko.util.DownloadError` or one of its
+        sub-types defined in the :py:mod:`~pyrocko.client.fdsn` module is
+        raised.
+    '''
 
     service = 'station'
 
@@ -345,7 +455,6 @@ def station(
                                      'level="channel" is required')
 
         elif format == 'xml':
-            assert kwargs.get('format', 'xml') == 'xml'
             return stationxml.load_xml(
                 stream=_request(url, timeout=timeout, **params))
         else:
@@ -372,13 +481,54 @@ def dataselect(
         site=g_default_site,
         url=g_url,
         majorversion=1,
-        selection=None,
+        timeout=g_timeout,
+        check=True,
         user=None,
         passwd=None,
         token=None,
-        timeout=g_timeout,
-        check=True,
+        selection=None,
         **kwargs):
+
+    '''
+    Query FDSN web service for time series data in miniSEED format.
+
+    :param site:
+        :ref:`Registered site name <registered-site-names>` or full base URL of
+        the service (e.g. ``'https://geofon.gfz-potsdam.de'``).
+    :type site: str, optional
+    :param url:
+        URL template (default should work in 99% of cases).
+    :type url: str, optional
+    :param majorversion:
+        Major version of the service to query (always ``1`` at the time of
+        writing).
+    :type majorversion: int, optional
+    :param timeout:
+        Network timeout in [s]. Global default timeout can be configured in
+        Pyrocko's configuration file under ``fdsn_timeout``.
+    :type timeout: float, optional
+    :param check:
+        If ``True`` arguments are checked against self-description (WADL) of
+        the queried web service if available or FDSN specification.
+    :type check: bool, optional
+    :param user: User name for user/password authentication.
+    :type user: str, optional
+    :param passwd: Password for user/password authentication.
+    :type passwd: str, optional
+    :param token: Token for `token authentication
+        <https://geofon.gfz-potsdam.de/waveform/archive/auth/auth-overview.php>`_.
+    :type token: str, optional
+    :param selection:
+        If given, selection to be queried as a list of tuples
+        ``(network, station, location, channel, tmin, tmax)``.
+    :type selection: list of tuples, optional
+    :param \\*\\*kwargs:
+        Parameters passed to the server (see `FDSN web services specification
+        <https://www.fdsn.org/webservices>`_).
+
+    :returns:
+        Open file-like object providing raw miniSEED data.
+    '''
 
     service = 'dataselect'
 
@@ -422,19 +572,58 @@ def event(
         site=g_default_site,
         url=g_url,
         majorversion=1,
+        timeout=g_timeout,
+        check=True,
         user=None,
         passwd=None,
         token=None,
-        timeout=g_timeout,
-        check=True,
+        parsed=False,
         **kwargs):
 
-    '''Query FDSN web service for events.
+    '''
+    Query FDSN web service for events.
 
-    On success, will return a list of events in QuakeML format.
+    :param site:
+        :ref:`Registered site name <registered-site-names>` or full base URL of
+        the service (e.g. ``'https://geofon.gfz-potsdam.de'``).
+    :type site: str, optional
+    :param url:
+        URL template (default should work in 99% of cases).
+    :type url: str, optional
+    :param majorversion:
+        Major version of the service to query (always ``1`` at the time of
+        writing).
+    :type majorversion: int, optional
+    :param timeout:
+        Network timeout in [s]. Global default timeout can be configured in
+        Pyrocko's configuration file under ``fdsn_timeout``.
+    :type timeout: float, optional
+    :param check:
+        If ``True`` arguments are checked against self-description (WADL) of
+        the queried web service if available or FDSN specification.
+    :type check: bool, optional
+    :param user: User name for user/password authentication.
+    :type user: str, optional
+    :param passwd: Password for user/password authentication.
+    :type passwd: str, optional
+    :param token: Token for `token authentication
+        <https://geofon.gfz-potsdam.de/waveform/archive/auth/auth-overview.php>`_.
+    :type token: str, optional
+    :param parsed:
+        If ``True`` parse received content into
+        :py:class:`~pyrocko.io.quakeml.QuakeML`
+        object, otherwise return open file handle to raw data stream. Note:
+        by default unparsed data is retrieved, differently from the default
+        behaviour of :py:func:`station` (for backward compatibility).
+    :type parsed: bool, optional
+    :param \\*\\*kwargs:
+        Parameters passed to the server (see `FDSN web services specification
+        <https://www.fdsn.org/webservices>`_).
 
-    Check the documentation of FDSN for allowed arguments:
-    https://www.fdsn.org/webservices
+    :returns:
+        See description of ``parsed`` argument above.
+
+
     '''
 
     service = 'event'
@@ -454,7 +643,19 @@ def event(
     params = fix_params(kwargs)
 
     url = fillurl(service, site, url, majorversion, method)
-    return _request(url, user=user, passwd=passwd, timeout=timeout, **params)
+
+    fh = _request(url, user=user, passwd=passwd, timeout=timeout, **params)
+    if parsed:
+        from pyrocko.io import quakeml
+        format = kwargs.get('format', 'xml')
+        if format != 'xml':
+            raise InvalidRequest(
+                'If parsed=True is selected, format="xml" must be selected.')
+
+        return quakeml.load_xml(stream=fh)
+
+    else:
+        return fh
 
 
 def availability(
@@ -462,12 +663,55 @@ def availability(
         site=g_default_site,
         url=g_url,
         majorversion=1,
+        timeout=g_timeout,
+        check=True,
         user=None,
         passwd=None,
         token=None,
-        timeout=g_timeout,
-        check=True,
+        selection=None,
         **kwargs):
+
+    '''
+    Query FDSN web service for time series data availablity.
+
+    :param method: Availablility method to call: ``'query'``, or ``'extent'``.
+    :param site:
+        :ref:`Registered site name <registered-site-names>` or full base URL of
+        the service (e.g. ``'https://geofon.gfz-potsdam.de'``).
+    :type site: str, optional
+    :param url:
+        URL template (default should work in 99% of cases).
+    :type url: str, optional
+    :param majorversion:
+        Major version of the service to query (always ``1`` at the time of
+        writing).
+    :type majorversion: int, optional
+    :param timeout:
+        Network timeout in [s]. Global default timeout can be configured in
+        Pyrocko's configuration file under ``fdsn_timeout``.
+    :type timeout: float, optional
+    :param check:
+        If ``True`` arguments are checked against self-description (WADL) of
+        the queried web service if available or FDSN specification.
+    :type check: bool, optional
+    :param user: User name for user/password authentication.
+    :type user: str, optional
+    :param passwd: Password for user/password authentication.
+    :type passwd: str, optional
+    :param token: Token for `token authentication
+        <https://geofon.gfz-potsdam.de/waveform/archive/auth/auth-overview.php>`_.
+    :type token: str, optional
+    :param selection:
+        If given, selection to be queried as a list of tuples
+        ``(network, station, location, channel, tmin, tmax)``.
+    :type selection: list of tuples, optional
+    :param \\*\\*kwargs:
+        Parameters passed to the server (see `FDSN web services specification
+        <https://www.fdsn.org/webservices>`_).
+
+    :returns:
+        Open file-like object providing raw response.
+    '''
 
     service = 'availability'
 
@@ -486,7 +730,25 @@ def availability(
     params = fix_params(kwargs)
 
     url = fillurl(service, site, url, majorversion, method)
-    return _request(url, user=user, passwd=passwd, timeout=timeout, **params)
+    if selection:
+        lst = []
+
+        for k, v in params.items():
+            lst.append('%s=%s' % (k, v))
+
+        for (network, station, location, channel, tmin, tmax) in selection:
+            if location == '':
+                location = '--'
+
+            lst.append(' '.join((network, station, location, channel,
+                                 sdatetime(tmin), sdatetime(tmax))))
+
+        post = '\n'.join(lst)
+        return _request(
+            url, user=user, passwd=passwd, post=post.encode(), timeout=timeout)
+    else:
+        return _request(
+            url, user=user, passwd=passwd, timeout=timeout, **params)
 
 
 def check_params(
@@ -497,6 +759,37 @@ def check_params(
         timeout=g_timeout,
         method='query',
         **kwargs):
+
+    '''
+    Check query parameters against self-description of web service.
+
+    Downloads WADL description of the given service and site and checks
+    parameters if they are available. Queried WADLs are cached in memory.
+
+    :param service: ``'station'``, ``'dataselect'``, ``'event'`` or
+        ``'availability'``.
+    :param site:
+        :ref:`Registered site name <registered-site-names>` or full base URL of
+        the service (e.g. ``'https://geofon.gfz-potsdam.de'``).
+    :type site: str, optional
+    :param url:
+        URL template (default should work in 99% of cases).
+    :type url: str, optional
+    :param majorversion:
+        Major version of the service to query (always ``1`` at the time of
+        writing).
+    :type majorversion: int, optional
+    :param timeout:
+        Network timeout in [s]. Global default timeout can be configured in
+        Pyrocko's configuration file under ``fdsn_timeout``.
+    :type timeout: float, optional
+    :param \\*\\*kwargs:
+        Parameters that would be passed to the server (see `FDSN web services
+        specification <https://www.fdsn.org/webservices>`_).
+
+    :raises: :py:exc:`ValueError` is raised if unsupported parameters are
+        encountered.
+    '''
 
     avail = supported_params_wadl(
         service, site, url, majorversion, timeout, method)
@@ -519,6 +812,34 @@ def supported_params_wadl(
         timeout=g_timeout,
         method='query'):
 
+    '''
+    Get query parameter names supported by a given FDSN site and service.
+
+    If no WADL is provided by the queried service, default parameter sets from
+    the FDSN standard are returned. Queried WADLs are cached in memory.
+
+    :param service: ``'station'``, ``'dataselect'``, ``'event'`` or
+        ``'availability'``.
+    :param site:
+        :ref:`Registered site name <registered-site-names>` or full base URL of
+        the service (e.g. ``'https://geofon.gfz-potsdam.de'``).
+    :type site: str, optional
+    :param url:
+        URL template (default should work in 99% of cases).
+    :type url: str, optional
+    :param majorversion:
+        Major version of the service to query (always ``1`` at the time of
+        writing).
+    :type majorversion: int, optional
+    :param timeout:
+        Network timeout in [s]. Global default timeout can be configured in
+        Pyrocko's configuration file under ``fdsn_timeout``.
+    :type timeout: float, optional
+
+    :returns: Supported parameter names.
+    :rtype: set of str
+    '''
+
     wadl = cached_wadl(service, site, url, majorversion, timeout)
 
     if wadl:
@@ -526,6 +847,42 @@ def supported_params_wadl(
         return set(wadl.supported_param_names(url))
     else:
         return g_default_query_args[service]
+
+
+def wadl(
+        service,
+        site=g_default_site,
+        url=g_url,
+        majorversion=1,
+        timeout=g_timeout):
+
+    '''
+    Retrieve self-description of a specific FDSN service.
+
+    :param service: ``'station'``, ``'dataselect'``, ``'event'`` or
+        ``'availability'``.
+    :param site:
+        :ref:`Registered site name <registered-site-names>` or full base URL of
+        the service (e.g. ``'https://geofon.gfz-potsdam.de'``).
+    :type site: str, optional
+    :param url:
+        URL template (default should work in 99% of cases).
+    :type url: str, optional
+    :param majorversion:
+        Major version of the service to query (always ``1`` at the time of
+        writing).
+    :type majorversion: int, optional
+    :param timeout:
+        Network timeout in [s]. Global default timeout can be configured in
+        Pyrocko's configuration file under ``fdsn_timeout``.
+    :type timeout: float, optional
+    '''
+
+    from pyrocko.client.wadl import load_xml
+
+    url = fillurl(service, site, url, majorversion, 'application.wadl')
+
+    return load_xml(stream=_request(url, timeout=timeout))
 
 
 g_wadls = {}
@@ -537,6 +894,12 @@ def cached_wadl(
         url=g_url,
         majorversion=1,
         timeout=g_timeout):
+
+    '''
+    Get self-description of a specific FDSN service.
+
+    Same as :py:func:`wadl`, but results are cached in memory.
+    '''
 
     k = (service, site, url, majorversion)
     if k not in g_wadls:
@@ -556,18 +919,7 @@ def cached_wadl(
     return g_wadls[k]
 
 
-def wadl(
-        service,
-        site=g_default_site,
-        url=g_url,
-        majorversion=1,
-        timeout=g_timeout):
-
-    from pyrocko.client.wadl import load_xml
-
-    url = fillurl(service, site, url, majorversion, 'application.wadl')
-
-    return load_xml(stream=_request(url, timeout=timeout))
+__doc__ %= doc_table_dict(g_site_abbr, 'Site name', 'URL', '    ')
 
 
 if __name__ == '__main__':

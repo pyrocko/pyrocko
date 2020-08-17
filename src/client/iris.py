@@ -2,6 +2,11 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
+
+'''
+Access to some IRIS (non-FDSN) web services.
+'''
+
 from __future__ import absolute_import
 
 
@@ -114,6 +119,9 @@ def xmlzip(source, watch, bufsize=10000):
 
 
 class NotFound(Exception):
+    '''
+    Raised when the server sends an 404 response.
+    '''
     def __init__(self, url):
         Exception.__init__(self)
         self._url = url
@@ -143,21 +151,10 @@ def ws_request(url, post=False, **kwargs):
             raise e
 
 
-def ws_station(**kwargs):
-
-    for k in 'startbefore', 'startafter', 'endbefore', 'endafter':
-        if k in kwargs:
-            kwargs[k] = sdate(kwargs[k])
-
-    if 'timewindow' in kwargs:
-        tmin, tmax = kwargs.pop('timewindow')
-        kwargs['startbefore'] = sdate(tmin)
-        kwargs['endafter'] = sdate(tmax)
-
-    return ws_request(base_url + '/station/1/query', **kwargs)
-
-
 def ws_virtualnetwork(**kwargs):
+    '''
+    Query IRIS virtualnetwork web service.
+    '''
 
     for k in 'starttime', 'endtime':
         if k in kwargs:
@@ -171,32 +168,6 @@ def ws_virtualnetwork(**kwargs):
     return ws_request(base_url + '/virtualnetwork/1/query', **kwargs)
 
 
-def ws_bulkdataselect(
-        selection,
-        quality=None,
-        minimumlength=None,
-        longestonly=False):
-
-    sel = []
-    if quality is not None:
-        sel.append('quality %s' % quality)
-    if minimumlength is not None:
-        sel.append('minimumlength %s' % minimumlength)
-    if longestonly:
-        sel.append('longestonly')
-
-    for (network, station, location, channel, tmin, tmax) in selection:
-        if location == '':
-            location = '--'
-
-        sel.append(' '.join((
-            network, station, location, channel,
-            sdatetime(tmin), sdatetime(tmax))))
-
-    return ws_request(base_url + '/bulkdataselect/1/query',
-                      post='\n'.join(sel))
-
-
 def ws_sacpz(
         network=None,
         station=None,
@@ -205,6 +176,9 @@ def ws_sacpz(
         time=None,
         tmin=None,
         tmax=None):
+    '''
+    Query IRIS sacpz web service.
+    '''
 
     d = {}
     if network:
@@ -235,6 +209,9 @@ def ws_resp(
         time=None,
         tmin=None,
         tmax=None):
+    '''
+    Query IRIS resp web service.
+    '''
 
     d = {}
     if network:

@@ -1,9 +1,8 @@
-Earthquake Catalogs (``client.catalog``)
-========================================
+Online earthquake catalogs (``client.catalog``)
+===============================================
 
 .. automodule :: pyrocko.client.catalog
     :members:
-    :undoc-members:
 
 
 ``client.catalog.Geofon``
@@ -12,7 +11,6 @@ Earthquake Catalogs (``client.catalog``)
 .. autoclass :: pyrocko.client.catalog.Geofon
     :show-inheritance:
     :members:
-    :undoc-members:
 
 ``client.catalog.GlobalCMT``
 ----------------------------
@@ -20,7 +18,6 @@ Earthquake Catalogs (``client.catalog``)
 .. autoclass :: pyrocko.client.catalog.GlobalCMT
     :show-inheritance:
     :members:
-    :undoc-members:
 
 ``client.catalog.USGS``
 -----------------------
@@ -28,15 +25,6 @@ Earthquake Catalogs (``client.catalog``)
 .. autoclass :: pyrocko.client.catalog.USGS
     :show-inheritance:
     :members:
-    :undoc-members:
-
-``client.catalog.Kinherd``
---------------------------
-
-.. autoclass :: pyrocko.client.catalog.Kinherd
-    :show-inheritance:
-    :members:
-    :undoc-members:
 
 ``client.catalog.Saxony``
 -------------------------
@@ -44,4 +32,3 @@ Earthquake Catalogs (``client.catalog``)
 .. autoclass :: pyrocko.client.catalog.Saxony
     :show-inheritance:
     :members:
-    :undoc-members:

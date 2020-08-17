@@ -3,5 +3,4 @@
 
 .. automodule:: pyrocko.io.quakeml
     :members:
-    :undoc-members:
 
