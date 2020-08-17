@@ -23,10 +23,10 @@ if common.have_gui():  # noqa
     from pyrocko.gui import util as gui_util
     from pyrocko.gui import snuffling
 
-    class TestSnuffling(snuffling.Snuffling):
+    class DummySnuffling(snuffling.Snuffling):
 
         def setup(self):
-            self.set_name('TestSnuffling')
+            self.set_name('DummySnuffling')
 
         def call(self):
             figframe = self.figure_frame()
@@ -455,7 +455,7 @@ class GUITest(unittest.TestCase):
 
     @unittest.skipIf(os.getuid() == 0, 'does not like to run as root')
     def test_frames(self):
-        frame_snuffling = TestSnuffling()
+        frame_snuffling = DummySnuffling()
 
         self.viewer.add_snuffling(frame_snuffling)
         frame_snuffling.call()
