@@ -1453,12 +1453,7 @@ class Snuffling(object):
         labels = [doc]
 
         if self._filename:
-            if sys.version_info >= (3, 0):
-                import html
-                escape = html.escape
-            else:
-                import cgi
-                escape = cgi.escape
+            from html import escape
 
             code = open(self._filename, 'r').read()
 
