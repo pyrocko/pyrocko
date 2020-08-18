@@ -1787,7 +1787,8 @@ def MakePileViewerMainClass(base):
             :param markers: list of :py:class:`Marker` (or subclass)
                             instances'''
             try:
-                indxs = sorted(list(set([self.markers.index(m) for m in markers])))
+                indxs = sorted(
+                    list(set([self.markers.index(m) for m in markers])))
             except ValueError:
                 return
 
@@ -1798,10 +1799,10 @@ def MakePileViewerMainClass(base):
 
             chunks = make_chunks(indxs)
             for chunk in chunks[::-1]:
-                    istart, istop = min(chunk), max(chunk)
-                    self.remove_marker_from_menu(istart, istop)
-                    for i_m in chunk[::-1]:
-                        self.markers.pop(i_m)
+                istart, istop = min(chunk), max(chunk)
+                self.remove_marker_from_menu(istart, istop)
+                for i_m in chunk[::-1]:
+                    self.markers.pop(i_m)
 
         def remove_marker_from_menu(self, istart, istop):
             self.markers_removed.emit(istart, istop)
