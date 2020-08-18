@@ -104,7 +104,7 @@ steps:
   commands:
   - pip3 install -f wheels pyrocko --no-index --no-deps
   - pip3 install -f wheels pyrocko
-  - pip3 install 'PyQt5!=5.14.1' jinja2
+  - pip3 install --only-binary=PyQt5 PyQt5 jinja2 nose
   - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
 
 - name: test-mixed-pip-manylinux1_x86_64
