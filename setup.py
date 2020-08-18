@@ -36,7 +36,7 @@ except ImportError:
     CustomBDistWheelCommand = None
 
 packname = 'pyrocko'
-version = '2020.03.30'
+version = '2020.08.18'
 
 
 class NotInAGitRepos(Exception):

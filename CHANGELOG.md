@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+*empty*
+
+## [2020.08.18]
+
 ### Added
 - Respect sensor azimuth and dip when converting RESP to StationXML.
 - Scenario-generator (Colosseo) now supports user-specified lists of stations.
