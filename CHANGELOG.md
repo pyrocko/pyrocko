@@ -21,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Fix error in EPS export of GmtPy (GMT5).
 - Fix broken CSV export in CrustDB.
 - Various small bug fixes and documentation improvements.
+- Fix broken help panel in some snufflings.
 
 ## [2020.03.30] - 2020-03-30
 
