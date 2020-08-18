@@ -3,45 +3,81 @@ programming language. It can be utilized flexibly for a variety of geophysical
 tasks, like seismological data processing and analysis, modelling of InSAR, GPS
 data and dynamic waveforms, or for seismic source characterization.
 
-Installation
--------------
+Installation with pip
+---------------------
 
-`Pyrocko is Python2/3 compatible.`
+Using pip, Pyrocko can be installed from source or binary packages which we
+have uploaded to the Python Package Index. Depending on your attitude,
+different installation variants are possible (see following sections).
+The complete `installation guide <https://pyrocko.org/docs/current/install>`_
+is available in the `Pyrocko manual <https://pyrocko.org/docs/current/>`_.
 
-Only source packages for Pyrocko are available on ``pip``, this means that
-parts of the code has is compiled locally.
+*Good to Know:*
 
-Example for Ubuntu, Debian, Mint...
-
-::
-
-    # Install build requirements
-    sudo apt-get install python3-dev python3-numpy
-    sudo pip3 install pyrocko
-
-    # Install requirements manually
-    sudo pip3 install numpy>=1.8 scipy pyyaml matplotlib progressbar2 jinja2 requests PyOpenGL
+* Consequently use ``pip3`` instead of ``pip`` if you want to be sure that
+  Python3 versions are installed
+* Add the ``--user`` option to all pip commands if you want to install into
+  your home directory.
+* Consider using
+  `virtual environments <https://docs.python.org/3/tutorial/venv.html>`_ when
+  using pip to lower the risk of package conflicts.
 
 
-For the GUI application ``PyQt4`` or ``PyQt5`` has to be installed:
+Variant 1: allow pip to resolve dependencies
+............................................
 
-::
-    
-    sudo apt-get install -y python3-pyqt5 python3-pyqt5.qtopengl python3-pyqt5.qtsvg
-    
+.. code-block:: bash
 
-More information at https://pyrocko.org/docs/current/install
+    pip install pyrocko
+
+    # and, (only) if you want to use Snuffler:
+
+    pip install --only-binary :all: PyQt5
+
+**Advantages:**
+
+- Quick and easy.
+
+**Disadvantages:**
+
+- Dependencies installed by pip may shadow native system packages.
+- May turn your system into a big mess.
+
+
+Variant 2: use your system's package manager to install dependencies
+....................................................................
+
+Install Pyrocko's requirements through your system's package manager (see
+`System specific installation instructions
+<https://pyrocko.org/docs/current/install/system/>`), then use pip with the
+``--no-deps`` option to install Pyrocko:
+
+.. code-block:: bash
+
+    # first use apt-get/yum/pacman to install prerequisites (see above), then:
+
+    pip install --no-deps pyrocko
+
+**Advantages:**
+
+- Prevents package dependency conflicts.
+
+**Disadvantages:**
+
+- Need root access.
+- A bit more work to set up.
+
 
 Documentation
 --------------
 
-Documentation, examples and support at https://pyrocko.org
+Documentation, examples and support at https://pyrocko.org/.
 
 
 Development
 ------------
 
-Find us on GitHub - https://github.com/pyrocko
+Join us at https://git.pyrocko.org/.
 
 
 -- The Pyrocko Developers
