@@ -14,15 +14,12 @@ if [ -z "$thetest" ]; then
     thetest="test"
 fi
 
-if [ -d "pyrocko.git" ]; then
-    rm -rf "pyrocko.git"
-fi
+rm -rf example_run_dir pyrocko.git *.out *.log
 git clone --bare "../../.." "pyrocko.git"
-cp -r "../../../test/example_run_dir" "."
+cp -a "../../../test/example_run_dir" example_run_dir
 
 echo "testing branch: $branch"
 echo "running test: $thetest"
-rm -f log.out
 echo "testing branch $branch" >> log.out
 date -uIseconds >> log.out
 vagrant up

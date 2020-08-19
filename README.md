@@ -7,29 +7,30 @@
 
 ## Installation
 
-Full installation instructions are available at 
+Full installation instructions are available at
 https://pyrocko.org/docs/current/install/.
 
-### Installation from source
+### System wide installation from source
 
 ```
 git clone https://git.pyrocko.org/pyrocko/pyrocko
 cd pyrocko
-sudo python setup.py install_prerequisites
+sudo python install_prerequisites.py
 sudo python setup.py install
 ```
 
-### Anaconda / MacOSX
+### Installation with Anaconda / MacOSX
 
 ```
 conda install -c pyrocko pyrocko
 ```
 Anaconda2/3 Packages are available for Linux and OSX
 
-### Python PIP
+### User installation with Python PIP
 
 ```
-sudo pip install pyrocko
+pip install --user pyrocko
+pip install --user --only-binary :all: PyQt5
 ```
 
 or from source
@@ -37,8 +38,8 @@ or from source
 ```
 git clone https://git.pyrocko.org/pyrocko/pyrocko
 cd pyrocko
-sudo pip install -r requirements.txt
-sudo pip install .
+pip install --user -r requirements.txt
+pip install --user .
 ```
 
 
@@ -58,7 +59,7 @@ The recommended citation for Pyrocko is: (You can find the BibTeX snippet in the
 
 [![DOI](https://img.shields.io/badge/DOI-10.5880%2FGFZ.2.1.2017.001-blue.svg)](https://doi.org/10.5880/GFZ.2.1.2017.001)
 
-## License 
+## License
 GNU General Public License, Version 3, 29 June 2007
 
 Copyright © 2017 Helmholtz Centre Potsdam GFZ German Research Centre for Geosciences, Potsdam, Germany
@@ -68,13 +69,13 @@ Pyrocko is distributed in the hope that it will be useful, but WITHOUT ANY WARRA
 You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 ## Contact
-* Sebastian Heimann; 
+* Sebastian Heimann;
   sebastian.heimann@gfz-potsdam.de
 
-* Marius Isken; 
+* Marius Isken;
   marius.isken@gfz-potsdam.de
 
-* Marius Kriegerowski; 
+* Marius Kriegerowski;
   marius.kriegerowski@gfz-potsdam.de
 
 ```

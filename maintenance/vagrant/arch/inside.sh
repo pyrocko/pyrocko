@@ -33,7 +33,7 @@ ln -s "/vagrant/example_run_dir" "test/example_run_dir"
 mkdir -p "$HOME/.config/matplotlib"
 echo "backend : agg" > "$HOME/.config/matplotlib/matplotlibrc"
 
-python3 setup.py install_prerequisites --force-yes && \
+python3 install_prerequisites.py --yes && \
     sudo python3 setup.py install -f && \
     python3 -m pyrocko.print_version deps >> "$outfile_py3" && \
     xvfb-run -s '-screen 0 640x480x24' python3 -m nose "$thetest" > >(tee -a "$outfile_py3") 2> >(tee -a "$outfile_py3" >&2) || \

@@ -14,8 +14,10 @@ fi
 
 pyrockodir="pyrocko-$branch"
 outfile_py3="/vagrant/test-$branch.py3.out"
+outfile_py2="/vagrant/test-$branch.py2.out"
 
 rm -f "$outfile_py3"
+rm -f "$outfile_py2"
 
 cd $HOME
 sudo yum -y install git make gcc mesa-libGL
@@ -46,8 +48,8 @@ python setup.py install -f && \
     /bin/true
 
 python2=/usr/bin/python2
-"$python2" setup.py install_prerequisites
-"$python2" setup.py install -f && \
+sudo "$python2" install_prerequisites.py --yes && \
+    sudo "$python2" setup.py install -f && \
     "$python2" -m pyrocko.print_version deps >> "$outfile_py2" && \
     "$python2" -m nose "$thetest" > >(tee -a "$outfile_py2") 2> >(tee -a "$outfile_py2" >&2) || \
     /bin/true

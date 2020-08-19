@@ -5,17 +5,7 @@ import os.path as op
 import time
 import shutil
 import tempfile
-try:
-    import numpy
-except ImportError:
-    # numpy might not be available when running install_prerequisites
-    class numpy():
-        def __init__(self):
-            pass
-
-        @classmethod
-        def get_include(self):
-            return None
+import numpy
 
 from distutils.sysconfig import get_python_inc
 from setuptools import setup, Extension, Command
@@ -322,70 +312,6 @@ class CustomInstallCommand(install):
                     % bd_dir)
 
 
-class InstallPrerequisits(Command):
-    description = '''install prerequisites with system package manager'''
-    user_options = [
-        ('force-yes', None, 'Do not ask for confirmation to install')]
-
-    def initialize_options(self):
-        self.force_yes = False
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-
-        from subprocess import Popen, PIPE, STDOUT
-        import platform
-
-        distribution = ''
-        try:
-            distribution = platform.linux_distribution()[0].lower().rstrip()
-        except Exception:
-            pass
-
-        if not distribution:
-            try:
-                if platform.uname()[2].find('arch') != -1:
-                    distribution = 'arch'
-            except Exception:
-                pass
-
-        if not distribution:
-            sys.exit(
-                'cannot determine platform for automatic prerequisite '
-                'installation')
-
-        if distribution == 'ubuntu':
-            distribution = 'debian'
-
-        if distribution.startswith('centos'):
-            distribution = 'centos'
-
-        fn = 'prerequisites/prerequisites_%s_python%i.sh' % (
-                distribution, sys.version_info.major)
-
-        if not self.force_yes:
-            try:
-                input_func = raw_input
-            except NameError:
-                input_func = input
-
-            confirm = input_func('Execute: %s \n\
-proceed? [y/n]' % open(fn, 'r').read())
-            if not confirm.lower() == 'y':
-                sys.exit(0)
-
-        p = Popen(['sh', fn], stdin=PIPE, stdout=PIPE, stderr=STDOUT,
-                  shell=False)
-
-        while p.poll() is None:
-            print(p.stdout.readline().decode(
-                'ascii', errors='replace').rstrip())
-
-        print(p.stdout.read().decode('ascii', errors='replace'))
-
-
 class CustomBuildPyCommand(build_py):
 
     def make_compat_modules(self):
@@ -616,7 +542,6 @@ cmdclass = {
     # 'py2app': CustomBuildAppCommand,
     'build_ext': CustomBuildExtCommand,
     'check_multiple_install': CheckInstalls,
-    'install_prerequisites': InstallPrerequisits,
     'uninstall': Uninstall}
 
 if CustomBDistWheelCommand:
@@ -653,9 +578,10 @@ setup(
         'seismology, waveform analysis, earthquake modelling, geophysics,'
         ' geophysical inversion'],
     python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, <4',
-    setup_requires=[
-        'numpy>=1.8'
-    ],
+    # Removed in favor of PEP 518 advocating `pyproject.toml`:
+    # setup_requires=[
+    #     'numpy>=1.8'
+    # ],
     install_requires=[
         'numpy>=1.8',
         'scipy',
