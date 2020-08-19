@@ -79,7 +79,7 @@ def cake_model_to_config(mod):
     k = 1000.
     srows = []
     for i, row in enumerate(mod.to_scanlines()):
-        depth, vp, vs, rho = row
+        depth, vp, vs, rho, _, _ = row
         row = [depth/k, vp/k, vs/k, rho/k]
         srows.append('%i %s' % (i+1, str_float_vals(row)))
 
@@ -87,37 +87,27 @@ def cake_model_to_config(mod):
 
 
 class DGrnSpatialSampling(Object):
-    n_steps = Int.T(default=10)
-    start_distance = Float.T(
+    n_steps = Int.T(default=101)
+    start = Float.T(
         default=0.,
         help='start sampling [km]')
-    end_distance = Float.T(
+    end = Float.T(
         default=100.,
         help='end sampling [km]')
-    sampling_interval = Float.T(
+    sampling_interval_ratio = Float.T(
         default=1.0,
         help='exponential sampling 1.- equidistant, > 1. decreasing sampling'
              ' with distance')
 
     def string_for_config(self):
-        return '%i %15e %15e %e' % (self.n_steps, self.start_distance,
-                                    self.end_distance, self.sampling_interval)
+        return '%i %15e %15e %e' % (self.n_steps, self.start, self.end,
+                                    self.sampling_interval_ratio)
 
 
 class DGrnConfig(Object):
-    version = String.T(default='2020')
+    dgrn_version = String.T(default='2020')
 
-    receiver_depth = Float.T(default=0.)
-
-    # n_receiver = Int.T(default=1)
-    # receiver_distance_min = Float.T(default=0.)
-    # receiver_distance_max = Float.T(default=0.)
-    # receiver_distance_delta_ratio = Float.T(default=1.)
-
-    # n_source = Int.T(default=1)
-    # source_depth_min = Float.T(default=0.1)
-    # source_depth_max = Float.T(default=0.1)
-    # source_depth_delta_ratio = Float.T(default=1.)
+    accuracy_wavenumber_integration = Float.T(default=0.01)
 
     def items(self):
         return dict(self.T.inamevals(self))
@@ -125,25 +115,27 @@ class DGrnConfig(Object):
 
 class DGrnConfigFull(DGrnConfig):
 
-    earthmodel_1d = gf.meta.Earthmodel1D.T(optional=True)
-    dgrn_outdir = String.T(default='dgrn_green/')
-
-    accuracy_wavenumber_integration = Float.T(default=0.01)
+    receiver_depth = Float.T(default=0.0)
 
     distance_grid = DGrnSpatialSampling.T(DGrnSpatialSampling.D())
     depth_grid = DGrnSpatialSampling.T(DGrnSpatialSampling.D())
 
+    dgrn_outdir = String.T(default='dgrn_green/')
+
     displ_filenames = Tuple.T(3, String.T(), default=dgrn_displ_names)
+
+    earthmodel_1d = gf.meta.Earthmodel1D.T(optional=True)
 
     @staticmethod
     def example():
         conf = DGrnConfigFull()
         conf.earthmodel_1d = cake.load_model().extract(depth_max=560.*km)
+        return conf
 
     def string_for_config(self):
 
-        assert self.distance_grid.sampling_interval >= 1.
-        assert self.depth_grid.sampling_interval >= 1.
+        assert self.distance_grid.sampling_interval_ratio >= 1.
+        assert self.depth_grid.sampling_interval_ratio >= 1.
         assert self.earthmodel_1d is not None
 
         d = self.__dict__.copy()
@@ -201,7 +193,7 @@ class DGrnConfigFull(DGrnConfig):
 #    zs1,zs2 = minimum and maximum source depths (zs2 > zs1 > 0).
 #
 #------------------------------------------------------------------------------
-      %(receiver_depth)e
+ %(receiver_depth)f
  %(str_distance_grid)s
  %(str_depth_grid)s
 #------------------------------------------------------------------------------
@@ -242,7 +234,7 @@ class DGrnConfigFull(DGrnConfig):
 #    used for a graphic plot of the layered model. Layers which have different
 #    parameter values at top and bottom, will be treated as layers with a
 #    constant gradient, and will be discretised to a number of homogeneous
-#    sublayers. Errors due to the discretisation are limited within about 5%
+#    sublayers. Errors due to the discretisation are limited within about 5%%
 #    (changeable, see dgalloc.f).
 #
 # 2....    parameters of the multilayered model
@@ -377,18 +369,22 @@ in the directory %s'''.lstrip() % (
                     'not removing temporary directory: %s' % self.tempdir)
 
 
-class DummyGFBuilder(gf.builder.Builder):
+class DGrnGFBuilder(gf.builder.Builder):
+    nsteps = 1
+
     def __init__(self, store_dir, step, shared, block_size=None, tmp=None,
                  force=False):
 
         self.store = gf.store.Store(store_dir, 'w')
 
+        storeconf = self.store.config
+
         if block_size is None:
-            block_size = ()
-            # check block size definition depending on ... N layers, displacements
+            block_size = (1, storeconf.nsource_depths, storeconf.ndistances)
+            # check block size definition depending on ... N layers, displacements?
 
         gf.builder.Builder.__init__(
-            self, self.store.config, step, block_size=block_size, force=force)
+            self, storeconf, step, block_size=block_size, force=force)
 
         baseconf = self.store.get_extra('dgrn')
 
@@ -396,11 +392,7 @@ class DummyGFBuilder(gf.builder.Builder):
         conf.earthmodel_1d = self.store.config.earthmodel_1d
         conf.earthmodel_receiver_1d = self.store.config.earthmodel_receiver_1d
 
-        # conf.time_reduction_velocity = shared['time_reduction_velocity']
-
-        # conf.nsamples = nextpow2(int(round(time_window_min / deltat)) + 1)
-
-        self.qseis_config = conf
+        self.dgrn_config = conf
 
         self.tmp = tmp
         if self.tmp is not None:
@@ -471,7 +463,7 @@ def init(store_dir, variant):
     config = gf.meta.ConfigTypeA(
         id=store_id,
         ncomponents=10,
-        sample_rate=1.0,
+        sample_rate=1.0,  # ToDo what does the sample rate means here? Neglect?
         receiver_depth=0*km,
         source_depth_min=0*km,
         source_depth_max=400*km,
@@ -479,6 +471,7 @@ def init(store_dir, variant):
         distance_min=4*km,
         distance_max=400*km,
         distance_delta=4*km,
+        earthmodel_1d=cake.load_model().extract(depth_max=560.*km),
         modelling_code_id=modelling_code_id)
 
     config.validate()
