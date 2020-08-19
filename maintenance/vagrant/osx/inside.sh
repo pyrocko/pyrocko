@@ -19,7 +19,7 @@ ORIGPATH="$PATH"
 for VERSION in 2 3 ; do 
     cd "$HOME"
 
-    CONDA_URL="https://repo.continuum.io/miniconda"
+    CONDA_URL="https://repo.anaconda.com/miniconda"
     CONDA_PREFIX="$HOME/miniconda${VERSION}"
     CONDA_INSTALLER="miniconda${VERSION}.sh"
     export PATH="$CONDA_PREFIX/bin:$ORIGPATH"
