@@ -22,7 +22,7 @@ fig = plt.figure(figsize=plot.mpl_papersize('a5', 'landscape'))
 axes = fig.add_subplot(1, 1, 1, aspect=1.0)
 cbar = axes.pcolormesh(easts, norths, tile.data,
                        cmap='gray', shading='gouraud')
-fig.colorbar(cbar, label='Altitude [m]')
+fig.colorbar(cbar).set_label('Altitude [m]')
 axes.set_title(dem_name)
 axes.set_xlim(easts.min(), easts.max())
 axes.set_ylim(norths.min(), norths.max())
