@@ -70,7 +70,10 @@ class FomostoTestCase(unittest.TestCase):
 
             fomosto('modelview', '--parameters=vp/vs,rho', 'my_gfs', 'my_gfs2')
 
-            with common.chdir('my_gfs2'):
+    def test_fomosto_ahfull_refs(self):
+        with common.run_in_temp():
+            fomosto('init', 'ahfullgreen', 'my_gfs3')
+            with common.chdir('my_gfs3'):
                 try:
                     from pybtex.database.input import bibtex  # noqa
                     with open('refs.bib', 'w') as f:
