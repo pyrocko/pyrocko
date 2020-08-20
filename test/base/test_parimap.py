@@ -31,35 +31,62 @@ def imapemulation(function, *iterables):
             yield function(*args)
 
 
+def work_parimap(x, y, icrash):
+    if x == icrash:
+        raise Crash(str((x, y)))
+
+    a = random.random()
+    if a > 0.5:
+        time.sleep((a*0.01)**2)
+
+    return x+y
+
+
+def work_locks(x, fn):
+    assert os.path.exists(fn)
+    with open(fn, 'a+') as f:
+        while True:
+            try:
+                fcntl.lockf(f, fcntl.LOCK_EX)
+                break
+            except IOError as e:
+                if e.errno == errno.ENOLCK:
+                    time.sleep(0.01)
+                    pass
+                else:
+                    raise
+
+        f.seek(0)
+        assert '' == f.read()
+        f.write('%s' % x)
+        f.flush()
+        # time.sleep(0.01)
+        f.seek(0)
+        f.truncate(0)
+        fcntl.lockf(f, fcntl.LOCK_UN)
+
+
 class ParimapTestCase(unittest.TestCase):
 
     def test_parimap(self):
 
         # random.seed(0)
 
-        for i in range(50):
+        n = 1000
+
+        for i in range(5):
             nprocs = random.randint(1, 10)
-            nx = random.randint(0, 1000)
-            ny = random.randint(0, 1000)
-            icrash = random.randint(0, 1000)
+            nx = random.randint(0, n)
+            ny = random.randint(0, n)
+            icrash = random.randint(0, n)
 
             # print 'testing %i %i %i %i...' % (nprocs, nx, ny, icrash)
 
-            def work(x, y):
-                if x == icrash:
-                    raise Crash(str((x, y)))
-
-                a = random.random()
-                if a > 0.5:
-                    time.sleep((a*0.01)**2)
-
-                return x+y
-
             I1 = parimap(
-                work, range(nx), range(ny),
+                work_parimap, range(nx), range(ny), [icrash]*n,
                 nprocs=nprocs, eprintignore=Crash)
 
-            I2 = imapemulation(work, range(nx), range(ny))
+            I2 = imapemulation(work_parimap, range(nx), range(ny), [icrash]*n)
 
             while True:
 
@@ -89,34 +116,12 @@ class ParimapTestCase(unittest.TestCase):
 
     def test_locks(self):
 
-        def work(x):
-            assert os.path.exists(fn)
-            with open(fn, 'a+') as f:
-                while True:
-                    try:
-                        fcntl.lockf(f, fcntl.LOCK_EX)
-                        break
-                    except IOError as e:
-                        if e.errno == errno.ENOLCK:
-                            time.sleep(0.01)
-                            pass
-                        else:
-                            raise
-
-                f.seek(0)
-                assert '' == f.read()
-                f.write('%s' % x)
-                f.flush()
-                # time.sleep(0.01)
-                f.seek(0)
-                f.truncate(0)
-                fcntl.lockf(f, fcntl.LOCK_UN)
-
         fos, fn = tempfile.mkstemp()  # (dir='/try/with/nfs/mounted/dir')
         f = open(fn, 'w')
         f.close()
 
-        for x in parimap(work, range(100), nprocs=10, eprintignore=()):
+        for x in parimap(
+                work_locks, range(100), [fn]*100, nprocs=10, eprintignore=()):
             pass
 
         os.close(fos)
