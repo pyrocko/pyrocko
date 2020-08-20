@@ -13,7 +13,7 @@ from pyrocko.guts import Timestamp, Tuple, String, Float, Object,\
 from pyrocko.guts_array import Array
 from pyrocko.model import gnss
 from pyrocko.orthodrome import distance_accurate50m_numpy
-from pyrocko.util import num_full_like
+from pyrocko.util import num_full_like, num_full
 
 d2r = num.pi / 180.
 
@@ -334,8 +334,8 @@ class KiteSceneTarget(SatelliteTarget):
         size = scene.displacement.size
 
         if scene.frame.spacing == 'meter':
-            lats = num.full(size, scene.frame.llLat)
-            lons = num.full(size, scene.frame.llLon)
+            lats = num_full(size, scene.frame.llLat)
+            lons = num_full(size, scene.frame.llLon)
             north_shifts = scene.frame.gridN.data.flatten()
             east_shifts = scene.frame.gridE.data.flatten()
 

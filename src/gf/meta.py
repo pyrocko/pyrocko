@@ -20,6 +20,7 @@ from pyrocko.guts_array import literal, Array
 from pyrocko.model import Location, gnss
 
 from pyrocko import cake, orthodrome, spit, moment_tensor, trace
+from pyrocko.util import num_full
 
 from .error import StoreError
 
@@ -2376,7 +2377,7 @@ class ConfigTypeB(Config):
         receiver_times = []
         for ireceiver in range(nreceivers):
             nodes = num.hstack([
-                num.full(
+                num_full(
                     (nodes_sr.shape[0], 1),
                     self.coords[0][ireceiver]),
                 nodes_sr])
