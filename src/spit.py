@@ -68,7 +68,8 @@ class Cell(object):
         else:
             if all_(num.isfinite(self.f)):
                 ws = (x[:, num.newaxis] - self.a)/self.b
-                wn = num.multiply.reduce(num.ix_(*ws))
+                wn = num.multiply.reduce(
+                    num.array(num.ix_(*ws), dtype=num.object))
                 return num.sum(self.f * wn)
             else:
                 return None
