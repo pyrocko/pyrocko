@@ -24,6 +24,24 @@ class Interrupted(store.StoreError):
         return 'Interrupted.'
 
 
+def work_block(args):
+    # previously this was a implemented as a classmethod __work_block but it
+    # caused problems on Conda Python 3.8 on OSX.
+    try:
+        cls, store_dir, step, iblock, shared, force = args
+        builder = cls(store_dir, step, shared, force=force)
+        builder.work_block(iblock)
+    except KeyboardInterrupt:
+        raise Interrupted()
+    except IOError as e:
+        if e.errno == errno.EINTR:
+            raise Interrupted()
+        else:
+            raise
+
+    return store_dir, step, iblock
+
+
 class Builder(object):
     nsteps = 1
 
@@ -75,22 +93,6 @@ class Builder(object):
         begins = self.gf_config.mins + ibegins * self.gf_config.deltas
         ends = self.gf_config.mins + (iends-1) * self.gf_config.deltas
         return begins, ends, iends - ibegins
-
-    @classmethod
-    def __work_block(cls, args):
-        try:
-            store_dir, step, iblock, shared, force = args
-            builder = cls(store_dir, step, shared, force=force)
-            builder.work_block(iblock)
-        except KeyboardInterrupt:
-            raise Interrupted()
-        except IOError as e:
-            if e.errno == errno.EINTR:
-                raise Interrupted()
-            else:
-                raise
-
-        return store_dir, step, iblock
 
     @classmethod
     def build(cls, store_dir, force=False, nworkers=None, continue_=False,
@@ -158,8 +160,8 @@ class Builder(object):
             original = signal.signal(signal.SIGINT, signal.SIG_IGN)
             try:
                 for x in parimap(
-                        cls.__work_block,
-                        [(store_dir, step, i, shared, force)
+                        work_block,
+                        [(cls, store_dir, step, i, shared, force)
                          for i in iblocks],
                         nprocs=nworkers, eprintignore=(
                             Interrupted, store.StoreError)):
