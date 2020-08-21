@@ -52,6 +52,7 @@ def work_block(args):
 
 def cleanup():
     for k in list(g_builders):
+        g_builders[k].cleanup()
         del g_builders[k]
 
 
@@ -72,6 +73,9 @@ class Builder(object):
         self.gf_config = gf_config
         self.warnings = defaultdict(int)
         self._block_size = int_arr(*block_size)
+
+    def cleanup(self):
+        pass
 
     @property
     def nblocks(self):
@@ -168,6 +172,7 @@ class Builder(object):
 
                 return
 
+            builder.cleanup()
             del builder
 
             original = signal.signal(signal.SIGINT, signal.SIG_IGN)

@@ -793,6 +793,9 @@ class QSeisGFBuilder(gf.builder.Builder):
         if self.tmp is not None:
             util.ensuredir(self.tmp)
 
+    def cleanup(self):
+        self.store.close()
+
     def work_block(self, index):
         if len(self.store.config.ns) == 2:
             (sz, firstx), (sz, lastx), (ns, nx) = \

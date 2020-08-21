@@ -498,6 +498,9 @@ class PoelGFBuilder(gf.builder.Builder):
         if self.tmp is not None:
             util.ensuredir(self.tmp)
 
+    def cleanup(self):
+        self.store.close()
+
     def work_block(self, index):
         logger.info('Starting block %i / %i' % (index+1, self.nblocks))
 

@@ -847,6 +847,9 @@ class QSSPGFBuilder(gf.builder.Builder):
 
         self.qssp_config = conf
 
+    def cleanup(self):
+        self.store.close()
+
     def work_block(self, iblock):
         if len(self.store.config.ns) == 2:
             (sz, firstx), (sz, lastx), (ns, nx) = \

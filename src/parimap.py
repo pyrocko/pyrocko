@@ -66,15 +66,23 @@ def parimap(function, *iterables, **kwargs):
         if pshared is not None:
             kwargs['pshared'] = pshared
 
-        while True:
-            args = []
-            for it in iterables:
-                try:
-                    args.append(next(it))
-                except StopIteration:
-                    return
+        if startup is not None:
+            startup(*startup_args)
 
-            yield function(*args, **kwargs)
+        try:
+            while True:
+                args = []
+                for it in iterables:
+                    try:
+                        args.append(next(it))
+                    except StopIteration:
+                        return
+
+                yield function(*args, **kwargs)
+
+        finally:
+            if cleanup is not None:
+                cleanup()
 
         return
 

@@ -878,6 +878,9 @@ class QSeis2dGFBuilder(gf.builder.Builder):
 
         util.ensuredir(baseconf.gf_directory)
 
+    def cleanup(self):
+        self.store.close()
+
     def work_block(self, iblock):
         if len(self.store.config.ns) == 2:
             (sz, firstx), (sz, lastx), (ns, nx) = \

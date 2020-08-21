@@ -1320,6 +1320,7 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
 
     def __init__(self, store_dir, step, shared, block_size=None, tmp=None,
                  force=False):
+
         self.store = gf.store.Store(store_dir, 'w')
 
         storeconf = self.store.config
@@ -1366,6 +1367,9 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
 
         self.cg = cg
         self.cc = cc
+
+    def cleanup(self):
+        self.store.close()
 
     def work_block(self, iblock):
 

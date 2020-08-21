@@ -101,6 +101,9 @@ class AhfullGFBuilder(gf.builder.Builder):
         gf.builder.Builder.__init__(
             self, self.store.config, step, block_size=block_size, force=force)
 
+    def cleanup(self):
+        self.store.close()
+
     def work_block(self, index):
         if len(self.store.config.ns) == 2:
             (sz, firstx), (sz, lastx), (ns, nx) = \

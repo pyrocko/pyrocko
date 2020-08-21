@@ -28,6 +28,9 @@ class DummyGFBuilder(gf.builder.Builder):
         gf.builder.Builder.__init__(
             self, self.store.config, step, block_size=(1, 51), force=force)
 
+    def cleanup(self):
+        self.store.close()
+
     def work_block(self, index):
         (sz, firstx), (sz, lastx), (ns, nx) = \
             self.get_block_extents(index)
