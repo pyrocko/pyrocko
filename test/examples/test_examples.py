@@ -23,8 +23,6 @@ from pyrocko.gui import snuffler
 from pyrocko.dataset import topo
 
 
-orthodrome.raise_if_slow_path_contains_points = True
-
 op = os.path
 
 test_dir = op.dirname(op.abspath(__file__))
@@ -66,6 +64,8 @@ class ExamplesTestCase(unittest.TestCase):
         cls._show_progress_force_off_orig = pile.show_progress_force_off
         pile.show_progress_force_off = True
 
+        orthodrome.raise_if_slow_path_contains_points = True
+
     @classmethod
     def tearDownClass(cls):
         from matplotlib import pyplot as plt
@@ -77,6 +77,8 @@ class ExamplesTestCase(unittest.TestCase):
         snuffler.snuffle = snuffler.snuffle_orig_testex
         plt.show = plt.show_orig_testex
         pile.show_progress_force_off = cls._show_progress_force_off_orig
+
+        orthodrome.raise_if_slow_path_contains_points = False
 
 
 example_files = [fn for fn in glob.glob(op.join(test_dir, 'examples', '*.py'))
