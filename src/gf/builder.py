@@ -12,6 +12,7 @@ import numpy as num
 
 from collections import defaultdict
 from pyrocko.parimap import parimap
+from pyrocko import util
 from . import store
 
 
@@ -24,12 +25,19 @@ class Interrupted(store.StoreError):
         return 'Interrupted.'
 
 
+g_builders = {}
+
+
 def work_block(args):
     # previously this was a implemented as a classmethod __work_block but it
     # caused problems on Conda Python 3.8 on OSX.
     try:
         cls, store_dir, step, iblock, shared, force = args
-        builder = cls(store_dir, step, shared, force=force)
+        if (store_dir, step) not in g_builders:
+            g_builders[store_dir, step] = cls(
+                store_dir, step, shared, force=force)
+
+        builder = g_builders[store_dir, step]
         builder.work_block(iblock)
     except KeyboardInterrupt:
         raise Interrupted()
@@ -40,6 +48,11 @@ def work_block(args):
             raise
 
     return store_dir, step, iblock
+
+
+def cleanup():
+    for k in list(g_builders):
+        del g_builders[k]
 
 
 class Builder(object):
@@ -163,8 +176,11 @@ class Builder(object):
                         work_block,
                         [(cls, store_dir, step, i, shared, force)
                          for i in iblocks],
-                        nprocs=nworkers, eprintignore=(
-                            Interrupted, store.StoreError)):
+                        nprocs=nworkers,
+                        eprintignore=(Interrupted, store.StoreError),
+                        startup=util.setup_logging,
+                        startup_args=util.subprocess_setup_logging_args(),
+                        cleanup=cleanup):
 
                     store_dir, step, i = x
                     with open(status_fn, 'a') as status:

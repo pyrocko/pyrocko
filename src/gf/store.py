@@ -342,6 +342,7 @@ class BaseStore(object):
         self.cstore = None
 
     def open(self):
+        assert self._f_index is None
         index_fn = self.index_fn()
         data_fn = self.data_fn()
 
@@ -408,6 +409,7 @@ class BaseStore(object):
 
     def unlock(self):
         self._f_data.flush()
+        self._f_index.flush()
         fcntl.lockf(self._f_index, fcntl.LOCK_UN)
 
     def put(self, irecord, trace):

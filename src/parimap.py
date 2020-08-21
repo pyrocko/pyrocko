@@ -14,14 +14,23 @@ import traceback
 import errno
 
 
-def worker(q_in, q_out, function, eprintignore, pshared):
+def worker(
+        q_in, q_out, function, eprintignore, pshared,
+        startup, startup_args, cleanup):
+
     kwargs = {}
     if pshared is not None:
         kwargs['pshared'] = pshared
 
+    if startup is not None:
+        startup(*startup_args)
+
     while True:
         i, args = q_in.get()
         if i is None:
+            if cleanup is not None:
+                cleanup()
+
             break
 
         res, exception = None, None
@@ -36,11 +45,17 @@ def worker(q_in, q_out, function, eprintignore, pshared):
 
 def parimap(function, *iterables, **kwargs):
     assert all(
-        k in ('nprocs', 'eprintignore', 'pshared') for k in kwargs.keys())
+        k in (
+            'nprocs', 'eprintignore', 'pshared', 'startup', 'startup_args',
+            'cleanup')
+        for k in kwargs.keys())
 
     nprocs = kwargs.get('nprocs', None)
     eprintignore = kwargs.get('eprintignore', 'all')
     pshared = kwargs.get('pshared', None)
+    startup = kwargs.get('startup', None)
+    startup_args = kwargs.get('startup_args', ())
+    cleanup = kwargs.get('cleanup', None)
 
     if eprintignore == 'all':
         eprintignore = None
@@ -91,7 +106,8 @@ def parimap(function, *iterables, **kwargs):
                 if len(procs) < nrun + 1:
                     p = multiprocessing.Process(
                         target=worker,
-                        args=(q_in, q_out, function, eprintignore, pshared))
+                        args=(q_in, q_out, function, eprintignore, pshared,
+                              startup, startup_args, cleanup))
                     p.daemon = True
                     p.start()
                     procs.append(p)

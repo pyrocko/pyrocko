@@ -31,7 +31,9 @@ def imapemulation(function, *iterables):
             yield function(*args)
 
 
-def work_parimap(x, y, icrash):
+def work_parimap(x, y, pshared):
+    icrash = pshared['icrash']
+
     if x == icrash:
         raise Crash(str((x, y)))
 
@@ -42,7 +44,8 @@ def work_parimap(x, y, icrash):
     return x+y
 
 
-def work_locks(x, fn):
+def work_locks(x, pshared):
+    fn = pshared['fn']
     assert os.path.exists(fn)
     with open(fn, 'a+') as f:
         while True:
@@ -83,10 +86,14 @@ class ParimapTestCase(unittest.TestCase):
             # print 'testing %i %i %i %i...' % (nprocs, nx, ny, icrash)
 
             I1 = parimap(
-                work_parimap, range(nx), range(ny), [icrash]*n,
-                nprocs=nprocs, eprintignore=Crash)
+                work_parimap, range(nx), range(ny),
+                pshared=dict(icrash=icrash),
+                nprocs=nprocs,
+                eprintignore=Crash)
 
-            I2 = imapemulation(work_parimap, range(nx), range(ny), [icrash]*n)
+            I2 = imapemulation(
+                work_parimap, range(nx), range(ny),
+                [dict(icrash=icrash)]*n)
 
             while True:
 
@@ -121,7 +128,8 @@ class ParimapTestCase(unittest.TestCase):
         f.close()
 
         for x in parimap(
-                work_locks, range(100), [fn]*100, nprocs=10, eprintignore=()):
+                work_locks, range(100), pshared={'fn': fn}, nprocs=10,
+                eprintignore=()):
             pass
 
         os.close(fos)

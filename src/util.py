@@ -104,6 +104,9 @@ def progressbar_module():
     return progressbar_mod
 
 
+g_setup_logging_args = 'pyrocko', 'warning'
+
+
 def setup_logging(programname='pyrocko', levelname='warning'):
     '''
     Initialize logging.
@@ -117,6 +120,9 @@ def setup_logging(programname='pyrocko', levelname='warning'):
     :py:func:`logging.basicConfig()`.
     '''
 
+    global g_setup_logging_args
+    g_setup_logging_args = (programname, levelname)
+
     levels = {'debug': logging.DEBUG,
               'info': logging.INFO,
               'warning': logging.WARNING,
@@ -126,6 +132,16 @@ def setup_logging(programname='pyrocko', levelname='warning'):
     logging.basicConfig(
         level=levels[levelname],
         format=programname+':%(name)-20s - %(levelname)-8s - %(message)s')
+
+
+def subprocess_setup_logging_args():
+    '''
+    Get arguments from previous call to setup_logging.
+
+    These can be sent down to a worker process so it can setup its logging
+    in the same way as the main process.
+    '''
+    return g_setup_logging_args
 
 
 def data_file(fn):

@@ -25,6 +25,7 @@ refs = '''
 
 
 def fomosto(*args, **kwargs):
+    # kwargs['tee'] = True
     common.call('fomosto', *args, **kwargs)
 
 
@@ -45,7 +46,7 @@ class FomostoTestCase(unittest.TestCase):
                 common.call_assert_usage('fomosto', 'help')
                 common.call_assert_usage('fomosto', 'init')
                 fomosto('ttt')
-                fomosto('build')
+                fomosto('build', '--nworkers=2')
                 fomosto('stats')
                 fomosto('check')
                 fomosto('tttview', 'anyP')
