@@ -17,10 +17,13 @@ from pyrocko import util
 from pyrocko import example
 from pyrocko import pile
 from pyrocko.plot import gmtpy
+from pyrocko import orthodrome
 
 from pyrocko.gui import snuffler
 from pyrocko.dataset import topo
 
+
+orthodrome.raise_if_slow_path_contains_points = True
 
 op = os.path
 
@@ -114,6 +117,9 @@ def _make_function(test_name, fn):
 
         except gmtpy.GMTInstallationProblem:
             raise unittest.SkipTest('GMT not installed or not usable')
+
+        except orthodrome.Slow:
+            raise unittest.SkipTest('skipping test using slow point-in-poly')
 
         except Exception as e:
             raise e

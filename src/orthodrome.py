@@ -23,6 +23,13 @@ m2d = 1./d2m
 
 _testpath = Path([(0, 0), (0, 1), (1, 1), (1, 0), (0, 0)], closed=True)
 
+raise_if_slow_path_contains_points = False
+
+
+class Slow(Exception):
+    pass
+
+
 if hasattr(_testpath, 'contains_points') and num.all(
         _testpath.contains_points([(0.5, 0.5), (1.5, 0.5)]) == [True, False]):
 
@@ -34,6 +41,10 @@ else:
     # work around missing contains_points and bug in matplotlib ~ v1.2.0
 
     def path_contains_points(verts, points):
+        if raise_if_slow_path_contains_points:
+            # used by unit test to skip slow gshhg_example.py
+            raise Slow()
+
         p = Path(verts, closed=True)
         result = num.zeros(points.shape[0], dtype=num.bool)
         for i in range(result.size):
