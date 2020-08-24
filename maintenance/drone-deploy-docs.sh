@@ -12,6 +12,7 @@ umask 0077
 echo "$WWW_KEY" > $keypath
 umask 0022
 
-ssh -o StrictHostKeyChecking=no -i $keypath "${WWW_USER}@${WWW_HOST}" "${DRONE_COMMIT}"
+ssh -o StrictHostKeyChecking=no -i $keypath "${WWW_USER}@${WWW_HOST}" \
+    "${DRONE_COMMIT}" "pyrocko"
 
 rm $keypath
