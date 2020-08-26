@@ -3,5 +3,3 @@
 
 .. automodule:: pyrocko.io.rdseed
     :members:
-    :undoc-members:
-

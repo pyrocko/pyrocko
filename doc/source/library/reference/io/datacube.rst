@@ -3,5 +3,3 @@
 
 .. automodule:: pyrocko.io.datacube
     :members:
-    :undoc-members:
-

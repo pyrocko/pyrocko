@@ -3,5 +3,3 @@
 
 .. automodule:: pyrocko.io.stationxml
     :members:
-    :undoc-members:
-

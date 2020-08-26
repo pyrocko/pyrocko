@@ -5,22 +5,22 @@ Reference
    :maxdepth: 3
    :includehidden:
 
-   io
-   trace
-   model
+   cake
    client
    dataset
-   scenario
-   plot
-   gui
-   streaming
-   gf
-   cake
    evalresp
+   gf
+   gui
    hamster_pile
+   io
+   model
    moment_tensor
+   obspy_compat
    orthodrome
    pile
+   plot
    pz
+   scenario
+   streaming
+   trace
    util
-   obspy_compat

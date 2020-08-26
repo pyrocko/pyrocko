@@ -6,7 +6,6 @@ Seismic Velocity Datasets (``dataset``)
 
 .. automodule :: pyrocko.dataset.crust2x2
     :members:
-    :undoc-members:
 
 
 ``dataset.crustdb``
@@ -14,5 +13,4 @@ Seismic Velocity Datasets (``dataset``)
 
 .. automodule :: pyrocko.dataset.crustdb
     :members: CrustDB, VelocityProfile
-    :undoc-members:
 

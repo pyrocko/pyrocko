@@ -6,7 +6,6 @@ Geographic Datasets (``dataset``)
 
 .. automodule :: pyrocko.dataset.geonames
     :members:
-    :undoc-members:
 
 
 ``dataset.gshhg``

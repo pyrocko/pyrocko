@@ -3,5 +3,3 @@
 
 .. automodule:: pyrocko.io.seisan_waveform
     :members:
-    :undoc-members:
-

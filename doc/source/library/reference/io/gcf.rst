@@ -3,4 +3,3 @@
 
 .. automodule:: pyrocko.io.gcf
     :members:
-    :undoc-members:

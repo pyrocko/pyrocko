@@ -3,7 +3,3 @@
 
 .. automodule:: pyrocko.hamster_pile
     :members:
-    :undoc-members:
-
-
-

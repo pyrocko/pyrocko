@@ -3,4 +3,3 @@
 
 .. automodule:: pyrocko.io.enhanced_sacpz
     :members:
-    :undoc-members:

@@ -3,5 +3,3 @@
 
 .. automodule:: pyrocko.io.kan
     :members:
-    :undoc-members:
-

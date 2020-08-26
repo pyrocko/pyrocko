@@ -3,4 +3,3 @@
 
 .. automodule:: pyrocko.io.yaff
     :members:
-    :undoc-members:
