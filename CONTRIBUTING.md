@@ -9,6 +9,31 @@ Pyrocko is written in the Python programming language (versions ==2.7 and >=3.4)
 Pyrocko uses Setuptools for its installation script. See `setup.py` and
 `setup.cfg` in the project root directory.
 
+## Testing
+
+Nosetests is used for testing. To run all tests, run
+
+```sh
+python -m nose test
+```
+
+## CI
+
+Drone CI tests are run on any commits pushed to the repository. By default,
+flake8 is run, tests are run parallel in 4 groups, test coverage is measured,
+and docs are built. Success/failure is reported to the Pyrocko Hive.
+
+Pushing to specific branches triggers extra pipelines:
+
+* `hptime`: tests are run in both time handling modes (double test time)
+* `pip`: pip wheels and sdist are built, tested and uploaded to
+  PyPi-testing
+* `conda`: anaconda packages are built and tested
+* `deploy-docs`: docs are published
+* `candidate`: same as pip + anaconda + hptime
+* `release`: same as pip + anaconda + deploy-docs, packages are additionally
+  published and package tests are skipped
+
 ## Versioning and releases
 
 Git is used for version control. Use development branches for new features.
@@ -32,9 +57,15 @@ Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Branching policy
 
-* The `master` branch should point to a stable, tagged version of Pyrocko.
-* The `dev` branch is used to aggregate new features before releasing.
 * Use topic branches to develop new features.
+* Open a pull request and use the Gitea-tags `Want Review`, `Need Revision`, to
+  signal its state.
+* When a topic is complete, all tests pass and it is rebased to current master:
+  merge with `--ff-only` and don't forget to update the changelog.
+* The `master` branch should always point to a stable version.
+* Extra CI pipelines and pipeline steps are run on branches named `release`,
+  `candidate`, `pip`, `conda`, `deploy-docs`, and `hptime`. See also CI
+  section above.
 
 ### Rebase small changes before pushing
 
@@ -64,8 +95,8 @@ git checkout feature
 git fetch origin
 git rebase origin/master
 git checkout master
-git merge origin/master
-git merge feature    # should now be fast forward...
+git merge origin/master --ff-only
+git merge feature --ff-only
 git push origin master
 ```
 
@@ -94,7 +125,9 @@ Additionally,
   - Progress actions should end with `...`, e.g. `Generating report's archive...`
   - e.g. `raise ProblemDataNotAvailable('No problem data available (%s).' % dirname)`
   - in-text names must be quoted; not needed after colons
-* docstrings: TODO
+* docstrings:
+  - Docs are built with Sphinx, use rst syntax.
+  - Follow the usual convention 1 line summary, blank line, description.
 
 ## Documentation
 

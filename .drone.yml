@@ -78,13 +78,13 @@ steps:
 
 kind: pipeline
 type: docker
-name: pip-wheels
+name: pip
 
 trigger:
   branch:
   - release
   - candidate
-  - pip-wheels
+  - pip
 
 steps:
 - name: build-manylinux1_x86_64
@@ -145,7 +145,7 @@ steps:
   when:
     branch:
     - candidate
-    - pip-wheels
+    - pip
   commands:
   - maintenance/pip/upload_wheels.sh testing
   environment:
@@ -420,7 +420,7 @@ depends_on:
 - coverage
 - flake8
 - docs
-- pip-wheels
+- pip
 - conda-packages-linux
 - conda-packages-osx
 
