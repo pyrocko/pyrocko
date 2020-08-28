@@ -8,9 +8,9 @@ Transformations between different moment tensor representations using the
 Convert moment tensor components to strike, dip and rake
 --------------------------------------------------------
 
-moment tensor construction is shown by using the moment components (in
+Moment tensor construction is shown by using the moment components (in
 north-east-down coordinate system convention) and conversion to strike, dip and
-rake.
+rake. We also show how to extract the P-axis direction.
 
 Download :download:`moment_tensor_example1.py </../../examples/moment_tensor_example1.py>`
 
