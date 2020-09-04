@@ -36,7 +36,7 @@ QSEIS is a code to calculate synthetic seismograms based on a layered
 viscoelastic half-space model. It has been written by Rongjiang Wang
 [Wang1999]_. It uses the orthonormal propagator algorithm, a numerically more
 stable alternative to the reflectivity method. QSEIS uses many state-of-the-art
-techniques to supress time-domain aliasing problems and numerical phases.
+techniques to suppress time-domain aliasing problems and numerical phases.
 Synthetic seismograms at up to teleseismic distances can be computed by using
 the earth flattening transformation (with some restrictions). Different shallow
 structures can be defined for source and receiver site (body-wave phases only).
@@ -68,13 +68,17 @@ eigenmodes) or very high frequencies (4 Hz has been tested) are desired, when
 core phases are involved or when the coupling of earth and atmosphere is of
 interest.
 
-The current version of QSSP is ``2010`` (at the time of writing, 2017-01-25),
-and can be downloaded from https://git.pyrocko.org/pyrocko/fomosto-qssp .
+The current version of QSSP is ``2017`` (at the time of writing, 2020-09-04),
+and can be downloaded from https://git.pyrocko.org/pyrocko/fomosto-qssp2017 .
 
 After downloading and installing, to initialize a Green's function store
 to be built with QSSP, run::
 
-    $ fomosto init qssp.2010 my_qssp_gfs
+    $ fomosto init qssp.2017 my_qssp_gfs
+
+QSSP can also be used to calculate rotational seismograms.  To create a Pyrocko
+GF store with rotational Green's functions, just set ``stored_quantity:
+'rotation'`` in the store's ``config``.
 
 The ``psgrn_pscmp`` backend
 ---------------------------
@@ -108,24 +112,12 @@ References
 .. [AkiRichards2002] Aki, Keiiti, and Paul G. Richards. Quantitative
     seismology. Vol. 1. 2002.
 
-.. [Wang1999] Wang, R., (1999), A simple orthonormalization method for stable
-    and efficient computation of Green's functions, Bulletin of the
-    Seismological Society of America, 89(3), 733-741.0
+.. [Wang1999] Wang, R. (1999): A simple orthonormalization method for the stable and efficient computation of Green's functions. - Bulletin of the Seismological Society of America, 89, 733-741.
 
-.. [Wang2003] Wang, R., F. Lorenzo-Martín and F. Roth (2003), Computation of
-    deformation induced by earthquakes in a multi-layered elastic crust -
-    FORTRAN programs EDGRN/EDCMP, Computer and Geosciences, 29(2), 195-207.
+.. [Wang2003] Wang, R., Lorenzo Martín, F., Roth, F. (2003): Computation of deformation induced by earthquakes in a multi-layered elastic crust; FORTRAN programs EDGRN/ EDCMP. - Computers and Geosciences, 29, 2, 195-207. https://doi.org/10.1016/S0098-3004(02)00111-5
 
-.. [Wang2005] Wang, R. (2005), The dislocation theory: a consistent way for
-    including the gravity effect in (visco)elastic plane-earth models,
-    Geophysical Journal International, 161, 191-196.
+.. [Wang2005] Wang, R. (2005): The dislocation theory: a consistent way for including the gravity effect in (visco)elastic plane-earth models. - Geophysical Journal International, 161, 1, 191-196. https://doi.org/10.1111/j.1365-246X.2005.02614.x
 
-.. [Wang2006] Wang, R., F. Lorenzo-Martin and F. Roth (2006), PSGRN/PSCMP -
-    a new code for calculating co- and post-seismic deformation, geoid and
-    gravity changes based on the viscoelastic-gravitational dislocation theory,
-    Computers and Geosciences, 32, 527-541. DOI:10.1016/j.cageo.2005.08.006.
+.. [Wang2006] Wang, R., Lorenzo Martín, F., Roth, F. (2006): PSGRN/PSCMP - a new code for calculating co- and post-seismic deformation, geoid and gravity changes based on the viscoelastic-gravitational dislocation theory. - Computers and Geosciences, 32, 4, 527-541. https://doi.org/10.1016/j.cageo.2005.08.006
 
-.. [Wang2017] Wang, R. et al. (submitted), Complete synthetic seismograms
-    based on a spherical self-gravitating Earth model with an
-    atmosphere-ocean-mantle-core structure
-
+.. [Wang2017] Wang, R., Heimann, S., Zhang, Y., Wang, H., Dahm, T. (2017): Complete synthetic seismograms based on a spherical self-gravitating Earth model with an atmosphere–ocean–mantle–core structure. - Geophysical Journal International, 210, 3, 1739-1764. https://doi.org/10.1093/gji/ggx259
