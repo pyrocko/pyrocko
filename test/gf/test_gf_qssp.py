@@ -11,13 +11,23 @@ from pyrocko.fomosto import qssp
 class QSSPTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.tmpdir = tempfile.mkdtemp(prefix='pyrocko.qseis')
+        self.tmpdir = tempfile.mkdtemp(prefix='pyrocko.qssp')
 
     def tearDown(self):
         shutil.rmtree(self.tmpdir)
 
-    def test_qssp_build(self):
+    @unittest.skipUnless(
+        'qssp.2010' in qssp.have_backend(), 'backend qssp.2010 not available')
+    def test_qssp_build_2010(self):
         qssp.init(self.tmpdir, '2010')
+        store = gf.store.Store(self.tmpdir, 'r')
+        store.make_ttt()
+        qssp.build(self.tmpdir)
+
+    @unittest.skipUnless(
+        'qssp.2017' in qssp.have_backend(), 'backend qssp.2017 not available')
+    def test_qssp_build_2017(self):
+        qssp.init(self.tmpdir, '2017')
         store = gf.store.Store(self.tmpdir, 'r')
         store.make_ttt()
         qssp.build(self.tmpdir)

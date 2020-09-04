@@ -35,18 +35,18 @@ program_bins = {
 }
 
 
-def have_backend():
-    have_any = False
-    for cmd in [[exe] for exe in program_bins.values()]:
+def have_backend(version=None):
+    avail = set()
+    for version, exe in program_bins.items():
         try:
-            p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+            p = Popen([exe], stdout=PIPE, stderr=PIPE, stdin=PIPE)
             (stdout, stderr) = p.communicate()
-            have_any = True
+            avail.add(version)
 
         except OSError:
             pass
 
-    return have_any
+    return avail
 
 
 qssp_components = {
