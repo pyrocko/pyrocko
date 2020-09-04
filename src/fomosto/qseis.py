@@ -998,7 +998,7 @@ class QSeisGFBuilder(gf.builder.Builder):
                     (index+1, self.nblocks))
 
 
-def init(store_dir, variant):
+def init(store_dir, variant, config_params=None):
     if variant is None:
         variant = '2006'
 
@@ -1021,8 +1021,7 @@ def init(store_dir, variant):
 
     store_id = os.path.basename(os.path.realpath(store_dir))
 
-    config = gf.meta.ConfigTypeA(
-
+    d = dict(
         id=store_id,
         ncomponents=10,
         sample_rate=0.2,
@@ -1054,6 +1053,11 @@ def init(store_dir, variant):
             gf.meta.TPDef(
                 id='s',
                 definition='!s')])
+
+    if config_params is not None:
+        d.update(config_params)
+
+    config = gf.meta.ConfigTypeA(**d)
 
     config.validate()
     return gf.store.Store.create_editables(

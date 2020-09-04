@@ -1071,7 +1071,7 @@ class QSSPGFBuilder(gf.builder.Builder):
 km = 1000.
 
 
-def init(store_dir, variant):
+def init(store_dir, variant, config_params=None):
     if variant is None:
         variant = '2010beta'
 
@@ -1116,7 +1116,7 @@ def init(store_dir, variant):
     else:
         sample_rate = 0.2
 
-    config = gf.meta.ConfigTypeA(
+    d = dict(
         id=store_id,
         ncomponents=10,
         component_scheme='elastic10',
@@ -1150,6 +1150,11 @@ def init(store_dir, variant):
             gf.meta.TPDef(
                 id='s',
                 definition='!s')])
+
+    if config_params is not None:
+        d.update(config_params)
+
+    config = gf.meta.ConfigTypeA(**d)
 
     config.validate()
     return gf.store.Store.create_editables(
