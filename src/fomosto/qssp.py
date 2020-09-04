@@ -653,7 +653,6 @@ class QSSPRunner(object):
         input_fn = pjoin(self.tempdir, 'input')
 
         with open(input_fn, 'wb') as f:
-            from pyrocko import guts
             input_str = config.string_for_config()
             logger.debug('===== begin qssp input =====\n'
                          '%s===== end qssp input =====' % input_str.decode())
