@@ -182,8 +182,8 @@ used for integrity checks. No allocation is made for short traces, i.e. traces
 with 2 samples, representing step functions.
 
 
-.. [1] Sebastian Heimann, Hannes Vasyura-Bathke, Henriette 
-    Sudhaus, Marius Paul Isken, Marius Kriegerowski, Andreas Steinberg, and 
-    Torsten Dahm: A Python framework for efficient use of pre-computed Green’s
-    functions in seismological and other physical forward and inverse source 
-    problems (2019, submitted)
+.. [1] Sebastian Heimann, Hannes Vasyura-Bathke, Henriette Sudhaus, Marius
+    Paul Isken, Marius Kriegerowski, Andreas Steinberg, and Torsten Dahm. "A
+    Python framework for efficient use of pre-computed Green's functions in
+    seismological and other physical forward and inverse source problems."
+    Solid Earth 10, no. 6 (2019): 1921-1921.
