@@ -12,7 +12,7 @@ if [ -z "$thetest" ]; then
     thetest="test"
 fi
 
-sudo chown -R vagrant:staff /vagrant /pyrocko-test-data
+sudo chown -R vagrant:staff /vagrant
 
 ORIGPATH="$PATH"
 
@@ -49,7 +49,7 @@ for VERSION in 2 3 ; do
     fi
     git clone -b $branch "/vagrant/pyrocko.git" "$pyrockodir"
     cd "$pyrockodir"
-    ln -s "/pyrocko-test-data" "test/data"
+    ln -s "/vagrant/pyrocko-test-data" "test/data"
     ln -s "/vagrant/example_run_dir" "test/example_run_dir"
 
     conda install -y \
