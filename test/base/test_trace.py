@@ -86,6 +86,56 @@ class TraceTestCase(unittest.TestCase):
                     assert num.amax(num.abs(ydata-ydata_shouldbe)) < eps, \
                         'differentiation failed'
 
+    def test_differentiation(self):
+        dt = 0.1
+        dur = 10.0
+        n = int(round(dur / dt))
+
+        t0 = 5.0
+
+        tau = 0.25
+
+        t = num.arange(n)*dt
+        y = num.exp(-(t-t0)**2/tau**2)
+        a = trace.Trace(location='A', deltat=dt, ydata=y)
+
+        dydt = num.exp(-(t-t0)**2/tau**2) * -2.0 / tau**2 * (t-t0)
+        b = trace.Trace(location='B', deltat=dt, ydata=dydt)
+
+        c = a.transfer(
+            transfer_function=trace.DifferentiationResponse(), demean=False)
+        c.set_codes(location='C')
+
+        d = a.differentiate(inplace=False, order=4)
+        d.set_codes(location='D')
+
+        e = a.differentiate(inplace=False, order=2)
+        e.set_codes(location='E')
+
+        bmax = b.absmax()[1]
+
+        assert numeq(b.ydata, c.ydata, 0.0001*bmax)
+        assert numeq(b.ydata, d.ydata, 0.03*bmax)
+        assert numeq(b.ydata, e.ydata, 0.2*bmax)
+
+        # trace.snuffle([a, b, c, d, e])
+
+        c2 = c.transfer(
+            transfer_function=trace.DifferentiationResponse(), demean=False)
+        c2.set_codes(location='C2')
+
+        c2max = c2.absmax()[1]
+
+        d2 = a.differentiate(inplace=False, n=2, order=4)
+        d2.set_codes(location='D2')
+        e2 = a.differentiate(inplace=False, n=2, order=2)
+        e2.set_codes(location='E2')
+
+        assert numeq(c2.ydata, d2.ydata, 0.02*c2max)
+        assert numeq(c2.ydata, e2.ydata, 0.1*c2max)
+
+        # trace.snuffle([c2, d2, e2])
+
     def testDegapping(self):
         dt = 1.0
         atmin = 100.

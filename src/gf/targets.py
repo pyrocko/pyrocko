@@ -59,12 +59,11 @@ class Target(meta.Receiver):
 
     quantity = meta.QuantityType.T(
         optional=True,
-        help='Measurement quantity type (e.g. "displacement", "pressure", ...)'
-             'If not given, it is guessed from the channel code.'
-             'Beware: If velocity is requested, the velocity is not directly'
-             'retrieved. Instead a numpy.diff is run on the retrieved'
-             'displacements, with lower accuracy. For high accuracy we'
-             'recommend using the Pyrocko object DifferentiationResponse.')
+        help='Measurement quantity type. If not given, it is guessed from the '
+             'channel code. For some common cases, derivatives of the stored '
+             'quantities are supported by using finite difference '
+             'approximations (e.g. displacement to velocity or acceleration). '
+             '4th order central FD schemes are used.')
 
     codes = Tuple.T(
         4, String.T(), default=('', 'STA', '', 'Z'),

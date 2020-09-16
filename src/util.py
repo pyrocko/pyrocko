@@ -646,6 +646,158 @@ def plf_integrate_piecewise(x_edges, x, y):
     return num.diff(y_all[-len(y_edges):])
 
 
+def diff_fd_1d_4o(dt, data):
+    '''
+    Approximate first derivative of an array (forth order, central FD).
+
+    :param dt: sampling interval
+    :param data: NumPy array with data samples
+
+    :returns: NumPy array with same shape as input
+
+    Interior points are approximated to fourth order, edge points to first
+    order right- or left-sided respectively, points next to edge to second
+    order central.
+    '''
+    import scipy.signal
+
+    ddata = num.empty_like(data, dtype=num.float)
+
+    if data.size >= 5:
+        ddata[2:-2] = scipy.signal.lfilter(
+            [-1., +8., 0., -8., 1.], [1.], data)[4:] / (12.*dt)
+
+    if data.size >= 3:
+        ddata[1] = (data[2] - data[0]) / (2. * dt)
+        ddata[-2] = (data[-1] - data[-3]) / (2. * dt)
+
+    if data.size >= 2:
+        ddata[0] = (data[1] - data[0]) / dt
+        ddata[-1] = (data[-1] - data[-2]) / dt
+
+    if data.size == 1:
+        ddata[0] = 0.0
+
+    return ddata
+
+
+def diff_fd_1d_2o(dt, data):
+    '''
+    Approximate first derivative of an array (second order, central FD).
+
+    :param dt: sampling interval
+    :param data: NumPy array with data samples
+
+    :returns: NumPy array with same shape as input
+
+    Interior points are approximated to second order, edge points to first
+    order right- or left-sided respectively.
+
+    Uses :py:func:`numpy.gradient`.
+    '''
+
+    return num.gradient(data, dt)
+
+
+def diff_fd_2d_4o(dt, data):
+    '''
+    Approximate second derivative of an array (forth order, central FD).
+
+    :param dt: sampling interval
+    :param data: NumPy array with data samples
+
+    :returns: NumPy array with same shape as input
+
+    Interior points are approximated to fourth order, next-to-edge points to
+    second order, edge points repeated.
+    '''
+    import scipy.signal
+
+    ddata = num.empty_like(data, dtype=num.float)
+
+    if data.size >= 5:
+        ddata[2:-2] = scipy.signal.lfilter(
+            [-1., +16., -30., +16., -1.], [1.], data)[4:] / (12.*dt**2)
+
+    if data.size >= 3:
+        ddata[:2] = (data[2] - 2.0 * data[1] + data[0]) / dt**2
+        ddata[-2:] = (data[-1] - 2.0 * data[-2] + data[-3]) / dt**2
+
+    if data.size < 3:
+        ddata[:] = 0.0
+
+    return ddata
+
+
+def diff_fd_2d_2o(dt, data):
+    '''
+    Approximate second derivative of an array (second order, central FD).
+
+    :param dt: sampling interval
+    :param data: NumPy array with data samples
+
+    :returns: NumPy array with same shape as input
+
+    Interior points are approximated to second order, edge points repeated.
+    '''
+    import scipy.signal
+
+    ddata = num.empty_like(data, dtype=num.float)
+
+    if data.size >= 3:
+        ddata[1:-1] = scipy.signal.lfilter(
+            [1., -2., 1.], [1.], data)[2:] / (dt**2)
+
+        ddata[0] = ddata[1]
+        ddata[-1] = ddata[-2]
+
+    if data.size < 3:
+        ddata[:] = 0.0
+
+    return ddata
+
+
+def diff_fd(n, order, dt, data):
+    '''
+    Approximate 1st or 2nd derivative of an array.
+
+    :param n: 1 for first derivative, 2 for second
+    :param order: order of the approximation 2 and 4 are supported
+    :param dt: sampling interval
+    :param data: NumPy array with data samples
+
+    :returns: NumPy array with same shape as input
+
+    This is a frontend to the functions :py:func:`diff_fd_1d_2o`,
+    :py:func:`diff_fd_1d_4o`, :py:func:`diff_fd_2d_2o`, and
+    :py:func:`diff_fd_2d_4o`.
+
+    Raises :py:exc:`ValueError` for unsupported `n` or `order`.
+    '''
+
+    funcs = {
+        1: {2: diff_fd_1d_2o, 4: diff_fd_1d_4o},
+        2: {2: diff_fd_2d_2o, 4: diff_fd_2d_4o}}
+
+    try:
+        funcs_n = funcs[n]
+    except KeyError:
+        raise ValueError(
+            'pyrocko.util.diff_fd: '
+            'Only 1st and 2sd derivatives are supported.')
+
+    try:
+        func = funcs_n[order]
+    except KeyError:
+        raise ValueError(
+            'pyrocko.util.diff_fd: '
+            'Order %i is not supported for %s derivative. Supported: %s' % (
+                order, ['', '1st', '2nd'][n],
+                ', '.join('%i' % order for order in sorted(funcs_n.keys()))))
+
+    return func(dt, data)
+
+
 class GlobalVars(object):
     reuse_store = dict()
     decitab_nmax = 0

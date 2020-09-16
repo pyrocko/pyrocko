@@ -1427,6 +1427,7 @@ class Trace(object):
                  freqlimits=None,
                  transfer_function=None,
                  cut_off_fading=True,
+                 demean=False,
                  invert=False):
 
         '''
@@ -1440,6 +1441,7 @@ class Trace(object):
             coefficients at the frequencies 'freqs'.
         :param cut_off_fading: whether to cut off rise/fall interval in output
             trace.
+        :param demean: remove mean before applying transfer function
         :param invert: set to True to do a deconvolution
         '''
 
@@ -1485,7 +1487,10 @@ class Trace(object):
             data = self.ydata
 
             data_pad = num.zeros(ntrans, dtype=num.float)
-            data_pad[:ndata] = data - data.mean()
+            data_pad[:ndata] = data
+            if demean:
+                data_pad[:ndata] -= data.mean()
+
             if tfade != 0.0:
                 data_pad[:ndata] *= costaper(
                     0., tfade, self.deltat*(ndata-1)-tfade, self.deltat*ndata,
@@ -1509,6 +1514,29 @@ class Trace(object):
             output.ydata = output.ydata.copy()
 
         return output
+
+    def differentiate(self, n=1, order=4, inplace=True):
+        '''
+        Approximate first or second derivative of the trace.
+
+        :param n: 1 for first derivative, 2 for second
+        :param order: order of the approximation 2 and 4 are supported
+        :param inplace: if ``True`` the trace is differentiated in place,
+            otherwise a new trace object with the derivative is returned.
+
+        Raises :py:exc:`ValueError` for unsupported `n` or `order`.
+
+        See :py:func:`~pyrocko.util.diff_fd` for implementation details.
+        '''
+
+        ddata = util.diff_fd(n, order, self.deltat, self.ydata)
+
+        if inplace:
+            self.ydata = ddata
+        else:
+            output = self.copy(data=False)
+            output.set_ydata(ddata)
+            return output
 
     def drop_chain_cache(self):
         if self._pchain:

@@ -541,11 +541,13 @@ class GFTestCase(unittest.TestCase):
 
         targets = [
             gf.Target(
-                codes=('', 'STA', '', component),
+                quantity=quantity,
+                codes=('', 'STA', quantity, component),
                 north_shift=500.,
                 east_shift=0.)
 
             for component in 'ZNE'
+            for quantity in ['displacement', 'velocity', 'acceleration']
         ]
 
         pulse = engine.get_store_extra(None, 'pulse')
@@ -578,7 +580,22 @@ class GFTestCase(unittest.TestCase):
             tr2.set_ydata(data)
             tr2.set_codes(location='X')
 
-            num.testing.assert_almost_equal(data, tr.ydata, 2)
+            if target.quantity == 'velocity':
+                tr2 = tr2.transfer(
+                    transfer_function=trace.DifferentiationResponse(),
+                    demean=False)
+
+            elif target.quantity == 'acceleration':
+                tr2 = tr2.transfer(
+                    transfer_function=trace.DifferentiationResponse(2),
+                    demean=False)
+
+            # trace.snuffle([tr, tr2])
+
+            amax = num.max(num.abs(tr.ydata))
+            if amax > 1e-20:
+                # print(num.max(num.abs(tr2.ydata - tr.ydata) / amax))
+                assert num.all(num.abs(tr2.ydata - tr.ydata) < 0.05 * amax)
 
     @unittest.skip('')
     def test_pulse_decimate(self):

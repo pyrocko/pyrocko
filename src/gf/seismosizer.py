@@ -2864,7 +2864,11 @@ class VectorRule(Rule):
             data = data + base_seismogram[d].data * sd
 
         if self.differentiate:
-            data = num.diff(data)
+            deltat = base_seismogram[d].deltat
+            data = util.diff_fd(self.differentiate, 4, deltat, data)
+
+        if self.integrate:
+            raise NotImplementedError('integration is not implemented yet')
 
         return data
 
@@ -2901,6 +2905,13 @@ class HorizontalVectorRule(Rule):
         if nonzero(sa):
             data = data + base_seismogram[e].data * sa
 
+        if self.differentiate:
+            deltat = base_seismogram[e].deltat
+            data = util.diff_fd(self.differentiate, 4, deltat, data)
+
+        if self.integrate:
+            raise NotImplementedError('integration is not implemented yet')
+
         return data
 
 
@@ -2913,7 +2924,12 @@ class ScalarRule(Rule):
         return (self.c, )
 
     def apply_(self, target, base_seismogram):
-        return base_seismogram[self.c].data.copy()
+        data = base_seismogram[self.c].data.copy()
+        deltat = base_seismogram[self.c].deltat
+        if self.differentiate:
+            data = util.diff_fd(self.differentiate, 4, deltat, data)
+
+        return data
 
 
 class StaticDisplacement(Rule):
