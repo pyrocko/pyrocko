@@ -23,7 +23,8 @@ def read_sac_zpk(filename=None, file=None, string=None, get_comments=False):
     '''
     Read SAC Pole-Zero file.
 
-    Returns (zeros, poles, constant).
+    :returns: ``(zeros, poles, constant)`` or
+        ``(zeros, poles, constant, comments)`` if ``get_comments`` is True.
     '''
 
     if filename is not None:
@@ -167,6 +168,47 @@ def evaluate_at(zeros, poles, constant, f):
         a /= jomeg-p
 
     return a
+
+
+def read_to_pyrocko_response(filename=None, file=None, string=None):
+    '''
+    Read SAC pole-zero file into Pyrocko response object.
+
+    :returns: Response as a :py:class:~pyrocko.trace.PoleZeroResponse` object.
+    '''
+
+    from pyrocko import trace
+
+    zeros, poles, constant = read_sac_zpk(
+        filename=filename, file=file, string=string)
+    return trace.PoleZeroResponse(zeros, poles, constant)
+
+
+def read_to_stationxml_response(
+        input_unit, output_unit, normalization_frequency=1.0,
+        filename=None, file=None, string=None):
+    '''
+    Read SAC pole-zero file into StationXML response object.
+
+    :param input_unit: Input unit to be reported in the StationXML response.
+    :type input_unit: str
+    :param output_unit: Output unit to be reported in the StationXML response.
+    :type output_unit: str
+    :param normalization_frequency: Frequency where the normalization factor
+        for the StationXML response should be computed.
+    :type normalization_frequency: float
+
+    :returns: Response as a :py:class:~pyrocko.io.stationxml.Response` object
+        with a single pole-zero response stage.
+    '''
+
+    from pyrocko.io import stationxml
+
+    presponse = read_to_pyrocko_response(
+        filename=filename, file=file, string=string)
+
+    return stationxml.Response.from_pyrocko_pz_response(
+        presponse, input_unit, output_unit, normalization_frequency)
 
 
 def plot_amplitudes_zpk(

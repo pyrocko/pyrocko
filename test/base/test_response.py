@@ -108,6 +108,19 @@ class ResponseTestCase(unittest.TestCase):
         except ValueError:
             pr_sacpz.poles.append(0.0j)
 
+        sx_sacpz_resp = \
+            sx_sacpz.network_list[0].station_list[0].channel_list[0].response
+        sx_sacpz_resp2 = pz.read_to_stationxml_response(
+            input_unit=sx_sacpz_resp.instrument_sensitivity.input_units.name,
+            output_unit=sx_sacpz_resp.instrument_sensitivity.output_units.name,
+            normalization_frequency=10.,
+            filename=sacpz_fpath)
+        pr_sx_sacpz2 = sx_sacpz_resp2.get_pyrocko_response(codes)
+        try:
+            pr_sx_sacpz2.responses[0].zeros.remove(0.0j)
+        except ValueError:
+            pr_sx_sacpz2.responses[0].poles.append(0.0j)
+
         sxml_geofon_fpath = common.test_data_file('test1.stationxml')
         sx_geofon = stationxml.load_xml(filename=sxml_geofon_fpath)
         pr_sx_geofon = sx_geofon.get_pyrocko_response(
@@ -121,7 +134,7 @@ class ResponseTestCase(unittest.TestCase):
         freqs = num.logspace(num.log10(0.001), num.log10(1.0), num=1000)
         tf_ref = pr_evresp.evaluate(freqs)
         for pr in [pr_sx_resp, pr_sx_sacpz, pr_sacpz, pr_sx_geofon,
-                   pr_sx_iris]:
+                   pr_sx_iris, pr_sx_sacpz2]:
             tf = pr.evaluate(freqs)
             # plot_tfs(freqs, [tf_ref, tf])
             assert cnumeqrel(tf_ref, tf, 0.01)

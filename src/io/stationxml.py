@@ -768,6 +768,21 @@ class Response(Object):
     @classmethod
     def from_pyrocko_pz_response(cls, presponse, input_unit, output_unit,
                                  normalization_frequency=1.0):
+        '''
+        Convert Pyrocko pole-zero response to StationXML response.
+
+        :param presponse: Pyrocko pole-zero response
+        :type presponse: :py:class:`~pyrocko.trace.PoleZeroResponse`
+        :param input_unit: Input unit to be reported in the StationXML
+            response.
+        :type input_unit: str
+        :param output_unit: Output unit to be reported in the StationXML
+            response.
+        :type output_unit: str
+        :param normalization_frequency: Frequency where the normalization
+            factor for the StationXML response should be computed.
+        :type normalization_frequency: float
+        '''
 
         norm_factor = 1.0/float(abs(
             presponse.evaluate(num.array([normalization_frequency]))[0]
