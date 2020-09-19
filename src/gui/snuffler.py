@@ -113,12 +113,12 @@ def snuffle(pile=None, **kwargs):
                 store_path = pjoin(
                     tempdir,
                     'trace-%(network)s.%(station)s.%(location)s.%(channel)s.'
-                    '%(tmin)s.mseed')
+                    '%(tmin_ms)s.mseed')
             elif os.path.isdir(store_path):
                 store_path = pjoin(
                     store_path,
                     'trace-%(network)s.%(station)s.%(location)s.%(channel)s.'
-                    '%(tmin)s.mseed')
+                    '%(tmin_ms)s.mseed')
 
             pollinjector = PollInjector(
                 pile,
