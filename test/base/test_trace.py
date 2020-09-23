@@ -1,7 +1,7 @@
 # python 2/3
 from __future__ import division, print_function, absolute_import
 
-from pyrocko import trace, util, model, pile
+from pyrocko import trace, util, model, pile, guts
 import unittest
 import math
 import time
@@ -848,6 +848,18 @@ class TraceTestCase(unittest.TestCase):
         tr_set = set([tr1, tr2])
 
         assert len(tr_set), 2
+
+
+    def test_yaml(self):
+        ydata = num.random.random(100)
+        tmin = time.time()
+        tr1 = trace.Trace(
+            'N', 'STA1', '', 'BHZ', tmin=tmin, deltat=0.1, ydata=ydata)
+
+        s = guts.dump(tr1)
+        tr2 = guts.load_string(s)
+
+        assert tr1 == tr2
 
 
 if __name__ == "__main__":

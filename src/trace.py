@@ -16,7 +16,7 @@ from scipy import signal
 from . import util, evalresp, orthodrome, pchain, model
 from .util import reuse, hpfloat, UnavailableDecimation
 from .guts import Object, Float, Int, String, Complex, Tuple, List, \
-    StringChoice
+    StringChoice, Timestamp
 from .guts_array import Array
 
 try:
@@ -32,7 +32,7 @@ guts_prefix = 'pf'
 logger = logging.getLogger('pyrocko.trace')
 
 
-class Trace(object):
+class Trace(Object):
 
     '''
     Create new trace object.
@@ -54,6 +54,7 @@ class Trace(object):
     :param ydata: 1D numpy array with data samples (can be ``None`` when
         ``tmax`` is not ``None``)
     :param mtime: optional modification time
+
     :param meta: additional meta information (not used, but maintained by the
         library)
 
@@ -63,11 +64,35 @@ class Trace(object):
     silently truncated when the trace is stored
     '''
 
+    network = String.T(default='')
+    station = String.T(default='STA')
+    location = String.T(default='')
+    channel = String.T(default='')
+
+    tmin = Timestamp.T(default=0.0)
+    tmax = Timestamp.T()
+
+    deltat = Float.T(default=1.0)
+    ydata = Array.T(optional=True, shape=(None,), serialize_as='base64+meta')
+
+    mtime = Timestamp.T(optional=True)
+
     cached_frequencies = {}
 
     def __init__(self, network='', station='STA', location='', channel='',
                  tmin=0., tmax=None, deltat=1., ydata=None, mtime=None,
                  meta=None):
+
+        Object.__init__(self, init_props=False)
+
+        if not isinstance(tmin, float):
+            tmin = Trace.T.get_property('tmin').regularize_extra(tmin)
+
+        if tmax is not None and not isinstance(tmax, float):
+            tmax = Trace.T.get_property('tmax').regularize_extra(tmax)
+
+        if mtime is not None and not isinstance(tmax, float):
+            mtime = Trace.T.get_property('mtime').regularize_extra(mtime)
 
         self._growbuffer = None
 
