@@ -849,7 +849,6 @@ class TraceTestCase(unittest.TestCase):
 
         assert len(tr_set), 2
 
-
     def test_yaml(self):
         ydata = num.random.random(100)
         tmin = time.time()
