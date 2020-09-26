@@ -174,7 +174,8 @@ class Trace(Object):
 
     def __eq__(self, other):
         return (
-            self.network == other.network
+            isinstance(other, Trace)
+            and self.network == other.network
             and self.station == other.station
             and self.location == other.location
             and self.channel == other.channel
