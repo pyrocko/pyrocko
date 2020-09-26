@@ -86,13 +86,13 @@ class Trace(Object):
         Object.__init__(self, init_props=False)
 
         if not isinstance(tmin, float):
-            tmin = Trace.T.get_property('tmin').regularize_extra(tmin)
+            tmin = Trace.tmin.regularize_extra(tmin)
 
         if tmax is not None and not isinstance(tmax, float):
-            tmax = Trace.T.get_property('tmax').regularize_extra(tmax)
+            tmax = Trace.tmax.regularize_extra(tmax)
 
-        if mtime is not None and not isinstance(tmax, float):
-            mtime = Trace.T.get_property('mtime').regularize_extra(mtime)
+        if mtime is not None and not isinstance(mtime, float):
+            mtime = Trace.mtime.regularize_extra(mtime)
 
         self._growbuffer = None
 
