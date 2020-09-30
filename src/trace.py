@@ -916,6 +916,29 @@ class Trace(Object):
         self.drop_growbuffer()
         self.ydata = signal.lfilter(b, a, data)
 
+    def bandstop(self, order, corner_hp, corner_lp, demean=True):
+        '''
+        Apply bandstop (attenuates frequencies in band) to the trace.
+
+        :param order: order of the filter
+        :param corner_hp: lower corner frequency of the filter
+        :param corner_lp: upper corner frequency of the filter
+
+        Mean is removed before filtering.
+        '''
+
+        self.nyquist_check(corner_hp, 'Lower corner frequency of bandstop')
+        self.nyquist_check(corner_lp, 'Higher corner frequency of bandstop')
+        (b, a) = _get_cached_filter_coefs(
+            order,
+            [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)],
+            btype='bandstop')
+        data = self.ydata.astype(num.float64)
+        if demean:
+            data -= num.mean(data)
+        self.drop_growbuffer()
+        self.ydata = signal.lfilter(b, a, data)
+
     def abshilbert(self):
         self.drop_growbuffer()
         self.ydata = num.abs(hilbert(self.ydata))

@@ -366,6 +366,13 @@ class TraceTestCase(unittest.TestCase):
             t.bandpass_fft(0.1, 5.)
         # d2 = time.time() - b
 
+        for i in range(100):
+            n = 10000
+            t = trace.Trace(
+                tmin=tmin, deltat=0.05, ydata=num.ones(n, dtype=num.float))
+            t.bandstop(3, 0.1, 5.)
+        # d2 = time.time() - b
+
     def testCropping(self):
         n = 20
         tmin = sometime
