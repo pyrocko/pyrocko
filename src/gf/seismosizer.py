@@ -2854,17 +2854,19 @@ class VectorRule(Rule):
 
         if nonzero(ca * cd):
             data = base_seismogram[n].data * (ca * cd)
+            deltat = base_seismogram[n].deltat
         else:
             data = 0.0
 
         if nonzero(sa * cd):
             data = data + base_seismogram[e].data * (sa * cd)
+            deltat = base_seismogram[e].deltat
 
         if nonzero(sd):
             data = data + base_seismogram[d].data * sd
+            deltat = base_seismogram[d].deltat
 
         if self.differentiate:
-            deltat = base_seismogram[d].deltat
             data = util.diff_fd(self.differentiate, 4, deltat, data)
 
         if self.integrate:
