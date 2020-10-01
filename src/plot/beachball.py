@@ -461,7 +461,14 @@ def choose_transform(axes, size_units, position, size):
         if size is None:
             size = 1.0
 
-        size = size * 0.5
+        size = size
+
+    elif size_units == 'axes':
+        transform = axes.transAxes
+        if size is None:
+            size = 1.
+
+        size = size * .5
 
     else:
         raise BeachballError(
