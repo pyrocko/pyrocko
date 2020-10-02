@@ -23,3 +23,9 @@
 
 .. automodule :: pyrocko.plot.response
     :members:
+
+``plot.directivity``
+--------------------
+
+.. automodule:: pyrocko.plot.directivity
+    :members:

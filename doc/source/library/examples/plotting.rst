@@ -200,3 +200,29 @@ Download :download:`hudson_diagram.py </../../examples/hudson_diagram.py>`
     :alt: Hudson's source type plot for 200 random moment tensors.
 
     Hudson's source type plot for 200 random moment tensors.
+
+
+Source radiation plot
+---------------------
+
+The directivity and radiation characteristics of any point or finite 
+:py:class:`~pyrocko.gf.seismosizer.Source` model can be illustrated with
+:py:func:`~pyrocko.plot.directivity.plot_directivity`.
+
+Synthetic seismic traces (R, T or Z) are forward-modelled at a defined radius,
+covering the full or partial azimuthal range and projected on a polar plot.
+Difference in the amplitude are enhanced by hillshading the data.
+
+Download :download:`plot_directivity.py </../../examples/plot_directivity.py>`
+
+.. literalinclude :: /../../examples/plot_directivity.py
+    :language: python
+
+.. figure :: /static/directivity_rectangular.png
+    :align: center
+    :alt: Source radiation pattern, as 
+
+    Source radiation pattern at 300 km distance of the Mw 6.8 2020
+    Elazig-Sevrice earthquake. The dominantly
+    unilateral strike-slip rupture is reconstructed by a finite
+    :py:mod:`~pyrocko.gf.seismosizer.RectangularSource` model.
