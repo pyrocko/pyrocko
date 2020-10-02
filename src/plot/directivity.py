@@ -16,11 +16,18 @@ d2r = num.pi / 180.
 logger = logging.getLogger(__name__)
 
 
+QUANTITY_LABEL = {
+    'displacement': 'Displacement [m]',
+    'velocity': 'Velocity [m/s]',
+    'acceleration': 'Acceleration [m/s²]'
+}
+
+
 def get_azimuthal_targets(
-        store_id, radius,
+        store_id, source, radius,
         azi_begin=0., azi_end=360., dazi=1.,
         interpolation='multilinear',
-        components='RTZ'):
+        components='RTZ', quantity='displacement'):
 
     assert dazi > 0.
     assert azi_begin < azi_end
@@ -46,8 +53,10 @@ def get_azimuthal_targets(
 
     targets = [
         Target(
-            north_shift=coords[0, iazi],
-            east_shift=coords[1, iazi],
+            lat=source.lat,
+            lon=source.lon,
+            north_shift=coords[0, iazi] + source.north_shift,
+            east_shift=coords[1, iazi] + source.east_shift,
             azimuth={
                 'R': azi,
                 'T': azi+90.,
@@ -58,7 +67,6 @@ def get_azimuthal_targets(
             **target_kwargs)
         for iazi, azi in enumerate(azimuths)
         for channel in components]
-
 
     for target, azi in zip(targets, azimuths):
         target.azimuth = azi
@@ -71,7 +79,6 @@ def get_seismogram_array(response, fmin=None, fmax=None, component='R'):
     resp = response
     assert len(resp.request.sources) == 1, 'more than one source in response'
 
-    ntraces = len(resp.request.targets)
     tmin = None
     tmax = None
     traces = []
@@ -147,7 +154,7 @@ def hillshade_seismogram_array(
     shad += shad_lim[0]
 
     if blend_mode == 'screen':
-        rgba_map[:, :3] = 1. - ((1. - rgba_map[:, :3]) * (shad[:, num.newaxis]))
+        rgba_map[:, :3] = 1. - ((1. - rgba_map[:, :3])*(shad[:, num.newaxis]))
     elif blend_mode == 'multiply':
         rgba_map[:, :3] *= shad[:, num.newaxis]
 
@@ -159,10 +166,60 @@ def plot_directivity(
         distance=300*km, azi_begin=0., azi_end=360., dazi=1.,
         phase_begin='first{stored:any_P}-10%',
         phase_end='last{stored:any_S}+50',
-        component='R', fmin=0.01, fmax=.1,
-        nthreads=0, hillshade=True, cmap='seismic',
-        plot_mt=True, show_annotations=True,
-        axes=None):
+        quantity='displacement',
+        component='R', fmin=0.01, fmax=0.1,
+        hillshade=True, cmap='seismic',
+        plot_mt='full', show_annotations=True,
+        axes=None, nthreads=0):
+    '''Plot the directivity and radiation characteristics of source models
+
+    Synthetic seismic traces (R, T or Z) are forward-modelled at a defined
+    radius, covering the full or partial azimuthal range and projected on a
+    polar plot. Difference in the amplitude are enhanced by hillshading
+    the data.
+
+    :param engine: Forward modelling engine
+    :type engine: :py:class:`~pyrocko.gf.seismosizer.Engine`
+    :param source: Parametrized source model
+    :type source: :py:class:`~pyrocko.gf.seismosizer.Source`
+    :param store_id: Store ID used for forward modelling
+    :type store_id: str
+    :param distance: Distance in [m]
+    :type distance: float
+    :param azi_begin: Begin azimuth in [deg]
+    :type azi_begin: float
+    :param azi_end: End azimuth in [deg]
+    :type azi_end: float
+    :param dazi: Delta azimuth, bin size [deg]
+    :type dazi: float
+    :param phase_begin: Start time of the window
+    :type phase_begin: :py:class:`~pyrocko.gf.meta.Timing`
+    :param phase_end: End time of the window
+    :type phase_end: :py:class:`~pyrocko.gf.meta.Timing`
+    :param quantity: Seismogram quantity, default ``displacement``
+    :type quantity: str
+    :param component: Forward modelled component, default ``R``. Choose from
+        `RTZ`
+    :type component: str
+    :param fmin: Bandpass lower frequency [Hz], default ``0.01``
+    :type fmin: float
+    :param fmax: Bandpass upper frequency [Hz], default ``0.1``
+    :type fmax: float
+    :param hillshade: Enable hillshading, default ``True``
+    :type hillshade: bool
+    :param cmap: Matplotlit colormap to use, default ``seismic``
+    :type cmap: str
+    :param plot_mt: Plot a centered moment tensor, default ``full``.
+        Choose from ``full, deviatoric, dc or False``
+    :type plot_mt: str, bool
+    :param show_annotation: Show annotations
+    :type show_annotations: bool
+    :param axes: Give axes to plot into
+    :type axes: :py:class:`matplotlib.axes.Axes`
+    :param nthreads: Number of threads used for forward modelling,
+        default ``0`` - all available cores
+    :type nthreads: int
+    '''
 
     if axes is None:
         fig = plt.figure()
@@ -171,10 +228,11 @@ def plot_directivity(
         fig = ax.figure
 
     targets, azimuths = get_azimuthal_targets(
-        store_id, distance, azi_begin, azi_end, dazi, components='R')
+        store_id, source, distance, azi_begin, azi_end, dazi,
+        components='R', quantity=quantity)
     store = engine.get_store(store_id)
 
-    resp = engine.process(rect_source, targets, nthreads=nthreads)
+    resp = engine.process(source, targets, nthreads=nthreads)
     data, times = get_seismogram_array(resp, fmin, fmax)
 
     timing_begin = Timing(phase_begin)
@@ -204,11 +262,11 @@ def plot_directivity(
     ax.yaxis.set_major_formatter(FuncFormatter(r_fmt))
     ax.set_rlim(times[-1] + .3*duration, times[0])
 
-    if plot_mt:
+    if isinstance(plot_mt, str):
         mt = source.pyrocko_moment_tensor(store=store, target=targets[0])
         beachball.plot_beachball_mpl(
             mt, ax,
-            beachball_type='deviatoric', size=.15,
+            beachball_type=plot_mt, size=.15,
             size_units='axes', color_t='slategray',
             position=(.5, .5), linewidth=1.)
 
@@ -243,18 +301,35 @@ def plot_directivity(
         ax.plot(theta, tlast, color='k', alpha=.3, lw=1.)
 
         ax.text(
-            num.pi*3/2, tphase_first, '|'.join(_phase_begin.phase_defs),
-            ha='left', color='k')
+            num.pi*4/3, tphase_first, '|'.join(_phase_begin.phase_defs),
+            ha='left', color='k', fontsize='small')
 
         ax.text(
             num.pi*5/3, tphase_last, '|'.join(_phase_end.phase_defs),
-            ha='right', color='k')
+            ha='right', color='k', fontsize='small')
 
+    ax.text(
+        -.05, -.05,
+        'Component {component:s}\n'
+        'Distance {distance:g} km\n'
+        'Bandpass {fmin:g} - {fmax:g} Hz'.format(
+            component=component,
+            distance=distance / km,
+            fmin=fmin, fmax=fmax),
+        fontsize='small',
+        ha='left', va='bottom', transform=ax.transAxes)
 
+    fig.colorbar(
+        cmw, ax=ax,
+        orientation='vertical', shrink=.8, pad=0.075,
+        label=QUANTITY_LABEL[quantity])
 
     if axes is None:
         plt.show()
     return resp
+
+
+__all__ = ['plot_directivity']
 
 
 if __name__ == '__main__':
@@ -275,5 +350,6 @@ if __name__ == '__main__':
         width=9.4*km,
         slip=1.4)
 
-
-    resp = plot_directivity(engine, rect_source, 'crust2_ib', dazi=5, component='T')
+    resp = plot_directivity(
+        engine, rect_source, 'crust2_ib',
+        dazi=5, component='R', quantity='acceleration')
