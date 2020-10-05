@@ -261,6 +261,7 @@ def plot_directivity(
 
     vmax = num.abs(data).max()
     cmw = ScalarMappable(cmap=cmap)
+    cmw.set_array(data)
     cmw.set_clim(-vmax, vmax)
 
     if envelope:

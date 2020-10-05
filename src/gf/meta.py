@@ -546,7 +546,8 @@ class Timing(SObject):
                     get_phase(phase_def) for phase_def in self.phase_defs]
                 times = [phase(args) for phase in phases]
                 if self.offset_is_percent:
-                    times = [t*(1.+offset/100.) for t in times if t is not None]
+                    times = [t*(1.+offset/100.)
+                             for t in times if t is not None]
                 else:
                     times = [t+offset for t in times if t is not None]
 
