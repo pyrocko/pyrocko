@@ -8,7 +8,7 @@ engine = LocalEngine(store_superdirs=['.'], use_config=True)
 
 try:
     engine.get_store(store_id)
-except:
+except Exception:
     ws.download_gf_store(site='kinherd', store_id=store_id)
 
 rect_source = RectangularSource(
@@ -31,4 +31,4 @@ resp = plot_directivity(
     engine, rect_source, store_id,
     distance=300*km, dazi=5., component='R',
     plot_mt='full', show_annotations=True,
-    quantity='displacement')
+    quantity='displacement', envelope=True)

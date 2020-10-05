@@ -218,11 +218,21 @@ Download :download:`plot_directivity.py </../../examples/plot_directivity.py>`
 .. literalinclude :: /../../examples/plot_directivity.py
     :language: python
 
+
 .. figure :: /static/directivity_rectangular.png
     :align: center
-    :alt: Source radiation pattern, as 
+    :alt: Source radiation pattern of a RectangularSource
 
     Source radiation pattern at 300 km distance of the Mw 6.8 2020
     Elazig-Sevrice earthquake. The dominantly
     unilateral strike-slip rupture is reconstructed by a finite
     :py:mod:`~pyrocko.gf.seismosizer.RectangularSource` model.
+
+.. figure :: /static/directivity_envelope_rectangular.png
+    :align: center
+    :alt: Source radiation pattern of a RectangularSource
+
+    Here we see the envelope of the synthetic seismic traces,
+    emphasizing the directivity effects of the source (``envelope=True``).
+    Same source model: Mw 6.8 2020 Elazig-Sevrice earthquake.
+

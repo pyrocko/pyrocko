@@ -75,7 +75,9 @@ def get_azimuthal_targets(
     return targets, azimuths
 
 
-def get_seismogram_array(response, fmin=None, fmax=None, component='R'):
+def get_seismogram_array(
+        response, fmin=None, fmax=None,
+        component='R', envelope=False):
     resp = response
     assert len(resp.request.sources) == 1, 'more than one source in response'
 
@@ -102,6 +104,8 @@ def get_seismogram_array(response, fmin=None, fmax=None, component='R'):
 
     for tr in traces:
         tr.extend(tmin, tmax, fillmethod='repeat')
+        if envelope:
+            tr.abshilbert()
 
     data = num.array([tr.get_ydata() for tr in traces])
     nsamples = data.shape[1]
@@ -166,7 +170,7 @@ def plot_directivity(
         distance=300*km, azi_begin=0., azi_end=360., dazi=1.,
         phase_begin='first{stored:any_P}-10%',
         phase_end='last{stored:any_S}+50',
-        quantity='displacement',
+        quantity='displacement', envelope=False,
         component='R', fmin=0.01, fmax=0.1,
         hillshade=True, cmap='seismic',
         plot_mt='full', show_annotations=True,
@@ -198,6 +202,8 @@ def plot_directivity(
     :type phase_end: :py:class:`~pyrocko.gf.meta.Timing`
     :param quantity: Seismogram quantity, default ``displacement``
     :type quantity: str
+    :param envelope: Plot envelop instead of seismic trace
+    :type envelope: bool
     :param component: Forward modelled component, default ``R``. Choose from
         `RTZ`
     :type component: str
@@ -207,7 +213,8 @@ def plot_directivity(
     :type fmax: float
     :param hillshade: Enable hillshading, default ``True``
     :type hillshade: bool
-    :param cmap: Matplotlit colormap to use, default ``seismic``
+    :param cmap: Matplotlit colormap to use, default ``seismic``.
+        When ``envelope`` is ``True`` the default colormap will be ``Reds``.
     :type cmap: str
     :param plot_mt: Plot a centered moment tensor, default ``full``.
         Choose from ``full, deviatoric, dc or False``
@@ -233,7 +240,9 @@ def plot_directivity(
     store = engine.get_store(store_id)
 
     resp = engine.process(source, targets, nthreads=nthreads)
-    data, times = get_seismogram_array(resp, fmin, fmax)
+    data, times = get_seismogram_array(
+        resp, fmin, fmax,
+        component=component, envelope=envelope)
 
     timing_begin = Timing(phase_begin)
     timing_end = Timing(phase_end)
@@ -247,9 +256,15 @@ def plot_directivity(
     times = times[tsel]
     duration = times[-1] - times[0]
 
+    if envelope and cmap == 'seismic':
+        cmap = 'Reds'
+
     vmax = num.abs(data).max()
     cmw = ScalarMappable(cmap=cmap)
     cmw.set_clim(-vmax, vmax)
+
+    if envelope:
+        cmw.set_clim(0., vmax)
 
     ax.set_theta_zero_location("N")
     ax.set_theta_direction(-1)
@@ -272,7 +287,7 @@ def plot_directivity(
 
     mesh = ax.pcolormesh(
         azimuths * d2r, times, data,
-        cmap='seismic', shading='gouraud', vmin=-vmax, vmax=vmax)
+        cmap=cmw.cmap, shading='gouraud')
 
     if hillshade:
         mesh.update_scalarmappable()
@@ -301,12 +316,12 @@ def plot_directivity(
         ax.plot(theta, tlast, color='k', alpha=.3, lw=1.)
 
         ax.text(
-            num.pi*4/3, tphase_first, '|'.join(_phase_begin.phase_defs),
+            num.pi*7/5, tphase_first, '|'.join(_phase_begin.phase_defs),
             ha='left', color='k', fontsize='small')
 
         ax.text(
-            num.pi*5/3, tphase_last, '|'.join(_phase_end.phase_defs),
-            ha='right', color='k', fontsize='small')
+            num.pi*6/5, tphase_last, '|'.join(_phase_end.phase_defs),
+            ha='left', color='k', fontsize='small')
 
     ax.text(
         -.05, -.05,
@@ -319,10 +334,14 @@ def plot_directivity(
         fontsize='small',
         ha='left', va='bottom', transform=ax.transAxes)
 
+    cbar_label = QUANTITY_LABEL[quantity]
+    if envelope:
+        cbar_label = 'Envelope ' + cbar_label
+
     fig.colorbar(
         cmw, ax=ax,
         orientation='vertical', shrink=.8, pad=0.075,
-        label=QUANTITY_LABEL[quantity])
+        label=cbar_label)
 
     if axes is None:
         plt.show()
@@ -352,4 +371,4 @@ if __name__ == '__main__':
 
     resp = plot_directivity(
         engine, rect_source, 'crust2_ib',
-        dazi=5, component='R', quantity='acceleration')
+        dazi=5, component='R', quantity='displacement', envelope=True)
