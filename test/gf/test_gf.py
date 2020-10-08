@@ -593,7 +593,7 @@ class GFTestCase(unittest.TestCase):
             # trace.snuffle([tr, tr2])
 
             amax = num.max(num.abs(tr.ydata))
-            if amax > 1e-20:
+            if amax > 1e-15:
                 # print(num.max(num.abs(tr2.ydata - tr.ydata) / amax))
                 assert num.all(num.abs(tr2.ydata - tr.ydata) < 0.05 * amax)
 
