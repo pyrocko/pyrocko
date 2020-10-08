@@ -56,7 +56,7 @@ for VERSION in 3 2 ; do
 
     if [ ! -d "$CONDA_PREFIX" ] ; then
         "./$CONDA_INSTALLER" -b -u -p "$CONDA_PREFIX"
-        conda install -y conda-build conda-verify anaconda-client
+        conda install -y conda-build conda-verify anaconda-client numpy
     fi
 
     if [ -d "build/pyrocko.git" ] ; then
