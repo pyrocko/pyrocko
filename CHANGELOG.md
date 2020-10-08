@@ -7,7 +7,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
-- Support for rotational seismograms in GF stores and fomosto QSSP2017 backend.
+- Support for rotational seismograms in GF stores and Fomosto QSSP2017 backend.
+- Trace objects now support serialization to YAML and inclusion into Guts based
+  objects.
+
+### Fixed
+- Fix incorrect conversion from displacement to velocity and acceleration in
+  seismogram synthesis in `pyrocko.gf`. The problem occured when
+  `quantity='velocity'` was selected in a `pyrocko.gf.Target` with a GF store
+  with `stored_quantity='displacement'`. The returned amplitudes were incorrect
+  except for the case of 1 Hz GFs.
+
+### Changed
+- Installation of prerequisites is now possible with a separate script
+  `install_prerequisites.py` rather than through `setup.py
+  install_prerequisites`.
 
 ## [2020.08.18]
 
