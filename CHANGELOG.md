@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+*empty*
+
+## [2020.10.08]
+
 ### Added
 - Support for rotational seismograms in GF stores and Fomosto QSSP2017 backend.
 - Trace objects now support serialization to YAML and inclusion into Guts based
