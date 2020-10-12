@@ -380,7 +380,8 @@ relaxation: valpha            : %12g
 
 
 class Leg(object):
-    '''Represents a continuous piece of wave propagation in a :py:class:`PhaseDef`.
+    '''
+    Represents a continuous piece of wave propagation in a phase definition
 
      **Attributes:**
 
