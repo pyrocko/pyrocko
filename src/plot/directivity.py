@@ -1,6 +1,7 @@
 import logging
 import numpy as num
 import matplotlib.pyplot as plt
+
 from matplotlib.cm import ScalarMappable
 from matplotlib.ticker import FuncFormatter
 
@@ -108,6 +109,7 @@ def get_seismogram_array(
             tr.abshilbert()
 
     data = num.array([tr.get_ydata() for tr in traces])
+    data -= data.mean()
     nsamples = data.shape[1]
     return data, num.linspace(tmin, tmax, nsamples)
 
@@ -172,9 +174,9 @@ def plot_directivity(
         phase_end='last{stored:any_S}+50',
         quantity='displacement', envelope=False,
         component='R', fmin=0.01, fmax=0.1,
-        hillshade=True, cmap='seismic',
-        plot_mt='full', show_annotations=True,
-        axes=None, nthreads=0):
+        hillshade=True, cmap=None,
+        plot_mt='full', show_phases=True, show_description=True,
+        reverse_time=False, show_nucleations=True, axes=None, nthreads=0):
     '''Plot the directivity and radiation characteristics of source models
 
     Synthetic seismic traces (R, T or Z) are forward-modelled at a defined
@@ -219,8 +221,16 @@ def plot_directivity(
     :param plot_mt: Plot a centered moment tensor, default ``full``.
         Choose from ``full, deviatoric, dc or False``
     :type plot_mt: str, bool
-    :param show_annotation: Show annotations
-    :type show_annotations: bool
+    :param show_phases: Show annotations, default ``True``
+    :type show_phases: bool
+    :param show_description: Show desciption, default ``True``
+    :type show_description: bool
+    :param reverse_time: Reverse time axis. First phases arrive at the center,
+        default ``False``
+    :type reverse_time: bool
+    :param show_nucleations: Show nucleation piercing points on the moment
+        tensor, default ``True``
+    :type show_nucleations: bool
     :param axes: Give axes to plot into
     :type axes: :py:class:`matplotlib.axes.Axes`
     :param nthreads: Number of threads used for forward modelling,
@@ -232,12 +242,19 @@ def plot_directivity(
         fig = plt.figure()
         ax = fig.add_subplot(111, polar=True)
     else:
-        fig = ax.figure
+        fig = axes.figure
+        ax = axes
+
+    if envelope and cmap is None:
+        cmap = 'Reds'
+    elif cmap is None:
+        cmap = 'seismic'
 
     targets, azimuths = get_azimuthal_targets(
         store_id, source, distance, azi_begin, azi_end, dazi,
         components='R', quantity=quantity)
     store = engine.get_store(store_id)
+    mt = source.pyrocko_moment_tensor(store=store, target=targets[0])
 
     resp = engine.process(source, targets, nthreads=nthreads)
     data, times = get_seismogram_array(
@@ -247,17 +264,29 @@ def plot_directivity(
     timing_begin = Timing(phase_begin)
     timing_end = Timing(phase_end)
 
-    tbegin = store.t(timing_begin, (source.depth, distance))
-    tend = store.t(timing_end, (source.depth, distance))
+    src_depth = source.depth
+    src_distance = distance
 
+    if hasattr(source, 'nucleation_x') and hasattr(source, 'nucleation_y'):
+        try:
+            iter(source.nucleation_x)
+            nx = float(source.nucleation_x[0])
+            ny = float(source.nucleation_y[0])
+
+        except TypeError:
+            nx = source.nucleation_x
+            ny = source.nucleation_y
+
+        src_distance += nx * source.length/2.
+        src_depth += ny*num.sin(source.dip*d2r) * source.width/2.
+
+    tbegin = store.t(timing_begin, (src_depth, src_distance))
+    tend = store.t(timing_end, (src_depth, src_distance))
     tsel = num.logical_and(times >= tbegin, times <= tend)
 
     data = data[:, tsel].T
     times = times[tsel]
     duration = times[-1] - times[0]
-
-    if envelope and cmap == 'seismic':
-        cmap = 'Reds'
 
     vmax = num.abs(data).max()
     cmw = ScalarMappable(cmap=cmap)
@@ -269,6 +298,10 @@ def plot_directivity(
 
     ax.set_theta_zero_location("N")
     ax.set_theta_direction(-1)
+    ax.set_rlabel_position(mt.strike2)
+
+    for l in ax.xaxis.get_gridlines():
+        l.set_zorder(10)
 
     def r_fmt(v, p):
         if v < tbegin or v > tend:
@@ -276,19 +309,44 @@ def plot_directivity(
         return '%g s' % v
 
     ax.yaxis.set_major_formatter(FuncFormatter(r_fmt))
-    ax.set_rlim(times[-1] + .3*duration, times[0])
+    if reverse_time:
+        ax.set_rlim(times[0] - .3*duration, times[-1])
+    else:
+        ax.set_rlim(times[-1] + .3*duration, times[0])
+
+    ax.grid(zorder=20)
 
     if isinstance(plot_mt, str):
-        mt = source.pyrocko_moment_tensor(store=store, target=targets[0])
+        mt_size = .15
         beachball.plot_beachball_mpl(
             mt, ax,
-            beachball_type=plot_mt, size=.15,
-            size_units='axes', color_t='slategray',
+            beachball_type=plot_mt, size=mt_size,
+            size_units='axes', color_t=(0.7, 0.4, 0.4),
             position=(.5, .5), linewidth=1.)
+
+        if hasattr(source, 'nucleation_x') and hasattr(source, 'nucleation_y')\
+                and show_nucleations:
+            try:
+                iter(source.nucleation_x)
+                nucleation_x = source.nucleation_x
+                nucleation_y = source.nucleation_y
+            except TypeError:
+                nucleation_x = [source.nucleation_x]
+                nucleation_y = [source.nucleation_y]
+
+            for nx, ny in zip(nucleation_x, nucleation_y):
+                angle = float(num.arctan2(ny, nx))
+                rtp = num.array([[1., angle, (90.-source.strike)*d2r]])
+                points = beachball.numpy_rtp2xyz(rtp)
+                x, y = beachball.project(points, projection='lambert').T
+                x *= mt_size
+                y *= mt_size
+                ax.plot(x+.5, y+.5, 'x', ms=6, mew=2, mec='darkred', mfc='red',
+                        transform=ax.transAxes, zorder=10)
 
     mesh = ax.pcolormesh(
         azimuths * d2r, times, data,
-        cmap=cmw.cmap, shading='gouraud')
+        cmap=cmw.cmap, shading='gouraud', zorder=0)
 
     if hillshade:
         mesh.update_scalarmappable()
@@ -297,7 +355,7 @@ def plot_directivity(
             data, color, shad_lim=(.85, 1.), blend_mode='multiply')
         mesh.set_facecolor(color)
 
-    if show_annotations:
+    if show_phases:
         _phase_begin = Timing(phase_begin)
         _phase_end = Timing(phase_end)
 
@@ -324,16 +382,22 @@ def plot_directivity(
             num.pi*6/5, tphase_last, '|'.join(_phase_end.phase_defs),
             ha='left', color='k', fontsize='small')
 
-    ax.text(
-        -.05, -.05,
-        'Component {component:s}\n'
-        'Distance {distance:g} km\n'
-        'Bandpass {fmin:g} - {fmax:g} Hz'.format(
-            component=component,
-            distance=distance / km,
-            fmin=fmin, fmax=fmax),
-        fontsize='small',
-        ha='left', va='bottom', transform=ax.transAxes)
+    description = ('Component {component:s}\n'
+                   'Distance {distance:g} km').format(
+                   component=component, distance=distance / km)
+
+    if show_description:
+        if fmin and fmax:
+            description += '\nBandpass {fmin:g} - {fmax:g} Hz'.format(
+                fmin=fmin, fmax=fmax)
+        elif fmin:
+            description += '\nHighpass {fmin:g} Hz'.format(fmin=fmin)
+        elif fmax:
+            description += '\nLowpass {fmax:g} Hz'.format(fmax=fmax)
+        ax.text(
+            -.05, -.05, description,
+            fontsize='small',
+            ha='left', va='bottom', transform=ax.transAxes)
 
     cbar_label = QUANTITY_LABEL[quantity]
     if envelope:
@@ -341,7 +405,7 @@ def plot_directivity(
 
     fig.colorbar(
         cmw, ax=ax,
-        orientation='vertical', shrink=.8, pad=0.075,
+        orientation='vertical', shrink=.8, pad=0.11,
         label=cbar_label)
 
     if axes is None:
