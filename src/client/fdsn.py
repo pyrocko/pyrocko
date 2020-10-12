@@ -849,6 +849,13 @@ def supported_params_wadl(
         return g_default_query_args[service]
 
 
+def patch_geonet_wadl(wadl):
+    for r in wadl.resources_list:
+        r.base = r.base.replace('1/station', 'station/1')
+        r.base = r.base.replace('1/dataselect', 'dataselect/1')
+        r.base = r.base.replace('1/event', 'event/1')
+
+
 def wadl(
         service,
         site=g_default_site,
@@ -882,7 +889,12 @@ def wadl(
 
     url = fillurl(service, site, url, majorversion, 'application.wadl')
 
-    return load_xml(stream=_request(url, timeout=timeout))
+    wadl = load_xml(stream=_request(url, timeout=timeout))
+
+    if site == 'geonet' or site.find('geonet.org.nz') != -1:
+        patch_geonet_wadl(wadl)
+
+    return wadl
 
 
 g_wadls = {}
