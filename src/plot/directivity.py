@@ -300,9 +300,6 @@ def plot_directivity(
     ax.set_theta_direction(-1)
     ax.set_rlabel_position(mt.strike2)
 
-    for l in ax.xaxis.get_gridlines():
-        l.set_zorder(10)
-
     def r_fmt(v, p):
         if v < tbegin or v > tend:
             return ''

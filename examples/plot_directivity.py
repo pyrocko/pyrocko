@@ -30,5 +30,5 @@ rect_source = RectangularSource(
 resp = plot_directivity(
     engine, rect_source, store_id,
     distance=300*km, dazi=5., component='R',
-    plot_mt='full', show_annotations=True,
+    plot_mt='full', show_phases=True,
     quantity='displacement', envelope=True)
