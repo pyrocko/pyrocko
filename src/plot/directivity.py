@@ -7,7 +7,7 @@ from matplotlib.ticker import FuncFormatter
 
 from pyrocko.plot import beachball
 from pyrocko.gf.meta import Timing
-from pyrocko.gf import LocalEngine, Target, RectangularSource
+from pyrocko.gf import LocalEngine, Target, RectangularSource, map_anchor
 
 
 km = 1e3
@@ -264,8 +264,8 @@ def plot_directivity(
     timing_begin = Timing(phase_begin)
     timing_end = Timing(phase_end)
 
-    src_depth = source.depth
-    src_distance = distance
+    nucl_depth = source.depth
+    nucl_distance = distance
 
     if hasattr(source, 'nucleation_x') and hasattr(source, 'nucleation_y'):
         try:
@@ -277,11 +277,16 @@ def plot_directivity(
             nx = source.nucleation_x
             ny = source.nucleation_y
 
-        src_distance += nx * source.length/2.
-        src_depth += ny*num.sin(source.dip*d2r) * source.width/2.
+        nucl_distance += nx * source.length/2.
+        nucl_depth += ny*num.sin(source.dip*d2r) * source.width/2.
 
-    tbegin = store.t(timing_begin, (src_depth, src_distance))
-    tend = store.t(timing_end, (src_depth, src_distance))
+    if hasattr(source, 'anchor'):
+        anch_x, anch_y = map_anchor[source.anchor]
+        nucl_distance -= anch_x * source.length/2.
+        nucl_depth -= anch_y * source.width/2.
+
+    tbegin = store.t(timing_begin, (nucl_depth, nucl_distance))
+    tend = store.t(timing_end, (nucl_depth, nucl_distance))
     tsel = num.logical_and(times >= tbegin, times <= tend)
 
     data = data[:, tsel].T
@@ -298,7 +303,11 @@ def plot_directivity(
 
     ax.set_theta_zero_location("N")
     ax.set_theta_direction(-1)
-    ax.set_rlabel_position(mt.strike2)
+
+    strike_label = mt.strike1
+    if hasattr(source, 'strike'):
+        strike_label = source.strike
+    ax.set_rlabel_position(strike_label % 180.)
 
     def r_fmt(v, p):
         if v < tbegin or v > tend:
@@ -336,8 +345,9 @@ def plot_directivity(
                 rtp = num.array([[1., angle, (90.-source.strike)*d2r]])
                 points = beachball.numpy_rtp2xyz(rtp)
                 x, y = beachball.project(points, projection='lambert').T
-                x *= mt_size
-                y *= mt_size
+                norm = num.sqrt(x**2 + y**2)
+                x = x / norm * mt_size/2.
+                y = y / norm * mt_size/2.
                 ax.plot(x+.5, y+.5, 'x', ms=6, mew=2, mec='darkred', mfc='red',
                         transform=ax.transAxes, zorder=10)
 
@@ -361,8 +371,8 @@ def plot_directivity(
             p.offset_is_slowness = False
             p.offset_is_percent = False
 
-        tphase_first = store.t(_phase_begin, (source.depth, distance))
-        tphase_last = store.t(_phase_end, (source.depth, distance))
+        tphase_first = store.t(_phase_begin, (nucl_depth, nucl_distance))
+        tphase_last = store.t(_phase_end, (nucl_depth, nucl_distance))
 
         theta = num.linspace(0, 2*num.pi, 360)
         tfirst = num.full_like(theta, tphase_first)
