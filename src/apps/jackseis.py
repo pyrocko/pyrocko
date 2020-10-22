@@ -11,7 +11,8 @@ import os
 import logging
 import signal
 import math
-from optparse import OptionParser
+from copy import copy
+from optparse import OptionParser, Option, OptionValueError
 
 import numpy as num
 
@@ -30,6 +31,8 @@ description = '''A simple tool to manipulate waveform archive data.'''
 tfmt = 'YYYY-mm-dd HH:MM:SS[.xxx]'
 tts = util.time_to_str
 stt = util.str_to_time
+
+valid_reclengths = tuple(2**n for n in range(8, 16))
 
 
 def die(message):
@@ -68,6 +71,21 @@ def nice_seconds_floor(s):
     return s
 
 
+def check_record_length(option, opt, value):
+    reclen = int(value)
+    if reclen in valid_reclengths:
+        return reclen
+    raise OptionValueError(
+        'invalid record length %d. (choose from %s)'
+        % (reclen, ', '.join(str(b) for b in valid_reclengths)))
+
+
+class JackseisOptions(Option):
+    TYPES = Option.TYPES + ('record_length',)
+    TYPE_CHECKER = copy(Option.TYPE_CHECKER)
+    TYPE_CHECKER['record_length'] = check_record_length
+
+
 def main(args=None):
     if args is None:
         args = sys.argv[1:]
@@ -75,6 +93,7 @@ def main(args=None):
     parser = OptionParser(
         usage=usage,
         description=description,
+        option_class=JackseisOptions,
         formatter=util.BetterHelpFormatter())
 
     parser.add_option(
@@ -250,6 +269,16 @@ def main(args=None):
              'int64, float32, float64. The output file format must support '
              'the given type.')
 
+    parser.add_option(
+        '--record-length',
+        dest='record_length',
+        type='record_length',
+        default=4096,
+        metavar='RECORD_LENGTH',
+        help='set the mseed record length in bytes. Choices: %s. '
+             'Default is 4096 bytes, which is commonly used for archiving.'
+             % ', '.join(str(2**n) for n in range(8, 16)))
+
     (options, args) = parser.parse_args(args)
 
     if len(args) == 0:
@@ -385,6 +414,10 @@ def main(args=None):
 
     old = signal.signal(signal.SIGINT, got_sigint)
 
+    save_kwargs = {}
+    if options.output_format == 'mseed':
+        save_kwargs['record_length'] = options.record_length
+
     for traces in it:
         if traces:
             twmin = min(tr.wmin for tr in traces)
@@ -438,7 +471,8 @@ def main(args=None):
                                 wmax_year=tts(twmax, format='%Y'),
                                 wmax_month=tts(twmax, format='%m'),
                                 wmax_day=tts(twmax, format='%d'),
-                                wmax=tts(twmax, format='%Y-%m-%d_%H-%M-%S')))
+                                wmax=tts(twmax, format='%Y-%m-%d_%H-%M-%S')),
+                            **save_kwargs)
                 except io.FileSaveError as e:
                     die(str(e))
 
