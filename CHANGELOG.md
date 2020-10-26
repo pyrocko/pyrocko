@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+*empty*
+
+## [2020.10.26]
+
 ### Fixed
 - Fix errors with corrupt WADL returned by GEONET FDSN web service.
 - Fix cake crashes related to the `--distances` argument on newer
