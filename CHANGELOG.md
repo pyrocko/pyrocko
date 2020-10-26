@@ -6,7 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-*empty*
+### Fixed
+- Fix errors with corrupt WADL returned by GEONET FDSN web service.
+- Fix cake crashes related to the `--distances` argument on newer
+  NumPy/Python3.8.
+
+### Changed
+- Changed default of `demean` argument to `Trace.transfer` from `False` to
+  `True`, to be consistent with the behaviour before the introduction of that
+  flag.
 
 ## [2020.10.08]
 
@@ -34,7 +42,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Scenario-generator (Colosseo) now supports user-specified lists of stations.
 
 ### Changed
-- FDSN client now checks arguments against service description (WADL) by 
+- FDSN client now checks arguments against service description (WADL) by
   default.
 - Improved FDSN client and documentation.
 
