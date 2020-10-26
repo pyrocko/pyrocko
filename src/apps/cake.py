@@ -389,7 +389,8 @@ as in --phases.''')
                         'format for distances is '
                         '"min_distance:max_distance:n_distances"')
 
-                distances = num.linspace(float(ssn[0]), float(ssn[1]), int(ssn[2]))
+                distances = num.linspace(
+                    float(ssn[0]), float(ssn[1]), int(ssn[2]))
             else:
                 distances = num.array(
                     list(map(
