@@ -13,7 +13,7 @@ import numpy as num
 
 logger = logging.getLogger('pyrocko.io.quakeml')
 
-
+guts_prefix = 'quakeml'
 guts_xmlns = 'http://quakeml.org/xmlns/bed/1.2'
 polarity_choices = {'positive': 1, 'negative': -1, 'undecidable': None}
 
@@ -537,7 +537,7 @@ class Pick(Object):
     def pyrocko_polarity(self):
         return polarity_choices.get(self.polarity, None)
 
-    def pyrocko_phase_marker(self, event=None):
+    def get_pyrocko_phase_marker(self, event=None):
         if not self.phase_hint:
             logger.warn('Pick %s: phase_hint undefined' % self.public_id)
             phasename = 'undefined'
@@ -611,7 +611,7 @@ class Origin(Object):
 
         return lat, lon, depth
 
-    def pyrocko_event(self):
+    def get_pyrocko_event(self):
         lat, lon, depth = self.position_values()
         otime = self.time.value
         if self.creation_info:
@@ -655,21 +655,52 @@ class Event(Object):
     region = Region.T(
         optional=True)
 
-    def pyrocko_phase_markers(self):
-        event = self.pyrocko_event()
-        return [p.pyrocko_phase_marker(event=event) for p in self.pick_list]
+    def describe(self):
+        return '''%s:
+    origins: %i %s
+    magnitudes: %i %s
+    focal_machanisms: %i %s
+    picks: %i
+    amplitudes: %i
+    station_magnitudes: %i''' % (
+            self.public_id,
+            len(self.origin_list),
+            '@' if self.preferred_origin_id else '-',
+            len(self.magnitude_list),
+            '@' if self.preferred_magnitude_id else '-',
+            len(self.focal_mechanism_list),
+            '@' if self.preferred_focal_mechanism_id else '-',
+            len(self.pick_list),
+            len(self.amplitude_list),
+            len(self.station_magnitude_list))
 
-    def pyrocko_event(self):
+    def get_pyrocko_phase_markers(self):
+        event = self.get_pyrocko_event()
+        return [
+            p.get_pyrocko_phase_marker(event=event) for p in self.pick_list]
+
+    def get_pyrocko_event(self):
         '''
         Convert into Pyrocko event object.
 
-        Considers only the *preferred* origin, magnitude, and moment tensor.
+        Uses *preferred* origin, magnitude, and moment tensor. If no preferred
+        item is specified, it picks the first from the list and emits a
+        warning.
         '''
 
-        if not self.preferred_origin:
-            raise NoPreferredOriginSet()
+        origin = self.preferred_origin
+        if not origin and self.origin_list:
+            origin = self.origin_list[0]
+            if len(self.origin_list) > 1:
+                logger.warn(
+                    'Event %s: No preferred origin set, '
+                    'more than one available, using first' % self.public_id)
 
-        ev = self.preferred_origin.pyrocko_event()
+        if not origin:
+            raise QuakeMLError(
+                'No origin available for event: %s' % self.public_id)
+
+        ev = origin.get_pyrocko_event()
 
         foc_mech = self.preferred_focal_mechanism
         if not foc_mech and self.focal_mechanism_list:
@@ -751,18 +782,21 @@ class QuakeML(Object):
 
     event_parameters = EventParameters.T(optional=True)
 
+    def get_events(self):
+        return self.event_parameters.event_list
+
     def get_pyrocko_events(self):
         '''Extract a list of :py:class:`pyrocko.model.Event` instances'''
         events = []
         for e in self.event_parameters.event_list:
-            events.append(e.pyrocko_event())
+            events.append(e.get_pyrocko_event())
 
         return events
 
     def get_pyrocko_phase_markers(self):
         markers = []
         for e in self.event_parameters.event_list:
-            markers.extend(e.pyrocko_phase_markers())
+            markers.extend(e.get_pyrocko_phase_markers())
 
         return markers
 

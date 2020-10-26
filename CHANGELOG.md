@@ -29,6 +29,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Changed
 - GmtPy now forces PDF version 1.5 when producing PDFs (newer PDFs caused
   problems when included in XeLaTeX).
+- QuakeML: Not strictly requiring preferred origin to be set anymore when
+  extracting Pyrocko event objects.
 
 ## [2020.10.26]
 
