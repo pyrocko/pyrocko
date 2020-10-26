@@ -1476,7 +1476,7 @@ class Trace(Object):
                  freqlimits=None,
                  transfer_function=None,
                  cut_off_fading=True,
-                 demean=False,
+                 demean=True,
                  invert=False):
 
         '''
