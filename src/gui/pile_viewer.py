@@ -1568,11 +1568,12 @@ def MakePileViewerMainClass(base):
         def open_stations_xml(self, fns=None):
             from pyrocko.io import stationxml
 
-            caption = 'Select one or more files to open'
+            caption = 'Select one or more StationXML files to open'
 
             if not fns:
                 fns, _ = fnpatch(qw.QFileDialog.getOpenFileNames(
-                    self, caption, options=qfiledialog_options))
+                    self, caption, options=qfiledialog_options,
+                    filter='StationXML *.xml (*.xml *.XML);;All files (*)'))
 
             stations = [
                 stationxml.load_xml(filename=str(x)).get_pyrocko_stations()
