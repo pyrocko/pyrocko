@@ -283,7 +283,7 @@ def plot_directivity(
     if hasattr(source, 'anchor'):
         anch_x, anch_y = map_anchor[source.anchor]
         nucl_distance -= anch_x * source.length/2.
-        nucl_depth -= anch_y * source.width/2.
+        nucl_depth -= anch_y*num.sin(source.dip*d2r) * source.width/2.
 
     tbegin = store.t(timing_begin, (nucl_depth, nucl_distance))
     tend = store.t(timing_end, (nucl_depth, nucl_distance))
