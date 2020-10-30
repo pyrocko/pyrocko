@@ -48,7 +48,7 @@ class CakePhase(Snuffling):
         #                       ' ~P(sill-bottom)s Pdiff').split()
         self._phase_names = ('~P Pg Sg pP p P Pdiff PKP PcP PcS PKIKP pPKIKP'
                              ' SSP PPS SPP PSP SP PS ~PS ~SP Pn s S Sn PP PPP'
-                             ' ScS Sdiff SS SSS PcP SKS SKIKS').split()
+                             ' ScS Sdiff SS SSS SKS SKIKS').split()
 
         for iphase, name in enumerate(self._phase_names):
             self.add_parameter(Switch(name, 'wantphase_%i' % iphase,
