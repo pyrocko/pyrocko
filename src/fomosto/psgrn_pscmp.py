@@ -108,13 +108,13 @@ class PsGrnConfig(Object):
         help='Maximum time [days] after seismic event.')
 
     gf_depth_spacing = Float.T(
-        default=-1.,
+        optional=True,
         help='depth spacing [km] for the observation points. '
-             '-1 is using the distance spacing from the store\'s config')
+             'If not defined depth spacing from the `StoreConfig` is used')
     gf_distance_spacing = Float.T(
-        default=-1.,
+        optional=True,
         help='spatial spacing [km] for the observation points. '
-             '-1 is using the distance spacing from the store\'s config')
+             'If not defined distance spacing from the `StoreConfig` is used')
     observation_depth = Float.T(
         default=0.)
 
@@ -1429,15 +1429,18 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
             (self.step + 1, self.nsteps, iblock + 1, self.nblocks))
 
         if self.step == 0:
-            gf_depth_spacing = cg.gf_depth_spacing * km
-            if cg.gf_depth_spacing == -1.:
+            if cg.gf_depth_spacing is None:
                 gf_depth_spacing = fc.source_depth_delta
+            else:
+                gf_depth_spacing = cg.gf_depth_spacing * km
+
             n_steps_depth = int((fc.source_depth_max - fc.source_depth_min) /
                                 gf_depth_spacing) + 1
 
-            gf_distance_spacing = cg.gf_distance_spacing * km
-            if cg.gf_distance_spacing == -1.:
+            if cg.gf_distance_spacing is None:
                 gf_distance_spacing = fc.distance_delta
+            else:
+                gf_distance_spacing = cg.gf_distance_spacing * km
             n_steps_distance = int((fc.distance_max - fc.distance_min) /
                                    gf_distance_spacing) + 1
 
