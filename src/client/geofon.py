@@ -109,9 +109,14 @@ class Geofon(EarthquakeCatalog):
         syear = time.strftime('%Y', time.gmtime(ev.time))
         url = 'http://geofon.gfz-potsdam.de/data/alerts/%s/%s/mt.txt' % (
             syear, ev.name)
-        logger.debug('Opening URL: %s' % url)
-        page = urlopen(url).read()
-        logger.debug('Received page (%i bytes)' % len(page))
+
+        try:
+            logger.debug('Opening URL: %s' % url)
+            page = urlopen(url).read()
+            logger.debug('Received page (%i bytes)' % len(page))
+        except util.HTTPError:
+            logger.warning('No MT found for event "%s".' % ev.name)
+            return None
 
         return self._parse_mt_page(page)
 
