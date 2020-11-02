@@ -125,7 +125,7 @@ mantle
             source_depth_delta=.5 * km,
             distance_min=0. * km,
             distance_max=50. * km,
-            distance_delta=1. * km)
+            distance_delta=.5 * km)
 
         config.validate()
         gf.store.Store.create_editables(
@@ -143,7 +143,7 @@ mantle
                             'skipping test_pyrocko_gf_vs_pscmp')
                 return
             else:
-                raise
+                raise e
 
         return store_dir, c
 
@@ -181,6 +181,10 @@ mantle
         cc.observation = psgrn_pscmp.PsCmpScatter(lats=lats, lons=lons)
 
         cc.rectangular_source_patches = pscmp_sources
+        cc.snapshots = psgrn_pscmp.PsCmpSnapshots(
+            tmin=0.,
+            tmax=1.,
+            deltatdays=1.)
 
         ccf = psgrn_pscmp.PsCmpConfigFull(**cc.items())
         ccf.psgrn_outdir = os.path.join(store_dir, c.gf_outdir) + '/'
