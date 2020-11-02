@@ -1127,8 +1127,8 @@ class PsGrnPsCmpConfig(Object):
         help='Max. time in days')
     gf_outdir = String.T(default='psgrn_functions')
 
-    psgrn_config = PsGrnConfig.T(PsGrnConfig.D())
-    pscmp_config = PsCmpConfig.T(PsCmpConfig.D())
+    psgrn_config = PsGrnConfig.T(default=PsGrnConfig.D())
+    pscmp_config = PsCmpConfig.T(default=PsCmpConfig.D())
 
 
 class PsCmpError(gf.store.StoreError):
