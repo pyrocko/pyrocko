@@ -4,6 +4,7 @@
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
 
+from .base_catalog import NotFound  # noqa
 from .globalcmt import GlobalCMT  # noqa
 from .geofon import Geofon  # noqa
 from .usgs import USGS  # noqa
