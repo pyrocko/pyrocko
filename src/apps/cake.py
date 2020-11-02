@@ -619,7 +619,6 @@ def plot_init(size, save, show):
     axes = fig.add_subplot(1, 1, 1)
     labelpos(axes, 2., 1.5)
 
-    axes.plot([0, 1], [0, 9])
     showplt = bool(show or not save)
 
     return fig, axes, showplt
