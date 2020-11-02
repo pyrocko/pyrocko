@@ -63,11 +63,19 @@ class CatalogTestCase(unittest.TestCase):
         cat = catalog.Geofon()
         tmin = util.str_to_time('2014-01-01 00:00:00')
         tmax = util.str_to_time('2017-01-01 00:00:00')
-        events = cat.get_events((tmin, tmax), magmin=8)
-        self.assertEqual(len(events), 2)
-        mt1, mt2 = [ev.moment_tensor for ev in events]
-        angle = moment_tensor.kagan_angle(mt1, mt2)
-        self.assertEqual(round(angle - 7.7, 1), 0.0)
+        events_a = cat.get_events((tmin, tmax), magmin=8)
+        events_b = [
+            cat.get_event('gfz2015sfdd'),
+            cat.get_event('gfz2014gkgf')]
+
+        for events in [events_a, events_b]:
+            self.assertEqual(len(events), 2)
+            mt1, mt2 = [ev.moment_tensor for ev in events]
+            angle = moment_tensor.kagan_angle(mt1, mt2)
+            self.assertEqual(round(angle - 7.7, 1), 0.0)
+
+        ev = cat.get_event('gfz2020vimx')
+        assert isinstance(ev.moment_tensor, moment_tensor.MomentTensor)
 
     @unittest.skip("don't want to annoy our colleagues at GEOFON")
     @common.skip_on(HTTPError)

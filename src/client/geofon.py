@@ -154,8 +154,8 @@ class Geofon(EarthquakeCatalog):
         region = properties['place']
         tevent = util.str_to_time(properties['time'].replace('T', ' '))
 
-        if 'hasMT' in properties and properties['hasMT'] == 'yes' \
-                and self._get_moment_tensors:
+        if ((properties.get('hasMT', 'no') == 'yes')
+                or properties['magType'] == 'Mw') and self._get_moment_tensors:
 
             moment_tensor = True  # flag for caller to query MT
         else:
