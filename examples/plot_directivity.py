@@ -1,18 +1,25 @@
+import os
 from pyrocko.plot.directivity import plot_directivity
 from pyrocko.gf import LocalEngine, RectangularSource, ws
 
 km = 1e3
-store_id = 'crust2_ib'
+# The store we are going extract data from:
+store_id = 'iceland_reg_v2'
 
-engine = LocalEngine(store_superdirs=['.'], use_config=True)
+# First, download a Greens Functions store. If you already have one that you
+# would like to use, you can skip this step and point the *store_superdirs* in
+# the next step to that directory.
 
-try:
-    engine.get_store(store_id)
-except Exception:
+if not os.path.exists(store_id):
     ws.download_gf_store(site='kinherd', store_id=store_id)
 
+# We need a pyrocko.gf.Engine object which provides us with the traces
+# extracted from the store.
+engine = LocalEngine(store_superdirs=['.'])
+
+# Create a RectangularSource with uniform fit.
 rect_source = RectangularSource(
-    depth=2.6*km,
+    depth=1.6*km,
     strike=240.,
     dip=76.6,
     rake=-.4,
@@ -31,4 +38,6 @@ resp = plot_directivity(
     engine, rect_source, store_id,
     distance=300*km, dazi=5., component='R',
     plot_mt='full', show_phases=True,
+    phase_begin='first{stored:begin}-10%',
+    phase_end='last{stored:end}+20',
     quantity='displacement', envelope=True)
