@@ -15,6 +15,8 @@ from .io_common import FileLoadError, FileSaveError
 
 logger = logging.getLogger('pyrocko.io.mseed')
 
+VALID_RECORD_LENGTHS = tuple(2**exp for exp in range(8, 20))
+
 
 class CodeTooLong(FileSaveError):
     pass
@@ -67,7 +69,7 @@ def save(traces, filename_template, additional={}, overwrite=True,
          record_length=4096):
     from pyrocko import mseed_ext
 
-    assert record_length in (2**exp for exp in range(8, 20))
+    assert record_length in VALID_RECORD_LENGTHS
 
     fn_tr = {}
     for tr in traces:
