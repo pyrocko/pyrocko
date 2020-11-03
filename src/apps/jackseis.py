@@ -32,8 +32,6 @@ tfmt = 'YYYY-mm-dd HH:MM:SS[.xxx]'
 tts = util.time_to_str
 stt = util.str_to_time
 
-valid_reclengths = tuple(2**n for n in range(8, 16))
-
 
 def die(message):
     sys.exit('%s: error: %s' % (program_name, message))
@@ -73,11 +71,11 @@ def nice_seconds_floor(s):
 
 def check_record_length(option, opt, value):
     reclen = int(value)
-    if reclen in valid_reclengths:
+    if reclen in io.mseed.VALID_RECORD_LENGTHS:
         return reclen
     raise OptionValueError(
         'invalid record length %d. (choose from %s)'
-        % (reclen, ', '.join(str(b) for b in valid_reclengths)))
+        % (reclen, ', '.join(str(b) for b in io.mseed.VALID_RECORD_LENGTHS)))
 
 
 class JackseisOptions(Option):
@@ -270,14 +268,14 @@ def main(args=None):
              'the given type.')
 
     parser.add_option(
-        '--record-length',
+        '--output-record-length',
         dest='record_length',
         type='record_length',
         default=4096,
         metavar='RECORD_LENGTH',
         help='set the mseed record length in bytes. Choices: %s. '
              'Default is 4096 bytes, which is commonly used for archiving.'
-             % ', '.join(str(2**n) for n in range(8, 16)))
+             % ', '.join(str(b) for b in io.mseed.VALID_RECORD_LENGTHS))
 
     (options, args) = parser.parse_args(args)
 
