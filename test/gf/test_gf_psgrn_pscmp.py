@@ -25,6 +25,8 @@ mm = 1e-3
 neast = 40
 nnorth = 40
 
+show_plot = int(os.environ.get('MPL_SHOW', 0))
+
 
 def statics(engine, source, starget):
     store = engine.get_store(starget.store_id)
@@ -299,27 +301,24 @@ mantle
         # ref_result, compare_results = get_displacements(source_plain)
         # self.plot_displacement_differences(ref_result, compare_results)
 
-        if True:
-            import matplotlib
-            matplotlib.use('Qt5Agg')
-            import matplotlib.pyplot as plt
+        import matplotlib.pyplot as plt
 
-            fig = plt.figure()
-            ax = fig.gca()
+        fig = plt.figure()
+        ax = fig.gca()
 
-            for depth in (2., 4., 8., 12.):
-                source_plain.depth = depth * km
-                ref_result, compare_results = get_displacements(source_plain)
-                self.plot_differences(
-                    ax, ref_result, compare_results,
-                    label='Source Depth %.2f km' % depth)
+        for depth in (2., 4., 8., 12.):
+            source_plain.depth = depth * km
+            ref_result, compare_results = get_displacements(source_plain)
+            self.plot_differences(
+                ax, ref_result, compare_results,
+                label='Source Depth %.2f km' % depth)
 
-            ax.legend()
+        ax.legend()
+
+        if show_plot:
             plt.show()
 
     def plot_displacement_differences(self, reference, compare):
-        import matplotlib
-        matplotlib.use('Qt5Agg')
         import matplotlib.pyplot as plt
 
         ncompare = len(compare)
@@ -337,7 +336,8 @@ mantle
             ax.set_title('GF Distance %.2f' % gf_distance)
 
         ax.legend()
-        plt.show()
+        if show_plot:
+            plt.show()
 
     def plot_differences(self, ax, reference, compare, **kwargs):
         for key, comp in compare.items():
