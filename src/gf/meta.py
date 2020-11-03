@@ -415,9 +415,8 @@ class Timing(SObject):
     ``'SELECT{PHASE_DEFS}[+-]OFFSET[S|%]'`` where ``'SELECT'`` is ``'first'``,
     ``'last'`` or empty, ``'PHASE_DEFS'`` is a ``'|'``-separated list of phase
     definitions, and ``'OFFSET'`` is the time offset in seconds. If a ``'%'``
-    is appended, it is interpreted as percent. If the an
-    ``'S'`` is appended to ``'OFFSET'``, it is interpreted as a surface
-    slowness in [s/km].
+    is appended, it is interpreted as percent. If the an ``'S'`` is appended
+    to ``'OFFSET'``, it is interpreted as a surface slowness in [s/km].
 
     Phase definitions can be specified in either of the following ways:
 
@@ -433,7 +432,9 @@ class Timing(SObject):
     * ``'100'`` : absolute time; 100 s
     * ``'{stored:P}-100'`` : 100 s before arrival of P phase according to
       stored travel time table named ``'P'``
-      * ``'{stored:P}-10%'`` : 10% before arrival of P phase according to
+    * ``'{stored:P}-5.1S'`` : 10% before arrival of P phase according to
+      stored travel time table named ``'P'``
+    * ``'{stored:P}-10%'`` : 10% before arrival of P phase according to
       stored travel time table named ``'P'``
     * ``'{stored:A|stored:B}'`` : time instant of phase arrival A, or B if A is
       undefined for a given geometry
@@ -447,12 +448,14 @@ class Timing(SObject):
     def __init__(self, s=None, **kwargs):
 
         if s is not None:
-            offset_is_slowness = False
-            offset_is_percent = False
+            offset_is = None
             s = re.sub(r'\s+', '', s)
             try:
                 offset = float(s.rstrip('S'))
-                offset_is_slowness = s.endswith('S')
+
+                if s.endswith('S'):
+                    offset_is = 'slowness'
+
                 phase_defs = []
                 select = ''
 
@@ -473,8 +476,10 @@ class Timing(SObject):
                     soff = m.group(27)
                     if soff:
                         offset = float(soff.rstrip('S%'))
-                        offset_is_slowness = soff.endswith('S')
-                        offset_is_percent = s.endswith('%')
+                        if soff.endswith('S'):
+                            offset_is = 'slowness'
+                        elif soff.endswith('%'):
+                            offset_is = 'percent'
 
                     matched = True
 
@@ -506,8 +511,7 @@ class Timing(SObject):
                 phase_defs=phase_defs,
                 select=select,
                 offset=offset,
-                offset_is_slowness=offset_is_slowness,
-                offset_is_percent=offset_is_percent)
+                offset_is=offset_is)
 
         SObject.__init__(self, **kwargs)
 
@@ -525,16 +529,16 @@ class Timing(SObject):
 
         if self.offset != 0.0 or not self.phase_defs:
             s.append('%+g' % self.offset)
-            if self.offset_is_slowness:
+            if self.offset_is == 'slowness':
                 s.append('S')
-            elif self.offset_is_percent:
+            elif self.offset_is == 'percent':
                 s.append('%')
 
         return ''.join(s)
 
     def evaluate(self, get_phase, args):
         try:
-            if self.offset_is_slowness and self.offset != 0.0:
+            if self.offset_is == 'slowness' and self.offset != 0.0:
                 phase_offset = get_phase(
                     'vel_surface:%g' % (1.0/self.offset))
                 offset = phase_offset(args)
@@ -545,7 +549,7 @@ class Timing(SObject):
                 phases = [
                     get_phase(phase_def) for phase_def in self.phase_defs]
                 times = [phase(args) for phase in phases]
-                if self.offset_is_percent:
+                if self.offset_is == 'percent':
                     times = [t*(1.+offset/100.)
                              for t in times if t is not None]
                 else:
@@ -567,8 +571,7 @@ class Timing(SObject):
 
     phase_defs = List.T(String.T())
     offset = Float.T(default=0.0)
-    offset_is_slowness = Bool.T(default=False)
-    offset_is_percent = Bool.T(default=False)
+    offset_is = String.T(optional=True)
     select = PhaseSelect.T(
         default='',
         help=('Can be either ``\'%s\'``, ``\'%s\'``, or ``\'%s\'``. ' %
