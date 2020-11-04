@@ -353,6 +353,8 @@ push @GS, "-sOutputFile=$OutputFilename";
 
 push @GS, "-dDOINTERPOLATE";
 
+push @GS, "-dCompatibilityLevel=1.5";
+
 ### options compress, embed, res, autorotate
 push @GS, ('-dPDFSETTINGS=/prepress', '-dMaxSubsetPct=100',
   '-dSubsetFonts=true', '-dEmbedAllFonts=true') if $::opt_embed;
