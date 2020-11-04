@@ -1254,7 +1254,7 @@ class Trace(Object):
         STA/LTA are equivalent to
 
         .. math::
-            s_i = \\frac{s}{l} \\frac{\\frac{1}{s}\\sum_{j=i}{i+s-1} f_j}
+            s_i = \\frac{s}{l} \\frac{\\frac{1}{s}\\sum_{j=i}^{i+s-1} f_j}
                                      {\\frac{1}{l}\\sum_{j=i+s-l}^{i+s-1} f_j}
 
         where :math:`f_j` are the input samples, :math:`s` are the number of
