@@ -6,7 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-*empty*
+### Fixed
+- Fix plotting issues in cake.
+- Update Geofon catalog to handle MTs correctly after Geofon web page update.
+- Fix typos in STA/LTA documentation.
+
+### Changed
+- GmtPy now forces PDF version 1.5 when producing PDFs (newer PDFs caused
+  problems when included in XeLaTeX).
 
 ## [2020.10.26]
 
