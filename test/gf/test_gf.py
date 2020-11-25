@@ -709,6 +709,49 @@ class GFTestCase(unittest.TestCase):
             sum_data = num.sum(abs(tr.ydata))
             assert sum_data > 1.0
 
+    def test_target_store_deltat(self):
+        store_dir = self.get_pulse_store_dir()
+        engine = gf.LocalEngine(store_dirs=[store_dir])
+        store = engine.get_store('pulse')
+
+        source = gf.ExplosionSource(
+            depth=200.,
+            magnitude=4.,
+            time=0.)
+
+        targets = [gf.Target(
+            codes=('', 'STA', '', 'Z'),
+            north_shift=500.,
+            east_shift=500.,
+            sample_rate=None)]
+
+        response = engine.process(source, targets)
+        synthetic_traces = response.pyrocko_traces()
+
+        assert synthetic_traces[0].deltat == store.config.deltat
+
+        targets = [gf.Target(
+            codes=('', 'STA', '', 'Z'),
+            north_shift=500.,
+            east_shift=500.,
+            sample_rate=100.)]
+
+        response = engine.process(source, targets)
+        synthetic_traces = response.pyrocko_traces()
+
+        assert synthetic_traces[0].deltat == 1./targets[0].sample_rate
+
+        targets.append(gf.Target(
+            codes=('', 'ST', '', 'Z'),
+            north_shift=500.,
+            east_shift=500.,
+            sample_rate=50.))
+
+        response = engine.process(source, targets)
+        synthetic_traces = response.pyrocko_traces()
+
+        assert synthetic_traces[0].deltat == 1./targets[0].sample_rate
+
     def benchmark_get(self):
         store_dir = self.get_benchmark_store_dir()
 
