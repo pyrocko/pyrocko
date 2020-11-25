@@ -750,7 +750,10 @@ class GFTestCase(unittest.TestCase):
         response = engine.process(source, targets)
         synthetic_traces = response.pyrocko_traces()
 
-        assert synthetic_traces[0].deltat == 1./targets[0].sample_rate
+        deltat = [tr.deltat for tr in synthetic_traces]
+        assert num.unique(deltat).shape[0] == 1
+
+        assert deltat == 1./targets[0].sample_rate
 
     def benchmark_get(self):
         store_dir = self.get_benchmark_store_dir()

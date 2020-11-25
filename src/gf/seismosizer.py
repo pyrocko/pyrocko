@@ -3350,7 +3350,7 @@ class LocalEngine(Engine):
         rates = set([t.sample_rate for t in targets])
         if len(rates) > 1:
             logging.warning('Targets have different sample rates!'
-                            ' Choosing %g for all targets.'
+                            ' Choosing %g per second for all targets.'
                             % rate)
 
         tmin = num.fromiter(
