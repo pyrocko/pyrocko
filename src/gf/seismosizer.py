@@ -3005,12 +3005,28 @@ def process_dynamic_timeseries(work, psources, ptargets, engine, nthreads=0):
         for store_id in store_ids:
             store_targets = [t for t in targets if t.store_id == store_id]
 
-            base_seismograms = engine.base_seismograms(
-                source,
-                store_targets,
-                components,
-                dsource_cache,
-                nthreads)
+            sample_rates = set([t.sample_rate for t in store_targets])
+            interpolations = set([t.interpolation for t in store_targets])
+
+            base_seismograms = []
+
+            for samp_rate in sample_rates:
+                for interp in interpolations:
+                    engine_targets = [
+                        t for t in store_targets if t.sample_rate == samp_rate
+                        and t.interpolation == interp]
+
+                    if not engine_targets:
+                        continue
+
+                    base_seismograms += engine.base_seismograms(
+                        source,
+                        [t for t in store_targets if
+                            t.sample_rate == samp_rate and
+                            t.interpolation == interp],
+                        components,
+                        dsource_cache,
+                        nthreads)
 
             for iseis, seismogram in enumerate(base_seismograms):
                 for tr in seismogram.values():
@@ -3333,9 +3349,11 @@ class LocalEngine(Engine):
 
         interp = set([t.interpolation for t in targets])
         if len(interp) > 1:
-            logging.warning('Targets have different interpolation schemes!'
-                            ' Choosing %s for all targets.'
-                            % target.interpolation)
+            BadRequest('Targets have different interpolation schemes!')
+
+        rates = set([t.sample_rate for t in targets])
+        if len(rates) > 1:
+            BadRequest('Targets have different sample rates!')
 
         store_ = self.get_store(target.store_id)
         receivers = [t.receiver(store_) for t in targets]
@@ -3346,12 +3364,6 @@ class LocalEngine(Engine):
         else:
             deltat = None
             rate = store_.config.sample_rate
-
-        rates = set([t.sample_rate for t in targets])
-        if len(rates) > 1:
-            logging.warning('Targets have different sample rates!'
-                            ' Choosing %g per second for all targets.'
-                            % rate)
 
         tmin = num.fromiter(
             (t.tmin for t in targets), dtype=num.float, count=len(targets))

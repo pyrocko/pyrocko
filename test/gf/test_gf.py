@@ -723,7 +723,8 @@ class GFTestCase(unittest.TestCase):
             codes=('', 'STA', '', 'Z'),
             north_shift=500.,
             east_shift=500.,
-            sample_rate=None)]
+            sample_rate=None,
+            store_id='pulse')]
 
         response = engine.process(source, targets)
         synthetic_traces = response.pyrocko_traces()
@@ -734,26 +735,38 @@ class GFTestCase(unittest.TestCase):
             codes=('', 'STA', '', 'Z'),
             north_shift=500.,
             east_shift=500.,
-            sample_rate=100.)]
+            sample_rate=100.,
+            store_id='pulse')]
 
         response = engine.process(source, targets)
         synthetic_traces = response.pyrocko_traces()
 
         assert synthetic_traces[0].deltat == 1./targets[0].sample_rate
 
-        targets.append(gf.Target(
-            codes=('', 'ST', '', 'Z'),
-            north_shift=500.,
-            east_shift=500.,
-            sample_rate=50.))
+        targets = [
+            gf.Target(
+                codes=('', 'STA', '', 'Z'),
+                north_shift=500.,
+                east_shift=500.,
+                sample_rate=100.,
+                interpolation='multilinear',
+                store_id='pulse'),
+            gf.Target(
+                codes=('', 'STA2', '', 'Z'),
+                north_shift=600.,
+                east_shift=600.,
+                sample_rate=50.,
+                interpolation='nearest_neighbor',
+                store_id='pulse')]
 
         response = engine.process(source, targets)
         synthetic_traces = response.pyrocko_traces()
 
-        deltat = [tr.deltat for tr in synthetic_traces]
-        assert num.unique(deltat).shape[0] == 1
+        deltat_tr = [tr.deltat for tr in synthetic_traces]
+        deltat_targ = [1./t.sample_rate for t in targets]
 
-        assert deltat == 1./targets[0].sample_rate
+        assert num.unique(deltat_tr).shape[0] == \
+            num.unique(deltat_targ).shape[0]
 
     def benchmark_get(self):
         store_dir = self.get_benchmark_store_dir()
