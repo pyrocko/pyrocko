@@ -82,6 +82,14 @@ def cake_model_to_config(mod):
 
 
 class PsGrnSpatialSampling(Object):
+
+    '''
+    Definition of spatial sampling for PSGRN.
+
+    Note: attributes in this class use non-standard units [km] to be consistent
+    with PSGRN text file input. Please read the documentation carefully.
+    '''
+
     n_steps = Int.T(default=10)
     start_distance = Float.T(default=0.)    # start sampling [km] from source
     end_distance = Float.T(default=100.)    # end
@@ -93,11 +101,19 @@ class PsGrnSpatialSampling(Object):
 
 class PsGrnConfig(Object):
 
+    '''
+    Configuration for PSGRN.
+
+    Note: attributes in this class use non-standard units [km] and [days] to
+    be consistent with PSGRN text file input. Please read the documentation
+    carefully.
+    '''
+
     version = String.T(default='2008a')
 
     sampling_interval = Float.T(
         default=1.0,
-        help='exponential sampling 1.- equidistant, > 1. decreasing sampling'
+        help='Exponential sampling 1.- equidistant, > 1. decreasing sampling'
              ' with distance')
     n_time_samples = Int.T(
         optional=True,
@@ -109,14 +125,15 @@ class PsGrnConfig(Object):
 
     gf_depth_spacing = Float.T(
         optional=True,
-        help='depth spacing [km] for the observation points. '
+        help='Depth spacing [km] for the observation points. '
              'If not defined depth spacing from the `StoreConfig` is used')
     gf_distance_spacing = Float.T(
         optional=True,
-        help='spatial spacing [km] for the observation points. '
+        help='Spatial spacing [km] for the observation points. '
              'If not defined distance spacing from the `StoreConfig` is used')
     observation_depth = Float.T(
-        default=0.)
+        default=0.,
+        help='Depth of observation points [km]')
 
     def items(self):
         return dict(self.T.inamevals(self))
@@ -635,13 +652,23 @@ class PsCmpTensileSF(Location, gf.seismosizer.Cloneable):
     '''
     Compound dislocation of 3 perpendicular, rectangular sources to approximate
     an opening single force couple. NED coordinate system!
+
+    Warning: Mixed standard [m] / non-standard [days] units are used in this
+    class. Please read the documentation carefully.
     '''
 
-    length = Float.T(default=1.0 * km)
-    width = Float.T(default=1.0 * km)
-    torigin = Float.T(default=0.0)
-    idx = String.T(default='nn',
-                   help='Axis Index for opening direction; "nn, ee, dd"')
+    length = Float.T(
+        default=1.0 * km,
+        help='Length of source rectangle [m].')
+    width = Float.T(
+        default=1.0 * km,
+        help='Width of source rectangle [m].')
+    torigin = Float.T(
+        default=0.0,
+        help='Origin time [days]')
+    idx = String.T(
+        default='nn',
+        help='Axis index for opening direction; "nn", "ee", or "dd"')
 
     def to_rfs(self):
         rf = -0.25
@@ -665,11 +692,25 @@ class PsCmpTensileSF(Location, gf.seismosizer.Cloneable):
 
 class PsCmpShearSF(Location, gf.seismosizer.Cloneable):
 
-    length = Float.T(default=1.0 * km)
-    width = Float.T(default=1.0 * km)
-    torigin = Float.T(default=0.0)
-    idx = String.T(default='ne',
-                   help='Axis Index for shear direction; "ne, nd, ed"')
+    '''
+    Shear fault source model component.
+
+    Warning: Mixed standard [m] / non-standard [days] units are used in this
+    class. Please read the documentation carefully.
+    '''
+
+    length = Float.T(
+        default=1.0 * km,
+        help='Length of source rectangle [m].')
+    width = Float.T(
+        default=1.0 * km,
+        help='Width of source rectangle [m].')
+    torigin = Float.T(
+        default=0.0,
+        help='Origin time [days]')
+    idx = String.T(
+        default='ne',
+        help='Axis index for opening direction; "ne", "nd", or "ed"')
 
     def to_rfs(self):
         kwargs = copy.deepcopy(self.__dict__)
@@ -683,13 +724,23 @@ class PsCmpMomentTensor(Location, gf.seismosizer.Cloneable):
     '''
     Mapping of Moment Tensor components to rectangular faults.
     Only one component at a time valid! NED coordinate system!
+
+    Warning: Mixed standard [m] / non-standard [days] units are used in this
+    class. Please read the documentation carefully.
     '''
-    length = Float.T(default=1.0 * km)
-    width = Float.T(default=1.0 * km)
-    torigin = Float.T(default=0.0)
-    idx = String.T(default='nn',
-                   help='Axis Index for MT component;'
-                        '"nn, ee, dd, ne, nd, ed"')
+    length = Float.T(
+        default=1.0 * km,
+        help='Length of source rectangle [m].')
+    width = Float.T(
+        default=1.0 * km,
+        help='Width of source rectangle [m].')
+    torigin = Float.T(
+        default=0.0,
+        help='Origin time [days]')
+    idx = String.T(
+        default='nn',
+        help='Axis index for MT component; '
+             '"nn", "ee", "dd", "ne", "nd", or "ed".')
 
     def to_rfs(self):
         kwargs = copy.deepcopy(self.__dict__)
@@ -717,9 +768,9 @@ class PsCmpCoulombStressMasterFault(PsCmpCoulombStress):
     master_fault_strike = Float.T(default=300.)
     master_fault_dip = Float.T(default=15.)
     master_fault_rake = Float.T(default=90.)
-    sigma1 = Float.T(default=1.e6)
-    sigma2 = Float.T(default=-1.e6)
-    sigma3 = Float.T(default=0.0)
+    sigma1 = Float.T(default=1.e6, help='[Pa]')
+    sigma2 = Float.T(default=-1.e6, help='[Pa]')
+    sigma3 = Float.T(default=0.0, help='[Pa]')
 
     def string_for_config(self):
         return '%(friction)15e %(skempton_ratio)15e %(master_fault_strike)15f'\
@@ -730,7 +781,12 @@ class PsCmpCoulombStressMasterFault(PsCmpCoulombStress):
 class PsCmpSnapshots(Object):
     '''
     Snapshot time series definition.
+
+    Note: attributes in this class use non-standard units [days] to be
+    consistent with PSCMP text file input. Please read the documentation
+    carefully.
     '''
+
     tmin = Float.T(
         default=0.0,
         help='Time [days] after source time to start temporal sample'
@@ -1118,6 +1174,10 @@ class PsCmpConfigFull(PsCmpConfig):
 class PsGrnPsCmpConfig(Object):
     '''
     Combined config Object of PsGrn and PsCmp.
+
+    Note: attributes in this class use non-standard units [days] to be
+    consistent with PSCMP text file input. Please read the documentation
+    carefully.
     '''
     tmin_days = Float.T(
         default=0.,
