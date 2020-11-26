@@ -523,8 +523,8 @@ class Range(SObject):
                                              num.log(-stop), n))
             else:
                 raise InvalidGridDef(
-                    'log ranges should not include or cross zero '
-                    '(in range specification "%s")' % self)
+                    'Log ranges should not include or cross zero '
+                    '(in range specification "%s").' % self)
 
             if self.spacing == 'symlog':
                 nvals = - vals
@@ -532,7 +532,7 @@ class Range(SObject):
 
         if self.relative in ('add', 'mult') and base is None:
             raise InvalidGridDef(
-                'cannot use relative range specification in this context')
+                'Cannot use relative range specification in this context.')
 
         vals = self.make_relative(base, vals)
 
@@ -558,7 +558,7 @@ class GridDefElement(Object):
             t = shorthand.split('=')
             if len(t) != 2:
                 raise InvalidGridDef(
-                    'invalid grid specification element: %s' % shorthand)
+                    'Invalid grid specification element: %s' % shorthand)
 
             sp, sr = t[0].strip(), t[1].strip()
 
@@ -893,7 +893,7 @@ class HalfSinusoidSTF(STF):
         elif exponent == 2:
             return math.sqrt(math.pi**2 - 6) / math.pi
         else:
-            raise ValueError('exponent for HalfSinusoidSTF must be 1 or 2')
+            raise ValueError('Exponent for HalfSinusoidSTF must be 1 or 2.')
 
     @property
     def effective_duration(self):
@@ -921,7 +921,8 @@ class HalfSinusoidSTF(STF):
                     - 1.0 / (2.0 * math.pi) * num.sin(
                         (t_edges - tmin_stf) * (2.0 * math.pi / self.duration))
             else:
-                raise ValueError('exponent for HalfSinusoidSTF must be 1 or 2')
+                raise ValueError(
+                    'Exponent for HalfSinusoidSTF must be 1 or 2.')
 
             amplitudes = fint[1:] - fint[:-1]
             amplitudes /= num.sum(amplitudes)
@@ -1227,7 +1228,7 @@ class Source(Location, Cloneable):
     def from_pyrocko_event(cls, ev, **kwargs):
         if ev.depth is None:
             raise ConversionError(
-                'cannot convert event object to source object: '
+                'Cannot convert event object to source object: '
                 'no depth information available')
 
         stf = None
@@ -1318,7 +1319,7 @@ class SourceWithDerivedMagnitude(Source):
         pass
 
     def get_magnitude(self, store=None, target=None):
-        raise DerivedMagnitudeError('no magnitude set')
+        raise DerivedMagnitudeError('No magnitude set.')
 
     def get_moment(self, store=None, target=None):
         return float(pmt.magnitude_to_moment(
@@ -1375,7 +1376,7 @@ class ExplosionSource(SourceWithDerivedMagnitude):
     def check_conflicts(self):
         if self.magnitude is not None and self.volume_change is not None:
             raise DerivedMagnitudeError(
-                'magnitude and volume_change are both defined')
+                'Magnitude and volume_change are both defined.')
 
     def get_magnitude(self, store=None, target=None):
         self.check_conflicts()
@@ -1408,8 +1409,8 @@ class ExplosionSource(SourceWithDerivedMagnitude):
     def get_moment_to_volume_change_ratio(self, store, target=None):
         if store is None:
             raise DerivedMagnitudeError(
-                'need earth model to convert between volume change and '
-                'magnitude')
+                'Need earth model to convert between volume change and '
+                'magnitude.')
 
         points = num.array(
             [[self.north_shift, self.east_shift, self.depth]], dtype=num.float)
@@ -1422,7 +1423,7 @@ class ExplosionSource(SourceWithDerivedMagnitude):
                 interpolation=interpolation)[0]
         except meta.OutOfBounds:
             raise DerivedMagnitudeError(
-                'could not get shear modulus at source position')
+                'Could not get shear modulus at source position.')
 
         return float(3. * shear_moduli)
 
@@ -1734,8 +1735,8 @@ class VLVDSource(SourceWithDerivedMagnitude):
     def get_moment_to_volume_change_ratio(self, store, target):
         if store is None or target is None:
             raise DerivedMagnitudeError(
-                'need earth model to convert between volume change and '
-                'magnitude')
+                'Need earth model to convert between volume change and '
+                'magnitude.')
 
         points = num.array(
             [[self.north_shift, self.east_shift, self.depth]], dtype=num.float)
@@ -1747,7 +1748,7 @@ class VLVDSource(SourceWithDerivedMagnitude):
                 interpolation=target.interpolation)[0]
         except meta.OutOfBounds:
             raise DerivedMagnitudeError(
-                'could not get shear modulus at source position')
+                'Could not get shear modulus at source position.')
 
         return float(3. * shear_moduli)
 
@@ -2000,7 +2001,7 @@ class RectangularSource(SourceWithDerivedMagnitude):
     def check_conflicts(self):
         if self.magnitude is not None and self.slip is not None:
             raise DerivedMagnitudeError(
-                'magnitude and slip are both defined')
+                'Magnitude and slip are both defined.')
 
     def get_magnitude(self, store=None, target=None):
         self.check_conflicts()
@@ -2010,9 +2011,9 @@ class RectangularSource(SourceWithDerivedMagnitude):
         elif self.slip is not None:
             if None in (store, target):
                 raise DerivedMagnitudeError(
-                    'magnitude for a rectangular source with slip defined '
+                    'Magnitude for a rectangular source with slip defined '
                     'can only be derived when earth model and target '
-                    'interpolation method are available')
+                    'interpolation method are available.')
 
             amplitudes = self._discretize(store, target)[2]
             return float(pmt.moment_to_magnitude(num.sum(amplitudes)))
@@ -2458,7 +2459,7 @@ class CombiSource(Source):
     def __init__(self, subsources=[], **kwargs):
         if not subsources:
             raise BadRequest(
-                'need at least one sub-source to create a CombiSource object.')
+                'Need at least one sub-source to create a CombiSource object.')
 
         lats = num.array(
             [subsource.lat for subsource in subsources], dtype=num.float)
@@ -2649,7 +2650,7 @@ class Request(Object):
     @classmethod
     def args2kwargs(cls, args):
         if len(args) not in (0, 2, 3):
-            raise BadRequest('invalid arguments')
+            raise BadRequest('Invalid arguments.')
 
         if len(args) == 2:
             return dict(sources=args[0], targets=args[1])
@@ -2870,7 +2871,7 @@ class VectorRule(Rule):
             data = util.diff_fd(self.differentiate, 4, deltat, data)
 
         if self.integrate:
-            raise NotImplementedError('integration is not implemented yet')
+            raise NotImplementedError('Integration is not implemented yet.')
 
         return data
 
@@ -2912,7 +2913,7 @@ class HorizontalVectorRule(Rule):
             data = util.diff_fd(self.differentiate, 4, deltat, data)
 
         if self.integrate:
-            raise NotImplementedError('integration is not implemented yet')
+            raise NotImplementedError('Integration is not implemented yet.')
 
         return data
 
@@ -3330,8 +3331,8 @@ class LocalEngine(Engine):
             pass
 
         raise BadRequest(
-            'no rule to calculate "%s" with GFs from store "%s" '
-            'for source model "%s"' % (
+            'No rule to calculate "%s" with GFs from store "%s" '
+            'for source model "%s".' % (
                 target.effective_quantity(),
                 target.store_id,
                 source.__class__.__name__))
@@ -3349,11 +3350,11 @@ class LocalEngine(Engine):
 
         interp = set([t.interpolation for t in targets])
         if len(interp) > 1:
-            BadRequest('Targets have different interpolation schemes!')
+            raise BadRequest('Targets have different interpolation schemes.')
 
         rates = set([t.sample_rate for t in targets])
         if len(rates) > 1:
-            BadRequest('Targets have different sample rates!')
+            raise BadRequest('Targets have different sample rates.')
 
         store_ = self.get_store(target.store_id)
         receivers = [t.receiver(store_) for t in targets]
@@ -3526,7 +3527,7 @@ class LocalEngine(Engine):
         '''
 
         if len(args) not in (0, 1, 2):
-            raise BadRequest('invalid arguments')
+            raise BadRequest('Invalid arguments.')
 
         if len(args) == 1:
             kwargs['request'] = args[0]
@@ -3721,11 +3722,11 @@ class SourceGroup(Object):
 
     def __iter__(self):
         raise NotImplementedError(
-            'this method should be implemented in subclass')
+            'This method should be implemented in subclass.')
 
     def __len__(self):
         raise NotImplementedError(
-            'this method should be implemented in subclass')
+            'This method should be implemented in subclass.')
 
 
 class SourceList(SourceGroup):
@@ -3767,7 +3768,7 @@ class SourceGrid(SourceGroup):
                 yield k
                 ks.remove(k)
         if ks:
-            raise Exception('Invalid parameter "%s" for source type "%s"' %
+            raise Exception('Invalid parameter "%s" for source type "%s".' %
                             (ks[0], self.base.__class__.__name__))
 
     def make_coords(self, base):
