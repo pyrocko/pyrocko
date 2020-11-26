@@ -787,7 +787,7 @@ def MakePileViewerMainClass(base):
             self.menu.addAction(mi)
             mi.triggered.connect(self.open_stations)
 
-            mi = qw.QAction('Open station XML files...', self.menu)
+            mi = qw.QAction('Open StationXML files...', self.menu)
             self.menu.addAction(mi)
             mi.triggered.connect(self.open_stations_xml)
 
