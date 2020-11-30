@@ -36,6 +36,11 @@ class CrustDBTestCase(unittest.TestCase):
         self.db.selectMaxDepth(40.)
         self.db.selectMinDepth(20.)
 
+    def test_get_layered_model(self):
+        dsea = self.db.selectLocation(lat=31.54, lon=35.48, radius=5.)
+        vmod = dsea.getLayeredModel((0, 60000), 1000)
+        print(vmod)
+
     def test_csv(self):
         fn = pjoin(self.tmpdir, 'x.csv')
         self.db.exportCSV(fn)
