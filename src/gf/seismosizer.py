@@ -3010,6 +3010,7 @@ def process_dynamic_timeseries(work, psources, ptargets, engine, nthreads=0):
             interpolations = set([t.interpolation for t in store_targets])
 
             base_seismograms = []
+            store_targets_out = []
 
             for samp_rate in sample_rates:
                 for interp in interpolations:
@@ -3020,11 +3021,11 @@ def process_dynamic_timeseries(work, psources, ptargets, engine, nthreads=0):
                     if not engine_targets:
                         continue
 
+                    store_targets_out += engine_targets
+
                     base_seismograms += engine.base_seismograms(
                         source,
-                        [t for t in store_targets if
-                            t.sample_rate == samp_rate and
-                            t.interpolation == interp],
+                        engine_targets,
                         components,
                         dsource_cache,
                         nthreads)
@@ -3043,7 +3044,7 @@ def process_dynamic_timeseries(work, psources, ptargets, engine, nthreads=0):
                                         components=components))))
                         raise e
 
-            for seismogram, target in zip(base_seismograms, store_targets):
+            for seismogram, target in zip(base_seismograms, store_targets_out):
 
                 try:
                     result = engine._post_process_dynamic(

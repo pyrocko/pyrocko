@@ -765,8 +765,8 @@ class GFTestCase(unittest.TestCase):
         deltat_tr = [tr.deltat for tr in synthetic_traces]
         deltat_targ = [1./t.sample_rate for t in targets]
 
-        assert num.unique(deltat_tr).shape[0] == \
-            num.unique(deltat_targ).shape[0]
+        for deltat_t, deltat_ta in zip(deltat_tr, deltat_targ):
+            assert deltat_t == deltat_ta
 
     def benchmark_get(self):
         store_dir = self.get_benchmark_store_dir()
