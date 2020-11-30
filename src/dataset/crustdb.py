@@ -322,7 +322,7 @@ class CrustDB(object):
         Create a regular sampled velocity matrix.
 
         :param depth_range: Depth range, ``(dmin, dmax)``,
-            defaults to ``(0, 6000.)``
+            defaults to ``(0., 60000.)``
         :type depth_range: tuple
         :param ddepth: Stepping in [m], defaults to ``100.``
         :type ddepth: float
@@ -346,7 +346,7 @@ class CrustDB(object):
 
         return sdepth, self._velocity_matrix_cache[uid]
 
-    def rmsRank(self, ref_profile, depth_range=(0, 3500.), ddepth=100.,
+    def rmsRank(self, ref_profile, depth_range=(0., 3500.), ddepth=100.,
                 phase='p'):
         '''
         Correlates ``ref_profile`` to each profile in the database.
@@ -415,6 +415,21 @@ class CrustDB(object):
                                range=(vel_range, depth_range),
                                bins=[nvbins, ndbins],
                                density=False)
+
+    def getLayeredModel(self, depth_range=(0., 60000.), ddepth=100.):
+        ''' Get a layered model, see :class:`pyrocko.cake.LayeredModel`. '''
+
+        sdepth, vp_mean, vp_std = self.meanVelocity(
+            depth_range=depth_range, ddepth=ddepth, phase='p')
+        _, vs_mean, vs_std = self.meanVelocity(
+            depth_range=depth_range, ddepth=ddepth, phase='s')
+
+        def iterLines():
+            for il, depth in enumerate(sdepth):
+                m = Material(vp=vp_mean[il], vs=vs_mean[il])
+                yield depth, m, ''
+
+        return LayeredModel.from_scanlines(iterLines())
 
     def meanVelocity(self, depth_range=(0., 60000.), ddepth=100., phase='p'):
         '''
