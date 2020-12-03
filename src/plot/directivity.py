@@ -8,6 +8,7 @@ from matplotlib.ticker import FuncFormatter
 from pyrocko.plot import beachball
 from pyrocko.gf.meta import Timing
 from pyrocko.gf import LocalEngine, Target, RectangularSource, map_anchor
+from pyrocko.util import num_full_like
 
 
 km = 1e3
@@ -146,8 +147,9 @@ def hillshade_seismogram_array(
     # if there are strong artifical edges in the data, shades get
     # dominated by them. Cutting off the largest and smallest 2% of
     # # shades helps
-    percentile2 = num.quantile(shad, 0.02)
-    percentile98 = num.quantile(shad, 0.98)
+    percentile2 = num.percentile(shad, 2.0)
+    percentile98 = num.percentile(shad, 98.0)
+
     shad[shad > percentile98] = percentile98
     shad[shad < percentile2] = percentile2
 
@@ -307,7 +309,11 @@ def plot_directivity(
     strike_label = mt.strike1
     if hasattr(source, 'strike'):
         strike_label = source.strike
-    ax.set_rlabel_position(strike_label % 180.)
+
+    try:
+        ax.set_rlabel_position(strike_label % 180.)
+    except AttributeError:
+        logger.warn('Old matplotlib version: cannot set label positions')
 
     def r_fmt(v, p):
         if v < tbegin or v > tend:
@@ -375,8 +381,8 @@ def plot_directivity(
         tphase_last = store.t(_phase_end, (nucl_depth, nucl_distance))
 
         theta = num.linspace(0, 2*num.pi, 360)
-        tfirst = num.full_like(theta, tphase_first)
-        tlast = num.full_like(theta, tphase_last)
+        tfirst = num_full_like(theta, tphase_first)
+        tlast = num_full_like(theta, tphase_last)
 
         ax.plot(theta, tfirst, color='k', alpha=.3, lw=1.)
         ax.plot(theta, tlast, color='k', alpha=.3, lw=1.)
@@ -410,10 +416,11 @@ def plot_directivity(
     if envelope:
         cbar_label = 'Envelope ' + cbar_label
 
-    fig.colorbar(
+    cb = fig.colorbar(
         cmw, ax=ax,
-        orientation='vertical', shrink=.8, pad=0.11,
-        label=cbar_label)
+        orientation='vertical', shrink=.8, pad=0.11)
+
+    cb.set_label(cbar_label)
 
     if axes is None:
         plt.show()
