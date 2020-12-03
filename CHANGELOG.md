@@ -6,10 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- New command line option for jackseis: `--record-length`
+- Timing definition offsets can now take `%` as suffix to scale phase
+  traveltimes relatively.
+- New plot function to show radiation pattern / azimuthal distribution of
+  directivity effects for synthetics.
+- Snuffler: load StationXML via menu.
+
 ### Fixed
 - Fix plotting issues in cake.
 - Update Geofon catalog to handle MTs correctly after Geofon web page update.
 - Fix typos in STA/LTA documentation.
+- Fomosto PSGRN/PSCMP backend: improved control of modelling parameters,
+  fixes some accuracy issues, regarding the spacial sampling interval.
+- Improved handling of differing sampling rates and interpolation settings
+  when modelling multiple targets in `gf.Engine.process`.
 
 ### Changed
 - GmtPy now forces PDF version 1.5 when producing PDFs (newer PDFs caused
