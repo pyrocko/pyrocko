@@ -37,6 +37,9 @@ class RectangularSourceGenerator(SourceGenerator):
     length = Float.T(
         optional=True)
 
+    slip = Float.T(
+        optional=True)
+
     def get_source(self, ievent):
         rstate = self.get_rstate(ievent)
         time = rstate.uniform(self.time_min, self.time_max)
@@ -66,20 +69,35 @@ class RectangularSourceGenerator(SourceGenerator):
             strike = self.strike
             dip = self.dip
             rake = self.rake
+        if not self.slip:
+            source = gf.RectangularSource(
+                time=float(time),
+                lat=float(lat),
+                lon=float(lon),
+                anchor='top',
+                depth=float(depth),
+                length=float(length),
+                width=float(width),
+                strike=float(strike),
+                dip=float(dip),
+                rake=float(rake),
+                magnitude=magnitude,
+                decimation_factor=self.decimation_factor)
 
-        source = gf.RectangularSource(
-            time=float(time),
-            lat=float(lat),
-            lon=float(lon),
-            anchor='top',
-            depth=float(depth),
-            length=float(length),
-            width=float(width),
-            strike=float(strike),
-            dip=float(dip),
-            rake=float(rake),
-            magnitude=magnitude,
-            decimation_factor=self.decimation_factor)
+        else:
+            source = gf.RectangularSource(
+                time=float(time),
+                lat=float(lat),
+                lon=float(lon),
+                anchor='top',
+                depth=float(depth),
+                length=float(length),
+                width=float(width),
+                strike=float(strike),
+                dip=float(dip),
+                rake=float(rake),
+                slip=float(self.slip),
+                decimation_factor=self.decimation_factor)
 
         return source
 

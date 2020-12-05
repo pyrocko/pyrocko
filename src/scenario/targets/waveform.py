@@ -43,6 +43,43 @@ class WaveformNoiseGenerator(NoiseGenerator):
             tr.add(ntr)
 
 
+class RealNoiseGenerator(WaveformNoiseGenerator):
+    waveform_paths = List.T(
+        optional=True,
+        help='List of files with waveforms.')
+
+    def get_intersecting_snippets(self, deltat, codes, tmin, tmax):
+        tinc = self.get_time_increment(deltat)
+
+        noise_waveforms = self.get_noise_waveforms()
+        trs = []
+        for noise_waveform in noise_waveforms:
+            if noise_waveform.network == codes[0] and noise_waveform.station == codes[1] and noise_waveform.location == codes[2] and noise_waveform.channel == codes[3]:
+                if noise_waveform.deltat != deltat:
+                    noise_waveform.resample(deltat)
+                noise_waveform.shift(tmin - noise_waveform.tmin+1200)
+                noise_waveform.chop(tmin, tmax)
+                trs.append(trace.Trace(
+                    codes[0], codes[1], codes[2], codes[3],
+                    deltat=deltat,
+                    tmin=tmin,
+                    ydata=noise_waveform.ydata))
+        return trs
+
+    def get_noise_waveforms(self):
+
+        noise_waveforms = []
+
+        if self.waveform_paths:
+            for filename in self.waveform_paths:
+                noise_waveforms.extend(
+                    io.load(filename))
+
+        self._noise_waveforms = noise_waveforms
+
+        return self._noise_waveforms
+
+
 class WhiteNoiseGenerator(WaveformNoiseGenerator):
 
     scale = Float.T(default=1e-6)
