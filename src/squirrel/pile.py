@@ -281,6 +281,9 @@ class Pile(object):
         if not keep_current_files_open:
             self._squirrel.clear_accessor(accessor_id, 'waveform')
 
+    def chopper_grouped(self, gather, progress=None, *args, **kwargs):
+        raise NotImplementedError
+
     def reload_modified(self):
         self._squirrel.reload()
 
