@@ -106,6 +106,252 @@ class JackseisOptions(Option):
     TYPE_CHECKER['steim'] = check_steim
 
 
+def process(get_pile, options):
+    tinc = None
+    if options.tinc is not None:
+        if tinc in ('huge', 'auto'):
+            tinc = options.tinc
+        else:
+            try:
+                tinc = str_to_seconds(options.tinc)
+            except Exception:
+                die('invalid argument to --tinc')
+
+    tmin = None
+    if options.tmin is not None:
+        try:
+            tmin = stt(options.tmin)
+        except Exception:
+            die('invalid argument to --tmin. '
+                'Expected format is ""')
+
+    tmax = None
+    if options.tmax is not None:
+        try:
+            tmax = stt(options.tmax)
+        except Exception:
+            die('invalid argument to --tmax. '
+                'Expected format is "%s"' % tfmt)
+
+    target_deltat = None
+    if options.downsample is not None:
+        try:
+            target_deltat = 1.0 / float(options.downsample)
+        except Exception:
+            die('invalid argument to --downsample')
+
+    replacements = []
+    for k, rename_k, in [
+            ('network', options.rename_network),
+            ('station', options.rename_station),
+            ('location', options.rename_location),
+            ('channel', options.rename_channel)]:
+
+        for patrep in rename_k:
+            m = re.match(r'/([^/]+)/([^/]*)/', patrep)
+            if not m:
+                die('invalid argument to --rename-%s. '
+                    'Expected format is /PATTERN/REPLACEMENT/' % k)
+
+            replacements.append((k, m.group(1), m.group(2)))
+
+    sx = None
+    if options.station_xml_fns:
+        sxs = []
+        for station_xml_fn in options.station_xml_fns:
+            sxs.append(stationxml.load_xml(filename=station_xml_fn))
+
+        sx = stationxml.primitive_merge(sxs)
+
+    events = []
+    for event_fn in options.event_fns:
+        events.extend(model.load_events(event_fn))
+
+    p = get_pile()
+
+    if p.tmin is None:
+        die('data selection is empty')
+
+    if tinc == 'auto':
+        tinc = nice_seconds_floor(p.get_deltatmin() * 1000000.)
+
+    if options.snap:
+        if tmin is None:
+            tmin = p.tmin
+
+        if tinc is not None:
+            tmin = int(math.floor(tmin / tinc)) * tinc
+
+    output_path = options.output_path
+    output_dir = options.output_dir
+
+    if output_path and not output_dir and os.path.isdir(output_path):
+        output_dir = output_path  # compat. with old behaviour
+
+    if output_dir and not output_path:
+        output_path = 'trace_%(network)s-%(station)s-' \
+                      '%(location)s-%(channel)s_%(wmin)s.' + \
+                      options.output_format
+
+    if output_dir and output_path:
+        output_path = pjoin(output_dir, output_path)
+
+    if not output_path:
+        die('--output not given')
+
+    fmin, fmax = map(float, options.str_fmin_fmax.split(','))
+    tfade_factor = 2.0
+    ffade_factor = 1.5
+    if options.output_quantity:
+        tpad = 2*tfade_factor/fmin
+    else:
+        tpad = 0.
+
+    if target_deltat is not None:
+        tpad += target_deltat * 10.
+
+    if tinc is None:
+        if ((tmax or p.tmax) - (tmin or p.tmin)) \
+                / p.get_deltatmin() > 100000000.:
+            die('use --tinc=huge to really produce such large output files '
+                'or use --tinc=INC to split into smaller files.')
+
+    kwargs = dict(tmin=tmin, tmax=tmax, tinc=tinc, tpad=tpad, style='batch')
+
+    if options.traversal == 'channel-by-channel':
+        it = p.chopper_grouped(gather=lambda tr: tr.nslc_id, **kwargs)
+
+    elif options.traversal == 'station-by-station':
+        it = p.chopper_grouped(gather=lambda tr: tr.nslc_id[:2], **kwargs)
+
+    else:
+        it = p.chopper(**kwargs)
+
+    abort = []
+
+    def got_sigint(signum, frame):
+        abort.append(True)
+
+    old = signal.signal(signal.SIGINT, got_sigint)
+
+    save_kwargs = {}
+    if options.output_format == 'mseed':
+        save_kwargs['record_length'] = options.record_length
+        save_kwargs['steim'] = options.steim
+
+    for batch in it:
+        traces = batch.traces
+        if traces:
+            twmin = batch.tmin
+            twmax = batch.tmax
+            logger.info('processing %s - %s, %i traces' %
+                        (tts(twmin), tts(twmax), len(traces)))
+
+            if options.sample_snap:
+                for tr in traces:
+                    tr.snap(interpolate=options.sample_snap == 'interpolate')
+
+            if target_deltat is not None:
+                out_traces = []
+                for tr in traces:
+                    try:
+                        tr.downsample_to(
+                            target_deltat, snap=True, demean=False)
+
+                        if options.output_data_type == 'same':
+                            tr.ydata = tr.ydata.astype(tr.ydata.dtype)
+
+                        out_traces.append(tr)
+
+                    except (trace.TraceTooShort, trace.NoData):
+                        pass
+
+                traces = out_traces
+
+            if options.output_quantity:
+                out_traces = []
+                tfade = tfade_factor / fmin
+                ftap = (fmin / ffade_factor, fmin, fmax, ffade_factor * fmax)
+                for tr in traces:
+                    try:
+                        response = sx.get_pyrocko_response(
+                            tr.nslc_id,
+                            timespan=(tr.tmin, tr.tmax),
+                            fake_input_units=output_units[
+                                options.output_quantity])
+
+                        rest_tr = tr.transfer(
+                            tfade, ftap, response, invert=True, demean=True)
+
+                        out_traces.append(rest_tr)
+
+                    except stationxml.NoResponseInformation as e:
+                        logger.warn(
+                            'Cannot restitute: %s (no response)' % str(e))
+
+                    except stationxml.MultipleResponseInformation as e:
+                        logger.warn(
+                            'Cannot restitute: %s (multiple responses found)'
+                            % str(e))
+
+                    except (trace.TraceTooShort, trace.NoData):
+                        logger.warn(
+                            'Trace too short: %s' % '.'.join(tr.nslc_id))
+
+                traces = out_traces
+
+            if options.output_data_type != 'same':
+                for tr in traces:
+                    tr.ydata = tr.ydata.astype(
+                        name_to_dtype[options.output_data_type])
+
+            if replacements:
+                for tr in traces:
+                    r = {}
+                    for k, pat, repl in replacements:
+                        oldval = getattr(tr, k)
+                        newval, n = re.subn(pat, repl, oldval)
+                        if n:
+                            r[k] = newval
+
+                    tr.set_codes(**r)
+
+            if output_path:
+                otraces = []
+                for tr in traces:
+                    try:
+                        otr = tr.chop(twmin, twmax, inplace=False)
+                        otraces.append(otr)
+                    except trace.NoData:
+                        pass
+
+                try:
+                    io.save(otraces, output_path, format=options.output_format,
+                            overwrite=options.force,
+                            additional=dict(
+                                wmin_year=tts(twmin, format='%Y'),
+                                wmin_month=tts(twmin, format='%m'),
+                                wmin_day=tts(twmin, format='%d'),
+                                wmin_jday=tts(twmin, format='%j'),
+                                wmin=tts(twmin, format='%Y-%m-%d_%H-%M-%S'),
+                                wmax_year=tts(twmax, format='%Y'),
+                                wmax_month=tts(twmax, format='%m'),
+                                wmax_day=tts(twmax, format='%d'),
+                                wmax_jday=tts(twmax, format='%j'),
+                                wmax=tts(twmax, format='%Y-%m-%d_%H-%M-%S')),
+                            **save_kwargs)
+                except io.FileSaveError as e:
+                    die(str(e))
+
+        if abort:
+            break
+
+    signal.signal(signal.SIGINT, old)
+
+    if abort:
+        die('interrupted.')
+
+
 def main(args=None):
     if args is None:
         args = sys.argv[1:]
@@ -346,255 +592,16 @@ def main(args=None):
     else:
         util.setup_logging(program_name, 'info')
 
-    tinc = None
-    if options.tinc is not None:
-        if tinc in ('huge', 'auto'):
-            tinc = options.tinc
-        else:
-            try:
-                tinc = str_to_seconds(options.tinc)
-            except Exception:
-                die('invalid argument to --tinc')
+    def get_pile():
+        return pile.make_pile(
+            paths=args,
+            selector=None,
+            regex=options.regex,
+            fileformat=options.format,
+            cachedirname=options.cache_dir,
+            show_progress=not options.quiet)
 
-    tmin = None
-    if options.tmin is not None:
-        try:
-            tmin = stt(options.tmin)
-        except Exception:
-            die('invalid argument to --tmin. '
-                'Expected format is ""')
-
-    tmax = None
-    if options.tmax is not None:
-        try:
-            tmax = stt(options.tmax)
-        except Exception:
-            die('invalid argument to --tmax. '
-                'Expected format is "%s"' % tfmt)
-
-    target_deltat = None
-    if options.downsample is not None:
-        try:
-            target_deltat = 1.0 / float(options.downsample)
-        except Exception:
-            die('invalid argument to --downsample')
-
-    replacements = []
-    for k, rename_k, in [
-            ('network', options.rename_network),
-            ('station', options.rename_station),
-            ('location', options.rename_location),
-            ('channel', options.rename_channel)]:
-
-        for patrep in rename_k:
-            m = re.match(r'/([^/]+)/([^/]*)/', patrep)
-            if not m:
-                die('invalid argument to --rename-%s. '
-                    'Expected format is /PATTERN/REPLACEMENT/' % k)
-
-            replacements.append((k, m.group(1), m.group(2)))
-
-    sx = None
-    if options.station_xml_fns:
-        sxs = []
-        for station_xml_fn in options.station_xml_fns:
-            sxs.append(stationxml.load_xml(filename=station_xml_fn))
-
-        sx = stationxml.primitive_merge(sxs)
-
-    events = []
-    for event_fn in options.event_fns:
-        events.extend(model.load_events(event_fn))
-
-    p = pile.make_pile(
-        paths=args,
-        selector=None,
-        regex=options.regex,
-        fileformat=options.format,
-        cachedirname=options.cache_dir,
-        show_progress=not options.quiet)
-
-    if p.tmin is None:
-        die('data selection is empty')
-
-    if tinc == 'auto':
-        tinc = nice_seconds_floor(p.get_deltatmin() * 1000000.)
-
-    if options.snap:
-        if tmin is None:
-            tmin = p.tmin
-
-        if tinc is not None:
-            tmin = int(math.floor(tmin / tinc)) * tinc
-
-    output_path = options.output_path
-    output_dir = options.output_dir
-
-    if output_path and not output_dir and os.path.isdir(output_path):
-        output_dir = output_path  # compat. with old behaviour
-
-    if output_dir and not output_path:
-        output_path = 'trace_%(network)s-%(station)s-' \
-                      '%(location)s-%(channel)s_%(wmin)s.' + \
-                      options.output_format
-
-    if output_dir and output_path:
-        output_path = pjoin(output_dir, output_path)
-
-    if not output_path:
-        die('--output not given')
-
-    fmin, fmax = map(float, options.str_fmin_fmax.split(','))
-    tfade_factor = 2.0
-    ffade_factor = 1.5
-    if options.output_quantity:
-        tpad = 2*tfade_factor/fmin
-    else:
-        tpad = 0.
-
-    if target_deltat is not None:
-        tpad += target_deltat * 10.
-
-    if tinc is None:
-        if ((tmax or p.tmax) - (tmin or p.tmin)) \
-                / p.get_deltatmin() > 100000000.:
-            die('use --tinc=huge to really produce such large output files '
-                'or use --tinc=INC to split into smaller files.')
-
-    kwargs = dict(tmin=tmin, tmax=tmax, tinc=tinc, tpad=tpad, style='batch')
-
-    if options.traversal == 'channel-by-channel':
-        it = p.chopper_grouped(gather=lambda tr: tr.nslc_id, **kwargs)
-
-    elif options.traversal == 'station-by-station':
-        it = p.chopper_grouped(gather=lambda tr: tr.nslc_id[:2], **kwargs)
-
-    else:
-        it = p.chopper(**kwargs)
-
-    abort = []
-
-    def got_sigint(signum, frame):
-        abort.append(True)
-
-    old = signal.signal(signal.SIGINT, got_sigint)
-
-    save_kwargs = {}
-    if options.output_format == 'mseed':
-        save_kwargs['record_length'] = options.record_length
-        save_kwargs['steim'] = options.steim
-
-    for batch in it:
-        traces = batch.traces
-        if traces:
-            twmin = batch.tmin
-            twmax = batch.tmax
-            logger.info('processing %s - %s, %i traces' %
-                        (tts(twmin), tts(twmax), len(traces)))
-
-            if options.sample_snap:
-                for tr in traces:
-                    tr.snap(interpolate=options.sample_snap == 'interpolate')
-
-            if target_deltat is not None:
-                out_traces = []
-                for tr in traces:
-                    try:
-                        tr.downsample_to(
-                            target_deltat, snap=True, demean=False)
-
-                        if options.output_data_type == 'same':
-                            tr.ydata = tr.ydata.astype(tr.ydata.dtype)
-
-                        out_traces.append(tr)
-
-                    except (trace.TraceTooShort, trace.NoData):
-                        pass
-
-                traces = out_traces
-
-            if options.output_quantity:
-                out_traces = []
-                tfade = tfade_factor / fmin
-                ftap = (fmin / ffade_factor, fmin, fmax, ffade_factor * fmax)
-                for tr in traces:
-                    try:
-                        response = sx.get_pyrocko_response(
-                            tr.nslc_id,
-                            timespan=(tr.tmin, tr.tmax),
-                            fake_input_units=output_units[
-                                options.output_quantity])
-
-                        rest_tr = tr.transfer(
-                            tfade, ftap, response, invert=True, demean=True)
-
-                        out_traces.append(rest_tr)
-
-                    except stationxml.NoResponseInformation as e:
-                        logger.warn(
-                            'Cannot restitute: %s (no response)' % str(e))
-
-                    except stationxml.MultipleResponseInformation as e:
-                        logger.warn(
-                            'Cannot restitute: %s (multiple responses found)'
-                            % str(e))
-
-                    except (trace.TraceTooShort, trace.NoData):
-                        logger.warn(
-                            'Trace too short: %s' % '.'.join(tr.nslc_id))
-
-                traces = out_traces
-
-            if options.output_data_type != 'same':
-                for tr in traces:
-                    tr.ydata = tr.ydata.astype(
-                        name_to_dtype[options.output_data_type])
-
-            if replacements:
-                for tr in traces:
-                    r = {}
-                    for k, pat, repl in replacements:
-                        oldval = getattr(tr, k)
-                        newval, n = re.subn(pat, repl, oldval)
-                        if n:
-                            r[k] = newval
-
-                    tr.set_codes(**r)
-
-            if output_path:
-                otraces = []
-                for tr in traces:
-                    try:
-                        otr = tr.chop(twmin, twmax, inplace=False)
-                        otraces.append(otr)
-                    except trace.NoData:
-                        pass
-
-                try:
-                    io.save(otraces, output_path, format=options.output_format,
-                            overwrite=options.force,
-                            additional=dict(
-                                wmin_year=tts(twmin, format='%Y'),
-                                wmin_month=tts(twmin, format='%m'),
-                                wmin_day=tts(twmin, format='%d'),
-                                wmin_jday=tts(twmin, format='%j'),
-                                wmin=tts(twmin, format='%Y-%m-%d_%H-%M-%S'),
-                                wmax_year=tts(twmax, format='%Y'),
-                                wmax_month=tts(twmax, format='%m'),
-                                wmax_day=tts(twmax, format='%d'),
-                                wmax_jday=tts(twmax, format='%j'),
-                                wmax=tts(twmax, format='%Y-%m-%d_%H-%M-%S')),
-                            **save_kwargs)
-                except io.FileSaveError as e:
-                    die(str(e))
-
-        if abort:
-            break
-
-    signal.signal(signal.SIGINT, old)
-
-    if abort:
-        die('interrupted.')
+    return process(get_pile, options)
 
 
 if __name__ == '__main__':
