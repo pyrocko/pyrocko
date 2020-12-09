@@ -239,7 +239,7 @@ def process(get_pile, options):
         save_kwargs['record_length'] = options.record_length
         save_kwargs['steim'] = options.steim
 
-    for batch in it:
+    def process_traces(batch):
         traces = batch.traces
         if traces:
             twmin = batch.tmin
@@ -344,7 +344,18 @@ def process(get_pile, options):
                     die(str(e))
 
         if abort:
-            break
+            return
+
+    try:
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(
+                max_workers=int(options.nthreads)) as executor:
+            executor.map(process_traces, it, chunksize=1)
+
+    except ImportError:
+
+        for batch in it:
+            process_traces(batch)
 
     signal.signal(signal.SIGINT, old)
 
@@ -578,6 +589,13 @@ def main(args=None):
         choices=sample_snap_choices,
         help='shift/interpolate traces so that samples are at even multiples '
         'of sampling rate. Choices: %s' % ', '.join(sample_snap_choices))
+
+    parser.add_option(
+        '--nthreads',
+        metavar='NTHREADS',
+        default=1,
+        help='number of threads for processing, '
+             'this can speed-up CPU bound tasks')
 
     (options, args) = parser.parse_args(args)
 

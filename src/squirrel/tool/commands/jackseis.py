@@ -157,6 +157,13 @@ def setup(subparser):
              'int64, float32, float64. The output file format must support '
              'the given type.')
 
+    p.add_argument(
+        '--nthreads',
+        metavar='NTHREADS',
+        default=1,
+        help='number of threads for processing, '
+             'this can speed-up CPU bound tasks (Python 3.5+ only)')
+
     common.add_selection_arguments(p)
     return p
 
