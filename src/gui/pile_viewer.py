@@ -1145,7 +1145,9 @@ def MakePileViewerMainClass(base):
             self.timer.start()
             self.pile.add_listener(self)
             self.trace_styles = {}
-            self.determine_box_styles()
+            if self.get_squirrel() is None:
+                self.determine_box_styles()
+
             self.setMouseTracking(True)
 
             user_home_dir = os.path.expanduser('~')
