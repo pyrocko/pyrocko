@@ -17,4 +17,3 @@ if [ ! -d evalresp-3.3.0/lib ]; then
     make install
     cd ..
 fi
-

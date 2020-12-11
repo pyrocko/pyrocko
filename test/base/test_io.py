@@ -10,6 +10,7 @@ from functools import wraps
 from random import choice as rc
 from os.path import join as pjoin
 import shutil
+from functools import wraps
 
 from pyrocko import io, guts
 from pyrocko.io import FileLoadError, FileSaveError
@@ -182,12 +183,89 @@ class IOTestCase(unittest.TestCase):
         assert tr1 == tr2
 
         for steim in (0, 3):
-            with self.assertRaises(FileSaveError):
+            with self.assertRaises(ValueError):
                 io.save(tr, fn3, steim=steim)
 
     def testMSeedDetect(self):
         fpath = common.test_data_file('test2.mseed')
         io.load(fpath, format='detect')
+
+    def testMSeedBytes(self):
+        from pyrocko.io.mseed import get_bytes
+        c = '12'
+        nsample = 100
+        for exp in range(8, 20):
+            record_length = 2**exp
+
+            for dtype in (num.int32, num.float32, num.float64, num.int16):
+                tr = trace.Trace(
+                    c, c, c, c, ydata=num.random.randint(
+                        -200, 200, size=nsample).astype(dtype))
+
+                mseed_bytes = get_bytes(
+                    [tr],
+                    record_length=record_length, steim=2)
+                with tempfile.NamedTemporaryFile('wb') as f:
+                    f.write(mseed_bytes)
+                    f.flush()
+
+                    ltr = io.load(f.name, format='mseed')[0]
+                    num.testing.assert_equal(tr.ydata, ltr.ydata)
+
+    def testMSeedAppend(self):
+        c = '12'
+        nsample = 100
+        deltat = .01
+
+        def get_ydata():
+            return num.random.randint(
+                -1000, 1000, size=nsample).astype(num.int32)
+
+        tr1 = trace.Trace(
+            c, c, c, c,
+            ydata=get_ydata(), tmin=0., deltat=deltat)
+        tr2 = trace.Trace(
+            c, c, c, c,
+            ydata=get_ydata(), tmin=0. + nsample*deltat, deltat=deltat)
+
+        with tempfile.NamedTemporaryFile('wb') as f:
+            io.save([tr1], f.name)
+            io.save([tr2], f.name, append=True)
+            tr_load = io.load(f.name)[0]
+
+        num.testing.assert_equal(
+            tr_load.ydata, num.concatenate([tr1.ydata, tr2.ydata]))
+
+    def testMSeedOffset(self):
+        from pyrocko.io.mseed import iload
+        c = '12'
+        nsample = 500
+        deltat = .01
+
+        def get_ydata():
+            return num.random.randint(
+                0, 1000, size=nsample).astype(num.int32)
+
+        tr1 = trace.Trace(
+            c, c, c, c,
+            ydata=get_ydata(), tmin=0., deltat=deltat)
+
+        with tempfile.NamedTemporaryFile('wb') as f:
+            io.save([tr1], f.name, record_length=512)
+
+            trs = tuple(iload(f.name, offset=0, segment_size=512))
+
+            trs_nsamples = sum(tr.ydata.size for tr in trs)
+            assert nsample == trs_nsamples
+            assert len(trs) == os.path.getsize(f.name) // 512
+
+            trs = [tr for tr in iload(
+                    f.name,
+                    offset=512,
+                    segment_size=512,
+                    nsegments=1)]
+            assert len(trs) == 1
+            assert trs[0].tmin != 0.
 
     def testReadSEGY(self):
         fpath = common.test_data_file('test2.segy')
