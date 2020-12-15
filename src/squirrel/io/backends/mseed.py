@@ -8,6 +8,8 @@ from __future__ import absolute_import, print_function
 from pyrocko.io.io_common import get_stats, touch  # noqa
 from ... import model
 
+SEGMENT_SIZE = 1024*1024
+
 
 def provided_formats():
     return ['mseed']
@@ -24,17 +26,30 @@ def detect(first512):
 
 def iload(format, file_path, segment, content):
     assert format == 'mseed'
-
     from pyrocko import mseed
 
     load_data = 'waveform' in content
 
-    for itr, tr in enumerate(mseed.iload(file_path, load_data=load_data)):
+    if segment is None:
+        offset = 0
+        nsegments = 0
+    else:
+        offset = segment
+        nsegments = 1
+
+    file_segment = None
+    itr = 0
+    for tr in mseed.iload(
+            file_path, load_data=load_data,
+            offset=offset, segment_size=SEGMENT_SIZE, nsegments=nsegments):
+
+        if file_segment != tr.meta['offset_start']:
+            itr = 0
+            file_segment = tr.meta['offset_start']
 
         nsamples = int(round((tr.tmax - tr.tmin) / tr.deltat)) + 1
-
         nut = model.make_waveform_nut(
-            file_segment=0,
+            file_segment=file_segment,
             file_element=itr,
             agency='',
             network=tr.network,
@@ -49,3 +64,4 @@ def iload(format, file_path, segment, content):
             nut.content = tr
 
         yield nut
+        itr += 1
