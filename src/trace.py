@@ -651,8 +651,20 @@ class Trace(Object):
         '''
         Downsample trace by a given integer factor.
 
-        Comparison of the available FIR filters `fir` and `fir-remez`:
+        Antialiasing filter details:
 
+        * ``iir``: A Chebyshev type I digital filter of order 8 with maximum
+          ripple of 0.05 dB in the passband.
+        * ``fir``: A FIR filter using a Hamming window and 31 taps and a
+          well-behaved phase response.
+        * ``fir-remez``: A FIR filter based on the Remez exchange algorithm
+          with ``45*ndecimate`` taps and a cutoff at 75% Nyquist frequency.
+
+        Comparison of the digital filters:
+
+        .. figure :: ../../static/downsampling-filter-comparison.png
+            :width: 60%
+            :alt: Comparison of the downsampling filters.
 
         :param ndecimate: decimation factor, avoid values larger than 8
         :param snap: whether to put the new sampling instances closest to
@@ -662,8 +674,8 @@ class Trace(Object):
             two cases the final state of the filter is returned instead of
             ``None``.
         :param demean: whether to demean the signal before filtering.
-        :param ftype: which FIR filter to use, choose from `fir, fir-remez`.
-            Default is `fir-remez`.
+        :param ftype: which FIR filter to use, choose from
+            ``'iir'``, ``'fir'``, ``'fir-remez'``. Default is ``'fir-remez'``.
         '''
         newdeltat = self.deltat*ndecimate
         if snap:
@@ -707,16 +719,16 @@ class Trace(Object):
 
         Tries to downsample the trace to a target sampling interval of
         ``deltat``. This runs the :py:meth:`Trace.downsample` one or several
-        times. If allow_upsample_max is set to a value larger than 1,
+        times. If ``allow_upsample_max`` is set to a value larger than 1,
         intermediate upsampling steps are allowed, in order to increase the
         number of possible downsampling ratios.
 
         If the requested ratio is not supported, an exception of type
         :py:exc:`pyrocko.util.UnavailableDecimation` is raised.
 
-        :param deltat: desired deltat in [s]
-        :param allow_upsample_max: maximum upsampling of the signal to archive
-            the desired deltat. Default is `1`.
+        :param deltat: desired sampling interval in [s]
+        :param allow_upsample_max: maximum upsampling of the signal to achieve
+            the desired deltat. Default is ``1``.
         :param snap: whether to put the new sampling instances closest to
             multiples of the sampling rate.
         :param initials: ``None``, ``True``, or initial conditions for the
@@ -724,8 +736,9 @@ class Trace(Object):
             two cases the final state of the filter is returned instead of
             ``None``.
         :param demean: whether to demean the signal before filtering.
-        :param ftype: which FIR filter to use, choose from `fir, fir-remez`.
-            Default is `fir-remez`.
+        :param ftype: which FIR filter to use, choose from
+            ``'iir'``, ``'fir'``, ``'fir-remez'``. Default is ``'fir-remez'``.
+            See also: :meth:`Trace.downample`
         '''
 
         ratio = deltat/self.deltat

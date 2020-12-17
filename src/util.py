@@ -1075,7 +1075,7 @@ def decimate_coeffs(q, n=None, ftype='iir'):
         if ftype == 'fir':
             n = 30
         elif ftype == 'fir-remez':
-            n = 40*q
+            n = 45*q
         else:
             n = 8
 
