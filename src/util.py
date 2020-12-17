@@ -1040,6 +1040,7 @@ class GlobalVars(object):
     decitab_nmax = 0
     decitab = {}
     decimate_fir_coeffs = {}
+    decimate_fir_remez_coeffs = {}
     decimate_iir_coeffs = {}
     re_frac = None
 
@@ -1051,14 +1052,25 @@ def decimate_coeffs(q, n=None, ftype='iir'):
     if n is None:
         if ftype == 'fir':
             n = 30
+        elif ftype == 'fir-remez':
+            n = 40*q
         else:
             n = 8
 
     if ftype == 'fir':
         coeffs = GlobalVars.decimate_fir_coeffs
         if (n, 1./q) not in coeffs:
-            coeffs[n, 1./q] = signal.firwin(n+1, 1./q, window='hamming')
+            coeffs[n, 1./q] = signal.firwin(n+1, .75/q, window='hamming', fs=2)
 
+        b = coeffs[n, 1./q]
+        return b, [1.], n
+
+    elif ftype == 'fir-remez':
+        coeffs = GlobalVars.decimate_fir_remez_coeffs
+        if (n, 1./q) not in coeffs:
+            coeffs[n, 1./q] = signal.remez(
+                n+1, (0., .75/q, 1./q, 1.),
+                (1., 0.), fs=2, weight=(1, 50))
         b = coeffs[n, 1./q]
         return b, [1.], n
 
@@ -1078,13 +1090,13 @@ def decimate(x, q, n=None, ftype='iir', zi=None, ioff=0):
     By default, an order 8 Chebyshev type I filter is used or a 30 point FIR
     filter with hamming window if ftype is 'fir'.
 
-    :param x: the signal to be downsampled (1D NumPy array)
+    :param x: the signal to be downsampled (1D :class:`numpy.ndarray`)
     :param q: the downsampling factor
     :param n: order of the filter (1 less than the length of the filter for a
-         'fir' filter)
-    :param ftype: type of the filter; can be 'iir' or 'fir'
+         `fir` filter)
+    :param ftype: type of the filter; can be `iir`, `fir` or `fir-remez`
 
-    :returns: the downsampled signal (1D NumPy array)
+    :returns: the downsampled signal (1D :class:`numpy.ndarray`)
 
     '''
 
