@@ -4,18 +4,32 @@
 # ---|P------/S----------~Lg----------
 
 from __future__ import absolute_import, print_function
+import os
+import logging
+
+op = os.path
+logger = logging.getLogger(__name__)
 
 
 class LockDir(object):
 
     def __init__(self, path):
         self._path = path
+        self._lockfile = op.join(path, '.buried')
 
     def __enter__(self):
-        # TODO: implement locking
-        print('Would lock directory "%s" (todo)' % self._path)
+        if op.exists(self._lockfile):
+            raise EnvironmentError('Directory "%s" is locked' % self._path)
+
+        with open(self._lockfile, 'wb') as f:
+            f.write(b'')
+        logger.debug('Locked directory "%s"', self._path)
         return self
 
     def __exit__(self, type, value, traceback):
-        # TODO: implement unlocking
-        print('Would unlock directory "%s" (todo)' % self._path)
+        try:
+            os.remove(self._lockfile)
+            logger.debug('Unlocked directory "%s"', self._path)
+        except FileNotFoundError:
+            logger.warning(
+                'Lockfile "%s" was removed unintentionally', self._lockfile)
