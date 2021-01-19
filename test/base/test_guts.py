@@ -6,6 +6,7 @@ import math
 import re
 import sys
 import datetime
+import os.path as op
 from contextlib import contextmanager
 
 
@@ -16,6 +17,8 @@ from pyrocko.guts import StringPattern, Object, Bool, Int, Float, String, \
     load_all_xml, iload_all_xml, dump, dump_xml, dump_all, dump_all_xml, \
     make_typed_list_class, walk, zip_walk, path_to_str, clone, set_elements, \
     get_elements, YPathError
+
+import pyrocko.guts
 
 
 try:
@@ -1263,6 +1266,71 @@ l_flow: ['a', 'b', 'c']
 
         except ImportError:
             pass
+
+    def testYAMLinclude(self):
+        from tempfile import NamedTemporaryFile as NFT
+        pyrocko.guts.ALLOW_INCLUDE = True
+
+        class A(Object):
+            f = Float.T()
+            i = Int.T()
+            s = String.T()
+
+        def assert_equal(obj):
+            assert obj.f == a.f
+            assert obj.i == a.i
+            assert obj.s == a.s
+
+        a = A(f=123.2, i=1024, s='hello')
+
+        with NFT('w') as f1:
+            a.dump(filename=f1.name)
+            with NFT('w') as f2:
+                f2.write('''---
+a: !include {fname}
+b: !include {fname}
+c: [!include {fname}]
+'''.format(fname=f1.name))
+                f2.flush()
+                o_abs = load(filename=f2.name)
+
+            assert_equal(o_abs['a'])
+            assert_equal(o_abs['b'])
+            assert_equal(o_abs['c'][0])
+
+            # Relative import
+            pyrocko.guts.ALLOW_INCLUDE = False
+            with NFT('w') as f2:
+                f2.write('''---
+a: !include ./{fname}
+b: !include ./{fname}
+c: [!include ./{fname}]
+'''.format(fname=op.basename(f1.name)))
+                f2.flush()
+                o_rel = load(filename=f2.name, allow_include=True)
+
+            assert_equal(o_rel['a'])
+            assert_equal(o_rel['b'])
+            assert_equal(o_rel['c'][0])
+
+        with self.assertRaises(ImportError):
+            with NFT('w') as f:
+                f.write('''
+!include {fname}
+'''.format(fname=f.name))
+                f.flush()
+                load(filename=f.name, allow_include=True)
+        with self.assertRaises(FileNotFoundError):
+            with NFT('w') as f:
+                f.write('!include /tmp/does_not_exist.yaml')
+                f.flush()
+                load(filename=f.name, allow_include=True)
+
+        with self.assertRaises(FileNotFoundError):
+            with NFT('w') as f:
+                f.write('!include ./does_not_exist.yaml')
+                f.flush()
+                load(filename=f.name, allow_include=True)
 
 
 def makeBasicTypeTest(Type, sample, sample_in=None, xml=False):

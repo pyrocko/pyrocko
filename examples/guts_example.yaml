@@ -1,0 +1,9 @@
+--- !gft.SensorArray
+depth: 0.0
+codes: !include codes.yml  # We can include other yaml files
+elevation: 0.0
+interpolation: nearest_neighbor
+distance_min: 1000.0
+distance_max: 100000.0
+strike: 0.0
+sensor_count: 50

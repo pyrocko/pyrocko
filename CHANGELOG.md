@@ -14,8 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   directivity effects for synthetics.
 - Snuffler: load StationXML via menu.
 - `io.mseed`: Adding option for STEIM2 compression.
-- Jackseis: Adding `--output-steim` option to control compression.
-  Default compression changed to STEIM2.
+- Jackseis: Adding `--output-steim` option to control compression. Default
+  compression changed to STEIM2.
+- YAML files can now include other YAML files, when loaded through guts.
 
 ### Fixed
 - Fix plotting issues in cake.

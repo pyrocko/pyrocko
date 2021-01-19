@@ -12,6 +12,7 @@ import re
 import sys
 import types
 import copy
+import os.path as op
 from collections import defaultdict
 
 from io import BytesIO
@@ -34,6 +35,9 @@ try:
     range = xrange
 except NameError:
     newstr = str
+
+
+ALLOW_INCLUDE = False
 
 
 class GutsSafeDumper(SafeDumper):
@@ -231,7 +235,9 @@ def expand_stream_args(mode):
 
         def g(*args, **kwargs):
             stream = kwargs.pop('stream', None)
-            filename = kwargs.pop('filename', None)
+            filename = kwargs.get('filename', None)
+            if mode != 'r':
+                filename = kwargs.pop('filename', None)
             string = kwargs.pop('string', None)
 
             assert sum(x is not None for x in (stream, filename, string)) <= 1
@@ -1504,16 +1510,36 @@ def _dump_all(object, stream, header=True, Dumper=GutsSafeDumper):
     _dump(object, stream=stream, header=header, _dump_function=yaml.dump_all)
 
 
-def _load(stream, Loader=GutsSafeLoader):
-    return yaml.load(stream=stream, Loader=Loader)
+def _load(stream,
+          Loader=GutsSafeLoader, allow_include=None, filename=None,
+          included_files=None):
+
+    class _Loader(Loader):
+        _filename = filename
+        _allow_include = allow_include
+        _included_files = included_files or []
+
+    return yaml.load(stream=stream, Loader=_Loader)
 
 
-def _load_all(stream, Loader=GutsSafeLoader):
-    return list(yaml.load_all(stream=stream, Loader=Loader))
+def _load_all(stream,
+              Loader=GutsSafeLoader, allow_include=None, filename=None):
+
+    class _Loader(Loader):
+        _filename = filename
+        _allow_include = allow_include
+
+    return list(yaml.load_all(stream=stream, Loader=_Loader))
 
 
-def _iload_all(stream, Loader=GutsSafeLoader):
-    return yaml.load_all(stream=stream, Loader=Loader)
+def _iload_all(stream,
+               Loader=GutsSafeLoader, allow_include=None, filename=None):
+
+    class _Loader(Loader):
+        _filename = filename
+        _allow_include = allow_include
+
+    return yaml.load_all(stream=stream, Loader=_Loader)
 
 
 def multi_representer(dumper, data):
@@ -1542,12 +1568,52 @@ def multi_constructor(loader, tag_suffix, node):
     return o
 
 
+def include_constructor(loader, node):
+    allow_include = loader._allow_include \
+        if loader._allow_include is not None \
+        else ALLOW_INCLUDE
+
+    if not allow_include:
+        raise EnvironmentError(
+            'Not allowed to include YAML. Load with allow_include=True')
+
+    if isinstance(node, yaml.nodes.ScalarNode):
+        inc_file = loader.construct_scalar(node)
+    else:
+        raise TypeError('Unsupported YAML node %s' % repr(node))
+
+    if loader._filename is not None and not op.isabs(inc_file):
+        inc_file = op.join(op.dirname(loader._filename), inc_file)
+
+    if not op.isfile(inc_file):
+        raise FileNotFoundError(inc_file)
+
+    included_files = list(loader._included_files)
+    if loader._filename is not None:
+        included_files.append(op.abspath(loader._filename))
+
+    for included_file in loader._included_files:
+        if op.samefile(inc_file, included_file):
+            raise ImportError(
+                'Circular import of file "%s". Include path: %s' % (
+                    op.abspath(inc_file),
+                    ' -> '.join('"%s"' % s for s in included_files)))
+
+    with open(inc_file) as f:
+        return _load(
+            f,
+            Loader=loader.__class__, filename=inc_file,
+            allow_include=True,
+            included_files=included_files)
+
+
 def dict_noflow_representer(dumper, data):
     return dumper.represent_mapping(
         'tag:yaml.org,2002:map', data, flow_style=False)
 
 
 yaml.add_multi_representer(Object, multi_representer, Dumper=GutsSafeDumper)
+yaml.add_constructor('!include', include_constructor, Loader=GutsSafeLoader)
 yaml.add_multi_constructor('!', multi_constructor, Loader=GutsSafeLoader)
 yaml.add_representer(dict, dict_noflow_representer, Dumper=GutsSafeDumper)
 
@@ -2083,6 +2149,7 @@ def dump_xml(*args, **kwargs):
 
 @expand_stream_args('r')
 def load_xml(*args, **kwargs):
+    kwargs.pop('filename', None)
     return _load_xml(*args, **kwargs)
 
 
@@ -2097,11 +2164,13 @@ def dump_all_xml(*args, **kwargs):
 
 @expand_stream_args('r')
 def load_all_xml(*args, **kwargs):
+    kwargs.pop('filename', None)
     return _load_all_xml(*args, **kwargs)
 
 
 @expand_stream_args('r')
 def iload_all_xml(*args, **kwargs):
+    kwargs.pop('filename', None)
     return _iload_all_xml(*args, **kwargs)
 
 

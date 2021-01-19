@@ -2,7 +2,7 @@ Working with the ``guts`` package
 =================================
 
 Introduction to ``guts``
--------------------------------
+------------------------
 
 Guts is a `Lightweight declarative YAML and XML data binding for Python 
 <https://github.com/emolch/guts>`_ (the link provides a basic introduction
@@ -49,7 +49,7 @@ parameter set to ``True``.  This will allow them to be exported with when the
 attribute has been assigned a value.
 
 Usage examples
------------------
+--------------
 
 Now that a class has been defined (and imported) we can see how to use it.
 
@@ -60,3 +60,12 @@ Download :download:`guts_usage.py </../../examples/guts_usage.py>`
     :language: python
 
 
+Example guts YAML File:
+-----------------------
+
+This is a minimal example of a guts YAML file.
+
+Download :download:`guts_usage.py </../../examples/guts_example.yaml>`
+
+.. literalinclude :: /../../examples/guts_example.yaml
+    :language: yaml
