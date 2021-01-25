@@ -172,8 +172,8 @@ def hillshade_seismogram_array(
 def plot_directivity(
         engine, source, store_id,
         distance=300*km, azi_begin=0., azi_end=360., dazi=1.,
-        phase_begin='first{stored:any_P}-10%',
-        phase_end='last{stored:any_S}+50',
+        phases={'P': 'first{stored:any_P}-10%',
+                'S': 'last{stored:any_S}+50'},
         quantity='displacement', envelope=False,
         component='R', fmin=0.01, fmax=0.1,
         hillshade=True, cmap=None,
@@ -255,16 +255,14 @@ def plot_directivity(
     targets, azimuths = get_azimuthal_targets(
         store_id, source, distance, azi_begin, azi_end, dazi,
         components='R', quantity=quantity)
+    ref_target = targets[0]
     store = engine.get_store(store_id)
-    mt = source.pyrocko_moment_tensor(store=store, target=targets[0])
+    mt = source.pyrocko_moment_tensor(store=store, target=ref_target)
 
     resp = engine.process(source, targets, nthreads=nthreads)
     data, times = get_seismogram_array(
         resp, fmin, fmax,
         component=component, envelope=envelope)
-
-    timing_begin = Timing(phase_begin)
-    timing_end = Timing(phase_end)
 
     nucl_depth = source.depth
     nucl_distance = distance
@@ -287,8 +285,11 @@ def plot_directivity(
         nucl_distance -= anch_x * source.length/2.
         nucl_depth -= anch_y*num.sin(source.dip*d2r) * source.width/2.
 
-    tbegin = store.t(timing_begin, (nucl_depth, nucl_distance))
-    tend = store.t(timing_end, (nucl_depth, nucl_distance))
+    timings = [Timing(p) for p in phases.values()]
+    phase_times = [store.t(t, source, ref_target) for t in timings]
+
+    tbegin = min(phase_times)
+    tend = max(phase_times)
     tsel = num.logical_and(times >= tbegin, times <= tend)
 
     data = data[:, tsel].T
@@ -303,7 +304,7 @@ def plot_directivity(
     if envelope:
         cmw.set_clim(0., vmax)
 
-    ax.set_theta_zero_location("N")
+    ax.set_theta_zero_location('N')
     ax.set_theta_direction(-1)
 
     strike_label = mt.strike1
@@ -369,37 +370,32 @@ def plot_directivity(
         mesh.set_facecolor(color)
 
     if show_phases:
-        _phase_begin = Timing(phase_begin)
-        _phase_end = Timing(phase_end)
-
-        for p in (_phase_begin, _phase_end):
-            p.offset = 0.
-            p.offset_is_slowness = False
-            p.offset_is_percent = False
-
-        tphase_first = store.t(_phase_begin, (nucl_depth, nucl_distance))
-        tphase_last = store.t(_phase_end, (nucl_depth, nucl_distance))
-
+        label_theta = 270.
         theta = num.linspace(0, 2*num.pi, 360)
-        tfirst = num_full_like(theta, tphase_first)
-        tlast = num_full_like(theta, tphase_last)
 
-        ax.plot(theta, tfirst, color='k', alpha=.3, lw=1.)
-        ax.plot(theta, tlast, color='k', alpha=.3, lw=1.)
+        for label, phase_str in phases.items():
+            phase = Timing(phase_str)
 
-        ax.text(
-            num.pi*7/5, tphase_first, '|'.join(_phase_begin.phase_defs),
-            ha='left', color='k', fontsize='small')
+            phase.offset = 0.
+            phase.offset_is_slowness = False
+            phase.offset_is_percent = False
 
-        ax.text(
-            num.pi*6/5, tphase_last, '|'.join(_phase_end.phase_defs),
-            ha='left', color='k', fontsize='small')
+            time = store.t(phase, source, ref_target)
+            times = num_full_like(theta, time)
 
-    description = ('Component {component:s}\n'
-                   'Distance {distance:g} km').format(
-                   component=component, distance=distance / km)
+            ax.plot(theta, times, color='k', alpha=.3, lw=1., ls='--')
+
+            ax.text(
+                label_theta*d2r, time, label,
+                ha='left', color='k', fontsize='small')
+            label_theta += 30.
 
     if show_description:
+        description = (
+            'Component {component:s}\n'
+            'Distance {distance:g} km').format(
+            component=component, distance=distance / km)
+
         if fmin and fmax:
             description += '\nBandpass {fmin:g} - {fmax:g} Hz'.format(
                 fmin=fmin, fmax=fmax)

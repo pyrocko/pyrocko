@@ -38,6 +38,8 @@ resp = plot_directivity(
     engine, rect_source, store_id,
     distance=300*km, dazi=5., component='R',
     plot_mt='full', show_phases=True,
-    phase_begin='first{stored:begin}-10%',
-    phase_end='last{stored:end}+20',
+    phases={
+        'First': 'first{stored:begin}-10%',
+        'Last': 'last{stored:end}+20'
+    },
     quantity='displacement', envelope=True)
