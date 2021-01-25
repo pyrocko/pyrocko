@@ -2370,6 +2370,14 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
         optional=True,
         help='List of all boundary elements/sub faults/fault patches')
 
+    patch_mask = Array.T(
+        dtype=num.bool,
+        serialize_as='list',
+        shape=(None,),
+        optional=True,
+        help='Mask for all boundary elements/sub faults/fault patches. True '
+             'leaves the patch in the calculation, False excludes the patch.')
+
     tractions = TractionField.T(
         optional=True,
         help='Traction field the rupture plane is exposed to. See the'
@@ -3158,7 +3166,10 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
                 'The traction vector is of invalid shape.'
                 ' Required shape is (npatches, 3)')
 
+        patch_mask = self.patch_mask or num.ones(npatches, dtype=num.bool)
+
         times = self.get_patch_attribute('time') - self.time
+        times[~patch_mask] = time_patch + 1.  # exlcude unmasked patches
         relevant_sources = num.nonzero(times <= time_patch)[0]
         disloc_est = num.zeros_like(tractions)
 
@@ -3192,6 +3203,8 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
 
                 patch_activation[ip] = \
                     (times_patch <= time).sum() / times_patch.size
+
+            patch_activation[~patch_mask] = 0.  # exlcude unmasked patches
 
             relevant_sources = num.nonzero(patch_activation > 0.)[0]
 
