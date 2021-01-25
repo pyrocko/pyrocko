@@ -91,7 +91,7 @@ def _mplcmap_to_gmtcpt_code(mplcmap, steps=256):
 
     rgbas = [cmap(i) for i in num.linspace(0, 255, steps).astype(num.int64)]
 
-    return ','.join(['%g/%g/%g' % (
+    return ','.join(['%d/%d/%d' % (
         c[0] * 255, c[1] * 255, c[2] * 255) for c in rgbas])
 
 
@@ -343,6 +343,8 @@ class RuptureMap(Map):
             width=20.,
             height=14.,
             margins=None,
+            color_wet=(216, 242, 254),
+            color_dry=(238, 236, 230),
             topo_cpt_wet='light_sea_uniform',
             topo_cpt_dry='light_land_uniform',
             show_cities=False,
@@ -800,25 +802,15 @@ class RuptureMap(Map):
             *self.jxyr,
             **kwargs)
 
-    def draw_dynamic_data(self, data, original_patch_indices=None, **kwargs):
+    def draw_dynamic_data(self, data, **kwargs):
         '''
         Draw an image of any data gridded on the patches e.g dislocation
 
         :param data: Patchwise data grid array
         :type data: :py:class:`numpy.ndarray`
-        :param original_patch_indices: If the source has been recalculated and
-            manually manipulated (``patches``, ``coef_mat`` etc.),
-            then give here a boolean array indicating the position of the
-            remaining patches on the original patch grid. False is interpreted
-            as no data, ``True`` is replaced by the patch data.
-        :type original_patch_indices: optional,
-            :py:class:`numpy.ndarray` of bool ``(source.nx, source.ny)``
         '''
 
         plot_data = data
-        if original_patch_indices is not None:
-            plot_data = num.zeros(original_patch_indices.shape)
-            plot_data[original_patch_indices] = data
 
         kwargs['cmap'] = kwargs.get('cmap', 'afmhot_r')
 
@@ -968,7 +960,7 @@ class RuptureMap(Map):
             length of the dislocation vector is plotted
         '''
 
-        disl = self.source.get_okada_slip(time=time)
+        disl = self.source.get_slip(time=time)
 
         if component:
             data = disl[:, c2disl[component]]
@@ -998,7 +990,7 @@ class RuptureMap(Map):
         :type clevel: optional, list of float
         '''
 
-        disl = self.source.get_okada_slip(time=time)
+        disl = self.source.get_slip(time=time)
 
         if component:
             data = disl[:, c2disl[component]]
@@ -1044,7 +1036,7 @@ class RuptureMap(Map):
         :type time: optional, float
         '''
 
-        disl = self.source.get_okada_slip(time=time)
+        disl = self.source.get_slip(time=time)
 
         p_strike = self.source.get_patch_attribute('strike') * d2r
         p_dip = self.source.get_patch_attribute('dip') * d2r
@@ -1256,24 +1248,14 @@ class RuptureView(Object):
 
             self._axes.scatter(length, width, *args, **kwargs)
 
-    def draw_dynamic_data(self, data, original_patch_indices=None, **kwargs):
+    def draw_dynamic_data(self, data, **kwargs):
         ''' Draw an image of any data gridded on the patches e.g dislocation
 
         :param data: Patchwise data grid array
         :type data: :py:class:`numpy.ndarray`
-        :param original_patch_indices: If the source has been recalculated and
-            manually manipulated (``patches``, ``coef_mat`` etc.), then give
-            here a boolean array indicating the position of the remaining
-            patches on the original patch grid. False is interpreted
-            as no data, ``True`` is replaced by the patch data.
-        :type original_patch_indices: optional,
-            :py:class:`numpy.ndarray` of bool ``(source.nx, source.ny)``
         '''
 
         plot_data = data
-        if original_patch_indices is not None:
-            plot_data = num.zeros(original_patch_indices.shape)
-            plot_data[original_patch_indices] = data
 
         anchor_x, anchor_y = map_anchor[self.source.anchor]
 
@@ -1383,7 +1365,7 @@ class RuptureView(Object):
             length of the dislocation vector is plotted
         '''
 
-        disl = self.source.get_okada_slip(time=time)
+        disl = self.source.get_slip(time=time)
 
         if component:
             data = disl[:, c2disl[component]]
@@ -1411,7 +1393,7 @@ class RuptureView(Object):
         :type component: str
         '''
 
-        disl = self.source.get_okada_slip(time=time)
+        disl = self.source.get_slip(time=time)
 
         if component:
             data = disl[:, c2disl[component]]
@@ -1466,7 +1448,7 @@ class RuptureView(Object):
         if v in ('moment_rate', 'stf'):
             name, unit = 'dM/dt', 'Nm/s'
         elif v in ('cumulative_moment', 'moment'):
-            data = num.cumsum(data)
+            data = num.cumsum(data) * deltat
             name, unit = 'M', 'Nm'
         else:
             raise ValueError('No dynamic data for given variable %s found' % v)
@@ -1508,24 +1490,23 @@ class RuptureView(Object):
 
         m = re.match(r'dislocation_([xyz])', v)
 
-        if v in ('moment_rate', 'cumulative_moment', 'moment'):
+        if v in ('moment_rate', 'cumulative_moment', 'moment', 'stf'):
             data, times = source.get_moment_rate_patches(
                 store=store, deltat=deltat)
         elif 'dislocation' in v or 'slip_rate' == v:
             ddisloc, times = source.get_delta_slip(store=store, deltat=deltat)
 
-        if v == 'moment_rate':
+        if v in ('moment_rate', 'stf'):
             data, times = source.get_moment_rate_patches(
                 store=store, deltat=deltat)
             name, unit = 'dM/dt', 'Nm/s'
-        elif v == 'cumulative_moment' or v == 'moment':
+        elif v in ('cumulative_moment', 'moment'):
             data, times = source.get_moment_rate_patches(
                 store=store, deltat=deltat)
             data = num.cumsum(data, axis=1)
             name, unit = 'M', 'Nm'
         elif v == 'slip_rate':
-            data, times = source.get_delta_slip(store=store, deltat=deltat)
-            data = num.linalg.norm(ddisloc, axis=2) / (times[1] - times[0])
+            data, times = source.get_slip_rate(store=store, deltat=deltat)
             name, unit = 'du/dt', 'm/s'
         elif v == 'dislocation':
             data, times = source.get_delta_slip(store=store, deltat=deltat)
@@ -1719,11 +1700,11 @@ def rupture_movie(
     :param store_images: Choice to store the single .png parameter snapshots in
         fn_path or not.
     :type store_images: optional, bool
-    :param render_as_gif: If True, the movie is converted into a gif. If
+    :param render_as_gif: If ``True``, the movie is converted into a gif. If
         ``False``, the movie is returned as mp4
     :type render_as_gif: optional, bool
-    :param gif_loops: If ``render_as_gif`` is ``True``, a gif with gif_loops
-        number of loops (repetitions) is returned.
+    :param gif_loops: If ``render_as_gif`` is ``True``, a gif with
+        ``gif_loops`` number of loops (repetitions) is returned.
         ``-1`` is no repetition, ``0`` infinite.
     :type gif_loops: optional, integer
     '''
