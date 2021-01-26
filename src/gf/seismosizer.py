@@ -3166,7 +3166,9 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
                 'The traction vector is of invalid shape.'
                 ' Required shape is (npatches, 3)')
 
-        patch_mask = self.patch_mask or num.ones(npatches, dtype=num.bool)
+        patch_mask = num.ones(npatches, dtype=num.bool)
+        if self.patch_mask is not None:
+            patch_mask = self.patch_mask
 
         times = self.get_patch_attribute('time') - self.time
         times[~patch_mask] = time_patch + 1.  # exlcude unmasked patches
