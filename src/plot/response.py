@@ -33,6 +33,7 @@ Example
 from __future__ import absolute_import
 
 import logging
+import math
 
 import numpy as num
 
@@ -85,10 +86,14 @@ def draw(
 
     if axes_amplitude:
         axes_amplitude.plot(f, ta, label=label, **style)
+        for checkpoint in response.checkpoints:
+            axes_amplitude.plot(
+                checkpoint.frequency, checkpoint.value, 'o',
+                color=style.get('color', 'black'))
 
     if axes_phase:
         dta = num.diff(num.log(ta))
-        iflat = num.argmin(num.abs(num.diff(dta)) + num.abs(dta[:-1]))
+        iflat = num.nanargmin(num.abs(num.diff(dta)) + num.abs(dta[:-1]))
         tp = num.unwrap(num.angle(tf))
         ioff = int(num.round(tp[iflat] / (2.0*num.pi)))
         tp -= ioff * 2.0 * num.pi
@@ -212,14 +217,17 @@ def plot(
         a_ranges = num.array(a_ranges)
         p_ranges = num.array(p_ranges)
 
-        amin, amax = num.min(a_ranges), num.max(a_ranges)
-        pmin, pmax = num.min(p_ranges), num.max(p_ranges)
+        amin, amax = num.nanmin(a_ranges), num.nanmax(a_ranges)
+        pmin, pmax = num.nanmin(p_ranges), num.nanmax(p_ranges)
 
         amin *= 0.5
         amax *= 2.0
 
         pmin -= 0.5
         pmax += 0.5
+
+        pmin = math.floor(pmin)
+        pmax = math.ceil(pmax)
 
         axes_amplitude.set_ylim(amin, amax)
         axes_phase.set_ylim(pmin, pmax)
@@ -240,7 +248,8 @@ def tts(t):
 
 
 def load_response_information(
-        filename, format, nslc_patterns=None, fake_input_units=None):
+        filename, format,
+        nslc_patterns=None, fake_input_units=None, stages=None):
 
     from pyrocko import pz, trace
     from pyrocko.io import resp as fresp
@@ -268,22 +277,44 @@ def load_response_information(
         resps.append(resp)
         labels.append(filename)
 
-    elif format == 'resp':
+    elif format in ('resp', 'evalresp'):
         for resp in list(fresp.iload_filename(filename)):
             if nslc_patterns is not None and not util.match_nslc(
                     nslc_patterns, resp.codes):
                 continue
 
             units = ''
+            in_units = None
             if resp.response.instrument_sensitivity:
                 s = resp.response.instrument_sensitivity
+                in_units = fake_input_units or s.input_units.name
                 if s.input_units and s.output_units:
-                    units = ', %s -> %s' % (
-                        fake_input_units or s.input_units.name,
-                        s.output_units.name)
+                    units = ', %s -> %s' % (in_units, s.output_units.name)
 
-            resps.append(resp.response.get_pyrocko_response(
-                resp.codes, fake_input_units=fake_input_units))
+            if format == 'resp':
+                resps.append(resp.response.get_pyrocko_response(
+                    resp.codes,
+                    fake_input_units=fake_input_units,
+                    stages=stages))
+            else:
+                target = {
+                    'M/S': 'vel',
+                    'M': 'dis',
+                }[in_units]
+
+                if resp.end_date is not None:
+                    time = (resp.start_date + resp.end_date)*0.5
+                else:
+                    time = resp.start_date + 3600*24*10
+
+                r = trace.Evalresp(
+                    respfile=filename,
+                    nslc_id=resp.codes,
+                    target=target,
+                    time=time,
+                    stages=stages)
+
+                resps.append(r)
 
             labels.append('%s (%s.%s.%s.%s, %s - %s%s)' % (
                 (filename, ) + resp.codes +
@@ -321,7 +352,9 @@ def load_response_information(
                                 s.output_units.name)
 
                     resps.append(channel.response.get_pyrocko_response(
-                        nslc, fake_input_units=fake_input_units))
+                        nslc,
+                        fake_input_units=fake_input_units,
+                        stages=stages))
 
                     labels.append(
                         '%s (%s.%s.%s.%s, %s - %s%s)' % (
@@ -343,7 +376,7 @@ if __name__ == '__main__':
 
     description = '''Plot instrument responses (transfer functions).'''
 
-    allowed_formats = ['sacpz', 'resp', 'stationxml', 'pf']
+    allowed_formats = ['sacpz', 'resp', 'evalresp', 'stationxml', 'pf']
 
     parser = OptionParser(
         usage=usage,
@@ -398,6 +431,12 @@ if __name__ == '__main__':
              'patterns')
 
     parser.add_option(
+        '--stages',
+        dest='stages',
+        metavar='START:STOP',
+        help='show only responses selected stages')
+
+    parser.add_option(
         '--fake-input-units',
         dest='fake_input_units',
         choices=['M', 'M/S', 'M/S**2'],
@@ -416,6 +455,11 @@ if __name__ == '__main__':
     resps = []
     labels = []
 
+    stages = None
+    if options.stages:
+        stages = tuple(int(x) for x in options.stages.split(':', 1))
+        stages = stages[0]-1, stages[1]
+
     for fn in fns:
 
         if options.nslc_patterns is not None:
@@ -425,7 +469,8 @@ if __name__ == '__main__':
 
         resps_this, labels_this = load_response_information(
             fn, options.format, nslc_patterns,
-            fake_input_units=options.fake_input_units)
+            fake_input_units=options.fake_input_units,
+            stages=stages)
 
         resps.extend(resps_this)
         labels.extend(labels_this)

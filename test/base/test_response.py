@@ -1,10 +1,14 @@
 from __future__ import division, print_function, absolute_import
 
+import os
 import unittest
 import numpy as num
 from pyrocko import util, evalresp, pz, trace, guts
 
 from .. import common
+
+
+show_plot = int(os.environ.get('MPL_SHOW', 0))
 
 
 def plot_tfs(freqs, tfs):
@@ -142,6 +146,58 @@ class ResponseTestCase(unittest.TestCase):
             tf = pr.evaluate(freqs)
             # plot_tfs(freqs, [tf_ref, tf])
             assert cnumeqrel(tf_ref, tf, 0.01)
+
+    def test_converters_butter(self):
+        deltat = 0.01
+        butter = trace.ButterworthResponse(type='high', corner=0.1, order=4.0)
+        butter_pz = butter.to_polezero()
+        butter_analog = butter.to_analog()
+        butter_digital = butter.to_digital(deltat)
+        butter_digital_polezero = butter.to_digital_polezero(deltat)
+
+        if show_plot:
+            from pyrocko.plot.response import plot
+            plot(
+                [butter, butter_pz, butter_analog, butter_digital,
+                 butter_digital_polezero],
+                labels=[
+                    'butter', 'butter_pz', 'butter_analog', 'butter_digital',
+                    'butter_digital_polezero'],
+                fmin=0.001, fmax=0.5/deltat, nf=200)
+
+    def test_converters_pz(self):
+        deltat = 0.01
+        butter = trace.ButterworthResponse(type='high', corner=0.1, order=4.0)
+
+        butter_pz = butter.to_polezero()
+        butter_pz_analog = butter_pz.to_analog()
+        butter_pz_digital_pz = butter_pz.to_digital_polezero(deltat)
+        resps = [butter, butter_pz, butter_pz_analog, butter_pz_digital_pz]
+        labels = [
+            'butter', 'butter_pz', 'butter_pz_analog', 'butter_pz_digital_pz']
+
+        for method in ['zoh', 'foh', 'euler', 'bilinear', 'backward_diff']:
+            resps.append(butter_pz.to_digital(deltat, method=method))
+            labels.append('butter_pz_digital_' + method)
+
+        if show_plot:
+            from pyrocko.plot.response import plot
+            plot(resps, labels=labels, fmin=0.001, fmax=0.5/deltat, nf=200)
+
+    def test_converters_analog(self):
+        deltat = 0.01
+        butter = trace.ButterworthResponse(type='high', corner=0.1, order=4.0)
+        butter_analog = butter.to_analog()
+        resps = [butter, butter_analog]
+        labels = ['butter', 'butter_analog']
+
+        for method in ['zoh', 'foh', 'euler', 'bilinear', 'backward_diff']:
+            resps.append(butter_analog.to_digital(deltat, method=method))
+            labels.append('butter_analog_digital_' + method)
+
+        if show_plot:
+            from pyrocko.plot.response import plot
+            plot(resps, labels=labels, fmin=0.001, fmax=0.5/deltat, nf=200)
 
     def test_dump_load(self):
 

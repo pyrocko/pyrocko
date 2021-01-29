@@ -2,7 +2,7 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 import sys
 import time
@@ -46,6 +46,10 @@ conversion = {
     ('M/S**2', 'M/S**2'): None}
 
 
+class Inconsistencies(Exception):
+    pass
+
+
 class NoResponseInformation(Exception):
     pass
 
@@ -82,6 +86,14 @@ def same(x, eps=0.0):
         return all(r == x[0] for r in x)
 
 
+def same_sample_rate(a, b, eps=1.0e-6):
+    return abs(a - b) < min(a, b)*eps
+
+
+def evaluate1(resp, f):
+    return resp.evaluate(num.array([f], dtype=float))[0]
+
+
 class InconsistentResponseInformation(Exception):
     pass
 
@@ -91,8 +103,7 @@ def check_resp(resp, value, frequency, limit_db, prelude=''):
         logger.warn('Cannot validate frequency response')
         return
 
-    value_resp = num.abs(
-        resp.evaluate(num.array([frequency], dtype=float)))[0]
+    value_resp = num.abs(evaluate1(resp, frequency))
 
     if value_resp == 0.0:
         raise InconsistentResponseInformation(
@@ -115,6 +126,13 @@ def check_resp(resp, value, frequency, limit_db, prelude=''):
                 frequency,
                 diff_db,
                 limit_db))
+
+
+def tts(t):
+    if t is None:
+        return '?'
+    else:
+        return util.tts(t, format='%Y-%m-%d')
 
 
 this_year = time.gmtime()[0]
@@ -345,6 +363,9 @@ class Gain(Object):
     value = Float.T(optional=True, xmltagname='Value')
     frequency = Float.T(optional=True, xmltagname='Frequency')
 
+    def summary(self):
+        return 'gain(%g @ %g)' % (self.value, self.frequency)
+
 
 class NumeratorCoefficient(Object):
     i = Int.T(optional=True, xmlstyle='attribute')
@@ -521,6 +542,88 @@ class FIR(BaseFilter):
     numerator_coefficient_list = List.T(
         NumeratorCoefficient.T(xmltagname='NumeratorCoefficient'))
 
+    def summary(self):
+        return 'fir(%i%s)' % (
+            self.get_ncoefficiencs(),
+            ',sym' if self.get_effective_symmetry() != 'NONE' else '')
+
+    def get_effective_coefficients(self):
+        b = num.array(
+            [v.value for v in self.numerator_coefficient_list],
+            dtype=num.float)
+
+        if self.symmetry == 'ODD':
+            b = num.concatenate((b, b[-2::-1]))
+        elif self.symmetry == 'EVEN':
+            b = num.concatenate((b, b[::-1]))
+
+        return b
+
+    def get_effective_symmetry(self):
+        if self.symmetry == 'NONE':
+            b = self.get_effective_coefficients()
+            if num.all(b - b[::-1] == 0):
+                return ['EVEN', 'ODD'][b.size % 2]
+
+        return self.symmetry
+
+    def get_ncoefficiencs(self):
+        nf = len(self.numerator_coefficient_list)
+        if self.symmetry == 'ODD':
+            nc = nf * 2 + 1
+        elif self.symmetry == 'EVEN':
+            nc = nf * 2
+        else:
+            nc = nf
+
+        return nc
+
+    def estimate_delay(self, deltat):
+        nc = self.get_ncoefficiencs()
+        if nc > 0:
+            return deltat * (nc - 1) / 2.0
+        else:
+            return 0.0
+
+    def get_pyrocko_response(
+            self, context, deltat, delay_responses, normalization_frequency):
+
+        if not self.numerator_coefficient_list:
+            return []
+
+        b = self.get_effective_coefficients()
+
+        if not deltat:
+            raise NoResponseInformation(
+                'cannot get digital response without knowing sampling '
+                'interval (%s)' % context)
+
+        drop_phase = self.get_effective_symmetry() != 'NONE'
+
+        resps = []
+        resp = trace.DigitalFilterResponse(
+            b.tolist(), [1.0], deltat, drop_phase=drop_phase)
+
+        if normalization_frequency is not None:
+            normalization_frequency = 0.0
+            normalization = num.abs(evaluate1(resp, normalization_frequency))
+
+            if num.abs(normalization - 1.0) > 1e-2:
+                logger.warn(
+                    'FIR filter coefficients are not normalized. Normalizing '
+                    'them. Factor: %g (%s)' % (normalization, context))
+
+            resp = trace.DigitalFilterResponse(
+                (b/normalization).tolist(), [1.0], deltat,
+                drop_phase=drop_phase)
+
+        resps.append(resp)
+
+        if not drop_phase:
+            resps.extend(delay_responses)
+
+        return resps
+
 
 class Coefficients(BaseFilter):
     '''
@@ -533,6 +636,84 @@ class Coefficients(BaseFilter):
         xmltagname='CfTransferFunctionType')
     numerator_list = List.T(FloatWithUnit.T(xmltagname='Numerator'))
     denominator_list = List.T(FloatWithUnit.T(xmltagname='Denominator'))
+
+    def summary(self):
+        return 'coef_%s(%i,%i%s)' % (
+            'ABC?'[
+                CfTransferFunction.choices.index(
+                    self.cf_transfer_function_type)],
+            len(self.numerator_list),
+            len(self.denominator_list),
+            ',sym' if self.is_symmetric_fir else '')
+
+    def estimate_delay(self, deltat):
+        nc = len(self.numerator_list)
+        if nc > 0:
+            return deltat * (len(self.numerator_list) - 1) / 2.0
+        else:
+            return 0.0
+
+    def is_symmetric_fir(self):
+        if len(self.denominator_list) != 0:
+            return False
+        b = [v.value for v in self.numerator_list]
+        return b == b[::-1]
+
+    def get_pyrocko_response(
+            self, context, deltat, delay_responses, normalization_frequency):
+
+        factor = 1.0
+        if self.cf_transfer_function_type == 'ANALOG (HERTZ)':
+            factor = 2.0*math.pi
+
+        if not self.numerator_list and not self.denominator_list:
+            return []
+
+        b = num.array(
+            [v.value*factor for v in self.numerator_list], dtype=num.float)
+
+        a = num.array(
+            [1.0] + [v.value*factor for v in self.denominator_list],
+            dtype=num.float)
+
+        resps = []
+        if self.cf_transfer_function_type in [
+                'ANALOG (RADIANS/SECOND)', 'ANALOG (HERTZ)']:
+            resps.append(trace.AnalogFilterResponse(b, a))
+
+        elif self.cf_transfer_function_type == 'DIGITAL':
+            if not deltat:
+                raise NoResponseInformation(
+                    'cannot get digital response without knowing sampling '
+                    'interval (%s)' % context)
+
+            drop_phase = self.is_symmetric_fir()
+            resp = trace.DigitalFilterResponse(
+                b, a, deltat, drop_phase=drop_phase)
+
+            if normalization_frequency is not None:
+                normalization = num.abs(evaluate1(
+                    resp, normalization_frequency))
+
+                if num.abs(normalization - 1.0) > 1e-2:
+                    logger.warn(
+                        'FIR filter coefficients are not normalized. '
+                        'Normalizing them. Factor: %g (%s)' % (
+                            normalization, context))
+
+                resp = trace.DigitalFilterResponse(
+                    (b/normalization).tolist(), [1.0], deltat,
+                    drop_phase=drop_phase)
+
+            resps.append(resp)
+
+            if not drop_phase:
+                resps.extend(delay_responses)
+
+        else:
+            raise ValueError(self.cf_transfer_function_type)
+
+        return resps
 
 
 class Latitude(FloatWithUnit):
@@ -568,21 +749,15 @@ class PolesZeros(BaseFilter):
     zero_list = List.T(PoleZero.T(xmltagname='Zero'))
     pole_list = List.T(PoleZero.T(xmltagname='Pole'))
 
-    def get_pyrocko_response(self, nslc):
-        if self.pz_transfer_function_type == 'DIGITAL (Z-TRANSFORM)':
-            logger.warn(
-                'unhandled pole-zero response of type "DIGITAL (Z-TRANSFORM)" '
-                '(%s)' % '.'.join(nslc))
+    def summary(self):
+        return 'pz_%s(%i,%i)' % (
+            'ABC?'[
+                PzTransferFunction.choices.index(
+                    self.pz_transfer_function_type)],
+            len(self.pole_list),
+            len(self.zero_list))
 
-            return []
-
-        if self.pz_transfer_function_type not in (
-                'LAPLACE (RADIANS/SECOND)',
-                'LAPLACE (HERTZ)'):
-
-            raise NoResponseInformation(
-                'cannot convert PoleZero response of type %s (%s)' %
-                (self.pz_transfer_function_type, '.'.join(nslc)))
+    def get_pyrocko_response(self, context=None, deltat=None):
 
         factor = 1.0
         cfactor = 1.0
@@ -596,26 +771,36 @@ class PolesZeros(BaseFilter):
 
             logger.warn(
                 'no pole-zero normalization factor given. Assuming a value of '
-                '1.0 (%s)' % '.'.join(nslc))
+                '1.0 (%s)' % context)
 
             nfactor = 1.0
         else:
             nfactor = self.normalization_factor
 
-        resp = trace.PoleZeroResponse(
-            constant=nfactor*cfactor,
-            zeros=[z.value()*factor for z in self.zero_list],
-            poles=[p.value()*factor for p in self.pole_list])
+        if self.pz_transfer_function_type != 'DIGITAL (Z-TRANSFORM)':
+            resp = trace.PoleZeroResponse(
+                constant=nfactor*cfactor,
+                zeros=[z.value()*factor for z in self.zero_list],
+                poles=[p.value()*factor for p in self.pole_list])
+        else:
+            if not deltat:
+                raise NoResponseInformation(
+                    'cannot get digital pz response without knowing sampling '
+                    'interval (%s)' % context)
+
+            resp = trace.DigitalPoleZeroResponse(
+                constant=nfactor*cfactor,
+                zeros=[z.value()*factor for z in self.zero_list],
+                poles=[p.value()*factor for p in self.pole_list],
+                deltat=deltat)
 
         if not self.normalization_frequency.value:
             logger.warn(
-                'cannot check pole-zero normalization factor (%s)'
-                % '.'.join(nslc))
+                'cannot check pole-zero normalization factor (%s)' % context)
 
         else:
-            computed_normalization_factor = nfactor / abs(
-                resp.evaluate(
-                    num.array([self.normalization_frequency.value]))[0])
+            computed_normalization_factor = nfactor / abs(evaluate1(
+                resp, self.normalization_frequency.value))
 
             db = 20.0 * num.log10(
                 computed_normalization_factor / nfactor)
@@ -627,7 +812,7 @@ class PolesZeros(BaseFilter):
                         db,
                         computed_normalization_factor,
                         nfactor,
-                        '.'.join(nslc)))
+                        context))
 
         return [resp]
 
@@ -654,6 +839,9 @@ class Polynomial(BaseFilter):
     maximum_error = Float.T(xmltagname='MaximumError')
     coefficient_list = List.T(Coefficient.T(xmltagname='Coefficient'))
 
+    def summary(self):
+        return 'poly(%i)' % len(self.coefficient_list)
+
 
 class Decimation(Object):
     '''
@@ -665,6 +853,19 @@ class Decimation(Object):
     offset = Int.T(xmltagname='Offset')
     delay = FloatWithUnit.T(xmltagname='Delay')
     correction = FloatWithUnit.T(xmltagname='Correction')
+
+    def summary(self):
+        return 'deci(%i, %g -> %g, %g)' % (
+            self.factor,
+            self.input_sample_rate.value,
+            self.input_sample_rate.value / self.factor,
+            self.delay.value)
+
+    def get_pyrocko_response(self):
+        if self.delay and self.delay.value != 0.0:
+            return [trace.DelayResponse(delay=-self.delay.value)]
+
+        return []
 
 
 class Operator(Object):
@@ -699,6 +900,9 @@ class ResponseList(BaseFilter):
     response_list_element_list = List.T(
         ResponseListElement.T(xmltagname='ResponseListElement'))
 
+    def summary(self):
+        return 'list(%i)' % len(self.response_list_element_list)
+
 
 class Log(Object):
     '''
@@ -726,22 +930,90 @@ class ResponseStage(Object):
     decimation = Decimation.T(optional=True, xmltagname='Decimation')
     stage_gain = Gain.T(optional=True, xmltagname='StageGain')
 
-    def get_pyrocko_response(self, nslc):
+    def summary(self):
+        elements = []
+
+        for stuff in [
+                self.poles_zeros_list, self.coefficients_list,
+                self.response_list, self.fir, self.polynomial,
+                self.decimation, self.stage_gain]:
+
+            if stuff:
+                if isinstance(stuff, Object):
+                    elements.append(stuff.summary())
+                else:
+                    elements.extend(obj.summary() for obj in stuff)
+
+        return '%i: %s %s -> %s' % (
+            self.number,
+            ', '.join(elements),
+            self.input_units.name.upper() if self.input_units else '?',
+            self.output_units.name.upper() if self.output_units else '?')
+
+    def get_pyrocko_response(self, context, gain_only=False):
+
+        context = context + ', stage %i' % self.number
+
         responses = []
-        for pzs in self.poles_zeros_list:
-            responses.extend(pzs.get_pyrocko_response(nslc))
+        if self.stage_gain:
+            normalization_frequency = self.stage_gain.frequency
+        else:
+            normalization_frequency = 0.0
 
-        if len(self.poles_zeros_list) > 1:
-            logger.warn(
-                'multiple poles and zeros records in single response stage '
-                '(%s.%s.%s.%s)' % nslc)
+        if not gain_only:
+            deltat = None
+            delay_responses = []
+            if self.decimation:
+                deltat = 1.0 / self.decimation.input_sample_rate.value
+                delay_responses = self.decimation.get_pyrocko_response()
 
-        if (self.coefficients_list or
-                self.response_list or
-                self.fir or
-                self.polynomial):
+            for pzs in self.poles_zeros_list:
+                pz_resps = pzs.get_pyrocko_response(context, deltat)
+                responses.extend(pz_resps)
 
-            logger.debug('unhandled response at stage %i' % self.number)
+                # emulate incorrect? evalresp behaviour
+                if pzs.normalization_frequency != self.stage_gain.frequency:
+                    trial = trace.MultiplyResponse(pz_resps)
+                    anorm = num.abs(evaluate1(
+                        trial, pzs.normalization_frequency.value))
+                    asens = num.abs(
+                        evaluate1(trial, self.stage_gain.frequency))
+
+                    factor = anorm/asens
+
+                    if abs(factor - 1.0) > 0.01:
+                        logger.warn(
+                            'PZ normalization frequency (%g) is different '
+                            'from stage gain frequency (%s) -> Emulating '
+                            'possibly incorrect evalresp behaviour Correction '
+                            'factor: %g (%s)' % (
+                                pzs.normalization_frequency.value,
+                                self.stage_gain.frequency,
+                                factor,
+                                context))
+
+                        responses.append(
+                            trace.PoleZeroResponse(constant=factor))
+
+            if len(self.poles_zeros_list) > 1:
+                logger.warn(
+                    'multiple poles and zeros records in single response '
+                    'stage (%s)' % context)
+
+            for cfs in self.coefficients_list + (
+                    [self.fir] if self.fir else []):
+
+                responses.extend(cfs.get_pyrocko_response(
+                    context, deltat, delay_responses,
+                    normalization_frequency))
+
+            if len(self.coefficients_list) > 1:
+                logger.warn(
+                    'multiple filter coefficients lists in single response '
+                    'stage (%s)' % context)
+
+            if (self.response_list or self.fir or self.polynomial):
+                logger.debug('unhandled response at stage %i' % self.number)
 
         if self.stage_gain:
             responses.append(
@@ -756,12 +1028,16 @@ class ResponseStage(Object):
             if e is not None:
                 return e.input_units
 
+        return None
+
     @property
     def output_units(self):
         for e in (self.poles_zeros_list + self.coefficients_list +
                   [self.response_list, self.fir, self.polynomial]):
             if e is not None:
                 return e.output_units
+
+        return None
 
 
 class Response(Object):
@@ -772,26 +1048,105 @@ class Response(Object):
                                          xmltagname='InstrumentPolynomial')
     stage_list = List.T(ResponseStage.T(xmltagname='Stage'))
 
-    def get_pyrocko_response(self, nslc, fake_input_units=None):
-        responses = []
-        for stage in self.stage_list:
-            responses.extend(stage.get_pyrocko_response(nslc))
+    def check_sample_rates(self, channel):
 
-        if not self.stage_list and self.instrument_sensitivity:
-            responses.append(
-                trace.PoleZeroResponse(
-                    constant=self.instrument_sensitivity.value))
+        if self.stage_list:
+            sample_rate = None
 
+            for stage in self.stage_list:
+                if stage.decimation:
+                    input_sample_rate = \
+                        stage.decimation.input_sample_rate.value
+
+                    if sample_rate is not None and not same_sample_rate(
+                            sample_rate, input_sample_rate):
+
+                        logger.warn(
+                            'Response stage %i has unexpected input sample '
+                            'rate: %g Hz (expected: %g Hz)' % (
+                                stage.number,
+                                input_sample_rate,
+                                sample_rate))
+
+                    sample_rate = input_sample_rate / stage.decimation.factor
+
+            if sample_rate is not None and channel.sample_rate.value \
+                    and not same_sample_rate(
+                        sample_rate, channel.sample_rate.value):
+
+                logger.warn(
+                    'Channel sample rate (%g Hz) does not match sample rate '
+                    'deducted from response stages information (%g Hz).' % (
+                        channel.sample_rate.value,
+                        sample_rate))
+
+    def check_units(self):
+
+        if self.instrument_sensitivity \
+                and self.instrument_sensitivity.input_units:
+
+            units = self.instrument_sensitivity.input_units.name.upper()
+
+        if self.stage_list:
+            for stage in self.stage_list:
+                if units and stage.input_units \
+                        and stage.input_units.name.upper() != units:
+
+                    logger.warn(
+                        'Input units of stage %i (%s) do not match %s (%s).'
+                        % (
+                            stage.number,
+                            units,
+                            'output units of stage %i'
+                            if stage.number == 0
+                            else 'sensitivity input units',
+                            units))
+
+                if stage.output_units:
+                    units = stage.output_units.name.upper()
+                else:
+                    units = None
+
+            sout_units = self.instrument_sensitivity.output_units
+            if self.instrument_sensitivity and sout_units:
+                if units is not None and units != sout_units.name.upper():
+                    logger.warn(
+                        'Output units of stage %i (%s) do not match %s (%s).'
+                        % (
+                            stage.number,
+                            units,
+                            'sensitivity output units',
+                            sout_units.name.upper()))
+
+    def get_pyrocko_response(
+            self, context, fake_input_units=None, stages=(0, 1)):
+
+        if self.stage_list:
+            responses = []
+            for istage, stage in enumerate(self.stage_list):
+                responses.extend(stage.get_pyrocko_response(
+                    context, gain_only=not (stages[0] <= istage < stages[1])))
+
+        elif self.instrument_sensitivity:
+            responses = [trace.PoleZeroResponse(
+                constant=self.instrument_sensitivity.value)]
+        else:
+            responses = []
+
+        checkpoints = []
         if self.instrument_sensitivity:
             trial = trace.MultiplyResponse(responses)
             sval = self.instrument_sensitivity.value
             sfreq = self.instrument_sensitivity.frequency
+            checkpoints.append(trace.FrequencyResponseCheckpoint(
+                frequency=sfreq, value=sval))
+
             try:
                 check_resp(
                     trial, sval, sfreq, 0.1,
                     prelude='Instrument sensitivity value inconsistent with '
-                            'sensitivity computed from complete response\n'
-                            '  channel: %s' % '.'.join(nslc))
+                            'sensitivity computed from complete response (%s)'
+                            % context)
             except InconsistentResponseInformation as e:
                 logger.warn(str(e))
 
@@ -801,11 +1156,11 @@ class Response(Object):
 
                 raise NoResponseInformation('no input units given')
 
-            input_units = self.instrument_sensitivity.input_units.name
+            input_units = self.instrument_sensitivity.input_units.name.upper()
 
             try:
                 conresp = conversion[
-                    fake_input_units.upper(), input_units.upper()]
+                    fake_input_units.upper(), input_units]
 
             except KeyError:
                 raise NoResponseInformation(
@@ -814,8 +1169,11 @@ class Response(Object):
 
             if conresp is not None:
                 responses.append(conresp)
+                for checkpoint in checkpoints:
+                    checkpoint.value *= num.abs(evaluate1(
+                        conresp, checkpoint.frequency))
 
-        return trace.MultiplyResponse(responses)
+        return trace.MultiplyResponse(responses, checkpoints=checkpoints)
 
     @classmethod
     def from_pyrocko_pz_response(cls, presponse, input_unit, output_unit,
@@ -837,7 +1195,7 @@ class Response(Object):
         '''
 
         norm_factor = 1.0/float(abs(
-            presponse.evaluate(num.array([normalization_frequency]))[0]
+            evaluate1(presponse, normalization_frequency)
             / presponse.constant))
 
         pzs = PolesZeros(
@@ -899,6 +1257,16 @@ class BaseNode(Object):
                      args[1] >= self.start_date) and
                     (self.end_date is None or
                      self.end_date >= args[0]))
+
+
+def overlaps(a, b):
+    return (
+        a.start_date is None or b.end_date is None
+        or a.start_date < b.end_date
+    ) and (
+        b.start_date is None or a.end_date is None
+        or b.start_date < a.end_date
+    )
 
 
 class Channel(BaseNode):
@@ -1321,7 +1689,8 @@ class FDSNStationXML(Object):
                     channel.response.instrument_sensitivity and \
                     channel.response.instrument_sensitivity.input_units:
 
-                unit = channel.response.instrument_sensitivity.input_units.name
+                unit = channel.response.instrument_sensitivity\
+                    .input_units.name.upper()
             else:
                 unit = None
 
@@ -1430,7 +1799,8 @@ class FDSNStationXML(Object):
         return nslcs
 
     def get_pyrocko_response(
-            self, nslc, time=None, timespan=None, fake_input_units=None):
+            self, nslc,
+            time=None, timespan=None, fake_input_units=None, stages=(0, 1)):
 
         net, sta, loc, cha = nslc
         resps = []
@@ -1438,8 +1808,12 @@ class FDSNStationXML(Object):
                 net, sta, loc, cha, time=time, timespan=timespan):
             resp = channel.response
             if resp:
+                resp.check_sample_rates(channel)
+                resp.check_units()
                 resps.append(resp.get_pyrocko_response(
-                    nslc, fake_input_units=fake_input_units))
+                    '.'.join(nslc),
+                    fake_input_units=fake_input_units,
+                    stages=stages))
 
         if not resps:
             raise NoResponseInformation('%s.%s.%s.%s' % nslc)
@@ -1491,8 +1865,75 @@ class FDSNStationXML(Object):
             'number of nsl codes: %i' % len(self.nsl_code_list),
             'number of nslc codes: %i' % len(self.nslc_code_list)
         ]
+        return '\n'.join(lst)
+
+    def summary_stages(self):
+        data = []
+        for network, station, channel in self.iter_network_station_channels():
+            nslc = (network.code, station.code, channel.location_code,
+                    channel.code)
+
+            stages = []
+            in_units = '?'
+            out_units = '?'
+            if channel.response:
+                sens = channel.response.instrument_sensitivity
+                if sens:
+                    in_units = sens.input_units.name.upper()
+                    out_units = sens.output_units.name.upper()
+
+                for stage in channel.response.stage_list:
+                    stages.append(stage.summary())
+
+            data.append(
+                (nslc, tts(channel.start_date), tts(channel.end_date),
+                 in_units, out_units, stages))
+
+        data.sort()
+
+        lst = []
+        for nslc, stmin, stmax, in_units, out_units, stages in data:
+            lst.append(' %s: %s - %s, %s -> %s' % (
+                '.'.join(nslc), stmin, stmax, in_units, out_units))
+            for stage in stages:
+                lst.append('   %s' % stage)
 
         return '\n'.join(lst)
+
+    def _check_overlaps(self):
+        by_nslc = {}
+        for network in self.network_list:
+            for station in network.station_list:
+                for channel in station.channel_list:
+                    nslc = (network.code, station.code, channel.location_code,
+                            channel.code)
+                    if nslc not in by_nslc:
+                        by_nslc[nslc] = []
+
+                    by_nslc[nslc].append(channel)
+
+        errors = []
+        for nslc, channels in by_nslc.items():
+            for ia, a in enumerate(channels):
+                for b in channels[ia+1:]:
+                    if overlaps(a, b):
+                        errors.append(
+                            'Channel epochs overlap for %s:\n'
+                            '    %s - %s\n    %s - %s' % (
+                                '.'.join(nslc),
+                                tts(a.start_date), tts(a.end_date),
+                                tts(b.start_date), tts(b.end_date)))
+        return errors
+
+    def check(self):
+        errors = []
+        for meth in [self._check_overlaps]:
+            errors.extend(meth())
+
+        if errors:
+            raise Inconsistencies(
+                'Inconsistencies found in StationXML:\n  '
+                + '\n  '.join(errors))
 
 
 class InconsistentChannelLocations(Exception):
@@ -1617,3 +2058,46 @@ def primitive_merge(sxs):
         created=time.time(),
         network_list=copy.deepcopy(
             sorted(networks, key=lambda x: x.code)))
+
+
+if __name__ == '__main__':
+    from optparse import OptionParser
+
+    util.setup_logging('pyrocko.io.stationxml', 'warning')
+
+    usage = \
+        'python -m pyrocko.io.stationxml check|stats|stages ' \
+        '<filename> [options]'
+
+    description = '''Torture StationXML file.'''
+
+    parser = OptionParser(
+        usage=usage,
+        description=description,
+        formatter=util.BetterHelpFormatter())
+
+    (options, args) = parser.parse_args(sys.argv[1:])
+
+    if len(args) != 2:
+        parser.print_help()
+        sys.exit(1)
+
+    action, path = args
+
+    sx = load_xml(filename=path)
+    if action == 'check':
+        try:
+            sx.check()
+        except Inconsistencies as e:
+            logger.error(e)
+            sys.exit(1)
+
+    elif action == 'stats':
+        print(sx.summary())
+
+    elif action == 'stages':
+        print(sx.summary_stages())
+
+    else:
+        parser.print_help()
+        sys.exit('unknown action: %s' % action)
