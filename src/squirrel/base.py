@@ -2036,6 +2036,37 @@ class Squirrel(Selection):
     def get_coverage(
             self, kind, tmin=None, tmax=None, codes_list=None, limit=None):
 
+        '''
+        Get coverage information.
+
+        Get information about strips of gapless data coverage.
+
+        :param kind:
+            Content kind to be queried.
+        :param tmin:
+            Start time of query interval.
+        :param tmin:
+            End time of query interval.
+        :param codes_list:
+            List of code patterns to query. If not given or empty, an empty
+            list is returned.
+        :param limit:
+            Limit query to return only up to a given maximum number of entries
+            per matching channel (without setting this option, very gappy data
+            could cause the query to execute for a very long time).
+
+        :returns: list of entries of the form
+            ``(pattern, codes, deltat, tmin, tmax, data)`` where ``pattern`` is
+            the request pattern which yielded this entry, ``codes`` are the
+            matching channel codes, ``tmin`` and ``tmax`` are the global min
+            and max times for which data for this channel is available,
+            regardless of any time restrictions in the query. ``data`` is
+            another list with (up to ``limit``) checkpoints of the form
+            ``(time, count)`` where a ``count`` of zero indicates a data gap, a
+            value of 1 normal data coverage and higher values indicate
+            duplicate/redundant data.
+        '''
+
         tmin_seconds, tmin_offset = model.tsplit(tmin)
         tmax_seconds, tmax_offset = model.tsplit(tmax)
 
@@ -2054,11 +2085,11 @@ class Squirrel(Selection):
             for nut in self.iter_nuts(
                     kind, tmin, tmin, kind_codes_ids=kind_codes_ids):
 
-                codes = nut.codes
-                if codes not in counts_at_tmin:
-                    counts_at_tmin[codes] = 0
+                k = nut.codes, nut.deltat
+                if k not in counts_at_tmin:
+                    counts_at_tmin[k] = 0
 
-                counts_at_tmin[codes] += 1
+                counts_at_tmin[k] += 1
 
         coverage = []
         for pattern, kind_codes_id, codes, deltat in kdata_all:
@@ -2081,6 +2112,9 @@ class Squirrel(Selection):
                 for row in self._conn.execute(sql, [kind_codes_id]):
                     entry[3+i] = model.tjoin(row[0], row[1], deltat)
 
+            if None in entry[3:5]:
+                continue
+
             args = [kind_codes_id]
 
             sql_time = ''
@@ -2092,7 +2126,7 @@ class Squirrel(Selection):
 
             if tmax is not None:
                 sql_time += ' AND ( time_seconds < ? ' \
-                    'OR ( ? == time_seconds AND time_offset < ? ) ) '
+                    'OR ( ? == time_seconds AND time_offset <= ? ) ) '
                 args.extend([tmax_seconds, tmax_seconds, tmax_offset])
 
             sql_limit = ''
@@ -2120,16 +2154,19 @@ class Squirrel(Selection):
             if limit is not None and len(rows) == limit:
                 entry[-1] = None
             else:
-                counts = counts_at_tmin.get(codes, 0)
+                counts = counts_at_tmin.get((codes, deltat), 0)
+                tlast = None
                 if tmin is not None:
                     entry[-1].append((tmin, counts))
+                    tlast = tmin
 
                 for row in rows:
                     t = model.tjoin(row[0], row[1], deltat)
                     counts += row[2]
                     entry[-1].append((t, counts))
+                    tlast = t
 
-                if tmax is not None:
+                if tmax is not None and (tlast is None or tlast != tmax):
                     entry[-1].append((tmax, counts))
 
             coverage.append(entry)

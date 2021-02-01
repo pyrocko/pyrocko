@@ -494,6 +494,84 @@ class SquirrelTestCase(unittest.TestCase):
         bench = self.test_loading(hours=24, with_pile=False)
         print(bench)
 
+    def test_coverage(self):
+
+        def val_at(ref, t):
+            cr_last = 0
+            for tr, cr in ref:
+                if t < tr:
+                    return cr_last
+
+                cr_last = cr
+
+            return cr_last
+
+        def assert_coverage_equal(ref, part):
+            for tp, cp in part:
+                assert val_at(ref, tp) == cp
+
+        def iter_qtranges():
+            for qtmin in [None, -1., 0., 1., 5., 10., 15., 20., 25., 30.]:
+                for qtmax in [None, -1., 0., 1., 5., 10., 15., 20., 25., 30.]:
+                    if None in (qtmin, qtmax) or qtmin <= qtmax:
+                        yield qtmin, qtmax
+
+        tempdir = os.path.join(self.tempdir, 'test_coverage')
+        try:
+            for deci in [1, 2]:
+                nsamples = 1000
+                trs = []
+                for sta, tmin1, tmin2 in [
+                            ('a', 0.0, 0.0),
+                            ('b', 0.0, 5.0),
+                            ('c', 0.0, 10.0),
+                            ('d', 0.0, 15.0)]:
+
+                    tr1 = trace.Trace(
+                        station=sta,
+                        tmin=tmin1,
+                        deltat=0.01,
+                        ydata=num.zeros(nsamples, dtype=num.int32))
+
+                    tr2 = trace.Trace(
+                        station=sta,
+                        tmin=tmin2,
+                        deltat=0.01*deci,
+                        ydata=num.zeros(nsamples//deci, dtype=num.int32))
+
+                    trs.append(tr1)
+                    trs.append(tr2)
+
+                fns = io.save(trs, op.join(tempdir, 'data.mseed'))
+
+                database = squirrel.Database()
+                sq = squirrel.Squirrel(database=database)
+                sq.add(fns)
+                cover_ref = {}
+                for qtmin, qtmax in iter_qtranges():
+
+                    entries = sq.get_coverage(
+                        'waveform', tmin=qtmin, tmax=qtmax, codes_list=['*'])
+
+                    if deci == 1:
+                        assert len(entries) == 4
+
+                    if deci == 2:
+                        assert len(entries) == 8
+
+                    for entry in entries:
+                        k = entry[1].split(squirrel.separator)[2], entry[2]
+                        data = entry[-1]
+                        if k not in cover_ref:
+                            cover_ref[k] = data
+                        else:
+                            assert_coverage_equal(cover_ref[k], data)
+
+                # sq.snuffle()
+
+        finally:
+            shutil.rmtree(tempdir)
+
     def test_loading(self, with_pile=False, hours=1):
         dir = op.join(tempfile.gettempdir(), 'testdataset_d_%i' % hours)
 

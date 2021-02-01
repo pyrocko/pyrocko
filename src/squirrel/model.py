@@ -760,6 +760,7 @@ class DummyTrace(object):
 
 
 __all__ = [
+    'separator',
     'to_kind',
     'to_kinds',
     'to_kind_id',
