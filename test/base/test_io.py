@@ -154,7 +154,7 @@ class IOTestCase(unittest.TestCase):
         except mseed.CodeTooLong as e:
             assert isinstance(e, mseed.CodeTooLong)
 
-    @random_traces(length=1000)
+    @random_traces(nsamples=1000)
     def testMSeedRecordLength(self, tr):
         for exp in range(8, 20):
             with NTF(prefix='pyrocko') as f:
@@ -164,7 +164,7 @@ class IOTestCase(unittest.TestCase):
                 tr2 = io.load(tempfn)[0]
                 assert tr == tr2
 
-    @random_traces(length=10000, limit=2**27)
+    @random_traces(nsamples=10000, limit=2**27)
     def testMSeedSTEIM(self, tr):
         with NTF(prefix='pyrocko') as f1:
             io.save(tr, f1.name, steim=1)
