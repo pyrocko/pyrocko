@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - New plot function to show radiation pattern / azimuthal distribution of
   directivity effects for synthetics.
 - Snuffler: load StationXML via menu.
+- `io.mseed`: Adding option for STEIM2 compression.
+- Jackseis: Adding `--output-steim` option to control compression.
 
 ### Fixed
 - Fix plotting issues in cake.

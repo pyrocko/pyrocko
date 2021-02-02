@@ -6,21 +6,62 @@ import numpy as num
 import time
 import tempfile
 import random
+from functools import wraps
 from random import choice as rc
 from os.path import join as pjoin
 import shutil
 
 from pyrocko import io, guts
-from pyrocko.io import FileLoadError
+from pyrocko.io import FileLoadError, FileSaveError
 from pyrocko.io import mseed, trace, util, suds, quakeml
 
 from .. import common
 
 abc = 'abcdefghijklmnopqrstuvwxyz'
+NTF = tempfile.NamedTemporaryFile
+op = os.path
 
 
 def rn(n):
     return ''.join([random.choice(abc) for i in range(n)])
+
+
+def get_random_trace(nsamples, code='12', deltat=0.01,
+                     dtype=num.int32, limit=None):
+    assert isinstance(nsamples, int)
+    try:
+        info = num.iinfo(dtype)
+        data = num.random.randint(
+            info.min, info.max, size=nsamples, dtype=dtype)
+    except ValueError:
+        info = num.finfo(num.float32)
+        data = num.random.uniform(
+            info.min + 1., info.max - 1., size=nsamples)\
+            .astype(dtype)
+
+    if limit is not None:
+        data[data < limit] = -abs(limit)
+        data[data > limit] = abs(limit)
+
+    return trace.Trace(
+        code, code, code, code,
+        ydata=data, deltat=deltat)
+
+
+def random_traces(nsamples, code='12', deltat=0.01,
+                  dtypes=(num.int8, num.int32, num.float32, num.float64),
+                  limit=None):
+    def decorator(func):
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            for dtype in dtypes:
+                tr = get_random_trace(nsamples, code, deltat, dtype, limit)
+                func(*args, tr, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
 class IOTestCase(unittest.TestCase):
@@ -113,16 +154,38 @@ class IOTestCase(unittest.TestCase):
         except mseed.CodeTooLong as e:
             assert isinstance(e, mseed.CodeTooLong)
 
-    def testMSeedRecordLength(self):
-        c = '12'
-        tr = trace.Trace(c, c, c, c, ydata=num.zeros(10))
+    @random_traces(nsamples=1000)
+    def testMSeedRecordLength(self, tr):
         for exp in range(8, 20):
-            tempfn = tempfile.mkstemp()[1]
-            io.save(tr, tempfn, record_length=2**exp)
-            assert os.stat(tempfn).st_size == 2**exp
-            tr2 = io.load(tempfn)[0]
-            assert tr2.data_len() == 10
-            assert num.all(tr2.get_ydata() == 0.0)
+            with NTF(prefix='pyrocko') as f:
+                tempfn = f.name
+                io.save(tr, tempfn, record_length=2**exp)
+                assert os.stat(tempfn).st_size / 2**exp % 1. == 0.
+                tr2 = io.load(tempfn)[0]
+                assert tr == tr2
+
+    @random_traces(nsamples=10000, limit=2**27)
+    def testMSeedSTEIM(self, tr):
+        with NTF(prefix='pyrocko') as f1:
+            io.save(tr, f1.name, steim=1)
+            tr1 = io.load(f1.name)[0]
+
+            with NTF(prefix='pyrocko') as f2:
+                io.save(tr, f2.name, steim=1)
+                tr2 = io.load(f2.name)[0]
+
+                # STEIM compression only affects int32
+                if tr.ydata.dtype is num.int32:
+                    assert op.getsize(f1.name) != op.getsize(f2.name)
+
+        assert tr == tr1
+        assert tr == tr2
+        assert tr1 == tr2
+
+        for steim in (0, 3):
+            with NTF(prefix='pyrocko') as f:
+                with self.assertRaises(FileSaveError):
+                    io.save(tr, f.name, steim=steim)
 
     def testMSeedDetect(self):
         fpath = common.test_data_file('test2.mseed')

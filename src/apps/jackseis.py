@@ -70,18 +70,33 @@ def nice_seconds_floor(s):
 
 
 def check_record_length(option, opt, value):
-    reclen = int(value)
-    if reclen in io.mseed.VALID_RECORD_LENGTHS:
-        return reclen
+    try:
+        reclen = int(value)
+        if reclen in io.mseed.VALID_RECORD_LENGTHS:
+            return reclen
+    except Exception:
+        ...
     raise OptionValueError(
-        'invalid record length %d. (choose from %s)'
+        'invalid record length %s. (choose from %s)'
         % (reclen, ', '.join(str(b) for b in io.mseed.VALID_RECORD_LENGTHS)))
 
 
+def check_steim(option, opt, value):
+    try:
+        compression = int(value)
+        if compression in (1, 2):
+            return compression
+    except Exception:
+        ...
+    raise OptionValueError(
+        'invalid compression %s. (choose from 1, 2)' % compression)
+
+
 class JackseisOptions(Option):
-    TYPES = Option.TYPES + ('record_length',)
+    TYPES = Option.TYPES + ('record_length', 'steim')
     TYPE_CHECKER = copy(Option.TYPE_CHECKER)
     TYPE_CHECKER['record_length'] = check_record_length
+    TYPE_CHECKER['steim'] = check_steim
 
 
 def main(args=None):
@@ -268,6 +283,16 @@ def main(args=None):
              'the given type.')
 
     parser.add_option(
+        '--output-steim',
+        dest='steim',
+        type='steim',
+        default=1,
+        metavar='STEIM_COMPRESSION',
+        help='set the mseed STEIM compression. Choices: 1 or 2. '
+             'Default is STEIM-1, which can compress full range int32. '
+             'STEIM-2 is limited to 30 bit dynamic range.')
+
+    parser.add_option(
         '--output-record-length',
         dest='record_length',
         type='record_length',
@@ -415,6 +440,7 @@ def main(args=None):
     save_kwargs = {}
     if options.output_format == 'mseed':
         save_kwargs['record_length'] = options.record_length
+        save_kwargs['steim'] = options.steim
 
     for traces in it:
         if traces:

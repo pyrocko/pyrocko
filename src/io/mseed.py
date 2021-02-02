@@ -66,7 +66,7 @@ def as_tuple(tr):
 
 
 def save(traces, filename_template, additional={}, overwrite=True,
-         record_length=4096):
+         steim=1, record_length=4096):
     from pyrocko import mseed_ext
 
     assert record_length in VALID_RECORD_LENGTHS
@@ -100,7 +100,8 @@ def save(traces, filename_template, additional={}, overwrite=True,
 
         ensuredirs(fn)
         try:
-            mseed_ext.store_traces(trtups, fn, record_length)
+            mseed_ext.store_traces(
+                trtups, fn, record_length=record_length, steim=steim)
         except mseed_ext.MSeedError as e:
             raise FileSaveError(
                 str(e) + ' (while storing traces to file \'%s\')' % fn)
