@@ -278,15 +278,16 @@ mseed_store_traces (PyObject *m, PyObject *args, PyObject *kwds)
         memcpy(mst->datasamples, PyArray_DATA(contiguous_array), length*ms_samplesize(mstype));
         Py_DECREF(contiguous_array);
 
-        mst_pack (mst, &record_handler, outfile, record_length, msdetype,
-                                     1, &psamples, 1, 0, NULL);
+        Py_BEGIN_ALLOW_THREADS
+        mst_pack(mst, &record_handler, outfile, record_length, msdetype, 1, &psamples, 1, 0, NULL);
         mst_free( &mst );
+        Py_END_ALLOW_THREADS
+
         Py_DECREF(in_trace);
     }
     fclose( outfile );
 
-    Py_INCREF(Py_None);
-    return Py_None;
+    Py_RETURN_NONE;
 }
 
 

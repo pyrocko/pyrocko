@@ -26,17 +26,17 @@ def rn(n):
     return ''.join([random.choice(abc) for i in range(n)])
 
 
-def get_random_trace(length, code='12', deltat=0.01,
+def get_random_trace(nsamples, code='12', deltat=0.01,
                      dtype=num.int32, limit=None):
-    assert isinstance(length, int)
+    assert isinstance(nsamples, int)
     try:
         info = num.iinfo(dtype)
         data = num.random.randint(
-            info.min, info.max, size=length, dtype=dtype)
+            info.min, info.max, size=nsamples, dtype=dtype)
     except ValueError:
         info = num.finfo(num.float32)
         data = num.random.uniform(
-            info.min + 1., info.max - 1., size=length)\
+            info.min + 1., info.max - 1., size=nsamples)\
             .astype(dtype)
 
     if limit is not None:
@@ -48,7 +48,7 @@ def get_random_trace(length, code='12', deltat=0.01,
         ydata=data, deltat=deltat)
 
 
-def random_traces(length, code='12', deltat=0.01,
+def random_traces(nsamples, code='12', deltat=0.01,
                   dtypes=(num.int8, num.int32, num.float32, num.float64),
                   limit=None):
     def decorator(func):
@@ -56,7 +56,7 @@ def random_traces(length, code='12', deltat=0.01,
         @wraps(func)
         def wrapper(*args, **kwargs):
             for dtype in dtypes:
-                tr = get_random_trace(length, code, deltat, dtype, limit)
+                tr = get_random_trace(nsamples, code, deltat, dtype, limit)
                 func(*args, tr, **kwargs)
 
         return wrapper
