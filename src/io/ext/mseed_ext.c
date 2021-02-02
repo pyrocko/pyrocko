@@ -149,7 +149,7 @@ static void record_handler (char *record, int reclen, void *outfile) {
 }
 
 static PyObject*
-mseed_store_traces (PyObject *m, PyObject *args)
+mseed_store_traces (PyObject *m, PyObject *args, PyObject *kwds)
 {
     char          *filename;
     MSTrace       *mst = NULL;
@@ -165,14 +165,21 @@ mseed_store_traces (PyObject *m, PyObject *args)
     int           numpytype;
     int           length;
     size_t        record_length = 4096;
+    int           steim = 1;
     FILE          *outfile;
 
     struct module_state *st = GETSTATE(m);
 
-    if (!PyArg_ParseTuple(args, "Os|n", &in_traces, &filename, &record_length)) {
-        PyErr_SetString(st->error, "usage store_traces(traces, filename, record_length)" );
+    static char *kwlist[] = {"traces", "filename", "record_length", "steim", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "Os|ni", kwlist, &in_traces, &filename, &record_length, &steim))
+        return NULL;
+
+    if (steim != 1 && steim != 2) {
+        PyErr_SetString(st->error, "Invalid STEIM compression, use 1 or 2.");
         return NULL;
     }
+
     if (!PySequence_Check( in_traces )) {
         PyErr_SetString(st->error, "Traces is not of sequence type." );
         return NULL;
@@ -236,7 +243,7 @@ mseed_store_traces (PyObject *m, PyObject *args)
                 case NPY_INT32:
                     assert( ms_samplesize('i') == 4 );
                     mstype = 'i';
-                    msdetype = DE_STEIM1;
+                    msdetype = steim == 1 ? DE_STEIM1 : DE_STEIM2 ;
                     break;
                 case NPY_INT8:
                     assert( ms_samplesize('a') == 1 );
@@ -295,7 +302,7 @@ static PyMethodDef mseed_ext_methods[] = {
     "in libmseed. If dataflag is True, `data` is a numpy array containing the\n"
     "data. If dataflag is False, the data is not unpacked and `data` is None.\n" },
 
-    {"store_traces",  mseed_store_traces, METH_VARARGS, 
+    {"store_traces",  mseed_store_traces, METH_VARARGS | METH_KEYWORDS, 
     "store_traces(traces, filename)\n" },
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
