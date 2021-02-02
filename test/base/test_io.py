@@ -26,33 +26,37 @@ def rn(n):
     return ''.join([random.choice(abc) for i in range(n)])
 
 
-def random_trace(length, code='12', deltat=0.01,
-                 dtypes=(num.int8, num.int32, num.float32, num.float64),
-                 limit=None):
+def get_random_trace(length, code='12', deltat=0.01,
+                     dtype=num.int32, limit=None):
     assert isinstance(length, int)
+    try:
+        info = num.iinfo(dtype)
+        data = num.random.randint(
+            info.min, info.max, size=length, dtype=dtype)
+    except ValueError:
+        info = num.finfo(num.float32)
+        data = num.random.uniform(
+            info.min + 1., info.max - 1., size=length)\
+            .astype(dtype)
 
+    if limit is not None:
+        data[data < limit] = -abs(limit)
+        data[data > limit] = abs(limit)
+
+    return trace.Trace(
+        code, code, code, code,
+        ydata=data, deltat=deltat)
+
+
+def random_traces(length, code='12', deltat=0.01,
+                  dtypes=(num.int8, num.int32, num.float32, num.float64),
+                  limit=None):
     def decorator(func):
 
         @wraps(func)
         def wrapper(*args, **kwargs):
             for dtype in dtypes:
-                try:
-                    info = num.iinfo(dtype)
-                    data = num.random.randint(
-                        info.min, info.max, size=length, dtype=dtype)
-                except ValueError:
-                    info = num.finfo(num.float32)
-                    data = num.random.uniform(
-                        info.min + 1., info.max - 1., size=length)\
-                        .astype(dtype)
-
-                if limit is not None:
-                    data[data < limit] = -abs(limit)
-                    data[data > limit] = abs(limit)
-
-                tr = trace.Trace(
-                    code, code, code, code,
-                    ydata=data)
+                tr = get_random_trace(length, code, deltat, dtype, limit)
                 func(*args, tr, **kwargs)
 
         return wrapper
@@ -150,7 +154,7 @@ class IOTestCase(unittest.TestCase):
         except mseed.CodeTooLong as e:
             assert isinstance(e, mseed.CodeTooLong)
 
-    @random_trace(length=1000)
+    @random_traces(length=1000)
     def testMSeedRecordLength(self, tr):
         for exp in range(8, 20):
             with NTF(prefix='pyrocko') as f:
@@ -160,7 +164,7 @@ class IOTestCase(unittest.TestCase):
                 tr2 = io.load(tempfn)[0]
                 assert tr == tr2
 
-    @random_trace(length=10000, limit=2**27)
+    @random_traces(length=10000, limit=2**27)
     def testMSeedSTEIM(self, tr):
         with NTF(prefix='pyrocko') as f1:
             io.save(tr, f1.name, steim=1)
