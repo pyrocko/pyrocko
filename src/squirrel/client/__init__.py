@@ -5,10 +5,11 @@
 
 from __future__ import absolute_import, print_function
 
-from . import base, fdsn, catalog
+from . import base, local, fdsn, catalog
 
 from .base import *  # noqa
+from .local import *  # noqa
 from .fdsn import *  # noqa
 from .catalog import *  # noqa
 
-__all__ = base.__all__ + fdsn.__all__ + catalog.__all__
+__all__ = base.__all__ + local.__all__ + fdsn.__all__ + catalog.__all__

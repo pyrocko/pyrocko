@@ -25,6 +25,7 @@ g_content_kinds = [
     'event',
     'waveform_promise']
 
+
 g_content_kind_ids = (
     UNDEFINED, WAVEFORM, STATION, CHANNEL, RESPONSE, EVENT,
     WAVEFORM_PROMISE) = range(len(g_content_kinds))

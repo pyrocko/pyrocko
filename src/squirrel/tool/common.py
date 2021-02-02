@@ -98,12 +98,27 @@ def add_selection_arguments(p):
              'selections can be used to speed up startup of Squirrel-based '
              'applications.')
 
+    p.add_argument(
+        '--dataset', '-d',
+        dest='datasets',
+        default=[],
+        action='append',
+        metavar='FILE',
+        help='Add directories/files/sources from dataset description file. '
+             'This option can be repeated to add multiple datasets.')
+
 
 def squirrel_from_selection_arguments(args):
     from pyrocko import squirrel as sq
     squirrel = sq.Squirrel(persistent=args.persistent)
     kinds = args.kinds or None
-    squirrel.add(args.paths, check=args.check, format=args.format, kinds=kinds)
+    if args.paths:
+        squirrel.add(
+            args.paths, check=args.check, format=args.format, kinds=kinds)
+
+    for dataset_path in args.datasets:
+        squirrel.add_dataset(dataset_path, check=args.check)
+
     return squirrel
 
 

@@ -264,7 +264,7 @@ class FDSNSource(Source):
                 'FDSNSource: auth_token and auth_token_path are mutually '
                 'exclusive.')
 
-    def setup(self, squirrel):
+    def setup(self, squirrel, check=True, progress_viewer='terminal'):
         self._cache_path = op.join(
             self.cache_path or squirrel._cache_path, 'fdsn')
 
@@ -275,7 +275,10 @@ class FDSNSource(Source):
         util.ensuredir(waveforms_path)
         self._archive.set_base_path(waveforms_path)
 
-        squirrel.add(self._get_waveforms_path())
+        squirrel.add(
+            self._get_waveforms_path(),
+            check=check,
+            progress_viewer=progress_viewer)
 
     def _get_constraint_path(self):
         return op.join(self._cache_path, self._hash, 'constraint.pickle')

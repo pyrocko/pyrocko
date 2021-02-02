@@ -19,7 +19,7 @@ from pyrocko.guts import Object, Int, List, Tuple, String, Timestamp, Dict
 from pyrocko import util
 from pyrocko.progress import progress
 
-from . import model, io, cache
+from . import model, io, cache, dataset
 
 from .model import to_kind_id, to_kind, separator, WaveformOrder
 from .client import fdsn, catalog
@@ -1193,6 +1193,10 @@ class Squirrel(Selection):
 
         self.add_source(catalog.CatalogSource(*args, **kwargs))
 
+    def add_dataset(self, path, check=True, progress_viewer='terminal'):
+        ds = dataset.read_dataset(path)
+        ds.setup(self, check=check, progress_viewer=progress_viewer)
+
     def _get_selection_args(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None):
 
@@ -1833,6 +1837,13 @@ class Squirrel(Selection):
         args = self._get_selection_args(*args, **kwargs)
         nuts = sorted(
             self.iter_nuts('channel', *args), key=lambda nut: nut.dkey)
+        self.check_duplicates(nuts)
+        return [self.get_content(nut) for nut in nuts]
+
+    def get_responses(self, *args, **kwargs):
+        args = self._get_selection_args(*args, **kwargs)
+        nuts = sorted(
+            self.iter_nuts('response', *args), key=lambda nut: nut.dkey)
         self.check_duplicates(nuts)
         return [self.get_content(nut) for nut in nuts]
 
