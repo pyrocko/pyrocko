@@ -89,7 +89,7 @@ def check_steim(option, opt, value):
     except Exception:
         ...
     raise OptionValueError(
-        'invalid compression %s. (choose from 1, 2)' % compression)
+        'invalid STEIM compression %s. (choose from 1, 2)' % compression)
 
 
 class JackseisOptions(Option):
@@ -286,11 +286,11 @@ def main(args=None):
         '--output-steim',
         dest='steim',
         type='steim',
-        default=1,
+        default=2,
         metavar='STEIM_COMPRESSION',
         help='set the mseed STEIM compression. Choices: 1 or 2. '
-             'Default is STEIM-1, which can compress full range int32. '
-             'STEIM-2 is limited to 30 bit dynamic range.')
+             'Default is STEIM-2, which can compress full range int32. '
+             'NOTE: STEIM-2 is limited to 30 bit dynamic range.')
 
     parser.add_option(
         '--output-record-length',
