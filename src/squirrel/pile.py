@@ -76,11 +76,11 @@ class Pile(object):
 
     @property
     def tmin(self):
-        return self._squirrel.get_time_span()[0]
+        return self._squirrel.get_time_span('waveform')[0]
 
     @property
     def tmax(self):
-        return self._squirrel.get_time_span()[1]
+        return self._squirrel.get_time_span('waveform')[1]
 
     @property
     def networks(self):
@@ -99,7 +99,8 @@ class Pile(object):
         return set(codes[4] for codes in self._squirrel.get_codes('waveform'))
 
     def is_relevant(self, tmin, tmax):
-        ptmin, ptmax = self._squirrel.get_time_span()
+        ptmin, ptmax = self._squirrel.get_time_span(
+            ['waveform', 'waveform_promise'])
 
         if None in (ptmin, ptmax):
             return False

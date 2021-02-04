@@ -16,7 +16,7 @@ from collections import defaultdict
 
 from pyrocko.io_common import FileLoadError
 from pyrocko.guts import Object, Int, List, Tuple, String, Timestamp, Dict
-from pyrocko import util
+from pyrocko import util, trace
 from pyrocko.progress import progress
 
 from . import model, io, cache, dataset
@@ -850,13 +850,13 @@ class Squirrel(Selection):
         c.execute(self._sql(
             '''
                 CREATE INDEX IF NOT EXISTS %(db)s.%(nuts)s_index_tmin_seconds
-                ON %(nuts)s (tmin_seconds)
+                ON %(nuts)s (kind_id, tmin_seconds)
             '''))
 
         c.execute(self._sql(
             '''
                 CREATE INDEX IF NOT EXISTS %(db)s.%(nuts)s_index_tmax_seconds
-                ON %(nuts)s (tmax_seconds)
+                ON %(nuts)s (kind_id, tmax_seconds)
             '''))
 
         c.execute(self._sql(
@@ -1214,6 +1214,11 @@ class Squirrel(Selection):
 
         return tmin, tmax, codes
 
+    def _selection_args_to_kwargs(
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None):
+
+        return dict(obj=obj, tmin=tmin, tmax=tmax, time=time, codes=codes)
+
     def iter_nuts(
             self, kind=None, tmin=None, tmax=None, codes=None, naiv=False,
             kind_codes_ids=None):
@@ -1514,7 +1519,7 @@ class Squirrel(Selection):
         sql_delete = '''DELETE FROM %(db)s.%(nuts)s WHERE nut_id == ?'''
         self._conn.executemany(self._sql(sql_delete), delete)
 
-    def get_time_span(self):
+    def get_time_span(self, kinds=None):
         '''
         Get time interval over all content in selection.
 
@@ -1522,25 +1527,52 @@ class Squirrel(Selection):
 
         :returns: (tmin, tmax)
         '''
-        sql = self._sql('''
+
+        sql_min = self._sql('''
             SELECT MIN(tmin_seconds), MIN(tmin_offset)
-            FROM %(db)s.%(nuts)s WHERE
-            tmin_seconds == (SELECT MIN(tmin_seconds) FROM %(db)s.%(nuts)s)
+            FROM %(db)s.%(nuts)s
+            WHERE kind_id == ?
+                AND tmin_seconds == (
+                    SELECT MIN(tmin_seconds)
+                    FROM %(db)s.%(nuts)s
+                    WHERE kind_id == ?)
         ''')
-        tmin = None
-        for tmin_seconds, tmin_offset in self._conn.execute(sql):
-            tmin = model.tjoin(tmin_seconds, tmin_offset, 0.0)
 
-        sql = self._sql('''
+        sql_max = self._sql('''
             SELECT MAX(tmax_seconds), MAX(tmax_offset)
-            FROM %(db)s.%(nuts)s WHERE
-            tmax_seconds == (SELECT MAX(tmax_seconds) FROM %(db)s.%(nuts)s)
+            FROM %(db)s.%(nuts)s
+            WHERE kind_id == ?
+                AND tmax_seconds == (
+                    SELECT MAX(tmax_seconds)
+                    FROM %(db)s.%(nuts)s
+                    WHERE kind_id == ?)
         ''')
-        tmax = None
-        for (tmax_seconds, tmax_offset) in self._conn.execute(sql):
-            tmax = model.tjoin(tmax_seconds, tmax_offset, 0.0)
 
-        return tmin, tmax
+        gtmin = None
+        gtmax = None
+
+        if isinstance(kinds, str):
+            kinds = [kinds]
+
+        if kinds is None:
+            kind_ids = model.g_content_kind_ids
+        else:
+            kind_ids = model.to_kind_ids(kinds)
+
+        for kind_id in kind_ids:
+            for tmin_seconds, tmin_offset in self._conn.execute(
+                    sql_min, (kind_id, kind_id)):
+                tmin = model.tjoin(tmin_seconds, tmin_offset, 0.0)
+                if tmin is not None and (gtmin is None or tmin < gtmin):
+                    gtmin = tmin
+
+            for (tmax_seconds, tmax_offset) in self._conn.execute(
+                    sql_max, (kind_id, kind_id)):
+                tmax = model.tjoin(tmax_seconds, tmax_offset, 0.0)
+                if tmax is not None and (gtmax is None or tmax > gtmax):
+                    gtmax = tmax
+
+        return gtmin, gtmax
 
     def get_deltat_span(self, kind):
         '''
@@ -1970,10 +2002,172 @@ class Squirrel(Selection):
         return sorted(
             self.iter_nuts('waveform', *args), key=lambda nut: nut.dkey)
 
-    def get_waveforms(self, *args, **kwargs):
-        nuts = self.get_waveform_nuts(*args, **kwargs)
+    def get_waveforms(
+            self,
+            obj=None, tmin=None, tmax=None, time=None, codes=None):
+
+        nuts = self.get_waveform_nuts(obj, tmin, tmax, time, codes)
         # self.check_duplicates(nuts)
         return [self.get_content(nut, 'waveform') for nut in nuts]
+
+    def chop_waveforms(
+            self, *args,
+            snap=(round, round),
+            include_last=False,
+            load_data=True,
+            accessor_id='default', **kwargs):
+
+        nuts = self.get_waveform_nuts(*args, **kwargs)
+        tmin, tmax, _ = self._get_selection_args(*args, **kwargs)
+
+        if load_data:
+            traces = [
+                self.get_content(nut, 'waveform', accessor_id) for nut in nuts]
+
+        else:
+            traces = [
+                trace.Trace(**nut.trace_kwargs) for nut in nuts]
+
+        self.advance_accessor(accessor_id)
+
+        chopped = []
+        for tr in traces:
+            if not load_data and tr.ydata is not None:
+                tr = tr.copy(data=False)
+                tr.ydata = None
+
+            try:
+                chopped.append(tr.chop(
+                    tmin, tmax,
+                    inplace=False,
+                    snap=snap,
+                    include_last=include_last))
+
+            except trace.NoData:
+                pass
+
+        return chopped
+
+    def _process_chopped(
+            self, chopped, degap, maxgap, maxlap, want_incomplete, wmax, wmin,
+            tpad):
+
+        chopped.sort(key=lambda a: a.full_id)
+        if degap:
+            chopped = trace.degapper(chopped, maxgap=maxgap, maxlap=maxlap)
+
+        if not want_incomplete:
+            chopped_weeded = []
+            for tr in chopped:
+                emin = tr.tmin - (wmin-tpad)
+                emax = tr.tmax + tr.deltat - (wmax+tpad)
+                if (abs(emin) <= 0.5*tr.deltat and abs(emax) <= 0.5*tr.deltat):
+                    chopped_weeded.append(tr)
+
+                elif degap:
+                    if (0. < emin <= 5. * tr.deltat and
+                            -5. * tr.deltat <= emax < 0.):
+
+                        tr.extend(
+                            wmin-tpad,
+                            wmax+tpad-tr.deltat,
+                            fillmethod='repeat')
+
+                        chopped_weeded.append(tr)
+
+            chopped = chopped_weeded
+
+        for tr in chopped:
+            tr.wmin = wmin
+            tr.wmax = wmax
+
+        return chopped
+
+    def chopper_waveforms(
+            self, *args,
+            tinc=None, tpad=0.,
+            want_incomplete=True, degap=True, maxgap=5, maxlap=None,
+            keep_current_files_open=False, accessor_id='default',
+            snap=(round, round), include_last=False, load_data=True,
+            **kwargs):
+
+        '''
+        Iterate window-wise over waveform data.
+
+        :param tmin: start time (default uses start time of available data)
+        :param tmax: end time (default uses end time of available data)
+        :param tinc: time increment (window shift time) (default uses
+            ``tmax-tmin``)
+        :param tpad: padding time appended on either side of the data windows
+            (window overlap is ``2*tpad``)
+        :param trace_selector: filter callback taking
+            :py:class:`pyrocko.trace.Trace` objects
+        :param want_incomplete: if set to ``False``, gappy/incomplete traces
+            are discarded from the results
+        :param degap: whether to try to connect traces and to remove gaps and
+            overlaps
+        :param maxgap: maximum gap size in samples which is filled with
+            interpolated samples when ``degap`` is ``True``
+        :param maxlap: maximum overlap size in samples which is removed when
+            ``degap`` is ``True``
+        :param keep_current_files_open: whether to keep cached trace data in
+            memory after the iterator has ended
+        :param accessor_id: if given, used as a key to identify different
+            points of extraction for the decision of when to release cached
+            trace data (should be used when data is alternately extracted from
+            more than one region / selection)
+        :param snap: replaces Python's :py:func:`round` function which is used
+            to determine indices where to start and end the trace data array
+        :param include_last: whether to include the very last sample
+        :param load_data: whether to load the waveform data. If set to
+            ``False``, traces with no data samples, but with correct
+            meta-information are returned
+        :returns: itererator yielding a list of :py:class:`pyrocko.trace.Trace`
+            objects for every extracted time window
+        '''
+
+        kwargs = self._selection_args_to_kwargs(*args, **kwargs)
+        assert kwargs.pop('time', None) is None
+        tmin = kwargs.pop('tmin', None)
+        tmax = kwargs.pop('tmax', None)
+
+        self_tmin, self_tmax = self.get_time_span(
+            ['waveform', 'waveform_promise'])
+
+        if None in (self_tmin, self_tmax):
+            logger.warning('Content has undefined time span. No waveforms?')
+            return
+
+        tmin = tmin if tmin is not None else self_tmin + tpad
+        tmax = tmax if tmax is not None else self_tmax - tpad
+        tinc = tinc if tinc is not None else tmax - tmin
+
+        kwargs.update(
+            snap=snap, include_last=include_last, load_data=load_data,
+            accessor_id=accessor_id)
+
+        iwin = 0
+        while True:
+            chopped = []
+            wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)
+            eps = tinc*1e-6
+            if wmin >= tmax-eps:
+                break
+
+            kwargs.update(tmin=wmin-tpad, tmax=wmax+tpad)
+
+            chopped = self.chop_waveforms(**kwargs)
+
+            processed = self._process_chopped(
+                chopped, degap, maxgap, maxlap, want_incomplete, wmax, wmin,
+                tpad)
+
+            yield processed
+
+            iwin += 1
+
+        if not keep_current_files_open:
+            self.clear_accessor(accessor_id, 'waveform')
 
     def get_pyrocko_stations(self, *args, **kwargs):
         from pyrocko import model as pmodel
