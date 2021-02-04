@@ -16,12 +16,10 @@ g_program_name = 'squirrel'
 
 
 def main(args=None):
-    if args is None:
-        args = sys.argv[1:]
-
-    parser = common.PyrockoArgumentParser(
-        prog=g_program_name,
-        add_help=False,
+    command(
+        args=args,
+        program_name=g_program_name,
+        subcommands=command_modules,
         description='''
 Pyrocko Squirrel - Prompt seismological data access with a fluffy tail.
 
@@ -41,6 +39,27 @@ to inspect various aspects of a data collection.
 This tool's functionality is available through several subcommands. Run
 `squirrel [subcommand] --help` to get further help.''')
 
+
+def command(
+        args=None,
+        program_name=None,
+        description='''
+Pyrocko Squirrel based script.
+
+Run with --help to get further help.''',
+        subcommands=[]):
+
+    if program_name is None:
+        program_name = sys.argv[0]
+
+    if args is None:
+        args = sys.argv[1:]
+
+    parser = common.PyrockoArgumentParser(
+        prog=program_name,
+        add_help=False,
+        description=description)
+
     parser.add_argument(
         '--help', '-h',
         action='store_true',
@@ -52,12 +71,15 @@ This tool's functionality is available through several subcommands. Run
         default='info',
         help='Set logger level. Default: %(default)s')
 
-    subparsers = parser.add_subparsers(
-        title='Subcommands')
+    if subcommands:
+        subparsers = parser.add_subparsers(
+            title='Subcommands')
 
-    for mod in command_modules:
-        subparser = mod.setup(subparsers)
-        subparser.set_defaults(target=mod.call, subparser=subparser)
+        for mod in subcommands:
+            subparser = mod.setup(subparsers)
+            subparser.set_defaults(target=mod.call, subparser=subparser)
+    else:
+        common.add_selection_arguments(parser)
 
     args = parser.parse_args(args)
     subparser = args.__dict__.pop('subparser', None)
@@ -69,13 +91,22 @@ This tool's functionality is available through several subcommands. Run
     util.setup_logging(g_program_name, loglevel)
 
     target = args.__dict__.pop('target', None)
+
     if target:
         try:
             target(parser, args)
         except sq.SquirrelError as e:
             sys.exit(str(e))
 
+    elif not subcommands:
+        return common.squirrel_from_selection_arguments(args)
+
+    else:
+        parser.print_help()
+        sys.exit(0)
+
 
 __all__ = [
     'main',
+    'command',
 ]
