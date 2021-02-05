@@ -806,6 +806,7 @@ class Squirrel(Selection):
         self._cache_path = cache_path
 
         self._pile = None
+        self._n_choppers_running = 0
 
         self._names.update({
             'nuts': self.name + '_nuts',
@@ -1858,29 +1859,37 @@ class Squirrel(Selection):
                     'Multiple entries matching codes %s'
                     % '.'.join(codes.split(separator)))
 
-    def get_stations(self, *args, **kwargs):
-        args = self._get_selection_args(*args, **kwargs)
+    def get_stations(
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None):
+
+        args = self._get_selection_args(obj, tmin, tmax, time, codes)
         nuts = sorted(
             self.iter_nuts('station', *args), key=lambda nut: nut.dkey)
         self.check_duplicates(nuts)
         return [self.get_content(nut) for nut in nuts]
 
-    def get_channels(self, *args, **kwargs):
-        args = self._get_selection_args(*args, **kwargs)
+    def get_channels(
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None):
+
+        args = self._get_selection_args(obj, tmin, tmax, time, codes)
         nuts = sorted(
             self.iter_nuts('channel', *args), key=lambda nut: nut.dkey)
         self.check_duplicates(nuts)
         return [self.get_content(nut) for nut in nuts]
 
-    def get_responses(self, *args, **kwargs):
-        args = self._get_selection_args(*args, **kwargs)
+    def get_responses(
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None):
+
+        args = self._get_selection_args(obj, tmin, tmax, time, codes)
         nuts = sorted(
             self.iter_nuts('response', *args), key=lambda nut: nut.dkey)
         self.check_duplicates(nuts)
         return [self.get_content(nut) for nut in nuts]
 
-    def get_events(self, *args, **kwargs):
-        args = self._get_selection_args(*args, **kwargs)
+    def get_events(
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None):
+
+        args = self._get_selection_args(obj, tmin, tmax, time, codes)
         nuts = sorted(
             self.iter_nuts('event', *args), key=lambda nut: nut.dkey)
         self.check_duplicates(nuts)
@@ -1996,29 +2005,30 @@ class Squirrel(Selection):
                     error_permanent=split_promise,
                     error_temporary=noop)
 
-    def get_waveform_nuts(self, *args, **kwargs):
-        args = self._get_selection_args(*args, **kwargs)
+    def get_waveform_nuts(
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None):
+
+        args = self._get_selection_args(obj, tmin, tmax, time, codes)
         self._redeem_promises(*args)
         return sorted(
             self.iter_nuts('waveform', *args), key=lambda nut: nut.dkey)
 
-    def get_waveforms(
+    def get_waveforms_primitive(
             self,
             obj=None, tmin=None, tmax=None, time=None, codes=None):
 
         nuts = self.get_waveform_nuts(obj, tmin, tmax, time, codes)
-        # self.check_duplicates(nuts)
         return [self.get_content(nut, 'waveform') for nut in nuts]
 
-    def chop_waveforms(
-            self, *args,
-            snap=(round, round),
-            include_last=False,
-            load_data=True,
+    def get_waveforms(
+            self,
+            obj=None, tmin=None, tmax=None, time=None, codes=None,
+            want_incomplete=True, degap=True, maxgap=5, maxlap=None,
+            snap=(round, round), include_last=False, load_data=True,
             accessor_id='default', **kwargs):
 
-        nuts = self.get_waveform_nuts(*args, **kwargs)
-        tmin, tmax, _ = self._get_selection_args(*args, **kwargs)
+        nuts = self.get_waveform_nuts(obj, tmin, tmax, time, codes)
+        tmin, tmax, _ = self._get_selection_args(obj, tmin, tmax, time, codes)
 
         if load_data:
             traces = [
@@ -2046,49 +2056,18 @@ class Squirrel(Selection):
             except trace.NoData:
                 pass
 
-        return chopped
+        processed = self._process_chopped(
+            chopped, degap, maxgap, maxlap, want_incomplete, tmin, tmax)
 
-    def _process_chopped(
-            self, chopped, degap, maxgap, maxlap, want_incomplete, wmax, wmin,
-            tpad):
-
-        chopped.sort(key=lambda a: a.full_id)
-        if degap:
-            chopped = trace.degapper(chopped, maxgap=maxgap, maxlap=maxlap)
-
-        if not want_incomplete:
-            chopped_weeded = []
-            for tr in chopped:
-                emin = tr.tmin - (wmin-tpad)
-                emax = tr.tmax + tr.deltat - (wmax+tpad)
-                if (abs(emin) <= 0.5*tr.deltat and abs(emax) <= 0.5*tr.deltat):
-                    chopped_weeded.append(tr)
-
-                elif degap:
-                    if (0. < emin <= 5. * tr.deltat and
-                            -5. * tr.deltat <= emax < 0.):
-
-                        tr.extend(
-                            wmin-tpad,
-                            wmax+tpad-tr.deltat,
-                            fillmethod='repeat')
-
-                        chopped_weeded.append(tr)
-
-            chopped = chopped_weeded
-
-        for tr in chopped:
-            tr.wmin = wmin
-            tr.wmax = wmax
-
-        return chopped
+        return processed
 
     def chopper_waveforms(
-            self, *args,
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None,
             tinc=None, tpad=0.,
             want_incomplete=True, degap=True, maxgap=5, maxlap=None,
-            keep_current_files_open=False, accessor_id='default',
             snap=(round, round), include_last=False, load_data=True,
+            accessor_id=None,
+            keep_current_files_open=False,
             **kwargs):
 
         '''
@@ -2112,10 +2091,10 @@ class Squirrel(Selection):
             ``degap`` is ``True``
         :param keep_current_files_open: whether to keep cached trace data in
             memory after the iterator has ended
-        :param accessor_id: if given, used as a key to identify different
-            points of extraction for the decision of when to release cached
-            trace data (should be used when data is alternately extracted from
-            more than one region / selection)
+        :param accessor_id: used as a key to identify different points of
+            extraction for the decision of when to release cached trace data
+            (should be used when data is alternately extracted from more than
+            one region / selection)
         :param snap: replaces Python's :py:func:`round` function which is used
             to determine indices where to start and end the trace data array
         :param include_last: whether to include the very last sample
@@ -2126,10 +2105,8 @@ class Squirrel(Selection):
             objects for every extracted time window
         '''
 
-        kwargs = self._selection_args_to_kwargs(*args, **kwargs)
-        assert kwargs.pop('time', None) is None
-        tmin = kwargs.pop('tmin', None)
-        tmax = kwargs.pop('tmax', None)
+        tmin, tmax, codes = self._get_selection_args(
+            obj, tmin, tmax, time, codes)
 
         self_tmin, self_tmax = self.get_time_span(
             ['waveform', 'waveform_promise'])
@@ -2142,32 +2119,69 @@ class Squirrel(Selection):
         tmax = tmax if tmax is not None else self_tmax - tpad
         tinc = tinc if tinc is not None else tmax - tmin
 
-        kwargs.update(
-            snap=snap, include_last=include_last, load_data=load_data,
-            accessor_id=accessor_id)
+        try:
+            accessor_id = 'chopper%i' % self._n_choppers_running
+            self._n_choppers_running += 1
 
-        iwin = 0
-        while True:
-            chopped = []
-            wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)
-            eps = tinc*1e-6
-            if wmin >= tmax-eps:
-                break
+            iwin = 0
+            while True:
+                chopped = []
+                wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)
+                eps = tinc*1e-6
+                if wmin >= tmax-eps:
+                    break
 
-            kwargs.update(tmin=wmin-tpad, tmax=wmax+tpad)
+                chopped = self.get_waveforms(
+                    tmin=wmin-tpad,
+                    tmax=wmax+tpad,
+                    codes=codes,
+                    snap=snap,
+                    include_last=include_last,
+                    load_data=load_data,
+                    want_incomplete=want_incomplete,
+                    degap=degap,
+                    maxgap=maxgap,
+                    maxlap=maxlap,
+                    accessor_id=accessor_id)
 
-            chopped = self.chop_waveforms(**kwargs)
+                for tr in chopped:
+                    tr.wmin = wmin
+                    tr.wmax = wmax
 
-            processed = self._process_chopped(
-                chopped, degap, maxgap, maxlap, want_incomplete, wmax, wmin,
-                tpad)
+                yield chopped
 
-            yield processed
+                iwin += 1
 
-            iwin += 1
+        finally:
+            self._n_choppers_running -= 1
+            if not keep_current_files_open:
+                self.clear_accessor(accessor_id, 'waveform')
 
-        if not keep_current_files_open:
-            self.clear_accessor(accessor_id, 'waveform')
+    def _process_chopped(
+            self, chopped, degap, maxgap, maxlap, want_incomplete, tmin, tmax):
+
+        chopped.sort(key=lambda a: a.full_id)
+        if degap:
+            chopped = trace.degapper(chopped, maxgap=maxgap, maxlap=maxlap)
+
+        if not want_incomplete:
+            chopped_weeded = []
+            for tr in chopped:
+                emin = tr.tmin - tmin
+                emax = tr.tmax + tr.deltat - tmax
+                if (abs(emin) <= 0.5*tr.deltat and abs(emax) <= 0.5*tr.deltat):
+                    chopped_weeded.append(tr)
+
+                elif degap:
+                    if (0. < emin <= 5. * tr.deltat
+                            and -5. * tr.deltat <= emax < 0.):
+
+                        tr.extend(tmin, tmax-tr.deltat, fillmethod='repeat')
+                        chopped_weeded.append(tr)
+
+            chopped = chopped_weeded
+
+        return chopped
 
     def get_pyrocko_stations(self, *args, **kwargs):
         from pyrocko import model as pmodel
