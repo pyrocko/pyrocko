@@ -3,6 +3,11 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
+import logging
+
+logger = logging.getLogger('pyrocko.squirrel.cache')
+
+
 class ContentCache(object):
 
     def __init__(self):
@@ -24,6 +29,7 @@ class ContentCache(object):
                     delete.append(path_segment)
 
         for path_segment in delete:
+            logger.debug('Forgetting (advance): %s %s' % path_segment)
             del self._entries[path_segment]
 
         self._accessor_ticks[accessor] += 1
@@ -31,16 +37,20 @@ class ContentCache(object):
     def clear_accessor(self, accessor):
         delete = []
         for path_segment, entry in self._entries.items():
-            del entry[2][accessor]
+            entry[2].pop(accessor, None)
             if not entry[2]:
                 delete.append(path_segment)
 
         for path_segment in delete:
+            logger.debug('Forgetting (clear): %s %s' % path_segment)
             del self._entries[path_segment]
 
         del self._accessor_ticks[accessor]
 
     def clear(self):
+        for accessor in list(self._accessor_ticks.keys()):
+            self.clear_accessor(accessor)
+
         self._entries = {}
         self._accessor_ticks = {}
 
@@ -72,6 +82,7 @@ class ContentCache(object):
             return
 
         if cache_mtime != nut_mtime:
+            logger.debug('Forgetting (outdated): %s %s' % (path, segment))
             del self._entries[path, segment]
 
     def put(self, nut):

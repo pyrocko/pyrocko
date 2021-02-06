@@ -1,6 +1,7 @@
 from __future__ import print_function, absolute_import
 
 import time
+import random
 import os
 import unittest
 import tempfile
@@ -881,6 +882,80 @@ class SquirrelTestCase(unittest.TestCase):
         assert list(sq.pile.gather_keys(
             gather=lambda tr: tr.station,
             selector=lambda tr: tr.channel == 'BHZ')) == ['LGG01']
+
+    def make_many_files(
+            self, nfiles, nsamples, networks, stations, channels, tmin):
+
+        rc = random.choice
+
+        datadir = tempfile.mkdtemp()
+        traces = []
+        deltat = 1.0
+        for i in range(nfiles):
+            ctmin = tmin+i*nsamples*deltat
+
+            data = num.ones(nsamples)
+            traces.append(
+                trace.Trace(
+                    rc(networks), rc(stations), '', rc(channels),
+                    ctmin, None, deltat, data))
+
+        fnt = os.path.join(
+            datadir,
+            '%(network)s-%(station)s-%(location)s-%(channel)s-%(tmin)s.mseed')
+
+        io.save(traces, fnt, format='mseed')
+        return datadir
+
+    def test_chopper(self):
+
+        nfiles = 200
+        nsamples = 1000
+        abc = 'abcdefghijklmnopqrstuvwxyz'
+
+        def rn(n):
+            return ''.join([random.choice(abc) for i in range(n)])
+
+        stations = [rn(4) for i in range(10)]
+        channels = [rn(3) for i in range(3)]
+        networks = ['xx']
+
+        tmin = 1234567890
+        datadir = self.make_many_files(
+            nfiles, nsamples, networks, stations, channels, tmin)
+
+        try:
+            database = squirrel.Database()
+            sq = squirrel.Squirrel(database=database)
+            sq.add(datadir)
+
+            ntr = 0
+            for tr in sq.get_waveforms_primitive():
+                ntr += 1
+                assert tr.data_len() == nsamples
+
+            assert ntr == nfiles
+
+            trs = sq.get_waveforms(tmin=tmin+10, tmax=tmin+200)
+            for tr in trs:
+                assert num.all(tr.get_ydata() == num.ones(190))
+
+            trs = sq.get_waveforms(tmin=tmin-100, tmax=tmin+100)
+            for tr in trs:
+                assert len(tr.get_ydata()) == 100
+
+            s = 0
+            sq_tmin, sq_tmax = sq.get_time_span('waveform')
+            for traces in sq.chopper_waveforms(
+                    tmin=None, tmax=sq_tmax+1., tinc=122., degap=False):
+
+                for tr in traces:
+                    s += num.sum(tr.ydata)
+
+            assert int(round(s)) == nfiles*nsamples
+
+        finally:
+            shutil.rmtree(datadir)
 
 
 if __name__ == "__main__":
