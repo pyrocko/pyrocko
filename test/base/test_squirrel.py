@@ -888,7 +888,6 @@ class SquirrelTestCase(unittest.TestCase):
 
         rc = random.choice
 
-        datadir = tempfile.mkdtemp()
         traces = []
         deltat = 1.0
         for i in range(nfiles):
@@ -900,6 +899,7 @@ class SquirrelTestCase(unittest.TestCase):
                     rc(networks), rc(stations), '', rc(channels),
                     ctmin, None, deltat, data))
 
+        datadir = tempfile.mkdtemp(dir=self.tempdir)
         fnt = os.path.join(
             datadir,
             '%(network)s-%(station)s-%(location)s-%(channel)s-%(tmin)s.mseed')
