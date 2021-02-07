@@ -57,7 +57,7 @@ def random_traces(nsamples, code='12', deltat=0.01,
         def wrapper(*args, **kwargs):
             for dtype in dtypes:
                 tr = get_random_trace(nsamples, code, deltat, dtype, limit)
-                func(*args, tr, **kwargs)
+                func(*(args + (tr,)), **kwargs)
 
         return wrapper
 
