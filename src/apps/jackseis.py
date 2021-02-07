@@ -75,7 +75,7 @@ def check_record_length(option, opt, value):
         if reclen in io.mseed.VALID_RECORD_LENGTHS:
             return reclen
     except Exception:
-        ...
+        pass
     raise OptionValueError(
         'invalid record length %s. (choose from %s)'
         % (reclen, ', '.join(str(b) for b in io.mseed.VALID_RECORD_LENGTHS)))
@@ -87,7 +87,7 @@ def check_steim(option, opt, value):
         if compression in (1, 2):
             return compression
     except Exception:
-        ...
+        pass
     raise OptionValueError(
         'invalid STEIM compression %s. (choose from 1, 2)' % compression)
 
