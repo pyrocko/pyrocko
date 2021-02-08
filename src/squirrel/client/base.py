@@ -10,12 +10,30 @@ from pyrocko.guts import Object, Timestamp
 
 class Constraint(Object):
 
+    '''
+    Used by some data-sources to grow or join locally mirrored data selections.
+
+    Squirrel data-sources typically try to mirror only a subset of the remotely
+    available data. This subset may need to be grown or updated when data from
+    other time intervals or from locations outside the initially requested
+    region is requested. This class helps in the involved bookeeping.
+
+    The current implementation only supports a time interval selection with a
+    single time span but more sophisticated constraints, including e.g.
+    location boxes could be thought of.
+    '''
+
     tmin = Timestamp.T(optional=True)
     tmax = Timestamp.T(optional=True)
 
     def contains(self, constraint):
         '''
         Check if the constraint completely includes a more restrictive one.
+
+        :param constraint:
+            Other constraint.
+        :type constraint:
+            :py:class:`Constraint`
         '''
 
         if self.tmin is not None and constraint.tmin is not None:
@@ -37,6 +55,13 @@ class Constraint(Object):
     def expand(self, constraint):
         '''
         Widen constraint to include another given constraint.
+
+        :param constraint:
+            Other constraint.
+        :type constraint:
+            :py:class:`Constraint`
+
+        Update is done in-place.
         '''
 
         if constraint.tmin is None or self.tmin is None:
@@ -51,6 +76,18 @@ class Constraint(Object):
 
 
 class Source(Object):
+
+    '''
+    Base class for Squirrel data-sources.
+
+    Data-sources can be attached to a Squirrel instance to allow transparent
+    access to remote (or otherwise generated) resources, e.g. through FDSN web
+    services (:py:class:`~pyrocko.squirrel.client.fdsn.FDSNSource`) or online
+    event catalogs (:py:class:`~pyrocko.client.catalog.CatalogSource`).
+
+    Derived classes implement the details of querying, caching, updating and
+    bookkeeping of the accessed data.
+    '''
 
     def update_channel_inventory(self, squirrel, constraint):
         '''

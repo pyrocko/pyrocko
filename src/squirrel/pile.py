@@ -61,10 +61,10 @@ class Pile(object):
         return self.tmax
 
     def get_deltatmin(self):
-        return self._squirrel.get_waveform_deltat_span()[0]
+        return self._squirrel.get_deltat_span('waveform')[0]
 
     def get_deltatmax(self):
-        return self._squirrel.get_waveform_deltat_span()[1]
+        return self._squirrel.get_deltat_span('waveform')[1]
 
     @property
     def deltatmin(self):
@@ -326,7 +326,7 @@ class Pile(object):
     def gather_keys(self, gather, selector=None):
         codes_gather = trace_callback_to_codes_callback(gather)
         codes_selector = trace_callback_to_codes_callback(selector)
-        return self._squirrel.gather_codes_keys(
+        return self._squirrel._gather_codes_keys(
             'waveform', codes_gather, codes_selector)
 
     def snuffle(self, **kwargs):

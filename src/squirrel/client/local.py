@@ -25,10 +25,23 @@ class ContentKind(StringChoice):
     choices = io.base.g_content_kinds
 
 
-class Local(base.Source, has_paths.HasPaths):
-    paths = List.T(has_paths.Path.T())
-    kinds = List.T(ContentKind.T(), optional=True)
-    format = FileFormat.T(default='detect')
+class LocalData(base.Source, has_paths.HasPaths):
+    '''
+    A collection of local files attachable as a Squirrel data-source.
+    '''
+    paths = List.T(
+        has_paths.Path.T(),
+        help='Directory and file paths to add to the Squirrel '
+             'instance. See :py:meth:`Squirrel.add() '
+             '<pyrocko.squirrel.base.Squirrel.add>`.')
+    kinds = List.T(
+        ContentKind.T(),
+        optional=True,
+        help='Content kinds to be added to the Squirrel selection. By default '
+             'all known content kinds are added.')
+    format = FileFormat.T(
+        default='detect',
+        help='Assume files are of given format.')
 
     def setup(self, squirrel, check=True, progress_viewer='terminal'):
         squirrel.add(
@@ -42,4 +55,4 @@ class Local(base.Source, has_paths.HasPaths):
 __all__ = [
     'FileFormat',
     'ContentKind',
-    'Local']
+    'LocalData']

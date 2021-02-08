@@ -31,6 +31,44 @@ logger = logging.getLogger('pyrocko.squirrel.base')
 guts_prefix = 'pf'
 
 
+doc_snippets = dict(
+    query_args='''
+        :param obj:
+            Object providing ``tmin``, ``tmax`` and ``codes`` to be used to
+            constrain the query. Direct arguments override those from ``obj``.
+        :type obj:
+            Any object with attributes ``tmin``, ``tmax`` and ``codes``.
+
+        :param tmin:
+            Start time of query interval.
+        :type tmin:
+            timestamp
+
+        :param tmax:
+            End time of query interval.
+        :type tmax:
+            timestamp
+
+        :param time:
+            Time instant to query. Equivalent to setting ``tmin`` and ``tmax``
+            to the same value.
+        :type time:
+            timestamp
+
+        :param codes:
+            Pattern of content codes to query.
+        :type codes:
+            :py:class:`tuple` of :py:class:`str`
+''',
+    file_formats=', '.join(
+        "``'%s'``" % fmt for fmt in io.supported_formats()))
+
+
+def filldocs(meth):
+    meth.__doc__ %= doc_snippets
+    return meth
+
+
 class GeneratorWithLen(object):
 
     def __init__(self, gen, length):
@@ -190,16 +228,17 @@ class Selection(object):
         Database instance or file path to database.
     :type database:
         :py:class:`Database` or :py:class:`str`
+
     :param persistent:
         If given a name, create a persistent selection.
     :type persistent:
         :py:class:`str`
 
-    In the Squirrel framework, a selection is conceptually a list of files to
-    be made available in the application. Instead of using
-    :py:class:`Selection` directly, user applications should usually use its
-    subclass :py:class:`Squirrel` which adds content indices to the selection
-    and provides high level data querying.
+    A selection in this context represents the list of files available to the
+    application. Instead of using :py:class:`Selection` directly, user
+    applications should usually use its subclass :py:class:`Squirrel` which
+    adds content indices to the selection and provides high level data
+    querying.
 
     By default, a temporary table in the database is created to hold the names
     of the files in the selection. This table is only visible inside the
@@ -211,7 +250,7 @@ class Selection(object):
     indications are stored in the selection's database table to make the user
     choice regarding these options persistent on a per-file basis. Book-keeping
     on whether files are unknown, known or if modification checks are forced is
-    also handled in the selection's file-state table.
+    handled in the selection's file-state table.
 
     Paths of files can be added to the selection using the :py:meth:`add`
     method and removed with :py:meth:`remove`. :py:meth:`undig_grouped` can be
@@ -290,6 +329,7 @@ class Selection(object):
 
         self._conn.commit()
 
+    @filldocs
     def add(
             self,
             paths,
@@ -303,6 +343,17 @@ class Selection(object):
             Paths to files to be added to the selection.
         :type paths:
             iterator yielding :py:class:`str` objects
+
+        :param kind_mask:
+            Content kinds to be added to the selection.
+        :type kind_mask:
+            :py:class:`int` (bit mask)
+
+        :param format:
+            File format identifier or ``'detect'`` to enable auto-detection
+            (available: %(file_formats)s).
+        :type format:
+            str
         '''
 
         if isinstance(paths, str):
@@ -446,7 +497,7 @@ class Selection(object):
         '''
         Iterate over all file paths currently belonging to the selection.
 
-        :returns: Iterator yielding file paths.
+        :yields: File paths.
         '''
 
         sql = self._sql('''
@@ -494,15 +545,17 @@ class Selection(object):
         '''
         Get inventory of cached content for all files in the selection.
 
-        :param:
-            skip_unchanged: if ``True`` only inventory of modified files is
+        :param skip_unchanged:
+            If ``True`` only inventory of modified files is
             yielded (:py:meth:`flag_modified` must be called beforehand).
+        :type skip_unchanged:
+            bool
 
         This generator yields tuples ``((format, path), nuts)`` where ``path``
         is the path to the file, ``format`` is the format assignation or
         ``'detect'`` and ``nuts`` is a list of
-        :py:class:`~pyrocko.squirrel.Nut` objects representing the contents of
-        the file.
+        :py:class:`~pyrocko.squirrel.model.Nut` objects representing the
+        contents of the file.
         '''
 
         if skip_unchanged:
@@ -570,6 +623,8 @@ class Selection(object):
         :param check:
             If ``True`` query modification times of known files on disk. If
             ``False``, only flag unknown files.
+        :type check:
+            bool
 
         Assumes file state is 0 for newly added files, 1 for files added again
         to the selection (forces check), or 2 for all others (no checking is
@@ -727,59 +782,99 @@ class Squirrel(Selection):
         directory is found, the user's global Squirrel environment
         ``'$HOME/.pyrocko/squirrel'`` is used.
     :type env:
-        :py:class:`SquirrelEnvironment` or :py:class:`str`
+        :py:class:`~pyrocko.squirrel.environment.SquirrelEnvironment` or
+        :py:class:`str`
+
     :param database:
         Database instance or path to database. By default the
         database found in the detected Squirrel environment is used.
     :type database:
         :py:class:`Database` or :py:class:`str`
+
     :param cache_path:
         Directory path to use for data caching. By default, the ``'cache'``
         directory in the detected Squirrel environment is used.
     :type cache_path:
         :py:class:`str`
+
     :param persistent:
         If given a name, create a persistent selection.
     :type persistent:
         :py:class:`str`
 
-    Provides a unified interface to query seismic waveforms, station and sensor
-    metadata, and event information from local file collections and remote data
-    sources. Query results are promptly returned, even for very large
-    collections, thanks to a highly optimized database setup working behind the
-    scenes. Assemblage of a data selection is very fast for known files as all
-    content indices are cached in a database. Unknown files are automatically
-    indexed when added to the selection.
+    This is the central class of the Squirrel framework. It provides a unified
+    interface to query and access seismic waveforms, station meta-data and
+    event information from local file collections and remote data sources. For
+    prompt responses, a profound database setup is used under the hood. To
+    speed up assemblage of ad-hoc data selections, files are indexed on first
+    use and the extracted meta-data is remembered in the database for
+    subsequent accesses. Bulk data is lazily loaded from disk and remote
+    sources, just when requested. Once loaded, data is cached in memory to
+    expedite typical access patterns. Files and data sources can be dynamically
+    added to and removed from the Squirrel selection at runtime.
 
-    Features
+    Queries are restricted to the contents of the files currently added to the
+    Squirrel selection (usually a subset of the file meta-information
+    collection in the database). This list of files is referred to here as the
+    "selection". By default, temporary tables are created in the attached
+    database to hold the names of the files in the selection as well as various
+    indices and counters. These tables are only visible inside the application
+    which created them and are deleted when the database connection is closed
+    or the application exits. To create a selection which is not deleted at
+    exit, supply a name to the ``persistent`` argument of the Squirrel
+    constructor. Persistent selections are shared among applications using the
+    same database.
 
-    - Efficient[1] lookup of data relevant for a selected time window.
-    - Metadata caching and indexing.
-    - Modified files are re-indexed as needed.
-    - SQL database (sqlite) is used behind the scenes.
-    - Can handle selections with millions of files.
-    - Data can be added and removed at run-time, efficiently[1].
-    - Just-in-time download of missing data.
-    - Disk-cache of meta-data query results with expiration time.
-    - Efficient event catalog synchronization.
-    - Always-up-to-date data coverage indices.
-    - Always-up-to-date indices of available station/channel codes.
+    **Method summary**
 
-    [1] O log N performance, where N is the number of data entities (nuts).
+    Some of the methods are implemented in :py:class:`Squirrel`'s base class
+    :py:class:`Selection`.
 
-    Queries are restricted to the contents offered by the files which have
-    been added to the Squirrel (which usually is a subset of the information
-    collected in the attached global file meta-information database).
+    .. autosummary::
 
-    By default, temporary tables are created in the attached database to hold
-    the names of the files in the selection as well as various indices and
-    counters. These tables are only visible inside the application which
-    created it. If a name is given to ``persistent``, a named selection is
-    created, which is visible also in other applications using the same
-    database.
-
-    Paths of files can be added to the selection using the
-    :py:meth:`add` method.
+        ~Squirrel.add
+        ~Squirrel.add_source
+        ~Squirrel.add_fdsn
+        ~Squirrel.add_catalog
+        ~Squirrel.add_dataset
+        ~Squirrel.add_virtual
+        ~Squirrel.update
+        ~Squirrel.update_waveform_promises
+        ~Squirrel.advance_accessor
+        ~Squirrel.clear_accessor
+        ~Squirrel.reload
+        ~Selection.iter_paths
+        ~Squirrel.iter_nuts
+        ~Squirrel.iter_kinds
+        ~Squirrel.iter_deltats
+        ~Squirrel.iter_codes
+        ~Squirrel.iter_counts
+        ~Selection.get_paths
+        ~Squirrel.get_nuts
+        ~Squirrel.get_kinds
+        ~Squirrel.get_deltats
+        ~Squirrel.get_codes
+        ~Squirrel.get_counts
+        ~Squirrel.get_time_span
+        ~Squirrel.get_deltat_span
+        ~Squirrel.get_nfiles
+        ~Squirrel.get_nnuts
+        ~Squirrel.get_total_size
+        ~Squirrel.get_stats
+        ~Squirrel.get_content
+        ~Squirrel.get_stations
+        ~Squirrel.get_channels
+        ~Squirrel.get_responses
+        ~Squirrel.get_events
+        ~Squirrel.get_waveform_nuts
+        ~Squirrel.get_waveforms
+        ~Squirrel.chopper_waveforms
+        ~Squirrel.get_coverage
+        ~Squirrel.pile
+        ~Squirrel.snuffle
+        ~Squirrel.glob_codes
+        ~Selection.get_database
+        ~Squirrel.print_tables
     '''
 
     def __init__(
@@ -806,7 +901,7 @@ class Squirrel(Selection):
         self._cache_path = cache_path
 
         self._pile = None
-        self._n_choppers_running = 0
+        self._n_choppers_active = 0
 
         self._names.update({
             'nuts': self.name + '_nuts',
@@ -1034,6 +1129,7 @@ class Squirrel(Selection):
 
         self._conn.commit()
 
+    @filldocs
     def add(self,
             paths,
             kinds=None,
@@ -1050,17 +1146,31 @@ class Squirrel(Selection):
             is treated as a single path to be added.
         :type paths:
             :py:class:`list` of :py:class:`str`
+
         :param kinds:
             Content types to be made available through the Squirrel selection.
             By default, all known content types are accepted.
         :type kinds:
             :py:class:`list` of :py:class:`str`
-        :param format:
-            File format identifier or ``'detect'`` to enable auto-detection.
-        :type format:
-            :py:class:`str`
 
-        Complexity: O(log N)
+        :param format:
+            File format identifier or ``'detect'`` to enable auto-detection
+            (available: %(file_formats)s).
+        :type format:
+            str
+
+        :param check:
+            If ``True``, all file modification times are checked to see if
+            cached information has to be updated (slow). If ``False``, only
+            previously unknown files are indexed and cached information is used
+            for known files, regardless of file state (fast, corrresponds to
+            Squirrel's ``--optimistic`` mode). File deletions will go
+            undetected in the latter case.
+        :type check:
+            bool
+
+        :Complexity:
+            O(log N)
         '''
 
         if isinstance(kinds, str):
@@ -1100,7 +1210,7 @@ class Squirrel(Selection):
         :param nuts:
             Content pieces to be added.
         :type nuts:
-            iterator yielding :py:class:`~pyrocko.squirrel.Nut` objects
+            iterator yielding :py:class:`~pyrocko.squirrel.model.Nut` objects
 
         :param virtual_paths:
             List of virtual paths to prevent creating a temporary list of the
@@ -1170,7 +1280,7 @@ class Squirrel(Selection):
         :param source:
             Remote data access client instance.
         :type source:
-           subclass of :py:class:`~pyrocko.squirrel.Source`
+           subclass of :py:class:`~pyrocko.squirrel.client.base.Source`
         '''
 
         self._sources.append(source)
@@ -1180,7 +1290,8 @@ class Squirrel(Selection):
         '''
         Add FDSN site for transparent remote data access.
 
-        Arguments are passed to :py:class:`~pyrocko.squirrel.FDSNSource`.
+        Arguments are passed to
+        :py:class:`~pyrocko.squirrel.client.fdsn.FDSNSource`.
         '''
 
         self.add_source(fdsn.FDSNSource(*args, **kwargs))
@@ -1189,12 +1300,32 @@ class Squirrel(Selection):
         '''
         Add online catalog for transparent event data access.
 
-        Arguments are passed to :py:class:`~pyrocko.squirrel.CatalogSource`.
+        Arguments are passed to
+        :py:class:`~pyrocko.squirrel.client.catalog.CatalogSource`.
         '''
 
         self.add_source(catalog.CatalogSource(*args, **kwargs))
 
     def add_dataset(self, path, check=True, progress_viewer='terminal'):
+        '''
+        Read dataset description from file and add its contents.
+
+        :param path:
+            Path to dataset description file. See
+            :py:mod:`~pyrocko.squirrel.dataset`.
+        :type path:
+            str
+
+        :param check:
+            If ``True``, all file modification times are checked to see if
+            cached information has to be updated (slow). If ``False``, only
+            previously unknown files are indexed and cached information is used
+            for known files, regardless of file state (fast, corrresponds to
+            Squirrel's ``--optimistic`` mode). File deletions will go
+            undetected in the latter case.
+        :type check:
+            bool
+        '''
         ds = dataset.read_dataset(path)
         ds.setup(self, check=check, progress_viewer=progress_viewer)
 
@@ -1225,7 +1356,7 @@ class Squirrel(Selection):
             kind_codes_ids=None):
 
         '''
-        Iterate content entities matching given constraints.
+        Iterate over content entities matching given constraints.
 
         :param kind:
             Content kind (or kinds) to extract.
@@ -1243,7 +1374,7 @@ class Squirrel(Selection):
             timestamp
 
         :param codes:
-            Pattern of content codes to be matched.
+            Pattern of content codes to query.
         :type codes:
             :py:class:`tuple` of :py:class:`str`
 
@@ -1257,11 +1388,13 @@ class Squirrel(Selection):
         :type kind_codes_ids:
             :py:class:`list` of :py:class:`str`
 
-        Complexity: O(log N) for the time selection part due to heavy use of
-        database indices.
+        :yields:
+            :py:class:`~pyrocko.squirrel.model.Nut` objects representing the
+            intersecting content.
 
-        Yields :py:class:`~pyrocko.squirrel.Nut` objects representing the
-        intersecting content.
+        :complexity:
+            O(log N) for the time selection part due to heavy use of database
+            indices.
 
         Query time span is treated as a half-open interval ``[tmin, tmax)``.
         However, if ``tmin`` equals ``tmax``, the edge logics are modified to
@@ -1524,7 +1657,8 @@ class Squirrel(Selection):
         '''
         Get time interval over all content in selection.
 
-        Complexity O(1), independent of the number of nuts.
+        :complexity:
+            O(1), independent of the number of nuts.
 
         :returns: (tmin, tmax)
         '''
@@ -1579,8 +1713,10 @@ class Squirrel(Selection):
         '''
         Get min and max sampling interval of all content of given kind.
 
-        :param kind: Content kind
-        :type kind: :py:class:`str`
+        :param kind:
+            Content kind
+        :type kind:
+            str
 
         :returns: (deltat_min, deltat_max)
         '''
@@ -1594,16 +1730,20 @@ class Squirrel(Selection):
         else:
             return None, None
 
-    def get_waveform_deltat_span(self):
-        return self.get_deltat_span('waveform')
-
     def iter_kinds(self, codes=None):
         '''
         Iterate over content types available in selection.
 
-        :param codes: if given, get kinds only for selected codes identifier
+        :param codes:
+            If given, get kinds only for selected codes identifier.
+        :type codes:
+            :py:class:`tuple` of :py:class:`str`
 
-        Complexity: O(1), independent of number of nuts
+        :yields:
+            Available content kinds as :py:class:`str`.
+
+        :complexity:
+            O(1), independent of number of nuts.
         '''
 
         return self._database._iter_kinds(
@@ -1614,11 +1754,16 @@ class Squirrel(Selection):
         '''
         Iterate over sampling intervals available in selection.
 
-        :param kind: if given, get sampling intervals only for a given content
-            type
-        :type kind: :py:class:`str`
+        :param kind:
+            If given, get sampling intervals only for a given content type.
+        :type kind:
+            str
 
-        Complexity: O(1), independent of number of nuts
+        :yields:
+            :py:class:`float` values.
+
+        :complexity:
+            O(1), independent of number of nuts.
         '''
         return self._database._iter_deltats(
             kind=kind,
@@ -1628,10 +1773,16 @@ class Squirrel(Selection):
         '''
         Iterate over content identifier code sequences available in selection.
 
-        :param kind: if given, get codes only for a given content type
-        :type kind: :py:class:`str`
+        :param kind:
+            If given, get codes only for a given content type.
+        :type kind:
+            str
 
-        Complexity: O(1), independent of number of nuts
+        :yields:
+            :py:class:`tuple` of :py:class:`str`
+
+        :complexity:
+            O(1), independent of number of nuts.
         '''
         return self._database._iter_codes(
             kind=kind,
@@ -1641,11 +1792,16 @@ class Squirrel(Selection):
         '''
         Iterate over number of occurrences of any (kind, codes) combination.
 
-        :param kind: if given, get counts only for selected content type
+        :param kind:
+            If given, get counts only for selected content type.
+        :type kind:
+            str
 
-        Yields tuples ``((kind, codes), count)``
+        :yields:
+            Tuples of the form ``((kind, codes), count)``.
 
-        Complexity: O(1), independent of number of nuts
+        :complexity:
+            O(1), independent of number of nuts.
         '''
         return self._database._iter_counts(
             kind=kind,
@@ -1655,11 +1811,17 @@ class Squirrel(Selection):
         '''
         Get content types available in selection.
 
-        :param codes: if given, get kinds only for selected codes identifier
+        :param codes:
+            If given, get kinds only for selected codes identifier.
+        :type codes:
+            :py:class:`tuple` of :py:class:`str`
 
-        Complexity: O(1), independent of number of nuts
+        :returns:
+            Sorted list of available content types.
 
-        :returns: sorted list of available content types
+        :complexity:
+            O(1), independent of number of nuts.
+
         '''
         return sorted(list(self.iter_kinds(codes=codes)))
 
@@ -1667,9 +1829,13 @@ class Squirrel(Selection):
         '''
         Get sampling intervals available in selection.
 
-        :param kind: if given, get codes only for selected content type
+        :param kind:
+            If given, get codes only for selected content type.
+        :type kind:
+            str
 
-        Complexity: O(1), independent of number of nuts
+        :complexity:
+            O(1), independent of number of nuts.
 
         :returns: sorted list of available sampling intervals
         '''
@@ -1679,9 +1845,13 @@ class Squirrel(Selection):
         '''
         Get identifier code sequences available in selection.
 
-        :param kind: if given, get codes only for selected content type
+        :param kind:
+            If given, get codes only for selected content type.
+        :type kind:
+            str
 
-        Complexity: O(1), independent of number of nuts
+        :complexity:
+            O(1), independent of number of nuts.
 
         :returns: sorted list of available codes as tuples of strings
         '''
@@ -1691,11 +1861,15 @@ class Squirrel(Selection):
         '''
         Get number of occurrences of any (kind, codes) combination.
 
-        :param kind: if given, get codes only for selected content type
+        :param kind:
+            If given, get codes only for selected content type.
+        :type kind:
+            str
 
-        Complexity: O(1), independent of number of nuts
+        :complexity:
+            O(1), independent of number of nuts.
 
-        :returns: ``dict`` with ``counts[kind][codes] or ``counts[codes]``
+        :returns: ``dict`` with ``counts[kind][codes]`` or ``counts[codes]``
             if kind is not ``None``
         '''
         d = {}
@@ -1715,7 +1889,24 @@ class Squirrel(Selection):
         else:
             return d
 
-    def resolve_kind_codes(self, kind, codes_list):
+    def glob_codes(self, kind, codes_list):
+        '''
+        Find codes matching given patterns.
+
+        :param kind:
+            Content kind to be queried.
+        :type kind:
+            str
+
+        :param codes_list:
+            List of code patterns to query. If not given or empty, an empty
+            list is returned.
+        :type codes_list:
+            :py:class:`list` of :py:class:`tuple` of :py:class:`str`
+
+        :returns:
+            List of matches of the form ``[kind_codes_id, codes, deltat]``.
+        '''
 
         args = [to_kind_id(kind)]
         pats = []
@@ -1737,10 +1928,18 @@ class Squirrel(Selection):
 
     def update(self, constraint=None, **kwargs):
         '''
-        Update inventory of remote content for a given selection.
+        Update or partially update channel and event inventories.
+
+        :param constraint:
+            Selection of times or areas to be brought up to date.
+        :type constraint:
+            :py:class:`~pyrocko.squirrel.client.Constraint`
+
+        :param \\*\\*kwargs:
+            Shortcut for setting ``constraint=Constraint(**kwargs)``.
 
         This function triggers all attached remote sources, to check for
-        updates in the metadata. The sources will only submit queries when
+        updates in the meta-data. The sources will only submit queries when
         their expiration date has passed, or if the selection spans into
         previously unseen times or areas.
         '''
@@ -1753,6 +1952,34 @@ class Squirrel(Selection):
             source.update_event_inventory(self, constraint)
 
     def update_waveform_promises(self, constraint=None, **kwargs):
+        '''
+        Permit downloading of remote waveforms.
+
+        :param constraint:
+            Remote waveforms compatible with the given constraint are enabled
+            for download.
+        :type constraint:
+            :py:class:`~pyrocko.squirrel.client.Constraint`
+
+        :param \\*\\*kwargs:
+            Shortcut for setting ``constraint=Constraint(**kwargs)``.
+
+        Calling this method permits Squirrel to download waveforms from remote
+        sources when processing subsequent waveform requests. This works by
+        inserting so called waveform promises into the database. It will look
+        into the available channels for each remote source and create a promise
+        for each channel compatible with the given constraint. If the promise
+        then matches in a waveform request, Squirrel tries to download the
+        waveform. If the download is successful, the downloaded waveform is
+        added to the Squirrel and the promise is deleted. If the download
+        fails, the promise is kept if the reason of failure looks like being
+        temporary, e.g. because of a network failure. If the cause of failure
+        however seems to be permanent, the promise is deleted so that no
+        further attempts are made to download a waveform which might not be
+        available from that server at all. To force re-scheduling after a
+        permanent failure, call :py:meth:`update_waveform_promises`
+        yet another time.
+        '''
 
         if constraint is None:
             constraint = client.Constraint(**kwargs)
@@ -1809,7 +2036,7 @@ class Squirrel(Selection):
             tmin=tmin,
             tmax=tmax)
 
-    def get_content(self, nut, cache='default', accessor='default'):
+    def get_content(self, nut, cache_id='default', accessor_id='default'):
         '''
         Get and possibly load full content for a given index entry from file.
 
@@ -1819,7 +2046,7 @@ class Squirrel(Selection):
         cached in the Squirrel object.
         '''
 
-        content_cache = self._content_caches[cache]
+        content_cache = self._content_caches[cache_id]
         if not content_cache.has(nut):
 
             for nut_loaded in io.iload(
@@ -1831,24 +2058,74 @@ class Squirrel(Selection):
                 content_cache.put(nut_loaded)
 
         try:
-            return content_cache.get(nut, accessor)
+            return content_cache.get(nut, accessor_id)
         except KeyError:
             raise error.NotAvailable(
                 'Unable to retrieve content: %s, %s, %s, %s' % nut.key)
 
-    def advance_accessor(self, accessor, cache=None):
+    def advance_accessor(self, accessor_id, cache_id=None):
+        '''
+        Notify memory caches about consumer moving to a new data batch.
+
+        :param accessor_id:
+            Name of accessing consumer to be advanced.
+        :type accessor_id:
+            str
+
+        :param cache_id:
+            Name of cache to for which the accessor should be advanced. By
+            default the named accessor is advanced in all registered caches.
+            By default, two caches named ``'default'`` and ``'waveforms'`` are
+            available.
+        :type cache_id:
+            str
+
+        See :py:class:`~pyrocko.squirrel.cache.ContentCache` for details on how
+        Squirrel's memory caching works and can be tuned. Default behaviour is
+        to release data when it has not been used in the latest data
+        window/batch. If the accessor is never advanced, data is cached
+        indefinitely - which is often desired e.g. for station meta-data.
+        Methods for consecutive data traversal, like
+        :py:meth:`chopper_waveforms` automatically advance and clear
+        their accessor.
+        '''
         for cache_ in (
-                self._content_caches.keys() if cache is None else [cache]):
+                self._content_caches.keys()
+                if cache_id is None
+                else [cache_id]):
 
-            self._content_caches[cache_].advance_accessor(accessor)
+            self._content_caches[cache_].advance_accessor(accessor_id)
 
-    def clear_accessor(self, accessor, cache=None):
+    def clear_accessor(self, accessor_id, cache_id=None):
+        '''
+        Notify memory caches about a consumer having finished.
+
+        :param accessor_id:
+            Name of accessor to be cleared.
+        :type accessor_id:
+            str
+
+        :param cache_id:
+            Name of cache to for which the accessor should be cleared. By
+            default the named accessor is cleared from all registered caches.
+            By default, two caches named ``'default'`` and ``'waveforms'`` are
+            available.
+        :type cache_id:
+            str
+
+        Calling this method clears all references to cache entries held by the
+        named accessor. Cache entries are then freed if not referenced by any
+        other accessor.
+        '''
+
         for cache_ in (
-                self._content_caches.keys() if cache is None else [cache]):
+                self._content_caches.keys()
+                if cache_id is None
+                else [cache_id]):
 
-            self._content_caches[cache_].clear_accessor(accessor)
+            self._content_caches[cache_].clear_accessor(accessor_id)
 
-    def check_duplicates(self, nuts):
+    def _check_duplicates(self, nuts):
         d = defaultdict(list)
         for nut in nuts:
             d[nut.codes].append(nut)
@@ -1859,40 +2136,104 @@ class Squirrel(Selection):
                     'Multiple entries matching codes %s'
                     % '.'.join(codes.split(separator)))
 
+    @filldocs
     def get_stations(
-            self, obj=None, tmin=None, tmax=None, time=None, codes=None):
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None,
+            model='squirrel'):
 
-        args = self._get_selection_args(obj, tmin, tmax, time, codes)
-        nuts = sorted(
-            self.iter_nuts('station', *args), key=lambda nut: nut.dkey)
-        self.check_duplicates(nuts)
-        return [self.get_content(nut) for nut in nuts]
+        '''
+        Get stations matching given constraints.
 
+        %(query_args)s
+
+        :param model:
+            Select object model for returned values: ``'squirrel'`` to get
+            Squirrel station objects or ``'pyrocko'`` to get Pyrocko station
+            objects with channel information attached.
+        :type model:
+            str
+
+        :returns:
+            List of :py:class:`pyrocko.squirrel.Station
+            <pyrocko.squirrel.model.Station>` objects by default or list of
+            :py:class:`pyrocko.model.Station <pyrocko.model.station.Station>`
+            objects if ``model='pyrocko'`` is requested.
+
+        See :py:meth:`iter_nuts` for details on time span matching.
+        '''
+
+        if model == 'pyrocko':
+            return self._get_pyrocko_stations(obj, tmin, tmax, time, codes)
+        elif model == 'squirrel':
+            args = self._get_selection_args(obj, tmin, tmax, time, codes)
+            nuts = sorted(
+                self.iter_nuts('station', *args), key=lambda nut: nut.dkey)
+            self._check_duplicates(nuts)
+            return [self.get_content(nut) for nut in nuts]
+        else:
+            raise ValueError('Invalid station model: %s' % model)
+
+    @filldocs
     def get_channels(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None):
+
+        '''
+        Get channels matching given constraints.
+
+        %(query_args)s
+
+        :returns:
+            List of :py:class:`~pyrocko.squirrel.model.Channel` objects.
+
+        See :py:meth:`iter_nuts` for details on time span matching.
+        '''
 
         args = self._get_selection_args(obj, tmin, tmax, time, codes)
         nuts = sorted(
             self.iter_nuts('channel', *args), key=lambda nut: nut.dkey)
-        self.check_duplicates(nuts)
+        self._check_duplicates(nuts)
         return [self.get_content(nut) for nut in nuts]
 
+    @filldocs
     def get_responses(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None):
+
+        '''
+        Get instrument responses matching given constraints.
+
+        %(query_args)s
+
+        :returns:
+            List of :py:class:`~pyrocko.squirrel.model.Response` objects.
+
+        See :py:meth:`iter_nuts` for details on time span matching.
+        '''
 
         args = self._get_selection_args(obj, tmin, tmax, time, codes)
         nuts = sorted(
             self.iter_nuts('response', *args), key=lambda nut: nut.dkey)
-        self.check_duplicates(nuts)
+        self._check_duplicates(nuts)
         return [self.get_content(nut) for nut in nuts]
 
+    @filldocs
     def get_events(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None):
+
+        '''
+        Get events matching given constraints.
+
+        %(query_args)s
+
+        :returns:
+            List of :py:class:`~pyrocko.model.event.Event` objects.
+
+        See :py:meth:`iter_nuts` for details on time span matching.
+        '''
 
         args = self._get_selection_args(obj, tmin, tmax, time, codes)
         nuts = sorted(
             self.iter_nuts('event', *args), key=lambda nut: nut.dkey)
-        self.check_duplicates(nuts)
+        self._check_duplicates(nuts)
         return [self.get_content(nut) for nut in nuts]
 
     def _redeem_promises(self, *args):
@@ -2005,27 +2346,108 @@ class Squirrel(Selection):
                     error_permanent=split_promise,
                     error_temporary=noop)
 
+    @filldocs
     def get_waveform_nuts(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None):
+
+        '''
+        Get waveform content entities matching given constraints.
+
+        %(query_args)s
+
+        Like :py:meth:`get_nuts` with ``kind='waveform'`` but additionally
+        resolves matching waveform promises (downloads waveforms from remote
+        sources).
+
+        See :py:meth:`iter_nuts` for details on time span matching.
+        '''
 
         args = self._get_selection_args(obj, tmin, tmax, time, codes)
         self._redeem_promises(*args)
         return sorted(
             self.iter_nuts('waveform', *args), key=lambda nut: nut.dkey)
 
-    def get_waveforms_primitive(
-            self,
-            obj=None, tmin=None, tmax=None, time=None, codes=None):
-
-        nuts = self.get_waveform_nuts(obj, tmin, tmax, time, codes)
-        return [self.get_content(nut, 'waveform') for nut in nuts]
-
+    @filldocs
     def get_waveforms(
-            self,
-            obj=None, tmin=None, tmax=None, time=None, codes=None,
-            want_incomplete=True, degap=True, maxgap=5, maxlap=None,
-            snap=(round, round), include_last=False, load_data=True,
-            accessor_id='default', **kwargs):
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None,
+            uncut=False, want_incomplete=True, degap=True, maxgap=5,
+            maxlap=None, snap=None, include_last=False, load_data=True,
+            accessor_id='default'):
+
+        '''
+        Get waveforms matching given constraints.
+
+        %(query_args)s
+
+        :param uncut:
+            Set to ``True``, to disable cutting traces to [``tmin``, ``tmax``]
+            and to disable degapping/deoverlapping. Returns untouched traces as
+            they are read from file segment. File segments are always read in
+            their entirety.
+        :type uncut:
+            bool
+
+        :param want_incomplete:
+            If ``True``, gappy/incomplete traces are included in the result.
+        :type want_incomplete:
+            bool
+
+        :param degap:
+            If ``True``, connect traces and remove gaps and overlaps.
+        :type degap:
+            bool
+
+        :param maxgap:
+            Maximum gap size in samples which is filled with interpolated
+            samples when ``degap`` is ``True``.
+        :type maxgap:
+            int
+
+        :param maxlap:
+            Maximum overlap size in samples which is removed when ``degap`` is
+            ``True``
+        :type maxlap:
+            int
+
+        :param snap:
+            Rounding functions used when computing sample index from time
+            instance, for trace start and trace end, respectively. By default,
+            ``(round, round)`` is used.
+        :type snap:
+             tuple of 2 callables
+
+        :param include_last:
+            If ``True``, add one more sample to the returned traces (the sample
+            which would be the first sample of a query with ``tmin`` set to the
+            current value of ``tmax``).
+        :type include_last:
+            bool
+
+        :param load_data:
+            If ``True``, waveform data samples are read from files (or cache).
+            If ``False``, meta-information-only traces are returned (dummy
+            traces with no data samples).
+        :type load_data:
+            bool
+
+        :param accessor_id:
+            Name of consumer on who's behalf data is accessed. Used in cache
+            management (see :py:mod:`~pyrocko.squirrel.cache`). Used as a key
+            to distinguish different points of extraction for the decision of
+            when to release cached waveform data. Should be used when data is
+            alternately extracted from more than one region / selection.
+        :type accessor_id:
+            str
+
+        See :py:meth:`iter_nuts` for details on time span matching.
+
+        Loaded data is kept in memory (at least) until
+        :py:meth:`clear_accessor` has been called or
+        :py:meth:`advance_accessor` has been called two consecutive times
+        without data being accessed between the two calls (by this accessor).
+        Data may still be further kept in the memory cache if held alive by
+        consumers with a different ``accessor_id``.
+        '''
 
         nuts = self.get_waveform_nuts(obj, tmin, tmax, time, codes)
         tmin, tmax, _ = self._get_selection_args(obj, tmin, tmax, time, codes)
@@ -2038,7 +2460,11 @@ class Squirrel(Selection):
             traces = [
                 trace.Trace(**nut.trace_kwargs) for nut in nuts]
 
-        self.advance_accessor(accessor_id)
+        if uncut:
+            return traces
+
+        if snap is None:
+            snap = (round, round)
 
         chopped = []
         for tr in traces:
@@ -2061,48 +2487,92 @@ class Squirrel(Selection):
 
         return processed
 
+    @filldocs
     def chopper_waveforms(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None,
             tinc=None, tpad=0.,
             want_incomplete=True, degap=True, maxgap=5, maxlap=None,
-            snap=(round, round), include_last=False, load_data=True,
-            accessor_id=None,
-            keep_current_files_open=False,
-            **kwargs):
+            snap=None, include_last=False, load_data=True,
+            accessor_id=None, clear_accessor=True):
 
         '''
-        Iterate window-wise over waveform data.
+        Iterate window-wise over waveform archive.
 
-        :param tmin: start time (default uses start time of available data)
-        :param tmax: end time (default uses end time of available data)
-        :param tinc: time increment (window shift time) (default uses
-            ``tmax-tmin``)
-        :param tpad: padding time appended on either side of the data windows
-            (window overlap is ``2*tpad``)
-        :param trace_selector: filter callback taking
-            :py:class:`pyrocko.trace.Trace` objects
-        :param want_incomplete: if set to ``False``, gappy/incomplete traces
-            are discarded from the results
-        :param degap: whether to try to connect traces and to remove gaps and
-            overlaps
-        :param maxgap: maximum gap size in samples which is filled with
-            interpolated samples when ``degap`` is ``True``
-        :param maxlap: maximum overlap size in samples which is removed when
-            ``degap`` is ``True``
-        :param keep_current_files_open: whether to keep cached trace data in
-            memory after the iterator has ended
-        :param accessor_id: used as a key to identify different points of
-            extraction for the decision of when to release cached trace data
-            (should be used when data is alternately extracted from more than
-            one region / selection)
-        :param snap: replaces Python's :py:func:`round` function which is used
-            to determine indices where to start and end the trace data array
-        :param include_last: whether to include the very last sample
-        :param load_data: whether to load the waveform data. If set to
-            ``False``, traces with no data samples, but with correct
-            meta-information are returned
-        :returns: itererator yielding a list of :py:class:`pyrocko.trace.Trace`
-            objects for every extracted time window
+        %(query_args)s
+
+        :param tinc:
+            Time increment (window shift time) (default uses ``tmax-tmin``)
+        :type tinc:
+            timestamp
+
+        :param tpad:
+            Padding time appended on either side of the data window (window
+            overlap is ``2*tpad``).
+        :type tpad:
+            timestamp
+
+        :param want_incomplete:
+            If ``True``, gappy/incomplete traces are included in the result.
+        :type want_incomplete:
+            bool
+
+        :param degap:
+            If ``True``, connect traces and remove gaps and overlaps.
+        :type degap:
+            bool
+
+        :param maxgap:
+            Maximum gap size in samples which is filled with interpolated
+            samples when ``degap`` is ``True``.
+        :type maxgap:
+            int
+
+        :param maxlap:
+            Maximum overlap size in samples which is removed when ``degap`` is
+            ``True``
+        :type maxlap:
+            int
+
+        :param snap:
+            Rounding functions used when computing sample index from time
+            instance, for trace start and trace end, respectively. By default,
+            ``(round, round)`` is used.
+        :type snap:
+             tuple of 2 callables
+
+        :param include_last:
+            If ``True``, add one more sample to the returned traces (the sample
+            which would be the first sample of a query with ``tmin`` set to the
+            current value of ``tmax``).
+        :type include_last:
+            bool
+
+        :param load_data:
+            If ``True``, waveform data samples are read from files (or cache).
+            If ``False``, meta-information-only traces are returned (dummy
+            traces with no data samples).
+        :type load_data:
+            bool
+
+        :param accessor_id:
+            Name of consumer on who's behalf data is accessed. Used in cache
+            management (see :py:mod:`~pyrocko.squirrel.cache`). Used as a key
+            to distinguish different points of extraction for the decision of
+            when to release cached waveform data. Should be used when data is
+            alternately extracted from more than one region / selection.
+        :type accessor_id:
+            str
+
+        :param clear_accessor:
+            If ``True`` (default), :py:meth:`clear_accessor` is called when the
+            chopper finishes. Set to ``False`` to keep loaded waveforms in
+            memory when the generator returns.
+
+        :yields:
+            A list of :py:class:`~pyrocko.trace.Trace` objects for every
+            extracted time window.
+
+        See :py:meth:`iter_nuts` for details on time span matching.
         '''
 
         tmin, tmax, codes = self._get_selection_args(
@@ -2120,8 +2590,10 @@ class Squirrel(Selection):
         tinc = tinc if tinc is not None else tmax - tmin
 
         try:
-            accessor_id = 'chopper%i' % self._n_choppers_running
-            self._n_choppers_running += 1
+            if accessor_id is None:
+                accessor_id = 'chopper%i' % self._n_choppers_active
+
+            self._n_choppers_active += 1
 
             iwin = 0
             while True:
@@ -2148,13 +2620,15 @@ class Squirrel(Selection):
                     tr.wmin = wmin
                     tr.wmax = wmax
 
+                self.advance_accessor(accessor_id)
+
                 yield chopped
 
                 iwin += 1
 
         finally:
-            self._n_choppers_running -= 1
-            if not keep_current_files_open:
+            self._n_choppers_active -= 1
+            if clear_accessor:
                 self.clear_accessor(accessor_id, 'waveform')
 
     def _process_chopped(
@@ -2183,16 +2657,18 @@ class Squirrel(Selection):
 
         return chopped
 
-    def get_pyrocko_stations(self, *args, **kwargs):
+    def _get_pyrocko_stations(
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None):
+
         from pyrocko import model as pmodel
 
         by_nsl = defaultdict(lambda: (list(), list()))
-        for station in self.get_stations(*args, **kwargs):
+        for station in self.get_stations(obj, tmin, tmax, time, codes):
             sargs = station._get_pyrocko_station_args()
             nsl = sargs[1:4]
             by_nsl[nsl][0].append(sargs)
 
-        for channel in self.get_channels(*args, **kwargs):
+        for channel in self.get_channels(obj, tmin, tmax, time, codes):
             sargs = channel._get_pyrocko_station_args()
             nsl = sargs[1:4]
             sargs_list, channels_list = by_nsl[nsl]
@@ -2235,15 +2711,33 @@ class Squirrel(Selection):
 
     @property
     def pile(self):
+
+        '''
+        Emulates the older :py:class:`pyrocko.pile.Pile` interface.
+
+        This property exposes a :py:class:`pyrocko.squirrel.pile.Pile` object,
+        which emulates most of the older :py:class:`pyrocko.pile.Pile` methods
+        but uses the fluffy power of the Squirrel under the hood.
+
+        This interface can be used as a drop-in replacement for piles which are
+        used in existing scripts and programs for efficient waveform data
+        access. The Squirrel-based pile scales better for large datasets. Newer
+        scripts should use Squirrel's native methods to avoid the emulation
+        overhead.
+        '''
+
         if self._pile is None:
             self._pile = pile.Pile(self)
 
         return self._pile
 
     def snuffle(self):
+        '''
+        Look at dataset in Snuffler.
+        '''
         self.pile.snuffle()
 
-    def gather_codes_keys(self, kind, gather, selector):
+    def _gather_codes_keys(self, kind, gather, selector):
         return set(
             gather(codes)
             for codes in self.iter_codes(kind)
@@ -2262,28 +2756,42 @@ class Squirrel(Selection):
 
         :param kind:
             Content kind to be queried.
+        :type kind:
+            str
+
         :param tmin:
             Start time of query interval.
-        :param tmin:
+        :type tmin:
+            timestamp
+
+        :param tmax:
             End time of query interval.
+        :type tmax:
+            timestamp
+
         :param codes_list:
             List of code patterns to query. If not given or empty, an empty
             list is returned.
+        :type codes_list:
+            :py:class:`list` of :py:class:`tuple` of :py:class:`str`
+
         :param limit:
             Limit query to return only up to a given maximum number of entries
             per matching channel (without setting this option, very gappy data
             could cause the query to execute for a very long time).
+        :type limit:
+            int
 
-        :returns: list of entries of the form
-            ``(pattern, codes, deltat, tmin, tmax, data)`` where ``pattern`` is
-            the request pattern which yielded this entry, ``codes`` are the
-            matching channel codes, ``tmin`` and ``tmax`` are the global min
-            and max times for which data for this channel is available,
-            regardless of any time restrictions in the query. ``data`` is
-            another list with (up to ``limit``) checkpoints of the form
-            ``(time, count)`` where a ``count`` of zero indicates a data gap, a
-            value of 1 normal data coverage and higher values indicate
-            duplicate/redundant data.
+        :returns:
+            List of entries of the form ``(pattern, codes, deltat, tmin, tmax,
+            data)`` where ``pattern`` is the request code pattern which
+            yielded this entry, ``codes`` are the matching channel codes,
+            ``tmin`` and ``tmax`` are the global min and max times for which
+            data for this channel is available, regardless of any time
+            restrictions in the query. ``data`` is a list with (up to
+            ``limit``) change-points of the form ``(time, count)`` where a
+            ``count`` of zero indicates a data gap, a value of 1 normal data
+            coverage and higher values indicate duplicate/redundant data.
         '''
 
         tmin_seconds, tmin_offset = model.tsplit(tmin)
@@ -2291,7 +2799,7 @@ class Squirrel(Selection):
 
         kdata_all = []
         for pattern in codes_list:
-            kdata = self.resolve_kind_codes(kind, [pattern])
+            kdata = self.glob_codes(kind, [pattern])
             for row in kdata:
                 row[0:0] = [pattern]
 
@@ -2400,6 +2908,7 @@ class Squirrel(Selection):
             Names of tables to be dumped or ``None`` to dump all.
         :type table_names:
             :py:class:`list` of :py:class:`str`
+
         :param stream:
             Open file or ``None`` to dump to standard output.
         '''

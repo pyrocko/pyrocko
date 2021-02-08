@@ -202,17 +202,54 @@ class ErrorLog(Object):
 class FDSNSource(Source):
 
     '''
-    Squirrel source to access data through an FDSN web service.
+    Squirrel data-source to transparently get data from FDSN web services.
+
+    Attaching an :py:class:`FDSNSource` object to a :py:class:`Squirrel` allows
+    the latter to download station and waveform data from an FDSN web service
+    should the data not already happen to be available locally.
     '''
 
-    site = String.T()
-    query_args = Dict.T(String.T(), String.T(), optional=True)
-    expires = Duration.T(optional=True)
-    cache_path = String.T(optional=True)
-    shared_waveforms = Bool.T(default=True)
-    user_credentials = Tuple.T(2, String.T(), optional=True)
-    auth_token = String.T(optional=True)
-    auth_token_path = String.T(optional=True)
+    site = String.T(
+        help='FDSN site url or alias name (see '
+             ':py:mod:`pyrocko.client.fdsn`).')
+
+    query_args = Dict.T(
+        String.T(), String.T(),
+        optional=True,
+        help='Common query arguments, which are appended to all queries.')
+
+    expires = Duration.T(
+        optional=True,
+        help='Expiration time [s]. Information older than this will be '
+             'refreshed. This only applies to station-metadata. Waveforms do '
+             'not expire. If set to ``None`` neither type of data  expires.')
+
+    cache_path = String.T(
+        optional=True,
+        help='Directory path where any downloaded waveforms and station '
+             'meta-data are to be kept. By default the Squirrel '
+             'environment\'s cache directory is used.')
+
+    shared_waveforms = Bool.T(
+        default=True,
+        help='If ``True``, waveforms are shared with other FDSN sources in '
+             'the same Squirrel environment. If ``False``, they are kept '
+             'separate.')
+
+    user_credentials = Tuple.T(
+        2, String.T(),
+        optional=True,
+        help='User and password for FDSN servers requiring password '
+             'authentication')
+
+    auth_token = String.T(
+        optional=True,
+        help='Authentication token to be presented to the FDSN server.')
+
+    auth_token_path = String.T(
+        optional=True,
+        help='Path to file containing the authentication token to be '
+             'presented to the FDSN server.')
 
     def __init__(self, site, query_args=None, **kwargs):
         Source.__init__(self, site=site, query_args=query_args, **kwargs)

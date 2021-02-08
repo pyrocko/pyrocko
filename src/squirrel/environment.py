@@ -3,6 +3,19 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
+'''
+Manage separate databases and caches for different user projects.
+
+Squirrel based applications can either use the user's global database which
+lives in Pyrocko's global cache directory (by default under
+``'$HOME/.pyrocko/cache/squirrel'``) or a project specific local database which
+can be conveniently created in the top level directory of a user's project
+under ``'.squirrel'`` or ``'squirrel'``. The choice of database and associated
+cache directory locations is referred to here as the Squirrel environment. This
+module provides functions to create local environments and to look for a usable
+environment in the hierarchy of a user's project directory.
+'''
+
 from __future__ import absolute_import, print_function
 
 import os
@@ -46,6 +59,23 @@ def get_squirrel_path(path=None):
 
 
 def get_environment(path=None):
+    '''
+    Get default Squirrel environment relevant for a given file system path.
+
+    :param path:
+        Directory path to use as starting point for detection of the Squirrel
+        environment. By default, the current working directory is used as
+        starting point. When searching for a usable environment the directory
+        ``'.squirrel'`` or ``'squirrel'`` in the current (or starting point)
+        directory is used if it exists, otherwise the parent directories are
+        search upwards for the existence of such a directory. If no such
+        directory is found, the user's global Squirrel environment, usually
+        ``'$HOME/.pyrocko/cache/squirrel'``, is used.
+
+    :returns:
+        :py:class:`SquirrelEnvironment` object containing the detected database
+        and cache directory paths.
+    '''
     if path is None:
         path = os.curdir
 
@@ -55,6 +85,17 @@ def get_environment(path=None):
 
 
 def init_environment(path=None):
+    '''
+    Initialize empty Squirrel environment.
+
+    :param path:
+        Path to the directory where the new environment's ``'.squirrel'``
+        directory should be created. If set to ``None``, the current working
+        directory is used.
+
+    If a ``'.squirrel'`` directory already exists at the given location,
+    :py:exc:`~pyrocko.squirrel.error.SquirrelError` is raised.
+    '''
     if path is None:
         path = os.curdir
 
@@ -72,6 +113,10 @@ def init_environment(path=None):
 
 
 class SquirrelEnvironment(Object):
+    '''
+    Configuration object providing paths to database and cache.
+    '''
+
     database_path = String.T(optional=True)
     cache_path = String.T(optional=True)
     persistent = String.T(optional=True)

@@ -11,7 +11,7 @@ import logging
 from pyrocko.guts import List, load
 
 from ..has_paths import HasPaths
-from . import client
+from .client.base import Source
 from .error import SquirrelError
 
 guts_prefix = 'pf'
@@ -20,7 +20,10 @@ logger = logging.getLogger('pyrocko.squirrel.dataset')
 
 
 class Dataset(HasPaths):
-    sources = List.T(client.Source.T())
+    '''
+    Dataset description.
+    '''
+    sources = List.T(Source.T())
 
     def setup(self, squirrel, check=True, progress_viewer='terminal'):
         for source in self.sources:
@@ -29,6 +32,9 @@ class Dataset(HasPaths):
 
 
 def read_dataset(path):
+    '''
+    Read dataset description file.
+    '''
     try:
         dataset = load(filename=path)
     except OSError:

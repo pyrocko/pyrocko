@@ -55,12 +55,44 @@ def get_catalog(name):
 
 
 class CatalogSource(Source):
+    '''
+    Squirrel data-source to transparently access online earthquake catalogs.
 
-    catalog = String.T()
-    query_args = Dict.T(String.T(), String.T(), optional=True)
-    expires = Duration.T(optional=True)
-    anxious = Duration.T(optional=True)
-    cache_path = String.T(optional=True)
+    The catalog source maintains and synchronizes a partial copy of the online
+    catalog, e.g. of all events above a certain magnitude. The time span for
+    which the local copy of the catalog should be up-to date is maintained
+    automatically be Squirrel. Data is loaded and updated in chunks as
+    needed in a just-in-time fashion. Data validity can optionally expire after
+    a given period of time and new data can be treated to be preliminary.
+    In both cases information will be refreshed as needed.
+    '''
+
+    catalog = String.T(
+        help='Catalog name.')
+
+    query_args = Dict.T(
+        String.T(), String.T(),
+        optional=True,
+        help='Common arguments, which are appended to all queries, e.g. to '
+             'constrain location, depth or magnitude ranges.')
+
+    expires = Duration.T(
+        optional=True,
+        help='Expiration time [s]. Information older than this will be '
+             'refreshed, i.e. queried again.')
+
+    anxious = Duration.T(
+        optional=True,
+        help='Anxiety period [s]. Information will be treated as preliminary '
+             'if it was younger than this at the time of its retrieval. '
+             'Preliminary information is refreshed on each query relevant '
+             'to it.')
+
+    cache_path = String.T(
+        optional=True,
+        help='Directory path where the partial local copy of the catalog is '
+             'kept. By default the Squirrel environment\'s cache directory is '
+             'used.')
 
     def __init__(self, catalog, query_args=None, **kwargs):
         Source.__init__(self, catalog=catalog, query_args=query_args, **kwargs)

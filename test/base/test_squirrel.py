@@ -702,7 +702,7 @@ class SquirrelTestCase(unittest.TestCase):
                     assert s.counts[kind][codes] == len(fns) // 30
 
         with bench.run('get deltat span'):
-            sq.get_waveform_deltat_span()
+            sq.get_deltat_span('waveform')
 
         return bench
 
@@ -804,7 +804,7 @@ class SquirrelTestCase(unittest.TestCase):
         database = squirrel.Database()
         sq = squirrel.Squirrel(database=database)
         sq.add(fpath)
-        stations = sq.get_pyrocko_stations()
+        stations = sq.get_stations(model='pyrocko')
         assert len(stations) == 2
 
     def test_events(self):
@@ -930,7 +930,7 @@ class SquirrelTestCase(unittest.TestCase):
             sq.add(datadir)
 
             ntr = 0
-            for tr in sq.get_waveforms_primitive():
+            for tr in sq.get_waveforms(uncut=True):
                 ntr += 1
                 assert tr.data_len() == nsamples
 
