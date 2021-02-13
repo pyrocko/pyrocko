@@ -24,6 +24,7 @@ Features
    :caption: Contents
 
    base <base>
+   database <database>
    model <model>
    pile <pile>
    environment <environment>

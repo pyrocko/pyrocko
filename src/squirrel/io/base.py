@@ -136,7 +136,7 @@ def iload(
     Iteratively load content or index/reindex meta-information from files.
 
     :param paths: iterator yielding file names to load from or
-        :py:class:`pyrocko.squirrel.Selection` object
+        :py:class:`pyrocko.squirrel.base.Selection` object
     :param str segment: file-specific segment identifier (con only be used
         when loading from a single file.
     :param str format: file format identifier or ``'detect'`` for
@@ -144,7 +144,7 @@ def iload(
         assignation is taken from the hint in the selection and this flag is
         ignored.
     :param database: database to use for meta-information caching
-    :type database: :py:class:`pyrocko.squirrel.Database`
+    :type database: :py:class:`pyrocko.squirrel.database.Database`
     :param bool check: if ``True``, investigate modification time and file
         sizes of known files to debunk modified files (pessimistic mode), or
         ``False`` to deactivate checks (optimistic mode)
@@ -154,7 +154,7 @@ def iload(
         for new / modified files
     :param content: list of strings, selection of content types to load
 
-    This generator yields :py:class:`pyrocko.squirrel.Nut` objects for
+    This generator yields :py:class:`pyrocko.squirrel.model.Nut` objects for
     individual pieces of information found when reading the given files. Such a
     nut may represent a waveform, a station, a channel, an event or other data
     type. The nut itself only contains the meta-information. The actual content
