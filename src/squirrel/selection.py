@@ -42,7 +42,7 @@ doc_snippets = dict(
             Object providing ``tmin``, ``tmax`` and ``codes`` to be used to
             constrain the query. Direct arguments override those from ``obj``.
         :type obj:
-            Any object with attributes ``tmin``, ``tmax`` and ``codes``.
+            any object with attributes ``tmin``, ``tmax`` and ``codes``
 
         :param tmin:
             Start time of query interval.

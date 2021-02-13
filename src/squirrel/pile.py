@@ -38,6 +38,23 @@ def trace_callback_to_codes_callback(trace_callback):
 
 
 class Pile(object):
+    '''
+    :py:class:`pyrocko.pile.Pile` surrogate: waveform lookup, loading and
+    caching.
+
+    This class emulates most of the older :py:class:`pyrocko.pile.Pile` methods
+    by using calls to a :py:class:`pyrocko.squirrel.base.Squirrel` instance
+    behind the scenes.
+
+    This interface can be used as a drop-in replacement for piles which are
+    used in existing scripts and programs for efficient waveform data access.
+    The Squirrel-based pile scales better for large datasets. Newer scripts
+    should use Squirrel's native methods to avoid the emulation overhead.
+
+    .. note::
+        Many methods in the original pile implementation lack documentation, as
+        do here. Read the source, Luke!
+    '''
     def __init__(self, squirrel=None):
         if squirrel is None:
             squirrel = psq.Squirrel()
@@ -213,7 +230,7 @@ class Pile(object):
             ``tmax-tmin``)
         :param tpad: padding time appended on either side of the data windows
             (window overlap is ``2*tpad``)
-        :param group_selector: ignored in squirrel-based pile
+        :param group_selector: *ignored in squirrel-based pile*
         :param trace_selector: filter callback taking
             :py:class:`pyrocko.trace.Trace` objects
         :param want_incomplete: if set to ``False``, gappy/incomplete traces
@@ -295,24 +312,17 @@ class Pile(object):
             group_selector=None,
             trace_selector=None):
 
-        '''Iterate over all traces in pile.
+        '''
+        Iterate over all traces in pile.
 
         :param load_data: whether to load the waveform data, by default empty
             traces are yielded
         :param return_abspath: if ``True`` yield tuples containing absolute
             file path and :py:class:`pyrocko.trace.Trace` objects
-        :param group_selector: filter callback taking :py:class:`TracesGroup`
-            objects
+        :param group_selector: *ignored in squirre-based pile*
         :param trace_selector: filter callback taking
             :py:class:`pyrocko.trace.Trace` objects
 
-        Example; yields only traces, where the station code is 'HH1'::
-
-            test_pile = pile.make_pile('/local/test_trace_directory')
-            for t in test_pile.iter_traces(
-                    trace_selector=lambda tr: tr.station=='HH1'):
-
-                print t
         '''
         assert not load_data
         assert not return_abspath

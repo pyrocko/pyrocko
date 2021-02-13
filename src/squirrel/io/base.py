@@ -70,7 +70,10 @@ def get_backend(fmt):
     '''
     Get squirrel io backend module for a given file format.
 
-    :params str fmt: format identifier
+    :param fmt:
+        Format identifier.
+    :type fmt:
+        str
     '''
 
     try:
@@ -83,7 +86,10 @@ def detect_format(path):
     '''
     Determine file type from first 512 bytes.
 
-    :param str path: path of file
+    :param path:
+        Path to file.
+    :type path:
+        str
     '''
 
     if path.startswith('virtual:'):
@@ -135,24 +141,55 @@ def iload(
     '''
     Iteratively load content or index/reindex meta-information from files.
 
-    :param paths: iterator yielding file names to load from or
-        :py:class:`~pyrocko.squirrel.selection.Selection` object
-    :param str segment: file-specific segment identifier (con only be used
-        when loading from a single file.
-    :param str format: file format identifier or ``'detect'`` for
-        autodetection. When loading from a selection, per-file format
-        assignation is taken from the hint in the selection and this flag is
-        ignored.
-    :param database: database to use for meta-information caching
-    :type database: :py:class:`~pyrocko.squirrel.database.Database`
-    :param bool check: if ``True``, investigate modification time and file
-        sizes of known files to debunk modified files (pessimistic mode), or
-        ``False`` to deactivate checks (optimistic mode)
-    :param bool commit: flag, whether to commit updated information to the
-        meta-information database
-    :param bool skip_unchanged: if ``True``, only yield index nuts
-        for new / modified files
-    :param content: list of strings, selection of content types to load
+    :param paths:
+        Iterator yielding file names to load from or a Squirrel selection
+        object providing the file names.
+    :type paths:
+        iterator yielding :py:class:`str` or
+        :py:class:`~pyrocko.squirrel.selection.Selection`
+
+    :param segment:
+        File-specific segment identifier (can only be used when loading from a
+        single file).
+    :type segment:
+        int
+
+    :param format:
+        File format identifier or ``'detect'`` for autodetection. When loading
+        from a selection, per-file format assignation is taken from the hint in
+        the selection and this flag is ignored.
+    :type format:
+        str
+
+    :param database:
+        Database to use for meta-information caching. When loading from a
+        selection, this should be ``None`` and the database from the selection
+        is used.
+    :type database:
+        :py:class:`~pyrocko.squirrel.database.Database`
+
+    :param check:
+        If ``True``, investigate modification time and file sizes of known
+        files to debunk modified files (pessimistic mode), or ``False`` to
+        deactivate checks (optimistic mode).
+    :type check:
+        bool
+
+    :param commit:
+        Flag, whether to commit updated information to the meta-information
+        database.
+    :type commit:
+        bool
+
+    :param skip_unchanged:
+        If ``True``, only yield index nuts for new / modified files.
+    :type skip_unchanged:
+        bool
+
+    :param content:
+        Selection of content types to load.
+    :type content:
+        :py:class:`list` of :py:class:`str`
 
     This generator yields :py:class:`~pyrocko.squirrel.model.Nut` objects for
     individual pieces of information found when reading the given files. Such a
