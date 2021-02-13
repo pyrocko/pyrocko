@@ -24,6 +24,7 @@ Features
    :caption: Contents
 
    base <base>
+   selection <selection>
    database <database>
    model <model>
    pile <pile>

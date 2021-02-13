@@ -17,7 +17,7 @@ from pyrocko.guts import Object, Int, List, Dict, Tuple, String
 from . import error, io
 from .model import Nut, to_kind_id, to_kind, separator
 
-logger = logging.getLogger('pyrocko.squirrel.base')
+logger = logging.getLogger('pyrocko.squirrel.database')
 
 guts_prefix = 'pf'
 
@@ -338,7 +338,7 @@ class Database(object):
         del selection
 
     def new_selection(self, paths=None):
-        from .base import Selection
+        from .selection import Selection
         selection = Selection(self)
         if paths:
             selection.add(paths)
