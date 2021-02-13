@@ -19,7 +19,7 @@ from .model import Nut, to_kind_id, to_kind, separator
 
 logger = logging.getLogger('pyrocko.squirrel.database')
 
-guts_prefix = 'pf'
+guts_prefix = 'squirrel'
 
 
 def execute_get1(connection, sql, args):

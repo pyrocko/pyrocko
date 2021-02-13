@@ -23,7 +23,7 @@ from . import client, environment, error, pile
 
 logger = logging.getLogger('pyrocko.squirrel.base')
 
-guts_prefix = 'pf'
+guts_prefix = 'squirrel'
 
 
 def lpick(condition, seq):
@@ -155,7 +155,7 @@ class Squirrel(Selection):
         directory is found, the user's global Squirrel environment
         ``'$HOME/.pyrocko/squirrel'`` is used.
     :type env:
-        :py:class:`~pyrocko.squirrel.environment.SquirrelEnvironment` or
+        :py:class:`~pyrocko.squirrel.environment.Environment` or
         :py:class:`str`
 
     :param database:
@@ -253,7 +253,7 @@ class Squirrel(Selection):
     def __init__(
             self, env=None, database=None, cache_path=None, persistent=None):
 
-        if not isinstance(env, environment.SquirrelEnvironment):
+        if not isinstance(env, environment.Environment):
             env = environment.get_environment(env)
 
         if database is None:

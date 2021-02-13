@@ -8,6 +8,9 @@ from __future__ import absolute_import, print_function
 from pyrocko.guts import Object, Timestamp
 
 
+guts_prefix = 'squirrel'
+
+
 class Constraint(Object):
 
     '''

@@ -12,7 +12,7 @@ from pyrocko import has_paths
 from . import base
 from .. import io
 
-guts_prefix = 'pf'
+guts_prefix = 'squirrel'
 
 logger = logging.getLogger('pyrocko.squirrel.client.local')
 

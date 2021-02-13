@@ -20,6 +20,8 @@ from .base import Source
 from ..model import ehash
 from ..lock import LockDir
 
+guts_prefix = 'squirrel'
+
 logger = logging.getLogger('pyrocko.squirrel.client.catalog')
 
 

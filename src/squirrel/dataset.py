@@ -14,7 +14,7 @@ from ..has_paths import HasPaths
 from .client.base import Source
 from .error import SquirrelError
 
-guts_prefix = 'pf'
+guts_prefix = 'squirrel'
 
 logger = logging.getLogger('pyrocko.squirrel.dataset')
 

@@ -14,6 +14,8 @@ from pyrocko.guts import Object, String, Timestamp, Float, Int, Unicode, \
 from pyrocko.model import Content
 
 
+guts_prefix = 'squirrel'
+
 separator = '\t'
 
 g_content_kinds = [

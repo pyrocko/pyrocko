@@ -28,7 +28,7 @@ from pyrocko.io import stationxml
 from pyrocko.guts import Object, String, Timestamp, List, Tuple, Int, Dict, \
     Duration, Bool
 
-guts_prefix = 'pf'
+guts_prefix = 'squirrel'
 
 fdsn.g_timeout = 60.
 

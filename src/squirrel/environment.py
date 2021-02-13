@@ -25,7 +25,7 @@ from pyrocko import config
 
 from . import error
 
-guts_prefix = 'pf'
+guts_prefix = 'squirrel'
 
 
 g_db_filename = 'nuts.sqlite'
@@ -73,7 +73,7 @@ def get_environment(path=None):
         ``'$HOME/.pyrocko/cache/squirrel'``, is used.
 
     :returns:
-        :py:class:`SquirrelEnvironment` object containing the detected database
+        :py:class:`Environment` object containing the detected database
         and cache directory paths.
     '''
     if path is None:
@@ -81,7 +81,7 @@ def get_environment(path=None):
 
     squirrel_path = get_squirrel_path(path)
 
-    return SquirrelEnvironment.make(squirrel_path)
+    return Environment.make(squirrel_path)
 
 
 def init_environment(path=None):
@@ -107,12 +107,12 @@ def init_environment(path=None):
             'Cannot create squirrel directory: %s' % squirrel_path)
 
     from .base import Squirrel
-    env = SquirrelEnvironment.make(squirrel_path)
+    env = Environment.make(squirrel_path)
     sq = Squirrel(env)
     del sq
 
 
-class SquirrelEnvironment(Object):
+class Environment(Object):
     '''
     Configuration object providing paths to database and cache.
     '''
@@ -132,4 +132,4 @@ __all__ = [
     'get_squirrel_path',
     'get_environment',
     'init_environment',
-    'SquirrelEnvironment']
+    'Environment']
