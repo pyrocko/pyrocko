@@ -12,7 +12,7 @@ from pyrocko import util
 from pyrocko.squirrel import error
 
 
-logger = logging.getLogger('pyrocko.squirrel.tool.common')
+logger = logging.getLogger('psq.tool.common')
 
 
 class PyrockoHelpFormatter(argparse.RawDescriptionHelpFormatter):

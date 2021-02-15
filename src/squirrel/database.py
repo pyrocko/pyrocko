@@ -17,7 +17,7 @@ from pyrocko.guts import Object, Int, List, Dict, Tuple, String
 from . import error, io
 from .model import Nut, to_kind_id, to_kind, separator
 
-logger = logging.getLogger('pyrocko.squirrel.database')
+logger = logging.getLogger('psq.database')
 
 guts_prefix = 'squirrel'
 

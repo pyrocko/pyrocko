@@ -21,7 +21,7 @@ from .client import fdsn, catalog
 from .selection import Selection, filldocs, make_task
 from . import client, environment, error, pile
 
-logger = logging.getLogger('pyrocko.squirrel.base')
+logger = logging.getLogger('psq.base')
 
 guts_prefix = 'squirrel'
 

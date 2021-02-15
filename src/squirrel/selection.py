@@ -16,7 +16,7 @@ from pyrocko.progress import progress
 from . import error, io, model
 from .database import Database, get_database, execute_get1
 
-logger = logging.getLogger('pyrocko.squirrel.selection')
+logger = logging.getLogger('psq.selection')
 
 g_icount = 0
 g_lock = threading.Lock()

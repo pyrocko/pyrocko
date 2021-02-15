@@ -14,7 +14,7 @@ from .. import io
 
 guts_prefix = 'squirrel'
 
-logger = logging.getLogger('pyrocko.squirrel.client.local')
+logger = logging.getLogger('psq.client.local')
 
 
 class FileFormat(StringChoice):

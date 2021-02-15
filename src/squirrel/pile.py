@@ -7,7 +7,7 @@ import logging
 import weakref
 from pyrocko import squirrel as psq, trace
 
-logger = logging.getLogger('pyrocko.squirrel.pile')
+logger = logging.getLogger('psq.pile')
 
 
 def trace_callback_to_nut_callback(trace_callback):

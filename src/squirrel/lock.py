@@ -8,7 +8,7 @@ import os
 import logging
 
 op = os.path
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('psq.lock')
 
 
 class LockDir(object):

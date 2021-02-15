@@ -16,7 +16,7 @@ from .error import SquirrelError
 
 guts_prefix = 'squirrel'
 
-logger = logging.getLogger('pyrocko.squirrel.dataset')
+logger = logging.getLogger('psq.dataset')
 
 
 class Dataset(HasPaths):

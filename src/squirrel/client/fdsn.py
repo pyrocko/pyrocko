@@ -32,7 +32,7 @@ guts_prefix = 'squirrel'
 
 fdsn.g_timeout = 60.
 
-logger = logging.getLogger('pyrocko.squirrel.client.fdsn')
+logger = logging.getLogger('psq.client.fdsn')
 
 sites_not_supporting = {
     'startbefore': ['geonet'],

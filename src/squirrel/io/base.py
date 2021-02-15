@@ -21,7 +21,7 @@ backend_modules = [
     mseed, sac, datacube, stationxml, textfiles, virtual, yaml, tdms_idas]
 
 
-logger = logging.getLogger('pyrocko.sqirrel.io')
+logger = logging.getLogger('psq.io')
 
 
 def make_task(*args, **kwargs):

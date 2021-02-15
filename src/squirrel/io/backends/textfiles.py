@@ -11,7 +11,7 @@ from builtins import str as newstr
 from pyrocko.io.io_common import get_stats, touch  # noqa
 from ... import model
 
-logger = logging.getLogger('pyrocko.squirrel.io.textfiles')
+logger = logging.getLogger('psq.io.textfiles')
 
 
 def provided_formats():

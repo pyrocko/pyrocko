@@ -5,7 +5,7 @@
 
 import logging
 
-logger = logging.getLogger('pyrocko.squirrel.cache')
+logger = logging.getLogger('psq.cache')
 
 
 class ContentCache(object):

@@ -13,7 +13,7 @@ from ... import model
 
 from pyrocko import guts
 
-logger = logging.getLogger('pyrocko.squirrel.io.yaml')
+logger = logging.getLogger('psq.io.yaml')
 
 
 def provided_formats():
