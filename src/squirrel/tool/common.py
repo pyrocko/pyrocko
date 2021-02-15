@@ -6,10 +6,13 @@
 from __future__ import absolute_import, print_function
 
 import argparse
+import logging
 
 from pyrocko import util
+from pyrocko.squirrel import error
 
-from ..import error
+
+logger = logging.getLogger('pyrocko.squirrel.tool.common')
 
 
 class PyrockoHelpFormatter(argparse.RawDescriptionHelpFormatter):
@@ -52,7 +55,7 @@ def add_parser(subparsers, *args, **kwargs):
     p = subparsers.add_parser(*args, **kwargs)
     p.add_argument(
         '--help', '-h',
-        action='store_true',
+        action='help',
         help='Show this help message and exit.')
     return p
 
@@ -99,6 +102,14 @@ def add_selection_arguments(p):
              'applications.')
 
     p.add_argument(
+        '--update', '-u',
+        dest='update',
+        action='store_true',
+        default=False,
+        help='Allow adding paths and datasets to existing persistent '
+             'selection.')
+
+    p.add_argument(
         '--dataset', '-d',
         dest='datasets',
         default=[],
@@ -109,8 +120,31 @@ def add_selection_arguments(p):
 
 
 def squirrel_from_selection_arguments(args):
-    from pyrocko import squirrel as sq
-    squirrel = sq.Squirrel(persistent=args.persistent)
+    from pyrocko.squirrel import base, environment, database
+    persistent = args.persistent
+
+    env = environment.get_environment()
+    if persistent:
+        db = database.get_database(env.database_path)
+        persistent_exists = persistent in db.get_persistent_names()
+
+    squirrel = base.Squirrel(env, persistent=persistent)
+
+    if persistent and persistent_exists:
+        if not args.update:
+            logger.info(
+                'Using existing persistent selection: %s' % persistent)
+            if args.paths or args.datasets:
+                logger.info(
+                    'Ignoring path and dataset arguments. Use --update to add '
+                    'to existing persistent selection.')
+
+            return squirrel
+
+        else:
+            logger.info(
+                'Updating existing persistent selection: %s' % persistent)
+
     kinds = args.kinds or None
     if args.paths:
         squirrel.add(

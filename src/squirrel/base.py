@@ -500,8 +500,6 @@ class Squirrel(Selection):
 
         Selection._delete(self)
 
-        self._conn.commit()
-
     @filldocs
     def add(self,
             paths,

@@ -62,7 +62,7 @@ Run with --help to get further help.''',
 
     parser.add_argument(
         '--help', '-h',
-        action='store_true',
+        action='help',
         help='Show this help message and exit.')
 
     parser.add_argument(
@@ -83,9 +83,9 @@ Run with --help to get further help.''',
 
     args = parser.parse_args(args)
     subparser = args.__dict__.pop('subparser', None)
-    if args.help:
-        (subparser or parser).print_help()
-        sys.exit(0)
+    # if args.help:
+    #     (subparser or parser).print_help()
+    #     sys.exit(0)
 
     loglevel = args.__dict__.pop('loglevel')
     util.setup_logging(g_program_name, loglevel)

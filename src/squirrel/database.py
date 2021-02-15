@@ -81,11 +81,13 @@ class Database(object):
     def _initialize_db(self):
         c = self._conn
         with c:
-            if 1 == len(list(
+            if 2 == len(list(
                     c.execute(
                         '''
                             SELECT name FROM sqlite_master
-                                WHERE type = 'table' AND name = '{files}'
+                                WHERE type = 'table' AND name IN (
+                                    'files',
+                                    'persistent')
                         '''))):
                 return
 
@@ -200,6 +202,12 @@ class Database(object):
                         WHERE old.kind_codes_id == kind_codes_id;
                     END
                 ''')
+
+            c.execute(self._register_table(
+                '''
+                    CREATE TABLE IF NOT EXISTS persistent (
+                        name text UNIQUE)
+                '''))
 
     def dig(self, nuts):
         '''
@@ -552,6 +560,12 @@ class Database(object):
         for row in self._conn.execute(sql):
             return row[0] or 0
 
+    def get_persistent_names(self):
+        sql = '''
+            SELECT name FROM persistent
+        '''
+        return [row[0] for row in self._conn.execute(sql)]
+
     def get_stats(self):
         return DatabaseStats(
             nfiles=self.get_nfiles(),
@@ -559,13 +573,15 @@ class Database(object):
             kinds=self.get_kinds(),
             codes=self.get_codes(),
             counts=self.get_counts(),
-            total_size=self.get_total_size())
+            total_size=self.get_total_size(),
+            persistent=self.get_persistent_names())
 
     def __str__(self):
         return str(self.get_stats())
 
     def print_tables(self, stream=None):
         for table in [
+                'persistent',
                 'files',
                 'nuts',
                 'kind_codes',
@@ -619,22 +635,25 @@ class DatabaseStats(Object):
     '''
 
     nfiles = Int.T(
-        help='number of files in database')
+        help='Number of files in database.')
     nnuts = Int.T(
-        help='number of index nuts in database')
+        help='Number of index nuts in database.')
     codes = List.T(
         Tuple.T(content_t=String.T()),
-        help='available code sequences in database, e.g. '
+        help='Available code sequences in database, e.g. '
              '(agency, network, station, location) for stations nuts.')
     kinds = List.T(
         String.T(),
-        help='available content types in database')
+        help='Available content types in database.')
     total_size = Int.T(
-        help='aggregated file size of files referenced in database')
+        help='Aggregated file size of files referenced in database.')
     counts = Dict.T(
         String.T(), Dict.T(Tuple.T(content_t=String.T()), Int.T()),
-        help='breakdown of how many nuts of any content type and code '
-             'sequence are available in database, ``counts[kind][codes]``')
+        help='Breakdown of how many nuts of any content type and code '
+             'sequence are available in database, ``counts[kind][codes]``.')
+    persistent = List.T(
+        String.T(),
+        help='Names of persistent selections stored in database.')
 
     def __str__(self):
         kind_counts = dict(
@@ -655,13 +674,15 @@ Available codes:               %s
 Number of files:               %i
 Total size of known files:     %s
 Number of index nuts:          %i
-Available content kinds:       %s''' % (
+Available content kinds:       %s
+Persistent selections:         %s''' % (
             scodes,
             self.nfiles,
             util.human_bytesize(self.total_size),
             self.nnuts,
             ', '.join('%s: %i' % (
-                kind, kind_counts[kind]) for kind in sorted(self.kinds)))
+                kind, kind_counts[kind]) for kind in sorted(self.kinds)),
+            ', '.join(self.persistent))
 
         return s
 

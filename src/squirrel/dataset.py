@@ -46,3 +46,9 @@ def read_dataset(path):
 
     dataset.set_basepath(op.dirname(path) or '.')
     return dataset
+
+
+__all__ = [
+    'Dataset',
+    'read_dataset',
+]

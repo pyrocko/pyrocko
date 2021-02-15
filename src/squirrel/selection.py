@@ -147,6 +147,12 @@ class Selection(object):
         self._conn = self._database.get_connection()
         self._sources = []
 
+        if persistent is not None:
+            self._conn.execute(
+                '''
+                    INSERT OR IGNORE INTO persistent VALUES (?)
+                ''', (persistent,))
+
         self._names = {
             'db': 'main' if self._persistent else 'temp',
             'file_states': self.name + '_file_states',
@@ -196,7 +202,17 @@ class Selection(object):
         self._conn.execute(self._sql(
             'DROP TABLE %(db)s.%(file_states)s'))
 
+        if self._persistent:
+            self._conn.execute(
+                '''
+                    DELETE FROM persistent WHERE name == ?
+                ''', (self.name[5:],))
+
         self._conn.commit()
+        self._conn = None
+
+    def delete(self):
+        self._delete()
 
     @filldocs
     def add(
