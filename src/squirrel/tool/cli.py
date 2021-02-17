@@ -16,7 +16,7 @@ g_program_name = 'squirrel'
 
 
 def main(args=None):
-    command(
+    from_command(
         args=args,
         program_name=g_program_name,
         subcommands=command_modules,
@@ -40,7 +40,7 @@ This tool's functionality is available through several subcommands. Run
 `squirrel [subcommand] --help` to get further help.''')
 
 
-def command(
+def from_command(
         args=None,
         program_name=None,
         description='''
@@ -83,9 +83,6 @@ Run with --help to get further help.''',
 
     args = parser.parse_args(args)
     subparser = args.__dict__.pop('subparser', None)
-    # if args.help:
-    #     (subparser or parser).print_help()
-    #     sys.exit(0)
 
     loglevel = args.__dict__.pop('loglevel')
     util.setup_logging(g_program_name, loglevel)
@@ -108,5 +105,5 @@ Run with --help to get further help.''',
 
 __all__ = [
     'main',
-    'command',
+    'from_command',
 ]

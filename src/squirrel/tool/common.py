@@ -120,24 +120,33 @@ def add_selection_arguments(p):
 
 
 def squirrel_from_selection_arguments(args):
-    from pyrocko.squirrel import base, environment, database
-    persistent = args.persistent
+    from pyrocko.squirrel import base, dataset
 
-    env = environment.get_environment()
-    if persistent:
-        db = database.get_database(env.database_path)
-        persistent_exists = persistent in db.get_persistent_names()
+    datasets = [
+        dataset.read_dataset(dataset_path) for dataset_path in args.datasets]
 
-    squirrel = base.Squirrel(env, persistent=persistent)
+    persistents = [ds.persistent for ds in datasets]
+    if args.persistent:
+        persistent = args.persistent
+    elif persistents:
+        persistent = persistents[0]
+        if not all(p == persistents for p in persistents[1:]):
+            raise error.SquirrelError(
+                'Given datasets specify different `persistent` settings.')
 
-    if persistent and persistent_exists:
+        logger.info(
+            'Persistent selection requested by dataset: %s' % persistent)
+
+    squirrel = base.Squirrel(persistent=persistent)
+
+    if persistent and not squirrel.is_new():
         if not args.update:
             logger.info(
                 'Using existing persistent selection: %s' % persistent)
-            if args.paths or args.datasets:
+            if args.paths or datasets:
                 logger.info(
-                    'Ignoring path and dataset arguments. Use --update to add '
-                    'to existing persistent selection.')
+                    'Avoiding dataset rescan. Use --update/-u to '
+                    'rescan or add items to existing persistent selection.')
 
             return squirrel
 
@@ -150,8 +159,8 @@ def squirrel_from_selection_arguments(args):
         squirrel.add(
             args.paths, check=args.check, format=args.format, kinds=kinds)
 
-    for dataset_path in args.datasets:
-        squirrel.add_dataset(dataset_path, check=args.check)
+    for ds in datasets:
+        squirrel.add_dataset(ds, check=args.check)
 
     return squirrel
 

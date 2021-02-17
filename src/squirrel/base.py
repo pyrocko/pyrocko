@@ -19,7 +19,7 @@ from . import model, io, cache, dataset
 from .model import to_kind_id, separator, WaveformOrder
 from .client import fdsn, catalog
 from .selection import Selection, filldocs, make_task
-from . import client, environment, error, pile
+from . import client, environment, error
 
 logger = logging.getLogger('psq.base')
 
@@ -677,15 +677,18 @@ class Squirrel(Selection):
 
         self.add_source(catalog.CatalogSource(*args, **kwargs))
 
-    def add_dataset(self, path, check=True, progress_viewer='terminal'):
+    def add_dataset(
+            self, ds, check=True, progress_viewer='terminal',
+            warn_persistent=True):
+
         '''
         Read dataset description from file and add its contents.
 
-        :param path:
-            Path to dataset description file. See
-            :py:mod:`~pyrocko.squirrel.dataset`.
-        :type path:
-            str
+        :param ds:
+            Path to dataset description file or dataset description object
+            . See :py:mod:`~pyrocko.squirrel.dataset`.
+        :type ds:
+            :py:class:`str` or :py:class:`~pyrocko.squirrel.dataset.Dataset`
 
         :param check:
             If ``True``, all file modification times are checked to see if
@@ -697,7 +700,20 @@ class Squirrel(Selection):
         :type check:
             bool
         '''
-        ds = dataset.read_dataset(path)
+        if isinstance(ds, str):
+            ds = dataset.read_dataset(ds)
+            path = ds
+        else:
+            path = None
+
+        if warn_persistent and ds.persistent and (
+                not self._persistent or (self._persistent != ds.persistent)):
+
+            logger.warn(
+                'Dataset `persistent` flag ignored. Can not be set on already '
+                'existing Squirrel instance.%s' % (
+                    ' Dataset: %s' % path if path else ''))
+
         ds.setup(self, check=check, progress_viewer=progress_viewer)
 
     def _get_selection_args(
@@ -2096,6 +2112,7 @@ class Squirrel(Selection):
         scripts should use Squirrel's native methods to avoid the emulation
         overhead.
         '''
+        from . import pile
 
         if self._pile is None:
             self._pile = pile.Pile(self)

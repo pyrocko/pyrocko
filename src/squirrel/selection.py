@@ -21,6 +21,8 @@ logger = logging.getLogger('psq.selection')
 g_icount = 0
 g_lock = threading.Lock()
 
+re_persistent_name = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]{0,64}$')
+
 
 def make_unique_name():
     with g_lock:
@@ -134,7 +136,7 @@ class Selection(object):
 
         if persistent is not None:
             assert isinstance(persistent, str)
-            if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', persistent):
+            if not re_persistent_name.match(persistent):
                 raise error.SquirrelError(
                     'invalid persistent selection name: %s' % persistent)
 
@@ -142,16 +144,17 @@ class Selection(object):
         else:
             self.name = 'sel_' + make_unique_name()
 
-        self._persistent = persistent is not None
+        self._persistent = persistent
         self._database = database
         self._conn = self._database.get_connection()
         self._sources = []
+        self._is_new = True
 
         if persistent is not None:
-            self._conn.execute(
+            self._is_new = 1 == self._conn.execute(
                 '''
                     INSERT OR IGNORE INTO persistent VALUES (?)
-                ''', (persistent,))
+                ''', (persistent,)).rowcount
 
         self._names = {
             'db': 'main' if self._persistent else 'temp',
@@ -186,6 +189,16 @@ class Selection(object):
 
     def _sql(self, s):
         return s % self._names
+
+    def is_new(self):
+        '''
+        Is this a new selection?
+
+        Always ``True`` for non-persistent selections. Only ``False`` for
+        a persistent selection which already existed in the database when the
+        it was initialized.
+        '''
+        return self._is_new
 
     def get_database(self):
         '''
