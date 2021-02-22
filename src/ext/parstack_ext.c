@@ -158,10 +158,13 @@ int parstack(
             for (iarray=0; iarray<narrays; iarray++) {
                 istart = offsets[iarray] + shifts[ishift*narrays + iarray];
                 weight = weights[ishift*narrays + iarray];
-                if (weight != 0.0) {
-                    for (i=(size_t)i32max(0, imin - istart); i<(size_t)i32max(0, i32min(nsamp - istart + imin, lengths[iarray])); i++) {
-                        result[ishift*nsamp + istart-imin+i] += arrays[iarray][i] * weight;
-                    }
+                if (weight == 0.0)
+                    continue;
+                #if defined(_OPENMP)
+                    #pragma omp simd
+                #endif
+                for (i=(size_t)i32max(0, imin - istart); i<(size_t)i32max(0, i32min(nsamp - istart + imin, lengths[iarray])); i++) {
+                    result[ishift*nsamp + istart-imin+i] += arrays[iarray][i] * weight;
                 }
             }
         }
@@ -184,10 +187,13 @@ int parstack(
             for (iarray=0; iarray<narrays; iarray++) {
                 istart = offsets[iarray] + shifts[ishift*narrays + iarray];
                 weight = weights[ishift*narrays + iarray];
-                if (weight != 0.0) {
-                    for (i=(size_t)i32max(0, imin - istart); i<(size_t)i32max(0, i32min(nsamp - istart + imin, lengths[iarray])); i++) {
-                        temp[istart-imin+i] += arrays[iarray][i] * weight;
-                    }
+                if (weight == 0.0)
+                    continue;
+                #if defined(_OPENMP)
+                    #pragma omp simd
+                #endif
+                for (i=(size_t)i32max(0, imin - istart); i<(size_t)i32max(0, i32min(nsamp - istart + imin, lengths[iarray])); i++) {
+                    temp[istart-imin+i] += arrays[iarray][i] * weight;
                 }
             }
             m = 0.;

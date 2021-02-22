@@ -153,7 +153,7 @@ class ParstackTestCase(unittest.TestCase):
     def benchmark(self):
 
         for nsamples in (10, 100, 1000, 10000):
-            nrepeats = max(10, 1000 / nsamples)
+            nrepeats = max(10, 1000 // nsamples)
 
             narrays = 20
             arrays = []
@@ -181,7 +181,8 @@ class ParstackTestCase(unittest.TestCase):
 
                 t = t1-t0
                 score = nsamples * narrays * nshifts * nrepeats / t / 1e9
-                print('%s, %i, %i, %g' % (impl, nparallel, nsamples, score))
+                print('%s, %i, %i, %g, %g'
+                      % (impl, nparallel, nsamples, score, t))
 
     @unittest.skip('needs manual inspection')
     @common.require_gui
