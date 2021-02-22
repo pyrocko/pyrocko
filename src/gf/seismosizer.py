@@ -1968,6 +1968,13 @@ class RectangularSource(SourceWithDerivedMagnitude):
         optional=True,
         help='Slip on the rectangular source area [m]')
 
+    opening_fraction = Float.T(
+        default=0.,
+        help='Determines fraction of slip related to opening. '
+             '(``-1``: pure tensile closing, '
+             '``0``: pure shear, '
+             '``1``: pure tensile opening)')
+
     decimation_factor = Int.T(
         optional=True,
         default=1,
@@ -2016,13 +2023,24 @@ class RectangularSource(SourceWithDerivedMagnitude):
                     'interpolation method are available.')
 
             amplitudes = self._discretize(store, target)[2]
-            return float(pmt.moment_to_magnitude(num.sum(amplitudes)))
+            if amplitudes.ndim == 2:
+                # CLVD component has no net moment, leave out
+                return float(pmt.moment_to_magnitude(
+                    num.sum(num.abs(amplitudes[0:2, :]).sum())))
+            else:
+                return float(pmt.moment_to_magnitude(num.sum(amplitudes)))
 
         else:
             return float(pmt.moment_to_magnitude(1.0))
 
     def get_factor(self):
         return 1.0
+
+    def get_slip_tensile(self):
+        return self.slip * self.opening_fraction
+
+    def get_slip_shear(self):
+        return self.slip - abs(self.get_slip_tensile)
 
     def _discretize(self, store, target):
         if self.nucleation_x is not None:
@@ -2059,13 +2077,38 @@ class RectangularSource(SourceWithDerivedMagnitude):
                 points=points,
                 interpolation=interpolation)
 
-            amplitudes *= dl * dw * shear_moduli * self.slip
+            tensile_slip = self.get_slip_tensile()
+            shear_slip = self.slip - abs(tensile_slip)
+
+            amplitudes_total = [shear_moduli * shear_slip]
+            if tensile_slip != 0:
+                bulk_moduli = store.config.get_bulk_moduli(
+                    self.lat, self.lon,
+                    points=points,
+                    interpolation=interpolation)
+
+                tensile_iso = bulk_moduli * tensile_slip
+                tensile_clvd = (2. / 3.) * shear_moduli * tensile_slip
+
+                amplitudes_total.extend([tensile_iso, tensile_clvd])
+
+            amplitudes_total = num.vstack(amplitudes_total).squeeze() * \
+                amplitudes * dl * dw
+
         else:
             # normalization to retain total moment
-            amplitudes /= num.sum(amplitudes)
-            amplitudes *= self.get_moment(store, target)
+            amplitudes_norm = amplitudes / num.sum(amplitudes)
+            moment = self.get_moment(store, target)
 
-        return points, times, amplitudes, dl, dw
+            amplitudes_total = [
+                amplitudes_norm * moment * (1 - abs(self.opening_fraction))]
+            if self.opening_fraction != 0.:
+                amplitudes_total.append(
+                    amplitudes_norm * self.opening_fraction * moment)
+
+            amplitudes_total = num.vstack(amplitudes_total).squeeze()
+
+        return points, times, num.atleast_1d(amplitudes_total), dl, dw
 
     def discretize_basesource(self, store, target=None):
 
@@ -2073,9 +2116,43 @@ class RectangularSource(SourceWithDerivedMagnitude):
 
         mot = pmt.MomentTensor(
             strike=self.strike, dip=self.dip, rake=self.rake)
-
         m6s = num.repeat(mot.m6()[num.newaxis, :], times.size, axis=0)
-        m6s[:, :] *= amplitudes[:, num.newaxis]
+
+        if amplitudes.ndim == 1:
+            m6s[:, :] *= amplitudes[:, num.newaxis]
+        elif amplitudes.ndim == 2:
+            # shear MT components
+            rotmat1 = pmt.euler_to_matrix(
+                d2r * self.dip, d2r * self.strike, d2r * -self.rake)
+            m6s[:, :] *= amplitudes[0, :][:, num.newaxis]
+
+            if amplitudes.shape[0] == 2:
+                # tensile MT components - moment/magnitude input
+                tensile = pmt.symmat6(1., 1., 3., 0., 0., 0.)
+                rot_tensile = pmt.to6(rotmat1.T * tensile * rotmat1)
+
+                m6s_tensile = rot_tensile[
+                    num.newaxis, :] * amplitudes[1, :][:, num.newaxis]
+                m6s += m6s_tensile
+
+            elif amplitudes.shape[0] == 3:
+                # tensile MT components - slip input
+                iso = pmt.symmat6(1., 1., 1., 0., 0., 0.)
+                clvd = pmt.symmat6(-1., -1., 2., 0., 0., 0.)
+
+                rot_iso = pmt.to6(rotmat1.T * iso * rotmat1)
+                rot_clvd = pmt.to6(rotmat1.T * clvd * rotmat1)
+
+                m6s_iso = rot_iso[
+                    num.newaxis, :] * amplitudes[1, :][:, num.newaxis]
+                m6s_clvd = rot_clvd[
+                    num.newaxis, :] * amplitudes[2, :][:, num.newaxis]
+                m6s += m6s_iso + m6s_clvd
+            else:
+                raise ValueError('Unknwown amplitudes shape!')
+        else:
+            raise ValueError(
+                'Unexpected dimension of {}'.format(amplitudes.ndim))
 
         ds = meta.DiscretizedMTSource(
             lat=self.lat,

@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- RectangularSource: added opening_fraction to model tensile dislocations
 - New command line option for jackseis: `--record-length`
 - Timing definition offsets can now take `%` as suffix to scale phase
   traveltimes relatively.
@@ -24,6 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Fix typos in STA/LTA documentation.
 - Fomosto PSGRN/PSCMP backend: improved control of modelling parameters,
   fixes some accuracy issues, regarding the spacial sampling interval.
+- Fomosto PSGRN/PSCMP backend: fixed scaling of isotropic GF components
 - Improved handling of differing sampling rates and interpolation settings
   when modelling multiple targets in `gf.Engine.process`.
 - PyQt compat issues with MacOS Big Sur.

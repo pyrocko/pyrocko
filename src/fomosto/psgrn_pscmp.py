@@ -648,6 +648,27 @@ MTDev = {
     }
 
 
+def get_nullification_factor(mu, lame_lambda):
+    '''
+    Factor that needs to be multiplied to 2 of the tensile sources to
+    eliminate two of the isotropic components.
+    '''
+    return -lame_lambda / (2. * mu + 2. * lame_lambda)
+
+
+def get_trace_normalization_factor(mu, lame_lambda, nullification):
+    '''
+    Factor to be multiplied to elementary GF trace to have unit displacement.
+    '''
+    return 1. / ((2. * mu) + lame_lambda + (2. * lame_lambda * nullification))
+
+
+def get_iso_scaling_factors(mu, lame_lambda):
+    nullf = get_nullification_factor(mu, lame_lambda)
+    scale = get_trace_normalization_factor(mu, lame_lambda, nullf)
+    return nullf, scale
+
+
 class PsCmpTensileSF(Location, gf.seismosizer.Cloneable):
     '''
     Compound dislocation of 3 perpendicular, rectangular sources to approximate
@@ -670,8 +691,7 @@ class PsCmpTensileSF(Location, gf.seismosizer.Cloneable):
         default='nn',
         help='Axis index for opening direction; "nn", "ee", or "dd"')
 
-    def to_rfs(self):
-        rf = -0.25
+    def to_rfs(self, nullification):
 
         cmpd = []
         for comp, mt in MTIso.items():
@@ -679,7 +699,7 @@ class PsCmpTensileSF(Location, gf.seismosizer.Cloneable):
 
             if comp != self.idx:
                 params = copy.deepcopy(mt)
-                params['opening'] *= rf
+                params['opening'] *= nullification
 
             kwargs = copy.deepcopy(self.__dict__)
             kwargs.update(params)
@@ -742,13 +762,13 @@ class PsCmpMomentTensor(Location, gf.seismosizer.Cloneable):
         help='Axis index for MT component; '
              '"nn", "ee", "dd", "ne", "nd", or "ed".')
 
-    def to_rfs(self):
+    def to_rfs(self, nullification=-0.25):
         kwargs = copy.deepcopy(self.__dict__)
         kwargs.pop('_latlon')
 
         if self.idx in MTIso:
             tsf = PsCmpTensileSF(**kwargs)
-            return tsf.to_rfs()
+            return tsf.to_rfs(nullification)
 
         elif self.idx in MTDev:
             ssf = PsCmpShearSF(**kwargs)
@@ -1409,7 +1429,13 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
             lat=dummy_lat,
             lon=dummy_lon,
             points=points,
-            interpolation='nearest_neighbor')
+            interpolation='multilinear')
+
+        self.lambda_moduli = storeconf.get_lambda_moduli(
+            lat=dummy_lat,
+            lon=dummy_lon,
+            points=points,
+            interpolation='multilinear')
 
         if step == 0:
             block_size = (1, storeconf.nsource_depths, storeconf.ndistances)
@@ -1472,6 +1498,7 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
             (sz, firstx), (sz, lastx), (ns, nx) = \
                 self.get_block_extents(iblock)
             mu = self.shear_moduli[iblock]
+            lame_lambda = self.lambda_moduli[iblock]
 
             rz = self.store.config.receiver_depth
         else:
@@ -1538,11 +1565,13 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
             mtsize = float(dx * cc.rectangular_fault_size_factor)
 
             Ai = 1. / num.power(mtsize, 2)
+            nullf, sf = get_iso_scaling_factors(mu=mu, lame_lambda=lame_lambda)
+
             mui = 1. / mu
 
             gfmapping = [
                 (('nn',),
-                 {'un': (0, 0.4 * Ai * mui), 'ud': (5, 0.4 * Ai * mui)}),
+                 {'un': (0, Ai * sf), 'ud': (5, Ai * sf)}),
                 (('ne',),
                  {'ue': (3, 1 * Ai * mui)}),
                 (('nd',),
@@ -1550,9 +1579,9 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
                 (('ed',),
                  {'ue': (4, 1 * Ai * mui)}),
                 (('dd',),
-                 {'un': (2, 0.4 * Ai * mui), 'ud': (7, 0.4 * Ai * mui)}),
+                 {'un': (2, Ai * sf), 'ud': (7, Ai * sf)}),
                 (('ee',),
-                 {'un': (8, 0.4 * Ai * mui), 'ud': (9, 0.4 * Ai * mui)}),
+                 {'un': (8, Ai * sf), 'ud': (9, Ai * sf)}),
                 ]
 
             for mt, gfmap in gfmapping:
@@ -1566,7 +1595,8 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
                         length=mtsize,
                         idx=idx)
 
-                    cc.rectangular_source_patches.extend(pmt.to_rfs())
+                    cc.rectangular_source_patches.extend(
+                        pmt.to_rfs(nullf))
 
                 runner.run(cc)
 

@@ -1734,6 +1734,52 @@ class Config(Object):
                                           parameter='shear_moduli',
                                           interpolation=interpolation)
 
+    def get_lambda_moduli(self, lat, lon, points,
+                          interpolation=None):
+        '''
+        Get lambda moduli at given points from contained velocity model.
+
+        :param lat: surface origin for coordinate system of ``points``
+        :param points: NumPy array of shape ``(N, 3)``, where each row is
+            a point ``(north, east, depth)``, relative to origin at
+            ``(lat, lon)``
+        :param interpolation: interpolation method. Choose from
+            ``('nearest_neighbor', 'multilinear')``
+        :returns: NumPy array of length N with extracted shear moduli at each
+            point
+
+        The default implementation retrieves and interpolates the lambda moduli
+        from the contained 1D velocity profile.
+        '''
+        return self.get_material_property(lat, lon, points,
+                                          parameter='lambda_moduli',
+                                          interpolation=interpolation)
+
+    def get_bulk_moduli(self, lat, lon, points,
+                        interpolation=None):
+        '''
+        Get bulk moduli at given points from contained velocity model.
+
+        :param lat: surface origin for coordinate system of ``points``
+        :param points: NumPy array of shape ``(N, 3)``, where each row is
+            a point ``(north, east, depth)``, relative to origin at
+            ``(lat, lon)``
+        :param interpolation: interpolation method. Choose from
+            ``('nearest_neighbor', 'multilinear')``
+        :returns: NumPy array of length N with extracted shear moduli at each
+            point
+
+        The default implementation retrieves and interpolates the lambda moduli
+        from the contained 1D velocity profile.
+        '''
+        lambda_moduli = self.get_material_property(
+            lat, lon, points, parameter='lambda_moduli',
+            interpolation=interpolation)
+        shear_moduli = self.get_material_property(
+            lat, lon, points, parameter='shear_moduli',
+            interpolation=interpolation)
+        return lambda_moduli + (2 / 3) * shear_moduli
+
     def get_vs(self, lat, lon, points, interpolation=None):
         '''
         Get Vs at given points from contained velocity model.
@@ -1831,6 +1877,22 @@ class Config(Object):
                 store_depth_profile, z_profile, rho_profile)
 
             profile = num.power(store_vs_profile, 2) * store_rho_profile
+
+        elif parameter == 'lambda_moduli':
+            vs_profile = earthmod.profile('vs')
+            vp_profile = earthmod.profile('vp')
+            rho_profile = earthmod.profile('rho')
+
+            store_vs_profile = num.interp(
+                store_depth_profile, z_profile, vs_profile)
+            store_vp_profile = num.interp(
+                store_depth_profile, z_profile, vp_profile)
+            store_rho_profile = num.interp(
+                store_depth_profile, z_profile, rho_profile)
+
+            profile = store_rho_profile * (
+                num.power(store_vp_profile, 2) -
+                num.power(store_vs_profile, 2) * 2)
         else:
             raise TypeError(
                 'parameter %s not available' % parameter)

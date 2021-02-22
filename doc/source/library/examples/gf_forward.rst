@@ -24,7 +24,9 @@ Download :download:`gf_forward_example1.py </../../examples/gf_forward_example1.
 
 
 Calculate spatial surface displacement from a local GF store
--------------------------------------------------------------
+------------------------------------------------------------
+Shear dislocation - Earthquake
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 In this example we create a :class:`~pyrocko.gf.seismosizer.RectangularSource` and compute the spatial static displacement invoked by that rupture.
 
@@ -41,6 +43,28 @@ Download :download:`gf_forward_example2.py </../../examples/gf_forward_example2.
 
 .. literalinclude :: /../../examples/gf_forward_example2.py
     :language: python
+
+
+Tensile dislocation - Sill/Dike
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In this example we create a :class:`~pyrocko.gf.seismosizer.RectangularSource` and compute the spatial static displacement invoked by a
+magmatic contracting sill. The same model can be used to model a magmatic dike intrusion (changing the "dip" argument).
+
+We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.gf.targets.StaticTarget` and :class:`~pyrocko.gf.targets.SatelliteTarget`.
+
+.. figure:: /static/gf_static_displacement_sill.png
+    :align: center
+    :width: 90%
+    :alt: Static displacement from a contracting sill calculated through pyrocko
+
+    Synthetic surface displacement from a contracting sill. The sill has a strike of 104° N. The surface displacements are shown in Line-of-sight (LOS), east, north and vertical directions. Envisat satellite has a look angle of 23° and heading -76°. The motion is positive towards the satellite LOS.
+
+Download :download:`gf_forward_example2_sill.py </../../examples/gf_forward_example2_sill.py>`
+
+.. literalinclude :: /../../examples/gf_forward_example2_sill.py
+    :language: python
+
 
 
 Calculate spatial surface displacement and export Kite scenes

@@ -403,6 +403,8 @@ class GFSourcesTestCase(unittest.TestCase):
 
         store = self.dummy_homogeneous_store()
 
+        depth = 10 * km
+        # shear
         rect1 = gf.RectangularSource(
             depth=10*km,
             magnitude=5.0,
@@ -410,16 +412,64 @@ class GFSourcesTestCase(unittest.TestCase):
             length=5*km)
 
         rect2 = gf.RectangularSource(
-            depth=10*km,
+            depth=depth,
             slip=pmt.magnitude_to_moment(5.0) / (
                 5*km * 5*km * store.config.earthmodel_1d.material(
-                    10*km).shear_modulus()),
+                    depth).shear_modulus()),
             width=5*km,
             length=5*km)
 
         self.assertAlmostEqual(
             rect1.get_magnitude(),
             rect2.get_magnitude(
+                store, gf.Target(interpolation='nearest_neighbor')))
+
+        # tensile
+        rect3 = gf.RectangularSource(
+            depth=depth,
+            magnitude=5.0,
+            width=5*km,
+            length=5*km,
+            opening_fraction=1.)
+
+        rect4 = gf.RectangularSource(
+            depth=depth,
+            slip=pmt.magnitude_to_moment(5.0) / (
+                5*km * 5*km * store.config.earthmodel_1d.material(
+                    depth).bulk()),
+            width=5*km,
+            length=5*km,
+            opening_fraction=1.)
+
+        self.assertAlmostEqual(
+            rect3.get_magnitude(),
+            rect4.get_magnitude(
+                store, gf.Target(interpolation='nearest_neighbor')))
+
+        # mixed
+        of = -0.4
+        rect5 = gf.RectangularSource(
+            depth=depth,
+            magnitude=5.0,
+            width=5*km,
+            length=5*km,
+            opening_fraction=of)
+
+        rect6 = gf.RectangularSource(
+            depth=depth,
+            slip=pmt.magnitude_to_moment(5.0) / (
+                5*km * 5*km * (
+                    store.config.earthmodel_1d.material(
+                        depth).bulk() * abs(of) +
+                    store.config.earthmodel_1d.material(
+                        depth).shear_modulus() * (1 - abs(of)))),
+            width=5*km,
+            length=5*km,
+            opening_fraction=of)
+
+        self.assertAlmostEqual(
+            rect5.get_magnitude(),
+            rect6.get_magnitude(
                 store, gf.Target(interpolation='nearest_neighbor')))
 
     def test_discretize_rect_source(self):
