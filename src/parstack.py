@@ -34,6 +34,7 @@ def parstack(arrays, offsets, shifts, weights, method,
 
     if impl == 'openmp':
         parstack_impl = parstack_ext.parstack
+        arrays = [arr.astype(num.float32) for arr in arrays]
     elif impl == 'numpy':
         parstack_impl = parstack_numpy
 

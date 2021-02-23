@@ -38,7 +38,7 @@ int parstack_config(
 
 int parstack(
         size_t narrays,
-        double **arrays,
+        float **arrays,
         int32_t *offsets,
         size_t *lengths,
         size_t nshifts,
@@ -47,23 +47,23 @@ int parstack(
         int method,
         size_t lengthout,
         int32_t offsetout,
-        double *result,
+        float *result,
         int nparallel);
 
 
-int32_t i32min(int32_t a, int32_t b) {
+static int32_t i32min(int32_t a, int32_t b) {
     return (a < b) ? a : b;
 }
 
-size_t smin(size_t a, size_t b) {
+static size_t smin(size_t a, size_t b) {
     return (a < b) ? a : b;
 }
 
-int32_t i32max(int32_t a, int32_t b) {
+static int32_t i32max(int32_t a, int32_t b) {
     return (a > b) ? a : b;
 }
 
-double dmax(double a, double b) {
+static double dmax(double a, double b) {
     return (a > b) ? a : b;
 }
 
@@ -111,7 +111,7 @@ int parstack_config(
 
 int parstack(
         size_t narrays,
-        double **arrays,
+        float **arrays,
         int32_t *offsets,
         size_t *lengths,
         size_t nshifts,
@@ -120,16 +120,16 @@ int parstack(
         int method,
         size_t lengthout,
         int32_t offsetout,
-        double *result,
+        float *result,
         int nparallel) {
 
 	(void) nparallel;
     int32_t imin, istart, ishift;
     size_t iarray, nsamp, i;
-    double weight;
+    float weight;
     int chunk;
-    double *temp;
-    double m;
+    float *temp;
+    float m;
 
     if (narrays < 1) {
         return NODATA;
@@ -157,7 +157,7 @@ int parstack(
         for (ishift=0; ishift<(int32_t)nshifts; ishift++) {
             for (iarray=0; iarray<narrays; iarray++) {
                 istart = offsets[iarray] + shifts[ishift*narrays + iarray];
-                weight = weights[ishift*narrays + iarray];
+                weight = (float) weights[ishift*narrays + iarray];
                 if (weight == 0.0)
                     continue;
                 #if defined(_OPENMP)
@@ -176,7 +176,7 @@ int parstack(
         #pragma omp parallel private(ishift, iarray, i, istart, weight, temp, m)
 	#endif
         {
-        temp = (double*)calloc(nsamp, sizeof(double));
+        temp = (float*)calloc(nsamp, sizeof(float));
 	#if defined(_OPENMP)
         #pragma omp for schedule(dynamic,chunk) nowait
 	#endif
@@ -186,7 +186,7 @@ int parstack(
             }
             for (iarray=0; iarray<narrays; iarray++) {
                 istart = offsets[iarray] + shifts[ishift*narrays + iarray];
-                weight = weights[ishift*narrays + iarray];
+                weight = (float) weights[ishift*narrays + iarray];
                 if (weight == 0.0)
                     continue;
                 #if defined(_OPENMP)
@@ -199,7 +199,7 @@ int parstack(
             m = 0.;
             for (i=0; i<nsamp; i++) {
                 //m += temp[i]*temp[i];
-                m = dmax(m, temp[i]);
+                m = fmaxf(m, temp[i]);
             }
             result[ishift] = m;
         }
@@ -282,8 +282,8 @@ static PyObject* w_parstack(PyObject *module, PyObject *args) {
     int32_t offsetout;
     int lengthout_arg;
     int32_t *coffsets, *cshifts;
-    double *cweights, *cresult;
-    double **carrays;
+    double *cweights;
+    float **carrays, *cresult;
     npy_intp array_dims[1];
     size_t i;
     int err;
@@ -304,7 +304,7 @@ static PyObject* w_parstack(PyObject *module, PyObject *args) {
     if (!good_array(offsets, NPY_INT32)) return NULL;
     if (!good_array(shifts, NPY_INT32)) return NULL;
     if (!good_array(weights, NPY_DOUBLE)) return NULL;
-    if (result != Py_None && !good_array(result, NPY_DOUBLE)) return NULL;
+    if (result != Py_None && !good_array(result, NPY_FLOAT)) return NULL;
 
     coffsets = PyArray_DATA((PyArrayObject*)offsets);
     narrays = PyArray_SIZE((PyArrayObject*)offsets);
@@ -333,7 +333,7 @@ static PyObject* w_parstack(PyObject *module, PyObject *args) {
         return NULL;
     }
 
-    carrays = (double**)calloc(narrays, sizeof(double*));
+    carrays = (float**)calloc(narrays, sizeof(float*));
     if (carrays == NULL) {
         PyErr_SetString(st->error, "alloc failed");
         return NULL;
@@ -348,7 +348,7 @@ static PyObject* w_parstack(PyObject *module, PyObject *args) {
 
     for (i=0; i<narrays; i++) {
         arr = PyList_GetItem(arrays, i);
-        if (!good_array(arr, NPY_DOUBLE)) {
+        if (!good_array(arr, NPY_FLOAT)) {
             free(carrays);
             free(clengths);
             return NULL;
@@ -384,7 +384,7 @@ static PyObject* w_parstack(PyObject *module, PyObject *args) {
         }
         Py_INCREF(result);
     } else {
-        result = PyArray_SimpleNew(1, array_dims, NPY_FLOAT64);
+        result = PyArray_SimpleNew(1, array_dims, NPY_FLOAT);
         cresult = PyArray_DATA((PyArrayObject*)result);
 
         for (i=0; i<(size_t)array_dims[0]; i++) {
