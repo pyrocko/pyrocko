@@ -1610,6 +1610,35 @@ class Squirrel(Selection):
         return [self.get_content(nut) for nut in nuts]
 
     @filldocs
+    def get_response(
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None):
+
+        '''
+        Get instrument response matching given constraints.
+
+        %(query_args)s
+
+        :returns:
+            :py:class:`~pyrocko.squirrel.model.Response` object.
+
+        Same as :py:meth:`get_responses` but returning exactly one response.
+        Raises :py:exc:`~pyrocko.squirrel.error.NotAvailable` if zero or more
+        than one is available.
+
+        See :py:meth:`iter_nuts` for details on time span matching.
+        '''
+
+        responses = self.get_responses(obj, tmin, tmax, time, codes)
+        if len(responses) == 0:
+            raise error.NotAvailable(
+                'No instrument response available.')
+        elif len(responses) > 1:
+            raise error.NotAvailable(
+                'Multiple instrument responses matching given constraints')
+
+        return responses[0]
+
+    @filldocs
     def get_events(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None):
 

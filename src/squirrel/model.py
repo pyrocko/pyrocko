@@ -10,8 +10,9 @@ import numpy as num
 
 from pyrocko import util
 from pyrocko.guts import Object, String, Timestamp, Float, Int, Unicode, \
-    Tuple, List
+    Tuple, List, StringChoice
 from pyrocko.model import Content
+from pyrocko.trace import FrequencyResponse
 
 
 guts_prefix = 'squirrel'
@@ -356,12 +357,44 @@ class Channel(Content):
             self.dip)
 
 
+class QuantityType(StringChoice):
+    choices = ['acceleration', 'velocity', 'displacement']
+
+
+class ResponseStage(FrequencyResponse):
+    input_quantity = QuantityType.T()
+    output_quantity = QuantityType.T()
+    elements = List.T(FrequencyResponse.T())
+
+
 class Response(Content):
     '''
     The instrument response of a seismic station channel.
     '''
 
-    pass
+    agency = String.T(default='', help='Agency code (2-5)')
+    network = String.T(default='', help='Deployment/network code (1-8)')
+    station = String.T(default='', help='Station code (1-5)')
+    location = String.T(default='', help='Location code (0-2)')
+    channel = String.T(default='', help='Channel code (3)')
+
+    tmin = Timestamp.T(optional=True)
+    tmax = Timestamp.T(optional=True)
+
+    stages = List.T(ResponseStage.T())
+
+    def get_input_quantity(self):
+        pass
+
+    def get_output_quantity(self):
+        pass
+
+    def get_effective(self, input_quantity=None, stages=None):
+        pass
+
+    def evaluate(self, f):
+        resp = self.get_effective()
+        return resp.evaluate(f)
 
 
 class Event(Content):
