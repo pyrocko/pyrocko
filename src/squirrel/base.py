@@ -61,6 +61,13 @@ def codes_inflate(codes):
     return inflated
 
 
+def codes_inflate2(codes):
+    inflated = list(c_inflated)
+    ncodes = len(codes)
+    inflated[:ncodes] = codes
+    return inflated
+
+
 def codes_patterns_for_kind(kind, codes):
     if not codes:
         return []
@@ -726,7 +733,7 @@ class Squirrel(Selection):
         if obj is not None:
             tmin = tmin if tmin is not None else obj.tmin
             tmax = tmax if tmax is not None else obj.tmax
-            codes = codes if codes is not None else obj.codes
+            codes = codes if codes is not None else codes_inflate2(obj.codes)
 
         if isinstance(codes, str):
             codes = tuple(codes.split('.'))
