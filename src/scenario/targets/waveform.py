@@ -15,7 +15,8 @@ from functools import reduce
 from pyrocko.guts import StringChoice, Float, List, Bool
 from pyrocko.gui.marker import PhaseMarker, EventMarker
 from pyrocko import gf, model, util, trace, io
-from pyrocko.io.io_common import FileSaveError
+from pyrocko.response import DifferentiationResponse
+from pyrocko.io_common import FileSaveError
 from pyrocko import pile
 
 from ..station import StationGenerator, RandomStationGenerator
@@ -361,9 +362,9 @@ class WaveformGenerator(TargetGenerator):
         if self.seismogram_quantity == 'displacement':
             return None
         elif self.seismogram_quantity == 'velocity':
-            return trace.DifferentiationResponse(1)
+            return DifferentiationResponse(1)
         elif self.seismogram_quantity == 'acceleration':
-            return trace.DifferentiationResponse(2)
+            return DifferentiationResponse(2)
         elif self.seismogram_quantity == 'counts':
             raise NotImplementedError()
 

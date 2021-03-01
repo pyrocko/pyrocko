@@ -9,7 +9,7 @@ import logging
 import numpy as num
 from scipy import signal
 
-from pyrocko import util, trace
+from pyrocko import util, response
 
 unpack_fixed = util.unpack_fixed
 
@@ -132,7 +132,7 @@ class SeisanResponseFile(object):
         self.gain_1hz = gain_1hz
         self.filters = filters
 
-        self.sampled_response = trace.SampledResponse(
+        self.sampled_response = response.SampledResponse(
             response_table[0], cresp)
 
         self._check_tabulated_response(filename=filename)

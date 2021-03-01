@@ -21,7 +21,7 @@ from pyrocko.guts import load_xml  # noqa
 from pyrocko.util import hpfloat, time_to_str, get_time_float
 
 import pyrocko.model
-from pyrocko import trace, util
+from pyrocko import util, response
 
 try:
     newstr = unicode
@@ -36,13 +36,13 @@ logger = logging.getLogger('pyrocko.io.stationxml')
 
 conversion = {
     ('M', 'M'): None,
-    ('M/S', 'M'): trace.IntegrationResponse(1),
-    ('M/S**2', 'M'): trace.IntegrationResponse(2),
-    ('M', 'M/S'): trace.DifferentiationResponse(1),
+    ('M/S', 'M'): response.IntegrationResponse(1),
+    ('M/S**2', 'M'): response.IntegrationResponse(2),
+    ('M', 'M/S'): response.DifferentiationResponse(1),
     ('M/S', 'M/S'): None,
-    ('M/S**2', 'M/S'): trace.IntegrationResponse(1),
-    ('M', 'M/S**2'): trace.DifferentiationResponse(2),
-    ('M/S', 'M/S**2'): trace.DifferentiationResponse(1),
+    ('M/S**2', 'M/S'): response.IntegrationResponse(1),
+    ('M', 'M/S**2'): response.DifferentiationResponse(2),
+    ('M/S', 'M/S**2'): response.DifferentiationResponse(1),
     ('M/S**2', 'M/S**2'): None}
 
 
@@ -601,7 +601,7 @@ class FIR(BaseFilter):
         drop_phase = self.get_effective_symmetry() != 'NONE'
 
         resps = []
-        resp = trace.DigitalFilterResponse(
+        resp = response.DigitalFilterResponse(
             b.tolist(), [1.0], deltat, drop_phase=drop_phase)
 
         if normalization_frequency is not None:
@@ -613,7 +613,7 @@ class FIR(BaseFilter):
                     'FIR filter coefficients are not normalized. Normalizing '
                     'them. Factor: %g (%s)' % (normalization, context))
 
-            resp = trace.DigitalFilterResponse(
+            resp = response.DigitalFilterResponse(
                 (b/normalization).tolist(), [1.0], deltat,
                 drop_phase=drop_phase)
 
@@ -679,7 +679,7 @@ class Coefficients(BaseFilter):
         resps = []
         if self.cf_transfer_function_type in [
                 'ANALOG (RADIANS/SECOND)', 'ANALOG (HERTZ)']:
-            resps.append(trace.AnalogFilterResponse(b, a))
+            resps.append(response.AnalogFilterResponse(b, a))
 
         elif self.cf_transfer_function_type == 'DIGITAL':
             if not deltat:
@@ -688,7 +688,7 @@ class Coefficients(BaseFilter):
                     'interval (%s)' % context)
 
             drop_phase = self.is_symmetric_fir()
-            resp = trace.DigitalFilterResponse(
+            resp = response.DigitalFilterResponse(
                 b, a, deltat, drop_phase=drop_phase)
 
             if normalization_frequency is not None:
@@ -701,7 +701,7 @@ class Coefficients(BaseFilter):
                         'Normalizing them. Factor: %g (%s)' % (
                             normalization, context))
 
-                resp = trace.DigitalFilterResponse(
+                resp = response.DigitalFilterResponse(
                     (b/normalization).tolist(), [1.0], deltat,
                     drop_phase=drop_phase)
 
@@ -778,7 +778,7 @@ class PolesZeros(BaseFilter):
             nfactor = self.normalization_factor
 
         if self.pz_transfer_function_type != 'DIGITAL (Z-TRANSFORM)':
-            resp = trace.PoleZeroResponse(
+            resp = response.PoleZeroResponse(
                 constant=nfactor*cfactor,
                 zeros=[z.value()*factor for z in self.zero_list],
                 poles=[p.value()*factor for p in self.pole_list])
@@ -788,7 +788,7 @@ class PolesZeros(BaseFilter):
                     'cannot get digital pz response without knowing sampling '
                     'interval (%s)' % context)
 
-            resp = trace.DigitalPoleZeroResponse(
+            resp = response.DigitalPoleZeroResponse(
                 constant=nfactor*cfactor,
                 zeros=[z.value()*factor for z in self.zero_list],
                 poles=[p.value()*factor for p in self.pole_list],
@@ -863,7 +863,7 @@ class Decimation(Object):
 
     def get_pyrocko_response(self):
         if self.delay and self.delay.value != 0.0:
-            return [trace.DelayResponse(delay=-self.delay.value)]
+            return [response.DelayResponse(delay=-self.delay.value)]
 
         return []
 
@@ -956,7 +956,7 @@ class ResponseStage(Object):
 
         responses = []
         if self.stage_gain:
-            normalization_frequency = self.stage_gain.frequency
+            normalization_frequency = self.stage_gain.frequency or 0.0
         else:
             normalization_frequency = 0.0
 
@@ -972,12 +972,14 @@ class ResponseStage(Object):
                 responses.extend(pz_resps)
 
                 # emulate incorrect? evalresp behaviour
-                if pzs.normalization_frequency != self.stage_gain.frequency:
-                    trial = trace.MultiplyResponse(pz_resps)
+                if pzs.normalization_frequency != normalization_frequency \
+                        and normalization_frequency != 0.0:
+
+                    trial = response.MultiplyResponse(pz_resps)
                     anorm = num.abs(evaluate1(
                         trial, pzs.normalization_frequency.value))
                     asens = num.abs(
-                        evaluate1(trial, self.stage_gain.frequency))
+                        evaluate1(trial, normalization_frequency))
 
                     factor = anorm/asens
 
@@ -985,15 +987,15 @@ class ResponseStage(Object):
                         logger.warn(
                             'PZ normalization frequency (%g) is different '
                             'from stage gain frequency (%s) -> Emulating '
-                            'possibly incorrect evalresp behaviour Correction '
-                            'factor: %g (%s)' % (
+                            'possibly incorrect evalresp behaviour. '
+                            'Correction factor: %g (%s)' % (
                                 pzs.normalization_frequency.value,
-                                self.stage_gain.frequency,
+                                normalization_frequency,
                                 factor,
                                 context))
 
                         responses.append(
-                            trace.PoleZeroResponse(constant=factor))
+                            response.PoleZeroResponse(constant=factor))
 
             if len(self.poles_zeros_list) > 1:
                 logger.warn(
@@ -1017,7 +1019,7 @@ class ResponseStage(Object):
 
         if self.stage_gain:
             responses.append(
-                trace.PoleZeroResponse(constant=self.stage_gain.value))
+                response.PoleZeroResponse(constant=self.stage_gain.value))
 
         return responses
 
@@ -1070,7 +1072,7 @@ class Response(Object):
 
                     sample_rate = input_sample_rate / stage.decimation.factor
 
-            if sample_rate is not None and channel.sample_rate.value \
+            if sample_rate is not None and channel.sample_rate \
                     and not same_sample_rate(
                         sample_rate, channel.sample_rate.value):
 
@@ -1125,30 +1127,40 @@ class Response(Object):
             responses = []
             for istage, stage in enumerate(self.stage_list):
                 responses.extend(stage.get_pyrocko_response(
-                    context, gain_only=not (stages[0] <= istage < stages[1])))
+                    context, gain_only=not (
+                        stages is None or stages[0] <= istage < stages[1])))
 
         elif self.instrument_sensitivity:
-            responses = [trace.PoleZeroResponse(
+            responses = [response.PoleZeroResponse(
                 constant=self.instrument_sensitivity.value)]
         else:
             responses = []
 
         checkpoints = []
         if self.instrument_sensitivity:
-            trial = trace.MultiplyResponse(responses)
+            trial = response.MultiplyResponse(responses)
             sval = self.instrument_sensitivity.value
             sfreq = self.instrument_sensitivity.frequency
-            checkpoints.append(trace.FrequencyResponseCheckpoint(
-                frequency=sfreq, value=sval))
+            if sfreq is None:
+                logger.warn(
+                    'Sensitivity frequency not given (%s).' % context)
 
-            try:
-                check_resp(
-                    trial, sval, sfreq, 0.1,
-                    prelude='Instrument sensitivity value inconsistent with '
-                            'sensitivity computed from complete response (%s)'
-                            % context)
-            except InconsistentResponseInformation as e:
-                logger.warn(str(e))
+            else:
+
+                checkpoints.append(response.FrequencyResponseCheckpoint(
+                    frequency=sfreq, value=sval))
+
+                checkpoints[-1].validate()
+
+                try:
+                    check_resp(
+                        trial, sval, sfreq, 0.1,
+                        prelude='Instrument sensitivity value inconsistent '
+                                'with sensitivity computed from complete '
+                                'response (%s)' % context)
+
+                except InconsistentResponseInformation as e:
+                    logger.warn(str(e))
 
         if fake_input_units is not None:
             if not self.instrument_sensitivity or \
@@ -1173,7 +1185,7 @@ class Response(Object):
                     checkpoint.value *= num.abs(evaluate1(
                         conresp, checkpoint.frequency))
 
-        return trace.MultiplyResponse(responses, checkpoints=checkpoints)
+        return response.MultiplyResponse(responses, checkpoints=checkpoints)
 
     @classmethod
     def from_pyrocko_pz_response(cls, presponse, input_unit, output_unit,
@@ -1182,7 +1194,7 @@ class Response(Object):
         Convert Pyrocko pole-zero response to StationXML response.
 
         :param presponse: Pyrocko pole-zero response
-        :type presponse: :py:class:`~pyrocko.trace.PoleZeroResponse`
+        :type presponse: :py:class:`~pyrocko.response.PoleZeroResponse`
         :param input_unit: Input unit to be reported in the StationXML
             response.
         :type input_unit: str
@@ -1219,6 +1231,7 @@ class Response(Object):
         resp = Response(
             instrument_sensitivity=Sensitivity(
                 value=stage.stage_gain.value,
+                frequency=normalization_frequency,
                 input_units=Units(input_unit),
                 output_units=Units(output_unit)),
 

@@ -131,6 +131,7 @@ class FDSNTestCase(unittest.TestCase):
 
     @unittest.skipUnless(
         evalresp.have_evalresp(), 'evalresp not supported on this platform')
+    @unittest.skip('needs manual inspection')
     @common.require_internet
     @common.skip_on_download_error
     def test_response(self, ntest=None):

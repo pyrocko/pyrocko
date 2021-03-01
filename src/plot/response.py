@@ -62,7 +62,7 @@ def draw(
     Draw instrument response in Bode plot style to given Matplotlib axes
 
     :param response: instrument response as a
-        :py:class:`pyrocko.trace.FrequencyResponse` object
+        :py:class:`pyrocko.response.FrequencyResponse` object
     :param axes_amplitude: :py:class:`matplotlib.axes.Axes` object to use when
         drawing the amplitude response
     :param axes_phase: :py:class:`matplotlib.axes.Axes` object to use when
@@ -78,6 +78,12 @@ def draw(
 
     f = num.exp(num.linspace(num.log(fmin), num.log(fmax), nf))
     tf = response.evaluate(f)
+    ok = num.isfinite(tf)
+    if not num.all(ok):
+        logger.warning('NaN values present in evaluated response%s.' % (
+            ' (%s)' % label if label else ''))
+        f = f[ok]
+        tf = tf[ok]
 
     if normalize:
         tf = normalize_on_flat(f, tf)
@@ -144,7 +150,7 @@ def plot(
     Draw instrument responses in Bode plot style.
 
     :param responses: instrument responses as
-        :py:class:`pyrocko.trace.FrequencyResponse` objects
+        :py:class:`pyrocko.response.FrequencyResponse` objects
     :param fmin: minimum frequency [Hz]
     :param fmax: maximum frequency [Hz]
     :param nf: number of frequencies where to evaluate the response
@@ -293,7 +299,7 @@ def load_response_information(
 
             if format == 'resp':
                 resps.append(resp.response.get_pyrocko_response(
-                    resp.codes,
+                    '.'.join(resp.codes),
                     fake_input_units=fake_input_units,
                     stages=stages))
             else:
@@ -338,7 +344,7 @@ def load_response_information(
                         continue
 
                     if not channel.response:
-                        logger.warn(
+                        logger.warning(
                             'no response for channel %s.%s.%s.%s given.'
                             % nslc)
                         continue
@@ -352,7 +358,7 @@ def load_response_information(
                                 s.output_units.name)
 
                     resps.append(channel.response.get_pyrocko_response(
-                        nslc,
+                        '.'.join(nslc),
                         fake_input_units=fake_input_units,
                         stages=stages))
 

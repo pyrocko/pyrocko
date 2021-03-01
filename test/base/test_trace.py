@@ -1,7 +1,7 @@
 # python 2/3
 from __future__ import division, print_function, absolute_import
 
-from pyrocko import trace, util, model, pile, guts
+from pyrocko import trace, util, model, pile, guts, response
 import unittest
 import math
 import time
@@ -51,12 +51,12 @@ class TraceTestCase(unittest.TestCase):
 
                     b = a.transfer(
                         tfade, (fmin/2., fmin, fmax, fmax*2.),
-                        transfer_function=trace.IntegrationResponse())
+                        transfer_function=response.IntegrationResponse())
                     b.set_codes(channel='B')
 
                     c = a.transfer(
                         tfade, (fmin/2., fmin, fmax, fmax*2.),
-                        transfer_function=trace.DifferentiationResponse())
+                        transfer_function=response.DifferentiationResponse())
                     c.set_codes(channel='C')
 
                     eps = 0.005
@@ -103,7 +103,7 @@ class TraceTestCase(unittest.TestCase):
         b = trace.Trace(location='B', deltat=dt, ydata=dydt)
 
         c = a.transfer(
-            transfer_function=trace.DifferentiationResponse(), demean=False)
+            transfer_function=response.DifferentiationResponse(), demean=False)
         c.set_codes(location='C')
 
         d = a.differentiate(inplace=False, order=4)
@@ -121,7 +121,7 @@ class TraceTestCase(unittest.TestCase):
         # trace.snuffle([a, b, c, d, e])
 
         c2 = c.transfer(
-            transfer_function=trace.DifferentiationResponse(), demean=False)
+            transfer_function=response.DifferentiationResponse(), demean=False)
         c2.set_codes(location='C2')
 
         c2max = c2.absmax()[1]
@@ -632,7 +632,7 @@ class TraceTestCase(unittest.TestCase):
         t1 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
         t2 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
         # ttraces = [t2]
-        fresponse = trace.FrequencyResponse()
+        fresponse = response.FrequencyResponse()
         taper = trace.CosFader(xfade=2.)
         norms = [1, 2]
         domains = ['time_domain', 'frequency_domain', 'envelope', 'absolute']
@@ -679,7 +679,7 @@ class TraceTestCase(unittest.TestCase):
         c = d-(d-a)/10.
 
         taper = trace.CosTaper(a, b, c, d)
-        fresponse = trace.FrequencyResponse()
+        fresponse = response.FrequencyResponse()
         norms = [1, 2]
         domains = ['time_domain', 'frequency_domain', 'envelope', 'absolute']
         setups = [trace.MisfitSetup(
@@ -723,14 +723,18 @@ class TraceTestCase(unittest.TestCase):
 
     def testValidateFrequencyResponses(self):
         ttrace = trace.Trace(ydata=num.random.random(1000))
-        inverse_eval = trace.InverseEvalresp(respfile='test.txt',
-                                             trace=ttrace,
-                                             target='vel')
+        inverse_eval = response.InverseEvalresp(
+            respfile='test.txt',
+            trace=ttrace,
+            target='vel')
+
         inverse_eval.validate()
 
-        pzk_response = trace.PoleZeroResponse(zeros=[0+0j, 0+0j],
-                                              poles=[1+0j, 2+0j],
-                                              constant=10.)
+        pzk_response = response.PoleZeroResponse(
+            zeros=[0+0j, 0+0j],
+            poles=[1+0j, 2+0j],
+            constant=10.)
+
         pzk_response.regularize()
 
     def testStretch(self):

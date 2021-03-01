@@ -21,6 +21,7 @@ from matplotlib import pyplot as plt
 from matplotlib import cm, transforms
 
 from pyrocko import gf, trace, cake, util, plot
+from pyrocko.response import DifferentiationResponse
 from pyrocko.plot import beachball
 from pyrocko.guts import load, Object, String, List, Float, Int, Bool, Dict
 from pyrocko.gf import Source, Target
@@ -456,7 +457,7 @@ class GreensFunctionTest(Object):
             if 'displacement_traces' not in tdict:
                 continue
             trcs = [trc.transfer(
-                transfer_function=trace.DifferentiationResponse())
+                transfer_function=DifferentiationResponse())
                 for trc in tdict['displacement_traces']]
             tdict['velocity_traces'] = trcs
             src_id, sen_id = tid.split('|')

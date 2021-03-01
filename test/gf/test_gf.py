@@ -11,7 +11,7 @@ import shutil
 from tempfile import mkdtemp
 
 from pyrocko import guts
-from pyrocko import gf, util, cake, ahfullgreen, trace
+from pyrocko import gf, util, cake, ahfullgreen, trace, response as presponse
 from pyrocko.fomosto import ahfullgreen as fomosto_ahfullgreen
 
 from ..common import Benchmark
@@ -582,12 +582,12 @@ class GFTestCase(unittest.TestCase):
 
             if target.quantity == 'velocity':
                 tr2 = tr2.transfer(
-                    transfer_function=trace.DifferentiationResponse(),
+                    transfer_function=presponse.DifferentiationResponse(),
                     demean=False)
 
             elif target.quantity == 'acceleration':
                 tr2 = tr2.transfer(
-                    transfer_function=trace.DifferentiationResponse(2),
+                    transfer_function=presponse.DifferentiationResponse(2),
                     demean=False)
 
             # trace.snuffle([tr, tr2])

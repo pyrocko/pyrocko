@@ -15,7 +15,7 @@ import logging
 import shutil
 
 from pyrocko import ExternalProgramMissing
-from pyrocko import trace, pile, model, util
+from pyrocko import pile, model, util, response
 from pyrocko.io import eventdata
 
 pjoin = os.path.join
@@ -301,7 +301,7 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
                     'no response information available for trace %s.%s.%s.%s'
                     % tr.nslc_id)
 
-            trans = trace.InverseEvalresp(respfile, tr)
+            trans = response.InverseEvalresp(respfile, tr)
             return trans
         else:
             raise eventdata.NoRestitution(
@@ -310,13 +310,13 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
 
     def get_pyrocko_response(self, tr, target):
         '''
-        Extract the frequency response as :py:class:`trace.EvalResp`
+        Extract the frequency response as :py:class:`response.EvalResp`
         instance for *tr*.
 
         :param tr: :py:class:`trace.Trace` instance
         '''
         respfile = self.get_resp_file(tr)
-        return trace.Evalresp(respfile, tr, target)
+        return response.Evalresp(respfile, tr, target)
 
     def _unpack(self):
         input_fn = self.seedvolume

@@ -7,10 +7,13 @@ from __future__ import absolute_import, print_function
 import time
 from collections import defaultdict
 
-from pyrocko import trace, util, pz
+from pyrocko import util, pz, response
 from pyrocko.io import io_common
 from pyrocko.io import stationxml as sxml
 from pyrocko.guts import Object, Tuple, String, Timestamp, Float
+
+
+guts_prefix = 'pf'
 
 
 class EnhancedSacPzError(io_common.FileLoadError):
@@ -29,7 +32,7 @@ class EnhancedSacPzResponse(Object):
     azimuth = Float.T()
     input_unit = String.T()
     output_unit = String.T()
-    response = trace.PoleZeroResponse.T()
+    response = response.PoleZeroResponse.T()
 
     def spans(self, *args):
         if len(args) == 0:
@@ -81,7 +84,7 @@ def iload_fh(f, time_format='%Y-%m-%dT%H:%M:%S'):
                 if temp.lower().startswith(k):
                     d[k] = toks[1].strip()
 
-    response = trace.PoleZeroResponse(zeros, poles, constant)
+    resp = response.PoleZeroResponse(zeros, poles, constant)
 
     try:
         yield EnhancedSacPzResponse(
@@ -96,7 +99,7 @@ def iload_fh(f, time_format='%Y-%m-%dT%H:%M:%S'):
             azimuth=float(d['azimuth']),
             input_unit=d['input unit'],
             output_unit=d['output unit'],
-            response=response)
+            response=resp)
     except KeyError as e:
         raise EnhancedSacPzError(
             'cannot get all required information "%s"' % e.args[0])

@@ -21,6 +21,7 @@ import numpy as num
 import pyrocko.model
 import pyrocko.pile
 import pyrocko.trace
+import pyrocko.response
 import pyrocko.util
 import pyrocko.plot
 import pyrocko.gui.snuffling
@@ -3566,8 +3567,8 @@ def MakePileViewerMainClass(base):
                                     and trace.meta.get('tabu', False)):
 
                                 if fft_filtering:
-                                    but = pyrocko.trace.ButterworthResponse
-                                    multres = pyrocko.trace.MultiplyResponse
+                                    but = pyrocko.response.ButterworthResponse
+                                    multres = pyrocko.response.MultiplyResponse
                                     if self.lowpass is not None \
                                             or self.highpass is not None:
 

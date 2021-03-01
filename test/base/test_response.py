@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 import os
 import unittest
 import numpy as num
-from pyrocko import util, evalresp, pz, trace, guts
+from pyrocko import util, evalresp, pz, response, guts
 
 from .. import common
 
@@ -54,7 +54,7 @@ class ResponseTestCase(unittest.TestCase):
 
         zeros, poles, constant = pz.read_sac_zpk(pz_fpath)
 
-        resp = trace.PoleZeroResponse(zeros, poles, constant)
+        resp = response.PoleZeroResponse(zeros, poles, constant)
 
         transfer2 = resp.evaluate(freqs)
 
@@ -102,7 +102,7 @@ class ResponseTestCase(unittest.TestCase):
 
         pr_sx_resp = sx_resp.get_pyrocko_response(
             codes, time=t, fake_input_units='M/S')
-        pr_evresp = trace.Evalresp(
+        pr_evresp = response.Evalresp(
             resp_fpath, nslc_id=codes, target='vel', time=t)
 
         sacpz_fpath = common.test_data_file('test1.sacpz')
@@ -110,7 +110,8 @@ class ResponseTestCase(unittest.TestCase):
             enhanced_sacpz.iload_filename(sacpz_fpath))
         pr_sx_sacpz = sx_sacpz.get_pyrocko_response(
             codes, time=t, fake_input_units='M/S')
-        pr_sacpz = trace.PoleZeroResponse(*pz.read_sac_zpk(sacpz_fpath))
+        pr_sacpz = response.PoleZeroResponse(*pz.read_sac_zpk(sacpz_fpath))
+
         try:
             pr_sacpz.zeros.remove(0.0j)
         except ValueError:
@@ -123,7 +124,8 @@ class ResponseTestCase(unittest.TestCase):
             output_unit=sx_sacpz_resp.instrument_sensitivity.output_units.name,
             normalization_frequency=10.,
             filename=sacpz_fpath)
-        pr_sx_sacpz2 = sx_sacpz_resp2.get_pyrocko_response(codes)
+
+        pr_sx_sacpz2 = sx_sacpz_resp2.get_pyrocko_response('.'.join(codes))
         try:
             pr_sx_sacpz2.responses[0].zeros.remove(0.0j)
         except ValueError:
@@ -149,7 +151,8 @@ class ResponseTestCase(unittest.TestCase):
 
     def test_converters_butter(self):
         deltat = 0.01
-        butter = trace.ButterworthResponse(type='high', corner=0.1, order=4.0)
+        butter = response.ButterworthResponse(
+            type='high', corner=0.1, order=4.0)
         butter_pz = butter.to_polezero()
         butter_analog = butter.to_analog()
         butter_digital = butter.to_digital(deltat)
@@ -167,7 +170,8 @@ class ResponseTestCase(unittest.TestCase):
 
     def test_converters_pz(self):
         deltat = 0.01
-        butter = trace.ButterworthResponse(type='high', corner=0.1, order=4.0)
+        butter = response.ButterworthResponse(
+            type='high', corner=0.1, order=4.0)
 
         butter_pz = butter.to_polezero()
         butter_pz_analog = butter_pz.to_analog()
@@ -186,7 +190,8 @@ class ResponseTestCase(unittest.TestCase):
 
     def test_converters_analog(self):
         deltat = 0.01
-        butter = trace.ButterworthResponse(type='high', corner=0.1, order=4.0)
+        butter = response.ButterworthResponse(
+            type='high', corner=0.1, order=4.0)
         butter_analog = butter.to_analog()
         resps = [butter, butter_analog]
         labels = ['butter', 'butter_analog']
@@ -201,16 +206,16 @@ class ResponseTestCase(unittest.TestCase):
 
     def test_dump_load(self):
 
-        r = trace.FrequencyResponse()
+        r = response.FrequencyResponse()
 
-        r = trace.PoleZeroResponse([0j, 0j], [1j, 2j, 1+3j, 1-3j], 1.0)
+        r = response.PoleZeroResponse([0j, 0j], [1j, 2j, 1+3j, 1-3j], 1.0)
         r.regularize()
         r2 = guts.load_string(r.dump())
         assert cnumeq(r.poles, r2.poles, 1e-6)
         assert cnumeq(r.zeros, r2.zeros, 1e-6)
         assert numeq(r.constant, r2.constant)
 
-        r = trace.SampledResponse(
+        r = response.SampledResponse(
             [0., 1., 5., 10.],
             [0., 1., 1., 0.])
 
@@ -219,17 +224,17 @@ class ResponseTestCase(unittest.TestCase):
         assert numeq(r.frequencies, r2.frequencies, 1e-6)
         assert cnumeq(r.values, r2.values, 1e-6)
 
-        r = trace.IntegrationResponse(2, 5.0)
+        r = response.IntegrationResponse(2, 5.0)
         r2 = guts.load_string(r.dump())
         assert numeq(r.n, r2.n)
         assert numeq(r.gain, r2.gain, 1e-6)
 
-        r = trace.DifferentiationResponse(2, 5.0)
+        r = response.DifferentiationResponse(2, 5.0)
         r2 = guts.load_string(r.dump())
         assert numeq(r.n, r2.n)
         assert numeq(r.gain, r2.gain, 1e-6)
 
-        r = trace.AnalogFilterResponse(
+        r = response.AnalogFilterResponse(
             a=[1.0, 2.0, 3.0],
             b=[2.0, 3.0])
         r2 = guts.load_string(r.dump())

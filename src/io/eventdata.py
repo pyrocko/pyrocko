@@ -3,7 +3,7 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
-from pyrocko import trace, model
+from pyrocko import model, response
 
 import logging
 import copy
@@ -200,6 +200,6 @@ class EventDataAccess(object):
 
     def get_restitution(self, tr, allowed_methods):
         if 'integration' in allowed_methods:
-            trace.IntegrationResponse()
+            response.IntegrationResponse()
         else:
             raise Exception('only "integration" restitution method is allowed')
