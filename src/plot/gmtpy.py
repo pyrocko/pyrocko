@@ -1297,11 +1297,12 @@ def check_gmt_installation(installation):
                 logging.error(('Directory does not exist: %s\n'
                               'Check your GMT installation.') % d)
 
-    if version[0] == '6':
+    major_version = version.split('.')[0]
+    if major_version == '6':
         raise GMTInstallationProblem(
-            'pyrocko.gmtpy does not support GMT 6')
+            'GMT version 6 not supported by pyrocko.gmtpy.')
 
-    if version[0] != '5':
+    if major_version != '5':
         gmtdefaults = pjoin(bin_dir, 'gmtdefaults')
 
         versionfound = get_gmt_version(gmtdefaults, home_dir)
