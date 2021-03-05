@@ -136,6 +136,8 @@ def squirrel_from_selection_arguments(args):
 
         logger.info(
             'Persistent selection requested by dataset: %s' % persistent)
+    else:
+        persistent = None
 
     squirrel = base.Squirrel(persistent=persistent)
 
