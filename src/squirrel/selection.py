@@ -280,7 +280,7 @@ class Selection(object):
                         SELECT files.file_id
                             FROM files
                             WHERE files.path == ? )
-                        AND kind_mask != ? OR format != ?
+                        AND ( kind_mask != ? OR format != ? )
                 '''), (
                     (path, kind_mask, format) for path in paths))
 
@@ -338,7 +338,7 @@ class Selection(object):
                             FROM temp.%(bulkinsert)s
                             INNER JOIN files
                             ON temp.%(bulkinsert)s.path == files.path)
-                        AND kind_mask != ? OR format != ?
+                        AND ( kind_mask != ? OR format != ? )
                 '''), (kind_mask, format))
 
             task.update(2, condition='adding file names to selection')
