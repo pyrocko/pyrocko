@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Improved handling of differing sampling rates and interpolation settings
   when modelling multiple targets in `gf.Engine.process`.
 - PyQt compat issues with MacOS Big Sur.
+- Fix of `gf.SFSource.discretize_basesource`.
 
 ### Changed
 - GmtPy now forces PDF version 1.5 when producing PDFs (newer PDFs caused

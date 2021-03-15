@@ -2530,8 +2530,9 @@ class SFSource(Source):
     def discretize_basesource(self, store, target=None):
         times, amplitudes = self.effective_stf_pre().discretize_t(
             store.config.deltat, self.time)
-        forces = num.array([[self.fn, self.fe, self.fd]], dtype=num.float)
-        forces *= amplitudes[:, num.newaxis]
+        forces = amplitudes[:, num.newaxis] * num.array(
+            [[self.fn, self.fe, self.fd]], dtype=num.float)
+
         return meta.DiscretizedSFSource(forces=forces,
                                         **self._dparams_base_repeated(times))
 
