@@ -1,6 +1,13 @@
+import os
+import platform
+import matplotlib
 
 from pyrocko import config
-import matplotlib
+
+# Needed by MacOS Big Sur
+# https://stackoverflow.com/questions/64833558/apps-not-popping-up-on-macos-big-sur-11-0-1#_=
+if platform.uname()[0] == 'Darwin':
+    os.environ['QT_MAC_WANTS_LAYER'] = '1'
 
 gui_toolkit = config.effective_gui_toolkit()
 
