@@ -12,7 +12,10 @@ from pyrocko import util
 from pyrocko.guts import Object, String, Timestamp, Float, Int, Unicode, \
     Tuple, List, StringChoice
 from pyrocko.model import Content
-from pyrocko.trace import FrequencyResponse
+from pyrocko.response import FrequencyResponse, MultiplyResponse, \
+    IntegrationResponse, DifferentiationResponse, simplify_responses
+
+from .error import ConversionError
 
 
 guts_prefix = 'squirrel'
@@ -357,14 +360,86 @@ class Channel(Content):
             self.dip)
 
 
+observational_quantities = [
+    'acceleration', 'velocity', 'displacement', 'pressure', 'rotation',
+    'temperature']
+
+
+technical_quantities = [
+    'voltage', 'counts']
+
+
 class QuantityType(StringChoice):
-    choices = ['acceleration', 'velocity', 'displacement']
+    choices = observational_quantities + technical_quantities
 
 
-class ResponseStage(FrequencyResponse):
-    input_quantity = QuantityType.T()
-    output_quantity = QuantityType.T()
+class ResponseStage(Object):
+    input_quantity = QuantityType.T(optional=True)
+    input_sample_rate = Float.T(optional=True)
+    output_quantity = QuantityType.T(optional=True)
+    output_sample_rate = Float.T(optional=True)
     elements = List.T(FrequencyResponse.T())
+
+    @property
+    def stage_type(self):
+        if self.input_quantity in observational_quantities \
+                and self.output_quantity in observational_quantities:
+            return 'conversion'
+
+        if self.input_quantity in observational_quantities \
+                and self.output_quantity == 'voltage':
+            return 'sensor'
+
+        elif self.input_quantity == 'voltage' \
+                and self.output_quantity == 'voltage':
+            return 'electronics'
+
+        elif self.input_quantity == 'voltage' \
+                and self.output_quantity == 'counts':
+            return 'digitizer'
+
+        elif self.input_quantity == 'counts' \
+                and self.output_quantity == 'counts' \
+                and self.input_sample_rate != self.output_sample_rate:
+            return 'decimation'
+
+        elif self.input_quantity in observational_quantities \
+                and self.output_quantity == 'counts':
+            return 'combination'
+
+        else:
+            return 'unknown'
+
+    def get_effective(self):
+        return MultiplyResponse(responses=list(self.elements))
+
+
+D = 'displacement'
+V = 'velocity'
+A = 'acceleration'
+
+g_converters = {
+    (V, D): IntegrationResponse(1),
+    (A, D): IntegrationResponse(2),
+    (D, V): DifferentiationResponse(1),
+    (A, V): IntegrationResponse(1),
+    (D, A): DifferentiationResponse(2),
+    (V, A): DifferentiationResponse(1)}
+
+
+def response_converters(input_quantity, output_quantity):
+    if input_quantity is None:
+        return []
+
+    if output_quantity is None:
+        raise ConversionError('Unspecified target quantity.')
+
+    try:
+        return [g_converters[input_quantity, output_quantity]]
+
+    except KeyError:
+        raise ConversionError('No rule to convert from "%s" to "%s".' % (
+            input_quantity, output_quantity))
 
 
 class Response(Content):
@@ -383,18 +458,70 @@ class Response(Content):
 
     stages = List.T(ResponseStage.T())
 
-    def get_input_quantity(self):
-        pass
+    deltat = Float.T(optional=True)
 
-    def get_output_quantity(self):
-        pass
+    @property
+    def codes(self):
+        print('YYY', self)
+        return (
+            self.agency, self.network, self.station, self.location,
+            self.channel)
 
-    def get_effective(self, input_quantity=None, stages=None):
-        pass
+    @property
+    def time_span(self):
+        return (self.tmin, self.tmax)
 
-    def evaluate(self, f):
-        resp = self.get_effective()
-        return resp.evaluate(f)
+    @property
+    def nstages(self):
+        return len(self.stages)
+
+    @property
+    def input_quantity(self):
+        return self.stages[0].input_quantity if self.stages else None
+
+    @property
+    def output_quantity(self):
+        return self.stages[-1].input_quantity if self.stages else None
+
+    @property
+    def output_sample_rate(self):
+        return self.stages[-1].output_sample_rate if self.stages else None
+
+    @property
+    def stages_summary(self):
+        def grouped(xs):
+            xs = list(xs)
+            g = []
+            for i in range(len(xs)):
+                g.append(xs[i])
+                if i+1 < len(xs) and xs[i+1] != xs[i]:
+                    yield g
+                    g = []
+
+            if g:
+                yield g
+
+        return '+'.join(
+            '%s%s' % (g[0], '(%i)' % len(g) if len(g) > 1 else '')
+            for g in grouped(stage.stage_type for stage in self.stages))
+
+    @property
+    def summary(self):
+        orate = self.output_sample_rate
+        return Content.summary.fget(self) + ', ' + ', '.join((
+            '%s => %s' % (
+                self.input_quantity or '?', self.output_quantity or '?')
+            + (' @ %g Hz' % orate if orate else ''),
+            self.stages_summary,
+        ))
+
+    def get_effective(self, input_quantity=None):
+        elements = response_converters(input_quantity, self.input_quantity)
+
+        elements.extend(
+            stage.get_effective() for stage in self.stages)
+
+        return simplify_responses(elements)
 
 
 class Event(Content):
@@ -627,6 +754,21 @@ class Nut(Object):
             deltat=self.deltat)
 
     @property
+    def response_kwargs(self):
+        agency, network, station, location, channel \
+            = self.codes.split(separator)
+
+        return dict(
+            agency=agency,
+            network=network,
+            station=station,
+            location=location,
+            channel=channel,
+            tmin=tmin_or_none(self.tmin),
+            tmax=tmax_or_none(self.tmax),
+            deltat=self.deltat)
+
+    @property
     def event_kwargs(self):
         return dict(
             name=self.codes,
@@ -714,6 +856,17 @@ def make_channel_nut(
 
     return Nut(
         kind_id=CHANNEL,
+        codes=codes,
+        **kwargs)
+
+
+def make_response_nut(
+        agency='', network='', station='', location='', channel='', **kwargs):
+
+    codes = separator.join((agency, network, station, location, channel))
+
+    return Nut(
+        kind_id=RESPONSE,
         codes=codes,
         **kwargs)
 

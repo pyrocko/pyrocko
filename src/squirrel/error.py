@@ -14,6 +14,10 @@ class NotAvailable(SquirrelError):
     pass
 
 
+class ConversionError(SquirrelError):
+    pass
+
+
 __all__ = [
     'SquirrelError',
     'NotAvailable']

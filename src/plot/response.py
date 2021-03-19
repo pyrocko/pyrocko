@@ -77,6 +77,20 @@ def draw(
     '''
 
     f = num.exp(num.linspace(num.log(fmin), num.log(fmax), nf))
+
+    resp_fmax = response.get_fmax()
+    if resp_fmax is not None:
+        if fmax > resp_fmax:
+            logger.warning(
+                'Maximum frequency above range supported by response. '
+                'Clipping to supported%s.' % (
+                    ' (%s)' % label if label else ''))
+
+        f = f[f <= resp_fmax]
+
+    if f.size == 0:
+        return
+
     tf = response.evaluate(f)
     ok = num.isfinite(tf)
     if not num.all(ok):

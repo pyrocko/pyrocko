@@ -77,6 +77,9 @@ class FrequencyResponse(Object):
         else:
             raise IsNotScalar()  # default for derived classes
 
+    def get_fmax(self):
+        return None
+
 
 class Gain(FrequencyResponse):
     '''
@@ -341,10 +344,13 @@ class DigitalPoleZeroResponse(FrequencyResponse):
             self, zeros=aslist(zeros), poles=aslist(poles), constant=constant,
             deltat=deltat, **kwargs)
 
+    def get_fmax(self):
+        return 0.5 / self.deltat
+
     def evaluate(self, freqs):
         return signal.freqz_zpk(
             self.zeros, self.poles, self.constant, freqs,
-            fs=1/self.deltat)[1]
+            fs=1.0/self.deltat)[1]
 
     def is_scalar(self):
         return len(self.zeros) == 0 and len(self.poles) == 0
@@ -530,6 +536,9 @@ class DigitalFilterResponse(FrequencyResponse):
             self, b=aslist(b), a=aslist(a), deltat=float(deltat),
             drop_phase=drop_phase, **kwargs)
 
+    def get_fmax(self):
+        return 0.5 / self.deltat
+
     def evaluate(self, freqs):
         ok = freqs <= 0.5/self.deltat
         coeffs = num.zeros(freqs.size, dtype=complex)
@@ -588,6 +597,15 @@ class MultiplyResponse(FrequencyResponse):
             responses = []
         FrequencyResponse.__init__(self, responses=responses, **kwargs)
 
+    def get_fmax(self):
+        fmaxs = [resp.get_fmax() for resp in self.responses]
+        fmaxs = [fmax for fmax in fmaxs if fmax is not None]
+        if not fmaxs:
+            return None
+        else:
+            print(fmaxs)
+            return min(fmaxs)
+
     def evaluate(self, freqs):
         a = num.ones(freqs.size, dtype=complex)
         for resp in self.responses:
@@ -633,6 +651,26 @@ class DelayResponse(FrequencyResponse):
 
     def evaluate(self, freqs):
         return num.exp(-2.0J * self.delay * num.pi * freqs)
+
+
+class InvalidResponseError(Exception):
+    pass
+
+
+class InvalidResponse(FrequencyResponse):
+
+    message = String.T()
+
+    def __init__(self, message):
+        FrequencyResponse.__init__(self, message=message)
+        self.have_warned = False
+
+    def evaluate(self, freqs):
+        if not self.have_warned:
+            logger.warning('Invalid response: %s' % self.message)
+            self.have_warned = True
+
+        return util.num_full_like(freqs, None, dtype=num.complex)
 
 
 def simplify_responses(responses):

@@ -1706,8 +1706,9 @@ class Squirrel(Selection):
         source_ids = []
         sources = {}
         for source in self._sources:
-            source_ids.append(source._source_id)
-            sources[source._source_id] = source
+            if isinstance(source, fdsn.FDSNSource):
+                source_ids.append(source._source_id)
+                sources[source._source_id] = source
 
         source_priority = dict(
             (source_id, i) for (i, source_id) in enumerate(source_ids))

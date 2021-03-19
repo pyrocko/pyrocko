@@ -14,7 +14,7 @@ g_tmin, g_tmax = util.get_working_system_time_range()[:2]
 
 def time_or_none_to_str(x, format):
     if x is None:
-        return '...'.ljust(17)
+        return '...'
     else:
         return util.time_to_str(x, format=format)
 

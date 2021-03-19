@@ -351,8 +351,9 @@ def iload(
         if temp_selection:
             del temp_selection
 
-    logger.debug('iload: from cache: %i, from files: %i, files: %i' % (
-        n_db, n_load, n_files))
+    logger.debug(
+        'Loading accomplished: from cache: %i, from files: %i, files: %i' % (
+            n_db, n_load, n_files))
 
 
 __all__ = [

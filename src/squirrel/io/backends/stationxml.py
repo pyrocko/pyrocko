@@ -5,9 +5,13 @@
 
 from __future__ import absolute_import, print_function
 
+import logging
 import time
 from pyrocko.io.io_common import get_stats, touch  # noqa
 from ... import model
+
+
+logger = logging.getLogger('psq.io.stationxml')
 
 
 Y = 60*60*24*365
@@ -106,3 +110,31 @@ def iload(format, file_path, segment, content):
 
                 yield nut
                 inut += 1
+
+                context = '%s.%s.%s.%s' % (net, sta, loc, cha)
+
+                if channel.response:
+                    nut = model.make_response_nut(
+                        file_segment=0,
+                        file_element=inut,
+                        agency=agn,
+                        network=net,
+                        station=sta,
+                        location=loc,
+                        channel=cha,
+                        tmin=tmin,
+                        tmax=tmax,
+                        deltat=deltat)
+
+                    try:
+                        resp = channel.response.get_squirrel_response(
+                            context, **nut.response_kwargs)
+
+                        if 'response' in content:
+                            nut.content = resp
+
+                        yield nut
+                        inut += 1
+
+                    except Exception as e:
+                        logger.warn('Bad instrument response: %s' % str(e))

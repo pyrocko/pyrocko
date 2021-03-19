@@ -950,6 +950,36 @@ class ResponseStage(Object):
             self.input_units.name.upper() if self.input_units else '?',
             self.output_units.name.upper() if self.output_units else '?')
 
+    def get_squirrel_response_stage(self, context):
+        from pyrocko.squirrel.model import ResponseStage
+        from pyrocko.squirrel.error import ConversionError
+
+        def to_quantity(unit):
+            trans = {
+                'M/S': 'velocity',
+                'M': 'displacement',
+                'M/S**2': 'acceleration',
+                'V': 'voltage',
+                'COUNTS': 'counts',
+                'PA': 'pressure'}
+
+            if unit is None:
+                return None
+
+            name = unit.name.upper()
+            try:
+                return trans[name]
+            except KeyError:
+                raise ConversionError(
+                    'Units not supported by Squirrel: %s' % name)
+
+        return ResponseStage(
+            input_quantity=to_quantity(self.input_units),
+            output_quantity=to_quantity(self.output_units),
+            input_sample_rate=self.input_sample_rate,
+            output_sample_rate=self.output_sample_rate,
+            elements=self.get_pyrocko_response(context))
+
     def get_pyrocko_response(self, context, gain_only=False):
 
         context = context + ', stage %i' % self.number
@@ -964,7 +994,9 @@ class ResponseStage(Object):
             deltat = None
             delay_responses = []
             if self.decimation:
-                deltat = 1.0 / self.decimation.input_sample_rate.value
+                rate = self.decimation.input_sample_rate.value
+                if rate > 0.0:
+                    deltat = 1.0 / rate
                 delay_responses = self.decimation.get_pyrocko_response()
 
             for pzs in self.poles_zeros_list:
@@ -1038,6 +1070,21 @@ class ResponseStage(Object):
                   [self.response_list, self.fir, self.polynomial]):
             if e is not None:
                 return e.output_units
+
+        return None
+
+    @property
+    def input_sample_rate(self):
+        if self.decimation:
+            return self.decimation.input_sample_rate.value
+
+        return None
+
+    @property
+    def output_sample_rate(self):
+        if self.decimation:
+            return self.decimation.input_sample_rate.value \
+                / self.decimation.factor
 
         return None
 
@@ -1120,23 +1167,9 @@ class Response(Object):
                             'sensitivity output units',
                             sout_units.name.upper()))
 
-    def get_pyrocko_response(
-            self, context, fake_input_units=None, stages=(0, 1)):
-
-        if self.stage_list:
-            responses = []
-            for istage, stage in enumerate(self.stage_list):
-                responses.extend(stage.get_pyrocko_response(
-                    context, gain_only=not (
-                        stages is None or stages[0] <= istage < stages[1])))
-
-        elif self.instrument_sensitivity:
-            responses = [response.PoleZeroResponse(
-                constant=self.instrument_sensitivity.value)]
-        else:
-            responses = []
-
+    def _sensitivity_check(self, responses, context):
         checkpoints = []
+
         if self.instrument_sensitivity:
             trial = response.MultiplyResponse(responses)
             sval = self.instrument_sensitivity.value
@@ -1161,6 +1194,51 @@ class Response(Object):
 
                 except InconsistentResponseInformation as e:
                     logger.warn(str(e))
+
+        return checkpoints
+
+    def get_squirrel_response(self, context, **kwargs):
+        from pyrocko.squirrel.model import Response
+
+        if self.stage_list:
+            all_responses = []
+            sq_stages = []
+            for istage, stage in enumerate(self.stage_list):
+                sq_stage = stage.get_squirrel_response_stage(context)
+                all_responses.extend(sq_stage.elements)
+                sq_stages.append(sq_stage)
+
+            self._sensitivity_check(all_responses, context)
+
+            return Response(stages=sq_stages, **kwargs)
+
+        elif self.instrument_sensitivity:
+            raise NoResponseInformation(
+                'Only instrument sensitivity given. '
+                'Complete response required (%s).' % context)
+        else:
+            raise NoResponseInformation(
+                'Empty instrument response (%s).'
+                % context)
+
+    def get_pyrocko_response(
+            self, context, fake_input_units=None, stages=(0, 1)):
+
+        if self.stage_list:
+            responses = []
+            for istage, stage in enumerate(self.stage_list):
+                input_units = stage.input_units.name.upper()
+                responses.extend(stage.get_pyrocko_response(
+                    context, gain_only=not (
+                        stages is None or stages[0] <= istage < stages[1])))
+
+        elif self.instrument_sensitivity:
+            responses = [response.PoleZeroResponse(
+                constant=self.instrument_sensitivity.value)]
+        else:
+            responses = []
+
+        checkpoints = self._sensitivity_check(responses, context)
 
         if fake_input_units is not None:
             if not self.instrument_sensitivity or \
