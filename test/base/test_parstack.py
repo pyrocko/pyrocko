@@ -260,10 +260,33 @@ class ParstackTestCase(unittest.TestCase):
         time = datetime.now().strftime('%d_%m_%Y_%H_%M_%S')
         longest_impl_name = 5 + max([len(impl) for impl in implementations])
 
-        _bench_size = 3
-        _narrays = (100, 500, 5000, 8_000)[:_bench_size]
-        _nshifts = (100, 500, 5000, 8_000)[:_bench_size]
-        _nsamples = (100, 500, 5000, 8_000)[:_bench_size]
+        _bench_size = 1
+        _narrays = (30,)[:_bench_size]
+        _nshifts = (10000,)[:_bench_size]
+        _nsamples = (6000,)[:_bench_size]
+
+        warmup = dict(numpy=0, omp=0, cuda=2, cuda_atomic=2)
+        nrepeats = dict(numpy=1, omp=3, cuda=3, cuda_atomic=3)
+
+        # nthreads = (multiprocessing.cpu_count(), )
+        nthreads = (8, )
+
+        confs = []
+        for impl in implementations:
+            if impl == 'numpy':
+                confs.append(('numpy', 1, 1))
+
+            elif impl.startswith('cuda') and TEST_CUDA:
+                if impl == 'cuda_atomic':
+                    # cuda_atomic is agnostic to thread block sizes
+                    for threads in nthreads:
+                        confs.append(('cuda_atomic', threads, 256))
+                else:
+                    for cuda_threads in [2**i for i in range(8, 11)]:
+                        confs.append((impl, 6, cuda_threads))
+            elif impl == 'openmp':
+                for threads in nthreads:
+                    confs.append(('openmp', max(1, threads), 1))
 
         for dtype, precision in [(num.float32, 2), (num.float64, 9)]:
             for method in (0, 1):
@@ -277,38 +300,24 @@ class ParstackTestCase(unittest.TestCase):
                         narrays=narrays, nshifts=nshifts, nsamples=nsamples)
 
                     print('==========')
-                    print('type', dtype.__name__, 'method', method, '\t'.join(
+                    print('dtype', dtype.__name__, 'method', method, '\t'.join(
                         ['%s=%d' % c for c in config.items()]))
                     print('==========')
 
-                    warmup = dict(numpy=0, omp=0, cuda=2, cuda_atomic=2)
-                    nrepeats = dict(numpy=1, omp=3, cuda=3, cuda_atomic=3)
-
                     arrays = []
-                    for iarray in range(narrays):
+                    for _ in range(narrays):
                         data = num.arange(nsamples, dtype=dtype)
                         if data_gen == 'random':
                             data = num.random.random(
-                                random.randint(0.5 * nsamples, nsamples)
+                                random.randint(0.8 * nsamples, nsamples)
                             ).astype(dtype)
                         arrays.append(data)
 
                     offsets = num.arange(narrays, dtype=num.int32)
-                    shifts = num.zeros((nshifts, narrays), dtype=num.int32)
                     shifts = num.random.randint(
                         -5, 6, size=(nshifts, narrays)).astype(num.int32)
                     weights = num.ones((nshifts, narrays), dtype=dtype)
 
-                    cpu_threads = multiprocessing.cpu_count()
-                    confs = [('numpy', 1, 1)]
-                    if TEST_CUDA:
-                        # cuda_atomic is agnostic to thread block sizes
-                        confs.append(('cuda_atomic', cpu_threads, 256))
-                        for cuda_threads in [2**i for i in range(5, 11)]:
-                            confs.append(('cuda', cpu_threads, cuda_threads))
-                    for nparallel in range(
-                            0, cpu_threads + 1, cpu_threads // 4):
-                        confs.append(('openmp', max(1, nparallel), 1))
 
                     temp_res = []
                     reference = None
@@ -332,20 +341,13 @@ class ParstackTestCase(unittest.TestCase):
                         score = nsamples * nshifts / t / 1e6
                         speedup = 1 if reference is None else round(
                             reference / t, ndigits)
-                        print('\t'.join(['%s=%s' % metric for metric in dict(
-                            impl=str(impl).ljust(longest_impl_name),
-                            nparallel=str(nparallel).ljust(2),
-                            cuda_threads=str(cuda_threads).ljust(4),
-                            score=str(
-                                round(
-                                    score,
-                                    ndigits)).ljust(
-                                3 +
-                                1 +
-                                ndigits),
-                            speedup=str(speedup).ljust(5 + 1 + ndigits),
-                            t=str(round(t, 5))
-                        ).items()]))
+
+                        print('impl={:<16}\tnparallel={:<2}'
+                              '\tcuda_threads={:<4}\tscore={:<5.2f}'
+                              '\tspeedup={:<5}\tt={:.2f}'.format(
+                                  impl, nparallel, cuda_threads, score,
+                                  speedup, t
+                              ))
 
                         if impl not in results[setting]:
                             results[setting][impl] = t

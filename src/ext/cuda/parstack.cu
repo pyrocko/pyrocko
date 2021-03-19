@@ -458,6 +458,14 @@ __global__ void parstack_reduction_kernel(parstack_kernel_arguments_t<T> args) {
     partials[offset + arr_tid] = acc;
     __syncthreads();
 
+    // for (unsigned int s=1; s < blockDim.x; s *= 2) {
+    //     int index = 2 * s * arr_tid;
+
+    //     if (index < blockDim.x) {
+    //         partials[index] += partials[index + s];
+    //     }
+    //     __syncthreads();
+    // }
     if (block_size >= 1024) {
         if (arr_tid < 512) {
             partials[offset + arr_tid] += partials[offset + arr_tid + 512];
@@ -520,8 +528,7 @@ __global__ void parstack_reduction_kernel(parstack_kernel_arguments_t<T> args) {
     }
 
     T *result = (T *)((char *)args.result + shift_idx * args.pitchout);
-    if (shift_idx < args.nshifts && lengthout_idx < args.lengthout &&
-        arr_tid == 0)
+    if (arr_tid == 0 && shift_idx < args.nshifts && lengthout_idx < args.lengthout)
         result[lengthout_idx] += partials[offset];
 }
 

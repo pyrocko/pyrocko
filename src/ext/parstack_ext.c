@@ -63,6 +63,7 @@ int cpu_parstack_method_0_##type(type **arrays, type *weights, type *result, par
       for (iarray = 0; iarray < args.narrays; iarray++) { \
         istart = args.offsets[iarray] + args.shifts[ishift * args.narrays + iarray]; \
         weight = weights[ishift * args.narrays + iarray]; \
+        OMP( _Pragma( STRINGIFY(omp simd) ))\
         for (i = (size_t)max(0, args.offsetout - istart); \
              i < (size_t)max(0, min(args.lengthout - istart + args.offsetout, args.lengths[iarray])); i++) { \
           result[ishift * args.lengthout + istart - args.offsetout + i] += arrays[iarray][i] * weight; \
@@ -92,6 +93,7 @@ int cpu_parstack_method_1_##type(type **arrays, type *weights, type *result, par
       for (iarray = 0; iarray < args.narrays; iarray++) { \
         istart = args.offsets[iarray] + args.shifts[ishift * args.narrays + iarray]; \
         weight = weights[ishift * args.narrays + iarray]; \
+        OMP( _Pragma( STRINGIFY(omp simd) )) \
         for (i = (size_t)max(0, args.offsetout - istart); \
              i < (size_t)max(0, min(args.lengthout - istart + args.offsetout, args.lengths[iarray])); i++) { \
           temp[istart - args.offsetout + i] += arrays[iarray][i] * weight; \
@@ -132,18 +134,17 @@ int parstack(size_t narrays, void **arrays, int32_t *offsets, size_t *lengths,
         .lengths = lengths,
         .nshifts = nshifts,
         .shifts = shifts,
-        .method = (uint8_t)method,
+        .method = (uint8_t) method,
         .lengthout = lengthout,
         .offsetout = offsetout,
         .impl = impl,
-        .nparallel = (uint8_t)nparallel,
+        .nparallel = (uint8_t) nparallel,
         .target_block_threads = target_block_threads,
         .err = err,
     };
 
     Py_BEGIN_ALLOW_THREADS;
-    if (impl == IMPL_CUDA || impl == IMPL_CUDA_THRUST ||
-        impl == IMPL_CUDA_ATOMIC) {
+    if (impl == IMPL_CUDA || impl == IMPL_CUDA_THRUST || impl == IMPL_CUDA_ATOMIC) {
 #if defined(_CUDA)
         if (!check_cuda_supported()) {
             fprintf(stderr, "no CUDA capable GPU device available");

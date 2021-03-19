@@ -3,6 +3,8 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
+from functools import wraps
+
 from . import cuda_ext
 
 CUDA_COMPILED = cuda_ext.CUDA_COMPILED
@@ -28,6 +30,8 @@ _implementation_aliases = dict(
 
 
 def resolve_implementation_flag(func):
+
+    @wraps(func)
     def wrapper(*args, **kwargs):
         if 'impl' in kwargs:
             impl = kwargs['impl']
