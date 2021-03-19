@@ -1,19 +1,21 @@
-## pyrocko CUDA extensions
+# pyrocko CUDA extensions
+
+_Author: Roman Dahm_
 
 This directory contains CUDA kernels that enable fast parallel processing if supported hardware is available.
 
-#### Prerequisites
+## Prerequisites
 
 Compiling pyrocko with CUDA support requires a recent CUDA toolkit to be installed on the build machine, which can be downloaded from the [nvidia website](https://developer.nvidia.com/cuda-toolkit).
 For testing and development, a docker container (`pyrocko-gpu-nest`) with all the required build tooling is provided, however, cuda supported hardware and suitable nvidia drivers are required for execution of the kernels on the client's system.
 
-Given a pyrocko installation that was compiled with CUDA support, a runtime check will determine if the client system runs on supported hardware and CUDA kernels can be used. 
+Given a pyrocko installation that was compiled with CUDA support, a runtime check will determine if the client system runs on supported hardware and CUDA kernels can be used.
 
-#### Building
+## Building
 
 The kernels are build as part of the `build_ext` stage when running `python setup.py install` and are compiled using the `nvcc` compiler and `gcc` to link with the C python extensions.
 
-#### Debugging
+## Debugging
 
 To facilitate debugging, the CUDA extensions can be build with the `CUDA_DEBUG` flag set.
 Doing so will enable assertions and debug output to stdout.
@@ -52,7 +54,7 @@ cuda-memcheck --racecheck-report analysis nosetests -s test.base.test_parstack:P
 cuda-memcheck --leak-check full nosetests -s test.base.test_parstack:ParstackTestCase.your_test_case
 ```
 
-#### Testing
+## Testing
 
 To make sure compilation succeeds with cuda enabled or disabled, there are two distinct steps in the drone `tests-base` pipeline. Note that the cuda one only tests for a successful build and pyrocko functionality when compiled with support for CUDA, the tests should be run on supported hardware to actually test CUDA implementations:
 ```bash
@@ -64,7 +66,7 @@ drone exec --pipeline=tests-base --inclue tests-cuda # only compiles and tests w
 nosetests -s --ignore-files="test_avl\.py" --ignore-files="test_pile\.py" test.base
 ```
 
-#### Profiling
+## Profiling
 
 To improve kernel performance, the nvidia profiler (`nvvp`) should be used to guide optimization.
 On ubuntu, `nvvp` can be installed via `apt` (requires a JRE >=1.8):
@@ -78,7 +80,7 @@ There are sample executables in `src/ext/cuda/profiling`. To build and profile, 
 sudo python setup.py profile_cuda # sudo is required to profile the GPU
 ```
 
-#### Benchmarking
+## Benchmarking
 
 Be advised that running extensive benchmarks can take a long time.
 If needed, change the `_bench_size` and/or reduce the number of `warmup` and `repeat` iterations.
