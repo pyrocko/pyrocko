@@ -449,6 +449,8 @@ def _check_for_cuda():
     if CUDNN_HOME is not None:
         includes.append(os.path.join(CUDNN_HOME, 'include'))
 
+    
+    print('Continuing your build with CUDA support...')
     return True, op.join(CUDA_HOME, 'bin', 'nvcc'), libs, includes
 
 

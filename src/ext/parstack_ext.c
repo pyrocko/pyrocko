@@ -63,6 +63,8 @@ int cpu_parstack_method_0_##type(type **arrays, type *weights, type *result, par
       for (iarray = 0; iarray < args.narrays; iarray++) { \
         istart = args.offsets[iarray] + args.shifts[ishift * args.narrays + iarray]; \
         weight = weights[ishift * args.narrays + iarray]; \
+        if (weight == 0.) \
+            continue; \
         OMP( _Pragma( STRINGIFY(omp simd) ))\
         for (i = (size_t)max(0, args.offsetout - istart); \
              i < (size_t)max(0, min(args.lengthout - istart + args.offsetout, args.lengths[iarray])); i++) { \
@@ -93,6 +95,8 @@ int cpu_parstack_method_1_##type(type **arrays, type *weights, type *result, par
       for (iarray = 0; iarray < args.narrays; iarray++) { \
         istart = args.offsets[iarray] + args.shifts[ishift * args.narrays + iarray]; \
         weight = weights[ishift * args.narrays + iarray]; \
+        if (weight == 0.) \
+            continue; \
         OMP( _Pragma( STRINGIFY(omp simd) )) \
         for (i = (size_t)max(0, args.offsetout - istart); \
              i < (size_t)max(0, min(args.lengthout - istart + args.offsetout, args.lengths[iarray])); i++) { \

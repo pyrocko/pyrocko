@@ -283,7 +283,7 @@ class ParstackTestCase(unittest.TestCase):
                         confs.append(('cuda_atomic', threads, 256))
                 else:
                     for cuda_threads in [2**i for i in range(8, 11)]:
-                        confs.append((impl, 6, cuda_threads))
+                        confs.append((impl, 1, cuda_threads))
             elif impl == 'openmp':
                 for threads in nthreads:
                     confs.append(('openmp', max(1, threads), 1))
