@@ -57,8 +57,25 @@ Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Branching policy
 
-* Use topic branches to develop new features.
-* Open a pull request and use the Gitea-tags `Want Review`, `Need Revision`, to
+* Use topic branches to develop new features. Follow the naming convention:
+  - `feature/<name>`:
+    Any code changes for a new module or use case should be done on a
+    feature branch. This branch is created based on the current `master` branch.
+  - `bugfix/<name>`:
+    Any necessary fixes after that should be done on the bugfix branch.
+  - `hotfix/<name>`:
+    If there is a need to fix a blocker, do a temporary patch, apply a critical
+    framework or configuration change that should be handled immediately,
+    it should be created as a Hotfix.
+  - `ci/<name>`:
+    For branches working on the CI pipelines.
+  - `docs/<name>`:
+    For branches concerning changes and additions only to the docs.
+  - `merge/<name>`:
+    A temporary branch for resolving merge conflicts, usually between the
+    latest development and a feature or Hotfix branch.
+
+* Open a pull request and use the Gitea-tags `Need Review`, `Need Revision`, to
   signal its state.
 * When a topic is complete, all tests pass and it is rebased to current master:
   merge with `--ff-only` and don't forget to update the changelog.
