@@ -64,14 +64,10 @@ class GFPsgrnPscmpTestCase(unittest.TestCase):
 
     tempdirs = []
     pscmp_store_dir = None
+    psgrn_config = None
 
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
-
-    @classmethod
-    def setUpClass(cls):
-        cls.pscmp_store_dir, cls.psgrn_config = \
-            cls._create_psgrn_pscmp_store(cls)
 
     @classmethod
     def tearDownClass(cls):
@@ -95,13 +91,16 @@ class GFPsgrnPscmpTestCase(unittest.TestCase):
 
         num.testing.assert_allclose(null_cdm[0:2], num.zeros(2))
 
-    def get_pscmp_store_info(self):
-        if self.pscmp_store_dir is None:
-            raise ValueError('Store does not exist!')
+    @classmethod
+    def get_pscmp_store_info(cls):
+        if cls.pscmp_store_dir is None:
+            cls.pscmp_store_dir, cls.psgrn_config \
+                = cls._create_psgrn_pscmp_store()
 
-        return self.pscmp_store_dir, self.psgrn_config
+        return cls.pscmp_store_dir, cls.psgrn_config
 
-    def _create_psgrn_pscmp_store(self, extra_config=None):
+    @classmethod
+    def _create_psgrn_pscmp_store(cls, extra_config=None):
 
         mod = cake.LayeredModel.from_scanlines(cake.read_nd_model_str('''
    0. 5.8 3.46 2.6 1264. 600.
@@ -124,7 +123,7 @@ mantle
 
         store_dir = mkdtemp(prefix='gfstore')
         # store_dir = '/tmp/pscmp_gfstore'
-        self.tempdirs.append(store_dir)
+        cls.tempdirs.append(store_dir)
         store_id = 'psgrn_pscmp_test'
 
         if not extra_config:
