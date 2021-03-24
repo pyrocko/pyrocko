@@ -32,7 +32,7 @@ def get_random_trace(nsamples, code='12', deltat=0.01,
     try:
         info = num.iinfo(dtype)
         data = num.random.randint(
-            info.min, info.max, size=nsamples, dtype=dtype)
+            info.min, info.max, size=nsamples).astype(dtype)
     except ValueError:
         info = num.finfo(num.float32)
         data = num.random.uniform(
