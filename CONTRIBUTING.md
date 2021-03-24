@@ -146,6 +146,16 @@ Additionally,
   - Docs are built with Sphinx, use rst syntax.
   - Follow the usual convention 1 line summary, blank line, description.
 
+### Use pre-commit
+
+The repository comes with a [pre-commit](https://pre-commit.com/) config to
+check the code with flake8 before commiting.
+
+Install the git-hook with:
+```sh
+pre-commit install
+```
+
 ## Documentation
 
 Pyrocko's documentation is built using the `Sphinx` tool. See the `docs`
