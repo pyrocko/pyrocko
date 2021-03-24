@@ -36,6 +36,14 @@ try:
 except NameError:
     newstr = str
 
+try:
+    # needed for py2/py3 compatibility to allow
+    #   from pyrocko.guts import FileNotFoundError
+    FileNotFoundError = FileNotFoundError
+except NameError:
+    class FileNotFoundError(EnvironmentError):
+        pass
+
 
 ALLOW_INCLUDE = False
 
