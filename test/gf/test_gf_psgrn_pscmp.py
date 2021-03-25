@@ -146,10 +146,10 @@ mantle
             ncomponents=10,
             receiver_depth=0. * km,
             source_depth_min=0. * km,
-            source_depth_max=15. * km,
-            source_depth_delta=.25 * km,
+            source_depth_max=6. * km,
+            source_depth_delta=0.25 * km,
             distance_min=0. * km,
-            distance_max=50. * km,
+            distance_max=40. * km,
             distance_delta=.25 * km)
 
         config.validate()
