@@ -72,6 +72,12 @@ def codes_patterns_for_kind(kind, codes):
     if not codes:
         return []
 
+    if not isinstance(codes[0], str):
+        out = []
+        for subcodes in codes:
+            out.extend(codes_patterns_for_kind(kind, subcodes))
+        return out
+
     if kind in ('event', 'undefined'):
         return [codes]
 
