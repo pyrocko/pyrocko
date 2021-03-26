@@ -410,6 +410,22 @@ class ResponseStage(Object):
         else:
             return 'unknown'
 
+    @property
+    def summary(self):
+        irate = self.input_sample_rate
+        orate = self.output_sample_rate
+        factor = None
+        if irate and orate:
+            factor = irate / orate
+        return 'ResponseStage, ' + (
+            '%s%s => %s%s%s' % (
+                self.input_quantity or '?',
+                ' @ %g Hz' % irate if irate else '',
+                self.output_quantity or '?',
+                ' @ %g Hz' % orate if orate else '',
+                ' :%g' % factor if factor else '')
+        )
+
     def get_effective(self):
         return MultiplyResponse(responses=list(self.elements))
 
@@ -462,7 +478,6 @@ class Response(Content):
 
     @property
     def codes(self):
-        print('YYY', self)
         return (
             self.agency, self.network, self.station, self.location,
             self.channel)
