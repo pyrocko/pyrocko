@@ -494,6 +494,8 @@ class MomentTensor(Object):
         [[0., 0., -1.], [0., -1., 0.], [-1., 0., 0.]], dtype=num.float)
     _to_up_south_east = num.matrix(
         [[0., 0., -1.], [-1., 0., 0.], [0., 1., 0.]], dtype=num.float).T
+    _to_east_north_up = num.matrix(
+        [[0., 1., 0.], [1., 0., 0.], [0., 0., -1.]], dtype=num.float)
     _m_unrot = num.matrix(
         [[0., 0., -1.], [0., 0., 0.], [-1., 0., 0.]], dtype=num.float)
 
@@ -545,7 +547,7 @@ class MomentTensor(Object):
         return MomentTensor(m=m)
 
     def __init__(
-            self, m=None, m_up_south_east=None,
+            self, m=None, m_up_south_east=None, m_east_north_up=None,
             strike=0., dip=0., rake=0., scalar_moment=1.,
             mnn=None, mee=None, mdd=None, mne=None, mnd=None, med=None,
             strike1=None, dip1=None, rake1=None,
@@ -564,6 +566,10 @@ class MomentTensor(Object):
         if m_up_south_east is not None:
             m = self._to_up_south_east * m_up_south_east * \
                 self._to_up_south_east.T
+
+        if m_east_north_up is not None:
+            m = self._to_east_north_up * m_east_north_up * \
+                self._to_east_north_up.T
 
         if m is None:
             if any(x is not None for x in (
