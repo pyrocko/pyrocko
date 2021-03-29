@@ -73,6 +73,19 @@ class MomentTensorTestCase(unittest.TestCase):
         self.assertSame(sdr[0], (174., 73., 83.), 1., 'chile fail 1')
         self.assertSame(sdr[1], (18., 18., 112.), 1., 'chile fail 2')
 
+    def testENU(self):
+        m = num.matrix(
+            [[0.66, 0.53, -0.18],
+             [0.53, -0.70, -0.35],
+             [-0.18, -0.36, 0.04]], dtype=num.float)
+        m_enu = MomentTensor(m_east_north_up=m)
+        self.assertEqual(m[0, 0], m_enu.m()[1, 1])
+        self.assertEqual(m[1, 1], m_enu.m()[0, 0])
+        self.assertEqual(m[2, 2], m_enu.m()[2, 2])
+        self.assertEqual(m[0, 1], m_enu.m()[0, 1])
+        self.assertEqual(m[0, 2], -m_enu.m()[1, 2])
+        self.assertEqual(m[1, 2], -m_enu.m()[0, 2])
+
     def testIO(self):
         m1 = MomentTensor(dip=90.)
         sdr1 = m1.both_strike_dip_rake()
