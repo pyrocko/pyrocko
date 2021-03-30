@@ -784,7 +784,7 @@ class MomentTensor(Object):
 
         .. math::
 
-            M0 = \\frac{1}{\\sqrt{2}}\\sqrt{\\sum_{i,j} |M_{ij}|^2}
+            M_0 = \\frac{1}{\\sqrt{2}}\\sqrt{\\sum_{i,j} |M_{ij}|^2}
 
         The scalar moment is calculated based on the Euclidean (Frobenius) norm
         (Silver and Jordan, 1982). The scalar moment returned by this function
