@@ -22,3 +22,4 @@ It is not a complete list, in the sense that many others have influenced the dev
 * Timothy Willey
 * Thoralf Dietrich
 * Torsten Dahm
+* Wasja Bloch
