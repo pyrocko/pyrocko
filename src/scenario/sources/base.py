@@ -6,8 +6,8 @@ from __future__ import absolute_import, division, print_function
 
 import os.path as op
 
-from pyrocko import moment_tensor
-from pyrocko.guts import Timestamp, Float, Int, Bool
+from pyrocko import util, moment_tensor
+from pyrocko.guts import Timestamp, Float, Int, Bool, String, load_all
 
 from ..base import LocationGenerator
 from ..error import ScenarioError
@@ -39,6 +39,10 @@ class SourceGenerator(LocationGenerator):
         help='b-value for Gutenberg-Richter magnitude distribution. If unset, '
              'a value of 1 is assumed.')
 
+    source_file = String.T(
+        optional=True,
+        help='Path to source file. Sources are used as scenario events')
+
     def __init__(self, *args, **kwargs):
         super(SourceGenerator, self).__init__(*args, **kwargs)
         if self.b_value is not None and self.magnitude_max is not None:
@@ -60,6 +64,14 @@ class SourceGenerator(LocationGenerator):
 
     def get_sources(self):
         sources = []
+
+        if self.source_file is not None:
+            sources = load_all(filename=self.source_file)
+            self.nevents = len(sources)
+
+            for ievent in range(self.nevents):
+                sources[ievent].name = 'scenario_ev%03d' % (ievent + 1)
+
         for ievent in range(self.nevents):
             src = self.get_source(ievent)
             src.name = 'scenario_ev%03d' % (ievent + 1)
