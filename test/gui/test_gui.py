@@ -67,7 +67,7 @@ class GUITest(unittest.TestCase):
 
         fpath = common.test_data_file('test2.mseed')
         p = make_pile(fpath, show_progress=False)
-        cls.win = SnufflerWindow(pile=p)
+        cls.win = SnufflerWindow(pile=p, instant_close=True)
         cls.pile_viewer = cls.win.pile_viewer
         cls.viewer = cls.win.pile_viewer.viewer
         pv = cls.pile_viewer

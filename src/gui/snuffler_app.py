@@ -570,9 +570,11 @@ class SnufflerWindow(qw.QMainWindow):
 
     def __init__(
             self, pile, stations=None, events=None, markers=None, ntracks=12,
-            follow=None, controls=True, opengl=False):
+            follow=None, controls=True, opengl=False, instant_close=False):
 
         qw.QMainWindow.__init__(self)
+
+        self.instant_close = instant_close
 
         self.dockwidget_to_toggler = {}
         self.dockwidgets = []
@@ -728,9 +730,23 @@ class SnufflerWindow(qw.QMainWindow):
     def return_tag(self):
         return self.get_view().return_tag
 
+    def confirm_close(self):
+        ret = qw.QMessageBox.question(
+            self,
+            'Snuffler',
+            'Close Snuffler window?',
+            qw.QMessageBox.Cancel | qw.QMessageBox.Ok,
+            qw.QMessageBox.Ok)
+
+        return ret == qw.QMessageBox.Ok
+
     def closeEvent(self, event):
-        event.accept()
-        self.closing = True
+        if self.instant_close or self.confirm_close():
+            self.closing = True
+            self.pile_viewer.cleanup()
+            event.accept()
+        else:
+            event.ignore()
 
     def is_closing(self):
         return self.closing

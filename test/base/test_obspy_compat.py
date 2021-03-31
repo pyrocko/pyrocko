@@ -23,20 +23,20 @@ class ObsPyCompatTestCase(unittest.TestCase):
         fn = common.test_data_file('test1.mseed')
 
         stream = obspy.read(fn)
-        stream.snuffle(launch_hook=close_win)
+        stream.snuffle(launch_hook=close_win, instant_close=True)
 
         trace = stream[0]
-        trace.snuffle(launch_hook=close_win)
+        trace.snuffle(launch_hook=close_win, instant_close=True)
 
     @common.require_gui
     def test_obspy_fiddle(self):
         fn = common.test_data_file('test1.mseed')
 
         stream = obspy.read(fn)
-        stream2 = stream.fiddle(launch_hook=close_win)  # noqa
+        stream2 = stream.fiddle(launch_hook=close_win, instant_close=True)  # noqa
 
         trace = stream[0]
-        trace2 = trace.fiddle(launch_hook=close_win)  # noqa
+        trace2 = trace.fiddle(launch_hook=close_win, instant_close=True)  # noqa
 
     def test_to_obspy_trace(self):
         traces = io.load(common.test_data_file('test1.mseed'))
