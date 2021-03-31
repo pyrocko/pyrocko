@@ -1049,8 +1049,8 @@ static PyObject* w_dc3d_flexi(PyObject *m, PyObject *args, PyObject *kwds) {
         NULL
     };
 
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "OOOdd|Ipp", kwlist, &source_patches_arr, &source_disl_arr, &receiver_coords_arr, &lambda, &mu, &nthreads, &rot_sdn, &stack_sources)) {
-        PyErr_SetString(st->error, "usage: okada(source_patches_arr, disl_arr, receiver_coords_arr, lambda, mu, nthreads=0, rotate_sdn=False, stack_sources=True");
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "OOOdd|Iii", kwlist, &source_patches_arr, &source_disl_arr, &receiver_coords_arr, &lambda, &mu, &nthreads, &rot_sdn, &stack_sources)) {
+        PyErr_SetString(st->error, "usage: okada(source_patches_arr, disl_arr, receiver_coords_arr, lambda, mu, nthreads=0, rotate_sdn=False, stack_sources=True)");
         return NULL;
     }
 

@@ -2,6 +2,8 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
+import sys
+
 import numpy as num
 import logging
 
@@ -14,11 +16,26 @@ from pyrocko.util import get_threadpool_limits
 
 guts_prefix = 'modelling'
 
-logger = logging.getLogger('pyrocko.modelling.okada')
+logger = logging.getLogger(__name__)
 
 d2r = num.pi/180.
 r2d = 180./num.pi
 km = 1e3
+
+
+def kwargs_to_py2(**kwargs):
+    if sys.version_info[0] >= 3:
+        return kwargs
+    else:
+        kwargs_new = {}
+
+        for k, i in kwargs.items():
+            if isinstance(i, bool):
+                kwargs_new[k] = int(i)
+            else:
+                kwargs_new[k] = i
+
+        return kwargs_new
 
 
 class AnalyticalSource(Location):
@@ -110,28 +127,97 @@ class OkadaSource(AnalyticalRectangularSource):
         help='Opening of the plane in [m]',
         optional=True)
 
-    poisson = Float.T(
+    poisson__ = Float.T(
         default=0.25,
-        help='Poisson\'s ratio, typically 0.25',
+        help='Poisson\'s ratio, default 0.25',
         optional=True)
 
-    shearmod = Float.T(
+    lamb__ = Float.T(
+        help='First Lame\' s parameter [Pa]',
+        optional=True)
+
+    shearmod__ = Float.T(
         default=32e9,
         help='Shear modulus along the plane [Pa]',
         optional=True)
 
     @property
+    def poisson(self):
+        '''
+        Calculation of poisson ratio (if not given)
+
+        According to Mueller (2007), the poisson ratio can be
+        determined from the formulation for the poisson ratio :math:`\\nu`:
+        :math:`\\nu = \\frac{\\lambda}{2(\\lambda + \\mu)}`
+        with the shear modulus :math:`\\mu` and first Lame parameter
+        :math:`\\lambda`.
+        '''
+
+        if self.poisson__ is not None:
+            return self.poisson__
+
+        if self.shearmod__ is None or self.lamb__ is None:
+            raise ValueError('Shearmod and lambda are needed')
+
+        return (self.lamb__) / (2. * (self.lamb__ + self.shearmod__))
+
+    @poisson.setter
+    def poisson(self, poisson):
+        self.poisson__ = poisson
+
+    @property
     def lamb(self):
         '''
-        Calculation of first Lame's parameter
+        Calculation of first Lame's parameter (if not given)
 
-        According to Mueller (2007), the first Lame parameter lambda can be
-        determined from the formulation for the poisson ration :math:`\\nu`:
+        According to Mueller (2007), the first Lame parameter can be
+        determined from the formulation for the poisson ratio :math:`\\nu`:
         :math:`\\nu = \\frac{\\lambda}{2(\\lambda + \\mu)}`
         with the shear modulus :math:`\\mu`
         '''
 
-        return (2. * self.poisson * self.shearmod) / (1. - 2*self.poisson)
+        if self.lamb__ is not None:
+            return self.lamb__
+
+        if self.shearmod__ is None or self.poisson__ is None:
+            raise ValueError('Shearmod and poisson ratio are needed')
+
+        return (
+            2. * self.poisson__ * self.shearmod__) / (1. - 2. * self.poisson__)
+
+    @lamb.setter
+    def lamb(self, lamb):
+        self.lamb__ = lamb
+
+    @property
+    def shearmod(self):
+        '''
+        Calculation of shear modulus (if not given)
+
+        According to Mueller (2007), the shear modulus can be
+        determined from the formulation for the poisson ratio :math:`\\nu`:
+        :math:`\\mu = \\frac{\\8(1+\\nu)}{1-2\\nu)}`
+
+        .. important ::
+
+            We assume a perfect elastic solid with :math:`K=\\frac{5}{3}\\mu`
+
+            Through :math:`\\mu = \\frac{3K(1-2\\nu)}{2(1+\\nu)}` this leads to
+            :math:`\\mu = \\frac{8(1+\\nu)}{1-2\\nu}`
+
+        '''
+
+        if self.shearmod__ is not None:
+            return self.shearmod__
+
+        if self.poisson__ is None:
+            raise ValueError('Poisson ratio is needed')
+
+        return (8. * (1. + self.poisson__)) / (1. - 2. * self.poisson__)
+
+    @shearmod.setter
+    def shearmod(self, shearmod):
+        self.shearmod__ = shearmod
 
     @property
     def seismic_moment(self):
@@ -140,8 +226,7 @@ class OkadaSource(AnalyticalRectangularSource):
 
         Code copied from Kite
         Disregarding the opening (as for now)
-        We assume a shear modulus of :math:`\\mu = 36 \\mathrm{GPa}`
-        and :math:`M_0 = mu A D`
+        We assume :math:`M_0 = mu A D`
 
         .. important ::
 
@@ -154,18 +239,11 @@ class OkadaSource(AnalyticalRectangularSource):
         :rtype: float
         '''
 
-        if self.shearmod:
-            mu = self.shearmod
-        elif self.poisson:
-            self.shearmod = (8. * (1. + self.poisson)) / (1. - 2*self.poisson)
-            mu = self.shearmod
-        else:
-            raise ValueError(
-                'Shear modulus or poisson ratio needed for moment calculation')
+        mu = self.shearmod
 
         disl = 0.
         if self.slip:
-            disl = (disl**2 + self.slip**2)**.5
+            disl = self.slip
         if self.opening:
             disl = (disl**2 + self.opening**2)**.5
 
@@ -279,8 +357,8 @@ class OkadaPatch(OkadaSource):
     ix = Int.T(help='Relative index of the patch in x')
     iy = Int.T(help='Relative index of the patch in y')
 
-    def __init__(self, *args, parent=None, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, parent=None, *args, **kwargs):
+        OkadaSource.__init__(self, *args, **kwargs)
         self.parent = parent
 
 
@@ -297,7 +375,8 @@ class DislocationInverter(object):
         Build coefficient matrix for given source_patches
 
         The BEM for a fault and the determination of the slip distribution from
-        the stress drop is based on the relation stress = coef_mat * displ.
+        the stress drop is based on the relation
+        :math:`stress = coefmat \\cdot displ`.
         Here the coefficient matrix is build and filled based on the
         okada_ext.okada displacements and partial displacement
         differentiations.
@@ -364,6 +443,10 @@ class DislocationInverter(object):
                 case['slip'] * num.sin(case['rake'] * d2r),
                 case['opening']])
 
+            kwargs = kwargs_to_py2(
+                rotate_sdn=rotate_sdn,
+                stack_sources=False)
+
             results = okada_ext.okada(
                 source_patches,
                 num.tile(source_disl, npoints).reshape(-1, 3),
@@ -371,8 +454,7 @@ class DislocationInverter(object):
                 lambda_mean,
                 mu_mean,
                 nthreads=nthreads,
-                rotate_sdn=rotate_sdn,
-                stack_sources=False)
+                **kwargs)
 
             eps = 0.5 * (results[:, :, 3:] +
                          results[:, :, (3, 6, 9, 4, 7, 10, 5, 8, 11)])
@@ -395,7 +477,8 @@ class DislocationInverter(object):
         Build coefficient matrix for given source_patches
 
         The BEM for a fault and the determination of the slip distribution from
-        the stress drop is based on the relation stress = coef_mat * displ.
+        the stress drop is based on the relation
+        :math:`stress = coefmat \\cdot displ`.
         Here the coefficient matrix is build and filled based on the
         okada_ext.okada displacements and partial displacement
         differentiations.
@@ -462,6 +545,8 @@ class DislocationInverter(object):
                 case['slip'] * num.sin(case['rake'] * d2r),
                 case['opening']])
 
+            kwargs = kwargs_to_py2(rotate_sdn=rotate_sdn)
+
             for isrc, source in enumerate(source_patches):
                 results = okada_ext.okada(
                     source[num.newaxis, :],
@@ -470,7 +555,7 @@ class DislocationInverter(object):
                     lambda_mean,
                     mu_mean,
                     nthreads=nthreads,
-                    rotate_sdn=rotate_sdn)
+                    **kwargs)
 
                 eps = \
                     0.5 * (
@@ -494,7 +579,8 @@ class DislocationInverter(object):
         Build coefficient matrix for given source_patches (Slow version)
 
         The BEM for a fault and the determination of the slip distribution from
-        the stress drop is based on the relation stress = coef_mat * displ.
+        the stress drop is based on the relation
+        :math:`stress = coefmat \\cdot displ`.
         Here the coefficient matrix is build and filled based on the
         okada_ext.okada displacements and partial displacement
         differentiations.
@@ -561,6 +647,9 @@ class DislocationInverter(object):
                 case['slip'] * num.sin(case['rake'] * d2r),
                 case['opening']])
 
+            kwargs = kwargs_to_py2(
+                rotate_sdn=rotate_sdn)
+
             for isource, source in enumerate(source_patches):
                 results = okada_ext.okada(
                     source[num.newaxis, :].copy(),
@@ -569,7 +658,7 @@ class DislocationInverter(object):
                     lambda_mean,
                     shearmod_mean,
                     nthreads=nthreads,
-                    rotate_sdn=rotate_sdn)
+                    **kwargs)
 
                 for irec in range(receiver_coords.shape[0]):
                     eps = num.zeros((3, 3))

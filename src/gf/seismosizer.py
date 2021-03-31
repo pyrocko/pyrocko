@@ -2527,7 +2527,10 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
 
     @nucleation_x.setter
     def nucleation_x(self, nucleation_x):
-        if not isinstance(
+        if isinstance(nucleation_x, list):
+            nucleation_x = num.array(nucleation_x)
+
+        elif not isinstance(
                 nucleation_x, num.ndarray) and nucleation_x is not None:
 
             nucleation_x = num.array([nucleation_x])
@@ -2539,7 +2542,10 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
 
     @nucleation_y.setter
     def nucleation_y(self, nucleation_y):
-        if not isinstance(nucleation_y, num.ndarray) \
+        if isinstance(nucleation_y, list):
+            nucleation_y = num.array(nucleation_y)
+
+        elif not isinstance(nucleation_y, num.ndarray) \
                 and nucleation_y is not None:
             nucleation_y = num.array([nucleation_y])
 
@@ -2590,7 +2596,8 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
         :rtype: :py:class:`numpy.ndarray` of shape ``(n_patches, 3)``
         '''
         if self.rake is not None:
-            logger.warn('tractions are derived based on the given source rake')
+            logger.warning(
+                'tractions are derived based on the given source rake')
             tractions = DirectedTractions(rake=self.rake)
         else:
             tractions = self.tractions
@@ -2855,7 +2862,7 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
             interpolation=interpolation) * self.gamma
 
     def discretize_time(
-            self, store, interpolation='nearest_neighbor',
+            self, store,  interpolation='nearest_neighbor',
             vr=None, times=None, *args, **kwargs):
         '''
         Get rupture start time for discrete points on source plane
@@ -2887,14 +2894,14 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
 
         if vr is None or vr.shape != tuple((nx, ny)):
             if vr:
-                logger.warn(
+                logger.warning(
                     'Given rupture velocities are not in right shape: '
-                    '(%i, %i), but needed is (%i, %i).' % (*vr.shape, nx, ny))
+                    '(%i, %i), but needed is (%i, %i).', *vr.shape + (nx, ny))
             vr = self._discretize_rupture_v(store, interpolation, points)\
                 .reshape(nx, ny)
 
         if vr.shape != tuple((nx, ny)):
-            logger.warn(
+            logger.warning(
                 'Given rupture velocities are not in right shape. Therefore'
                 ' standard rupture velocity array is used.')
 
@@ -2928,7 +2935,7 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
             times = initialize_times()
         elif times.shape != tuple((nx, ny)):
             times = initialize_times()
-            logger.warn(
+            logger.warning(
                 'Given times are not in right shape. Therefore standard time'
                 ' array is used.')
 
@@ -2938,7 +2945,7 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
         return points, points_xy, vr, times
 
     def get_vr_time_interpolators(
-            self, store, interpolation='nearest_neighbor',
+            self, store, interpolation='nearest_neighbor', force=False,
             *args, **kwargs):
         '''
         Calculate/return interpolators for rupture velocity and rupture time
@@ -2951,15 +2958,18 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
         :param interpolation: Kind of interpolation used. Choice between
             'multilinear' and 'nearest_neighbor'
         :type interpolation: optional, str
+        :param force: Force recalculation of the interpolators (e.g. after
+            change of nucleation point locations/times). Default is False
+        :type force: optional, bool
         '''
         interp_map = {'multilinear': 'linear', 'nearest_neighbor': 'nearest'}
         if interpolation not in interp_map:
             raise TypeError(
                 'Interpolation method %s not available' % interpolation)
 
-        if not self._interpolators.get(interpolation, False):
+        if not self._interpolators.get(interpolation, False) or force:
             _, points_xy, vr, times = self.discretize_time(
-                store=store, *args, **kwargs)
+                store, *args, **kwargs)
 
             if self.length <= 0.:
                 raise ValueError(
@@ -2986,7 +2996,8 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
         return self._interpolators[interpolation]
 
     def discretize_patches(
-            self, store, interpolation='nearest_neighbor', grid_shape=(),
+            self, store, interpolation='nearest_neighbor', force=False,
+            grid_shape=(),
             *args, **kwargs):
         '''
         Get rupture start time and OkadaSource elements for points on rupture
@@ -3002,6 +3013,10 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
         :param interpolation: Kind of interpolation used. Choice between
             'multilinear' and 'nearest_neighbor'
         :type interpolation: optional, str
+        :param force: Force recalculation of the vr and time interpolators (
+            e.g. after change of nucleation point locations/times). Default is
+            False
+        :type force: optional, bool
         :param grid_shape: Desired sub fault patch grid size (nlength, nwidth).
             Either factor or grid_shape should be set.
         :type grid_shape: optional, tuple of int
@@ -3009,7 +3024,7 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
         nx, ny, times, vr, time_interpolator, vr_interpolator = \
             self.get_vr_time_interpolators(
                 store, *args,
-                interpolation=interpolation, **kwargs)
+                interpolation=interpolation, force=force, **kwargs)
         anch_x, anch_y = map_anchor[self.anchor]
 
         al = self.length / 2.
@@ -3129,8 +3144,8 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
 
         # discretize basesources
         mindeltagf = min(tuple(
-            (self.length / self.nx, self.width / self.ny,
-             *store.config.deltas)))
+            (self.length / self.nx, self.width / self.ny) +
+            tuple(store.config.deltas)))
 
         nl = int((1. / self.decimation_factor) *
                  num.ceil(pln / mindeltagf)) + 1
@@ -3166,7 +3181,7 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
         base_interp[:, 1] -= anch_y * self.width / 2
         base_interp[:, 2] = base_times
 
-        *_, time_interpolator, _ = self.get_vr_time_interpolators(
+        _, _, _, _, time_interpolator, _ = self.get_vr_time_interpolators(
             store, interpolation=interpolation)
 
         time_eikonal_max = time_interpolator.values.max()
@@ -3382,10 +3397,12 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
             disloc_est *= patch_activation[:, num.newaxis]
 
         if scale_slip:
-            disloc_tmax = num.linalg.norm(
+            disloc_tmax = num.zeros(npatches)
+
+            disloc_tmax[relevant_sources] = num.linalg.norm(
                 DislocationInverter.get_disloc_lsq(
-                    stress_field=tractions.ravel(),
-                    coef_mat=self.coef_mat,
+                    stress_field=tractions[relevant_sources, :].ravel(),
+                    coef_mat=self.coef_mat[indices_disl, :][:, indices_disl],
                     pure_shear=self.pure_shear, nthreads=self.nthreads,
                     epsilon=None,
                     **kwargs), axis=1)
@@ -3462,7 +3479,7 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
 
         npatches = len(self.patches)
 
-        *_, time_interpolator, _ = self.get_vr_time_interpolators(
+        _, _, _, _, time_interpolator, _ = self.get_vr_time_interpolators(
             store, interpolation=interpolation)
         tmax = time_interpolator.values.max()
 
@@ -3541,7 +3558,7 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
                 :py:class:`numpy.ndarray`, ``(n_times, 1)``
         '''
         ddisloc_est, calc_times = self.get_delta_slip(
-            delta=True, *args, **kwargs)
+            *args, delta=True, **kwargs)
 
         dt = num.concatenate(
             [(num.diff(calc_times)[0], ), num.diff(calc_times)])
@@ -4398,7 +4415,12 @@ class ScalarRule(Rule):
         return (self.c, )
 
     def apply_(self, target, base_seismogram):
-        return base_seismogram[self.c].data.copy()
+        data = base_seismogram[self.c].data.copy()
+        deltat = base_seismogram[self.c].deltat
+        if self.differentiate:
+            data = util.diff_fd(self.differentiate, 4, deltat, data)
+
+        return data
 
 
 class StaticDisplacement(Rule):
