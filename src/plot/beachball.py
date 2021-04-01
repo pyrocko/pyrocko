@@ -45,7 +45,7 @@ class FixedPointOffsetTransform(Transform):
         self.has_inverse = False
         self.trans = trans
         self.dpi_scale_trans = dpi_scale_trans
-        self.fixed_point = num.asarray(fixed_point, dtype=num.float)
+        self.fixed_point = num.asarray(fixed_point, dtype=num.float64)
 
     def transform_non_affine(self, values):
         fp = self.trans.transform(self.fixed_point)
@@ -251,7 +251,7 @@ def numpy_rtp2xyz(rtp):
     r = rtp[:, 0]
     theta = rtp[:, 1]
     phi = rtp[:, 2]
-    vecs = num.empty(rtp.shape, dtype=num.float)
+    vecs = num.empty(rtp.shape, dtype=num.float64)
     vecs[:, 0] = r*num.sin(theta)*num.cos(phi)
     vecs[:, 1] = r*num.sin(theta)*num.sin(phi)
     vecs[:, 2] = r*num.cos(theta)
@@ -260,7 +260,7 @@ def numpy_rtp2xyz(rtp):
 
 def numpy_xyz2rtp(xyz):
     x, y, z = xyz[:, 0], xyz[:, 1], xyz[:, 2]
-    vecs = num.empty(xyz.shape, dtype=num.float)
+    vecs = num.empty(xyz.shape, dtype=num.float64)
     vecs[:, 0] = num.sqrt(x**2+y**2+z**2)
     vecs[:, 1] = num.arctan2(num.sqrt(x**2+y**2), z)
     vecs[:, 2] = num.arctan2(y, x)
@@ -268,7 +268,7 @@ def numpy_xyz2rtp(xyz):
 
 
 def circle_points(aphi, sign=1.0):
-    vecs = num.empty((aphi.size, 3), dtype=num.float)
+    vecs = num.empty((aphi.size, 3), dtype=num.float64)
     vecs[:, 0] = num.cos(sign*aphi)
     vecs[:, 1] = num.sin(sign*aphi)
     vecs[:, 2] = 0.0
@@ -310,7 +310,7 @@ def eig2gx(eig, arcres=181):
                     continue
 
                 xtheta = num.arctan(num.sqrt(Y))
-                rtp = num.empty(xphi.shape+(3,), dtype=num.float)
+                rtp = num.empty(xphi.shape+(3,), dtype=num.float64)
                 rtp[:, 0] = 1.
                 if sign > 0:
                     rtp[:, 1] = xtheta
@@ -474,7 +474,7 @@ def choose_transform(axes, size_units, position, size):
         raise BeachballError(
             'invalid argument for size_units: %s' % size_units)
 
-    position = num.asarray(position, dtype=num.float)
+    position = num.asarray(position, dtype=num.float64)
 
     return transform, position, size
 
@@ -491,7 +491,7 @@ def mt2beachball(
         projection='lambert',
         view='top'):
 
-    position = num.asarray(position, dtype=num.float)
+    position = num.asarray(position, dtype=num.float64)
     size = size or 1
     mt = deco_part(mt, beachball_type, view)
 
@@ -623,12 +623,12 @@ def mts2amps(mts, projection, beachball_type, grid_resolution=200, mask=True,
     x = num.linspace(-1., 1., nx)
     y = num.linspace(-1., 1., ny)
 
-    vecs2 = num.zeros((nx * ny, 2), dtype=num.float)
+    vecs2 = num.zeros((nx * ny, 2), dtype=num.float64)
     vecs2[:, 0] = num.tile(x, ny)
     vecs2[:, 1] = num.repeat(y, nx)
 
     ii_ok = vecs2[:, 0]**2 + vecs2[:, 1]**2 <= 1.0
-    amps = num_full(nx * ny, num.nan, dtype=num.float)
+    amps = num_full(nx * ny, num.nan, dtype=num.float64)
 
     amps[ii_ok] = 0.
     for mt in mts:
