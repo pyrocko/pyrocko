@@ -22,15 +22,15 @@ rm -f "$outfile_py2"
 cd $HOME
 sudo yum -y install git make gcc mesa-libGL
 
-if [ ! -f "anaconda3.sh" ] ; then
-    curl 'https://repo.anaconda.com/archive/Anaconda3-5.2.0-Linux-x86_64.sh' -o anaconda3.sh
+if [ ! -f "miniconda3.sh" ] ; then
+    curl 'https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh' -o miniconda3.sh
 fi
 
-if [ ! -d "anaconda3" ] ; then
-    sh anaconda3.sh -u -b
+if [ ! -d "miniconda3" ] ; then
+    sh miniconda3.sh -u -b
 fi
 
-export PATH="/home/vagrant/anaconda3/bin:$PATH"
+export PATH="/home/vagrant/miniconda3/bin:$PATH"
 
 conda install -y -q -c pyrocko pyrocko
 
