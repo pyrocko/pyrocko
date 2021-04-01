@@ -9,8 +9,8 @@ from math import pi as PI
 import logging
 import numpy as num
 
-from matplotlib.collections import PathCollection
-from matplotlib.path import Path
+from matplotlib.collections import PatchCollection
+from matplotlib.patches import Polygon
 from matplotlib.transforms import Transform
 from matplotlib.colors import LinearSegmentedColormap
 
@@ -588,28 +588,29 @@ def plot_beachball_mpl(
             verts = project(poly, projection)[:, ::-1] * size + position[NA, :]
             if alpha == 1.0:
                 data.append(
-                    (Path(verts[::decimation]), color, color, linewidth))
+                    (verts[::decimation], color, color, linewidth))
             else:
                 data.append(
-                    (Path(verts[::decimation]), color, 'none', 0.0))
+                    (verts[::decimation], color, 'none', 0.0))
 
         for poly in lines_upper:
             verts = project(poly, projection)[:, ::-1] * size + position[NA, :]
             data.append(
-                (Path(verts[::decimation]), 'none', edgecolor, linewidth))
+                (verts[::decimation], 'none', edgecolor, linewidth))
 
-    paths, facecolors, edgecolors, linewidths = zip(*data)
-    path_collection = PathCollection(
-        paths,
-        facecolors=facecolors,
-        edgecolors=edgecolors,
-        linewidths=linewidths,
-        alpha=alpha,
-        zorder=zorder,
-        transform=transform)
+    patches = []
+    for (path, facecolor, edgecolor, linewidth) in data:
+        patches.append(Polygon(
+            xy=path, facecolor=facecolor,
+            edgecolor=edgecolor,
+            linewidth=linewidth,
+            alpha=alpha))
 
-    axes.add_artist(path_collection)
-    return path_collection
+    collection = PatchCollection(
+            patches, zorder=zorder, transform=transform, match_original=True)
+
+    axes.add_artist(collection)
+    return collection
 
 
 def mts2amps(mts, projection, beachball_type, grid_resolution=200, mask=True,
