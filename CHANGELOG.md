@@ -5,6 +5,9 @@ All notable changes to Pyrocko will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
+*empty*
+
+## [2021.04.02]
 
 ### Added
 - RectangularSource: added opening_fraction to model tensile dislocations
