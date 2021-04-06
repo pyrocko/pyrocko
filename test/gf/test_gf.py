@@ -146,7 +146,7 @@ class GFTestCase(unittest.TestCase):
             shutil.rmtree(d)
 
     def create(self, deltat=1.0, nrecords=10):
-        d = mkdtemp(prefix='gfstore')
+        d = mkdtemp(prefix='gfstore_a')
         store = gf.BaseStore.create(d, deltat, nrecords, force=True)
 
         store = gf.BaseStore(d, mode='w')
@@ -194,7 +194,7 @@ class GFTestCase(unittest.TestCase):
 
         deltat = 1.0/conf.sample_rate
 
-        store_dir = mkdtemp(prefix='gfstore')
+        store_dir = mkdtemp(prefix='gfstore_b')
         self.tempdirs.append(store_dir)
 
         gf.Store.create(store_dir, config=conf)
@@ -256,7 +256,7 @@ class GFTestCase(unittest.TestCase):
                     ]
                 ])
 
-        store_dir = mkdtemp(prefix='gfstore')
+        store_dir = mkdtemp(prefix='gfstore_c')
         self.tempdirs.append(store_dir)
 
         gf.Store.create(store_dir, config=conf)
@@ -288,7 +288,7 @@ class GFTestCase(unittest.TestCase):
         # fnyq_spatial = pulse.velocity / math.sqrt(conf.distance_delta**2 +
         #                                       conf.source_depth_delta**2)
 
-        store_dir = mkdtemp(prefix='gfstore')
+        store_dir = mkdtemp(prefix='gfstore_d')
         self.tempdirs.append(store_dir)
 
         gf.Store.create(store_dir, config=conf, force=True,
@@ -980,24 +980,23 @@ class GFTestCase(unittest.TestCase):
             assert not ph.check_holes()
 
     def dummy_store(self):
-        if self._dummy_store is None:
 
-            conf = gf.ConfigTypeA(
-                id='empty_regional',
-                source_depth_min=0.,
-                source_depth_max=20*km,
-                source_depth_delta=1*km,
-                distance_min=1*km,
-                distance_max=2000*km,
-                distance_delta=1*km,
-                sample_rate=2.0,
-                ncomponents=10)
+        conf = gf.ConfigTypeA(
+            id='empty_regional',
+            source_depth_min=0.,
+            source_depth_max=20*km,
+            source_depth_delta=1*km,
+            distance_min=1*km,
+            distance_max=2000*km,
+            distance_delta=1*km,
+            sample_rate=2.0,
+            ncomponents=10)
 
-            store_dir = mkdtemp(prefix='gfstore')
-            self.tempdirs.append(store_dir)
+        store_dir = mkdtemp(prefix='gfstore_e')
+        self.tempdirs.append(store_dir)
 
-            gf.Store.create(store_dir, config=conf)
-            self._dummy_store = gf.Store(store_dir)
+        gf.Store.create(store_dir, config=conf)
+        self._dummy_store = gf.Store(store_dir, use_memmap=True)
 
         return self._dummy_store
 
@@ -1126,6 +1125,7 @@ class GFTestCase(unittest.TestCase):
                             store, d, nt, interpolation, nthreads)
 
         benchmark.show_factor = False
+        store.close()
 
     @unittest.skipIf('global_2s' not in local_stores,
                      'depends on store global_2s')
@@ -1261,6 +1261,7 @@ class GFTestCase(unittest.TestCase):
 
                 print(benchmark)
                 benchmark.clear()
+            store.close()
 
     @unittest.skipIf('global_2s' not in local_stores,
                      'depends on store global_2s')

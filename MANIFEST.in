@@ -2,6 +2,7 @@ recursive-include prerequisites *
 recursive-include extras *
 recursive-include src *.md
 recursive-include src/ext/pyavl-1.12 *
-recursive-include maintenance *.rst
-include *.md *.tar.gz *.cfg
+include maintenance/readme-pip.rst
+include *.md *.tar.gz *.cfg *.patch
+global-exclude *.py[cod] __pycache__
 

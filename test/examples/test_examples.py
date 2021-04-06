@@ -25,7 +25,7 @@ from pyrocko.dataset import topo
 
 op = os.path
 
-test_dir = op.dirname(op.abspath(__file__))
+project_dir = op.join(op.dirname(op.abspath(__file__)), '..', '..')
 
 
 skip_examples = [
@@ -35,7 +35,7 @@ skip_examples = [
 
 
 def tutorial_run_dir():
-    return op.join(test_dir, '..', 'example_run_dir')
+    return op.join(project_dir, 'test', 'example_run_dir')
 
 
 def noop(*args, **kwargs):
@@ -81,8 +81,9 @@ class ExamplesTestCase(unittest.TestCase):
         orthodrome.raise_if_slow_path_contains_points = False
 
 
-example_files = [fn for fn in glob.glob(op.join(test_dir, 'examples', '*.py'))
-                 if os.path.basename(fn) not in skip_examples]
+example_files = [
+    fn for fn in glob.glob(op.join(project_dir, 'examples', '*.py'))
+    if os.path.basename(fn) not in skip_examples]
 
 
 def _make_function(test_name, fn):
@@ -98,7 +99,7 @@ def _make_function(test_name, fn):
             if imp:
                 imp.load_source(test_name, fn)
             else:
-                imp2.SourceFileLoader(test_dir, fn)
+                imp2.SourceFileLoader(project_dir, fn)
 
         except example.util.DownloadError:
             raise unittest.SkipTest('could not download required data file')

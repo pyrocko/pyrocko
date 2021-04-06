@@ -2,14 +2,12 @@
 
 set -e
 
-vagrant halt
-
-running=`vagrant global-status | grep running | grep conda/boxes/osx` || /bin/true
-
-if [ ! -z "$running" ]; then
-    echo "vagrant box already running:" $running
-    exit 1
-fi
+#running=`vagrant global-status | grep running | grep conda/boxes/osx` || /bin/true
+#
+#if [ ! -z "$running" ]; then
+#    echo "vagrant box already running:" $running
+#    exit 1
+#fi
 
 if [ ! -z "$(git status --untracked-files=no --porcelain)" ]; then
     echo "repos not clean"
@@ -46,4 +44,5 @@ set -e
 rm env.sh
 
 vagrant halt
+vagrant destroy -f
 exit $STATE

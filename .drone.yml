@@ -361,6 +361,116 @@ steps:
 ---
 
 kind: pipeline
+type: exec
+name: tests-windows
+
+platform:
+  os: windows
+
+steps:
+- name: install
+  commands:
+  - xcopy C:\\vagrant\\test-data\\data test\\data\\ /E
+  - xcopy C:\\vagrant\\test-data\\example_run_dir test\\example_run_dir\\ /E
+  - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\vagrant\\miniconda3\\Lib\\site-packages\\pyrocko
+  - python setup.py install
+
+- name: tests-base
+  commands:
+  - python maintenance/run_tests_windows.py test.base
+  depends_on:
+  - install
+
+- name: tests-gf
+  commands:
+  - python maintenance/run_tests_windows.py test.gf
+  depends_on:
+  - install
+
+- name: tests-examples
+  commands:
+  - python maintenance/run_tests_windows.py test.examples
+  depends_on:
+  - install
+
+- name: tests-gui
+  commands:
+  - python maintenance/run_tests_windows.py test.gui
+  depends_on:
+  - install
+
+- name: finalize
+  commands: []
+  depends_on:
+  - tests-base
+  - tests-gf
+  - tests-examples
+  - tests-gui
+
+---
+
+kind: pipeline
+type: exec
+name: pip-windows
+
+trigger:
+  branch:
+  - release
+  - candidate
+  - pip
+
+platform:
+  os: windows
+
+steps:
+- name: build
+  commands:
+  - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\vagrant\\miniconda3\\Lib\\site-packages\\pyrocko
+  - conda create -y -n py36 python=3.6 m2-patch setuptools numpy=1.14
+  - conda run -n py36 python setup.py install
+  - conda run -n py36 python setup.py bdist_wheel
+
+  - conda create -y -n py37 python=3.7 m2-patch setuptools numpy=1.14
+  - conda run -n py37 python setup.py install
+  - conda run -n py37 python setup.py bdist_wheel
+
+  - conda create -y -n py38 python=3.8 m2-patch setuptools numpy=1.14
+  - conda run -n py38 python setup.py install
+  - conda run -n py38 python setup.py bdist_wheel
+
+  - conda create -y -n py39 python=3.9 m2-patch setuptools numpy=1.16
+  - conda run -n py39 python setup.py install
+  - conda run -n py39 python setup.py bdist_wheel
+
+- name: upload-testing
+  when:
+    branch:
+    - candidate
+    - pip
+  commands:
+  - pip install twine
+  - bash maintenance/pip/upload_wheels_windows.sh testing
+  environment:
+    PYPI_USERNAME:
+      from_secret: pypi-username
+    PYPI_PASSWORD:
+      from_secret: pypi-password
+
+- name: upload
+  when:
+    branch:
+    - release
+  commands:
+  - bash maintenance/pip/upload_wheels_windows.sh live
+  environment:
+    PYPI_USERNAME:
+      from_secret: pypi-username
+    PYPI_PASSWORD:
+      from_secret: pypi-password
+
+---
+
+kind: pipeline
 type: docker
 name: coverage
 
@@ -477,6 +587,48 @@ steps:
   when:
     branch:
       - release
+
+---
+
+kind: pipeline
+type: exec
+name: conda-packages-windows
+
+trigger:
+  branch:
+    - candidate
+    - release
+    - conda
+
+platform:
+  os: windows
+
+steps:
+- name: build-test
+  commands:
+  - cd maintenance\\conda\\
+  - conda run -n base bash build_packages_windows.sh dryrun
+  when:
+    branch:
+      - candidate
+      - conda
+
+- name: build-test-upload
+  commands:
+  - cd maintenance\\conda\\
+  - conda run -n base bash build_packages_windows.sh upload
+  environment:
+    CONDA_USERNAME:
+      from_secret: conda-username
+    CONDA_PASSWORD:
+      from_secret: conda-password
+  when:
+    branch:
+      - release
+
+- name: cleanup
+  commands:
+  - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Windows\\Temp\\pyrocko*
 
 ---
 

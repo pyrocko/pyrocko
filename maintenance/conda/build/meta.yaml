@@ -1,17 +1,20 @@
-{% set data = load_setup_py_data() %}
+{% set data = load_setup_py_data(setup_file='../../../setup.py', from_recipe_dir=True) %} 
 
 package:
   name: pyrocko
   version: {{ data.get('version') }}
 
 source:
-  path: pyrocko.git/
+  path: ../../..
 
 requirements:
   build:
     - python
+    - {{ compiler('c') }}
     - numpy
     - setuptools
+    - m2-patch  # [win]
+    - m2-bash  # [win]
   host:
     - python
     - numpy
@@ -27,6 +30,9 @@ requirements:
     - jinja2
     - nose
 
+build:
+  script: {{PYTHON}} setup.py install
+
 test:
   source_files:
     - test
@@ -35,7 +41,7 @@ test:
   imports:
     - pyrocko
   commands:
-    - nosetests --verbosity=2 --detailed-errors test.base.test_util
+    - python -m nose --verbosity=2 --detailed-errors test.base.test_util
 
 about:
   home: https://pyrocko.org

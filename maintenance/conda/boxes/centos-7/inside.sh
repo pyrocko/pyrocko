@@ -8,7 +8,7 @@ action="$2"
 pyrockodir="pyrocko"
 
 cd $HOME
-sudo yum -y install git gcc
+sudo yum -y install git gcc patch
 
 if [ -e "$pyrockodir" ] ; then
     sudo rm -rf "$pyrockodir"

@@ -5,6 +5,27 @@
 import time
 
 
+class EvalrespNotAvailable(Exception):
+    pass
+
+
+def import_ext():
+    try:
+        from pyrocko import evalresp_ext as ext
+        return ext
+    except ImportError:
+        raise EvalrespNotAvailable(
+            'The pyrocko.evalresp module is not supported on your platform.')
+
+
+def have_evalresp():
+    try:
+        import_ext()
+        return True
+    except EvalrespNotAvailable:
+        return False
+
+
 def evalresp(
         sta_list='*',
         cha_list='*',
@@ -23,7 +44,8 @@ def evalresp(
         listinterp_in_flag=0,
         listinterp_tension=1000.0):
 
-    from pyrocko import evalresp_ext as ext
+    ext = import_ext()
+
     datime = time.strftime('%Y,%j,%H:%M:%S', time.gmtime(instant))
 
     return ext.evalresp(sta_list, cha_list, net_code, locid, datime,

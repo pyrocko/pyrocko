@@ -5,7 +5,7 @@ from pyrocko.gf import meta
 
 
 # Define a list of phases.
-phase_defs = [meta.TPDef(id='stored:p', definition='p'),
+phase_defs = [meta.TPDef(id='stored:depth_p', definition='p'),
               meta.TPDef(id='stored:P', definition='P')]
 
 # Load a velocity model. In this example use the default AK135.
@@ -70,7 +70,7 @@ for phase_def in phase_defs:
     sptree.dump(filename='sptree_%s.yaml' % phase_def.id.split(':')[1])
 
 # Define a :py:class:`pyrocko.gf.meta.Timing` instance.
-timing = meta.Timing('first(p|P)')
+timing = meta.Timing('first(depth_p|P)')
 
 
 # If only one interpolated onset is need at a time you can retrieve
@@ -96,7 +96,7 @@ coords = num.array((x_want, num.tile(z_want, x_want.shape))).T
 
 # *interpolate_many* then interpolates onset times for each of these
 # pairs.
-tts = interpolated_tts["stored:p"].interpolate_many(coords)
+tts = interpolated_tts["stored:depth_p"].interpolate_many(coords)
 
 # Plot distance vs. onset time
 plt.plot(x_want, tts, '.')

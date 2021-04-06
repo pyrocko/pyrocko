@@ -1,9 +1,11 @@
 from __future__ import division, print_function, absolute_import
 import unittest
 from .. import common
-import numpy as num
 import tempfile
 import os
+import platform
+
+import numpy as num
 
 from pyrocko import util, model
 from pyrocko.pile import make_pile
@@ -107,7 +109,8 @@ class GUITest(unittest.TestCase):
         self.viewer.set_time_range(*self.initial_trange)
 
     def get_tempfile(self):
-        tempfn = tempfile.mkstemp()[1]
+        fh, tempfn = tempfile.mkstemp()
+        os.close(fh)
         self.tempfiles.append(tempfn)
         return tempfn
 
@@ -453,7 +456,9 @@ class GUITest(unittest.TestCase):
         self.viewer.go_to_event_by_name(event.name)
         self.viewer.go_to_time(tinit, tinitlen)
 
-    @unittest.skipIf(os.getuid() == 0, 'does not like to run as root')
+    @unittest.skipIf(
+        platform.system() != 'Windows' and os.getuid() == 0,
+        'does not like to run as root')
     def test_frames(self):
         frame_snuffling = DummySnuffling()
 

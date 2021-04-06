@@ -1089,7 +1089,7 @@ def MakePileViewerMainClass(base):
             self.determine_box_styles()
             self.setMouseTracking(True)
 
-            user_home_dir = os.environ['HOME']
+            user_home_dir = os.path.expanduser('~')
             self.snuffling_modules = {}
             self.snuffling_paths = [os.path.join(user_home_dir, '.snufflings')]
             self.default_snufflings = None
@@ -2664,7 +2664,7 @@ def MakePileViewerMainClass(base):
                 fn, _ = fnpatch(qw.QFileDialog.getSaveFileName(
                     self,
                     'Save as SVG|PNG',
-                    os.path.join(os.environ['HOME'],  'untitled.svg'),
+                    os.path.expanduser(os.path.join('~', 'untitled.svg')),
                     'SVG|PNG (*.svg *.png)',
                     options=qfiledialog_options))
 

@@ -30,66 +30,54 @@ fi
 
 ORIGPATH="$PATH"
 
-for VERSION in 3 2 ; do
+CONDA_URL="https://repo.anaconda.com/miniconda"
+CONDA_PREFIX="$HOME/miniconda3"
+CONDA_INSTALLER="miniconda3.sh"
 
-    CONDA_URL="https://repo.anaconda.com/miniconda"
-    HERE=`pwd`
-    CONDA_PREFIX="$HERE/miniconda${VERSION}"
-    CONDA_INSTALLER="miniconda${VERSION}.sh"
+export PATH="$CONDA_PREFIX/bin:$ORIGPATH"
 
-    export PATH="$CONDA_PREFIX/bin:$ORIGPATH"
+if [ `uname` == "Darwin" ]; then
+    CONDA_FILE="Miniconda3-latest-MacOSX-x86_64.sh"
+else
+    CONDA_FILE="Miniconda3-latest-Linux-x86_64.sh"
+fi
 
-    if [ `uname` == "Darwin" ]; then
-        CONDA_FILE="Miniconda${VERSION}-latest-MacOSX-x86_64.sh"
-    else
-        CONDA_FILE="Miniconda${VERSION}-latest-Linux-x86_64.sh"
-    fi
+# Install Miniconda
 
-    # Install Miniconda
+HERE=`pwd`
+cd "$HOME"
 
-    if [ ! -f "$CONDA_INSTALLER" ] ; then
-        echo "getting conda from:" "$CONDA_URL/$CONDA_FILE"
-        curl "$CONDA_URL/$CONDA_FILE" -o "$CONDA_INSTALLER"
-        chmod +x "$CONDA_INSTALLER"
-        rm -rf "$CONDA_PREFIX"
-    fi
+if [ ! -f "$CONDA_INSTALLER" ] ; then
+    echo "getting conda from:" "$CONDA_URL/$CONDA_FILE"
+    curl "$CONDA_URL/$CONDA_FILE" -o "$CONDA_INSTALLER"
+    chmod +x "$CONDA_INSTALLER"
+    rm -rf "$CONDA_PREFIX"
+fi
 
-    if [ ! -d "$CONDA_PREFIX" ] ; then
-        "./$CONDA_INSTALLER" -b -u -p "$CONDA_PREFIX"
-        conda install -y conda-build conda-verify anaconda-client numpy
-    fi
+if [ ! -d "$CONDA_PREFIX" ] ; then
+    "./$CONDA_INSTALLER" -b -u -p "$CONDA_PREFIX"
+    conda install -y conda-build conda-verify anaconda-client numpy
+fi
 
-    if [ -d "build/pyrocko.git" ] ; then
-        rm -rf "build/pyrocko.git"
-    fi
+cd "$HERE"
 
-    git clone -b $BRANCH "../.." "build/pyrocko.git"
-    rm -rf build/pyrocko.git/.git
-    rm -rf build/pyrocko.git/maintenance/conda
+if [ "$ACTION" == "upload" ] ; then
+    anaconda login --username "$CONDA_USERNAME" --password "$CONDA_PASSWORD" --hostname conda-builder-`uname`
+    conda config --set anaconda_upload yes
+    function anaconda_logout {
+        anaconda logout
+    }
+    trap anaconda_logout EXIT
+else
+    conda config --set anaconda_upload no
+fi
 
-    if [ "$ACTION" == "upload" ] ; then
-        anaconda login --username "$CONDA_USERNAME" --password "$CONDA_PASSWORD" --hostname conda-builder-`uname`
-        conda config --set anaconda_upload yes
-        function anaconda_logout {
-            anaconda logout
-        }
-        trap anaconda_logout EXIT
-    else
-        conda config --set anaconda_upload no
-    fi
+conda-build --python 3.6 build
+conda-build --python 3.7 build
+conda-build --python 3.8 build
+conda-build --python 3.9 build
 
-    if [ "$VERSION" == "3" ] ; then
-        conda-build --python 3.6 build
-        conda-build --python 3.7 build
-        conda-build --python 3.8 build
-    fi
-
-    if [ "$VERSION" == "2" ] ; then
-        conda-build build
-    fi
-
-    if [ "$ACTION" == "upload" ] ; then
-        trap - EXIT
-        anaconda_logout
-    fi
-done
+if [ "$ACTION" == "upload" ] ; then
+    trap - EXIT
+    anaconda_logout
+fi

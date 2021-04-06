@@ -70,10 +70,12 @@ import re
 import calendar
 import math
 import fnmatch
-import fcntl
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
 import optparse
 import os.path as op
-import platform
 import errno
 
 import numpy as num
@@ -84,13 +86,13 @@ from pyrocko import dummy_progressbar
 try:
     from urllib.parse import urlencode, quote, unquote  # noqa
     from urllib.request import (
-        Request, build_opener, HTTPDigestAuthHandler, urlopen)  # noqa
+        Request, build_opener, HTTPDigestAuthHandler, urlopen as _urlopen)  # noqa
     from urllib.error import HTTPError, URLError  # noqa
 
 except ImportError:
     from urllib import urlencode, quote, unquote # noqa
     from urllib2 import (Request, build_opener, HTTPDigestAuthHandler,   # noqa
-                         HTTPError, URLError, urlopen)  # noqa
+                         HTTPError, URLError, urlopen as _urlopen)  # noqa
 
 
 class URLErrorSSL(URLError):
@@ -117,6 +119,17 @@ def urlopen_ssl_check(*args, **kwargs):
             raise
 
 
+def urlopen(*args, **kwargs):
+    if 'cafile' not in kwargs:
+        try:
+            import certifi
+            kwargs['cafile'] = certifi.where()
+        except ImportError:
+            pass
+
+    return _urlopen(*args, **kwargs)
+
+
 try:
     long
 except NameError:
@@ -126,9 +139,9 @@ except NameError:
 force_dummy_progressbar = False
 
 
-if platform.system() != 'Darwin':
+try:
     from pyrocko import util_ext
-else:
+except ImportError:
     util_ext = None
 
 
@@ -400,15 +413,23 @@ def download_dir(
         **kwargs)
 
 
+class HPFloatUnavailable(Exception):
+    pass
+
+
+class dummy_hpfloat(object):
+    def __init__(self, *args, **kwargs):
+        raise HPFloatUnavailable(
+            'NumPy lacks support for float128 or float96 data type on this '
+            'platform.')
+
+
 if hasattr(num, 'float128'):
     hpfloat = num.float128
 elif hasattr(num, 'float96'):
     hpfloat = num.float96
 else:
-    def hpfloat(x):
-        raise Exception(
-            'NumPy lacks support for float128 or float96 data type on this '
-            'platform.')
+    hpfloat = dummy_hpfloat
 
 
 g_time_float = None
@@ -1944,6 +1965,60 @@ def match_nslcs(patterns, nslcs):
     return matching
 
 
+class Timeout(Exception):
+    pass
+
+
+def create_lockfile(fn, timeout=None, timewarn=10.):
+    t0 = time.time()
+
+    while True:
+        try:
+            f = os.open(fn, os.O_CREAT | os.O_WRONLY | os.O_EXCL)
+            os.close(f)
+            return
+
+        except OSError as e:
+            if e.errno == errno.EEXIST:
+                tnow = time.time()
+
+                if timeout is not None and tnow - t0 > timeout:
+                    raise Timeout(
+                        'Timeout (%gs) occured while waiting to get exclusive '
+                        'access to: %s' % (timeout, fn))
+
+                if timewarn is not None and tnow - t0 > timewarn:
+                    logger.warn(
+                        'Waiting since %gs to get exclusive access to: %s' % (
+                            timewarn, fn))
+
+                    timewarn *= 2
+
+                time.sleep(0.01)
+            else:
+                raise
+
+
+def delete_lockfile(fn):
+    os.unlink(fn)
+
+
+class Lockfile(Exception):
+
+    def __init__(self, path, timeout=5, timewarn=10.):
+        self._path = path
+        self._timeout = timeout
+        self._timewarn = timewarn
+
+    def __enter__(self):
+        create_lockfile(
+            self._path, timeout=self._timeout, timewarn=self._timewarn)
+        return None
+
+    def __exit__(self, type, value, traceback):
+        delete_lockfile(self._path)
+
+
 class SoleError(Exception):
     '''
     Exception raised by objects of type :py:class:`Sole`, when an concurrent
@@ -1982,6 +2057,12 @@ class Sole(object):
         ensuredirs(self._pid_path)
         self._lockfile = None
         self._os = os
+
+        if not fcntl:
+            raise SoleError(
+                'Python standard library module "fcntl" not available on '
+                'this platform.')
+
         self._fcntl = fcntl
 
         try:

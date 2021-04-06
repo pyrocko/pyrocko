@@ -11,7 +11,10 @@ import struct
 import weakref
 import math
 import shutil
-import fcntl
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
 import copy
 import logging
 import re
@@ -22,7 +25,10 @@ from scipy import signal
 
 from . import meta
 from .error import StoreError
-from . import store_ext
+try:
+    from . import store_ext
+except ImportError:
+    store_ext = None
 from pyrocko import util, spit
 
 logger = logging.getLogger('pyrocko.gf.store')
@@ -296,6 +302,10 @@ def get_extra_path(store_dir, key):
 class BaseStore(object):
 
     @staticmethod
+    def lock_fn_(store_dir):
+        return os.path.join(store_dir, 'lock')
+
+    @staticmethod
     def index_fn_(store_dir):
         return os.path.join(store_dir, 'index')
 
@@ -338,7 +348,7 @@ class BaseStore(object):
         self._deltat = None
         self._f_index = None
         self._f_data = None
-        self._end_values = None
+        self._records = None
         self.cstore = None
 
     def open(self):
@@ -393,24 +403,32 @@ class BaseStore(object):
             self.close()
 
     def lock(self):
-        if not self._f_index:
-            self.open()
+        if not fcntl:
+            lock_fn = self.lock_fn()
+            util.create_lockfile(lock_fn)
+        else:
+            if not self._f_index:
+                self.open()
 
-        while True:
-            try:
-                fcntl.lockf(self._f_index, fcntl.LOCK_EX)
-                break
+            while True:
+                try:
+                    fcntl.lockf(self._f_index, fcntl.LOCK_EX)
+                    break
 
-            except IOError as e:
-                if e.errno == errno.ENOLCK:
-                    time.sleep(0.01)
-                else:
-                    raise
+                except IOError as e:
+                    if e.errno == errno.ENOLCK:
+                        time.sleep(0.01)
+                    else:
+                        raise
 
     def unlock(self):
-        self._f_data.flush()
-        self._f_index.flush()
-        fcntl.lockf(self._f_index, fcntl.LOCK_UN)
+        if not fcntl:
+            lock_fn = self.lock_fn()
+            util.delete_lockfile(lock_fn)
+        else:
+            self._f_data.flush()
+            self._f_index.flush()
+            fcntl.lockf(self._f_index, fcntl.LOCK_UN)
 
     def put(self, irecord, trace):
         self._put(irecord, trace)
@@ -438,7 +456,6 @@ class BaseStore(object):
         return self.irecord_format() % irecord
 
     def close(self):
-
         if self.mode == 'w':
             if not self._f_index:
                 self.open()
@@ -451,6 +468,9 @@ class BaseStore(object):
         if self._f_index:
             self._f_index.close()
             self._f_index = None
+
+        del self._records
+        self._records = None
 
         self.mode = ''
 
@@ -909,15 +929,13 @@ class BaseStore(object):
 
         self._records = records
 
-        self._end_values = self._records['end_value']
-
     def _save_index(self):
         self._f_index.seek(0)
         self._f_index.write(struct.pack(gf_store_header_fmt, self._nrecords,
                                         self.get_deltat()))
 
         if self._use_memmap:
-            del self._records
+            self._records.flush()
         else:
             self._f_index.seek(gf_store_header_fmt_size)
             self._records.tofile(self._f_index)
@@ -941,6 +959,9 @@ class BaseStore(object):
                 return arr
         else:
             return num.empty((0,), dtype=gf_dtype)
+
+    def lock_fn(self):
+        return BaseStore.lock_fn_(self.store_dir)
 
     def index_fn(self):
         return BaseStore.index_fn_(self.store_dir)

@@ -8,6 +8,7 @@ import sys
 import datetime
 import os.path as op
 import time
+import shutil
 from contextlib import contextmanager
 
 import numpy as num
@@ -68,6 +69,10 @@ samples[Timestamp] = [
     tstamp(2030, 1, 1, 0, 0, 0),
     tstamp(1960, 1, 1, 0, 0, 0),
     tstamp(2010, 10, 10, 10, 10, 10) + 0.000001]
+
+if sys.platform.startswith('win'):
+    # windows cannot handle that one; ignoring
+    samples[Timestamp].pop(2)
 
 samples[SamplePat] = ['aaa', 'zzz']
 samples[SampleChoice] = ['a', 'bcd', 'efg']
@@ -878,7 +883,7 @@ class GutsTestCase(unittest.TestCase):
 
     def testDumpLoad(self):
 
-        from tempfile import NamedTemporaryFile as NTF
+        from tempfile import mkdtemp, NamedTemporaryFile as NTF
 
         class A(Object):
             xmltagname = 'a'
@@ -891,16 +896,22 @@ class GutsTestCase(unittest.TestCase):
             self.assertEqual(a.p, b.p)
 
         def checkn(a, b):
-            for ea, eb in zip(a, b):
+            la = list(a)
+            lb = list(b)
+            assert len(la) == len(lb)
+            for ea, eb in zip(la, lb):
                 self.assertEqual(ea.p, eb.p)
 
-        for (a, xdump, xload, check) in [
+        tempdir = mkdtemp()
+        fname = op.join(tempdir, 'test.yaml')
+
+        for ii, (a, xdump, xload, check) in enumerate([
                 (a1, dump, load, check1),
                 (a1, dump_xml, load_xml, check1),
                 (an, dump_all, load_all, checkn),
                 (an, dump_all, iload_all, checkn),
                 (an, dump_all_xml, load_all_xml, checkn),
-                (an, dump_all_xml, iload_all_xml, checkn)]:
+                (an, dump_all_xml, iload_all_xml, checkn)]):
 
             for header in (False, True, 'custom header'):
                 # via string
@@ -908,12 +919,9 @@ class GutsTestCase(unittest.TestCase):
                 b = xload(string=s)
                 check(a, b)
 
-                # via file
-                f = NTF(mode='w+')
-                xdump(a, filename=f.name, header=header)
-                b = xload(filename=f.name)
+                xdump(a, filename=fname, header=header)
+                b = xload(filename=fname)
                 check(a, b)
-                f.close()
 
                 # via stream
                 for mode in ['w+b', 'w+']:
@@ -927,11 +935,9 @@ class GutsTestCase(unittest.TestCase):
         b1 = A.load(string=a1.dump())
         check1(a1, b1)
 
-        f = NTF(mode='w+')
-        a1.dump(filename=f.name)
-        b1 = A.load(filename=f.name)
+        a1.dump(filename=fname)
+        b1 = A.load(filename=fname)
         check1(a1, b1)
-        f.close()
 
         f = NTF(mode='w+')
         a1.dump(stream=f)
@@ -943,11 +949,9 @@ class GutsTestCase(unittest.TestCase):
         b1 = A.load_xml(string=a1.dump_xml())
         check1(a1, b1)
 
-        f = NTF(mode='w+')
-        a1.dump_xml(filename=f.name)
-        b1 = A.load_xml(filename=f.name)
+        a1.dump_xml(filename=fname)
+        b1 = A.load_xml(filename=fname)
         check1(a1, b1)
-        f.close()
 
         f = NTF(mode='w+')
         a1.dump_xml(stream=f)
@@ -955,6 +959,8 @@ class GutsTestCase(unittest.TestCase):
         b1 = A.load_xml(stream=f)
         check1(a1, b1)
         f.close()
+
+        shutil.rmtree(tempdir)
 
     def testCustomValidator(self):
 
@@ -1273,8 +1279,8 @@ l_flow: ['a', 'b', 'c']
             pass
 
     def testYAMLinclude(self):
-        from tempfile import NamedTemporaryFile as NFT
         pyrocko.guts.ALLOW_INCLUDE = True
+        from tempfile import mkdtemp
 
         class A(Object):
             f = Float.T()
@@ -1288,54 +1294,59 @@ l_flow: ['a', 'b', 'c']
 
         a = A(f=123.2, i=1024, s='hello')
 
-        with NFT('w') as f1:
-            a.dump(filename=f1.name)
-            with NFT('w') as f2:
-                f2.write('''---
+        tempdir = mkdtemp()
+        f1name = op.join(tempdir, 'f1.yaml')
+        f2name = op.join(tempdir, 'f2.yaml')
+
+        a.dump(filename=f1name)
+        with open(f2name, 'w') as f2:
+            f2.write('''---
 a: !include {fname}
 b: !include {fname}
 c: [!include {fname}]
-'''.format(fname=f1.name))
-                f2.flush()
-                o_abs = load(filename=f2.name)
+'''.format(fname=f1name))
 
-            assert_equal(o_abs['a'])
-            assert_equal(o_abs['b'])
-            assert_equal(o_abs['c'][0])
+        o_abs = load(filename=f2name)
 
-            # Relative import
-            pyrocko.guts.ALLOW_INCLUDE = False
-            with NFT('w') as f2:
-                f2.write('''---
+        assert_equal(o_abs['a'])
+        assert_equal(o_abs['b'])
+        assert_equal(o_abs['c'][0])
+
+        # Relative import
+        pyrocko.guts.ALLOW_INCLUDE = False
+        with open(f2name, 'w') as f2:
+            f2.write('''---
 a: !include ./{fname}
 b: !include ./{fname}
 c: [!include ./{fname}]
-'''.format(fname=op.basename(f1.name)))
-                f2.flush()
-                o_rel = load(filename=f2.name, allow_include=True)
+'''.format(fname=op.basename(f1name)))
 
-            assert_equal(o_rel['a'])
-            assert_equal(o_rel['b'])
-            assert_equal(o_rel['c'][0])
+        o_rel = load(filename=f2name, allow_include=True)
+
+        assert_equal(o_rel['a'])
+        assert_equal(o_rel['b'])
+        assert_equal(o_rel['c'][0])
+
+        with open(f1name, 'w') as f1:
+            f1.write('''
+!include {fname}
+'''.format(fname=f1name))
 
         with self.assertRaises(ImportError):
-            with NFT('w') as f:
-                f.write('''
-!include {fname}
-'''.format(fname=f.name))
-                f.flush()
-                load(filename=f.name, allow_include=True)
-        with self.assertRaises(FileNotFoundError):
-            with NFT('w') as f:
-                f.write('!include /tmp/does_not_exist.yaml')
-                f.flush()
-                load(filename=f.name, allow_include=True)
+
+            load(filename=f1name, allow_include=True)
+
+        with open(f1name, 'w') as f1:
+            f1.write('!include /tmp/does_not_exist.yaml')
 
         with self.assertRaises(FileNotFoundError):
-            with NFT('w') as f:
-                f.write('!include ./does_not_exist.yaml')
-                f.flush()
-                load(filename=f.name, allow_include=True)
+            load(filename=f1name, allow_include=True)
+
+        with open(f1name, 'w') as f1:
+            f1.write('!include ./does_not_exist.yaml')
+
+        with self.assertRaises(FileNotFoundError):
+            load(filename=f1name, allow_include=True)
 
     def testTimestamp(self):
 

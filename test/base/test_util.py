@@ -5,6 +5,7 @@ import unittest
 import tempfile
 import shutil
 import time
+import platform
 import os
 from random import random, randint, choice
 import numpy as num
@@ -37,8 +38,9 @@ class UtilTestCase(unittest.TestCase):
                  '%Y-%m-%d %H.%M.%S.3FRAC'],
                 [0.001, 0.01, 0.1, 1., 0.001, 0.001]):
 
-            ta = util.str_to_time('1960-01-01 10:10:10')
-            tb = util.str_to_time('2020-01-01 10:10:10')
+            ta, tb, _, _ = util.working_system_time_range()
+            # ta = util.str_to_time('1960-01-01 10:10:10')
+            # tb = util.str_to_time('2020-01-01 10:10:10')
 
             for i in range(10000):
                 t1 = ta + random() * (tb-ta)
@@ -54,10 +56,15 @@ class UtilTestCase(unittest.TestCase):
         util.check_time_class(t)
         util.check_time_class(0.0)  # special case zero is always ok
 
+    def testTimeTypeError(self):
         with self.assertRaises(util.TimestampTypeError):
 
             if util.get_time_float() is float:
-                v = util.hpfloat(1.0)
+                try:
+                    v = util.hpfloat(1.0)
+                except util.HPFloatUnavailable:
+                    raise unittest.SkipTest(
+                        'platform does not support hpfloat')
             else:
                 v = 1.0
 
@@ -132,9 +139,9 @@ class UtilTestCase(unittest.TestCase):
 
     def test_leap_seconds(self):
         from_sys = {}
-        import platform
-        if platform.system() != 'Darwin':
-            for t, n in util.read_leap_seconds():  # not available on Mac OS X
+        # not available on MacOS and Windows
+        if platform.system() not in ('Darwin', 'Windows'):
+            for t, n in util.read_leap_seconds():
                 from_sys[t] = n
 
         for t, n in util.read_leap_seconds2():
@@ -289,6 +296,18 @@ class UtilTestCase(unittest.TestCase):
                 s = qj(line_in)
                 line_out = util.qsplit(s)
                 assert(line_in == line_out)
+
+    def test_lockfile(self):
+        fn = self.fpath('my_lock')
+        with util.Lockfile(fn):
+            with self.assertRaises(util.Timeout):
+                with util.Lockfile(fn, timeout=0.5, timewarn=0.1):
+                    pass
+
+        with util.Lockfile(fn):
+            with self.assertRaises(util.Timeout):
+                with util.Lockfile(fn, timeout=0.5, timewarn=0.1):
+                    pass
 
 
 if __name__ == "__main__":

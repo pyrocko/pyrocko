@@ -27,6 +27,8 @@ def plot_tfs(freqs, tfs):
 
 class ResponseTestCase(unittest.TestCase):
 
+    @unittest.skipUnless(
+        evalresp.have_evalresp(), 'evalresp not supported on this platform')
     def test_evalresp(self, plot=False):
 
         resp_fpath = common.test_data_file('test2.resp')
@@ -57,6 +59,8 @@ class ResponseTestCase(unittest.TestCase):
 
         assert numeq(transfer, transfer2, 1e-4)
 
+    @unittest.skipUnless(
+        evalresp.have_evalresp(), 'evalresp not supported on this platform')
     def test_conversions(self):
 
         from pyrocko import model

@@ -5,7 +5,7 @@ import tempfile
 import numpy as num
 import logging
 import os
-from pyrocko import util, trace
+from pyrocko import util, trace, evalresp
 from pyrocko.io import stationxml
 from pyrocko.client import fdsn, iris
 
@@ -25,6 +25,7 @@ def fix_resp_units(fn):
                 line = line.replace('count - ', 'counts - ')
                 fout.write(line)
 
+    os.unlink(fn)
     os.rename(fn + '.temp', fn)
 
 
@@ -126,7 +127,8 @@ class FDSNTestCase(unittest.TestCase):
             fpath = common.test_data_file('%s_1014-01-01_all.xml' % site)
             stationxml.load_xml(filename=fpath)
 
-    # @unittest.skip('needs manual inspection')
+    @unittest.skipUnless(
+        evalresp.have_evalresp(), 'evalresp not supported on this platform')
     @common.require_internet
     @common.skip_on_download_error
     def test_response(self, ntest=4):
@@ -160,16 +162,15 @@ class FDSNTestCase(unittest.TestCase):
                 tmin=tmin,
                 tmax=tmax)
 
-            _, fn = tempfile.mkstemp()
-            fo = open(fn, 'wb')
-            while True:
-                d = fi.read(1024)
-                if not d:
-                    break
+            fh, fn = tempfile.mkstemp()
+            os.close(fh)
+            with open(fn, 'wb') as fo:
+                while True:
+                    d = fi.read(1024)
+                    if not d:
+                        break
 
-                fo.write(d)
-
-            fo.close()
+                    fo.write(d)
 
             fix_resp_units(fn)
 

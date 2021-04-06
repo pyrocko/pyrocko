@@ -20,8 +20,16 @@
 #include "numpy/arrayobject.h"
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/mman.h>
-#include <unistd.h>
+#ifndef _WIN32
+    #include <sys/mman.h>
+    #include <unistd.h>
+#endif
+
+#ifdef _WIN32
+    #define _USE_MATH_DEFINES
+#endif
+#include <math.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #if defined(_OPENMP)
@@ -51,6 +59,11 @@
   #define le32toh(x) OSSwapLittleToHostInt32(x)
   #define be64toh(x) OSSwapBigToHostInt64(x)
   #define le64toh(x) OSSwapLittleToHostInt64(x)
+#elif defined(_MSC_VER)
+  #define be32toh(x) _byteswap_ulong(x)
+  #define le32toh(x) (x)
+  #define be64toh(x) _byteswap_uint64(x)
+  #define le64toh(x) (x)
 #endif
 
 
@@ -72,6 +85,32 @@
 #endif
 #define R2D (1.0 / D2R)
 
+
+#ifdef _WIN32
+ssize_t pread(int fd, void *buf, size_t count, off_t offset) {
+    ssize_t ret;
+    __int64 old_offset;
+
+    if (count >= INT_MAX || offset >= INT64_MAX || offset < 0) {
+        return -1;
+    }
+
+    old_offset = _lseeki64(fd, 0, SEEK_CUR);
+    if (old_offset == -1) {
+        return -1;
+    }
+
+    if (offset != _lseeki64(fd, (__int64)offset, SEEK_SET)) {
+        return -1;
+    }
+
+    ret = _read(fd, buf, (unsigned int)count);
+    if (old_offset != _lseeki64(fd, old_offset, SEEK_SET)) {
+        return -1;
+    }
+    return ret;
+}
+#endif
 
 struct module_state {
     PyObject *error;
@@ -118,15 +157,19 @@ gf_dtype fe32toh(const gf_dtype x) {
     return r;
 }
 
-#define max(a,b) \
-   ({ __typeof__ (a) _a = (a); \
-      __typeof__ (b) _b = (b); \
-     _a > _b ? _a : _b; })
+#ifndef max
+    #define max(a,b) \
+       ({ __typeof__ (a) _a = (a); \
+          __typeof__ (b) _b = (b); \
+         _a > _b ? _a : _b; })
+#endif
 
-#define min(a,b) \
-   ({ __typeof__ (a) _a = (a); \
-      __typeof__ (b) _b = (b); \
-     _a < _b ? _a : _b; })
+#ifndef min
+    #define min(a,b) \
+       ({ __typeof__ (a) _a = (a); \
+          __typeof__ (b) _b = (b); \
+         _a < _b ? _a : _b; })
+#endif
 
 typedef enum {
     SUCCESS = 0,
@@ -284,6 +327,7 @@ typedef struct {
 /* component scheme defs */
 
 #define NCOMPONENTS_MAX 3
+#define NSUMMANDS_MAX 6
 
 typedef void (*make_weights_function_t)(const float64_t*, const float64_t*, const float64_t*, float64_t*);
 static void make_weights_dummy(const float64_t*, const float64_t*, const float64_t*, float64_t*);
@@ -750,7 +794,7 @@ static store_error_t store_sum_static(
     float64_t deltat = store->deltat;
     int idelay_floor, idelay_ceil;
     int j, itarget, idx;
-    uint isummand, nsummands_src;
+    uint64_t isummand, nsummands_src;
     float w1, w2;
     store_error_t err=SUCCESS;
     (void) nthreads;
@@ -1017,7 +1061,7 @@ static store_error_t store_calc_timeseries(
         const mapping_t *mapping,
         interpolation_scheme_id interpolation,
         int32_t nthreads,
-        result_trace_t **results) {
+        result_trace_t *results) {
 
     float32_t weight;
     float64_t delay;
@@ -1029,7 +1073,7 @@ static store_error_t store_calc_timeseries(
     store_error_t err = SUCCESS;
 
     size_t ireceiver, isource, iip, nip, icomponent, isummand, nsummands_max, nsummands;
-    float64_t ws_this[cscheme->ncomponents*cscheme->nsummands_max];
+    float64_t ws_this[NCOMPONENTS_MAX*NSUMMANDS_MAX];
     uint64_t irecord_bases[VICINITY_NIP_MAX];
     float64_t weights_ip[VICINITY_NIP_MAX];
 
@@ -1070,7 +1114,7 @@ static store_error_t store_calc_timeseries(
 
             if (!inlimits(idelay_floor) || !inlimits(idelay_ceil)) {
                 for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
-                    result = results[icomponent+ireceiver*cscheme->ncomponents];
+                    result = &(results[icomponent+ireceiver*cscheme->ncomponents]);
                     result->err = BAD_REQUEST;
                 }
                 continue;
@@ -1086,7 +1130,7 @@ static store_error_t store_calc_timeseries(
 
                 if (err != SUCCESS) {
                     for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
-                        result = results[icomponent+ireceiver*cscheme->ncomponents];
+                        result = &(results[icomponent+ireceiver*cscheme->ncomponents]);
                         result->err = err;
                     }
                     continue;
@@ -1094,7 +1138,7 @@ static store_error_t store_calc_timeseries(
 
                 for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
 
-                    result = results[icomponent+ireceiver*cscheme->ncomponents];
+                    result = &(results[icomponent+ireceiver*cscheme->ncomponents]);
 
                     nsummands = cscheme->nsummands[icomponent];
 
@@ -1147,7 +1191,7 @@ static store_error_t store_calc_timeseries(
 
                 if (err != SUCCESS) {
                     for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
-                        result = results[icomponent+ireceiver*cscheme->ncomponents];
+                        result = &(results[icomponent+ireceiver*cscheme->ncomponents]);
                         result->err = err;
                     }
                     continue;
@@ -1155,7 +1199,7 @@ static store_error_t store_calc_timeseries(
 
                 for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
 
-                    result = results[icomponent+ireceiver*cscheme->ncomponents];
+                    result = &(results[icomponent+ireceiver*cscheme->ncomponents]);
 
                     nsummands = cscheme->nsummands[icomponent];
 
@@ -1238,7 +1282,7 @@ static store_error_t store_calc_static(
     (void) nthreads;
 
     size_t ireceiver, isource, iip, nip, icomponent, isummand, nsummands_max, nsummands;
-    float64_t ws_this[cscheme->ncomponents*cscheme->nsummands_max];
+    float64_t ws_this[NCOMPONENTS_MAX*NSUMMANDS_MAX];
     uint64_t irecord_bases[VICINITY_NIP_MAX];
     float64_t weights_ip[VICINITY_NIP_MAX];
 
@@ -1371,7 +1415,10 @@ static store_error_t store_calc_static(
 static store_error_t store_init(int f_index, int f_data, store_t *store, float64_t patch_deltat) {
     void *p;
     struct stat st;
-    size_t mmap_index_size;
+    size_t index_size;
+#ifdef _WIN32
+    ssize_t nread, index_pos;
+#endif
     int use_mmap;
     float32_t fdeltat;
 
@@ -1413,24 +1460,46 @@ static store_error_t store_init(int f_index, int f_data, store_t *store, float64
         return BAD_STORE;
     }
 
-    mmap_index_size = sizeof(record_t) * store->nrecords + GF_STORE_HEADER_SIZE;
-    if (mmap_index_size >= SIZE_MAX) {
+    index_size = sizeof(record_t) * store->nrecords + GF_STORE_HEADER_SIZE;
+    if (index_size >= SIZE_MAX) {
         return MMAP_INDEX_FAILED;
     }
 
-    p = mmap(NULL, mmap_index_size, PROT_READ, MAP_SHARED, store->f_index, 0);
+
+#ifndef _WIN32
+    p = mmap(NULL, index_size, PROT_READ, MAP_SHARED, store->f_index, 0);
     if (MAP_FAILED == p) {
         return MMAP_INDEX_FAILED;
     }
+#else
+    p = malloc(index_size);
+    if (p == NULL) {
+        return ALLOC_FAILED;
+    }
+
+    index_pos = 0;
+    while (index_pos < index_size) {
+        nread = pread(store->f_index, p, index_size-index_pos, index_pos);
+        if (-1 == nread) {
+            return READ_INDEX_FAILED;
+        }
+        index_pos += nread;
+    }
+#endif
 
     store->records = (record_t*)((char*)p+GF_STORE_HEADER_SIZE);
 
     /* on 32-bit systems, use mmap only if traces file is considerably smaller
      * than address space */
 
+#ifndef _WIN32
     use_mmap = store->data_size < SIZE_MAX / 8;
+#else
+    use_mmap = 0;
+#endif
 
     if (use_mmap) {
+#ifndef _WIN32
         if (store->data_size >= SIZE_MAX) {
             return MMAP_TRACES_FAILED;
         }
@@ -1440,6 +1509,7 @@ static store_error_t store_init(int f_index, int f_data, store_t *store, float64
         }
 
         store->data = (gf_dtype*)p;
+#endif
     } else {
         if (store->nrecords > SIZE_MAX) {
             return ALLOC_FAILED;
@@ -1490,16 +1560,22 @@ static void store_mapping_deinit(mapping_t *mapping) {
 }
 
 void store_deinit(store_t *store) {
-    size_t mmap_index_size;
+    size_t index_size;
     uint64_t irecord;
 
-    mmap_index_size = sizeof(record_t) * store->nrecords + GF_STORE_HEADER_SIZE;
+    index_size = sizeof(record_t) * store->nrecords + GF_STORE_HEADER_SIZE;
     if (store->records != NULL) {
-        munmap(((char*)store->records)-GF_STORE_HEADER_SIZE, mmap_index_size);
+#ifndef _WIN32
+        munmap(((char*)store->records)-GF_STORE_HEADER_SIZE, index_size);
+#else
+        free(((char*)store->records)-GF_STORE_HEADER_SIZE);
+#endif
     }
 
     if (store->data != NULL) {
+#ifndef _WIN32
         munmap(store->data, store->data_size);
+#endif
     }
 
     if (store->memdata != NULL) {
@@ -2270,7 +2346,7 @@ static store_error_t make_sum_params(
         uint64_t **irecords) {
 
     size_t ireceiver, isource, iip, nip, icomponent, isummand, nsummands, nsummands_max, iout;
-    float64_t ws_this[cscheme->ncomponents*cscheme->nsummands_max];
+    float64_t ws_this[NCOMPONENTS_MAX*NSUMMANDS_MAX];
     uint64_t irecord_bases[VICINITY_NIP_MAX];
     float64_t weights_ip[VICINITY_NIP_MAX];
     store_error_t err = SUCCESS;
@@ -2624,6 +2700,17 @@ static PyObject* w_make_sum_params(PyObject *m, PyObject *args) {
 }
 
 
+static void free_results(result_trace_t *results, size_t nresults) {
+    size_t iresult;
+    for (iresult=0; iresult<nresults; iresult++) {
+        if (results[iresult].buffer != NULL) {
+            free(results[iresult].buffer);
+        }
+    }
+    free(results);
+}
+
+
 static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
     PyObject *capsule, *source_coords_arr, *ms_arr, *delays_arr, *receiver_coords_arr, *itmin_arr, *nsamples_arr, *out_list, *out_tuple;
     PyObject *array = NULL;
@@ -2645,7 +2732,9 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
     npy_intp shape_want_coords[2] = {-1, 5};
     npy_intp shape_want_ms[2] = {-1, 6};
 
-    size_t ires;
+    size_t ires, nresults;
+    result_trace_t *results;
+    result_trace_t *result;
 
     struct module_state *st = GETSTATE(m);
 
@@ -2723,19 +2812,19 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
     itmin = PyArray_DATA((PyArrayObject*) itmin_arr);
     nsamples = PyArray_DATA((PyArrayObject*) nsamples_arr);
 
-
+    nresults = nreceivers*cscheme->ncomponents;
     // Initialize empty traces
-    result_trace_t *results[nreceivers*cscheme->ncomponents];
+    results = (result_trace_t*)calloc(nresults, sizeof(result_trace_t));
+    if (results == NULL) {
+        PyErr_SetString(st->error, "Could not allocate result struct");
+        return NULL;
+    }
 
-    for (ires=0; ires < nreceivers*cscheme->ncomponents; ires++) {
+    for (ires=0; ires<nresults; ires++) {
         nsamples_want = nsamples[ires / cscheme->ncomponents];
         itmin_want = itmin[ires / cscheme->ncomponents];
 
-        result_trace_t *result = malloc(sizeof(result_trace_t));
-        if (result == NULL) {
-            PyErr_SetString(st->error, "Could not allocate result struct");
-            return NULL;
-        }
+        result = &(results[ires]);
 
         result->icomponent = ires % cscheme->ncomponents;
 
@@ -2758,12 +2847,12 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
             result->ncapacity = nsamples_want;
             result->buffer = (gf_dtype*) calloc(result->ncapacity, sizeof(gf_dtype));
             if (result->buffer == NULL) {
+                free_results(results, nresults);
                 PyErr_SetString(st->error, "Could not allocate result data array");
                 return NULL;
             }
             result->data = result->buffer;
         }
-        results[ires] = result;
     }
 
     err = store_calc_timeseries(
@@ -2782,14 +2871,14 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
         results);
 
     if (SUCCESS != err) {
+        free_results(results, nresults);
         PyErr_SetString(st->error, store_error_names[err]);
         return NULL;
     }
 
     out_list = Py_BuildValue("[]");
     for (ires=0; ires < nreceivers*cscheme->ncomponents; ires++) {
-        result_trace_t *result = results[ires];
-
+        result = &(results[ires]);
 
         data = malloc(result->nsamples * sizeof(gf_dtype));
         memcpy(data, result->data, result->nsamples * sizeof(gf_dtype));
@@ -2803,13 +2892,12 @@ static PyObject* w_store_calc_timeseries(PyObject *m, PyObject *args) {
                 result->is_zero, result->begin_value, result->end_value, result->icomponent, result->err);
         PyList_Append(out_list, out_tuple);
 
-        if (result->buffer != NULL)
-            free(result->buffer);
 
-        free(result);
         Py_DECREF(out_tuple);
         /*printf("comp: %d, nsamples: %d, itmin: %d\n", result->icomponent, result->nsamples, result->itmin);*/
     }
+
+    free_results(results, nresults);
 
     return out_list;
 }

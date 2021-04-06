@@ -1,5 +1,6 @@
 from __future__ import division, print_function, absolute_import
 import unittest
+import platform
 import os
 import sys
 import time
@@ -93,8 +94,10 @@ def skip_on_download_error(f):
 
 
 def have_gui():
+    is_windows = platform.system() == 'Windows'
+
     display = os.environ.get('DISPLAY', '')
-    if not display:
+    if not display and not is_windows:
         return False
 
     try:
@@ -170,7 +173,11 @@ class Benchmark(object):
             rstr.append(
                 '{0:<{indent}}{1:.8f} s'.format(*res, indent=indent+5))
             if self.show_factor:
-                rstr[-1] += '{0:8.2f} x'.format(tmax/res[1])
+                if res[1] != 0.0:
+                    rstr[-1] += '{0:8.2f} x'.format(tmax/res[1])
+                else:
+                    rstr[-1] += '???'
+
         if len(self.results) == 0:
             rstr.append('None ran!')
 

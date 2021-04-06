@@ -32,7 +32,8 @@ class RDSeedTestCase(unittest.TestCase):
     def test_problems(self):
         p = eventdata.Problems()
         p.add('X', 'y')
-        fn = tempfile.mkstemp()[1]
+        f, fn = tempfile.mkstemp()
+        os.close(f)
         p.dump(fn)
 
         pl = eventdata.Problems()

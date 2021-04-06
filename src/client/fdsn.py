@@ -32,6 +32,11 @@ import logging
 import ssl
 import socket
 
+try:
+    import certifi
+except ImportError:
+    certifi = None
+
 
 from pyrocko import util
 from pyrocko.util import DownloadError
@@ -44,6 +49,13 @@ try:
     newstr = unicode
 except NameError:
     newstr = str
+
+
+if certifi:
+    g_cafile = certifi.where()
+else:
+    g_cafile = None
+
 
 logger = logging.getLogger('pyrocko.client.fdsn')
 
@@ -236,6 +248,8 @@ def _request(
 
     if allow_TLSv1:
         url_args['context'] = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
+
+    url_args['cafile'] = g_cafile
 
     opener = None
 

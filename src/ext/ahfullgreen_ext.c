@@ -3,17 +3,22 @@
 #include "Python.h"
 #include "numpy/arrayobject.h"
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
+#ifdef _WIN32
+    #define _USE_MATH_DEFINES
+#endif
 #include <math.h>
 #include <complex.h>
 
 typedef npy_float64 float64_t;
 
+
+#ifdef _WIN32
+typedef _Dcomplex complex_t;
+#else
+typedef double complex complex_t;
+#endif
+
+#ifndef _WIN32
 #define max(a,b) \
    ({ __typeof__ (a) _a = (a); \
       __typeof__ (b) _b = (b); \
@@ -23,6 +28,35 @@ typedef npy_float64 float64_t;
    ({ __typeof__ (a) _a = (a); \
       __typeof__ (b) _b = (b); \
      _a < _b ? _a : _b; })
+#endif
+
+#ifndef _WIN32
+#define DI I
+#define mulcc(a,b) (a)*(b)
+#define mulcr(a,b) (a)*(b)
+#define addcc(a,b) (a)+(b)
+#define addcr(a,b) (a)+(b)
+#define subcc(a,b) (a)-(b)
+#define subcr(a,b) (a)-(b)
+#define build_complex(a, b) (a) + I*(b)
+#else
+static const complex_t DI = { 0.0, 1.0 };
+#define mulcc(a,b) _Cmulcc(a,b)
+#define mulcr(a,b) _Cmulcr(a,b)
+complex_t addcc(complex_t a, complex_t b) {
+    return _Cbuild(creal(a) + creal(b), cimag(a) + cimag(b));
+}
+complex_t addcr(complex_t a, double b) {
+    return _Cbuild(creal(a) + b, cimag(a));
+}
+complex_t subcc(complex_t a, complex_t b) {
+    return _Cbuild(creal(a) - creal(b), cimag(a) - cimag(b));
+}
+complex_t subcr(complex_t a, double b) {
+    return _Cbuild(creal(a) - b, cimag(a));
+}
+#define build_complex _Cbuild
+#endif
 
 typedef enum {
     SUCCESS = 0,
@@ -30,7 +64,7 @@ typedef enum {
     BAD_ARRAY,
 } ahfullgreen_error_t;
 
-const char* ahfullgreen_error_names[] = {
+static const char* ahfullgreen_error_names[] = {
     "SUCCESS",
     "SINGULARITY",
     "BAD_ARRAY",
@@ -91,7 +125,7 @@ static ahfullgreen_error_t numpy_or_none_to_c_double(
 }
 
 static ahfullgreen_error_t numpy_or_none_to_c_complex(
-        PyObject* o, ssize_t size_want, double complex **arr, size_t *size) {
+        PyObject* o, ssize_t size_want, complex_t **arr, size_t *size) {
 
     if (o == Py_None) {
         if (size_want > 0) {
@@ -122,9 +156,9 @@ static ahfullgreen_error_t add_seismogram(
         double out_delta,
         double out_offset,
         size_t out_size,
-        double complex *out_x,
-        double complex *out_y,
-        double complex *out_z,
+        complex_t *out_x,
+        complex_t *out_y,
+        complex_t *out_z,
         int want_far,
         int want_intermediate,
         int want_near
@@ -132,8 +166,8 @@ static ahfullgreen_error_t add_seismogram(
 
     double r, r2, r4, density4pi;
     double gamma[3];
-    double complex *out[3];
-    double complex *b1, *b2, *b3;
+    complex_t *out[3];
+    complex_t *b1, *b2, *b3;
     double m[3][3] = {{m6[0], m6[3], m6[4]},
          {m6[3], m6[1], m6[5]},
          {m6[4], m6[5], m6[2]}};
@@ -143,7 +177,7 @@ static ahfullgreen_error_t add_seismogram(
 
     double a1, a2, a3, a4, a5, a6, a7, a8;
     double vp2, vp3, vs2, vs3, w;
-    double complex iw, dfactor;
+    complex_t iw, iwi, dfactor;
 
 
     r = sqrt(x[0]*x[0] + x[1]*x[1] + x[2]*x[2]);
@@ -166,27 +200,28 @@ static ahfullgreen_error_t add_seismogram(
     out[1] = out_y;
     out[2] = out_z;
 
-    b1 = (double complex*)calloc(out_size, sizeof(double complex));
-    b2 = (double complex*)calloc(out_size, sizeof(double complex));
-    b3 = (double complex*)calloc(out_size, sizeof(double complex));
+    b1 = (complex_t*)calloc(out_size, sizeof(complex_t));
+    b2 = (complex_t*)calloc(out_size, sizeof(complex_t));
+    b3 = (complex_t*)calloc(out_size, sizeof(complex_t));
 
     for (i=0; i<out_size; i++) {
         w = out_offset + out_delta * i;
-        iw = I * w;
-        dfactor = 1.0/iw;
+        iw = build_complex(0.0, w);
+        iwi = build_complex(0.0, -1.0/w);
+        dfactor = iwi;
         if (out_quantity == 1) {
-            dfactor = 1.0;
+            dfactor = build_complex(1.0, 0.0);
         } else if (out_quantity == 2) {
             dfactor = iw;
         }
         if (i != 0) {
-            b2[i] = dfactor * cexp(-iw * r/vp) * exp(-w * r / (2.0*vp*qp));
-            b3[i] = dfactor * cexp(-iw * r/vs) * exp(-w * r / (2.0*vs*qs));
-            b1[i] = (r/vp + 1.0/iw) * b2[i]/iw - (r/vs + 1.0/iw) * b3[i]/iw;
+            b2[i] = mulcr(mulcc(dfactor, cexp(mulcr(iw, -r/vp))), exp(-w * r / (2.0*vp*qp)));
+            b3[i] = mulcr(mulcc(dfactor, cexp(mulcr(iw, -r/vs))), exp(-w * r / (2.0*vs*qs)));
+            b1[i] = subcc(mulcc(addcr(iwi, r/vp), mulcc(b2[i], iwi)), mulcc(addcr(iwi, r/vs), mulcc(b3[i], iwi)));
         } else {
-            b2[i] = 0.0;
-            b3[i] = 0.0;
-            b1[i] = 0.0;
+            b2[i] = build_complex(0.0, 0.0);
+            b3[i] = build_complex(0.0, 0.0);
+            b1[i] = build_complex(0.0, 0.0);
         }
     }
 
@@ -237,9 +272,22 @@ static ahfullgreen_error_t add_seismogram(
                 }
 
                 for (i=0; i<out_size; i++) {
-                    iw = I * (out_offset + out_delta * i);
-                    out[n][i] += (a1*b1[i] + a2*b2[i] + a3*b3[i] +
-                                iw*a4*b2[i] + iw*a5*b3[i]) * m[p][q];
+                    iw = build_complex(0.0, out_offset + out_delta * i);
+                    /*out[n][i] = out[n][i] +
+                        (a1*b1[i] + a2*b2[i] + a3*b3[i] +
+                                iw*a4*b2[i] + iw*a5*b3[i]) * m[p][q];*/
+
+                    out[n][i] = addcc(
+                        out[n][i],
+                        mulcr(
+                            addcc(
+                                addcc(
+                                    addcc(
+                                        addcc(mulcr(b1[i],a1), mulcr(b2[i],a2)),
+                                        mulcr(b3[i],a3)),
+                                    mulcr(mulcc(iw,b2[i]),a4)),
+                                mulcr(mulcc(iw,b3[i]),a5)),
+                            m[p][q]));
                 }
             }
         }
@@ -256,7 +304,9 @@ static ahfullgreen_error_t add_seismogram(
                 (density4pi * vs2 * r);
 
             for (i=0; i<out_size; i++) {
-                out[n][i] += (a6*b1[i] + a7*b2[i] + a8*b3[i]) * f[p];
+                /*out[n][i] += (a6*b1[i] + a7*b2[i] + a8*b3[i]) * f[p];*/
+                out[n][i] = addcc(out[n][i], mulcr(addcc(addcc(mulcr(b1[i], a6), mulcr(b2[i], a7)), mulcr(b3[i], a8)), f[p]));
+
             }
         }
     }
@@ -287,9 +337,9 @@ static PyObject* w_add_seismogram(PyObject *m, PyObject *args) {
     PyObject *out_y_arr;
     PyObject *out_z_arr;
 
-    double complex *out_x;
-    double complex *out_y;
-    double complex *out_z;
+    complex_t *out_x;
+    complex_t *out_y;
+    complex_t *out_z;
 
     int want_far;
     int want_intermediate;

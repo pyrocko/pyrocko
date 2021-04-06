@@ -9,9 +9,14 @@ except ImportError:
     import Queue as queue
 
 
+import logging
+import platform
 import multiprocessing
 import traceback
 import errno
+
+
+logger = logging.getLogger('pyrocko.parimap')
 
 
 def worker(
@@ -59,6 +64,12 @@ def parimap(function, *iterables, **kwargs):
 
     if eprintignore == 'all':
         eprintignore = None
+
+    if platform.system() == 'Windows' and nprocs != 1:
+        logger.warn(
+            'The parimap module relies on fork() for parallelism. This does '
+            'not work on Windows. Using serial code.')
+        nprocs = 1
 
     if nprocs == 1:
         iterables = list(map(iter, iterables))
