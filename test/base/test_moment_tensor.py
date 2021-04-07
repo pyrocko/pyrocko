@@ -74,17 +74,24 @@ class MomentTensorTestCase(unittest.TestCase):
         self.assertSame(sdr[1], (18., 18., 112.), 1., 'chile fail 2')
 
     def testENU(self):
-        m = num.matrix(
+        m_enu = num.matrix(
             [[0.66, 0.53, -0.18],
              [0.53, -0.70, -0.35],
              [-0.18, -0.36, 0.04]], dtype=num.float)
-        m_enu = MomentTensor(m_east_north_up=m)
-        self.assertEqual(m[0, 0], m_enu.m()[1, 1])
-        self.assertEqual(m[1, 1], m_enu.m()[0, 0])
-        self.assertEqual(m[2, 2], m_enu.m()[2, 2])
-        self.assertEqual(m[0, 1], m_enu.m()[0, 1])
-        self.assertEqual(m[0, 2], -m_enu.m()[1, 2])
-        self.assertEqual(m[1, 2], -m_enu.m()[0, 2])
+        m = MomentTensor(m_east_north_up=m_enu)
+        self.assertEqual(m_enu[0, 0], m.m()[1, 1])
+        self.assertEqual(m_enu[1, 1], m.m()[0, 0])
+        self.assertEqual(m_enu[2, 2], m.m()[2, 2])
+        self.assertEqual(m_enu[0, 1], m.m()[0, 1])
+        self.assertEqual(m_enu[0, 2], -m.m()[1, 2])
+        self.assertEqual(m_enu[1, 2], -m.m()[0, 2])
+        self.assertEqual(m_enu[0, 0], m.m6_east_north_up()[0])
+        self.assertEqual(m_enu[1, 1], m.m6_east_north_up()[1])
+        self.assertEqual(m_enu[2, 2], m.m6_east_north_up()[2])
+        self.assertEqual(m_enu[0, 1], m.m6_east_north_up()[3])
+        self.assertEqual(m_enu[0, 2], m.m6_east_north_up()[4])
+        self.assertEqual(m_enu[1, 2], m.m6_east_north_up()[5])
+        self.assertSame(m_enu, m.m_east_north_up(), 1e-3, 'testENU fail')
 
     def testIO(self):
         m1 = MomentTensor(dip=90.)

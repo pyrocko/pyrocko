@@ -761,12 +761,26 @@ class MomentTensor(Object):
 
         return self._to_up_south_east.T * self._m * self._to_up_south_east
 
+    def m_east_north_up(self):
+        '''
+        Get moment tensor in east-north-up convention as 3x3 matrix.
+        '''
+
+        return self._to_east_north_up.T * self._m * self._to_east_north_up
+
     def m6_up_south_east(self):
         '''Get moment tensor in up-south-east convention as a six-element array.
 
         :returns: ``(muu, mss, mee, mus, mue, mse)``
         '''
         return to6(self.m_up_south_east())
+
+    def m6_east_north_up(self):
+        '''Get moment tensor in east-north-up convention as a six-element array.
+
+        :returns: ``(mee, mnn, muu, men, meu, mnu)``
+        '''
+        return to6(self.m_east_north_up())
 
     def m_plain_double_couple(self):
         '''Get plain double couple with same scalar moment as moment tensor.'''
