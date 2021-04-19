@@ -32,8 +32,6 @@ fi
 
 export PATH="/home/vagrant/miniconda3/bin:$PATH"
 
-conda install -y -q -c pyrocko pyrocko
-
 if [ -e "$pyrockodir" ] ; then
     sudo rm -rf "$pyrockodir"
 fi
@@ -42,6 +40,7 @@ cd "$pyrockodir"
 ln -s "/vagrant/pyrocko-test-data" "test/data"
 ln -s "/vagrant/example_run_dir" "test/example_run_dir"
 
+pip install -r requirements-all.txt
 python setup.py install -f && \
     python -m pyrocko.print_version deps >> "$outfile_py3" && \
     python -m nose "$thetest" > >(tee -a "$outfile_py3") 2> >(tee -a "$outfile_py3" >&2) || \
