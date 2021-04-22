@@ -1446,6 +1446,10 @@ class Snuffling(object):
                     doc = qw.QLabel(markdown.markdown(self.__doc__))
 
                 except ImportError:
+                    logger.error(
+                        'Install Python module "markdown" for pretty help '
+                        'formatting.')
+
                     doc = qw.QLabel(self.__doc__)
         else:
             doc = qw.QLabel('This snuffling does not provide any online help.')
