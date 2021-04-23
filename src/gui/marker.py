@@ -4,9 +4,7 @@
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
 
-import calendar
 import math
-import time
 import copy
 import logging
 import sys
@@ -84,49 +82,6 @@ class Marker(object):
     '''
 
     @staticmethod
-    def from_string(line):
-
-        def fail():
-            raise MarkerParseError(
-                'Unable to create marker from string: "%s"' % line)
-
-        def parsedate(ymd, hms, sfs):
-            return util.to_time_str(calendar.timegm(
-                time.strptime(ymd+' '+hms, '%Y-%m-%d %H:%M:%S'))) + float(sfs)
-
-        try:
-            toks = line.split()
-            if len(toks) in (4, 5):
-                tmin = parsedate(*toks[:3])
-                tmax = tmin
-
-            elif len(toks) in (8, 9):
-                tmin = parsedate(*toks[:3])
-                tmax = parsedate(*toks[3:6])
-
-            else:
-                fail()
-
-            if len(toks) in (5, 9):
-                kind = int(toks[-2])
-            else:
-                kind = int(toks[-1])
-
-            nslc_ids = []
-            if len(toks) in (5, 9):
-                for snslc in toks[-1].split(','):
-                    nslc = snslc.split('.')
-                    if len(nslc) != 4:
-                        fail()
-
-                    nslc_ids.append(tuple(nslc))
-
-        except MarkerParseError:
-            fail()
-
-        return Marker(nslc_ids, tmin, tmax, kind=kind)
-
-    @staticmethod
     def save_markers(markers, fn, fdigits=3):
         '''
         Static method to write marker objects to file.
@@ -166,22 +121,7 @@ class Marker(object):
         with open(fn, 'r') as f:
             line = f.readline()
             if not line.startswith('# Snuffler Markers File Version'):
-                f.seek(0)
-                for iline, line in enumerate(f):
-                    line = str(line.decode('ascii'))
-                    sline = line.strip()
-                    if not sline or sline.startswith('#'):
-                        continue
-                    try:
-                        m = Marker.from_string(sline)
-                        markers.append(m)
-
-                    except MarkerParseError:
-                        logger.warning(
-                            'Invalid marker definition in line %i of file "%s"'
-                            % (iline+1, fn))
-
-                f.close()
+                raise MarkerParseError('Not a marker file')
 
             elif line.startswith('# Snuffler Markers File Version 0.2'):
                 reader = TableReader(f)
