@@ -1556,9 +1556,13 @@ def MakePileViewerMainClass(base):
                 fns, _ = fnpatch(qw.QFileDialog.getOpenFileNames(
                     self, caption, options=qfiledialog_options))
 
-            stations = [pyrocko.model.load_stations(str(x)) for x in fns]
-            for stat in stations:
-                self.add_stations(stat)
+            try:
+                stations = [pyrocko.model.load_stations(str(x)) for x in fns]
+                for stat in stations:
+                    self.add_stations(stat)
+
+            except Exception as e:
+                self.fail('Failed to read station file: %s' % str(e))
 
         def open_stations_xml(self, fns=None):
             from pyrocko.io import stationxml
@@ -1570,12 +1574,16 @@ def MakePileViewerMainClass(base):
                     self, caption, options=qfiledialog_options,
                     filter='StationXML *.xml (*.xml *.XML);;All files (*)'))
 
-            stations = [
-                stationxml.load_xml(filename=str(x)).get_pyrocko_stations()
-                for x in fns]
+            try:
+                stations = [
+                    stationxml.load_xml(filename=str(x)).get_pyrocko_stations()
+                    for x in fns]
 
-            for stat in stations:
-                self.add_stations(stat)
+                for stat in stations:
+                    self.add_stations(stat)
+
+            except Exception as e:
+                self.fail('Failed to read StationXML file: %s' % str(e))
 
         def add_traces(self, traces):
             if traces:
@@ -1727,9 +1735,13 @@ def MakePileViewerMainClass(base):
                 fn, _ = fnpatch(qw.QFileDialog.getSaveFileName(
                     self, caption, options=qfiledialog_options))
             if fn:
-                Marker.save_markers(
-                    self.markers, fn,
-                    fdigits=self.time_fractional_digits())
+                try:
+                    Marker.save_markers(
+                        self.markers, fn,
+                        fdigits=self.time_fractional_digits())
+
+                except Exception as e:
+                    self.fail('Failed to write marker file: %s' % str(e))
 
         def write_selected_markers(self, fn=None):
             caption = "Choose a file name to write selected markers"
@@ -1737,9 +1749,14 @@ def MakePileViewerMainClass(base):
                 fn, _ = fnpatch(qw.QFileDialog.getSaveFileName(
                     self, caption, options=qfiledialog_options))
             if fn:
-                Marker.save_markers(
-                    self.iter_selected_markers(), fn,
-                    fdigits=self.time_fractional_digits())
+                try:
+                    Marker.save_markers(
+                        self.iter_selected_markers(),
+                        fn,
+                        fdigits=self.time_fractional_digits())
+
+                except Exception as e:
+                    self.fail('Failed to write marker file: %s' % str(e))
 
         def read_events(self, fn=None):
             '''
@@ -1752,9 +1769,12 @@ def MakePileViewerMainClass(base):
                 fn, _ = fnpatch(qw.QFileDialog.getOpenFileName(
                     self, caption, options=qfiledialog_options))
             if fn:
-                self.add_events(pyrocko.model.load_events(fn))
+                try:
+                    self.add_events(pyrocko.model.load_events(fn))
+                    self.associate_phases_to_events()
 
-                self.associate_phases_to_events()
+                except Exception as e:
+                    self.fail('Failed to read event file: %s' % str(e))
 
         def read_markers(self, fn=None):
             '''
@@ -1765,9 +1785,12 @@ def MakePileViewerMainClass(base):
                 fn, _ = fnpatch(qw.QFileDialog.getOpenFileName(
                     self, caption, options=qfiledialog_options))
             if fn:
-                self.add_markers(Marker.load_markers(fn))
+                try:
+                    self.add_markers(Marker.load_markers(fn))
+                    self.associate_phases_to_events()
 
-                self.associate_phases_to_events()
+                except Exception as e:
+                    self.fail('Failed to read marker file: %s' % str(e))
 
         def associate_phases_to_events(self):
             associate_phases_to_events(self.markers)
@@ -2687,31 +2710,43 @@ def MakePileViewerMainClass(base):
                 if fn == '':
                     return
 
-            if str(fn).endswith('.svg'):
-                w, h = 842, 595
-                margin = 0.025
-                m = max(w, h)*margin
+            fn = str(fn)
 
-                generator = qsvg.QSvgGenerator()
-                generator.setFileName(fn)
-                generator.setSize(qc.QSize(w, h))
-                generator.setViewBox(qc.QRectF(-m, -m, w+2*m, h+2*m))
+            if fn.lower().endswith('.svg'):
+                try:
+                    w, h = 842, 595
+                    margin = 0.025
+                    m = max(w, h)*margin
 
-                painter = qg.QPainter()
-                painter.begin(generator)
-                self.drawit(painter, printmode=False, w=w, h=h)
-                painter.end()
+                    generator = qsvg.QSvgGenerator()
+                    generator.setFileName(fn)
+                    generator.setSize(qc.QSize(w, h))
+                    generator.setViewBox(qc.QRectF(-m, -m, w+2*m, h+2*m))
 
-            elif str(fn).endswith('.png'):
+                    painter = qg.QPainter()
+                    painter.begin(generator)
+                    self.drawit(painter, printmode=False, w=w, h=h)
+                    painter.end()
+
+                except Exception as e:
+                    self.fail('Failed to write SVG file: %s' % str(e))
+
+            elif fn.lower().endswith('.png'):
                 if use_pyqt5:
                     pixmap = self.grab()
                 else:
                     pixmap = qg.QPixmap().grabWidget(self)
 
-                pixmap.save(fn)
+                try:
+                    pixmap.save(fn)
+
+                except Exception as e:
+                    self.fail('Failed to write PNG file: %s' % str(e))
 
             else:
-                logger.warning('unsupported file type')
+                self.fail(
+                    'Unsupported file type: filename must end with ".svg" or '
+                    '".png".')
 
         def paintEvent(self, paint_ev):
             '''
