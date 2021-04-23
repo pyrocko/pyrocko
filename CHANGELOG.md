@@ -6,9 +6,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
-=======
-## [Unreleased]
-
 ### Added
 - New module `modelling.cracksol` containing different analytical crack
   solutions for displacement and dislocation modelling.
@@ -29,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - New example on how to create QuakeML files from scratch.
 
 ### Fixed
+- Fix Snuffler crashes on reading invalid files and other IO related errors.
 - Fixed `Trace.envelope`.
 
 ### Changed
@@ -36,6 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Renamed Snuffling "Block RMS" to "RMS".
 - Fomosto QSEIS backend can now handle non-zero (negative) top layer depth,
   e.g. for models including the atmosphere.
+- Removed support for initial marker file format from before August 2011.
 
 ## v2021.09.14
 
