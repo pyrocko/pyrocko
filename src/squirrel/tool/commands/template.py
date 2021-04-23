@@ -61,8 +61,8 @@ def setup(subparsers):
 def decomment(s):
     out = []
     for line in s.splitlines():
-        line = re.sub(r'#.+', '', line).strip()
-        if line:
+        line = re.sub(r'#.+', '', line)
+        if line.strip():
             out.append(line)
 
     return '\n'.join(out)
