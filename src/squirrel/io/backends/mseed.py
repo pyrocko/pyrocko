@@ -16,7 +16,7 @@ def provided_formats():
 
 
 def detect(first512):
-    from pyrocko import mseed
+    from pyrocko.io import mseed
 
     if mseed.detect(first512):
         return 'mseed'
@@ -26,7 +26,7 @@ def detect(first512):
 
 def iload(format, file_path, segment, content):
     assert format == 'mseed'
-    from pyrocko import mseed
+    from pyrocko.io import mseed
 
     load_data = 'waveform' in content
 

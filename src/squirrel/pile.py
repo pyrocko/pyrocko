@@ -6,6 +6,7 @@
 import logging
 import weakref
 from pyrocko import squirrel as psq, trace
+from pyrocko import pile as classic_pile
 
 logger = logging.getLogger('psq.pile')
 
@@ -356,6 +357,24 @@ class Pile(object):
 
         from pyrocko.gui.snuffler import snuffle
         snuffle(self, **kwargs)
+
+    def add_file(self, mtf):
+        if isinstance(mtf, classic_pile.MemTracesFile):
+            name = self._squirrel.add_volatile_waveforms(mtf.get_traces())
+            mtf._squirrel_name = name
+        else:
+            assert False
+
+        self.notify_listeners('add')
+
+    def remove_file(self, mtf):
+        if isinstance(mtf, classic_pile.MemTracesFile) \
+                and getattr(mtf, '_squirrel_name', False):
+
+            self._squirrel.remove(mtf._squirrel_name)
+            mtf._squirrel_name = None
+
+        self.notify_listeners('remove')
 
     def is_empty(self):
         return 'waveform' not in self._squirrel.get_kinds()

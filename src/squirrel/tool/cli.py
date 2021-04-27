@@ -4,12 +4,16 @@
 # ---|P------/S----------~Lg----------
 
 import sys
+import logging
 
 from pyrocko import util
 
 from . import common
 from .commands import command_modules
 from pyrocko import squirrel as sq
+
+
+logger = logging.getLogger('psq.cli')
 
 
 g_program_name = 'squirrel'
@@ -93,7 +97,8 @@ Run with --help to get further help.''',
         try:
             target(parser, args)
         except sq.SquirrelError as e:
-            sys.exit(str(e))
+            logger.fatal(str(e))
+            sys.exit(1)
 
     elif not subcommands:
         return common.squirrel_from_selection_arguments(args)

@@ -7,13 +7,16 @@ from __future__ import absolute_import, print_function
 
 import hashlib
 import numpy as num
+from os import urandom
+from base64 import urlsafe_b64encode
 
 from pyrocko import util
 from pyrocko.guts import Object, String, Timestamp, Float, Int, Unicode, \
     Tuple, List, StringChoice
 from pyrocko.model import Content
 from pyrocko.response import FrequencyResponse, MultiplyResponse, \
-    IntegrationResponse, DifferentiationResponse, simplify_responses
+    IntegrationResponse, DifferentiationResponse, simplify_responses, \
+    FrequencyResponseCheckpoint
 
 from .error import ConversionError
 
@@ -119,6 +122,20 @@ def time_or_none_to_str(x):
         return '...'.ljust(17)
     else:
         return util.time_to_str(x)
+
+
+def codes_to_str_abbreviated(codes, indent='  '):
+    codes = ['.'.join(x) for x in codes]
+
+    if len(codes) > 20:
+        scodes = '\n' + util.ewrap(codes[:10], indent=indent) \
+            + '\n%s[%i more]\n' % (indent, len(codes) - 20) \
+            + util.ewrap(codes[-10:], indent='  ')
+    else:
+        scodes = '\n' + util.ewrap(codes, indent=indent) \
+            if codes else '<none>'
+
+    return scodes
 
 
 g_offset_time_unit_inv = 1000000000
@@ -311,6 +328,7 @@ class Channel(Content):
     station = String.T(default='', help='Station code (1-5)')
     location = String.T(default='', help='Location code (0-2)')
     channel = String.T(default='', help='Channel code (3)')
+    extra = String.T(default='', help='Extra/custom code')
 
     tmin = Timestamp.T(optional=True)
     tmax = Timestamp.T(optional=True)
@@ -328,7 +346,7 @@ class Channel(Content):
     def codes(self):
         return (
             self.agency, self.network, self.station, self.location,
-            self.channel)
+            self.channel, self.extra)
 
     @property
     def time_span(self):
@@ -379,6 +397,7 @@ class ResponseStage(Object):
     output_quantity = QuantityType.T(optional=True)
     output_sample_rate = Float.T(optional=True)
     elements = List.T(FrequencyResponse.T())
+    log = List.T(Tuple.T(3, String.T()))
 
     @property
     def stage_type(self):
@@ -444,7 +463,7 @@ g_converters = {
 
 
 def response_converters(input_quantity, output_quantity):
-    if input_quantity is None:
+    if input_quantity is None or input_quantity == output_quantity:
         return []
 
     if output_quantity is None:
@@ -468,19 +487,22 @@ class Response(Content):
     station = String.T(default='', help='Station code (1-5)')
     location = String.T(default='', help='Location code (0-2)')
     channel = String.T(default='', help='Channel code (3)')
+    extra = String.T(default='', help='Extra/custom code')
 
     tmin = Timestamp.T(optional=True)
     tmax = Timestamp.T(optional=True)
 
     stages = List.T(ResponseStage.T())
+    checkpoints = List.T(FrequencyResponseCheckpoint.T())
 
     deltat = Float.T(optional=True)
+    log = List.T(Tuple.T(3, String.T()))
 
     @property
     def codes(self):
         return (
             self.agency, self.network, self.station, self.location,
-            self.channel)
+            self.channel, self.extra)
 
     @property
     def time_span(self):
@@ -536,7 +558,7 @@ class Response(Content):
         elements.extend(
             stage.get_effective() for stage in self.stages)
 
-        return simplify_responses(elements)
+        return MultiplyResponse(responses=simplify_responses(elements))
 
 
 class Event(Content):
@@ -572,6 +594,10 @@ class Event(Content):
 
 def ehash(s):
     return hashlib.sha1(s.encode('utf8')).hexdigest()
+
+
+def random_name(n=8):
+    return urlsafe_b64encode(urandom(n)).rstrip(b'=').decode('ascii')
 
 
 class Nut(Object):
@@ -729,7 +755,7 @@ class Nut(Object):
 
     @property
     def waveform_promise_kwargs(self):
-        agency, network, station, location, channel = \
+        agency, network, station, location, channel, extra = \
             self.codes.split(separator)
 
         return dict(
@@ -738,6 +764,7 @@ class Nut(Object):
             station=station,
             location=location,
             channel=channel,
+            extra=extra,
             tmin=self.tmin,
             tmax=self.tmax,
             deltat=self.deltat)
@@ -755,7 +782,7 @@ class Nut(Object):
 
     @property
     def channel_kwargs(self):
-        agency, network, station, location, channel \
+        agency, network, station, location, channel, extra \
             = self.codes.split(separator)
 
         return dict(
@@ -764,13 +791,14 @@ class Nut(Object):
             station=station,
             location=location,
             channel=channel,
+            extra=extra,
             tmin=tmin_or_none(self.tmin),
             tmax=tmax_or_none(self.tmax),
             deltat=self.deltat)
 
     @property
     def response_kwargs(self):
-        agency, network, station, location, channel \
+        agency, network, station, location, channel, extra \
             = self.codes.split(separator)
 
         return dict(
@@ -779,6 +807,7 @@ class Nut(Object):
             station=station,
             location=location,
             channel=channel,
+            extra=extra,
             tmin=tmin_or_none(self.tmin),
             tmax=tmax_or_none(self.tmax),
             deltat=self.deltat)
@@ -800,6 +829,7 @@ class Nut(Object):
             station=station,
             location=location,
             channel=channel,
+            extra=extra,
             tmin=self.tmin,
             tmax=self.tmax-self.deltat,
             deltat=self.deltat)
@@ -865,9 +895,11 @@ def make_station_nut(
 
 
 def make_channel_nut(
-        agency='', network='', station='', location='', channel='', **kwargs):
+        agency='', network='', station='', location='', channel='', extra='',
+        **kwargs):
 
-    codes = separator.join((agency, network, station, location, channel))
+    codes = separator.join(
+        (agency, network, station, location, channel, extra))
 
     return Nut(
         kind_id=CHANNEL,
@@ -876,9 +908,11 @@ def make_channel_nut(
 
 
 def make_response_nut(
-        agency='', network='', station='', location='', channel='', **kwargs):
+        agency='', network='', station='', location='', channel='', extra='',
+        **kwargs):
 
-    codes = separator.join((agency, network, station, location, channel))
+    codes = separator.join(
+        (agency, network, station, location, channel, extra))
 
     return Nut(
         kind_id=RESPONSE,
@@ -922,7 +956,7 @@ class DummyTrace(object):
 
     def __init__(self, nut):
         self.nut = nut
-        self._nslc = None
+        self._codes = None
 
     @property
     def tmin(self):
@@ -937,27 +971,39 @@ class DummyTrace(object):
         return self.nut.deltat
 
     @property
-    def nslc_id(self):
-        if self._nslc is None:
-            self._nslc = self.nut.codes_tuple[1:5]
+    def codes(self):
+        if self._codes is None:
+            self._codes = self.nut.codes_tuple
 
-        return self._nslc
+        return self._codes
+
+    @property
+    def nslc_id(self):
+        return self.codes[1:5]
+
+    @property
+    def agency(self):
+        return self.codes[0]
 
     @property
     def network(self):
-        return self.nslc_id[0]
+        return self.codes[1]
 
     @property
     def station(self):
-        return self.nslc_id[1]
+        return self.codes[2]
 
     @property
     def location(self):
-        return self.nslc_id[2]
+        return self.codes[3]
 
     @property
     def channel(self):
-        return self.nslc_id[3]
+        return self.codes[4]
+
+    @property
+    def extra(self):
+        return self.codes[5]
 
     def overlaps(self, tmin, tmax):
         return not (tmax < self.nut.tmin or self.nut.tmax < tmin)

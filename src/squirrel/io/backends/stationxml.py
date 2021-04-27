@@ -33,10 +33,10 @@ def iload(format, file_path, segment, content):
 
     far_future = time.time() + 20*Y
 
-    from pyrocko.fdsn import station as fdsn_station
-    value_or_none = fdsn_station.value_or_none
+    from pyrocko.io import stationxml
+    value_or_none = stationxml.value_or_none
 
-    sx = fdsn_station.load_xml(filename=file_path)
+    sx = stationxml.load_xml(filename=file_path)
 
     inut = 0
 
@@ -114,6 +114,7 @@ def iload(format, file_path, segment, content):
                 context = '%s.%s.%s.%s' % (net, sta, loc, cha)
 
                 if channel.response:
+
                     nut = model.make_response_nut(
                         file_segment=0,
                         file_element=inut,
@@ -136,5 +137,5 @@ def iload(format, file_path, segment, content):
                         yield nut
                         inut += 1
 
-                    except Exception as e:
-                        logger.warn('Bad instrument response: %s' % str(e))
+                    except stationxml.StationXMLError as e:
+                        logger.debug('Bad instrument response: %s' % str(e))

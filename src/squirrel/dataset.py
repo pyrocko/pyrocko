@@ -14,6 +14,7 @@ from ..has_paths import HasPaths
 from .client.base import Source
 from .error import SquirrelError
 from .selection import re_persistent_name
+from .operators.base import Operator
 
 guts_prefix = 'squirrel'
 
@@ -30,11 +31,17 @@ class Dataset(HasPaths):
     '''
     sources = List.T(Source.T())
     persistent = PersistentID.T(optional=True)
+    operators = List.T(Operator.T())
 
     def setup(self, squirrel, check=True, progress_viewer='terminal'):
         for source in self.sources:
-            source.setup(
-                squirrel, check=check, progress_viewer=progress_viewer)
+            squirrel.add_source(
+                source, check=check, progress_viewer=progress_viewer)
+
+        for operator in self.operators:
+            squirrel.add_operator(operator)
+
+        squirrel.update_operator_mappings()
 
     def get_squirrel(
             self,
@@ -61,6 +68,7 @@ class Dataset(HasPaths):
                     % self.persistent)
 
         squirrel.add_dataset(self, check=check)
+
         return squirrel
 
 

@@ -105,6 +105,9 @@ class CatalogSource(Source):
         self._tquery = 3600.*24.
         self._tquery_limits = (3600., 3600.*24.*365.)
 
+    def describe(self):
+        return 'catalog:%s:%s' % (self.catalog, self.get_hash())
+
     def setup(self, squirrel, check=True, progress_viewer='terminal'):
         self._force_query_age_max = self.anxious
         self._catalog = get_catalog(self.catalog)

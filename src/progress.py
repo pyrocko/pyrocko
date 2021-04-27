@@ -69,7 +69,7 @@ class TerminalStatusWindow(object):
 
         self._state = 2
         if self._parent:
-            self._parent.hide()
+            self._parent.hide(self)
 
     def _start_show(self):
         sx, sy = self._terminal_size
@@ -130,7 +130,7 @@ class DummyStatusWindow(object):
 
     def stop(self):
         if self._parent:
-            self._parent.hide()
+            self._parent.hide(self)
 
     def draw(self, lines):
         pass
@@ -192,7 +192,9 @@ class Task(object):
 
     def update(self, i=None, condition=''):
         self._state = 'working'
+
         self._condition = condition
+
         if i is not None:
             if self._n is not None:
                 i = min(i, self._n)
@@ -210,13 +212,18 @@ class Task(object):
         self._condition = condition
         self._state = 'done'
         self._progress._end(self)
+        self.log(str(self))
 
     def fail(self, condition=''):
         self.duration = time.time() - self._tcreate
 
+        if self._state in ('done', 'failed'):
+            return
+
         self._condition = condition
         self._state = 'failed'
         self._progress._end(self)
+        self.log(str(self))
 
     def _str_state(self):
         s = self._state
@@ -284,24 +291,25 @@ class Progress(object):
         self._tasks = {}
         self._tasks_done = []
         self._last_update = 0.0
-        self._term = None
+        self._terms = []
 
     def view(self, viewer='terminal'):
-        if g_force_viewer_off:
+        if g_force_viewer_off or self._terms:
             viewer = 'off'
 
         if viewer == 'terminal':
-            self._term = TerminalStatusWindow(self)
+            term = TerminalStatusWindow(self)
         elif viewer == 'off':
-            self._term = DummyStatusWindow(self)
+            term = DummyStatusWindow(self)
         else:
             raise ValueError('Invalid viewer choice: %s' % viewer)
 
-        return self._term
+        self._terms.append(term)
+        return term
 
-    def hide(self):
+    def hide(self, term):
         self._update(force=True)
-        self._term = None
+        self._terms.remove(term)
 
     def task(self, name, n=None, logger=None, group=None):
         self._current_id += 1
@@ -319,15 +327,11 @@ class Progress(object):
     def _update(self, force=False):
         now = time.time()
         if self._last_update + 0.1 < now or force:
-            tasks_done = self._tasks_done
             self._tasks_done = []
-            if self._term:
-                for task in tasks_done:
-                    task.log(str(task))
 
             lines = self._lines()
-            if self._term:
-                self._term.draw(lines)
+            for term in self._terms:
+                term.draw(lines)
 
             self._last_update = now
 

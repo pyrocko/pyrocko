@@ -72,7 +72,8 @@ class SquirrelTestCase(unittest.TestCase):
             for nut in squirrel.iload(fpath, content=[]):
                 ii += 1
 
-        assert ii == 401
+        print(ii)
+        assert ii == 425
 
         ii = 0
         database = squirrel.Database()
@@ -81,7 +82,7 @@ class SquirrelTestCase(unittest.TestCase):
             for nut in squirrel.iload(fpath, content=[], database=database):
                 ii += 1
 
-        assert ii == 401
+        assert ii == 425
 
         ii = 0
         for (fn, _) in SquirrelTestCase.test_files:
@@ -95,7 +96,7 @@ class SquirrelTestCase(unittest.TestCase):
             for nut in squirrel.iload(fpath, database=database):
                 ii += 1
 
-        assert ii == 401
+        assert ii == 425
 
         fpaths = [
             common.test_data_file(fn)
@@ -105,7 +106,7 @@ class SquirrelTestCase(unittest.TestCase):
         for nut in squirrel.iload(fpaths, content=[], database=database):
             ii += 1
 
-        assert ii == 401
+        assert ii == 425
 
         fpath = op.join(self.tempdir, 'emptyfile')
         with open(fpath, 'wb'):
@@ -768,6 +769,8 @@ class SquirrelTestCase(unittest.TestCase):
                     assert tr.tmin == tmin
                     assert tr.tmax == tmax
 
+            nnuts = sq.get_nnuts()
+
             sq = squirrel.Squirrel(database=database)
             sq.add_fdsn(
                 'geofon',
@@ -778,9 +781,9 @@ class SquirrelTestCase(unittest.TestCase):
                 expires=1000.,
                 cache_path=tempdir)
 
-            assert(sq.get_nnuts() == 10)
+            assert(sq.get_nnuts() == nnuts)
             sq.update(tmin=tmin, tmax=tmax)
-            assert(sq.get_nnuts() == 22)
+            assert(sq.get_nnuts() == nnuts)
 
             sq = squirrel.Squirrel(database=database)
             sq.add_fdsn(
@@ -792,9 +795,55 @@ class SquirrelTestCase(unittest.TestCase):
                 expires=0.,
                 cache_path=tempdir)
 
-            assert(sq.get_nnuts() == 10)
+            assert(sq.get_nnuts() == nnuts)
             sq.update(tmin=tmin, tmax=tmax)
-            assert(sq.get_nnuts() == 22)
+            assert(sq.get_nnuts() == nnuts)
+
+        finally:
+            shutil.rmtree(tempdir)
+
+    @common.require_internet
+    def test_restitution(self):
+        # 1994 Bolivia earthquake
+        tmin = util.str_to_time('1994-06-09 00:00:00')
+        tmax = util.str_to_time('1994-06-09 03:00:00')
+        database = squirrel.Database()
+        try:
+            sq = squirrel.Squirrel(database=database)
+            tempdir = os.path.join(self.tempdir, 'test_restitution')
+            sq.add_fdsn(
+                'bgr',
+                dict(
+                    network='GR',
+                    station='BFO',
+                    channel='LH?'),
+                cache_path=tempdir)
+
+            sq.update(tmin=tmin, tmax=tmax)
+            sq.update_waveform_promises(tmin=tmin, tmax=tmax)
+            sq.update_responses()
+
+            sq.add_operator(squirrel.Restitution(quantity='displacement'))
+            sq.add_operator(squirrel.Restitution(quantity='velocity'))
+            sq.add_operator(squirrel.Restitution(quantity='acceleration'))
+            sq.update_operator_mappings()
+
+            traces = []
+            for extra in ['Rd', 'Rv', 'Ra']:
+                traces.extend(
+                    sq.get_waveforms(
+                        tmin=tmin, tmax=tmax,
+                        codes=('', 'GR', 'BFO', '', 'LHZ', extra),
+                        operator_params=squirrel.RestitutionParameters(
+                            frequency_min=0.002,
+                            frequency_max=10.0)))
+
+            traces.extend(
+                sq.get_waveforms(
+                    tmin=tmin, tmax=tmax,
+                    codes=('', 'GR', 'BFO', '', 'LHZ', '')))
+
+            # trace.snuffle(traces)
 
         finally:
             shutil.rmtree(tempdir)
@@ -956,6 +1005,33 @@ class SquirrelTestCase(unittest.TestCase):
 
         finally:
             shutil.rmtree(datadir)
+
+    def test_add_waveforms(self):
+        traces = []
+
+        ntraces = 10
+        nsamples = 3600
+        deltat = 1.0
+        tmin = util.str_to_time('2020-01-01 00:00:00')
+        for itrace in range(ntraces):
+            ctmin = tmin+itrace*nsamples*deltat
+            data = num.ones(nsamples)
+            traces.append(
+                trace.Trace(
+                    'N', 'STA', '', 'Z',
+                    tmin=ctmin, deltat=deltat, ydata=data))
+
+        tmax = traces[-1].tmax
+
+        database = squirrel.Database()
+        sq = squirrel.Squirrel(database=database)
+        handle = sq.add_volatile_waveforms(traces)
+        for tr in sq.get_waveforms(include_last=True):
+            print(tr)
+            assert tr.tmin == tmin and tr.tmax == tmax
+
+        sq.remove(handle)
+        assert len(sq.get_waveforms(tmin=tmin, tmax=tmax)) == 0
 
 
 if __name__ == "__main__":

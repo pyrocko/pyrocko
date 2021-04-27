@@ -125,7 +125,8 @@ class ResponseTestCase(unittest.TestCase):
             normalization_frequency=10.,
             filename=sacpz_fpath)
 
-        pr_sx_sacpz2 = sx_sacpz_resp2.get_pyrocko_response('.'.join(codes))
+        pr_sx_sacpz2 = sx_sacpz_resp2.get_pyrocko_response(
+            '.'.join(codes)).expect_one()
         try:
             pr_sx_sacpz2.responses[0].zeros.remove(0.0j)
         except ValueError:

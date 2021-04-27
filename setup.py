@@ -565,6 +565,7 @@ subpacknames = [
     'pyrocko.squirrel.client',
     'pyrocko.squirrel.tool',
     'pyrocko.squirrel.tool.commands',
+    'pyrocko.squirrel.operators',
 ]
 
 cmdclass = {

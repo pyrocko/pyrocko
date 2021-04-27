@@ -26,9 +26,10 @@ from pyrocko.model import Content
 
 # backward compatibility
 from pyrocko.util import UnavailableDecimation  # noqa
-from pyrocko.response import FrequencyResponse, Evalresp, InverseEvalresp, \
-    PoleZeroResponse, ButterworthResponse, SampledResponse, \
-    IntegrationResponse, DifferentiationResponse, MultiplyResponse  # noqa
+from pyrocko.response import (  # noqa
+    FrequencyResponse, Evalresp, InverseEvalresp, PoleZeroResponse,
+    ButterworthResponse, SampledResponse, IntegrationResponse,
+    DifferentiationResponse, MultiplyResponse)
 
 
 guts_prefix = 'pf'
@@ -164,20 +165,31 @@ class Trace(Content):
     def __getstate__(self):
         return (self.network, self.station, self.location, self.channel,
                 self.tmin, self.tmax, self.deltat, self.mtime,
-                self.ydata, self.meta)
+                self.ydata, self.meta, self.agency, self.extra)
 
     def __setstate__(self, state):
-        if len(state) == 10:
+        if len(state) == 12:
+            self.network, self.station, self.location, self.channel, \
+                self.tmin, self.tmax, self.deltat, self.mtime, \
+                self.ydata, self.meta, self.agency, self.extra = state
+
+        elif len(state) == 10:
+            # backward compatibility 1
             self.network, self.station, self.location, self.channel, \
                 self.tmin, self.tmax, self.deltat, self.mtime, \
                 self.ydata, self.meta = state
 
+            self.angency = ''
+            self.extra = ''
+
         else:
-            # backward compatibility with old behaviour
+            # backward compatibility 2
             self.network, self.station, self.location, self.channel, \
                 self.tmin, self.tmax, self.deltat, self.mtime = state
             self.ydata = None
             self.meta = None
+            self.angency = ''
+            self.extra = ''
 
         self._growbuffer = None
         self._update_ids()
@@ -386,7 +398,8 @@ class Trace(Content):
             return tma, abs(ma)
 
     def set_codes(
-            self, network=None, station=None, location=None, channel=None):
+            self, network=None, station=None, location=None, channel=None,
+            agency=None, extra=None):
 
         '''
         Set network, station, location, and channel codes.
@@ -400,6 +413,10 @@ class Trace(Content):
             self.location = location
         if channel is not None:
             self.channel = channel
+        if agency is not None:
+            self.agency = agency
+        if extra is not None:
+            self.extra = extra
 
         self._update_ids()
 

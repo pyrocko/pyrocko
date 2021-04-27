@@ -11,19 +11,28 @@ import logging
 import sqlite3
 import re
 
-from pyrocko.io_common import FileLoadError
+from pyrocko.io.io_common import FileLoadError
 from pyrocko import util
 from pyrocko.guts import Object, Int, List, Dict, Tuple, String
 from . import error, io
 from .model import Nut, to_kind_id, to_kind, separator
+from .error import SquirrelError
 
 logger = logging.getLogger('psq.database')
 
 guts_prefix = 'squirrel'
 
 
+class ExecuteGet1Error(SquirrelError):
+    pass
+
+
 def execute_get1(connection, sql, args):
-    return list(connection.execute(sql, args))[0]
+    rows = list(connection.execute(sql, args))
+    if len(rows) == 1:
+        return rows[0]
+    else:
+        raise ExecuteGet1Error('Expected database entry not found.')
 
 
 g_databases = {}
@@ -337,19 +346,19 @@ class Database(object):
         if path is not None:
             yield path, nuts
 
-    def undig_many(self, paths):
-        selection = self.new_selection(paths)
+    def undig_many(self, paths, show_progress=True):
+        selection = self.new_selection(paths, show_progress=show_progress)
 
         for (_, path), nuts in selection.undig_grouped():
             yield path, nuts
 
         del selection
 
-    def new_selection(self, paths=None):
+    def new_selection(self, paths=None, show_progress=True):
         from .selection import Selection
         selection = Selection(self)
         if paths:
-            selection.add(paths)
+            selection.add(paths, show_progress=show_progress)
         return selection
 
     def commit(self):
@@ -362,7 +371,7 @@ class Database(object):
 
     def remove(self, path):
         '''
-        Prune content meta-inforamation about a given file.
+        Prune content meta-information about a given file.
 
         All content pieces belonging to file ``path`` are removed from the
         main database and any attached live selections (via database triggers).
@@ -370,6 +379,34 @@ class Database(object):
 
         self._conn.execute(
             'DELETE FROM files WHERE path = ?', (path,))
+
+    def remove_glob(self, pattern):
+        '''
+        Prune content meta-information about files matching given pattern.
+
+        All content pieces belonging to files who's pathes match the given
+        ``pattern`` are removed from the main database and any attached live
+        selections (via database triggers).
+        '''
+
+        return self._conn.execute(
+            'DELETE FROM files WHERE path GLOB ?', (pattern,)).rowcount
+
+    def _remove_volatile(self):
+        '''
+        Prune leftover volatile content from database.
+
+        If the cleanup handler of an attached selection is not called, e.g. due
+        to a crash or terminated process, volatile content will not be removed
+        properly. This method will delete such leftover entries.
+
+        This is a mainenance operatation which should only be called when no
+        apps are using the database because it would remove volatile content
+        currently used by the apps.
+        '''
+
+        return self._conn.execute(
+            'DELETE FROM files WHERE path LIKE "virtual:volatile:%"').rowcount
 
     def reset(self, path):
         '''
@@ -509,6 +546,20 @@ class Database(object):
         for row in self._conn.execute(sql, args):
             yield to_kind(row[0])
 
+    def iter_paths(self):
+        for row in self._conn.execute('''SELECT path FROM files'''):
+            yield row[0]
+
+    def iter_nnuts_by_file(self):
+        sql = '''
+            SELECT
+                path,
+                (SELECT COUNT(*) FROM nuts WHERE nuts.file_id = files.file_id)
+            FROM files
+        '''
+        for row in self._conn.execute(sql):
+            yield row
+
     def iter_kinds(self, codes=None):
         return self._iter_kinds(codes=codes)
 
@@ -517,6 +568,9 @@ class Database(object):
 
     def iter_counts(self, kind=None):
         return self._iter_counts(kind=kind)
+
+    def get_paths(self):
+        return list(self.iter_paths())
 
     def get_kinds(self, codes=None):
         return list(self.iter_kinds(codes=codes))
@@ -551,6 +605,9 @@ class Database(object):
         sql = '''SELECT COUNT(*) FROM nuts'''
         for row in self._conn.execute(sql):
             return row[0]
+
+    def get_nnuts_by_file(self):
+        return list(self.iter_nnuts_by_file())
 
     def get_total_size(self):
         sql = '''

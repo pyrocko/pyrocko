@@ -57,6 +57,13 @@ def add_parser(subparsers, *args, **kwargs):
         '--help', '-h',
         action='help',
         help='Show this help message and exit.')
+
+    p.add_argument(
+        '--loglevel', '-l',
+        choices=['critical', 'error', 'warning', 'info', 'debug'],
+        default='info',
+        help='Set logger level. Default: %(default)s')
+
     return p
 
 
@@ -125,7 +132,7 @@ def squirrel_from_selection_arguments(args):
     datasets = [
         dataset.read_dataset(dataset_path) for dataset_path in args.datasets]
 
-    persistents = [ds.persistent for ds in datasets]
+    persistents = [ds.persistent or '' for ds in datasets if ds.persistent]
     if args.persistent:
         persistent = args.persistent
     elif persistents:
@@ -134,8 +141,12 @@ def squirrel_from_selection_arguments(args):
             raise error.SquirrelError(
                 'Given datasets specify different `persistent` settings.')
 
-        logger.info(
-            'Persistent selection requested by dataset: %s' % persistent)
+        if persistent:
+            logger.info(
+                'Persistent selection requested by dataset: %s' % persistent)
+        else:
+            persistent = None
+
     else:
         persistent = None
 
@@ -213,3 +224,27 @@ def squirrel_query_from_arguments(args):
         d['codes'] = tuple(args.codes.split('.'))
 
     return d
+
+
+class SquirrelCommand(object):
+
+    def add_parser(self, subparsers, *args, **kwargs):
+        return add_parser(subparsers, *args, **kwargs)
+
+    def add_selection_arguments(self, p):
+        return add_selection_arguments(p)
+
+    def add_query_arguments(self, p):
+        return add_query_arguments(p)
+
+    def squirrel_query_from_arguments(self, args):
+        return squirrel_query_from_arguments(args)
+
+    def squirrel_from_selection_arguments(self, args):
+        return squirrel_from_selection_arguments(args)
+
+    def fail(self, message):
+        raise error.SquirrelError(message)
+
+
+__all__ = ['SquirrelCommand']

@@ -18,12 +18,14 @@ except ImportError:
 import os.path as op
 from .base import Source, Constraint
 from ..model import make_waveform_promise_nut, ehash, InvalidWaveform, \
-    order_summary, WaveformOrder
+    order_summary, WaveformOrder, g_tmin, g_tmax, codes_to_str_abbreviated
+from ..database import ExecuteGet1Error
 from pyrocko.client import fdsn
 
 from pyrocko import util, trace, io
-from pyrocko.io_common import FileLoadError
+from pyrocko.io.io_common import FileLoadError
 from pyrocko.io import stationxml
+from pyrocko.progress import progress
 
 from pyrocko.guts import Object, String, Timestamp, List, Tuple, Int, Dict, \
     Duration, Bool
@@ -37,6 +39,10 @@ logger = logging.getLogger('psq.client.fdsn')
 sites_not_supporting = {
     'startbefore': ['geonet'],
     'includerestricted': ['geonet']}
+
+
+def make_task(*args):
+    return progress.task(*args, logger=logger)
 
 
 def plural_s(x):
@@ -64,6 +70,22 @@ def diff(fn_a, fn_b):
 
                 if len(a) == 0 or len(b) == 0:
                     return False
+
+
+def move_or_keep(fn_temp, fn):
+    if op.exists(fn):
+        if diff(fn, fn_temp):
+            os.rename(fn_temp, fn)
+            status = 'updated'
+        else:
+            os.unlink(fn_temp)
+            status = 'upstream unchanged'
+
+    else:
+        os.rename(fn_temp, fn)
+        status = 'new'
+
+    return status
 
 
 class Archive(Object):
@@ -259,6 +281,9 @@ class FDSNSource(Source):
         self._source_id = 'client:fdsn:%s' % self._hash
         self._error_infos = []
 
+    def describe(self):
+        return self._source_id
+
     def make_hash(self):
         s = self.site
         s += 'notoken' \
@@ -317,11 +342,32 @@ class FDSNSource(Source):
             check=check,
             progress_viewer=progress_viewer)
 
+        fn = self._get_channels_path()
+        if os.path.exists(fn):
+            squirrel.add(fn)
+
+        squirrel.add_virtual(
+            [], virtual_paths=[self._source_id])
+
+        responses_path = self._get_responses_path()
+        if os.path.exists(responses_path):
+            squirrel.add(responses_path, kinds=['response'])
+
     def _get_constraint_path(self):
         return op.join(self._cache_path, self._hash, 'constraint.pickle')
 
     def _get_channels_path(self):
         return op.join(self._cache_path, self._hash, 'channels.stationxml')
+
+    def _get_responses_path(self, nslc=None):
+        dirpath = op.join(
+            self._cache_path, self._hash, 'responses')
+
+        if nslc is None:
+            return dirpath
+        else:
+            return op.join(
+                dirpath, 'response_%s_%s_%s_%s.stationxml' % nslc)
 
     def _get_waveforms_path(self):
         if self.shared_waveforms:
@@ -333,12 +379,15 @@ class FDSNSource(Source):
         log_prefix = 'FDSN "%s" metadata:' % self.site
         target(' '.join((log_prefix, message)))
 
+    def _log_responses(self, message, target=logger.info):
+        log_prefix = 'FDSN "%s" responses:' % self.site
+        target(' '.join((log_prefix, message)))
+
     def _log_info_data(self, *args):
         log_prefix = 'FDSN "%s" waveforms:' % self.site
         logger.info(' '.join((log_prefix,) + args))
 
-    def _str_expires(self, now):
-        t = self._get_expiration_time()
+    def _str_expires(self, t, now):
         if t is None:
             return 'expires: never'
         else:
@@ -351,14 +400,14 @@ class FDSNSource(Source):
         if constraint is None:
             constraint = Constraint()
 
-        expiration_time = self._get_expiration_time()
+        expiration_time = self._get_channels_expiration_time()
         now = time.time()
 
         log_target = logger.info
         if self._constraint and self._constraint.contains(constraint) \
                 and (expiration_time is None or now < expiration_time):
 
-            s_case = 'using cached'
+            status = 'using cached'
 
         else:
             if self._constraint:
@@ -376,28 +425,21 @@ class FDSNSource(Source):
                 fn_temp = fn + '.%i.temp' % os.getpid()
                 channel_sx.dump_xml(filename=fn_temp)
 
-                if op.exists(fn):
-                    if diff(fn, fn_temp):
-                        os.rename(fn_temp, fn)
-                        s_case = 'updated'
-                    else:
-                        os.unlink(fn_temp)
-                        squirrel.get_database().silent_touch(fn)
-                        s_case = 'upstream unchanged'
+                status = move_or_keep(fn_temp, fn)
 
-                else:
-                    os.rename(fn_temp, fn)
-                    s_case = 'new'
+                if status == 'upstream unchanged':
+                    squirrel.get_database().silent_touch(fn)
 
                 self._constraint = constraint
                 self._dump_constraint()
 
             except OSError as e:
-                s_case = 'update failed (%s)' % str(e)
+                status = 'update failed (%s)' % str(e)
                 log_target = logger.error
 
+        expiration_time = self._get_channels_expiration_time()
         self._log_meta(
-            '%s (%s)' % (s_case, self._str_expires(now)),
+            '%s (%s)' % (status, self._str_expires(expiration_time, now)),
             target=log_target)
 
         fn = self._get_channels_path()
@@ -408,22 +450,23 @@ class FDSNSource(Source):
         extra_args = {}
 
         if self.site in sites_not_supporting['startbefore']:
-            if constraint.tmin is not None:
+            if constraint.tmin is not None and constraint.tmin != g_tmin:
                 extra_args['starttime'] = constraint.tmin
-            if constraint.tmax is not None:
+            if constraint.tmax is not None and constraint.tmax != g_tmax:
                 extra_args['endtime'] = constraint.tmax
 
         else:
-            if constraint.tmin is not None:
+            if constraint.tmin is not None and constraint.tmin != g_tmin:
                 extra_args['endafter'] = constraint.tmin
-            if constraint.tmax is not None:
+            if constraint.tmax is not None and constraint.tmax != g_tmax:
                 extra_args['startbefore'] = constraint.tmax
 
         if self.site not in sites_not_supporting['includerestricted']:
             extra_args.update(
                 includerestricted=(
                     self.user_credentials is not None
-                    or self.auth_token is not None))
+                    or self.auth_token is not None
+                    or self.auth_token_path is not None))
 
         if self.query_args is not None:
             extra_args.update(self.query_args)
@@ -439,7 +482,7 @@ class FDSNSource(Source):
             return channel_sx
 
         except fdsn.EmptyResult:
-            return stationxml.FDSNStationXML(source='dummy-emtpy-result')
+            return stationxml.FDSNStationXML(source='dummy-empty-result')
 
     def _load_constraint(self):
         fn = self._get_constraint_path()
@@ -453,29 +496,23 @@ class FDSNSource(Source):
         with open(self._get_constraint_path(), 'wb') as f:
             pickle.dump(self._constraint, f, protocol=2)
 
-    def _get_expiration_time(self):
+    def _get_expiration_time(self, path):
         if self.expires is None:
             return None
 
         try:
-            path = self._get_channels_path()
             t = os.stat(path)[8]
             return t + self.expires
 
         except OSError:
             return 0.0
 
-    def update_waveform_promises(self, squirrel, constraint):
-        from pyrocko.squirrel import Squirrel
+    def _get_channels_expiration_time(self):
+        return self._get_expiration_time(self._get_channels_path())
 
-        # get meta information of stuff available through this source
-        sub_squirrel = Squirrel(database=squirrel.get_database())
-        fn = self._get_channels_path()
-        if os.path.exists(fn):
-            sub_squirrel.add([fn], check=False)
-
-        nuts = sub_squirrel.iter_nuts(
-            'channel', constraint.tmin, constraint.tmax)
+    def update_waveform_promises(self, squirrel):
+        cpath = os.path.abspath(self._get_channels_path())
+        nuts = squirrel.iter_nuts('channel', path=cpath)
 
         path = self._source_id
         squirrel.add_virtual(
@@ -489,18 +526,22 @@ class FDSNSource(Source):
         if self.user_credentials is not None:
             d['user'], d['passwd'] = self.user_credentials
 
-        if self.auth_token is not None:
+        if self.auth_token is not None or self.auth_token_path is not None:
             d['token'] = self.get_auth_token()
 
         return d
 
     def download_waveforms(
-            self, squirrel, orders, success, error_permanent, error_temporary):
+            self, orders, success, batch_add, error_permanent,
+            error_temporary):
 
         elog = ErrorLog(site=self.site)
         orders.sort(key=orders_sort_key)
         neach = 20
         i = 0
+        task = make_task(
+            'FDSN "%s" waveforms: downloading' % self.site, len(orders))
+
         while i < len(orders):
             orders_now = orders[i:i+neach]
             selection_now = orders_to_selection(orders_now)
@@ -510,6 +551,7 @@ class FDSNSource(Source):
             self._log_info_data(
                 'downloading, %s' % order_summary(orders_now))
 
+            all_paths = []
             with tempfile.NamedTemporaryFile() as f:
                 try:
                     data = fdsn.dataselect(
@@ -565,7 +607,8 @@ class FDSNSource(Source):
                                     elog.append(now, order, 'partial result')
 
                             paths = self._archive.add(trs_order)
-                            squirrel.add(paths)
+                            all_paths.extend(paths)
+
                             nsuccess += 1
                             success(order)
 
@@ -586,10 +629,121 @@ class FDSNSource(Source):
                 '%i download%s successful' % (nsuccess, plural_s(nsuccess))
                 + (', %s' % emessage if emessage else ''))
 
+            if all_paths:
+                batch_add(all_paths)
+
             i += neach
+            task.update(i)
 
         for agg in elog.iter_aggregates():
             logger.warn(str(agg))
+
+        task.done()
+
+    def _do_response_query(self, selection):
+        extra_args = {}
+
+        if self.site not in sites_not_supporting['includerestricted']:
+            extra_args.update(
+                includerestricted=(
+                    self.user_credentials is not None
+                    or self.auth_token is not None
+                    or self.auth_token_path is not None))
+
+        self._log_responses('querying...')
+
+        try:
+            response_sx = fdsn.station(
+                site=self.site,
+                level='response',
+                selection=selection,
+                **extra_args)
+
+            return response_sx
+
+        except fdsn.EmptyResult:
+            return stationxml.FDSNStationXML(source='dummy-empty-result')
+
+    def update_response_inventory(self, squirrel, constraint):
+        cpath = os.path.abspath(self._get_channels_path())
+        nuts = squirrel.iter_nuts('channel', path=cpath)
+
+        tmin = g_tmin
+        tmax = g_tmax
+
+        selection = []
+        now = time.time()
+        have = set()
+        status = defaultdict(list)
+        for nut in nuts:
+            nslc = nut.codes_tuple[1:5]
+            if nslc in have:
+                continue
+            have.add(nslc)
+
+            fn = self._get_responses_path(nslc)
+            expiration_time = self._get_expiration_time(fn)
+            if os.path.exists(fn) \
+                    and (expiration_time is None or now < expiration_time):
+                status['using cached'].append(nslc)
+            else:
+                selection.append(nslc + (tmin, tmax))
+
+        dummy = stationxml.FDSNStationXML(source='dummy-empty')
+        neach = 100
+        i = 0
+        fns = []
+        while i < len(selection):
+            selection_now = selection[i:i+neach]
+            i += neach
+
+            try:
+                sx = self._do_response_query(selection_now)
+            except Exception as e:
+                status['update failed (%s)' % str(e)].extend(
+                    entry[:4] for entry in selection_now)
+                continue
+
+            sx.created = None  # timestamp would ruin diff
+
+            by_nslc = dict(stationxml.split_channels(sx))
+
+            for entry in selection_now:
+                nslc = entry[:4]
+                response_sx = by_nslc.get(nslc, dummy)
+                try:
+                    fn = self._get_responses_path(nslc)
+                    fn_temp = fn + '.%i.temp' % os.getpid()
+
+                    util.ensuredirs(fn_temp)
+                    response_sx.dump_xml(filename=fn_temp)
+
+                    status_this = move_or_keep(fn_temp, fn)
+
+                    if status_this == 'upstream unchanged':
+                        try:
+                            squirrel.get_database().silent_touch(fn)
+                        except ExecuteGet1Error:
+                            pass
+
+                    status[status_this].append(nslc)
+                    fns.append(fn)
+
+                except OSError as e:
+                    status['update failed (%s)' % str(e)].append(nslc)
+
+        for k in sorted(status):
+            if k.find('failed') != -1:
+                log_target = logger.error
+            else:
+                log_target = logger.info
+
+            self._log_responses(
+                '%s: %s' % (
+                    k, codes_to_str_abbreviated(status[k])),
+                target=log_target)
+
+        squirrel.add(fns, kinds=['response'])
 
 
 __all__ = [

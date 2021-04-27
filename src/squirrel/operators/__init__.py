@@ -5,8 +5,8 @@
 
 from __future__ import absolute_import, print_function
 
-from . import cli, common
-from .cli import *  # noqa
-from .common import *  # noqa
+from . import base
 
-__all__ = cli.__all__ + common.__all__
+from .base import *  # noqa
+
+__all__ = base.__all__

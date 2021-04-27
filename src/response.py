@@ -344,13 +344,20 @@ class DigitalPoleZeroResponse(FrequencyResponse):
             self, zeros=aslist(zeros), poles=aslist(poles), constant=constant,
             deltat=deltat, **kwargs)
 
+    def check_sampling_rate(self):
+        if self.deltat == 0.0:
+            raise InvalidResponseError(
+                'Invalid digital response: sampling rate undefined')
+
     def get_fmax(self):
+        self.check_sampling_rate()
         return 0.5 / self.deltat
 
     def evaluate(self, freqs):
+        self.check_sampling_rate()
         return signal.freqz_zpk(
-            self.zeros, self.poles, self.constant, freqs,
-            fs=1.0/self.deltat)[1]
+            self.zeros, self.poles, self.constant,
+            freqs*(2.*math.pi*self.deltat))[1]
 
     def is_scalar(self):
         return len(self.zeros) == 0 and len(self.poles) == 0
@@ -365,6 +372,7 @@ class DigitalPoleZeroResponse(FrequencyResponse):
             raise IsNotScalar()
 
     def to_digital(self, deltat):
+        self.check_sampling_rate()
         from scipy.signal import zpk2tf
 
         b, a = zpk2tf(self.zeros, self.poles, self.constant)
@@ -536,10 +544,18 @@ class DigitalFilterResponse(FrequencyResponse):
             self, b=aslist(b), a=aslist(a), deltat=float(deltat),
             drop_phase=drop_phase, **kwargs)
 
+    def check_sampling_rate(self):
+        if self.deltat == 0.0:
+            raise InvalidResponseError(
+                'Invalid digital response: sampling rate undefined')
+
     def get_fmax(self):
+        self.check_sampling_rate()
         return 0.5 / self.deltat
 
     def evaluate(self, freqs):
+        self.check_sampling_rate()
+
         ok = freqs <= 0.5/self.deltat
         coeffs = num.zeros(freqs.size, dtype=complex)
 
@@ -553,6 +569,8 @@ class DigitalFilterResponse(FrequencyResponse):
             return coeffs
 
     def filter(self, tr):
+        self.check_sampling_rate()
+
         from pyrocko import trace
         trace.assert_same_sampling_rate(self, tr)
         tr_new = tr.copy(data=False)
@@ -603,7 +621,6 @@ class MultiplyResponse(FrequencyResponse):
         if not fmaxs:
             return None
         else:
-            print(fmaxs)
             return min(fmaxs)
 
     def evaluate(self, freqs):
@@ -711,6 +728,8 @@ def simplify_responses(responses):
         if poles or zeros:
             out.insert(0, PoleZeroResponse(
                 poles=poles, zeros=zeros, constant=constant))
+        elif constant != 1.0:
+            out.insert(0, Gain(constant=constant))
 
         return out
 
@@ -724,8 +743,8 @@ def simplify_responses(responses):
     def combine_gains(responses):
         non_scalars, scalars = split(responses, lambda resp: resp.is_scalar())
         if scalars:
-            factor = num.product(resp.get_scalar() for resp in scalars)
-            yield Gain(factor)
+            factor = num.prod([resp.get_scalar() for resp in scalars])
+            yield Gain(constant=factor)
 
         for resp in non_scalars:
             yield resp

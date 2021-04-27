@@ -16,7 +16,7 @@ import numpy as num
 
 from pyrocko.guts import (StringChoice, StringPattern, UnicodePattern, String,
                           Unicode, Int, Float, List, Object, Timestamp,
-                          ValidationError, TBase, re_tz)
+                          ValidationError, TBase, re_tz, Any, Tuple)
 from pyrocko.guts import load_xml  # noqa
 from pyrocko.util import hpfloat, time_to_str, get_time_float
 
@@ -46,16 +46,116 @@ conversion = {
     ('M/S**2', 'M/S**2'): None}
 
 
-class Inconsistencies(Exception):
+class StationXMLError(Exception):
     pass
 
 
-class NoResponseInformation(Exception):
+class Inconsistencies(StationXMLError):
     pass
 
 
-class MultipleResponseInformation(Exception):
+class NoResponseInformation(StationXMLError):
     pass
+
+
+class MultipleResponseInformation(StationXMLError):
+    pass
+
+
+class InconsistentResponseInformation(StationXMLError):
+    pass
+
+
+class InconsistentChannelLocations(StationXMLError):
+    pass
+
+
+class InvalidRecord(StationXMLError):
+    def __init__(self, line):
+        StationXMLError.__init__(self)
+        self._line = line
+
+    def __str__(self):
+        return 'Invalid record: "%s"' % self._line
+
+
+_exceptions = dict(
+    Inconsistencies=Inconsistencies,
+    NoResponseInformation=NoResponseInformation,
+    MultipleResponseInformation=MultipleResponseInformation,
+    InconsistentResponseInformation=InconsistentResponseInformation,
+    InconsistentChannelLocations=InconsistentChannelLocations,
+    InvalidRecord=InvalidRecord,
+    ValueError=ValueError)
+
+
+_logs = dict(
+    info=logger.info,
+    warning=logger.warning,
+    error=logger.error)
+
+
+class DeliveryError(StationXMLError):
+    pass
+
+
+class Delivery(Object):
+
+    def __init__(self, payload=None, log=None, errors=None, error=None):
+        if payload is None:
+            payload = []
+
+        if log is None:
+            log = []
+
+        if errors is None:
+            errors = []
+
+        if error is not None:
+            errors.append(error)
+
+        Object.__init__(self, payload=payload, log=log, errors=errors)
+
+    payload = List.T(Any.T())
+    log = List.T(Tuple.T(3, String.T()))
+    errors = List.T(Tuple.T(3, String.T()))
+
+    def extend(self, other):
+        self.payload.extend(other.payload)
+        self.log.extend(other.log)
+        self.errors.extend(other.errors)
+
+    def extend_without_payload(self, other):
+        self.log.extend(other.log)
+        self.errors.extend(other.errors)
+        return other.payload
+
+    def emit_log(self):
+        for name, message, context in self.log:
+            message = '%s: %s' % (context, message)
+            _logs[name](message)
+
+    def expect(self):
+        self.emit_log()
+        if self.errors:
+            name, message, context = self.errors[0]
+            if context:
+                message += ' (%s)' % context
+
+            if self.errors > 1:
+                message += ' Additional errors pending.'
+
+            raise _exceptions[name](message)
+
+        return self.payload
+
+    def expect_one(self):
+        payload = self.expect()
+        if len(payload) != 1:
+            raise DeliveryError(
+                'Expected 1 element but got %n.' % len(payload))
+
+        return payload[0]
 
 
 def wrap(s, width=80, indent=4):
@@ -94,38 +194,39 @@ def evaluate1(resp, f):
     return resp.evaluate(num.array([f], dtype=float))[0]
 
 
-class InconsistentResponseInformation(Exception):
-    pass
-
-
-def check_resp(resp, value, frequency, limit_db, prelude=''):
-    if not value or not frequency:
-        logger.warn('Cannot validate frequency response')
-        return
+def check_resp(resp, value, frequency, limit_db, prelude, context):
 
     value_resp = num.abs(evaluate1(resp, frequency))
 
     if value_resp == 0.0:
-        raise InconsistentResponseInformation(
+        return Delivery(log=[(
+            'warning',
             '%s\n'
-            '  computed response is zero' % prelude)
+            '  computed response is zero' % prelude,
+            context)])
 
     diff_db = 20.0 * num.log10(value_resp/value)
 
     if num.abs(diff_db) > limit_db:
-        raise InconsistentResponseInformation(
+        return Delivery(log=[(
+            'warning',
             '%s\n'
             '  reported value: %g\n'
             '  computed value: %g\n'
             '  at frequency [Hz]: %g\n'
+            '  factor: %g\n'
             '  difference [dB]: %g\n'
             '  limit [dB]: %g' % (
                 prelude,
                 value,
                 value_resp,
                 frequency,
+                value_resp/value,
                 diff_db,
-                limit_db))
+                limit_db),
+            context)])
+
+    return Delivery()
 
 
 def tts(t):
@@ -436,6 +537,10 @@ class Sensitivity(Gain):
     frequency_db_variation = Float.T(optional=True,
                                      xmltagname='FrequencyDBVariation')
 
+    def get_pyrocko_response(self):
+        return Delivery(
+            [response.PoleZeroResponse(constant=self.value)])
+
 
 class Coefficient(FloatNoUnit):
     number = Counter.T(optional=True, xmlstyle='attribute')
@@ -588,41 +693,46 @@ class FIR(BaseFilter):
     def get_pyrocko_response(
             self, context, deltat, delay_responses, normalization_frequency):
 
+        context += self.summary()
+
         if not self.numerator_coefficient_list:
-            return []
+            return Delivery([])
 
         b = self.get_effective_coefficients()
 
-        if not deltat:
-            raise NoResponseInformation(
-                'cannot get digital response without knowing sampling '
-                'interval (%s)' % context)
-
+        log = []
         drop_phase = self.get_effective_symmetry() != 'NONE'
 
-        resps = []
-        resp = response.DigitalFilterResponse(
-            b.tolist(), [1.0], deltat, drop_phase=drop_phase)
+        if not deltat:
+            log.append((
+                'error',
+                'Digital response requires knowledge about sampling '
+                'interval. Response will be unusable.',
+                context))
 
-        if normalization_frequency is not None:
+        resp = response.DigitalFilterResponse(
+            b.tolist(), [1.0], deltat or 0.0, drop_phase=drop_phase)
+
+        if normalization_frequency is not None and deltat is not None:
             normalization_frequency = 0.0
             normalization = num.abs(evaluate1(resp, normalization_frequency))
 
             if num.abs(normalization - 1.0) > 1e-2:
-                logger.warn(
+                log.append((
+                    'warning',
                     'FIR filter coefficients are not normalized. Normalizing '
-                    'them. Factor: %g (%s)' % (normalization, context))
+                    'them. Factor: %g' % normalization, context))
 
             resp = response.DigitalFilterResponse(
                 (b/normalization).tolist(), [1.0], deltat,
                 drop_phase=drop_phase)
 
-        resps.append(resp)
+        resps = [resp]
 
         if not drop_phase:
             resps.extend(delay_responses)
 
-        return resps
+        return Delivery(resps, log=log)
 
 
 class Coefficients(BaseFilter):
@@ -662,12 +772,14 @@ class Coefficients(BaseFilter):
     def get_pyrocko_response(
             self, context, deltat, delay_responses, normalization_frequency):
 
+        context += self.summary()
+
         factor = 1.0
         if self.cf_transfer_function_type == 'ANALOG (HERTZ)':
             factor = 2.0*math.pi
 
         if not self.numerator_list and not self.denominator_list:
-            return []
+            return Delivery(payload=[])
 
         b = num.array(
             [v.value*factor for v in self.numerator_list], dtype=num.float)
@@ -676,6 +788,7 @@ class Coefficients(BaseFilter):
             [1.0] + [v.value*factor for v in self.denominator_list],
             dtype=num.float)
 
+        log = []
         resps = []
         if self.cf_transfer_function_type in [
                 'ANALOG (RADIANS/SECOND)', 'ANALOG (HERTZ)']:
@@ -683,23 +796,26 @@ class Coefficients(BaseFilter):
 
         elif self.cf_transfer_function_type == 'DIGITAL':
             if not deltat:
-                raise NoResponseInformation(
-                    'cannot get digital response without knowing sampling '
-                    'interval (%s)' % context)
+                log.append((
+                    'error',
+                    'Digital response requires knowledge about sampling '
+                    'interval. Response will be unusable.',
+                    context))
 
             drop_phase = self.is_symmetric_fir()
             resp = response.DigitalFilterResponse(
-                b, a, deltat, drop_phase=drop_phase)
+                b, a, deltat or 0.0, drop_phase=drop_phase)
 
-            if normalization_frequency is not None:
+            if normalization_frequency is not None and deltat is not None:
                 normalization = num.abs(evaluate1(
                     resp, normalization_frequency))
 
                 if num.abs(normalization - 1.0) > 1e-2:
-                    logger.warn(
+                    log.append((
+                        'warning',
                         'FIR filter coefficients are not normalized. '
-                        'Normalizing them. Factor: %g (%s)' % (
-                            normalization, context))
+                        'Normalizing them. Factor: %g' % normalization,
+                        context))
 
                 resp = response.DigitalFilterResponse(
                     (b/normalization).tolist(), [1.0], deltat,
@@ -711,9 +827,12 @@ class Coefficients(BaseFilter):
                 resps.extend(delay_responses)
 
         else:
-            raise ValueError(self.cf_transfer_function_type)
+            return Delivery(error=(
+                'ValueError',
+                'Unknown transfer function type: %s' % (
+                    self.cf_transfer_function_type)))
 
-        return resps
+        return Delivery(payload=resps, log=log)
 
 
 class Latitude(FloatWithUnit):
@@ -757,7 +876,9 @@ class PolesZeros(BaseFilter):
             len(self.pole_list),
             len(self.zero_list))
 
-    def get_pyrocko_response(self, context=None, deltat=None):
+    def get_pyrocko_response(self, context='', deltat=None):
+
+        context += self.summary()
 
         factor = 1.0
         cfactor = 1.0
@@ -766,12 +887,15 @@ class PolesZeros(BaseFilter):
             cfactor = (2. * math.pi)**(
                 len(self.pole_list) - len(self.zero_list))
 
+        log = []
         if self.normalization_factor is None \
                 or self.normalization_factor == 0.0:
 
-            logger.warn(
-                'no pole-zero normalization factor given. Assuming a value of '
-                '1.0 (%s)' % context)
+            log.append((
+                'warning',
+                'No pole-zero normalization factor given. '
+                'Assuming a value of 1.0',
+                context))
 
             nfactor = 1.0
         else:
@@ -784,19 +908,24 @@ class PolesZeros(BaseFilter):
                 poles=[p.value()*factor for p in self.pole_list])
         else:
             if not deltat:
-                raise NoResponseInformation(
-                    'cannot get digital pz response without knowing sampling '
-                    'interval (%s)' % context)
+                log.append((
+                    'error',
+                    'Digital response requires knowledge about sampling '
+                    'interval. Response will be unusable.',
+                    context))
 
             resp = response.DigitalPoleZeroResponse(
                 constant=nfactor*cfactor,
                 zeros=[z.value()*factor for z in self.zero_list],
                 poles=[p.value()*factor for p in self.pole_list],
-                deltat=deltat)
+                deltat=deltat or 0.0)
 
         if not self.normalization_frequency.value:
-            logger.warn(
-                'cannot check pole-zero normalization factor (%s)' % context)
+            log.append((
+                'warning',
+                'Cannot check pole-zero normalization factor: '
+                'No normalization frequency given.',
+                context))
 
         else:
             computed_normalization_factor = nfactor / abs(evaluate1(
@@ -806,15 +935,16 @@ class PolesZeros(BaseFilter):
                 computed_normalization_factor / nfactor)
 
             if abs(db) > 0.17:
-                logger.warn(
-                    'computed and reported normalization factors differ by '
-                    '%g dB: computed: %g, reported: %g (%s)' % (
+                log.append((
+                    'warning',
+                    'Computed and reported normalization factors differ by '
+                    '%g dB: computed: %g, reported: %g' % (
                         db,
                         computed_normalization_factor,
-                        nfactor,
-                        context))
+                        nfactor),
+                    context))
 
-        return [resp]
+        return Delivery([resp], log)
 
 
 class ResponseListElement(Object):
@@ -863,9 +993,9 @@ class Decimation(Object):
 
     def get_pyrocko_response(self):
         if self.delay and self.delay.value != 0.0:
-            return [response.DelayResponse(delay=-self.delay.value)]
-
-        return []
+            return Delivery([response.DelayResponse(delay=-self.delay.value)])
+        else:
+            return Delivery([])
 
 
 class Operator(Object):
@@ -952,7 +1082,12 @@ class ResponseStage(Object):
 
     def get_squirrel_response_stage(self, context):
         from pyrocko.squirrel.model import ResponseStage
-        from pyrocko.squirrel.error import ConversionError
+
+        delivery = Delivery()
+        delivery_pr = self.get_pyrocko_response(context)
+        log = delivery_pr.log
+        delivery_pr.log = []
+        elements = delivery.extend_without_payload(delivery_pr)
 
         def to_quantity(unit):
             trans = {
@@ -961,30 +1096,43 @@ class ResponseStage(Object):
                 'M/S**2': 'acceleration',
                 'V': 'voltage',
                 'COUNTS': 'counts',
-                'PA': 'pressure'}
+                'COUNT': 'counts',
+                'PA': 'pressure',
+                'RAD/S': 'rotation'}
 
             if unit is None:
                 return None
 
             name = unit.name.upper()
-            try:
+            if name in trans:
                 return trans[name]
-            except KeyError:
-                raise ConversionError(
-                    'Units not supported by Squirrel: %s' % name)
+            else:
+                delivery.log.append((
+                    'warning',
+                    'Units not supported by Squirrel framework: %s' % (
+                        unit.name.upper() + (
+                            ' (%s)' % unit.description
+                            if unit.description else '')),
+                    context))
 
-        return ResponseStage(
+                return 'unsupported_quantity(%s)' % unit
+
+        delivery.payload = [ResponseStage(
             input_quantity=to_quantity(self.input_units),
             output_quantity=to_quantity(self.output_units),
             input_sample_rate=self.input_sample_rate,
             output_sample_rate=self.output_sample_rate,
-            elements=self.get_pyrocko_response(context))
+            elements=elements,
+            log=log)]
+
+        return delivery
 
     def get_pyrocko_response(self, context, gain_only=False):
 
         context = context + ', stage %i' % self.number
 
         responses = []
+        log = []
         if self.stage_gain:
             normalization_frequency = self.stage_gain.frequency or 0.0
         else:
@@ -997,10 +1145,20 @@ class ResponseStage(Object):
                 rate = self.decimation.input_sample_rate.value
                 if rate > 0.0:
                     deltat = 1.0 / rate
-                delay_responses = self.decimation.get_pyrocko_response()
+                delivery = self.decimation.get_pyrocko_response()
+                if delivery.errors:
+                    return delivery
+
+                delay_responses = delivery.payload
+                log.extend(delivery.log)
 
             for pzs in self.poles_zeros_list:
-                pz_resps = pzs.get_pyrocko_response(context, deltat)
+                delivery = pzs.get_pyrocko_response(context, deltat)
+                if delivery.errors:
+                    return delivery
+
+                pz_resps = delivery.payload
+                log.extend(delivery.log)
                 responses.extend(pz_resps)
 
                 # emulate incorrect? evalresp behaviour
@@ -1016,44 +1174,64 @@ class ResponseStage(Object):
                     factor = anorm/asens
 
                     if abs(factor - 1.0) > 0.01:
-                        logger.warn(
+                        log.append((
+                            'warning',
                             'PZ normalization frequency (%g) is different '
                             'from stage gain frequency (%s) -> Emulating '
                             'possibly incorrect evalresp behaviour. '
-                            'Correction factor: %g (%s)' % (
+                            'Correction factor: %g' % (
                                 pzs.normalization_frequency.value,
                                 normalization_frequency,
-                                factor,
-                                context))
+                                factor),
+                            context))
 
                         responses.append(
                             response.PoleZeroResponse(constant=factor))
 
             if len(self.poles_zeros_list) > 1:
-                logger.warn(
-                    'multiple poles and zeros records in single response '
-                    'stage (%s)' % context)
+                log.append((
+                    'warning',
+                    'Multiple poles and zeros records in single response '
+                    'stage.',
+                    context))
 
             for cfs in self.coefficients_list + (
                     [self.fir] if self.fir else []):
 
-                responses.extend(cfs.get_pyrocko_response(
+                delivery = cfs.get_pyrocko_response(
                     context, deltat, delay_responses,
-                    normalization_frequency))
+                    normalization_frequency)
+
+                if delivery.errors:
+                    return delivery
+
+                responses.extend(delivery.payload)
+                log.extend(delivery.log)
 
             if len(self.coefficients_list) > 1:
-                logger.warn(
-                    'multiple filter coefficients lists in single response '
-                    'stage (%s)' % context)
+                log.append((
+                    'warning',
+                    'Multiple filter coefficients lists in single response '
+                    'stage.',
+                    context))
 
-            if (self.response_list or self.fir or self.polynomial):
-                logger.debug('unhandled response at stage %i' % self.number)
+            if self.response_list:
+                log.append((
+                    'warning',
+                    'Unhandled response element of type: ResponseList',
+                    context))
+
+            if self.polynomial:
+                log.append((
+                    'warning',
+                    'Unhandled response element of type: Polynomial',
+                    context))
 
         if self.stage_gain:
             responses.append(
                 response.PoleZeroResponse(constant=self.stage_gain.value))
 
-        return responses
+        return Delivery(responses, log)
 
     @property
     def input_units(self):
@@ -1167,55 +1345,74 @@ class Response(Object):
                             'sensitivity output units',
                             sout_units.name.upper()))
 
-    def _sensitivity_check(self, responses, context):
-        checkpoints = []
+    def _sensitivity_checkpoints(self, responses, context):
+        delivery = Delivery()
 
         if self.instrument_sensitivity:
-            trial = response.MultiplyResponse(responses)
             sval = self.instrument_sensitivity.value
             sfreq = self.instrument_sensitivity.frequency
-            if sfreq is None:
-                logger.warn(
-                    'Sensitivity frequency not given (%s).' % context)
+            if sval is None:
+                delivery.log.append((
+                    'warning',
+                    'No sensitivity value given.',
+                    context))
+
+            elif sval is None:
+                delivery.log.append((
+                    'warning',
+                    'Reported sensitivity value is zero.',
+                    context))
+
+            elif sfreq is None:
+                delivery.log.append((
+                    'warning',
+                    'Sensitivity frequency not given.',
+                    context))
 
             else:
+                trial = response.MultiplyResponse(responses)
 
-                checkpoints.append(response.FrequencyResponseCheckpoint(
-                    frequency=sfreq, value=sval))
-
-                checkpoints[-1].validate()
-
-                try:
+                delivery.extend(
                     check_resp(
                         trial, sval, sfreq, 0.1,
-                        prelude='Instrument sensitivity value inconsistent '
-                                'with sensitivity computed from complete '
-                                'response (%s)' % context)
+                        'Instrument sensitivity value inconsistent with '
+                        'sensitivity computed from complete response',
+                        context))
 
-                except InconsistentResponseInformation as e:
-                    logger.warn(str(e))
+                delivery.payload.append(response.FrequencyResponseCheckpoint(
+                    frequency=sfreq, value=sval))
 
-        return checkpoints
+        return delivery
 
     def get_squirrel_response(self, context, **kwargs):
         from pyrocko.squirrel.model import Response
 
         if self.stage_list:
-            all_responses = []
-            sq_stages = []
+            delivery = Delivery()
             for istage, stage in enumerate(self.stage_list):
-                sq_stage = stage.get_squirrel_response_stage(context)
-                all_responses.extend(sq_stage.elements)
-                sq_stages.append(sq_stage)
+                delivery.extend(stage.get_squirrel_response_stage(context))
 
-            self._sensitivity_check(all_responses, context)
+            checkpoints = []
+            if not delivery.errors:
+                all_responses = []
+                for sq_stage in delivery.payload:
+                    all_responses.extend(sq_stage.elements)
 
-            return Response(stages=sq_stages, **kwargs)
+                checkpoints.extend(delivery.extend_without_payload(
+                    self._sensitivity_checkpoints(all_responses, context)))
+
+            sq_stages = delivery.expect()
+
+            return Response(
+                stages=sq_stages,
+                log=delivery.log,
+                checkpoints=checkpoints,
+                **kwargs)
 
         elif self.instrument_sensitivity:
             raise NoResponseInformation(
-                'Only instrument sensitivity given. '
-                'Complete response required (%s).' % context)
+                'Only instrument sensitivity given (won\'t use it). (%s).'
+                % context)
         else:
             raise NoResponseInformation(
                 'Empty instrument response (%s).'
@@ -1224,27 +1421,32 @@ class Response(Object):
     def get_pyrocko_response(
             self, context, fake_input_units=None, stages=(0, 1)):
 
+        delivery = Delivery()
         if self.stage_list:
-            responses = []
             for istage, stage in enumerate(self.stage_list):
-                input_units = stage.input_units.name.upper()
-                responses.extend(stage.get_pyrocko_response(
+                delivery.extend(stage.get_pyrocko_response(
                     context, gain_only=not (
                         stages is None or stages[0] <= istage < stages[1])))
 
         elif self.instrument_sensitivity:
-            responses = [response.PoleZeroResponse(
-                constant=self.instrument_sensitivity.value)]
-        else:
-            responses = []
+            delivery.extend(self.instrument_sensitivity.get_pyrocko_response())
 
-        checkpoints = self._sensitivity_check(responses, context)
+        delivery_cp = self._sensitivity_checkpoints(delivery.payload, context)
+        checkpoints = delivery.extend_without_payload(delivery_cp)
+        if delivery.errors:
+            return delivery
 
         if fake_input_units is not None:
             if not self.instrument_sensitivity or \
                     self.instrument_sensitivity.input_units is None:
 
-                raise NoResponseInformation('no input units given')
+                delivery.errors.append((
+                    'NoResponseInformation',
+                    'No input units given, so cannot convert to requested '
+                    'units: %s' % fake_input_units.upper(),
+                    context))
+
+                return delivery
 
             input_units = self.instrument_sensitivity.input_units.name.upper()
 
@@ -1253,17 +1455,24 @@ class Response(Object):
                     fake_input_units.upper(), input_units]
 
             except KeyError:
-                raise NoResponseInformation(
-                    'cannot convert between units: %s, %s'
-                    % (fake_input_units, input_units))
+                delivery.errors.append((
+                    'NoResponseInformation',
+                    'Cannot convert between units: %s, %s'
+                    % (fake_input_units, input_units),
+                    context))
 
             if conresp is not None:
-                responses.append(conresp)
+                delivery.payload.append(conresp)
                 for checkpoint in checkpoints:
                     checkpoint.value *= num.abs(evaluate1(
                         conresp, checkpoint.frequency))
 
-        return response.MultiplyResponse(responses, checkpoints=checkpoints)
+        delivery.payload = [
+            response.MultiplyResponse(
+                delivery.payload,
+                checkpoints=checkpoints)]
+
+        return delivery
 
     @classmethod
     def from_pyrocko_pz_response(cls, presponse, input_unit, output_unit,
@@ -1904,7 +2113,7 @@ class FDSNStationXML(Object):
                 resps.append(resp.get_pyrocko_response(
                     '.'.join(nslc),
                     fake_input_units=fake_input_units,
-                    stages=stages))
+                    stages=stages).expect_one())
 
         if not resps:
             raise NoResponseInformation('%s.%s.%s.%s' % nslc)
@@ -2027,19 +2236,6 @@ class FDSNStationXML(Object):
                 + '\n  '.join(errors))
 
 
-class InconsistentChannelLocations(Exception):
-    pass
-
-
-class InvalidRecord(Exception):
-    def __init__(self, line):
-        Exception.__init__(self)
-        self._line = line
-
-    def __str__(self):
-        return 'Invalid record: "%s"' % self._line
-
-
 def load_channel_table(stream):
 
     networks = {}
@@ -2149,6 +2345,46 @@ def primitive_merge(sxs):
         created=time.time(),
         network_list=copy.deepcopy(
             sorted(networks, key=lambda x: x.code)))
+
+
+def split_channels(sx):
+
+    sx = copy.deepcopy(sx)
+
+    def lc(channel):
+        return channel.location_code, channel.code
+
+    nslc = None
+    network_list = sx.network_list
+    for network in sorted(network_list, key=lambda network: network.code):
+
+        if nslc is None or nslc[0] != network.code:
+            sx.network_list = [network]
+        else:
+            sx.network_list.append(network)
+
+        station_list = network.station_list
+        for station in sorted(station_list, key=lambda station: station.code):
+            if nslc is None or nslc[:2] != (network.code, station.code):
+                network.station_list = [station]
+            else:
+                network.station_list.append(station)
+
+            channel_list = station.channel_list
+            for channel in sorted(channel_list, key=lc):
+                this_nslc = (network.code, station.code) + lc(channel)
+                if nslc is None or nslc != this_nslc:
+                    if nslc is not None:
+                        yield nslc, copy.deepcopy(sx)
+
+                    station.channel_list = [channel]
+                else:
+                    station.channel_list.append(channel)
+
+                nslc = this_nslc
+
+    if nslc is not None:
+        yield nslc, copy.deepcopy(sx)
 
 
 if __name__ == '__main__':

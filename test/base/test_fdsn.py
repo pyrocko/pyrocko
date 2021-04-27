@@ -1,10 +1,10 @@
 from __future__ import division, print_function, absolute_import
 
 import unittest
-import tempfile
 import numpy as num
 import logging
 import os
+import tempfile
 from pyrocko import util, trace, evalresp
 from pyrocko.io import stationxml
 from pyrocko.client import fdsn, iris
@@ -137,8 +137,8 @@ class FDSNTestCase(unittest.TestCase):
     def test_response(self, ntest=None):
         tmin = stt('2014-01-01 00:00:00')
         tmax = stt('2014-01-02 00:00:00')
-        # LD.PAL
-        # SC.Y22A..UHZ
+        #LD.PAL
+        #SC.Y22A..UHZ
         sx = fdsn.station(
             site='iris',
             #network='II',

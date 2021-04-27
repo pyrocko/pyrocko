@@ -34,7 +34,26 @@ sources:
 
   # Select file format or 'detect' for autodetection.
   format: 'detect'
-'''}
+''',
+
+    'dataset-iris': '''
+--- !squirrel.Dataset
+
+# All file paths referenced below are treated relative to the location of this
+# configuration file, here we may give a common prefix. E.g. setting it to '..'
+# if the configuration file is in the sub-directory '${project_root}/config'
+# allows us to give the paths below relative to '${project_root}'.
+path_prefix: '.'
+
+# Data sources to be added (LocalData, FDSNSource, CatalogSource, ...)
+sources:
+- !squirrel.FDSNSource
+
+  site: iris
+  query_args:
+    channel: '?H?,?L?'
+''',
+}
 
 names = sorted(templates.keys())
 

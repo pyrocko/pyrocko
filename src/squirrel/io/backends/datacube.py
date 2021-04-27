@@ -14,7 +14,7 @@ def provided_formats():
 
 
 def detect(first512):
-    from pyrocko import datacube
+    from pyrocko.io import datacube
 
     if datacube.detect(first512):
         return 'datacube'
@@ -25,7 +25,7 @@ def detect(first512):
 def iload(format, file_path, segment, content):
     assert format == 'datacube'
 
-    from pyrocko import datacube
+    from pyrocko.io import datacube
 
     load_data = 'waveform' in content
 

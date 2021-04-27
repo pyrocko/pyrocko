@@ -10,7 +10,7 @@ import threading
 import logging
 
 from pyrocko import util
-from pyrocko.io_common import FileLoadError
+from pyrocko.io.io_common import FileLoadError
 from pyrocko.progress import progress
 
 from . import error, io, model
@@ -33,9 +33,8 @@ def make_unique_name():
     return name
 
 
-def make_task(*args, **kwargs):
-    kwargs['logger'] = logger
-    return progress.task(*args, **kwargs)
+def make_task(*args):
+    return progress.task(*args, logger=logger)
 
 
 doc_snippets = dict(
@@ -149,6 +148,7 @@ class Selection(object):
         self._conn = self._database.get_connection()
         self._sources = []
         self._is_new = True
+        self._volatile_paths = []
 
         if persistent is not None:
             self._is_new = 1 == self._conn.execute(
@@ -179,6 +179,7 @@ class Selection(object):
 
     def __del__(self):
         if hasattr(self, '_conn') and self._conn:
+            self._cleanup()
             if not self._persistent:
                 self._delete()
             else:
@@ -208,6 +209,17 @@ class Selection(object):
         '''
         return self._database
 
+    def _cleanup(self):
+        '''
+        Perform cleanup actions before database connection is closed.
+
+        Removes volatile content from database.
+        '''
+
+        while self._volatile_paths:
+            path = self._volatile_paths.pop()
+            self._database.remove(path)
+
     def _delete(self):
         '''
         Destroy the tables assoctiated with this selection.
@@ -232,7 +244,8 @@ class Selection(object):
             self,
             paths,
             kind_mask=model.g_kind_mask_all,
-            format='detect'):
+            format='detect',
+            show_progress=True):
 
         '''
         Add files to the selection.
@@ -257,8 +270,10 @@ class Selection(object):
         if isinstance(paths, str):
             paths = [paths]
 
-        task = make_task('Gathering file names')
-        paths = task(paths)
+        if show_progress:
+            task = make_task('Gathering file names')
+            paths = task(paths)
+
         paths = util.short_to_list(200, paths)
 
         if isinstance(paths, list) and len(paths) <= 200:
@@ -271,8 +286,10 @@ class Selection(object):
                     VALUES (NULL, ?, NULL, NULL, NULL)
                 ''', ((x,) for x in paths))
 
-            task = make_task('Preparing database', 3)
-            task.update(0, condition='pruning stale information')
+            if show_progress:
+                task = make_task('Preparing database', 3)
+                task.update(0, condition='pruning stale information')
+
             self._conn.executemany(self._sql(
                 '''
                     DELETE FROM %(db)s.%(file_states)s
@@ -284,7 +301,9 @@ class Selection(object):
                 '''), (
                     (path, kind_mask, format) for path in paths))
 
-            task.update(1, condition='adding file names to selection')
+            if show_progress:
+                task.update(1, condition='adding file names to selection')
+
             self._conn.executemany(self._sql(
                 '''
                     INSERT OR IGNORE INTO %(db)s.%(file_states)s
@@ -293,7 +312,9 @@ class Selection(object):
                     WHERE files.path = ?
                 '''), ((kind_mask, format, path) for path in paths))
 
-            task.update(2, condition='updating file states')
+            if show_progress:
+                task.update(2, condition='updating file states')
+
             self._conn.executemany(self._sql(
                 '''
                     UPDATE %(db)s.%(file_states)s
@@ -305,8 +326,9 @@ class Selection(object):
                         AND file_state != 0
                 '''), ((path,) for path in paths))
 
-            task.update(3)
-            task.done()
+            if show_progress:
+                task.update(3)
+                task.done()
 
         else:
 
@@ -320,8 +342,10 @@ class Selection(object):
                 'INSERT INTO temp.%(bulkinsert)s VALUES (?)'),
                 ((x,) for x in paths))
 
-            task = make_task('Preparing database', 5)
-            task.update(0, condition='adding file names to database')
+            if show_progress:
+                task = make_task('Preparing database', 5)
+                task.update(0, condition='adding file names to database')
+
             self._conn.execute(self._sql(
                 '''
                     INSERT OR IGNORE INTO files
@@ -329,7 +353,9 @@ class Selection(object):
                     FROM temp.%(bulkinsert)s
                 '''))
 
-            task.update(1, condition='pruning stale information')
+            if show_progress:
+                task.update(1, condition='pruning stale information')
+
             self._conn.execute(self._sql(
                 '''
                     DELETE FROM %(db)s.%(file_states)s
@@ -341,7 +367,9 @@ class Selection(object):
                         AND ( kind_mask != ? OR format != ? )
                 '''), (kind_mask, format))
 
-            task.update(2, condition='adding file names to selection')
+            if show_progress:
+                task.update(2, condition='adding file names to selection')
+
             self._conn.execute(self._sql(
                 '''
                     INSERT OR IGNORE INTO %(db)s.%(file_states)s
@@ -351,7 +379,9 @@ class Selection(object):
                     ON temp.%(bulkinsert)s.path == files.path
                 '''), (kind_mask, format))
 
-            task.update(3, condition='updating file states')
+            if show_progress:
+                task.update(3, condition='updating file states')
+
             self._conn.execute(self._sql(
                 '''
                     UPDATE %(db)s.%(file_states)s
@@ -364,11 +394,15 @@ class Selection(object):
                         AND file_state != 0
                 '''))
 
-            task.update(4, condition='dropping temporary data')
+            if show_progress:
+                task.update(4, condition='dropping temporary data')
+
             self._conn.execute(self._sql(
                 'DROP TABLE temp.%(bulkinsert)s'))
-            task.update(5)
-            task.done()
+
+            if show_progress:
+                task.update(5)
+                task.done()
 
     def remove(self, paths):
         '''
