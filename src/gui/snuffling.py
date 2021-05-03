@@ -821,7 +821,8 @@ class Snuffling(object):
 
                     stations[skey] = None
 
-        return event, [st for st in stations.values() if st is not None]
+        return event, list(set(
+            st for st in stations.values() if st is not None))
 
     def get_stations(self):
         '''

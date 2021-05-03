@@ -53,6 +53,15 @@ def myctime(timestamp):
     return mystrftime(None, tt, ms)
 
 
+g_color_b = [plot.color(x) for x in (
+    'scarletred1', 'scarletred2', 'scarletred3',
+    'chameleon1', 'chameleon2', 'chameleon3',
+    'skyblue1', 'skyblue2', 'skyblue3',
+    'orange1', 'orange2', 'orange3',
+    'plum1', 'plum2', 'plum3',
+    'chocolate1', 'chocolate2', 'chocolate3')]
+
+
 class MarkerParseError(Exception):
     pass
 
@@ -194,22 +203,10 @@ class Marker(object):
 
     def __init__(self, nslc_ids, tmin, tmax, kind=0):
         self.set(nslc_ids, tmin, tmax)
-        c = plot.color
-
-        self.color_a = [c(x) for x in (
-            'aluminium4', 'aluminium5', 'aluminium6')]
-
-        self.color_b = [c(x) for x in (
-            'scarletred1', 'scarletred2', 'scarletred3',
-            'chameleon1', 'chameleon2', 'chameleon3',
-            'skyblue1', 'skyblue2', 'skyblue3',
-            'orange1', 'orange2', 'orange3',
-            'plum1', 'plum2', 'plum3',
-            'chocolate1', 'chocolate2', 'chocolate3')]
-
         self.alerted = False
         self.selected = False
         self.kind = kind
+        self.active = False
 
     def set(self, nslc_ids, tmin, tmax):
         '''Set ``nslc_ids``, start time and end time of :py:class:`Marker`
@@ -220,8 +217,8 @@ class Marker(object):
         :param tmax: end time
         '''
         self.nslc_ids = nslc_ids
-        self.tmin = tmin
-        self.tmax = tmax
+        self.tmin = util.to_time_float(tmin)
+        self.tmax = util.to_time_float(tmax)
 
     def set_kind(self, kind):
         '''Set kind of :py:class:`Marker`
@@ -257,9 +254,6 @@ class Marker(object):
 
     def set_alerted(self, state):
         self.alerted = state
-
-    def set_selected(self, state):
-        self.selected = state
 
     def match_nsl(self, nsl):
         '''See documentation of :py:func:`pyrocko.util.match_nslc`'''
@@ -366,11 +360,18 @@ class Marker(object):
         from .qt_compat import qc, qg
         from . import util as gui_util
 
-        if self.selected or self.alerted or not self.nslc_ids:
+        color = self.select_color(g_color_b)
+        pen = qg.QPen(qg.QColor(*color))
+        pen.setWidth(2)
+        p.setPen(pen)
 
-            color = self.select_color(self.color_b)
-            pen = qg.QPen(qg.QColor(*color))
-            pen.setWidth(2)
+        umin = time_projection(self.tmin)
+        umax = time_projection(self.tmax)
+        v0, v1 = y_projection.get_out_range()
+        line = qc.QLineF(umin-1, v0, umax+1, v0)
+        p.drawLine(line)
+
+        if self.selected or self.alerted or not self.nslc_ids:
             linepen = qg.QPen(pen)
             if self.selected or self.alerted:
                 linepen.setStyle(qc.Qt.CustomDashLine)
@@ -387,13 +388,11 @@ class Marker(object):
 
             def drawline(t):
                 u = time_projection(t)
-                v0, v1 = y_projection.get_out_range()
                 line = qc.QLineF(u, v0, u, v1)
                 p.drawLine(line)
 
             def drawtriangles(t):
                 u = time_projection(t)
-                v0, v1 = y_projection.get_out_range()
                 t = qg.QPolygonF(utriangle)
                 t.translate(u, v0)
                 p.drawConvexPolygon(t)
@@ -424,7 +423,7 @@ class Marker(object):
         if self.nslc_ids and not self.match_nslc(tr.nslc_id):
             return
 
-        color = self.select_color(self.color_b)
+        color = self.select_color(g_color_b)
         pen = qg.QPen(qg.QColor(*color))
         pen.setWidth(2)
         p.setPen(pen)
@@ -467,7 +466,7 @@ class Marker(object):
         except trace.NoData:
             pass
 
-        color = self.select_color(self.color_b)
+        color = self.select_color(g_color_b)
         pen = qg.QPen(qg.QColor(*color))
         pen.setWidth(2)
         p.setPen(pen)
@@ -524,6 +523,7 @@ class Marker(object):
         else:
             self._event_hash = None
             self._event_time = None
+        self.active = False
 
     def convert_to_event_marker(self, lat=0., lon=0.):
         if isinstance(self, EventMarker):
@@ -535,7 +535,7 @@ class Marker(object):
         self.__class__ = EventMarker
         self._event = model.Event(lat, lon, time=self.tmin, name='Event')
         self._event_hash = self._event.get_hash()
-        self._active = False
+        self.active = False
         self.tmax = self.tmin
         self.nslc_ids = []
 
@@ -553,7 +553,7 @@ class EventMarker(Marker):
     def __init__(self, event, kind=0, event_hash=None):
         Marker.__init__(self, [], event.time, event.time, kind)
         self._event = event
-        self._active = False
+        self.active = False
         self._event_hash = event_hash
 
     def get_event_hash(self):
@@ -561,9 +561,6 @@ class EventMarker(Marker):
             return self._event_hash
         else:
             return self._event.get_hash()
-
-    def set_active(self, active):
-        self._active = active
 
     def label(self):
         t = []
@@ -602,7 +599,7 @@ class EventMarker(Marker):
         label_bg = qg.QBrush(qg.QColor(255, 255, 255))
         gui_util.draw_label(
             p, u, v0-10., self.label(), label_bg, 'CB',
-            outline=self._active)
+            outline=self.active)
 
     def get_event(self):
         '''Return an instance of the :py:class:`pyrocko.model.Event` associated
@@ -779,6 +776,7 @@ class PhaseMarker(Marker):
         del self._automatic
         del self._incidence_angle
         del self._takeoff_angle
+        self.active = False
         self.__class__ = Marker
 
     def hoover_message(self):

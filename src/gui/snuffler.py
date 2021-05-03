@@ -56,6 +56,9 @@ def snuffle(pile=None, **kwargs):
     :param events: list of `pyrocko.model.Event` objects or ``None``
     :param markers: list of `pyrocko.gui.util.Marker` objects or ``None``
     :param ntracks: float, number of tracks to be shown initially (default: 12)
+    :param marker_editor_sortable: bool, whether to allow sorting in marker
+        table (default True). Disabling this will give better performance
+        when working with many markers.
     :param follow: time interval (in seconds) for real time follow mode or
         ``None``
     :param controls: bool, whether to show the main controls (default:
@@ -260,6 +263,14 @@ def snuffler_from_commandline(args=None):
         help='initially use N waveform tracks in viewer [default: %default]')
 
     parser.add_option(
+        '--disable-marker-sorting',
+        action='store_false',
+        dest='marker_editor_sortable',
+        default=True,
+        help='disable sorting in marker table for improved performance with '
+             '100000+ markers')
+
+    parser.add_option(
         '--opengl',
         dest='opengl',
         action='store_true',
@@ -324,6 +335,7 @@ def snuffler_from_commandline(args=None):
         events=events,
         markers=markers,
         ntracks=options.ntracks,
+        marker_editor_sortable=options.marker_editor_sortable,
         follow=options.follow,
         controls=True,
         opengl=options.opengl,

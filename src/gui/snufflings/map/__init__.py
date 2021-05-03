@@ -83,7 +83,7 @@ def convert_event_marker(marker):
         origintime=util.time_to_str(ev.time),
         depth=float(depth),
         magnitude=float(get_magnitude(ev)),
-        active=['no', 'yes'][marker._active])
+        active=['no', 'yes'][marker.active])
 
     return xmleventmarker
 

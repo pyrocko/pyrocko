@@ -79,7 +79,7 @@ def avl_remove_exact(avltree, element):
     for i in range(ilo, ihi):
         if avltree[i] is element:
             avltree.remove_at(i)
-            return
+            return i
 
     raise ValueError(
         'avl_remove_exact(avltree, element): element not in avltree')
@@ -113,6 +113,12 @@ def get_dummy(key):
     return g_dummys[key]
 
 
+class TooMany(Exception):
+    def __init__(self, n):
+        Exception.__init__(self)
+        self.n = n
+
+
 class Sorted(object):
     def __init__(self, values=[], key=None):
         self._set_key(key)
@@ -137,7 +143,10 @@ class Sorted(object):
         self._avl.insert(value)
 
     def remove(self, value):
-        avl_remove_exact(self._avl, value)
+        return avl_remove_exact(self._avl, value)
+
+    def remove_at(self, i):
+        return self._avl.remove_at(i)
 
     def insert_many(self, values):
         for value in values:
@@ -155,6 +164,22 @@ class Sorted(object):
         ilo, ihi = self._avl.span(omin, omax)
         return self._avl[ilo:ihi]
 
+    def with_key_in_limited(self, kmin, kmax, nmax):
+        omin, omax = self._dummy(kmin), self._dummy(kmax)
+        ilo, ihi = self._avl.span(omin, omax)
+        if ihi - ilo > nmax:
+            raise TooMany(ihi - ilo)
+
+        return self._avl[ilo:ihi]
+
+    def index(self, value):
+        ilo, ihi = self._avl.span(value)
+        for i in range(ilo, ihi):
+            if self._avl[i] is value:
+                return i
+
+        raise ValueError('element is not in avl tree')
+
     def min(self):
         return self._avl.min()
 
@@ -163,6 +188,9 @@ class Sorted(object):
 
     def __len__(self):
         return len(self._avl)
+
+    def __getitem__(self, i):
+        return self._avl[i]
 
 
 class TracesFileCache(object):

@@ -14,9 +14,18 @@ from pyrocko.plot.beachball import mt2beachball, BeachballError
 from pyrocko.moment_tensor import kagan_angle
 from pyrocko.plot import tango_colors
 from pyrocko import orthodrome
+from pyrocko.util import time_to_str
 
-import numpy as num
 import logging
+
+from .marker import g_color_b
+
+
+def faint(c):
+    return tuple(255 - (255 - x) * 0.2 for x in c)
+
+
+g_color_b_faint = [faint(c) for c in g_color_b]
 
 
 def noop(x=None):
@@ -27,33 +36,15 @@ if sys.version_info[0] >= 3 or use_pyqt5:
     qc.QString = str
     qc.QVariant = noop
 
-    def toDateTime(val):
-        return val
-
-    def isDateTime(val):
-        return isinstance(val, qc.QDateTime)
-
     def toFloat(val):
         try:
             return float(val), True
-        except ValueError:
+        except (ValueError, TypeError):
             return 9e99, False
 
-    def toString(val):
-        return str(val).encode('utf-8').decode()
-
 else:
-    def toDateTime(val):
-        return val.toDateTime()
-
-    def isDateTime(val):
-        return val.type() == qc.QVariant.DateTime
-
     def toFloat(val):
         return val.toFloat()
-
-    def toString(val):
-        return str(val).encode('utf-8')
 
 
 logger = logging.getLogger('pyrocko.gui.marker_editor')
@@ -122,7 +113,8 @@ class BeachballWidget(qw.QWidget):
 
 
 class MarkerItemDelegate(qw.QStyledItemDelegate):
-    '''Takes care of the table's style.'''
+
+    # Takes care of how table entries are displayed
 
     def __init__(self, *args, **kwargs):
         qw.QStyledItemDelegate.__init__(self, *args, **kwargs)
@@ -130,7 +122,6 @@ class MarkerItemDelegate(qw.QStyledItemDelegate):
         self.bbcache = QPixmapCache()
 
     def paint(self, painter, option, index):
-        iactive = self.parent().active_event_index
         mcolor = self.color_from_index(index)
 
         if index.column() == _column_mapping['MT']:
@@ -153,15 +144,20 @@ class MarkerItemDelegate(qw.QStyledItemDelegate):
                 painter.restore()
 
         else:
+            if index.column() == 0:
+                option.state = option.state & ~qw.QStyle.State_Selected
+
             qw.QStyledItemDelegate.paint(self, painter, option, index)
 
-        if iactive is not None and \
-                self.parent().model().mapToSource(index).row() == iactive:
+        marker = self.parent().model().get_marker(index)
+
+        if marker.active:
 
             painter.save()
 
             rect = option.rect
             x1, y1, x2, y2 = rect.getCoords()
+            y1 += 1
             pen = painter.pen()
             pen.setWidth(2)
             pen.setColor(mcolor)
@@ -170,17 +166,14 @@ class MarkerItemDelegate(qw.QStyledItemDelegate):
             painter.drawLine(qc.QLineF(x1, y2, x2, y2))
             painter.restore()
 
-    def displayText(self, value, locale):
-        if isDateTime(value):
-            return toDateTime(value).toUTC().toString(
-                'yyyy-MM-dd HH:mm:ss.zzz')
-        else:
-            return toString(value)
-
     def marker_from_index(self, index):
         tv = self.parent()
         pv = tv.pile_viewer
-        return pv.markers[tv.model().mapToSource(index).row()]
+        tvm = tv.model()
+        if isinstance(tvm, QSortFilterProxyModel):
+            return pv.markers[tvm.mapToSource(index).row()]
+        else:
+            return pv.markers[index.row()]
 
     def bb_data_from_index(self, index):
         marker = self.marker_from_index(index)
@@ -191,56 +184,35 @@ class MarkerItemDelegate(qw.QStyledItemDelegate):
 
     def color_from_index(self, index):
         marker = self.marker_from_index(index)
-        return qg.QColor(*marker.select_color(marker.color_b))
+        return qg.QColor(*marker.select_color(g_color_b))
 
 
 class MarkerSortFilterProxyModel(QSortFilterProxyModel):
-    '''Sorts the table's columns.'''
+
+    # Proxy object between view and model to handle sorting
 
     def __init__(self, *args, **kwargs):
         QSortFilterProxyModel.__init__(self, *args, **kwargs)
-        self.sort(1, qc.Qt.DescendingOrder)
+        self.setSortRole(qc.Qt.UserRole)
+        self.sort(1, qc.Qt.AscendingOrder)
 
-    def lessThan(self, left, right):
-        if left.column() in [0, 3, 9, 10, 12]:
-            return toString(left.data()) < toString(right.data())
-        elif left.column() == 1:
-            return toDateTime(left.data()) < toDateTime(right.data())
-        else:
-            return toFloat(left.data())[0] < toFloat(right.data())[0]
-
-    def headerData(self, col, orientation, role):
-        '''Set and format header data.'''
-        if orientation == qc.Qt.Horizontal:
-            if role == qc.Qt.DisplayRole:
-                return qc.QVariant(_header_data[col])
-            elif role == qc.Qt.SizeHintRole:
-                return qc.QSize(10, 20)
-
-        elif orientation == qc.Qt.Vertical:
-            if role == qc.Qt.DisplayRole:
-                return qc.QVariant(str(col))
-
-        else:
-            return qc.QVariant()
-
-    def sort(self, column, order):
-        if column != _column_mapping['MT']:
-            super(MarkerSortFilterProxyModel, self).sort(column, order)
+    def get_marker(self, index):
+        return self.sourceModel().get_marker(self.mapToSource(index))
 
 
 class MarkerTableView(qw.QTableView):
     def __init__(self, *args, **kwargs):
+        sortable = kwargs.pop('sortable', True)
         qw.QTableView.__init__(self, *args, **kwargs)
         self.setSelectionBehavior(qw.QAbstractItemView.SelectRows)
         self.setHorizontalScrollMode(qw.QAbstractItemView.ScrollPerPixel)
         self.setEditTriggers(qw.QAbstractItemView.DoubleClicked)
-        self.setSortingEnabled(True)
+        self.setSortingEnabled(sortable)
         self.setStyleSheet(
             'QTableView{selection-background-color: \
             rgba(130, 130, 130, 100% );}')
 
-        self.sortByColumn(1, qc.Qt.DescendingOrder)
+        self.sortByColumn(1, qc.Qt.AscendingOrder)
         self.setAlternatingRowColors(True)
 
         self.setShowGrid(False)
@@ -285,8 +257,6 @@ class MarkerTableView(qw.QTableView):
         header.customContextMenuRequested.connect(
             self.show_context_menu)
 
-        self.active_event_index = None
-
         self.right_click_menu = qw.QMenu(self)
         print_action = qw.QAction('Print Table', self.right_click_menu)
         print_action.triggered.connect(self.print_menu)
@@ -315,12 +285,15 @@ class MarkerTableView(qw.QTableView):
             super(MarkerTableView, self).wheelEvent(wheel_event)
 
     def set_viewer(self, viewer):
-        '''Set a pile_viewer and connect to signals.'''
+        '''
+        Set connected pile viewer and hook up signals.
+        '''
 
         self.pile_viewer = viewer
 
     def keyPressEvent(self, key_event):
-        '''Propagate ``key_event`` to pile_viewer, unless up/down pressed.'''
+        # Propagate key_event to pile_viewer, unless up/down pressed
+
         if key_event.key() in [qc.Qt.Key_Up, qc.Qt.Key_Down]:
             qw.QTableView.keyPressEvent(self, key_event)
             self.pile_viewer.go_to_selection()
@@ -328,7 +301,7 @@ class MarkerTableView(qw.QTableView):
             self.pile_viewer.keyPressEvent(key_event)
 
     def table_clicked(self, model_index):
-        '''Ignore mouse clicks.'''
+        # Ignore mouse clicks
         pass
 
     def contextMenuEvent(self, event):
@@ -372,15 +345,18 @@ class MarkerTableView(qw.QTableView):
             self.pile_viewer.go_to_selection()
 
     def show_context_menu(self, point):
-        '''Pop-up menu to toggle columns in the :py:class:`MarkerTableView`.'''
+        '''
+        Pop-up menu to toggle column visibility.
+        '''
 
         self.header_menu.popup(self.mapToGlobal(point))
 
     def toggle_columns(self):
-        '''Toggle columns depending in checked state. '''
+        '''
+        Toggle columns depending in checked state.
+        '''
+
         width = 0
-        want_distances = False
-        want_angles = False
         for header, ca in self.column_actions.items():
             hide = not ca.isChecked()
             self.setColumnHidden(self.menu_items[header], hide)
@@ -388,21 +364,10 @@ class MarkerTableView(qw.QTableView):
                 self.setColumnHidden(self.menu_items[header]+1, hide)
             if not hide:
                 width += _header_sizes[self.menu_labels.index(header)]
-            if header == 'Distance [km]':
-                want_distances = True
-            elif header == 'Kagan Angle [deg]':
-                want_angles = True
 
-        if self.active_event_index:
-            self.model().sourceModel().update_distances_and_angles(
-                [[self.active_event_index]],
-                want_distances=want_distances, want_angles=want_angles)
         self.parent().setMinimumWidth(width)
 
-    def set_active_event_index(self, i):
-        if i == -1:
-            i = None
-        self.active_event_index = i
+    def update_viewport(self):
         self.viewport().update()
 
 
@@ -413,213 +378,207 @@ class MarkerTableModel(qc.QAbstractTableModel):
         self.pile_viewer = None
         self.distances = {}
         self.kagan_angles = {}
-        self.last_active_event = None
         self.row_count = 0
         self.proxy_filter = None
 
+    def sourceModel(self):
+        return self
+
     def set_viewer(self, viewer):
-        '''Set a pile_viewer and connect to signals.'''
+        '''
+        Set connected pile viewer and hook up signals.
+        '''
 
         self.pile_viewer = viewer
-        self.pile_viewer.markers_added.connect(
-                     self.markers_added)
+        self.pile_viewer.begin_markers_add.connect(
+            self.begin_markers_add)
+        self.pile_viewer.end_markers_add.connect(
+            self.end_markers_add)
+        self.pile_viewer.begin_markers_remove.connect(
+            self.begin_markers_remove)
+        self.pile_viewer.end_markers_remove.connect(
+            self.end_markers_remove)
 
-        self.pile_viewer.markers_removed.connect(
-                     self.markers_removed)
-
-        self.pile_viewer.changed_marker_selection.connect(
-                     self.update_distances_and_angles)
-
-    def rowCount(self, parent):
+    def rowCount(self, parent=None):
         if not self.pile_viewer:
             return 0
         return len(self.pile_viewer.get_markers())
 
-    def columnCount(self, parent):
+    def columnCount(self, parent=None):
         return len(_column_mapping)
 
-    def markers_added(self, istart, istop):
-        '''Insert rows into table.'''
-
+    def begin_markers_add(self, istart, istop):
         self.beginInsertRows(qc.QModelIndex(), istart, istop)
+
+    def end_markers_add(self):
         self.endInsertRows()
 
-    def markers_removed(self, i_from, i_to):
-        '''Remove rows from table.'''
+    def begin_markers_remove(self, istart, istop):
+        self.beginRemoveRows(qc.QModelIndex(), istart, istop)
 
-        self.beginRemoveRows(qc.QModelIndex(), i_from, i_to)
+    def end_markers_remove(self):
         self.endRemoveRows()
         self.marker_table_view.updateGeometries()
 
+    def headerData(self, col, orientation, role):
+        '''
+        Get header data entry.
+        '''
+
+        if orientation == qc.Qt.Horizontal:
+            if role == qc.Qt.DisplayRole:
+                return qc.QVariant(_header_data[col])
+            elif role == qc.Qt.SizeHintRole:
+                return qc.QSize(10, 20)
+
+        elif orientation == qc.Qt.Vertical:
+            if role == qc.Qt.DisplayRole:
+                return qc.QVariant(str(col))
+
+        else:
+            return qc.QVariant()
+
+    def get_marker(self, index):
+        return self.pile_viewer.markers[index.row()]
+
     def data(self, index, role):
-        '''Set data in each of the table's cell.'''
+        '''
+        Get model data entry.
+        '''
 
         if not self.pile_viewer:
             return qc.QVariant()
 
         marker = self.pile_viewer.markers[index.row()]
+        column = index.column()
 
-        if role == qc.Qt.DisplayRole:
-            s = ''
-            column = index.column()
+        if role == qc.Qt.BackgroundRole:
+            if marker.active or column == _column_mapping['T']:
+                return qg.QBrush(
+                    qg.QColor(*marker.select_color(g_color_b_faint)))
+
+        if role == qc.Qt.ForegroundRole:
+            if marker.active or column == _column_mapping['T']:
+                return qg.QBrush(
+                    qg.QColor(*marker.select_color(g_color_b)))
+
+        elif role in (qc.Qt.DisplayRole, qc.Qt.UserRole):
+
+            v = None
             if column == _column_mapping['Time']:
-                return qc.QVariant(
-                    qc.QDateTime.fromMSecsSinceEpoch(marker.tmin*1000))
+                if role == qc.Qt.UserRole:
+                    v = marker.tmin
+                else:
+                    v = time_to_str(marker.tmin)
 
             elif column == _column_mapping['T']:
                 if isinstance(marker, EventMarker):
-                    s = 'E'
+                    v = u'\u25ce'
                 elif isinstance(marker, PhaseMarker):
-                    s = 'P'
+                    v = marker.get_label()
 
             elif column == _column_mapping['M']:
                 if isinstance(marker, EventMarker):
                     e = marker.get_event()
                     if e.moment_tensor is not None:
-                        s = round(e.moment_tensor.magnitude, 1)
+                        v = round(e.moment_tensor.magnitude, 1)
                     elif e.magnitude is not None:
-                        s = round(e.magnitude, 1)
+                        v = round(e.magnitude, 1)
 
             elif column == _column_mapping['Label']:
                 if isinstance(marker, EventMarker):
-                    s = marker.label()
+                    v = marker.label()
                 elif isinstance(marker, PhaseMarker):
-                    s = marker.get_label()
+                    v = marker.get_label()
 
             elif column == _column_mapping['Depth [km]']:
                 if isinstance(marker, EventMarker):
                     d = marker.get_event().depth
                     if d is not None:
-                        s = round(marker.get_event().depth/1000., 1)
+                        v = round(marker.get_event().depth/1000., 1)
 
             elif column == _column_mapping['Lat']:
                 if isinstance(marker, EventMarker):
-                    s = round(marker.get_event().lat, 2)
+                    v = round(marker.get_event().effective_lat, 2)
 
             elif column == _column_mapping['Lon']:
                 if isinstance(marker, EventMarker):
-                    s = round(marker.get_event().lon, 2)
+                    v = round(marker.get_event().effective_lon, 2)
 
             elif column == _column_mapping['Kind']:
-                s = marker.kind
+                v = marker.kind
 
             elif column == _column_mapping['Dist [km]']:
-                if marker in self.distances:
-                    s = self.distances[marker]
+                active_event = self.pile_viewer.get_active_event()
+                if isinstance(marker, EventMarker) \
+                        and active_event is not None:
+
+                    dist = orthodrome.distance_accurate50m(
+                        marker.get_event(),
+                        active_event)
+
+                    v = dist
+                    if role == qc.Qt.DisplayRole:
+                        v = '%.5g' % (v/1000.)
 
             elif column == _column_mapping['NSLCs']:
                 strs = []
                 for nslc_id in marker.get_nslc_ids():
                     strs.append('.'.join(nslc_id))
-                s = '|'.join(strs)
+                v = '|'.join(strs)
 
             elif column == _column_mapping['Kagan Angle [deg]']:
-                if marker in self.kagan_angles:
-                    s = round(self.kagan_angles[marker], 1)
+                active_event = self.pile_viewer.get_active_event()
+                if isinstance(marker, EventMarker) \
+                        and active_event is not None \
+                        and active_event.moment_tensor is not None \
+                        and marker.get_event().moment_tensor is not None:
+
+                    v = kagan_angle(
+                        active_event.moment_tensor,
+                        marker.get_event().moment_tensor)
+
+                    if role == qc.Qt.DisplayRole:
+                        v = '%.1f' % v
 
             elif column == _column_mapping['MT']:
                 return qc.QVariant()
 
             elif column == _column_mapping['Event Hash']:
                 if isinstance(marker, (EventMarker, PhaseMarker)):
-                    s = marker.get_event_hash()
+                    v = marker.get_event_hash()
                 else:
                     return qc.QVariant()
 
             elif column == _column_mapping['Polarity']:
                 if isinstance(marker, (PhaseMarker)):
-                    s = marker.get_polarity_symbol()
+                    v = marker.get_polarity_symbol()
                 else:
                     return qc.QVariant()
 
-            return qc.QVariant(s)
+            return qc.QVariant(v)
 
         return qc.QVariant()
 
-    def update_distances_and_angles(self, indices=None, want_angles=False,
-                                    want_distances=False):
-        '''Calculate and update distances and kagan angles between events.
-
-        :param indices: list of lists of indices (optional)
-
-        Ideally, indices are consecutive for best performance.'''
-        want_angles = want_angles or \
-            not self.marker_table_view.isColumnHidden(
-                _column_mapping['Kagan Angle [deg]'])
-        want_distances = want_distances or \
-            not self.marker_table_view.isColumnHidden(
-                _column_mapping['Dist [km]'])
-
-        if not (want_distances or want_angles):
-            return
-
-        indices = indices or [[]]
-        indices = [i for ii in indices for i in ii]
-
-        if len(indices) != 1:
-            return
-
-        if self.last_active_event == self.pile_viewer.get_active_event():
-            return
-        else:
-            self.last_active_event = self.pile_viewer.get_active_event()
-
-        markers = self.pile_viewer.markers
-        nmarkers = len(markers)
-        omarker = markers[indices[0]]
-        if not isinstance(omarker, EventMarker):
-            return
-        else:
-            oevent = omarker.get_event()
-
-        emarkers = [m for m in markers if isinstance(m, EventMarker)]
-        if len(emarkers) < 2:
-            return
-        else:
-            events = [em.get_event() for em in emarkers]
-            nevents = len(events)
-
-        if want_distances:
-            lats = num.zeros(nevents)
-            lons = num.zeros(nevents)
-            for i in range(nevents):
-                lats[i] = events[i].effective_lat
-                lons[i] = events[i].effective_lon
-
-            olats = num.zeros(nevents)
-            olons = num.zeros(nevents)
-            olats[:] = oevent.effective_lat
-            olons[:] = oevent.effective_lon
-            dists = orthodrome.distance_accurate50m_numpy(
-                lats, lons, olats, olons)
-            dists /= 1000.
-
-            dists = [round(x, 1) for x in dists]
-            self.distances = dict(zip(emarkers, dists))
-
-        if want_angles:
-            if oevent.moment_tensor:
-                for em in emarkers:
-                    e = em.get_event()
-                    if e.moment_tensor:
-                        a = kagan_angle(oevent.moment_tensor, e.moment_tensor)
-                        self.kagan_angles[em] = a
-            else:
-                self.kagan_angles = {}
-
+    def handle_active_event_changed(self):
+        nmarkers = self.rowCount()
         istart = self.index(0, _column_mapping['Dist [km]'])
-        istop = self.index(nmarkers-1, _column_mapping['Kagan Angle [deg]'])
+        istop = self.index(nmarkers-1, _column_mapping['Dist [km]'])
+        self.dataChanged.emit(istart, istop)
 
-        self.dataChanged.emit(
-                  istart,
-                  istop)
+        istart = self.index(0, _column_mapping['Kagan Angle [deg]'])
+        istop = self.index(nmarkers-1, _column_mapping['Kagan Angle [deg]'])
+        self.dataChanged.emit(istart, istop)
 
     def done(self, index):
         self.dataChanged.emit(index, index)
         return True
 
     def setData(self, index, value, role):
-        '''Manipulate :py:class:`EventMarker` instances.'''
+        '''
+        Set model data entry.
+        '''
+
         if role == qc.Qt.EditRole:
             imarker = index.row()
             marker = self.pile_viewer.markers[imarker]
@@ -655,7 +614,7 @@ class MarkerTableModel(qc.QAbstractTableModel):
                             return self.done(index)
 
             if index.column() == _column_mapping['Label']:
-                values = str(toString(value))
+                values = str(value)
                 if values != '':
                     if isinstance(marker, EventMarker):
                         marker.get_event().set_name(values)
@@ -668,7 +627,9 @@ class MarkerTableModel(qc.QAbstractTableModel):
         return False
 
     def flags(self, index):
-        '''Set flags for cells which the user can edit.'''
+        '''
+        Set flags for cells which the user can edit.
+        '''
 
         if index.column() not in self.marker_table_view.editable_columns:
             return qc.Qt.ItemFlags(33)
@@ -684,23 +645,29 @@ class MarkerTableModel(qc.QAbstractTableModel):
 class MarkerEditor(qw.QFrame):
 
     def __init__(self, *args, **kwargs):
+        sortable = kwargs.pop('sortable', True)
         qw.QFrame.__init__(self, *args, **kwargs)
         layout = qw.QGridLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
-        self.marker_table_view = MarkerTableView(self)
+        self.marker_table_view = MarkerTableView(self, sortable=sortable)
+
         self.delegate = MarkerItemDelegate(self.marker_table_view)
         self.marker_table_view.setItemDelegate(self.delegate)
 
         self.marker_model = MarkerTableModel()
         self.marker_model.marker_table_view = self.marker_table_view
 
-        self.proxy_filter = MarkerSortFilterProxyModel()
-        self.proxy_filter.setDynamicSortFilter(True)
-        self.proxy_filter.setSourceModel(self.marker_model)
-        self.marker_model.proxy_filter = self.proxy_filter
+        if sortable:
+            self.proxy_filter = MarkerSortFilterProxyModel()
+            self.proxy_filter.setDynamicSortFilter(True)
+            self.proxy_filter.setSourceModel(self.marker_model)
+            self.marker_model.proxy_filter = self.proxy_filter
 
-        self.marker_table_view.setModel(self.proxy_filter)
+            self.marker_table_view.setModel(self.proxy_filter)
+        else:
+            self.proxy_filter = None
+            self.marker_table_view.setModel(self.marker_model)
 
         header = self.marker_table_view.horizontalHeader()
         for i_s, s in enumerate(_header_sizes):
@@ -713,7 +680,11 @@ class MarkerEditor(qw.QFrame):
 
         header.setStretchLastSection(True)
 
-        self.selection_model = QItemSelectionModel(self.proxy_filter)
+        if self.proxy_filter:
+            self.selection_model = QItemSelectionModel(self.proxy_filter)
+        else:
+            self.selection_model = QItemSelectionModel(self.marker_model)
+
         self.marker_table_view.setSelectionModel(self.selection_model)
         self.selection_model.selectionChanged.connect(
             self.set_selected_markers)
@@ -724,39 +695,71 @@ class MarkerEditor(qw.QFrame):
         self._size_hint = qc.QSize(1, 1)
 
     def set_viewer(self, viewer):
-        '''Set a pile_viewer and connect to signals.'''
+        '''
+        Set the pile viewer and connect signals.
+        '''
 
         self.pile_viewer = viewer
         self.marker_model.set_viewer(viewer)
         self.marker_table_view.set_viewer(viewer)
-        self.pile_viewer.changed_marker_selection.connect(
+        self.pile_viewer.marker_selection_changed.connect(
             self.update_selection_model)
 
         self.pile_viewer.active_event_marker_changed.connect(
-            self.marker_table_view.set_active_event_index)
+             self.marker_model.handle_active_event_changed)
+
+        # self.pile_viewer.active_event_marker_changed.connect(
+        #      self.marker_table_view.update_viewport)
 
         self.marker_table_view.toggle_columns()
 
     def set_selected_markers(self, selected, deselected):
-        ''' set markers selected in viewer at selection in table.'''
+        '''
+        Update selection in viewer to reflect changes in table data.
+        '''
 
-        selected_markers = []
-        for i in self.selection_model.selectedRows():
-            selected_markers.append(
-                self.pile_viewer.markers[
-                    self.proxy_filter.mapToSource(i).row()])
+        if self.proxy_filter:
+            def to_source(x):
+                ind = self.proxy_filter.index(x, 0)
+                return self.proxy_filter.mapToSource(ind).row()
+        else:
+            def to_source(x):
+                return x
 
-        self.pile_viewer.set_selected_markers(selected_markers)
+        markers = self.pile_viewer.markers
+
+        for rsel in selected:
+            for i in range(rsel.top(), rsel.bottom()+1):
+                marker = markers[to_source(i)]
+                if not marker.selected:
+                    marker.selected = True
+                    self.pile_viewer.n_selected_markers += 1
+
+        for rsel in deselected:
+            for i in range(rsel.top(), rsel.bottom()+1):
+                marker = markers[to_source(i)]
+                if marker.selected:
+                    marker.selected = False
+                    self.pile_viewer.n_selected_markers -= 1
+
+        self.pile_viewer.update()
 
     def get_marker_model(self):
-        '''Return :py:class:`MarkerTableModel` instance'''
+        '''
+        Get the attached Qt table data model.
+
+        :returns: :py:class:`MarkerTableModel` object
+        '''
 
         return self.marker_model
 
     def update_selection_model(self, indices):
-        '''Adopt marker selections done in the pile_viewer in the tableview.
+        '''
+        Set currently selected table rows.
 
-        :param indices: list of indices of selected markers.'''
+        :param indices: begin and end+1 indices of contiguous selection chunks
+        :type indices: list of tuples
+        '''
         self.selection_model.clearSelection()
         selections = QItemSelection()
         selection_flags = QItemSelectionModel.SelectionFlags(
@@ -765,15 +768,22 @@ class MarkerEditor(qw.QFrame):
              QItemSelectionModel.Current))
 
         for chunk in indices:
-            mi_start = self.marker_model.index(min(chunk), 0)
-            mi_stop = self.marker_model.index(max(chunk), 0)
-            row_selection = self.proxy_filter.mapSelectionFromSource(
-                QItemSelection(mi_start, mi_stop))
+            mi_start = self.marker_model.index(chunk[0], 0)
+            mi_stop = self.marker_model.index(chunk[1]-1, 0)
+            if self.proxy_filter:
+                row_selection = self.proxy_filter.mapSelectionFromSource(
+                    QItemSelection(mi_start, mi_stop))
+            else:
+                row_selection = QItemSelection(mi_start, mi_stop)
             selections.merge(row_selection, selection_flags)
 
         if len(indices) != 0:
-            self.marker_table_view.scrollTo(self.proxy_filter.mapFromSource(
-                mi_start))
+            if self.proxy_filter:
+                self.marker_table_view.scrollTo(
+                    self.proxy_filter.mapFromSource(mi_start))
+            else:
+                self.marker_table_view.scrollTo(mi_start)
+
             self.marker_table_view.setCurrentIndex(mi_start)
             self.selection_model.setCurrentIndex(
                 mi_start, selection_flags)

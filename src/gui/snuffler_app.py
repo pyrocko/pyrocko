@@ -570,7 +570,8 @@ class SnufflerWindow(qw.QMainWindow):
 
     def __init__(
             self, pile, stations=None, events=None, markers=None, ntracks=12,
-            follow=None, controls=True, opengl=False, instant_close=False):
+            marker_editor_sortable=True, follow=None, controls=True,
+            opengl=False, instant_close=False):
 
         qw.QMainWindow.__init__(self)
 
@@ -583,6 +584,7 @@ class SnufflerWindow(qw.QMainWindow):
 
         self.pile_viewer = pile_viewer.PileViewer(
             pile, ntracks_shown_max=ntracks, use_opengl=opengl,
+            marker_editor_sortable=marker_editor_sortable,
             panel_parent=self)
 
         self.marker_editor = self.pile_viewer.marker_editor()

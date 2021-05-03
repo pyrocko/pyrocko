@@ -6,7 +6,7 @@ import tempfile
 import shutil
 import time
 import os
-from random import random
+from random import random, randint, choice
 import numpy as num
 from pyrocko import util
 
@@ -247,6 +247,34 @@ class UtilTestCase(unittest.TestCase):
         for k in dwant:
             assert k in d
             assert d[k] == dwant[k]
+
+    def test_escape(self):
+        def random_word():
+            return ''.join([choice('\\\'" ') for _ in range(randint(0, 8))])
+
+        for i in range(100):
+            s1 = random_word()
+            se = util.escape_s(s1)
+            s2 = util.unescape_s(se)
+            assert(s1 == s2)
+            se = util.escape_d(s1)
+            s2 = util.unescape_d(se)
+            assert(s1 == s2)
+
+    def test_qsplit(self):
+        def random_word():
+            return ''.join(
+                [choice(' abc\\"\'\t\n') for _ in range(randint(0, 10))])
+
+        def random_line():
+            return [random_word() for _ in range(randint(0, 10))]
+
+        for i in range(100):
+            line_in = random_line()
+            for qj in (util.qjoin_s, util.qjoin_d):
+                s = qj(line_in)
+                line_out = util.qsplit(s)
+                assert(line_in == line_out)
 
 
 if __name__ == "__main__":
