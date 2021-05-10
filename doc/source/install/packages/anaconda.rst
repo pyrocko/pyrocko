@@ -40,7 +40,6 @@ Anaconda (compilation from source)
     :caption: Compile from sources
 
     conda install pyqt=5
-    conda install progressbar
     cd `conda info --root`
 
     mkdir src
