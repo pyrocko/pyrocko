@@ -9,7 +9,7 @@ Python 3.4 and later
 
     sudo pacman -Syu git make gcc python python-setuptools \
         python-numpy python-scipy python-matplotlib \
-        python-pyqt5 qt5-webengine qt5-svg python-pyqt4 \
+        python-pyqt5 qt5-webengine qt5-svg \
         python-cairo python-opengl python-progressbar \
         python-requests python-yaml python-jinja \
         python-nose python-coverage
