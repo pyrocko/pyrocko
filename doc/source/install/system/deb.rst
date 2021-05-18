@@ -9,7 +9,6 @@ Python 3.4 and later
 
     sudo apt-get install -y make git python3-dev python3-setuptools
     sudo apt-get install -y python3-numpy python3-numpy-dev python3-scipy python3-matplotlib
-    sudo apt-get install -y python3-pyqt4 python3-pyqt4.qtopengl
     sudo apt-get install -y python3-pyqt5 python3-pyqt5.qtopengl python3-pyqt5.qtsvg
     sudo apt-get install -y python3-pyqt5.qtwebengine || sudo apt-get install -y python3-pyqt5.qtwebkit
     sudo apt-get install -y python3-yaml python3-progressbar python3-jinja2
@@ -57,7 +56,7 @@ Then install local Python Module dependencies and Pyrocko locally:
     pip install --user py27-scipy
     pip install --user py27-matplotlib
     pip install --user py27-yaml
-    pip install --user py27-pyqt4
+    pip install --user py27-pyqt5
     pip install --user py27-setuptools
     pip install --user py27-jinja2
     easy_install --user progressbar || pip install --user progressbar
