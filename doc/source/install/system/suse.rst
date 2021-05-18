@@ -9,7 +9,7 @@ Python 3.4 and later
 
     sudo zypper -n install make git gcc python3-devel python3-setuptools \
         python3-numpy python3-numpy-devel python3-scipy python3-matplotlib \
-        python3-qt5 python3-qt4 \
+        python3-qt5 \
         python3-matplotlib-qt4 \
         python3-PyYAML python3-progressbar python3-Jinja2 \
         python3-requests \
@@ -29,7 +29,7 @@ Python 2.7
     sudo zypper install make git gcc python-devel python-setuptools \
         python-numpy python-numpy-devel python-scipy python-matplotlib \
         python-matplotlib-qt5 python-matplotlib-qt4 python-matplotlib-tk \
-        python-qt5 python-qt4 \
+        python-qt5 \
         python-PyYAML python-progressbar python-Jinja2 \
         python-requests \
         python-nose python-coverage
