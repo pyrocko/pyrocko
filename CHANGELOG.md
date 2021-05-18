@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+=======
+## [Unreleased]
+
+### Added
+- New module `modelling.cracksol` containing different analytical crack
+  solutions for displacement and dislocation modelling.
+- New extension `modelling.ext.okada_ext` following `Okada, 1992` to calculate
+  displacements and spatial derivatives.
+- New module `modelling.okada` with `OkadaSource` object as wrapper of C
+  extension and inverter to estimate dislocation based on stress drop on a
+  rectangular rupture plane.
+- New `gf.seismosizer.PseudoDynamicRupture` wrapping boundary element method
+  based on `modelling.okada.OkadaSource` combined with the Eikonal solver to
+  perform quasi-dynamic slip modelling.
+- New plotting module for the `PseudoDynamicRupture` in `plot.dynamic_rupture`.
+- New scenario `scenario.sources.pseudodynrupture` for usage of the
+  `PseudoDynamicRupture` as `colosseo` input.
+- New `aggressive_oversampling` attribute for both `gf.RectangularSource` and
+  `gf.PseudoDynamicRupture` allowing for hard oversampling of the basesources.
+
+### Fixed
+*empty*
+
+### Changed
 *empty*
 
 ## v2021.09.14
