@@ -195,9 +195,9 @@ def main(args=None):
              'following additional placeholders use the window begin and end '
              'times rather than trace begin and end times (to suppress '
              'producing many small files for gappy traces), %(wmin_year)s, '
-             '%(wmin_month)s, %(wmin_day)s, %(wmin)s, %(wmax_year)s, '
-             '%(wmax_month)s, %(wmax_day)s, %(wmax)s. Example: '
-             '--output=\'data/%s/trace-%s-%c.mseed\'')
+             '%(wmin_month)s, %(wmin_day)s, %(wmin)s, %(wmin_jday)s, '
+             '%(wmax_year)s, %(wmax_month)s, %(wmax_day)s, %(wmax)s, '
+             '%(wmax_jday)s. Example: --output=\'data/%s/trace-%s-%c.mseed\'')
 
     parser.add_option(
         '--output-dir',
@@ -491,10 +491,12 @@ def main(args=None):
                                 wmin_year=tts(twmin, format='%Y'),
                                 wmin_month=tts(twmin, format='%m'),
                                 wmin_day=tts(twmin, format='%d'),
+                                wmin_jday=tts(twmin, format='%j'),
                                 wmin=tts(twmin, format='%Y-%m-%d_%H-%M-%S'),
                                 wmax_year=tts(twmax, format='%Y'),
                                 wmax_month=tts(twmax, format='%m'),
                                 wmax_day=tts(twmax, format='%d'),
+                                wmax_jday=tts(twmax, format='%j'),
                                 wmax=tts(twmax, format='%Y-%m-%d_%H-%M-%S')),
                             **save_kwargs)
                 except io.FileSaveError as e:
