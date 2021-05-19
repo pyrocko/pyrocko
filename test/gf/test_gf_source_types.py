@@ -7,7 +7,7 @@ import os
 import numpy as num
 from pyrocko import gf, util, trace, moment_tensor as pmt, orthodrome as pod
 from pyrocko.gf.seismosizer import map_anchor
-from pyrocko.modelling import DislocationInverter
+from pyrocko.modelling import make_okada_coefficient_matrix
 
 logger = logging.getLogger('pyrocko.test.test_gf_source_types')
 
@@ -155,7 +155,7 @@ class GFSourceTypesTestCase(unittest.TestCase):
         num.testing.assert_equal(cumslip, num.cumsum(deltaslip, axis=1))
 
         # Check coefficient matrix calculation
-        coef_mat = DislocationInverter.get_coef_mat(pdr.patches)
+        coef_mat = make_okada_coefficient_matrix(pdr.patches)
         assert (coef_mat == pdr.coef_mat).all()
 
         if show_plot:

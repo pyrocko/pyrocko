@@ -157,7 +157,7 @@ See also :class:`~pyrocko.gf.seismosizer.RectangularSource`.
   --- !pf.scenario.RectangularSourceGenerator
   # How often the are we rolling the dice for this model
   ntries: 10
-  # Number of DCSources to generate
+  # Number of events to generate
   nevents: 2
   avoid_water: false
   time_min: 2017-01-01 00:00:00
@@ -186,7 +186,7 @@ See also :class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture`.
   --- !pf.scenario.PseudoDynamicRuptureGenerator
   # How often the are we rolling the dice for this model
   ntries: 10
-  # Number of DCSources to generate
+  # Number of events to generate
   nevents: 2
   avoid_water: false
   time_min: 2017-01-01 00:00:00

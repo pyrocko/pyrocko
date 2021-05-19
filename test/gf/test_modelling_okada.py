@@ -6,7 +6,8 @@ import unittest
 from pyrocko import util
 from pyrocko import moment_tensor as pmt
 from pyrocko.modelling import (
-    DislocationInverter, okada_ext, OkadaSource, GriffithCrack)
+    okada_ext, OkadaSource, GriffithCrack, make_okada_coefficient_matrix,
+    invert_fault_dislocations_bem)
 
 
 from ..common import Benchmark
@@ -188,18 +189,18 @@ class OkadaTestCase(unittest.TestCase):
 
         @benchmark.labeled('okada_inv')
         def calc():
-            return DislocationInverter.get_coef_mat(
+            return make_okada_coefficient_matrix(
                 source_disc, nthreads=6)
 
         @benchmark.labeled('okada_inv_single')
         def calc_bulk():
-            return DislocationInverter.get_coef_mat_single(
-                source_disc, nthreads=6)
+            return make_okada_coefficient_matrix(
+                source_disc, nthreads=6, variant='single')
 
         @benchmark.labeled('okada_slow')
         def calc_slow():
-            return DislocationInverter.get_coef_mat_slow(
-                source_disc, nthreads=6)
+            return make_okada_coefficient_matrix(
+                source_disc, nthreads=6, variant='slow')
 
         res1 = calc()
         # res1 = calc()
@@ -447,10 +448,10 @@ class OkadaTestCase(unittest.TestCase):
         else:
             n_eq = 3
 
-        gf = DislocationInverter.get_coef_mat(
+        gf = make_okada_coefficient_matrix(
             source_list, pure_shear=pure_shear)
-        gf2 = DislocationInverter.get_coef_mat_single(
-            source_list, pure_shear=pure_shear)
+        gf2 = make_okada_coefficient_matrix(
+            source_list, pure_shear=pure_shear, variant='single')
 
         assert num.linalg.slogdet(num.dot(gf.T, gf)) != (0., num.inf)
         assert num.linalg.slogdet(num.dot(gf2.T, gf2)) != (0., num.inf)
@@ -469,7 +470,7 @@ class OkadaTestCase(unittest.TestCase):
 
         @benchmark.labeled('lsq')
         def lsq():
-            return DislocationInverter.get_disloc_lsq(
+            return invert_fault_dislocations_bem(
                 stress, coef_mat=gf, pure_shear=pure_shear)
 
         disloc_est = lsq()
@@ -556,9 +557,9 @@ class OkadaTestCase(unittest.TestCase):
             strike=0., dip=0., rake=0.,
             shearmod=mu, poisson=poisson) for coords in source_coords]
 
-        gf = DislocationInverter.get_coef_mat(source_list, pure_shear=False)
-        disloc_est = DislocationInverter.get_disloc_lsq(stress, coef_mat=gf)\
-            .ravel()
+        gf = make_okada_coefficient_matrix(source_list, pure_shear=False)
+        disloc_est = invert_fault_dislocations_bem(
+            stress, coef_mat=gf).ravel()
 
         stressdrop = num.zeros(3, )
         stressdrop[stress_comp] = dstress
@@ -664,8 +665,8 @@ class OkadaTestCase(unittest.TestCase):
             strike=0., dip=0., rake=0.,
             shearmod=mu, poisson=poisson) for src_crds in source_coords]
 
-        gf = DislocationInverter.get_coef_mat(source_list, pure_shear=False)
-        disloc_est = DislocationInverter.get_disloc_lsq(
+        gf = make_okada_coefficient_matrix(source_list, pure_shear=False)
+        disloc_est = invert_fault_dislocations_bem(
             stress, coef_mat=gf).ravel()
 
         stressdrop = num.zeros(3, )
@@ -763,12 +764,11 @@ class OkadaTestCase(unittest.TestCase):
         stress = num.zeros((3 * len(source_list), ))
         stress[comp::3] = dstress
 
-        cf = DislocationInverter.get_coef_mat(source_list, pure_shear=False)
+        cf = make_okada_coefficient_matrix(source_list, pure_shear=False)
 
-        disloc_okada = \
-            DislocationInverter.get_disloc_lsq(
-                stress_field=stress,
-                coef_mat=cf)
+        disloc_okada = invert_fault_dislocations_bem(
+            stress_field=stress,
+            coef_mat=cf)
 
         source_patches = num.array([src.source_patch() for src in source_list])
         source_disl = disloc_okada.reshape(source_patches.shape[0], 3)
@@ -824,9 +824,8 @@ class OkadaTestCase(unittest.TestCase):
         for i in range(len(source_list)):
             source_list[i].depth = depth
 
-        cf = DislocationInverter.get_coef_mat(source_list)
-        disloc_okada = \
-            DislocationInverter.get_disloc_lsq(
+        cf = make_okada_coefficient_matrix(source_list)
+        disloc_okada = invert_fault_dislocations_bem(
                 stress_field=stress,
                 coef_mat=cf)
 

@@ -2,13 +2,11 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-import sys
 
 import numpy as num
 import logging
 
 from pyrocko import moment_tensor as mt
-import pyrocko.guts as guts
 from pyrocko.guts import Float, String, Timestamp, Int
 from pyrocko.model import Location
 from pyrocko.modelling import okada_ext
@@ -23,29 +21,18 @@ r2d = 180./num.pi
 km = 1e3
 
 
-def kwargs_to_py2(**kwargs):
-    if sys.version_info[0] >= 3:
-        return kwargs
-    else:
-        kwargs_new = {}
-
-        for k, i in kwargs.items():
-            if isinstance(i, bool):
-                kwargs_new[k] = int(i)
-            else:
-                kwargs_new[k] = i
-
-        return kwargs_new
-
-
 class AnalyticalSource(Location):
+    '''
+    Base class for analytical source models.
+    '''
+
     name = String.T(
         optional=True,
         default='')
 
     time = Timestamp.T(
         default=0.,
-        help='source origin time',
+        help='Source origin time',
         optional=True)
 
     vr = Float.T(
@@ -61,43 +48,43 @@ class AnalyticalSource(Location):
     def easting(self):
         return self.east_shift
 
-    clone = guts.clone
-
 
 class AnalyticalRectangularSource(AnalyticalSource):
     '''
-    Rectangular analytical source model
+    Rectangular analytical source model.
+
+    Coordinates on the source plane are with respect to the origin point given
+    by `(lat, lon, east_shift, north_shift, depth)`.
     '''
 
     strike = Float.T(
         default=0.0,
-        help='strike direction in [deg], measured clockwise from north')
+        help='Strike direction in [deg], measured clockwise from north')
 
     dip = Float.T(
         default=90.0,
-        help='dip angle in [deg], measured downward from horizontal')
+        help='Dip angle in [deg], measured downward from horizontal')
 
     rake = Float.T(
         default=0.0,
-        help='rake angle in [deg], '
-             'measured counter-clockwise from right-horizontal '
-             'in on-plane view')
+        help='Rake angle in [deg], measured counter-clockwise from '
+             'right-horizontal in on-plane view')
 
     al1 = Float.T(
         default=0.,
-        help='Distance "left" side to source point [m]')
+        help='Left edge source plane coordinate [m]')
 
     al2 = Float.T(
         default=0.,
-        help='Distance "right" side to source point [m]')
+        help='Right edge source plane coordinate [m]')
 
     aw1 = Float.T(
         default=0.,
-        help='Distance "lower" side to source point [m]')
+        help='Lower edge source plane coordinate [m]')
 
     aw2 = Float.T(
         default=0.,
-        help='Distance "upper" side to source point [m]')
+        help='Upper edge source plane coordinate [m]')
 
     slip = Float.T(
         default=0.,
@@ -119,7 +106,7 @@ class AnalyticalRectangularSource(AnalyticalSource):
 
 class OkadaSource(AnalyticalRectangularSource):
     '''
-    Rectangular Okada source model
+    Rectangular Okada source model.
     '''
 
     opening = Float.T(
@@ -137,20 +124,18 @@ class OkadaSource(AnalyticalRectangularSource):
         optional=True)
 
     shearmod__ = Float.T(
-        default=32e9,
+        default=32.0e9,
         help='Shear modulus along the plane [Pa]',
         optional=True)
 
     @property
     def poisson(self):
         '''
-        Calculation of poisson ratio (if not given)
+        Calculation of Poisson ratio (if not given).
 
-        According to Mueller (2007), the poisson ratio can be
-        determined from the formulation for the poisson ratio :math:`\\nu`:
-        :math:`\\nu = \\frac{\\lambda}{2(\\lambda + \\mu)}`
-        with the shear modulus :math:`\\mu` and first Lame parameter
-        :math:`\\lambda`.
+        The Poisson ratio :math:`\\nu` can be calculated from the Lame
+        parameters :math`\\lambda` and :math:`\\mu` using :math:`\\nu =
+        \\frac{\\lambda}{2(\\lambda + \\mu)}` (e.g. Mueller 2007).
         '''
 
         if self.poisson__ is not None:
@@ -168,12 +153,9 @@ class OkadaSource(AnalyticalRectangularSource):
     @property
     def lamb(self):
         '''
-        Calculation of first Lame's parameter (if not given)
+        Calculation of first Lame parameter (if not given).
 
-        According to Mueller (2007), the first Lame parameter can be
-        determined from the formulation for the poisson ratio :math:`\\nu`:
-        :math:`\\nu = \\frac{\\lambda}{2(\\lambda + \\mu)}`
-        with the shear modulus :math:`\\mu`
+        Poisson ratio and shear modulus must be available.
         '''
 
         if self.lamb__ is not None:
@@ -192,11 +174,9 @@ class OkadaSource(AnalyticalRectangularSource):
     @property
     def shearmod(self):
         '''
-        Calculation of shear modulus (if not given)
+        Calculation of shear modulus (if not given).
 
-        According to Mueller (2007), the shear modulus can be
-        determined from the formulation for the poisson ratio :math:`\\nu`:
-        :math:`\\mu = \\frac{\\8(1+\\nu)}{1-2\\nu)}`
+        Poisson ratio must be available.
 
         .. important ::
 
@@ -222,7 +202,7 @@ class OkadaSource(AnalyticalRectangularSource):
     @property
     def seismic_moment(self):
         '''
-        Scalar Seismic moment
+        Scalar Seismic moment.
 
         Code copied from Kite
         Disregarding the opening (as for now)
@@ -251,7 +231,8 @@ class OkadaSource(AnalyticalRectangularSource):
 
     @property
     def moment_magnitude(self):
-        ''' Moment magnitude from Seismic moment
+        '''
+        Moment magnitude from Seismic moment.
 
         We assume :math:`M_\\mathrm{w} = {\\frac{2}{3}}\\log_{10}(M_0) - 10.7`
 
@@ -261,7 +242,8 @@ class OkadaSource(AnalyticalRectangularSource):
         return mt.moment_to_magnitude(self.seismic_moment)
 
     def source_patch(self):
-        ''' Build source information array for okada_ext.okada input
+        '''
+        Build source information array for okada_ext.okada input.
 
         :return: array of the source data as input for okada_ext.okada
         :rtype: :py:class:`numpy.ndarray`, ``(1, 9)``
@@ -278,7 +260,8 @@ class OkadaSource(AnalyticalRectangularSource):
             self.aw2])
 
     def source_disloc(self):
-        ''' Build source dislocation for okada_ext.okada input
+        '''
+        Build source dislocation for okada_ext.okada input.
 
         :return: array of the source dislocation data as input for
             okada_ext.okada
@@ -290,19 +273,18 @@ class OkadaSource(AnalyticalRectangularSource):
             self.opening])
 
     def discretize(self, nlength, nwidth, *args, **kwargs):
-        ''' Discretize the given fault by ``nlength * nwidth`` fault patches
+        '''
+        Discretize fault into rectilinear grid of fault patches.
 
-        Discretizing the fault into several sub faults. ``nlength`` is
-        number of points in strike direction, ``nwidth`` in down dip direction
-        along the fault. Fault orientation, slip and elastic parameters are
-        kept.
+        Fault orientation, slip and elastic parameters are passed to the
+        sub-faults unchanged.
 
-        :param nlength: Number of discrete points in faults strike direction
+        :param nlength: Number of patches in strike direction
         :type nlength: int
-        :param nwidth: Number of discrete points in faults down-dip direction
+        :param nwidth: Number of patches in down-dip direction
         :type nwidth: int
         :return: Discrete fault patches
-        :rtype: list of :py:class:`pyrocko.modelling.okada.OkadaSource` objects
+        :rtype: list of :py:class:`~pyrocko.modelling.okada.OkadaPatch` objects
         '''
         assert nlength > 0
         assert nwidth > 0
@@ -354,6 +336,10 @@ class OkadaSource(AnalyticalRectangularSource):
 
 class OkadaPatch(OkadaSource):
 
+    '''
+    Okada source with additional 2D indexes for bookkeeping.
+    '''
+
     ix = Int.T(help='Relative index of the patch in x')
     iy = Int.T(help='Relative index of the patch in y')
 
@@ -362,91 +348,89 @@ class OkadaPatch(OkadaSource):
         self.parent = parent
 
 
-class DislocationInverter(object):
+def make_okada_coefficient_matrix(
+        source_patches_list,
+        pure_shear=False,
+        rotate_sdn=True,
+        nthreads=1, variant='normal'):
+
     '''
-    Toolbox for Boundary Element Method (BEM) and dislocation inversion based
-    on okada_ext.okada
+    Build coefficient matrix for given fault patches.
+
+    The BEM for a discretized fault and the determination of the slip
+    distribution from stress drop is based on the relation :math:`stress =
+    coefmat \\cdot displ`. Here the coefficient matrix is built, based on
+    the displacements from Okada's solution and their partial derivatives.
+
+    :param source_patches_list: Source patches, to be used in BEM.
+    :type source_patches_list: list of
+        :py:class:`~pyrocko.modelling.okada.OkadaSource` objects
+    :param pure_shear: If ``True``, only shear forces are taken into account.
+    :type pure_shear: optional, bool
+    :param rotate_sdn: If ``True``, rotate to strike, dip, normal.
+    :type rotate_sdn: optional, bool
+    :param nthreads: Number of threads.
+    :type nthreads: optional, int
+
+    :return: Coefficient matrix for all source combinations.
+    :rtype: :py:class:`numpy.ndarray`,
+        ``(len(source_patches_list) * 3, len(source_patches_list) * 3)``
     '''
 
-    @staticmethod
-    def get_coef_mat(source_patches_list, pure_shear=False,
-                     rotate_sdn=True, nthreads=1):
-        '''
-        Build coefficient matrix for given source_patches
+    if variant == 'slow':
+        return _make_okada_coefficient_matrix_slow(
+            source_patches_list, pure_shear, rotate_sdn, nthreads)
 
-        The BEM for a fault and the determination of the slip distribution from
-        the stress drop is based on the relation
-        :math:`stress = coefmat \\cdot displ`.
-        Here the coefficient matrix is build and filled based on the
-        okada_ext.okada displacements and partial displacement
-        differentiations.
+    source_patches = num.array([
+        src.source_patch() for src in source_patches_list])
+    receiver_coords = source_patches[:, :3].copy()
 
-        :param source_patches_list: list of all OkadaSources, which shall be
-            used for BEM
-        :type source_patches_list: list of
-            :py:class:`pyrocko.modelling.okada.OkadaSource`
-        :param pure_shear: Shall only shear forces be taken into account,
-            or additionally include opening, default False.
-        :type pure_shear: optional, bool
-        :param rotate_sdn: Rotation towards strike, dip, normal, default True.
-        :type rotate_sdn: optional, bool
-        :param nthreads: Number of threads, default 1
-        :type nthreads: optional, int
+    npoints = len(source_patches_list)
 
-        :return: coefficient matrix for all sources
-        :rtype: :py:class:`numpy.ndarray`,
-            ``(len(source_patches_list) * 3, len(source_patches_list) * 3)``
-        '''
+    if pure_shear:
+        n_eq = 2
+    else:
+        n_eq = 3
 
-        source_patches = num.array([
-            src.source_patch() for src in source_patches_list])
-        receiver_coords = source_patches[:, :3].copy()
+    coefmat = num.zeros((npoints * 3, npoints * 3))
 
-        npoints = len(source_patches_list)
+    lambda_mean = num.mean([src.lamb for src in source_patches_list])
+    mu_mean = num.mean([src.shearmod for src in source_patches_list])
 
-        if pure_shear:
-            n_eq = 2
-        else:
-            n_eq = 3
+    unit_disl = 1.
+    disl_cases = {
+        'strikeslip': {
+            'slip': unit_disl,
+            'opening': 0.,
+            'rake': 0.},
+        'dipslip': {
+            'slip': unit_disl,
+            'opening': 0.,
+            'rake': 90.},
+        'tensileslip': {
+            'slip': 0.,
+            'opening': unit_disl,
+            'rake': 0.}
+    }
 
-        coefmat = num.zeros((npoints * 3, npoints * 3))
+    diag_ind = [0, 4, 8]
+    kron = num.zeros(9)
+    kron[diag_ind] = 1.
 
-        lambda_mean = num.mean([src.lamb for src in source_patches_list])
-        mu_mean = num.mean([src.shearmod for src in source_patches_list])
-
-        unit_disl = 1.
-        disl_cases = {
-            'strikeslip': {
-                'slip': unit_disl,
-                'opening': 0.,
-                'rake': 0.},
-            'dipslip': {
-                'slip': unit_disl,
-                'opening': 0.,
-                'rake': 90.},
-            'tensileslip': {
-                'slip': 0.,
-                'opening': unit_disl,
-                'rake': 0.}
-        }
-
-        diag_ind = [0, 4, 8]
-        kron = num.zeros(9)
-        kron[diag_ind] = 1.
+    if variant == 'normal':
         kron = kron[num.newaxis, num.newaxis, :]
+    else:
+        kron = kron[num.newaxis, :]
 
-        for idisl, case_type in enumerate([
-                'strikeslip', 'dipslip', 'tensileslip'][:n_eq]):
-            case = disl_cases[case_type]
-            source_disl = num.array([
-                case['slip'] * num.cos(case['rake'] * d2r),
-                case['slip'] * num.sin(case['rake'] * d2r),
-                case['opening']])
+    for idisl, case_type in enumerate([
+            'strikeslip', 'dipslip', 'tensileslip'][:n_eq]):
+        case = disl_cases[case_type]
+        source_disl = num.array([
+            case['slip'] * num.cos(case['rake'] * d2r),
+            case['slip'] * num.sin(case['rake'] * d2r),
+            case['opening']])
 
-            kwargs = kwargs_to_py2(
-                rotate_sdn=rotate_sdn,
-                stack_sources=False)
-
+        if variant == 'normal':
             results = okada_ext.okada(
                 source_patches,
                 num.tile(source_disl, npoints).reshape(-1, 3),
@@ -454,99 +438,20 @@ class DislocationInverter(object):
                 lambda_mean,
                 mu_mean,
                 nthreads=nthreads,
-                **kwargs)
+                rotate_sdn=int(rotate_sdn),
+                stack_sources=int(variant != 'normal'))
 
-            eps = 0.5 * (results[:, :, 3:] +
-                         results[:, :, (3, 6, 9, 4, 7, 10, 5, 8, 11)])
+            eps = 0.5 * (
+                results[:, :, 3:] +
+                results[:, :, (3, 6, 9, 4, 7, 10, 5, 8, 11)])
 
-            dilatation = eps[:, :, diag_ind].sum(axis=-1)[:, :, num.newaxis]
+            dilatation \
+                = eps[:, :, diag_ind].sum(axis=-1)[:, :, num.newaxis]
 
             stress_sdn = kron*lambda_mean*dilatation + 2.*mu_mean*eps
             coefmat[:, idisl::3] = stress_sdn[:, :, (2, 5, 8)]\
                 .reshape(-1, npoints*3).T
-
-        if pure_shear:
-            coefmat[2::3, :] = 0.
-
-        return -coefmat / unit_disl
-
-    @staticmethod
-    def get_coef_mat_single(source_patches_list, pure_shear=False,
-                            rotate_sdn=True, nthreads=1):
-        '''
-        Build coefficient matrix for given source_patches
-
-        The BEM for a fault and the determination of the slip distribution from
-        the stress drop is based on the relation
-        :math:`stress = coefmat \\cdot displ`.
-        Here the coefficient matrix is build and filled based on the
-        okada_ext.okada displacements and partial displacement
-        differentiations.
-
-        :param source_patches_list: list of all OkadaSources, which shall be
-            used for BEM
-        :type source_patches_list: list of
-            :py:class:`pyrocko.modelling.okada.OkadaSource`
-        :param pure_shear: Flag, if also opening mode shall be taken into
-            account (False) or the fault is described as pure shear (True).
-        :type pure_shear: optional, bool
-        :param rotate_sdn: Rotation towards strike, dip, normal, default True.
-        :type rotate_sdn: optional, bool
-        :param nthreads: Number of threads, default 1
-        :type nthreads: optional, int
-
-        :return: coefficient matrix for all sources
-        :rtype: :py:class:`numpy.ndarray`,
-            ``(len(source_patches_list) * 3, len(source_patches_list) * 3)``
-        '''
-
-        source_patches = num.array([
-            src.source_patch() for src in source_patches_list])
-        receiver_coords = source_patches[:, :3].copy()
-
-        npoints = len(source_patches_list)
-
-        if pure_shear:
-            n_eq = 2
         else:
-            n_eq = 3
-
-        coefmat = num.zeros((npoints * 3, npoints * 3))
-
-        lambda_mean = num.mean([src.lamb for src in source_patches_list])
-        mu_mean = num.mean([src.shearmod for src in source_patches_list])
-
-        unit_disl = 1.
-        disl_cases = {
-            'strikeslip': {
-                'slip': unit_disl,
-                'opening': 0.,
-                'rake': 0.},
-            'dipslip': {
-                'slip': unit_disl,
-                'opening': 0.,
-                'rake': 90.},
-            'tensileslip': {
-                'slip': 0.,
-                'opening': unit_disl,
-                'rake': 0.}
-        }
-
-        diag_ind = [0, 4, 8]
-        kron = num.zeros(9)
-        kron[diag_ind] = 1.
-        kron = kron[num.newaxis, :]
-
-        for idisl, case_type in enumerate([
-                'strikeslip', 'dipslip', 'tensileslip'][:n_eq]):
-            case = disl_cases[case_type]
-            source_disl = num.array([
-                case['slip'] * num.cos(case['rake'] * d2r),
-                case['slip'] * num.sin(case['rake'] * d2r),
-                case['opening']])
-
-            kwargs = kwargs_to_py2(rotate_sdn=rotate_sdn)
-
             for isrc, source in enumerate(source_patches):
                 results = okada_ext.okada(
                     source[num.newaxis, :],
@@ -555,228 +460,201 @@ class DislocationInverter(object):
                     lambda_mean,
                     mu_mean,
                     nthreads=nthreads,
-                    **kwargs)
+                    rotate_sdn=int(rotate_sdn))
 
-                eps = \
-                    0.5 * (
-                        results[:, 3:] +
-                        results[:, (3, 6, 9, 4, 7, 10, 5, 8, 11)])
+                eps = 0.5 * (
+                    results[:, 3:] +
+                    results[:, (3, 6, 9, 4, 7, 10, 5, 8, 11)])
 
-                dilatation = num.sum(eps[:, diag_ind], axis=1)[:, num.newaxis]
-                stress_sdn = kron * lambda_mean * dilatation+2. * mu_mean * eps
+                dilatation \
+                    = num.sum(eps[:, diag_ind], axis=1)[:, num.newaxis]
+                stress_sdn \
+                    = kron * lambda_mean * dilatation+2. * mu_mean * eps
 
-                coefmat[:, isrc*3 + idisl] = stress_sdn[:, (2, 5, 8)].ravel()
+                coefmat[:, isrc*3 + idisl] \
+                    = stress_sdn[:, (2, 5, 8)].ravel()
 
-                if pure_shear:
-                    coefmat[2::3, isrc * 3 + idisl] = 0.
+    if pure_shear:
+        coefmat[2::3, :] = 0.
 
-        return -coefmat / unit_disl
+    return -coefmat / unit_disl
 
-    @staticmethod
-    def get_coef_mat_slow(source_patches_list, pure_shear=False,
-                          rotate_sdn=True, nthreads=1):
-        '''
-        Build coefficient matrix for given source_patches (Slow version)
 
-        The BEM for a fault and the determination of the slip distribution from
-        the stress drop is based on the relation
-        :math:`stress = coefmat \\cdot displ`.
-        Here the coefficient matrix is build and filled based on the
-        okada_ext.okada displacements and partial displacement
-        differentiations.
+def _make_okada_coefficient_matrix_slow(
+        source_patches_list, pure_shear=False, rotate_sdn=True, nthreads=1):
 
-        :param source_patches_list: list of all OkadaSources, which shall be
-            used for BEM
-        :type source_patches_list: list of
-            :py:class:`pyrocko.modelling.okada.OkadaSource`
-        :param pure_shear: Flag, if also opening mode shall be taken into
-            account (False) or the fault is described as pure shear (True).
-        :type pure_shear: optional, bool
-        :param rotate_sdn: Rotation towards strike, dip, normal, default True.
-        :type rotate_sdn: optional, bool
-        :param nthreads: Number of threads, default 1
-        :type nthreads: optional, int
+    source_patches = num.array([
+        src.source_patch() for src in source_patches_list])
+    receiver_coords = source_patches[:, :3].copy()
 
-        :return: coefficient matrix for all sources
-        :rtype: :py:class:`numpy.ndarray`,
-            ``(source_patches_list.shape[0] * 3,
-            source_patches_list.shape[0] * 3(2))``
-        '''
+    npoints = len(source_patches_list)
 
-        source_patches = num.array([
-            src.source_patch() for src in source_patches_list])
-        receiver_coords = source_patches[:, :3].copy()
+    if pure_shear:
+        n_eq = 2
+    else:
+        n_eq = 3
 
-        npoints = len(source_patches_list)
+    coefmat = num.zeros((npoints * 3, npoints * 3))
 
-        if pure_shear:
-            n_eq = 2
-        else:
-            n_eq = 3
+    def ned2sdn_rotmat(strike, dip):
+        rotmat = mt.euler_to_matrix(
+            (dip + 180.) * d2r, strike * d2r, 0.).A
+        return rotmat
 
-        coefmat = num.zeros((npoints * 3, npoints * 3))
+    lambda_mean = num.mean([src.lamb for src in source_patches_list])
+    shearmod_mean = num.mean([src.shearmod for src in source_patches_list])
 
-        def ned2sdn_rotmat(strike, dip):
-            rotmat = mt.euler_to_matrix(
-                (dip + 180.) * d2r, strike * d2r, 0.).A
-            return rotmat
+    unit_disl = 1.
+    disl_cases = {
+        'strikeslip': {
+            'slip': unit_disl,
+            'opening': 0.,
+            'rake': 0.},
+        'dipslip': {
+            'slip': unit_disl,
+            'opening': 0.,
+            'rake': 90.},
+        'tensileslip': {
+            'slip': 0.,
+            'opening': unit_disl,
+            'rake': 0.}
+    }
+    for idisl, case_type in enumerate([
+            'strikeslip', 'dipslip', 'tensileslip'][:n_eq]):
+        case = disl_cases[case_type]
+        source_disl = num.array([
+            case['slip'] * num.cos(case['rake'] * d2r),
+            case['slip'] * num.sin(case['rake'] * d2r),
+            case['opening']])
 
-        lambda_mean = num.mean([src.lamb for src in source_patches_list])
-        shearmod_mean = num.mean([src.shearmod for src in source_patches_list])
+        for isource, source in enumerate(source_patches):
+            results = okada_ext.okada(
+                source[num.newaxis, :].copy(),
+                source_disl[num.newaxis, :].copy(),
+                receiver_coords,
+                lambda_mean,
+                shearmod_mean,
+                nthreads=nthreads,
+                rotate_sdn=int(rotate_sdn))
 
-        unit_disl = 1.
-        disl_cases = {
-            'strikeslip': {
-                'slip': unit_disl,
-                'opening': 0.,
-                'rake': 0.},
-            'dipslip': {
-                'slip': unit_disl,
-                'opening': 0.,
-                'rake': 90.},
-            'tensileslip': {
-                'slip': 0.,
-                'opening': unit_disl,
-                'rake': 0.}
-        }
-        for idisl, case_type in enumerate([
-                'strikeslip', 'dipslip', 'tensileslip'][:n_eq]):
-            case = disl_cases[case_type]
-            source_disl = num.array([
-                case['slip'] * num.cos(case['rake'] * d2r),
-                case['slip'] * num.sin(case['rake'] * d2r),
-                case['opening']])
+            for irec in range(receiver_coords.shape[0]):
+                eps = num.zeros((3, 3))
+                for m in range(3):
+                    for n in range(3):
+                        eps[m, n] = 0.5 * (
+                            results[irec][m * 3 + n + 3] +
+                            results[irec][n * 3 + m + 3])
 
-            kwargs = kwargs_to_py2(
-                rotate_sdn=rotate_sdn)
+                stress = num.zeros((3, 3))
+                dilatation = num.sum([eps[i, i] for i in range(3)])
 
-            for isource, source in enumerate(source_patches):
-                results = okada_ext.okada(
-                    source[num.newaxis, :].copy(),
-                    source_disl[num.newaxis, :].copy(),
-                    receiver_coords,
-                    lambda_mean,
-                    shearmod_mean,
-                    nthreads=nthreads,
-                    **kwargs)
+                for m, n in zip([0, 0, 0, 1, 1, 2], [0, 1, 2, 1, 2, 2]):
+                    if m == n:
+                        stress[m, n] = \
+                            lambda_mean * \
+                            dilatation + \
+                            2. * shearmod_mean * \
+                            eps[m, n]
 
-                for irec in range(receiver_coords.shape[0]):
-                    eps = num.zeros((3, 3))
-                    for m in range(3):
-                        for n in range(3):
-                            eps[m, n] = 0.5 * (
-                                results[irec][m * 3 + n + 3] +
-                                results[irec][n * 3 + m + 3])
+                    else:
+                        stress[m, n] = \
+                            2. * shearmod_mean * \
+                            eps[m, n]
+                        stress[n, m] = stress[m, n]
 
-                    stress = num.zeros((3, 3))
-                    dilatation = num.sum([eps[i, i] for i in range(3)])
+                normal = num.array([0., 0., -1.])
+                for isig in range(3):
+                    tension = num.sum(stress[isig, :] * normal)
+                    coefmat[irec * n_eq + isig, isource * n_eq + idisl] = \
+                        tension / unit_disl
 
-                    for m, n in zip([0, 0, 0, 1, 1, 2], [0, 1, 2, 1, 2, 2]):
-                        if m == n:
-                            stress[m, n] = \
-                                lambda_mean * \
-                                dilatation + \
-                                2. * shearmod_mean * \
-                                eps[m, n]
+    return coefmat
 
-                        else:
-                            stress[m, n] = \
-                                2. * shearmod_mean * \
-                                eps[m, n]
-                            stress[n, m] = stress[m, n]
 
-                    normal = num.array([0., 0., -1.])
-                    for isig in range(3):
-                        tension = num.sum(stress[isig, :] * normal)
-                        coefmat[irec * n_eq + isig, isource * n_eq + idisl] = \
-                            tension / unit_disl
+def invert_fault_dislocations_bem(
+        stress_field,
+        coef_mat=None,
+        source_list=None,
+        pure_shear=False,
+        epsilon=None,
+        nthreads=1,
+        **kwargs):
+    '''
+    BEM least squares inversion to get fault dislocations given stress field.
 
-        return coefmat
+    Follows least squares inversion approach by Menke (1989) to calculate
+    dislocations on a fault with several segments from a given stress field.
+    The coefficient matrix connecting stresses and displacements of the fault
+    patches can either be specified by the user (``coef_mat``) or it is
+    calculated using the solution of Okada (1992) for a rectangular fault in a
+    homogeneous half space (``source_list``).
 
-    @staticmethod
-    def get_disloc_lsq(
-            stress_field,
-            coef_mat=None,
-            source_list=None,
-            pure_shear=False,
-            epsilon=None,
-            nthreads=1,
-            **kwargs):
-        '''
-        Least square inversion to get displacement from stress
+    :param stress_field: Stress change [Pa] for each source patch (as
+        ``stress_field[isource, icomponent]`` where isource indexes the source
+        patch and ``icomponent`` indexes component, ordered (strike, dip,
+        tensile).
+    :type stress_field: :py:class:`numpy.ndarray`, shape ``(nsources, 3)``
 
-        Follows approach for Least-Square Inversion published in Menke (1989)
-        to calculate displacements on a fault with several segments from a
-        given stress field. If not done, the coefficient matrix is determined
-        within the code.
+    :param coef_mat: Coefficient matrix connecting source patch
+        dislocations and the stress field.
+    :type coef_mat: optional, :py:class:`numpy.ndarray`, shape
+        ``(len(source_list) * 3, len(source_list) * 3)``
 
-        :param stress_field: Array containing the stress change [Pa] for each
-            source patch (order: [
-            src1 dstress_Strike, src1 dstress_Dip, src1 dstress_Tensile,
-            src2 dstress_Strike, ...])
-        :type stress_field: :py:class:`numpy.ndarray`, ``(n_sources * 3, )``
-        :param coef_mat: Coefficient matrix to connect source patches
-            displacement and the resulting stress field
-        :type coef_mat: optional, :py:class:`numpy.ndarray`,
-            ``(source_patches_list.shape[0] * 3,
-            source_patches.shape[] * 3(2)``
-        :param source_list: list of all OkadaSources, which shall be
-            used for BEM
-        :type source_list: optional, list of
-            :py:class:`pyrocko.modelling.okada.OkadaSource`
-        :param epsilon: regularize small values from the coefficient matrix,
-            default None.
-        :type epsilon: optional, float
+    :param source_list: list of all source patches to be used for BEM.
+    :type source_list: optional, list of
+        :py:class:`~pyrocko.modelling.okada.OkadaSource` objects
 
-        :param nthreads: number of threads for the least squares inversion,
-            default 1
-        :type nthreads: optional, int
+    :param epsilon: If given, values in ``coef_mat`` smaller than ``epsilon``
+        are set to zero.
+    :type epsilon: optional, float
 
-        :return: inverted displacements (u_strike, u_dip , u_tensile) for each
-            source patch. order: [
-            [patch1 u_Strike, patch1 u_Dip, patch1 u_Tensile],
-            [patch2 u_Strike, patch2 u_Dip, patch2 u_Tensile],
-            ...]
-        :rtype: :py:class:`numpy.ndarray`, ``(n_sources, 3)``
-        '''
+    :param nthreads: Number of threads allowed.
+    :type nthreads: int
 
-        if source_list is not None and coef_mat is None:
-            coef_mat = DislocationInverter.get_coef_mat(
-                source_list, pure_shear=pure_shear, nthreads=nthreads,
-                **kwargs)
+    :return: Inverted displacements as ``displacements[isource, icomponent]``
+        where isource indexes the source patch and ``icomponent`` indexes
+        component, ordered (strike, dip, tensile).
+    :rtype: :py:class:`numpy.ndarray`, ``(nsources, 3)``
+    '''
 
-        if epsilon is not None:
-            coef_mat[coef_mat < epsilon] = 0.
+    if source_list is not None and coef_mat is None:
+        coef_mat = make_okada_coefficient_matrix(
+            source_list, pure_shear=pure_shear, nthreads=nthreads,
+            **kwargs)
 
-        idx = num.arange(0, coef_mat.shape[0])
-        if pure_shear:
-            idx = idx[idx % 3 != 2]
+    if epsilon is not None:
+        coef_mat[coef_mat < epsilon] = 0.
 
-        coef_mat_in = coef_mat[idx, :][:, idx]
-        disloc_est = num.zeros(coef_mat.shape[0])
+    idx = num.arange(0, coef_mat.shape[0])
+    if pure_shear:
+        idx = idx[idx % 3 != 2]
 
-        if stress_field.ndim == 2:
-            stress_field = stress_field.ravel()
+    coef_mat_in = coef_mat[idx, :][:, idx]
+    disloc_est = num.zeros(coef_mat.shape[0])
 
-        threadpool_limits = get_threadpool_limits()
+    if stress_field.ndim == 2:
+        stress_field = stress_field.ravel()
 
-        with threadpool_limits(limits=nthreads, user_api='blas'):
-            try:
-                disloc_est[idx] = num.linalg.multi_dot([
-                    num.linalg.inv(num.dot(coef_mat_in.T, coef_mat_in)),
-                    coef_mat_in.T,
-                    stress_field[idx]])
-            except num.linalg.LinAlgError as e:
-                logger.warning('Linear inversion failed!')
-                logger.warning(
-                    'coef_mat: %s\nstress_field: %s',
-                    coef_mat_in, stress_field[idx])
-                raise e
-            return disloc_est.reshape(-1, 3)
+    threadpool_limits = get_threadpool_limits()
+
+    with threadpool_limits(limits=nthreads, user_api='blas'):
+        try:
+            disloc_est[idx] = num.linalg.multi_dot([
+                num.linalg.inv(num.dot(coef_mat_in.T, coef_mat_in)),
+                coef_mat_in.T,
+                stress_field[idx]])
+        except num.linalg.LinAlgError as e:
+            logger.warning('Linear inversion failed!')
+            logger.warning(
+                'coef_mat: %s\nstress_field: %s',
+                coef_mat_in, stress_field[idx])
+            raise e
+        return disloc_est.reshape(-1, 3)
 
 
 __all__ = [
     'AnalyticalSource',
     'AnalyticalRectangularSource',
     'OkadaSource',
-    'DislocationInverter']
+    'make_okada_coefficient_matrix',
+    'invert_fault_dislocations_bem']

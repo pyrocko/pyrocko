@@ -1,6 +1,6 @@
 import numpy as num
 
-from pyrocko.modelling import OkadaSource, DislocationInverter
+from pyrocko.modelling import OkadaSource, invert_fault_dislocations_bem
 from pyrocko.plot import dislocation as displt
 
 km = 1e3
@@ -51,7 +51,7 @@ for il in range(nlength):
             stress_field[idx + stress_comp] = dstress / 4.
 
 # Invert for dislocation on source plane based on given stress field
-disloc_est = DislocationInverter.get_disloc_lsq(
+disloc_est = invert_fault_dislocations_bem(
     stress_field, source_list=source_discretized, nthreads=0)
 
 # Plot
