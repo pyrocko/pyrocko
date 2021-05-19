@@ -29,7 +29,8 @@ from pyrocko import moment_tensor as pmt
 from pyrocko import trace, util, config, model, eikonal_ext
 from pyrocko.orthodrome import ne_to_latlon
 from pyrocko.model import Location
-from pyrocko.modelling import OkadaSource, DislocationInverter, okada_ext
+from pyrocko.modelling import OkadaSource, make_okada_coefficient_matrix, \
+    okada_ext, invert_fault_dislocations_bem
 
 from . import meta, store, ws
 from .tractions import TractionField, DirectedTractions
@@ -3268,7 +3269,7 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
             raise ValueError(
                 'Patches are needed. Please calculate them first.')
 
-        self.coef_mat = DislocationInverter.get_coef_mat(
+        self.coef_mat = make_okada_coefficient_matrix(
             self.patches, nthreads=self.nthreads, pure_shear=self.pure_shear)
 
     def get_patch_attribute(self, attr):
@@ -3386,7 +3387,7 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
         indices_disl[1::3] += 1
         indices_disl[2::3] += 2
 
-        disloc_est[relevant_sources] = DislocationInverter.get_disloc_lsq(
+        disloc_est[relevant_sources] = invert_fault_dislocations_bem(
             stress_field=tractions[relevant_sources, :].ravel(),
             coef_mat=self.coef_mat[indices_disl, :][:, indices_disl],
             pure_shear=self.pure_shear, nthreads=self.nthreads,
@@ -3400,7 +3401,7 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
             disloc_tmax = num.zeros(npatches)
 
             disloc_tmax[relevant_sources] = num.linalg.norm(
-                DislocationInverter.get_disloc_lsq(
+                invert_fault_dislocations_bem(
                     stress_field=tractions[relevant_sources, :].ravel(),
                     coef_mat=self.coef_mat[indices_disl, :][:, indices_disl],
                     pure_shear=self.pure_shear, nthreads=self.nthreads,

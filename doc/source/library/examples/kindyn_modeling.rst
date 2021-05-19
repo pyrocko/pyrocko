@@ -13,6 +13,10 @@ Download :download:`okada_inversion_example.py </../../examples/okada_inversion_
 .. literalinclude :: /../../examples/okada_inversion_example.py
     :language: python
 
+.. figure :: /static/okada_inversion_example.png
+    :align: center
+    :alt: Inverted dislocations on the rupture plane
+
 .. rubric:: Footnotes
 
 .. [#f1] Okada, Y., Gravity and potential changes due to shear and tensile faults in a half-space. In: Journal of Geophysical Research 82.2, 1018–1040. doi:10.1029/92JB00178, 1992.

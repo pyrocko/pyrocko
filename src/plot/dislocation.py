@@ -83,6 +83,7 @@ def setup_axes(axes, title='', xlabeling=False, ylabeling=False):
         axes.set_xlabel('Easting [$km$]')
     if ylabeling:
         axes.set_ylabel('Northing [$km$]')
+    axes.set_aspect(1.0)
 
 
 def plot(
