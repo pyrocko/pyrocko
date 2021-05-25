@@ -4,6 +4,7 @@ All notable changes to Pyrocko are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+
 ## Unreleased
 
 ### Added
@@ -24,6 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `gf.PseudoDynamicRupture` allowing for hard oversampling of the basesources.
 - RMS Snuffling: Option to show log RMS.
 - New example on how to create QuakeML files from scratch.
+- automap: add flags to customize plate plotting and axes ticks
 
 ### Fixed
 - Fix Snuffler crashes on reading invalid files and other IO related errors.
