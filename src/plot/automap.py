@@ -155,6 +155,8 @@ class Map(Object):
     show_center_mark = Bool.T(default=False)
     show_rivers = Bool.T(default=True)
     show_plates = Bool.T(default=False)
+    show_plate_velocities = Bool.T(default=False)
+    show_plate_names = Bool.T(default=False)
     show_boundaries = Bool.T(default=False)
     illuminate_factor_land = Float.T(default=0.5)
     illuminate_factor_ocean = Float.T(default=0.25)
@@ -1194,7 +1196,7 @@ class Map(Object):
 
             boundaries = bird.get_boundaries()
 
-            size = 2
+            size = 1.
 
             psxy_kwargs = []
 
@@ -1250,39 +1252,41 @@ class Map(Object):
 
                 fixed_plate_name = name
 
-                self.gmt.psvelo(
-                    in_columns=(
-                        lons, lats, veast, vnorth, veast_err, vnorth_err,
-                        corr),
-                    W='0.25p,%s' % color_velocities,
-                    A='9p+e+g%s' % color_velocities,
-                    S='e0.2p/0.95/10',
-                    *self.jxyr)
+                if self.show_plate_velocities:
+                    self.gmt.psvelo(
+                        in_columns=(
+                            lons, lats, veast, vnorth, veast_err, vnorth_err,
+                            corr),
+                        W='0.25p,%s' % color_velocities,
+                        A='9p+e+g%s' % color_velocities,
+                        S='e0.2p/0.95/10',
+                        *self.jxyr)
 
-                for _ in range(len(lons) // 50 + 1):
-                    ii = random.randint(0, len(lons)-1)
-                    v = math.sqrt(vnorth[ii]**2 + veast[ii]**2)
-                    self.add_label(
-                        lats[ii], lons[ii], '%.0f' % v,
-                        font_size=0.7*self.gmt.label_font_size(),
-                        style=dict(
-                            G=color_velocities_lab))
+                    for _ in range(len(lons) // 50 + 1):
+                        ii = random.randint(0, len(lons)-1)
+                        v = math.sqrt(vnorth[ii]**2 + veast[ii]**2)
+                        self.add_label(
+                            lats[ii], lons[ii], '%.0f' % v,
+                            font_size=0.7*self.gmt.label_font_size(),
+                            style=dict(
+                                G=color_velocities_lab))
 
-                break
+                    break
 
-            for (lat_candis, lon_candis, plate, color) in label_data:
-                full_name = bird.full_name(plate.name)
-                if plate.name == fixed_plate_name:
-                    full_name = '@_' + full_name + '@_'
+                if self.show_plate_names:
+                    for (lat_candis, lon_candis, plate, color) in label_data:
+                        full_name = bird.full_name(plate.name)
+                        if plate.name == fixed_plate_name:
+                            full_name = '@_' + full_name + '@_'
 
-                self.add_area_label(
-                    lat_candis, lon_candis,
-                    full_name,
-                    color=color,
-                    font='3')
+                        self.add_area_label(
+                            lat_candis, lon_candis,
+                            full_name,
+                            color=color,
+                            font='3')
 
-            for kwargs in psxy_kwargs:
-                self.gmt.psxy(*self.jxyr, **kwargs)
+                for kwargs in psxy_kwargs:
+                    self.gmt.psxy(*self.jxyr, **kwargs)
 
 
 def rand(mi, ma):
