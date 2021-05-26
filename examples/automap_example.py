@@ -3,6 +3,7 @@ from pyrocko.example import get_example_data
 from pyrocko import model
 from pyrocko import moment_tensor as pmt
 from pyrocko.plot import gmtpy
+
 gmtpy.check_have_gmt()
 
 # Download example data

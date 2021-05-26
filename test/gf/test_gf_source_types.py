@@ -70,17 +70,28 @@ class GFSourceTypesTestCase(unittest.TestCase):
         store = engine.get_store(store_id)
 
         moment = 1e19
+        rake = 0.
         nucleation_x, nucleation_y = 0., 0.
 
         pdr = gf.PseudoDynamicRupture(
             length=20000., width=10000., depth=2000.,
             anchor='top', gamma=0.8, dip=45., strike=60.,
-            moment=moment, nx=5, ny=3, smooth_rupture=False,
+            slip=1., rake=rake,
+            nx=5, ny=3, smooth_rupture=False,
             decimation_factor=1000)
 
         # Check magnitude calculations
-        assert pdr.magnitude == pmt.moment_to_magnitude(moment)
-        assert pdr.get_magnitude() == pmt.moment_to_magnitude(moment)
+        pdr.rescale_slip(
+            magnitude=pmt.moment_to_magnitude(moment), store=store)
+        assert pdr.get_magnitude(store) == pmt.moment_to_magnitude(moment)
+
+        # Check magnitude scaling based on tractions
+        pdr.slip = None
+        pdr.rake = None
+        pdr.tractions = gf.tractions.DirectedTractions(traction=1., rake=rake)
+        pdr.tractions.traction *= moment / pdr.get_moment(store)
+
+        assert pdr.get_magnitude(store) == pmt.moment_to_magnitude(moment)
 
         # Check nucleation setting
         pdr.nucleation = num.array([[nucleation_x, nucleation_y]])
@@ -115,14 +126,14 @@ class GFSourceTypesTestCase(unittest.TestCase):
         cum_mom_old = (mom_rate_old * num.concatenate([
             (num.diff(times_old)[0],), num.diff(times_old)])).sum()
 
-        num.testing.assert_allclose(cum_mom_old, moment, rtol=2e-3)
+        num.testing.assert_allclose(cum_mom_old, moment, rtol=1.5e-1)
         num.testing.assert_equal(times_new, times_old)
 
         # Check magnitude scaling of slip and slip rate
         disloc_tmax = pdr.get_slip()
         disloc_tmax_max = num.linalg.norm(disloc_tmax, axis=1).max()
 
-        pdr.magnitude = None
+        # pdr.magnitude = None
         pdr.slip = disloc_tmax_max
 
         # Large rtol due to interpolation and rounding differences induced by
@@ -139,6 +150,7 @@ class GFSourceTypesTestCase(unittest.TestCase):
         num.testing.assert_allclose(disloc_tmax, deltaslip[:, -1, :])
 
         pdr.slip = None
+        pdr.rake = None
 
         pdr.tractions = gf.tractions.HomogeneousTractions(
             strike=0.,
@@ -152,7 +164,8 @@ class GFSourceTypesTestCase(unittest.TestCase):
         cumslip, times_new = pdr.get_delta_slip(deltat=deltat, delta=False)
 
         num.testing.assert_equal(times_old, times_new)
-        num.testing.assert_equal(cumslip, num.cumsum(deltaslip, axis=1))
+        num.testing.assert_allclose(
+            cumslip, num.cumsum(deltaslip, axis=1), rtol=1e-10)
 
         # Check coefficient matrix calculation
         coef_mat = make_okada_coefficient_matrix(pdr.patches)

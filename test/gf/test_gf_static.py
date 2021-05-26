@@ -7,6 +7,7 @@ import math
 import logging
 import shutil
 import time
+import os
 
 from tempfile import mkdtemp
 from ..common import Benchmark
@@ -21,6 +22,9 @@ benchmark = Benchmark()
 r2d = 180. / math.pi
 d2r = 1.0 / r2d
 km = 1000.
+
+
+show_plot = int(os.environ.get('MPL_SHOW', 0))
 
 
 @unittest.skipUnless(
@@ -231,38 +235,36 @@ mantle
         ntargets = 50
         interpolation = 'nearest_neighbor'
 
+        magnitude = 5.5
         source_params = dict(
-            north_shift=2*km,
-            east_shift=2*km,
-            depth=6.5*km,
-            width=2.*km,
-            length=4*km,
-            dip=random.uniform(0., 90.),
+            north_shift=2. * km,
+            east_shift=2. * km,
+            depth=3.5 * km,
+            length=2. * km,
+            width=1. * km,
             strike=random.uniform(-180., 180.),
-            magnitude=7.,
+            dip=random.uniform(0., 90.),
+            rake=random.uniform(-180., 180.),
             anchor='top',
-            decimation_factor=4)
+            decimation_factor=1,
+            nucleation_x=1.0)
 
         dyn_rupture = gf.PseudoDynamicRupture(
-            nx=4, ny=4,
-            tractions=gf.tractions.HomogeneousTractions(
-                strike=1.e4,
-                dip=1.e4,
-                normal=0.),
+            nx=1, ny=1,
+            pure_shear=True,
             **source_params)
 
-        dyn_rupture.discretize_patches(store)
+        dyn_rupture.rescale_slip(magnitude=magnitude, store=store)
         slip = dyn_rupture.get_slip()
-        rake = num.arctan2(slip[:, 1].mean(), slip[:, 0].mean())
+        source_params['rake'] = num.arctan2(slip[0, 1], slip[0, 0]) * r2d
 
         rect_rupture = gf.RectangularSource(
-            rake=float(rake*d2r),
+            magnitude=magnitude,
             **source_params)
 
         static_target = gf.StaticTarget(
-            north_shifts=(random.rand(ntargets)-.5) * 25. * km,
-            east_shifts=(random.rand(ntargets)-.5) * 25. * km,
-            tsnapshot=20,
+            north_shifts=(random.rand(ntargets) - .5) * 25. * km,
+            east_shifts=(random.rand(ntargets) - .5) * 25. * km,
             interpolation=interpolation)
 
         result = engine.process(rect_rupture, static_target)
@@ -276,14 +278,49 @@ mantle
 
         num.testing.assert_allclose(down_rect, down_dyn)
 
+        if show_plot:
+            import matplotlib.pyplot as plt
+
+            n = result.request.targets_static[0].coords5[:, 2]
+            e = result.request.targets_static[0].coords5[:, 3]
+
+            fig, axes = plt.subplots(3, 1, sharex=True)
+
+            for ax, (down, label) in zip(
+                    axes,
+                    zip((down_rect, down_dyn, down_rect - down_dyn),
+                        (r'$u_{Z, rect}$', r'$u_{Z, dyn}$',
+                         r'$\Delta u_{Z}$'))):
+
+                cntr = ax.tricontourf(e, n, down, levels=14, cmap='RdBu_r')
+
+                cbar = fig.colorbar(
+                    cntr,
+                    ax=ax,
+                    orientation='vertical',
+                    aspect=10,
+                    shrink=1.)
+
+                cbar.ax.set_ylabel(label + ' [m]')
+
+                ax.set_ylabel('Easting [m]')
+
+            axes[-1].set_xlabel('Northing [m]')
+
+            plt.show()
+
     def test_pseudo_dyn_performance(self):
+        from pyrocko.plot import gmtpy
+
+        if gmtpy.have_gmt():
+            from pyrocko.plot.dynamic_rupture import RuptureMap
+
         engine = gf.LocalEngine(store_dirs=[self.get_store_dir('pscmp')])
         # store = engine.get_store('psgrn_pscmp_test')
         ntargets = 250
         interpolation = 'nearest_neighbor'
 
         def calc_dyn_rupt(nx=4, ny=4):
-            from pyrocko.plot.dynamic_rupture import RuptureMap
             dyn_rupture = gf.PseudoDynamicRupture(
                 nx=nx, ny=ny,
                 tractions=gf.tractions.HomogeneousTractions(
@@ -297,7 +334,7 @@ mantle
                 length=40*km,
                 dip=random.uniform(0., 90.),
                 strike=random.uniform(-180., 180.),
-                magnitude=7.,
+                slip=1.,
                 anchor='top',
                 decimation_factor=4)
 
@@ -310,13 +347,21 @@ mantle
             t = time.time()
             # dyn_rupture.discretize_patches(store)
             engine.process(dyn_rupture, static_target)
-            map = RuptureMap(source=dyn_rupture, lat=0., lon=0., radius=40*km,
-                             width=20., height=20.)
-            map.draw_patch_parameter('traction')
-            map.save('/tmp/test.pdf')
-            return dyn_rupture.nx*dyn_rupture.ny, time.time() - t
 
-        for n in (10, 20, 30):
+            if gmtpy.have_gmt():
+                map = RuptureMap(
+                    source=dyn_rupture,
+                    lat=0.,
+                    lon=0.,
+                    radius=40*km,
+                    width=20.,
+                    height=20.)
+                map.draw_patch_parameter('traction')
+                map.save('/tmp/test.pdf')
+
+            return dyn_rupture.nx * dyn_rupture.ny, time.time() - t
+
+        for n in (5, 10, 20):
             npatches, t = calc_dyn_rupt(n, n)
 
     @staticmethod

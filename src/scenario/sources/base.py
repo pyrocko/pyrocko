@@ -6,7 +6,7 @@ from __future__ import absolute_import, division, print_function
 
 import os.path as op
 
-from pyrocko import util, moment_tensor
+from pyrocko import moment_tensor
 from pyrocko.guts import Timestamp, Float, Int, Bool, String, load_all
 
 from ..base import LocationGenerator

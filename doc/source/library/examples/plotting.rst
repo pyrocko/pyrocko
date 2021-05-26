@@ -251,3 +251,81 @@ Download :download:`plot_directivity.py </../../examples/plot_directivity.py>`
     emphasizing the directivity effects of the source (``envelope=True``).
     Same source model: Mw 6.8 2020 Elazig-Sevrice earthquake.
 
+
+Pseudo dynamic rupture - slip map, slip movie, source plots
+-----------------------------------------------------------
+
+The different attributes, rupture dislocations and their evolution over time
+of the :py:class:`~pyrocko.gf.seismoszier.PseudoDynamicRupture` can be
+inspected and illustrated in different ways from map view to small gifs. The
+illustration of patch wise attributes is also possible with the built-in
+module :py:mod:`~pyrocko.plot.dynamic_rupture`.
+
+Maps of the given patch attributes or the rupture dislocation at any time can
+be displayed using :py:class:`~pyrocko.plot.dynamic_rupture.RuptureMap`.
+
+Download :download:`dynamic_rupture_map.py
+</../../examples/dynamic_rupture_map.py>`
+
+.. literalinclude :: /../../examples/dynamic_rupture_map.py
+    :language: python
+
+
+.. figure :: /static/dynamic_map_tractions.png
+    :align: center
+    :alt: Stress drop plotted as a map acting on the Pseudo Dynamic Rupture
+
+    Length of the stress drop vectors, which act on each subfault (patch) of
+    the :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture`.
+
+.. figure :: /static/dynamic_map_dislocation_3s.png
+    :align: center
+    :alt: Dislocation of the Pseudo Dynamic Rupture after 3 s of rupture
+
+    Shown is the length of the dislocation vectors of each subfault 3 s after
+    the rupture initiation. The rupture nucleation point is marked with the
+    red dot, the contour line indicates the tip of the rupture front. Arrows
+    show the length and direction of the slip vectors on the plane (shear
+    only).
+
+On plane views of the given patch attributes or the rupture dislocation at any
+time can be displayed using
+:py:class:`~pyrocko.plot.dynamic_rupture.RuptureView`. It also allows to
+inspect single patch time lines as slip, slip rate or moment rate.
+
+Download :download:`dynamic_rupture_viewer.py
+</../../examples/dynamic_rupture_viewer.py>`
+
+.. literalinclude :: /../../examples/dynamic_rupture_viewer.py
+    :language: python
+
+
+.. figure :: /static/dynamic_view_source_traction.png
+    :align: center
+    :alt: Stress drop on the Pseudo Dynamic Rupture plotted as on plane view
+
+    Length of the stress drop vectors, which act on each subfault (patch) of
+    the :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture`.
+
+.. figure :: /static/dynamic_view_source_dislocation.png
+    :align: center
+    :alt: Dislocation of the Pseudo Dynamic Rupture after 3 s of rupture
+
+    Shown is the length of the dislocation vectors of each subfault 3 s after
+    the rupture initiation. The rupture nucleation point is marked with the
+    red dot, the contour line indicates the tip of the rupture front.
+
+.. figure :: /static/dynamic_view_source_moment.png
+    :align: center
+    :alt: Cumulative seismic moment release of the Pseudo Dynamic Rupture
+
+    Shown is the sum of all subfault seismic moment releases of the
+    :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture`.
+
+.. figure :: /static/dynamic_view_patch_moment.png
+    :align: center
+    :alt: Cumulative seismic moment of one subfault of the Rupture
+
+    Each patch has an individual time dependent moment release function. Here
+    the cumulative seismic moment over time is shown for the patch at 4th
+    position along strike and 4th position down dip.

@@ -19,21 +19,24 @@ class GriffithCrack(Object):
     '''
 
     width = Float.T(
-        help='Width equals to 2*a',
+        help='Width equals to :math:`2 \\cdot a`',
         default=1.)
 
     poisson = Float.T(
-        help='Poisson ratio',
+        help='Poisson ratio :math:`\\nu`',
         default=.25)
 
     shearmod = Float.T(
-        help='Shear modulus [Pa]',
+        help='Shear modulus :math:`\\mu` [Pa]',
         default=1.e9)
 
     stressdrop = Array.T(
         help='Stress drop array:'
-             '[sigi3_r - sigi3_c, sigi2_r - sigi2_c, sigi1_r - sigi1_c]'
-             '[dstress_Strike, dstress_Dip, dstress_Tensile]',
+             '[:math:`\\sigma_{3,r} - \\sigma_{3,c}`, '
+             ':math:`\\sigma_{2,r} - \\sigma_{2,c}`, '
+             ':math:`\\sigma_{1,r} - \\sigma_{1,c}`] :math:`=` '
+             '[:math:`\\Delta stress_{strike}, '
+             '\\Delta stress_{dip}, \\Delta stress_{tensile}`]',
         default=num.array([0., 0., 0.]))
 
     @property
@@ -43,14 +46,6 @@ class GriffithCrack(Object):
         '''
 
         return self.width / 2.
-
-    @property
-    def youngsmod(self):
-        '''
-        Shear (Youngs) modulus
-        '''
-
-        return 2. * self.shearmod * (1. + self.poisson)
 
     def disloc_infinite2d(self, x_obs):
         '''
@@ -198,10 +193,10 @@ class GriffithCrack(Object):
         opening in x1 direction and the crack tip in x2 direction.
 
         :param x1_obs: Observation point coordinates along x1-axis.
-            If x1_obs = 0., displacment is calculated along x2-axis
+            If :math:`x1_obs = 0.`, displacment is calculated along x2-axis
         :type x1_obs: :py:class:`numpy.ndarray`, ``(M,)``
         :param x2_obs: Observation point coordinates along x2-axis.
-            If x2_obs = 0., displacment is calculated along x1-axis
+            If :math:`x2_obs = 0.`, displacment is calculated along x1-axis
         :type x2_obs: :py:class:`numpy.ndarray`, ``(N,)``
 
         :return: displacements at each observation point in strike, dip and

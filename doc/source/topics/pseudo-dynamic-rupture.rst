@@ -53,9 +53,9 @@ Simple pseudo dynamic rupture forward model
 -------------------------------------------
 We create a simple forward model and calculate waveforms for one seismic station (:py:class:`~pyrocko.gf.targets.Target`) at about 14 km distance - The tractions will be aligned to force the defined ``rake``. The modeled waveform is displayed in the *snuffler* GUI.
 
-Download :download:`gf_forward_pseudo_rupture_simple.py </../../examples/gf_forward_pseudo_rupture_simple.py>`
+Download :download:`gf_forward_pseudo_rupture_basic.py </../../examples/gf_forward_pseudo_rupture_basic.py>`
 
-.. literalinclude :: /../../examples/gf_forward_pseudo_rupture_simple.py
+.. literalinclude :: /../../examples/gf_forward_pseudo_rupture_basic.py
     :language: python
 
 
@@ -92,12 +92,12 @@ Traction and rupture evolution
 
 Initialize a simple dynamic rupture with uniform rake tractions and visualize the tractions and rupture propagation using the :py:mod:`pyrocko.plot.dynamic_rupture` module.
 
-Download :download:`gf_forward_pseudo_rupture_simple_plot.py </../../examples/gf_forward_pseudo_rupture_simple_plot.py>`
+Download :download:`gf_forward_pseudo_rupture_basic_plot.py </../../examples/gf_forward_pseudo_rupture_basic_plot.py>`
 
-.. literalinclude :: /../../examples/gf_forward_pseudo_rupture_simple_plot.py
+.. literalinclude :: /../../examples/gf_forward_pseudo_rupture_basic_plot.py
     :language: python
 
-.. figure :: /static/dynamic_simple_tractions.png
+.. figure :: /static/dynamic_basic_tractions.png
     :align: center
     :width: 70%
     :alt: Rupture propagation and tractions of a simple dynamic rupture source
@@ -121,7 +121,7 @@ We can investigate the rupture propagation speed :math:`v_r` with :py:meth:`~pyr
     plot.show_plot()
 
 
-.. figure :: /static/dynamic_simple_vr.png
+.. figure :: /static/dynamic_basic_vr.png
     :align: center
     :width: 70%
     :alt: Rupture propagation and tractions of a simple dynamic rupture source
@@ -145,7 +145,7 @@ Dislocations of the dynamic rupture source can be plotted with :py:meth:`~pyrock
     plot.show_plot()
 
 
-.. figure :: /static/dynamic_simple_dislocations.png
+.. figure :: /static/dynamic_basic_dislocations.png
     :align: center
     :width: 70%
     :alt: Rupture propagation and dislocation of a simple dynamic rupture source
@@ -173,7 +173,7 @@ We can animate the rupture evolution using the :py:func:`pyrocko.plot.dynamic_ru
 
     <center>
         <video width="70%" controls>
-            <source src="https://pyrocko.org/media/dynamic_rupt_simple_dislocation.mp4" type="video/mp4">
+            <source src="https://data.pyrocko.org/media/dislocation_view_movie.mp4" type="video/mp4">
             Your browser does not support the video tag.
         </video>
     </center>

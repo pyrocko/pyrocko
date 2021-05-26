@@ -23,6 +23,25 @@ Download :download:`gf_forward_example1.py </../../examples/gf_forward_example1.
     Synthetic seismograms calculated through :class:`pyrocko.gf` displayed in :doc:`/apps/snuffler/index`. The three traces show the east, north and vertical synthetical displacement stimulated by a double-couple source at 155 km distance.
 
 
+Calculate synthetic seismograms using the Pseudo Dynamic Rupture
+----------------------------------------------------------------
+
+
+
+Download :download:`gf_forward_pseudo_rupture_waveforms.py </../../examples/gf_forward_pseudo_rupture_waveforms.py>`
+
+.. literalinclude :: /../../examples/gf_forward_pseudo_rupture_waveforms.py
+    :language: python
+
+.. figure :: /static/gf_forward_pseudo_rupture_waveforms.png
+    :align: center
+    :width: 90%
+    :alt: Synthetic seismogram calculated through pyrocko.gf using :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture`
+
+    Synthetic seismogram calculated through :class:`pyrocko.gf` using the
+    :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture`. 
+
+
 Calculate spatial surface displacement from a local GF store
 ------------------------------------------------------------
 Shear dislocation - Earthquake
@@ -76,9 +95,42 @@ Download :download:`okada_forward_example.py </../../examples/okada_forward_exam
 .. literalinclude :: /../../examples/okada_forward_example.py
     :language: python
 
+.. figure :: /static/okada_forward_example.png
+    :align: center
+    :width: 90%
+    :alt: Surface displacements derived from a set of :py:class:`~pyrocko.modelling.okada.OkadaSource`
+
+    Surface displacements (3 components and absolute value) calculated using a
+    set of :py:class:`~pyrocko.modelling.okada.OkadaSource`.
+
 .. rubric:: Footnotes
 
 .. [#f1] Okada, Y., Gravity and potential changes due to shear and tensile faults in a half-space. In: Journal of Geophysical Research 82.2, 1018–1040. doi:10.1029/92JB00178, 1992.
+
+
+Calculate spatial surface displacement using the Pseudo Dynamic Rupture 
+-----------------------------------------------------------------------
+
+In this example we create a :class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture` and compute the spatial static displacement at the surface invoked by that rupture [#f2]_.
+
+Download :download:`gf_forward_pseudo_rupture_static.py </../../examples/gf_forward_pseudo_rupture_static.py>`
+
+.. literalinclude :: /../../examples/gf_forward_pseudo_rupture_static.py
+    :language: python
+
+.. figure :: /static/gf_forward_pseudo_rupture_static.png
+    :align: center
+    :width: 90%
+    :alt: Surface displacements derived from a :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture`
+
+    Vertical surface displacements derived from a
+    :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture`. They are compared
+    to vertical static displacements calculated using the 
+    :py:class:`~pyrocko.gf.seismosizer.RectangularSource`.
+
+.. rubric:: Footnotes
+
+.. [#f2] Okada, Y., Gravity and potential changes due to shear and tensile faults in a half-space. In: Journal of Geophysical Research 82.2, 1018–1040. doi:10.1029/92JB00178, 1992.
 
 
 Calculate spatial surface displacement and export Kite scenes
