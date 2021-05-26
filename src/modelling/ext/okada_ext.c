@@ -1137,9 +1137,10 @@ static PyObject* w_patch2m6(PyObject *m, PyObject *args, PyObject *kwds) {
     unsigned long nsources, isource;
 
     PyObject *strike_arr, *dip_arr, *rake_arr, *disl_shear_arr, *disl_norm_arr, *output_arr;
-    npy_float64 *strike, *dip, *rake, *disl_shear, *disl_norm;
+    PyObject *lambda_arr, *mu_arr;
+    npy_float64 *strike, *dip, *rake, *disl_shear, *disl_norm, *lambda, *mu;
     npy_float64 *output;
-    double lambda, mu;
+    // double lambda, mu;
     double rotmat[3][3];
     double mom_in[3][3];
     double mom_out[3][3];
@@ -1158,7 +1159,7 @@ static PyObject* w_patch2m6(PyObject *m, PyObject *args, PyObject *kwds) {
         NULL
     };
 
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "OOOOOdd|I", kwlist, &strike_arr, &dip_arr, &rake_arr, &disl_shear_arr, &disl_norm_arr, &lambda, &mu, &nthreads)) {
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "OOOOOOO|I", kwlist, &strike_arr, &dip_arr, &rake_arr, &disl_shear_arr, &disl_norm_arr, &lambda_arr, &mu_arr, &nthreads)) {
         PyErr_SetString(st->error, "usage: patch2m6(strikes, dips, rakes, disl_shear, disl_norm, lambda, mu, nthreads=1)");
         return NULL;
     }
@@ -1169,6 +1170,8 @@ static PyObject* w_patch2m6(PyObject *m, PyObject *args, PyObject *kwds) {
     rake = PyArray_DATA((PyArrayObject*) rake_arr);
     disl_shear = PyArray_DATA((PyArrayObject*) disl_shear_arr);
     disl_norm = PyArray_DATA((PyArrayObject*) disl_norm_arr);
+    lambda = PyArray_DATA((PyArrayObject*) lambda_arr);
+    mu = PyArray_DATA((PyArrayObject*) mu_arr);
 
     shape_want[0] = nsources;
     if (! good_array(strike_arr, NPY_FLOAT64, 1, shape_want))
@@ -1184,6 +1187,12 @@ static PyObject* w_patch2m6(PyObject *m, PyObject *args, PyObject *kwds) {
         return NULL;
 
     if (! good_array(disl_norm_arr, NPY_FLOAT64, 1, shape_want))
+        return NULL;
+
+    if (! good_array(lambda_arr, NPY_FLOAT64, 1, shape_want))
+        return NULL;
+
+    if (! good_array(mu_arr, NPY_FLOAT64, 1, shape_want))
         return NULL;
 
     output_dims[0] = nsources;
@@ -1211,17 +1220,17 @@ static PyObject* w_patch2m6(PyObject *m, PyObject *args, PyObject *kwds) {
             euler_to_matrix(dip[isource]*D2R, strike[isource]*D2R, -rake[isource]*D2R, rotmat);
 
             // Apparently it is faster when we always set the sparse indices to 0. ~10%
-            mom_in[0][0] = lambda * disl_norm[isource];
+            mom_in[0][0] = lambda[isource] * disl_norm[isource];
             mom_in[0][1] = 0.;
-            mom_in[0][2] = -mu * disl_shear[isource];
+            mom_in[0][2] = -mu[isource] * disl_shear[isource];
 
             mom_in[1][0] = 0.;
-            mom_in[1][1] = lambda * disl_norm[isource];
+            mom_in[1][1] = lambda[isource] * disl_norm[isource];
             mom_in[1][2] = 0.;
 
-            mom_in[2][0] = -mu * disl_shear[isource];
+            mom_in[2][0] = -mu[isource] * disl_shear[isource];
             mom_in[2][1] = 0.;
-            mom_in[2][2] = (lambda + 2. * mu) * disl_norm[isource];
+            mom_in[2][2] = (lambda[isource] + 2. * mu[isource]) * disl_norm[isource];
 
             rot_tensor33_trans(mom_in, rotmat, mom_out);
 

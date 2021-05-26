@@ -29,18 +29,18 @@ dyn_rupture = gf.PseudoDynamicRupture(
     # and rupture velocity vr
     gamma=0.7,
 
-    magnitude=7.,
+    slip=1.,
     anchor='top',
     nthreads=5,
 
-    nx=30,
-    ny=20,
+    nx=20,
+    ny=10,
+
+    # Force pure shear rupture
+    pure_shear=True,
 
     # Tractions are in [Pa]. However here we are using relative tractions,
-    # Resulting waveforms will be scaled to magnitude [Mw]
-    # or a maximumslip [m]
-    #
-    # slip=3.,
+    # Resulting waveforms will be scaled to the maximumslip [m]
     tractions=gf.tractions.TractionComposition(
         components=[
             gf.tractions.DirectedTractions(rake=56., traction=1.e6),

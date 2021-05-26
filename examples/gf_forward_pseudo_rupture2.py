@@ -39,7 +39,7 @@ engine = LocalEngine(store_superdirs=['.'], default_store_id=store_id)
 store = engine.get_store(store_id)
 
 # Length and Width are defined based from Wells and Coppersmith (1994).
-mag = 7.5
+mag = 7.0
 length = 10**(-2.44 + 0.59 * mag) * km2m
 width = 10**(-1.01 + 0.32 * mag) * km2m
 nx, ny = int(num.ceil(length / 2000.)), int(num.ceil(width / 2000.))
@@ -72,7 +72,7 @@ source = PseudoDynamicRupture(
     ny=ny,
     pure_shear=True,
     smooth_rupture=True,
-    magnitude=mag,
+    slip=1.,
     tractions=tractions.SelfSimilarTractions(
         rank=ranks[0], rake=0, phases=phases[:1]))
 
@@ -84,6 +84,9 @@ source.discretize_patches(store)
 # the patches with their dislocations. The linear coefficients describing the
 # link are obtained based on Okada (1992) and a boundary element method
 source.calc_coef_mat()
+
+# Recalculate slip, that rupture magnitude fits given magnitude
+source.rescale_slip(magnitude=mag, store=store)
 
 synthetic_traces = []
 channel_codes = 'ENZ'

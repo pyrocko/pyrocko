@@ -231,6 +231,7 @@ mantle
         ntargets = 50
         interpolation = 'nearest_neighbor'
 
+        magnitude = 7.
         source_params = dict(
             north_shift=2*km,
             east_shift=2*km,
@@ -239,7 +240,6 @@ mantle
             length=4*km,
             dip=random.uniform(0., 90.),
             strike=random.uniform(-180., 180.),
-            magnitude=7.,
             anchor='top',
             decimation_factor=4)
 
@@ -249,14 +249,18 @@ mantle
                 strike=1.e4,
                 dip=1.e4,
                 normal=0.),
+            slip=1.,
             **source_params)
 
         dyn_rupture.discretize_patches(store)
+        dyn_rupture.rescale_slip(magnitude=magnitude, store=store)
+
         slip = dyn_rupture.get_slip()
         rake = num.arctan2(slip[:, 1].mean(), slip[:, 0].mean())
 
         rect_rupture = gf.RectangularSource(
             rake=float(rake*d2r),
+            magnitude=magnitude,
             **source_params)
 
         static_target = gf.StaticTarget(
@@ -297,7 +301,7 @@ mantle
                 length=40*km,
                 dip=random.uniform(0., 90.),
                 strike=random.uniform(-180., 180.),
-                magnitude=7.,
+                slip=1.,
                 anchor='top',
                 decimation_factor=4)
 

@@ -31,13 +31,17 @@ dyn_rupture = gf.PseudoDynamicRupture(
     # Relative nucleation between -1. and 1.
     nucleation_x=-.6,
     nucleation_y=.3,
-    magnitude=7.,
+    slip=1.,
     anchor='top',
 
     # Threads used for modelling
-    nthreads=0)
+    nthreads=0,
 
-dyn_rupture.discretize_patches(store)
+    # Force pure shear rupture
+    pure_shear=True)
+
+# Recalculate slip, that rupture magnitude fits given magnitude
+dyn_rupture.rescale_slip(magnitude=7.0, store=store)
 
 plot = RuptureView(dyn_rupture, figsize=(8, 4))
 plot.draw_patch_parameter('traction')

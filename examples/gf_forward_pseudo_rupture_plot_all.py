@@ -10,7 +10,6 @@ store_id = 'crust2_ib'
 if not op.exists(store_id):
     gf.ws.download_gf_store(site='kinherd', store_id=store_id)
 
-
 engine = gf.LocalEngine(store_superdirs=['.'], use_config=True)
 store = engine.get_store(store_id)
 

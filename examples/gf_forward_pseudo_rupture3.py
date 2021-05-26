@@ -69,7 +69,7 @@ source = PseudoDynamicRupture(
     ny=ny,
     pure_shear=True,
     smooth_rupture=True,
-    magnitude=mag,
+    slip=1,
     tractions=tractions.TractionComposition(components=[
         tractions.FractalTractions(
             rake=0, rseed=None, traction_max=traction_ratio[0]),
@@ -84,6 +84,9 @@ source.discretize_patches(store)
 # the patches with their dislocations. The linear coefficients describing the
 # link are obtained based on Okada (1992) and a boundary element method
 source.calc_coef_mat()
+
+# Recalculate slip, that rupture magnitude fits given magnitude
+source.rescale_slip(magnitude=mag, store=store)
 
 synthetic_traces = []
 channel_codes = 'ENZ'

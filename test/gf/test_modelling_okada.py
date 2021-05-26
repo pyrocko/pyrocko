@@ -877,8 +877,8 @@ class OkadaTestCase(unittest.TestCase):
             rakes=slip_rake*r2d,
             disl_shear=slip_shear,
             disl_norm=slip_norm,
-            lamb=lamb,
-            mu=mu)
+            lamb=num.repeat(lamb, nbasesrcs),
+            mu=num.repeat(mu, nbasesrcs))
 
         def patch2m6(strike, dip, rake, du_s, du_n):
             rotmat = pmt.euler_to_matrix(dip, strike, -rake)

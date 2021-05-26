@@ -15,9 +15,9 @@ from scipy.interpolate import RegularGridInterpolator as scrgi
 from matplotlib import cm, pyplot as plt, patheffects
 from matplotlib.ticker import FuncFormatter
 
-from pyrocko import gmtpy, orthodrome as pod
+from pyrocko import orthodrome as pod
 from pyrocko.guts import Object
-from pyrocko.plot import mpl_init, mpl_papersize, mpl_color, AutoScaler
+from pyrocko.plot import mpl_init, mpl_papersize, mpl_color, AutoScaler, gmtpy
 from pyrocko.plot.automap import Map, NoTopo
 from pyrocko.gf import PseudoDynamicRupture
 from pyrocko.gf.seismosizer import map_anchor
@@ -363,6 +363,7 @@ class RuptureMap(Map):
         Map.__init__(self, *args, margins=margins, width=width, height=height,
                      gmt_config=gmt_config,
                      topo_cpt_dry=topo_cpt_dry, topo_cpt_wet=topo_cpt_wet,
+                     color_wet=color_wet, color_dry=color_dry,
                      **kwargs)
 
         if show_cities:

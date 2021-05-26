@@ -34,8 +34,14 @@ dyn_rupture = gf.PseudoDynamicRupture(
     # and rupture velocity vr
     gamma=0.7,
 
-    magnitude=7.,
-    anchor='top')
+    slip=1.,
+    anchor='top',
+
+    # Force pure shear rupture
+    pure_shear=True)
+
+# Recalculate slip, that rupture magnitude fits given magnitude
+dyn_rupture.rescale_slip(magnitude=7.0, store=store)
 
 waveform_target = gf.Target(
     lat=0.,

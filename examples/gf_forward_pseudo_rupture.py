@@ -37,7 +37,7 @@ source_params = dict(
     length=leng,
     dip=dip,
     strike=strike,
-    magnitude=6.,
+    slip=1.,
     anchor='top',
     decimation_factor=4)
 
@@ -50,6 +50,10 @@ dyn_rupture = gf.PseudoDynamicRupture(
     **source_params)
 
 dyn_rupture.discretize_patches(store)
+
+# Recalculate slip, that rupture magnitude fits given magnitude
+dyn_rupture.rescale_slip(magnitude=6.0, store=store)
+
 slip = dyn_rupture.get_slip()
 rake = num.arctan2(slip[:, 1].mean(), slip[:, 0].mean())
 print('rake', float(rake*d2r))

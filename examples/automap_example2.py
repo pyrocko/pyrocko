@@ -4,7 +4,7 @@ import numpy as num
 from scipy.interpolate import RegularGridInterpolator as scrgi
 
 from pyrocko.plot.automap import Map
-from pyrocko import gmtpy
+from pyrocko.plot import gmtpy
 import pyrocko.orthodrome as otd
 
 gmtpy.check_have_gmt()
