@@ -4228,6 +4228,202 @@ class SFSource(Source):
         return super(SFSource, cls).from_pyrocko_event(ev, **d)
 
 
+class DoubleSFSource(Source):
+    '''
+    Two single force point sources separated in space and time.
+    Force share between the sub-sources is controlled by the
+    parameter mix.
+    The position of the subsources is dependent on the force
+    distribution between the two sources. Depth, east and north
+    shift are given for the centroid between the two single forces.
+    The subsources will be positioned according to their force shares
+    around this centroid position.
+    This is done according to their delta parameters, which are
+    therefore in relation to that centroid.
+    Note that depth of the subsources therefore can be
+    depth+/-delta_depth. For shallow earthquakes therefore
+    the depth has to be chosen deeper to avoid sampling
+    above surface.
+    '''
+
+    rfn1 = Float.T(
+        default=0.0,
+        help='Relative northward component of single force point source 1 [N].'
+             ' Give values between -1 and 1.')
+
+    rfe1 = Float.T(
+        default=90.0,
+        help='Relative eastward component of single force point source 1 [N].'
+             ' Give values between -1 and 1.')
+
+    rfd1 = Float.T(
+        default=0.0,
+        help='Relative downward component of single force point source 1 [N].'
+             ' Give values between -1 and 1.')
+
+    rfn2 = Float.T(
+        default=0.0,
+        help='Relative northward component of single force point source 2 [N].'
+             ' Give values between -1 and 1.')
+
+    rfe2 = Float.T(
+        default=90.0,
+        help='Relative eastward component of single force point source 2 [N].'
+             ' Give values between -1 and 1.')
+
+    rfd2 = Float.T(
+        default=0.0,
+        help='Relative downward component of single force point source 2 [N].'
+             ' Give values between -1 and 1.')
+
+    force = Float.T(
+        default=1.0,
+        help='Length of the summed single force vectors [N]')
+
+    mix = Float.T(
+        default=0.5,
+        help='How to distribute the forces to the two single forces '
+             'mix=0 -> m1=1 and m2=0; mix=1 -> m1=0, m2=1')
+
+    azimuth = Float.T(
+        default=0.0,
+        help='Azimuth to second single force [deg], '
+             'measured at first, clockwise from north')
+
+    delta_time = Float.T(
+        default=0.0,
+        help='Separation of single forces in time (t2-t1) [s]')
+
+    delta_depth = Float.T(
+        default=0.0,
+        help='Difference in depth (z2-z1) [m]')
+
+    distance = Float.T(
+        default=0.0,
+        help='Distance between the two single forces [m]')
+
+    stf1 = STF.T(
+        optional=True,
+        help='Source time function of subsource 1 '
+             '(if given, overrides STF from attribute :py:gattr:`Source.stf`)')
+
+    stf2 = STF.T(
+        optional=True,
+        help='Source time function of subsource 2 '
+             '(if given, overrides STF from attribute :py:gattr:`Source.stf`)')
+
+    discretized_source_class = meta.DiscretizedSFSource
+
+    def base_key(self):
+        return Source.base_key() + \
+            self.effective_stf1_pre().base_key() + \
+            self.effective_stf2_pre().base_key() + (
+            self.rfn1, self.rfe1, self.rfd1,
+            self.rfn2, self.rfe2, self.rfd2,
+            self.force, self.mix,
+            self.delta_time, self.delta_depth,
+            self.azimuth, self.distance)
+
+    def get_factor(self):
+        return 1.0
+
+    def effective_stf1_pre(self):
+        return self.stf1 or self.stf or g_unit_pulse
+
+    def effective_stf2_pre(self):
+        return self.stf2 or self.stf or g_unit_pulse
+
+    def effective_stf_post(self):
+        return g_unit_pulse
+
+    def forces(self):
+        a1 = 1.0 - self.mix
+        a2 = self.mix
+
+        f1 = num.array([self.rfn1, self.rfe1, self.rfd1])
+        f2 = num.array([self.rfn2, self.rfe2, self.rfd2])
+
+        scale_factor = self.force / num.linalg.norm(a1 * f1 + a2 * f2)
+
+        return f1 * scale_factor * a1, f2 * scale_factor * a2
+
+    def f1(self):
+        return self.forces()[0]
+
+    def f2(self):
+        return self.forces()[1]
+
+    def fn1(self):
+        return self.f1()[0]
+
+    def fe1(self):
+        return self.f1()[1]
+
+    def fd1(self):
+        return self.f1()[2]
+
+    def fn2(self):
+        return self.f2()[0]
+
+    def fe2(self):
+        return self.f2()[1]
+
+    def fd2(self):
+        return self.f2()[2]
+
+    def split(self):
+        a1 = 1.0 - self.mix
+        a2 = self.mix
+
+        delta_north = math.cos(self.azimuth * d2r) * self.distance
+        delta_east = math.sin(self.azimuth * d2r) * self.distance
+
+        sf1 = SFSource(
+            lat=self.lat,
+            lon=self.lon,
+            time=self.time - self.delta_time * a1,
+            north_shift=self.north_shift - delta_north * a1,
+            east_shift=self.east_shift - delta_east * a1,
+            depth=self.depth - self.delta_depth * a1,
+            fn=self.fn1(),
+            fe=self.fe1(),
+            fd=self.fd1(),
+            stf=self.stf1 or self.stf)
+
+        sf2 = SFSource(
+            lat=self.lat,
+            lon=self.lon,
+            time=self.time + self.delta_time * a2,
+            north_shift=self.north_shift + delta_north * a2,
+            east_shift=self.east_shift + delta_east * a2,
+            depth=self.depth + self.delta_depth * a2,
+            fn=self.fn2(),
+            fe=self.fe2(),
+            fd=self.fd2(),
+            stf=self.stf2 or self.stf)
+
+        return [sf1, sf2]
+
+    def discretize_basesource(self, store, target=None):
+        dsources = []
+        for sf in self.split():
+            ds = sf.discretize_basesource(store, target)
+            dsources.append(ds)
+
+        return meta.DiscretizedSFSource.combine(dsources)
+
+    def pyrocko_event(self, store=None, target=None, **kwargs):
+        return Source.pyrocko_event(
+            self, store, target,
+            **kwargs)
+
+    @classmethod
+    def from_pyrocko_event(cls, ev, **kwargs):
+        d = {}
+        d.update(kwargs)
+        return super(DoubleSFSource, cls).from_pyrocko_event(ev, **d)
+
+
 class PorePressurePointSource(Source):
     '''
     Excess pore pressure point source.
@@ -5477,6 +5673,7 @@ source_classes = [
     RingfaultSource,
     CombiSource,
     SFSource,
+    DoubleSFSource,
     PorePressurePointSource,
     PorePressureLineSource,
 ]
