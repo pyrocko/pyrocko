@@ -1,3 +1,8 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+
 from pyrocko.gui.snuffling import Snuffling, Param, Switch, Choice
 from pyrocko.gui.marker import PhaseMarker
 from pyrocko import gf

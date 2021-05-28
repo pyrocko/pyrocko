@@ -1,4 +1,3 @@
-# Pyrocko-GF subpackage
 
 ## Pyrocko-GF: storage and calculation of synthetic seismograms
 

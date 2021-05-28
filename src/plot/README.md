@@ -1,3 +1,4 @@
+
 # Pyrocko plot Module
 
 * `pyrocko.plot.automap` Quickly generate pretty maps using gmtpy's powers.
