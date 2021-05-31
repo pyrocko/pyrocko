@@ -450,15 +450,15 @@ class GFSourceTypesTestCase(unittest.TestCase):
             fe=f2[1] * scale_factor * a2,
             fd=f2[2] * scale_factor * a2)
 
-        assert sf_source1.fn == dsf_source.fn1()
-        assert sf_source1.fe == dsf_source.fe1()
-        assert sf_source1.fd == dsf_source.fd1()
-        assert sf_source2.fn == dsf_source.fn2()
-        assert sf_source2.fe == dsf_source.fe2()
-        assert sf_source2.fd == dsf_source.fd2()
+        assert sf_source1.fn == dsf_source.fn1
+        assert sf_source1.fe == dsf_source.fe1
+        assert sf_source1.fd == dsf_source.fd1
+        assert sf_source2.fn == dsf_source.fn2
+        assert sf_source2.fe == dsf_source.fe2
+        assert sf_source2.fd == dsf_source.fd2
 
         assert num.linalg.norm(
-            num.add(*dsf_source.forces())) == dsf_source.force
+            num.add(*dsf_source.forces)) == dsf_source.force
 
         dsf_source1, dsf_source2 = dsf_source.split()
         for p in sf_source1.T.propnames:

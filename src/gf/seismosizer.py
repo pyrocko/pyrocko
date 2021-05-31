@@ -4336,6 +4336,7 @@ class DoubleSFSource(Source):
     def effective_stf_post(self):
         return g_unit_pulse
 
+    @property
     def forces(self):
         a1 = 1.0 - self.mix
         a2 = self.mix
@@ -4347,29 +4348,37 @@ class DoubleSFSource(Source):
 
         return f1 * scale_factor * a1, f2 * scale_factor * a2
 
+    @property
     def f1(self):
-        return self.forces()[0]
+        return self.forces[0]
 
+    @property
     def f2(self):
-        return self.forces()[1]
+        return self.forces[1]
 
+    @property
     def fn1(self):
-        return self.f1()[0]
+        return self.f1[0]
 
+    @property
     def fe1(self):
-        return self.f1()[1]
+        return self.f1[1]
 
+    @property
     def fd1(self):
-        return self.f1()[2]
+        return self.f1[2]
 
+    @property
     def fn2(self):
-        return self.f2()[0]
+        return self.f2[0]
 
+    @property
     def fe2(self):
-        return self.f2()[1]
+        return self.f2[1]
 
+    @property
     def fd2(self):
-        return self.f2()[2]
+        return self.f2[2]
 
     def split(self):
         a1 = 1.0 - self.mix
@@ -4385,9 +4394,9 @@ class DoubleSFSource(Source):
             north_shift=self.north_shift - delta_north * a1,
             east_shift=self.east_shift - delta_east * a1,
             depth=self.depth - self.delta_depth * a1,
-            fn=self.fn1(),
-            fe=self.fe1(),
-            fd=self.fd1(),
+            fn=self.fn1,
+            fe=self.fe1,
+            fd=self.fd1,
             stf=self.stf1 or self.stf)
 
         sf2 = SFSource(
@@ -4397,9 +4406,9 @@ class DoubleSFSource(Source):
             north_shift=self.north_shift + delta_north * a2,
             east_shift=self.east_shift + delta_east * a2,
             depth=self.depth + self.delta_depth * a2,
-            fn=self.fn2(),
-            fe=self.fe2(),
-            fd=self.fd2(),
+            fn=self.fn2,
+            fe=self.fe2,
+            fd=self.fd2,
             stf=self.stf2 or self.stf)
 
         return [sf1, sf2]
