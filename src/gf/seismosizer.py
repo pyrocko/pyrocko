@@ -4252,12 +4252,12 @@ class DoubleSFSource(Source):
              ' Give values between -1 and 1.')
 
     rfe1 = Float.T(
-        default=90.0,
+        default=0.0,
         help='Relative eastward component of single force point source 1 [N].'
              ' Give values between -1 and 1.')
 
     rfd1 = Float.T(
-        default=0.0,
+        default=1.0,
         help='Relative downward component of single force point source 1 [N].'
              ' Give values between -1 and 1.')
 
@@ -4267,12 +4267,12 @@ class DoubleSFSource(Source):
              ' Give values between -1 and 1.')
 
     rfe2 = Float.T(
-        default=90.0,
+        default=0.0,
         help='Relative eastward component of single force point source 2 [N].'
              ' Give values between -1 and 1.')
 
     rfd2 = Float.T(
-        default=0.0,
+        default=1.0,
         help='Relative downward component of single force point source 2 [N].'
              ' Give values between -1 and 1.')
 
@@ -4315,7 +4315,7 @@ class DoubleSFSource(Source):
     discretized_source_class = meta.DiscretizedSFSource
 
     def base_key(self):
-        return Source.base_key() + \
+        return Source.base_key(self) + \
             self.effective_stf1_pre().base_key() + \
             self.effective_stf2_pre().base_key() + (
             self.rfn1, self.rfe1, self.rfd1,
@@ -4328,10 +4328,10 @@ class DoubleSFSource(Source):
         return 1.0
 
     def effective_stf1_pre(self):
-        return self.stf1 or self.stf or g_unit_pulse
+        return self.stf1 or self.effective_stf_pre() or g_unit_pulse
 
     def effective_stf2_pre(self):
-        return self.stf2 or self.stf or g_unit_pulse
+        return self.stf2 or self.effective_stf_pre() or g_unit_pulse
 
     def effective_stf_post(self):
         return g_unit_pulse
