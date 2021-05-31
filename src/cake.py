@@ -3134,6 +3134,20 @@ def anything_to_crust2_profile(crust2_profile):
             'key or a crust2x2 Profile object)'
 
 
+def anything_to_epcrust_profile(epcrust_profile):
+    from pyrocko.dataset import ep_crust
+    if isinstance(epcrust_profile, tuple):
+        lat, lon = [float(x) for x in epcrust_profile]
+        return ep_crust.get_profile(lat, lon)
+    elif isinstance(epcrust_profile, str):
+        return ep_crust.get_profile(epcrust_profile)
+    elif isinstance(epcrust_profile, ep_crust.EPcrust2Profile):
+        return epcrust_profile
+    else:
+        assert False, 'epcrust_profile must be (lat, lon) a profile ' \
+            'key or a EPcrust Profile object)'
+
+
 class DiscontinuityNotFound(CakeError):
     def __init__(self, depth_or_name):
         CakeError.__init__(self)
@@ -3933,11 +3947,21 @@ class LayeredModel(object):
 
         return mod_extracted
 
-    def replaced_crust(self, crust2_profile=None, crustmod=None):
+    def replaced_crust(
+            self,
+            crust2_profile=None,
+            epcrust_profile=None,
+            crustmod=None):
+
         if crust2_profile is not None:
             profile = anything_to_crust2_profile(crust2_profile)
             crustmod = LayeredModel.from_scanlines(
                 from_crust2x2_profile(profile))
+
+        if epcrust_profile is not None:
+            profile = anything_to_epcrust_profile(epcrust_profile)
+            crustmod = LayeredModel.from_scanlines(
+                from_epcrust_profile(profile))
 
         newmod = LayeredModel()
         for element in crustmod.extract(depth_max='moho').elements():
@@ -4188,6 +4212,36 @@ def from_crust2x2_profile(profile, depthmantle=50000):
             z += dz
 
 
+def from_epcrust_profile(profile):
+    from pyrocko.dataset import ep_crust
+
+    # EPcrust goes up to the moho
+    default_qp_qs = {
+        'sediment': (150., 150.),
+    }
+
+    z = 0.
+    for i in range(6):
+        if i != 5:
+            dz, vp, vs, rho = profile.get_layer(i)
+            name = ep_crust.EPcrust2Profile.layer_names[i]
+            if name in default_qp_qs:
+                qp, qs = default_qp_qs[name]
+            else:
+                qp, qs = None, None
+
+            material = Material(vp, vs, rho, qp, qs)
+            iname = None
+        if i == 5:
+            iname = 'moho'
+
+        if dz != 0.0:
+            yield z, material, iname
+            if i != 5:
+                yield z+dz, material, name
+            z += dz
+
+
 def write_nd_model_fh(mod, fh):
     def fmt(z, mat):
         rstr = ' '.join(
@@ -4252,7 +4306,12 @@ def builtin_model_filename(modelname):
     return util.data_file(os.path.join('earthmodels', modelname+'.nd'))
 
 
-def load_model(fn='ak135-f-continental.m', format='nd', crust2_profile=None):
+def load_model(
+        fn='ak135-f-continental.m',
+        format='nd',
+        crust2_profile=None,
+        epcrust_profile=None):
+
     '''
     Load layered earth model from file.
 
@@ -4262,6 +4321,10 @@ def load_model(fn='ak135-f-continental.m', format='nd', crust2_profile=None):
         :py:class:`pyrocko.dataset.crust2x2.Crust2Profile` object, merge model
         with crustal profile. If ``fn`` is forced to be ``None`` only the
         converted CRUST2.0 profile is returned.
+    :param epcrust_profile: ``(lat, lon)`` or
+        :py:class:`pyrocko.dataset.ep_crust.EPcrust2Profile` object, merge
+        model with crustal profile. If ``fn`` is forced to be ``None`` only the
+        converted EPcrust 0.5x0.5 profile is returned.
     :returns: object of type :py:class:`LayeredModel`
 
     The following formats are currently supported:
@@ -4292,15 +4355,21 @@ def load_model(fn='ak135-f-continental.m', format='nd', crust2_profile=None):
 
         mod = LayeredModel.from_scanlines(reader)
         if crust2_profile is not None:
-            return mod.replaced_crust(crust2_profile)
+            return mod.replaced_crust(crust2_profile=crust2_profile)
+        if epcrust_profile is not None:
+            return mod.replaced_crust(epcrust_profile=epcrust_profile)
 
         return mod
 
     else:
         assert crust2_profile is not None
-        profile = anything_to_crust2_profile(crust2_profile)
+        profile = anything_to_crust2_profile(crust2_profile=crust2_profile)
         return LayeredModel.from_scanlines(
             from_crust2x2_profile(profile))
+        assert epcrust_profile is not None
+        profile = anything_to_epcrust_profile(epcrust_profile=epcrust_profile)
+        return LayeredModel.from_scanlines(
+            from_epcrust_profile(profile))
 
 
 def castagna_vs_to_vp(vs):

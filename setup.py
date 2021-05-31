@@ -372,6 +372,7 @@ subpacknames = [
     'pyrocko.data.earthmodels',
     'pyrocko.data.tectonics',
     'pyrocko.data.fomosto_report',
+    'pyrocko.data.epcrust',
 ]
 
 cmdclass = {
@@ -569,6 +570,7 @@ setup(
             'data/earthmodels/*.nd',
             'data/colortables/*.cpt',
             'data/tectonics/*.txt',
+            'data/epcrust/*.txt',
             'data/fomosto_report/gfreport.*',
             'gui/snuffler/snufflings/map/*.kml',
             'gui/snuffler/snufflings/map/*.html',
