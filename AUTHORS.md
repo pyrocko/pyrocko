@@ -9,6 +9,8 @@ It is not a complete list, in the sense that many others have influenced the dev
 * Hannes Bathke
 * Malte Metz
 * Simone Cesca
+* Anne Mutzek
+* Maximilian Dwars
 * Simon Daout
 * Francesco Grigoli
 * Carina Juretzek
