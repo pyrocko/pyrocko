@@ -90,10 +90,12 @@ def analyse_gps_tags(header, gps_tags, offset, nsamples):
 
     xok = num.abs(dtdt - 1.0) < 0.00001
 
-    ok[0] = False
-    ok[1:n] &= xok
-    ok[0:n-1] &= xok
-    ok[n-1] = False
+    if ok.size >= 1:
+
+        ok[0] = False
+        ok[1:n] &= xok
+        ok[0:n-1] &= xok
+        ok[n-1] = False
 
     ipos = ipos[ok]
     t = t[ok]
