@@ -31,8 +31,11 @@ except Exception:
 
 if not distribution:
     try:
-        if platform.uname()[2].find('arch') != -1:
+        uname = platform.uname()
+        if uname[2].find('arch') != -1:
             distribution = 'arch'
+        elif uname[3].lower().find('ubuntu') != -1:
+            distribution = 'ubuntu'
     except Exception:
         pass
 
