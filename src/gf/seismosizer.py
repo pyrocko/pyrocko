@@ -4207,6 +4207,10 @@ class SFSource(Source):
     def get_factor(self):
         return 1.0
 
+    @property
+    def force(self):
+        return num.linalg.norm([self.fn, self.fe, self.fd])
+
     def discretize_basesource(self, store, target=None):
         times, amplitudes = self.effective_stf_pre().discretize_t(
             store.config.deltat, self.time)
@@ -4379,6 +4383,18 @@ class DoubleSFSource(Source):
     @property
     def fd2(self):
         return self.f2[2]
+
+    @property
+    def fn(self):
+        return self.fn1 + self.fn2
+
+    @property
+    def fe(self):
+        return self.fe1 + self.fe2
+
+    @property
+    def fd(self):
+        return self.fd1 + self.fd2
 
     def split(self):
         a1 = 1.0 - self.mix
