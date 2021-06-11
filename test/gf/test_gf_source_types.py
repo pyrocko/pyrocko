@@ -432,20 +432,20 @@ class GFSourceTypesTestCase(unittest.TestCase):
 
         sf_source1 = gf.SFSource(
             lat=dsf_source.lat, lon=dsf_source.lon,
-            north_shift=dsf_source.north_shift - delta_north * a1,
-            east_shift=dsf_source.east_shift - delta_east * a1,
-            depth=dsf_source.depth - dsf_source.delta_depth * a1,
-            time=dsf_source.time - dsf_source.delta_time * a1,
+            north_shift=dsf_source.north_shift - delta_north * a2,
+            east_shift=dsf_source.east_shift - delta_east * a2,
+            depth=dsf_source.depth - dsf_source.delta_depth * a2,
+            time=dsf_source.time - dsf_source.delta_time * a2,
             fn=f1[0] * scale_factor * a1,
             fe=f1[1] * scale_factor * a1,
             fd=f1[2] * scale_factor * a1)
 
         sf_source2 = gf.SFSource(
             lat=dsf_source.lat, lon=dsf_source.lon,
-            north_shift=dsf_source.north_shift + delta_north * a2,
-            east_shift=dsf_source.east_shift + delta_east * a2,
-            depth=dsf_source.depth + dsf_source.delta_depth * a2,
-            time=dsf_source.time + dsf_source.delta_time * a2,
+            north_shift=dsf_source.north_shift + delta_north * a1,
+            east_shift=dsf_source.east_shift + delta_east * a1,
+            depth=dsf_source.depth + dsf_source.delta_depth * a1,
+            time=dsf_source.time + dsf_source.delta_time * a1,
             fn=f2[0] * scale_factor * a2,
             fe=f2[1] * scale_factor * a2,
             fd=f2[2] * scale_factor * a2)
