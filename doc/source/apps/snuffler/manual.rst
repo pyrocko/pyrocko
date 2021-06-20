@@ -82,6 +82,10 @@ Options
     [m]. If network and location code are empty, use ``.<sta>.``, i.e. the dots
     should not be omitted.
 
+.. option:: --stationxml=STATIONSXML
+
+    read station information from XML file STATIONSXML
+
 .. option:: --event=EVENT, --events=EVENT
 
     read event information from file ``EVENT``, this option can be given more than once
@@ -117,6 +121,12 @@ Options
 .. option:: --opengl
 
     use OpenGL for drawing
+
+.. option:: --qt5
+    use Qt5 for the GUI
+ 
+.. option:: --qt4
+    use Qt4 for the GUI
 
 .. option:: --debug
 
