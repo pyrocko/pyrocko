@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 [##](##) [Unreleased]
 
+*empty*
+
+[##](##) [2021.06.29]
+
 ### Added
 - Windows support (experimental).
 - Jackseis: can now use 3-digit Julian day in output filename templates.
