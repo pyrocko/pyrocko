@@ -208,8 +208,8 @@ latex_engine = 'xelatex'
 latex_elements = {
     'papersize': 'a4paper',
     'preamble': '''
-\usepackage[utf8x]{inputenc}
-\setcounter{tocdepth}{4}''',
+\\usepackage[utf8x]{inputenc}
+\\setcounter{tocdepth}{4}''',
     'utf8extra': '',
 
 }

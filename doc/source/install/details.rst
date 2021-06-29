@@ -1,12 +1,11 @@
 Detailed installation instructions
 ==================================
 
-Pyrocko can be installed on every operating system where its prerequisites are
-available. This document describes how to install Pyrocko on Unix-like
-operating systems, like Linux and Mac OS X.
+Pyrocko can be installed under any operating system where its prerequisites are
+available. This document describes details about its requirements which are
+needed when a standard install is not possible or conflicts arise.
 
-Explicit listings of the commands needed to install Pyrocko are given
-in section
+**For standard install instructions, head on over to**
 
 * :doc:`system/index`
 
@@ -16,8 +15,13 @@ Prerequisites
 The following software packages must be installed before Pyrocko can be
 installed from source:
 
+* Build requirements
+   * C compiler (tested with gcc, clang and MSVC)
+   * ``patch`` utility
+   * `NumPy <http://numpy.scipy.org/>`_ (>= 1.6, with development headers)
+
 * Try to use normal system packages for these Python modules:
-   * `Python <http://www.python.org/>`_ (== 2.7 or >= 3.4, with development headers)
+   * `Python <http://www.python.org/>`_ (== 2.7 or >= 3.4, with development headers, Python 2 support will be dropped soon)
    * `NumPy <http://numpy.scipy.org/>`_ (>= 1.6, with development headers)
    * `SciPy <http://scipy.org/>`_
    * `matplotlib <http://matplotlib.sourceforge.net/>`_ (with Qt4 or Qt5 backend)
@@ -39,9 +43,12 @@ installed from source:
    * `QSSP <https://git.pyrocko.org/pyrocko/fomosto-qssp>`_ (optional, needed for the Fomosto ``qssp.2010`` backend)
    * `PSGRN/PSCMP <https://git.pyrocko.org/pyrocko/fomosto-psgrn-pscmp>`_ (optional, needed for the Fomosto ``psgrn.pscmp`` backend)
 
+Download, compile and install Pyrocko from source
+-------------------------------------------------
 
-Download and install Pyrocko
-----------------------------
+The following examples will install Pyrocko system-wide with Python 3 on Linux
+or MacOS. For Windows source installs, please refer to :ref:`Installation on
+Windows: From source <windows-install-from-source>`.
 
 .. highlight:: sh
 
@@ -51,12 +58,15 @@ to install::
     cd ~/src/   # or wherever you keep your source packages
     git clone https://git.pyrocko.org/pyrocko/pyrocko.git pyrocko
     cd pyrocko
-    sudo python setup.py install
+    # for single user:
+    python3 setup.py install --user
+    # system wide:
+    sudo python3 setup.py install
 
 **Note:** If you have previously installed Pyrocko using other tools like e.g.
-*easy_install* or *pip*, you should manually remove the old installation -
-otherwise you will end up with two parallel installations of Pyrocko which will
-cause trouble.
+*easy_install*, *pip*, or *conda*, you should first remove the old
+installation. Otherwise you will end up with two parallel installations which
+will cause trouble.
 
 Updating
 --------
@@ -65,5 +75,8 @@ If you later would like to update Pyrocko, run the following commands (this
 assumes that you have used *git* to download Pyrocko):: 
 
     cd ~/src/pyrocko   # assuming the Pyrocko source package is here
-    git pull origin master 
-    sudo python setup.py install
+    git pull origin master --ff-only
+    # for single user:
+    python3 setup.py install --user
+    # system wide:
+    sudo python3 setup.py install

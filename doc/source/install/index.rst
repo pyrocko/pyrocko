@@ -1,13 +1,13 @@
 Installation
 ============
 
-Pyrocko can be installed on every operating system where its prerequisites are
+Pyrocko can be installed on any operating system where its prerequisites are
 available.
 
 Under **Linux**, we recommend to use the system's **native package manager** to
 install the prerequisites and to install Pyrocko **from source**. Using
-third-party package managers often leads to conflicts. Follow the instructions
-in :doc:`system/index`.
+third-party package managers like *pip* or *conda* often leads to
+conflicts. Follow the instructions in :doc:`system/index`.
 
 For **Anaconda** users, prebuilt packages are available (see
 :doc:`packages/anaconda`). Also packages for **pip** are available
@@ -20,7 +20,6 @@ For additional information, refer to :doc:`details`.
 
    system/index
    packages/index
-   upgrade
    details
 
 Support

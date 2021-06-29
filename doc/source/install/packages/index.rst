@@ -1,16 +1,16 @@
 Python package manager installations
 ------------------------------------
 
-We have pre-built packages ready for Anaconda3 running on Linux64 and Mac OS X.
-If you want to keep using Anaconda2 you have to build Pyrocko from source. For
-the ``pip`` package manager, we have source packages ready, meaning Pyrocko is
-built on your system during the installation:
+We provide pre-compiled Anaconda and pip packages for use with Python 3,
+running on X86_64 Linux, Mac OS X and Windows. As a fallback for other systems
+and platforms we provide pip source packages which are compiled during
+installation with pip.
 
 .. toctree ::
     :maxdepth: 1
 
     Anaconda <anaconda>
-    Installation using pip <pip>
+    pip <pip>
 
 .. raw:: html
 

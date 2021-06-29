@@ -2,49 +2,42 @@ Installation under Anaconda
 ===========================
 
 `Anaconda <https://www.anaconda.com/>`_, is a cross-platform Python
-distribution with its own package manager ``conda``. There are two versions:
-Anaconda3 for Python 3 and Anaconda2 for Python 2. Pyrocko can be installed
-under either of them.
-
+distribution with its own package manager ``conda``. For a more lightweight
+installation, consider installing `Miniconda
+<https://docs.conda.io/en/latest/miniconda.html>`_. Only the Python 3 version,
+Anaconda3/Miniconda3 is supported for Pyrocko versions above v2021.04.02.
 
 .. _conda_install:
 
-Anaconda3 and 2 using ``conda``
----------------------------------
+From binary packages using ``conda``
+------------------------------------
 
-As of Pyrocko 2017.11, pre-built packages are available for Linux 64-Bit and MacOS. You can use can use the ``conda`` package manager to install Pyrocko framwork:
+Pre-built packages are available for 64-bit Linux, MacOS and Windows. You can
+use can use the ``conda`` package manager to install the Pyrocko framework:
 
 .. code-block:: bash
-    :caption: Pre-build Pyrocko packages are available for Anaconda3 and 2 on Linux64 and OSX
+    :caption: Pre-built Pyrocko conda packages are available for Linux, MacOS and Windows.
 
     conda install -c pyrocko pyrocko
 
 More information available at https://anaconda.org/pyrocko/pyrocko
 
-Anaconda: update to latest Pyrocko version (master branch)
-----------------------------------------------------------
 
-**All dependencies should be resolved by a previous conda install**. You can
-then go ahead and use ``pip`` to update Pyrocko from source
+From source
+-----------
 
-.. code-block:: bash
-    :caption: Anaconda's ``pip`` can install straight from the Git repository
-
-    pip install git+https://git.pyrocko.org/pyrocko/pyrocko.git
-
-
-Anaconda (compilation from source)
------------------------------------
+Here's how to download, compile and install the latest Pyrocko version under
+Anaconda on Linux or MacOS. For Windows source installs, please refer to
+:ref:`Installation on Windows: From source <windows-install-from-source>`.
 
 .. code-block:: bash
-    :caption: Compile from sources
+    :caption: Compile from source
 
-    conda install pyqt=5
+    conda install setuptools numpy scipy matplotlib pyqt pyyaml progressbar2 requests jinja2 nose
     cd `conda info --root`
-
     mkdir src
     cd src
-    git clone https://git.pyrocko.org/pyrocko/pyrocko.git
+    git clone https://git.pyrocko.org/pyrocko/pyrocko.git pyrocko
     cd pyrocko
     python setup.py install
 
