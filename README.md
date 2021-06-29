@@ -5,43 +5,37 @@
 [![Anaconda-Server Badge](https://anaconda.org/pyrocko/pyrocko/badges/installer/conda.svg)](https://conda.anaconda.org/pyrocko)
 [![PyPI](https://img.shields.io/pypi/v/pyrocko.svg)](https://pypi.python.org/pypi/pyrocko/)
 
+
 ## Installation
 
-Full installation instructions are available at
-https://pyrocko.org/docs/current/install/.
+Pyrocko can be installed on various operating systems and in many different
+installation styles. Please consult the [Pyrocko Installation Manual](https://pyrocko.org/docs/current/install/) for details.
 
 ### System wide installation from source
 
 ```
-git clone https://git.pyrocko.org/pyrocko/pyrocko
+git clone https://git.pyrocko.org/pyrocko/pyrocko.git
 cd pyrocko
 sudo python install_prerequisites.py
 sudo python setup.py install
 ```
 
-### Installation with Anaconda / MacOSX
+### Installation with Anaconda
+
+Anaconda3 packages are available for Linux, OSX and Windows ([details](https://pyrocko.org/docs/current/install/packages/anaconda.html)).
 
 ```
 conda install -c pyrocko pyrocko
 ```
-Anaconda2/3 Packages are available for Linux and OSX
 
-### User installation with Python PIP
+### User installation with Python pip
+
+Binary pip packages are available for Linux and Windows ([details](https://pyrocko.org/docs/current/install/packages/pip.html)).
 
 ```
 pip install --user pyrocko
 pip install --user --only-binary :all: PyQt5
 ```
-
-or from source
-
-```
-git clone https://git.pyrocko.org/pyrocko/pyrocko
-cd pyrocko
-pip install --user -r requirements.txt
-pip install --user .
-```
-
 
 ## Documentation
 
