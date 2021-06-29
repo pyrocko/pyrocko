@@ -418,6 +418,7 @@ trigger:
   - release
   - candidate
   - pip
+  - pip-windows-release
 
 platform:
   os: windows
@@ -460,7 +461,9 @@ steps:
   when:
     branch:
     - release
+    - pip-windows-release
   commands:
+  - pip install twine
   - bash maintenance/pip/upload_wheels_windows.sh live
   environment:
     PYPI_USERNAME:
