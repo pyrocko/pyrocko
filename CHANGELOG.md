@@ -1,15 +1,39 @@
 # Changelog
 
-All notable changes to Pyrocko will be documented in this file.
+All notable changes to Pyrocko are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
-*empty*
-
-## [2021.04.02]
+[##](##) [Unreleased]
 
 ### Added
+- Windows support (experimental).
+- Jackseis: can now use 3-digit Julian day in output filename templates.
+
+### Changed
+- Snuffler: improved fidelity when working with many markers. It should now be
+  possible to smoothly handle 100.000 markers. The option
+  `--disable-marker-sorting` can be supplied to disable sorting in the marker
+  side-panel for an additional speedup.
+- Improved high precision (HP) time handling. Pyrocko now has two distinct
+  modes for time handling. Timestamps are now handled either as 64-bit floats
+  or as 96/128-bit floats. The mode can be selected by environment variable,
+  config setting or by a call to `util.use_high_precicion_time` at program
+  startup. HP time mode is only available on platforms where NumPy's HP floats
+  are available. HP time mode is necessary when handling data with sampling
+  rates above 100 kHz.
+- Dropping support for Python 2 binary distribution packages (Anaconda and
+  PIP).
+- Python 2 support will be removed from Pyrocko in the near future in order to
+  reduce our maintenance and testing workload. Sorry.
+
+### Fixed
+- Fixed an error in Double-DC source which caused incorrect placement of the
+  sub-sources.
+
+[##](##) [2021.04.02]
+
+[###](###) Added
 - RectangularSource: added opening_fraction to model tensile dislocations
 - New command line option for jackseis: `--record-length`
 - Timing definition offsets can now take `%` as suffix to scale phase
