@@ -3727,7 +3727,7 @@ class GMT(object):
 
         if self.is_gmt5():
             if crop_eps_mode:
-                addarg = ['-A0']
+                addarg = ['-A']
             else:
                 addarg = []
 
@@ -3752,7 +3752,7 @@ class GMT(object):
         elif filename.endswith('.pdf'):
             if psconvert:
                 gmt_bin = pjoin(self.installation['bin'], 'gmt')
-                subprocess.call([gmt_bin, 'psconvert', tempfn, '-Tf',
+                subprocess.call([gmt_bin, 'psconvert', tempfn + '.eps', '-Tf',
                                  '-F' + filename])
             else:
                 subprocess.call(['gmtpy-epstopdf', '--res=%i' % resolution,

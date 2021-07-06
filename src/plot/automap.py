@@ -199,7 +199,7 @@ class Map(Object):
         self._gmtversion = gmtversion
 
     def save(self, outpath, resolution=75., oversample=2., size=None,
-             width=None, height=None, psconvert=False):
+             width=None, height=None, psconvert=False, crop_eps_mode=False):
 
         '''
         Save the image.
@@ -226,6 +226,7 @@ class Map(Object):
             self._draw_topo_scale()
 
         gmt.save(outpath, resolution=resolution, oversample=oversample,
+                 crop_eps_mode=crop_eps_mode,
                  size=size, width=width, height=height, psconvert=psconvert)
 
     @property
@@ -308,8 +309,8 @@ class Map(Object):
 
         x, y, z = ((west, east), (south, north), (-6000., 4500.))
 
-        xax = gmtpy.Ax(mode='min-max', approx_ticks=4.)
-        yax = gmtpy.Ax(mode='min-max', approx_ticks=4.)
+        xax = gmtpy.Ax(mode='min-max', approx_ticks=3.)
+        yax = gmtpy.Ax(mode='min-max', approx_ticks=3.)
         zax = gmtpy.Ax(mode='min-max', inc=1000., label='Height',
                        scaled_unit='km', scaled_unit_factor=0.001)
 
