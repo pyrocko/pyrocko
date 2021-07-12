@@ -637,8 +637,6 @@ def event(
 
     :returns:
         See description of ``parsed`` argument above.
-
-
     '''
 
     service = 'event'

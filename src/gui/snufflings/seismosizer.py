@@ -34,7 +34,9 @@ class Seismosizer(Snuffling):
                               gf.BoxcarSTF(), None]
 
     def setup(self):
-        '''Customization of the snuffling.'''
+        '''
+        Customization of the snuffling.
+        '''
 
         self.set_name('Seismosizer')
         self.add_parameter(
@@ -120,7 +122,9 @@ class Seismosizer(Snuffling):
         return stf
 
     def call(self):
-        '''Main work routine of the snuffling.'''
+        '''
+        Main work routine of the snuffling.
+        '''
         self.cleanup()
 
         # get time range visible in viewer
@@ -307,5 +311,7 @@ class Seismosizer(Snuffling):
 
 
 def __snufflings__():
-    '''Returns a list of snufflings to be exported by this module.'''
+    '''
+    Returns a list of snufflings to be exported by this module.
+    '''
     return [Seismosizer()]

@@ -239,11 +239,14 @@ class StaticTarget(meta.MultiLocation):
 
     @property
     def ntargets(self):
-        ''' Number of targets held by instance. '''
+        '''
+        Number of targets held by instance.
+        '''
         return self.ncoords
 
     def get_targets(self):
-        ''' Discretizes the multilocation target into a list of
+        '''
+        Discretizes the multilocation target into a list of
         :class:`Target:`
 
         :returns: :class:`Target`

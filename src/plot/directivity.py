@@ -184,7 +184,8 @@ def plot_directivity(
         hillshade=True, cmap=None,
         plot_mt='full', show_phases=True, show_description=True,
         reverse_time=False, show_nucleations=True, axes=None, nthreads=0):
-    '''Plot the directivity and radiation characteristics of source models
+    '''
+    Plot the directivity and radiation characteristics of source models.
 
     Synthetic seismic traces (R, T or Z) are forward-modelled at a defined
     radius, covering the full or partial azimuthal range and projected on a

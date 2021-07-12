@@ -195,7 +195,8 @@ class Sorted(object):
 
 
 class TracesFileCache(object):
-    '''Manages trace metainformation cache.
+    '''
+    Manages trace metainformation cache.
 
     For each directory with files containing traces, one cache file is
     maintained to hold the trace metainformation of all files which are
@@ -205,10 +206,10 @@ class TracesFileCache(object):
     caches = {}
 
     def __init__(self, cachedir):
-        '''Create new cache.
+        '''
+        Create new cache.
 
         :param cachedir: directory to hold the cache files.
-
         '''
 
         self.cachedir = cachedir
@@ -217,13 +218,13 @@ class TracesFileCache(object):
         util.ensuredir(self.cachedir)
 
     def get(self, abspath):
-        '''Try to get an item from the cache.
+        '''
+        Try to get an item from the cache.
 
         :param abspath: absolute path of the object to retrieve
 
         :returns: a stored object is returned or None if nothing could be
             found.
-
         '''
 
         dircache = self._get_dircache_for(abspath)
@@ -232,7 +233,8 @@ class TracesFileCache(object):
         return None
 
     def put(self, abspath, tfile):
-        '''Put an item into the cache.
+        '''
+        Put an item into the cache.
 
         :param abspath: absolute path of the object to be stored
         :param tfile: object to be stored
@@ -245,7 +247,9 @@ class TracesFileCache(object):
         self.modified.add(cachepath)
 
     def dump_modified(self):
-        '''Save any modifications to disk.'''
+        '''
+        Save any modifications to disk.
+        '''
 
         for cachepath in self.modified:
             self._dump_dircache(self.dircaches[cachepath], cachepath)
@@ -254,7 +258,9 @@ class TracesFileCache(object):
         self.modified = set()
 
     def clean(self):
-        '''Weed out missing files from the disk caches.'''
+        '''
+        Weed out missing files from the disk caches.
+        '''
 
         self.dump_modified()
 
@@ -356,7 +362,9 @@ class TracesFileCache(object):
 
 
 def get_cache(cachedir):
-    '''Get global TracesFileCache object for given directory.'''
+    '''
+    Get global TracesFileCache object for given directory.
+    '''
     if cachedir not in TracesFileCache.caches:
         TracesFileCache.caches[cachedir] = TracesFileCache(cachedir)
 
@@ -504,7 +512,8 @@ def tlen(x):
 
 class TracesGroup(object):
 
-    '''Trace container base class.
+    '''
+    Trace container base class.
 
     Base class for Pile, SubPile, and TracesFile, i.e. anything containing
     a collection of several traces. A TracesGroup object maintains lookup sets
@@ -644,7 +653,8 @@ class TracesGroup(object):
             self.parent.remove(content)
 
     def relevant(self, tmin, tmax, group_selector=None, trace_selector=None):
-        '''Return list of :py:class:`pyrocko.trace.Trace` objects where given
+        '''
+        Return list of :py:class:`pyrocko.trace.Trace` objects where given
         arguments ``tmin`` and ``tmax`` match.
 
         :param tmin: start time
@@ -702,8 +712,10 @@ class TracesGroup(object):
 
 class MemTracesFile(TracesGroup):
 
-    '''This is needed to make traces without an actual disc file to be inserted
-    into a Pile.'''
+    '''
+    This is needed to make traces without an actual disc file to be inserted
+    into a Pile.
+    '''
 
     def __init__(self, parent, traces):
         TracesGroup.__init__(self, parent)
@@ -1006,7 +1018,9 @@ class SubPile(TracesGroup):
 
 
 class Pile(TracesGroup):
-    '''Waveform archive lookup, data loading and caching infrastructure.'''
+    '''
+    Waveform archive lookup, data loading and caching infrastructure.
+    '''
 
     def __init__(self):
         TracesGroup.__init__(self, None)
@@ -1352,7 +1366,8 @@ class Pile(TracesGroup):
             group_selector=None,
             trace_selector=None):
 
-        '''Iterate over all traces in pile.
+        '''
+        Iterate over all traces in pile.
 
         :param load_data: whether to load the waveform data, by default empty
             traces are yielded
@@ -1424,7 +1439,8 @@ class Pile(TracesGroup):
         return s
 
     def snuffle(self, **kwargs):
-        '''Visualize it.
+        '''
+        Visualize it.
 
         :param stations: list of `pyrocko.model.Station` objects or ``None``
         :param events: list of `pyrocko.model.Event` objects or ``None``
@@ -1447,7 +1463,8 @@ def make_pile(
         fileformat='mseed',
         cachedirname=None, show_progress=True):
 
-    '''Create pile from given file and directory names.
+    '''
+    Create pile from given file and directory names.
 
     :param paths: filenames and/or directories to look for traces. If paths is
         ``None`` ``sys.argv[1:]`` is used.
@@ -1505,7 +1522,8 @@ class Injector(trace.States):
         self._forget_fixed = forget_fixed
 
     def set_fixation_length(self, length):
-        '''Set length after which the fixation method is called on buffer traces.
+        '''
+        Set length after which the fixation method is called on buffer traces.
 
         The length should be given in seconds. Give None to disable.
         '''

@@ -385,7 +385,8 @@ class Station(Location):
 
 
 def dump_stations(stations, filename):
-    '''Write stations file.
+    '''
+    Write stations file.
 
     :param stations: list of :py:class:`Station` objects
     :param filename: filename as str
@@ -409,7 +410,8 @@ def dump_stations(stations, filename):
 
 
 def dump_stations_yaml(stations, filename):
-    '''Write stations file in YAML format.
+    '''
+    Write stations file in YAML format.
 
     :param stations: list of :py:class:`Station` objects
     :param filename: filename as str
@@ -442,7 +444,8 @@ def detect_format(filename):
 
 
 def load_stations(filename, format='detect'):
-    '''Read stations file.
+    '''
+    Read stations file.
 
     :param filename: filename
     :returns: list of :py:class:`Station` objects

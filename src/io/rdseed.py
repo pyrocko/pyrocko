@@ -234,7 +234,8 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
 
     def __init__(self, seedvolume, datapile=None):
 
-        '''Create new SEED Volume access object.
+        '''
+        Create new SEED Volume access object.
 
         :param seedvolume: filename of seed volume
         :param datapile: if not ``None``, this should be a
@@ -308,7 +309,8 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
                 % tr.nslc_id)
 
     def get_pyrocko_response(self, tr, target):
-        '''Extract the frequency response as :py:class:`trace.EvalResp`
+        '''
+        Extract the frequency response as :py:class:`trace.EvalResp`
         instance for *tr*.
 
         :param tr: :py:class:`trace.Trace` instance

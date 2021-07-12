@@ -167,7 +167,8 @@ class ScenePatch(Object):
                 (urLat, urLon), (lrLat, lrLon))
 
     def get_grid(self):
-        '''Return relative positions of scatterer.
+        '''
+        Return relative positions of scatterer.
 
         :param track: Acquisition track, from `'asc'` or `'dsc'`.
         :type track: string

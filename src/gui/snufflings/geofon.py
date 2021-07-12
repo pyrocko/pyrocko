@@ -19,7 +19,9 @@ class GeofonEvents(Snuffling):
         Snuffling.__init__(self)
 
     def setup(self):
-        '''Customization of the snuffling.'''
+        '''
+        Customization of the snuffling.
+        '''
 
         if self._magmin is None:
             self.set_name('Get GEOFON Events')
@@ -27,7 +29,9 @@ class GeofonEvents(Snuffling):
             self.set_name('Get GEOFON Events (> M %g)' % self._magmin)
 
     def call(self):
-        '''Main work routine of the snuffling.'''
+        '''
+        Main work routine of the snuffling.
+        '''
 
         # get time range visible in viewer
         viewer = self.get_viewer()
@@ -48,7 +52,9 @@ class GeofonEvents(Snuffling):
 
 
 def __snufflings__():
-    '''Returns a list of snufflings to be exported by this module.'''
+    '''
+    Returns a list of snufflings to be exported by this module.
+    '''
 
     return [
         GeofonEvents(),

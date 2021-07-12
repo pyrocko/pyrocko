@@ -92,7 +92,9 @@ class CSSHeaderFile(object):
         self.read()
 
     def read_wf_file(self, fn, nbytes, dtype, foff=0):
-        ''' Read binary waveform file
+        '''
+        Read binary waveform file
+
         :param fn: filename
         :param nbytes: number of bytes to be read
         :param dtype: datatype string
@@ -109,7 +111,9 @@ class CSSHeaderFile(object):
         return data
 
     def read(self):
-        ''' read header file '''
+        '''
+        Read header file.
+        '''
         with open(self.fn, 'rb') as f:
             lines = f.readlines()
             for iline, line in enumerate(lines):
@@ -166,6 +170,8 @@ class CSSHeaderFile(object):
 
 def iload(file_name, load_data, **kwargs):
     '''
+    Iteratively load traces from file.
+
     :param file_name: css header file name
     :param load_data: whether or not to load binary data
     '''

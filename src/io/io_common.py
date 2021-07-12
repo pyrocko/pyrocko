@@ -25,8 +25,12 @@ class FileError(Exception):
 
 
 class FileLoadError(FileError):
-    '''Raised when a problem occurred while loading of a file.'''
+    '''
+    Raised when a problem occurred while loading of a file.
+    '''
 
 
 class FileSaveError(FileError):
-    '''Raised when a problem occurred while saving of a file.'''
+    '''
+    Raised when a problem occurred while saving of a file.
+    '''

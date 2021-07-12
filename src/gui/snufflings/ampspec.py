@@ -146,6 +146,8 @@ class AmpSpec(Snuffling):
 
 
 def __snufflings__():
-    '''Returns a list of snufflings to be exported by this module.'''
+    '''
+    Returns a list of snufflings to be exported by this module.
+    '''
 
     return [AmpSpec()]

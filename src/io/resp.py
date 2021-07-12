@@ -408,7 +408,9 @@ def gett1(lst, t):
 
 
 class ChannelResponse(guts.Object):
-    '''Response information + channel codes and time span.'''
+    '''
+    Response information + channel codes and time span.
+    '''
 
     codes = guts.Tuple.T(4, guts.String.T(default=''))
     start_date = guts.Timestamp.T()
@@ -417,7 +419,9 @@ class ChannelResponse(guts.Object):
 
 
 def iload_fh(f):
-    '''Read RESP information from open file handle.'''
+    '''
+    Read RESP information from open file handle.
+    '''
 
     for sc, cc, rcs in parse3(f):
         nslc = (
@@ -518,7 +522,8 @@ iload_filename, iload_dirname, iload_glob, iload = util.make_iload_family(
 
 
 def make_stationxml(pyrocko_stations, channel_responses):
-    '''Create stationxml from pyrocko station list and RESP information.
+    '''
+    Create stationxml from pyrocko station list and RESP information.
 
     :param pyrocko_stations: list of :py:class:`pyrocko.model.Station` objects
     :param channel_responses: iterable yielding :py:class:`ChannelResponse`

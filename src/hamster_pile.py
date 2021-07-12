@@ -145,7 +145,8 @@ class HamsterPile(pile.Pile):
                 self.add_processor(p)
 
     def set_fixation_length(self, length):
-        '''Set length after which the fixation method is called on buffer traces.
+        '''
+        Set length after which the fixation method is called on buffer traces.
 
         The length should be given in seconds. Give None to disable.
         '''
@@ -192,7 +193,8 @@ class HamsterPile(pile.Pile):
                 del self._buffers[nslc]
 
     def _append_to_buffer(self, trace):
-        '''Try to append the trace to the active buffer traces.
+        '''
+        Try to append the trace to the active buffer traces.
 
         Returns the current buffer trace or None if unsuccessful.
         '''

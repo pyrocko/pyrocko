@@ -20,7 +20,9 @@ logger.setLevel(logging.INFO)
 class Download(Snuffling):
 
     def setup(self):
-        '''Customization of the snuffling.'''
+        '''
+        Customization of the snuffling.
+        '''
 
         self.set_name('Download Waveforms')
         self.add_parameter(Param(
@@ -44,7 +46,9 @@ class Download(Snuffling):
         self.current_stuff = None
 
     def call(self):
-        '''Main work routine of the snuffling.'''
+        '''
+        Main work routine of the snuffling.
+        '''
 
         self.cleanup()
 

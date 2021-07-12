@@ -2,7 +2,9 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-'''SAC IO library for Python'''
+'''
+SAC IO library for Python
+'''
 from __future__ import absolute_import
 
 import struct
@@ -82,7 +84,9 @@ iqb1 iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
         u_lookup[k] = undefined_value[t_lookup[k]]
 
     def ndatablocks(self):
-        '''Get number of data blocks for this file's type.'''
+        '''
+        Get number of data blocks for this file's type.
+        '''
         nblocks = {
             'itime': 1, 'irlim': 2, 'iamph': 2, 'ixy': 2, 'ixyz': 3
         }[SacFile.header_num2name[self.iftype]]
@@ -93,14 +97,18 @@ iqb1 iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
         return nblocks
 
     def val_or_none(self, k, v):
-        '''Replace SAC undef flags with None.'''
+        '''
+        Replace SAC undef flags with None.
+        '''
         if SacFile.u_lookup[k] == v:
             return None
         else:
             return v
 
     def get_ref_time(self):
-        '''Get reference time as standard Unix timestamp.'''
+        '''
+        Get reference time as standard Unix timestamp.
+        '''
 
         if None in (self.nzyear, self.nzjday, self.nzhour, self.nzmin,
                     self.nzsec, self.nzmsec):
@@ -178,7 +186,9 @@ iqb1 iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
             self.clear()
 
     def clear(self):
-        '''Empty file record.'''
+        '''
+        Empty file record.
+        '''
 
         for k in SacFile.header_keys:
             self.__dict__[k] = None
@@ -194,7 +204,9 @@ iqb1 iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
         self.data = [num.arange(0, dtype=num.float32)]
 
     def check(self):
-        '''Check the required header variables to have reasonable values.'''
+        '''
+        Check the required header variables to have reasonable values.
+        '''
         if self.iftype not in [SacFile.header_name2num[x] for x in
                                ('itime', 'irlim', 'iamph', 'ixy', 'ixyz')]:
             raise SacError('Unknown SAC file type: %i.' % self.iftype)
@@ -310,7 +322,9 @@ iqb1 iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
                     % (len(filedata) - nbh+nblocks*nbb, filename, self.npts))
 
     def write(self, filename, byte_sex='little'):
-        '''Write SAC file.'''
+        '''
+        Write SAC file.
+        '''
 
         self.check()
 

@@ -786,7 +786,9 @@ class QuakeML(Object):
         return self.event_parameters.event_list
 
     def get_pyrocko_events(self):
-        '''Extract a list of :py:class:`pyrocko.model.Event` instances'''
+        '''
+        Extract a list of :py:class:`pyrocko.model.Event` instances
+        '''
         events = []
         for e in self.event_parameters.event_list:
             events.append(e.get_pyrocko_event())

@@ -26,7 +26,9 @@ class KanFile:
             self.clear()
 
     def clear(self):
-        '''Empty file record.'''
+        '''
+        Empty file record.
+        '''
 
         # set the required attributes
         self.delta = 1.0
@@ -35,7 +37,8 @@ class KanFile:
         self.data = [num.arange(0, dtype=num.int32)]
 
     def read(self, filename, load_data=True):
-        '''Read SAC file.
+        '''
+        Read SAC file.
 
            filename -- Name of KAN file.
            load_data -- If True, the data is read, otherwise only read headers.

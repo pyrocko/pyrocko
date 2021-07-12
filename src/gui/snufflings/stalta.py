@@ -95,7 +95,9 @@ escidoc:4098/IS_8.1_rev1.pdf">Understanding
         self.set_live_update(False)
 
     def call(self):
-        '''Main work routine of the snuffling.'''
+        '''
+        Main work routine of the snuffling.
+        '''
 
         self.cleanup()
 

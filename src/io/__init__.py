@@ -40,7 +40,8 @@ def allowed_formats(operation, use=None, default=None):
 
 
 def load(filename, format='mseed', getdata=True, substitutions=None):
-    '''Load traces from file.
+    '''
+    Load traces from file.
 
     :param format: format of the file (%s)
     :param getdata: if ``True`` (the default), read data, otherwise only read
@@ -94,7 +95,8 @@ def detect_format(filename):
 
 
 def iload(filename, format='mseed', getdata=True, substitutions=None):
-    '''Load traces from file (iterator version).
+    '''
+    Load traces from file (iterator version).
 
     This function works like :py:func:`load`, but returns an iterator which
     yields the loaded traces.
@@ -166,7 +168,8 @@ def iload(filename, format='mseed', getdata=True, substitutions=None):
 
 def save(traces, filename_template, format='mseed', additional={},
          stations=None, overwrite=True, **kwargs):
-    '''Save traces to file(s).
+    '''
+    Save traces to file(s).
 
     :param traces: a trace or an iterable of traces to store
     :param filename_template: filename template with placeholders for trace

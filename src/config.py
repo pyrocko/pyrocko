@@ -31,7 +31,9 @@ class BadConfig(Exception):
 
 
 class PathWithPlaceholders(String):
-    '''Path, possibly containing placeholders.'''
+    '''
+    Path, possibly containing placeholders.
+    '''
     pass
 
 

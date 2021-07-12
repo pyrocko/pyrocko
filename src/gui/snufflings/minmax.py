@@ -9,20 +9,26 @@ from pyrocko import trace
 
 class MinMaxSnuffling(Snuffling):
 
-    '''Reports minimum, maximum, and peak-to-peak values of selected data.
+    '''
+    Reports minimum, maximum, and peak-to-peak values of selected data.
 
     To use it, use the picker tool to mark a region or select existing regions
     and call this snuffling. The values are printed via standard output to the
-    termimal.'''
+    termimal.
+    '''
 
     def setup(self):
-        '''Customization of the snuffling.'''
+        '''
+        Customization of the snuffling.
+        '''
 
         self.set_name('Minimum Maximum Peak-To-Peak')
         self.tinc = None
 
     def call(self):
-        '''Main work routine of the snuffling.'''
+        '''
+        Main work routine of the snuffling.
+        '''
 
         # to select a reasonable increment for the chopping, the smallest
         # sampling interval in the pile is looked at. this is only done,
@@ -50,6 +56,8 @@ class MinMaxSnuffling(Snuffling):
 
 
 def __snufflings__():
-    '''Returns a list of snufflings to be exported by this module.'''
+    '''
+    Returns a list of snufflings to be exported by this module.
+    '''
 
     return [MinMaxSnuffling()]

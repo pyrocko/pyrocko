@@ -2,7 +2,9 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-'''This module provides basic signal processing for seismic traces.'''
+'''
+This module provides basic signal processing for seismic traces.
+'''
 from __future__ import division, absolute_import
 
 import time
@@ -1638,7 +1640,7 @@ class Trace(Object):
             return processed.get_ydata(), processed
 
     def misfit(self, candidate, setup, nocache=False, debug=False):
-        """
+        '''
         Calculate misfit and normalization factor against candidate trace.
 
         :param candidate: :py:class:`Trace` object
@@ -1648,7 +1650,7 @@ class Trace(Object):
 
         If the sampling rates of ``self`` and ``candidate`` differ, the trace
         with the higher sampling rate will be downsampled.
-        """
+        '''
 
         a = self
         b = candidate
@@ -2202,7 +2204,8 @@ def rotate_to_rt(n, e, source, receiver, out_channels=('R', 'T')):
 
 def rotate_to_lqt(traces, backazimuth, incidence, in_channels,
                   out_channels=('L', 'Q', 'T')):
-    '''Rotate traces from ZNE to LQT system.
+    '''
+    Rotate traces from ZNE to LQT system.
 
     :param traces: list of traces in arbitrary order
     :param backazimuth: backazimuth in degrees clockwise from north
@@ -3130,7 +3133,7 @@ def _default_key(tr):
 
 def numpy_has_correlate_flip_bug():
     '''
-    Check if NumPy's correlate function reveals old behaviour
+    Check if NumPy's correlate function reveals old behaviour.
     '''
 
     if _globals._numpy_has_correlate_flip_bug is None:

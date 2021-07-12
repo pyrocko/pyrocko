@@ -110,7 +110,9 @@ class PlatesDataset(Dataset):
 
 
 class PeterBird2003(PlatesDataset):
-    '''An updated digital model of plate boundaries.'''
+    '''
+    An updated digital model of plate boundaries.
+    '''
     __citation = '''
     Bird, Peter. "An updated digital model of plate boundaries." Geochemistry,
     Geophysics, Geosystems 4.3 (2003).
@@ -258,11 +260,13 @@ class StrainRateDataset(Dataset):
 
 
 class GSRM1(StrainRateDataset):
-    '''Global Strain Rate Map. An integrated global model of present-day
+    '''
+    Global Strain Rate Map. An integrated global model of present-day
     plate motions and plate boundary deformation'''
     __citation = '''Kreemer, C., W.E. Holt, and A.J. Haines, "An integrated
     global model of present-day plate motions and plate boundary deformation",
-    Geophys. J. Int., 154, 8-34, 2003.'''
+    Geophys. J. Int., 154, 8-34, 2003.
+    '''
 
     def __init__(
             self,

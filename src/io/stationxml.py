@@ -282,8 +282,10 @@ class PhoneNumber(StringPattern):
 
 
 class Site(Object):
-    '''Description of a site location using name and optional
-    geopolitical boundaries (country, city, etc.).'''
+    '''
+    Description of a site location using name and optional geopolitical
+    boundaries (country, city, etc.).
+    '''
 
     name = Unicode.T(xmltagname='Name')
     description = Unicode.T(optional=True, xmltagname='Description')
@@ -294,15 +296,19 @@ class Site(Object):
 
 
 class ExternalReference(Object):
-    '''This type contains a URI and description for external data that
-    users may want to reference in StationXML.'''
+    '''
+    This type contains a URI and description for external data that users may
+    want to reference in StationXML.
+    '''
 
     uri = String.T(xmltagname='URI')
     description = Unicode.T(xmltagname='Description')
 
 
 class Units(Object):
-    '''A type to document units. Corresponds to SEED blockette 34.'''
+    '''
+    A type to document units. Corresponds to SEED blockette 34.
+    '''
 
     def __init__(self, name=None, **kwargs):
         Object.__init__(self, name=name, **kwargs)
@@ -316,20 +322,22 @@ class Counter(Int):
 
 
 class SampleRateRatio(Object):
-    '''Sample rate expressed as number of samples in a number of
-    seconds.'''
+    '''
+    Sample rate expressed as number of samples in a number of seconds.
+    '''
 
     number_samples = Int.T(xmltagname='NumberSamples')
     number_seconds = Int.T(xmltagname='NumberSeconds')
 
 
 class Gain(Object):
-    '''Complex type for sensitivity and frequency ranges. This complex
-    type can be used to represent both overall sensitivities and
-    individual stage gains. The FrequencyRangeGroup is an optional
-    construct that defines a pass band in Hertz ( FrequencyStart and
-    FrequencyEnd) in which the SensitivityValue is valid within the
-    number of decibels specified in FrequencyDBVariation.'''
+    '''
+    Complex type for sensitivity and frequency ranges. This complex type can be
+    used to represent both overall sensitivities and individual stage gains.
+    The FrequencyRangeGroup is an optional construct that defines a pass band
+    in Hertz ( FrequencyStart and FrequencyEnd) in which the SensitivityValue
+    is valid within the number of decibels specified in FrequencyDBVariation.
+    '''
 
     def __init__(self, value=None, **kwargs):
         Object.__init__(self, value=value, **kwargs)
@@ -381,7 +389,9 @@ class PhoneNumber(Object):
 
 
 class BaseFilter(Object):
-    '''The BaseFilter is derived by all filters.'''
+    '''
+    The BaseFilter is derived by all filters.
+    '''
 
     resource_id = String.T(optional=True, xmlstyle='attribute')
     name = String.T(optional=True, xmlstyle='attribute')
@@ -391,11 +401,12 @@ class BaseFilter(Object):
 
 
 class Sensitivity(Gain):
-    '''Sensitivity and frequency ranges. The FrequencyRangeGroup is an
-    optional construct that defines a pass band in Hertz
-    (FrequencyStart and FrequencyEnd) in which the SensitivityValue is
-    valid within the number of decibels specified in
-    FrequencyDBVariation.'''
+    '''
+    Sensitivity and frequency ranges. The FrequencyRangeGroup is an optional
+    construct that defines a pass band in Hertz (FrequencyStart and
+    FrequencyEnd) in which the SensitivityValue is valid within the number of
+    decibels specified in FrequencyDBVariation.
+    '''
 
     input_units = Units.T(optional=True, xmltagname='InputUnits')
     output_units = Units.T(optional=True, xmltagname='OutputUnits')
@@ -410,7 +421,9 @@ class Coefficient(FloatNoUnit):
 
 
 class PoleZero(Object):
-    '''Complex numbers used as poles or zeros in channel response.'''
+    '''
+    Complex numbers used as poles or zeros in channel response.
+    '''
 
     number = Int.T(optional=True, xmlstyle='attribute')
     real = FloatNoUnit.T(xmltagname='Real')
@@ -426,7 +439,9 @@ class ClockDrift(FloatWithUnit):
 
 
 class Second(FloatWithUnit):
-    '''A time value in seconds.'''
+    '''
+    A time value in seconds.
+    '''
 
     unit = String.T(default='SECONDS', optional=True, xmlstyle='attribute')
     # fixed unit
@@ -443,23 +458,28 @@ class Angle(FloatWithUnit):
 
 
 class Azimuth(FloatWithUnit):
-    '''Instrument azimuth, degrees clockwise from North.'''
+    '''
+    Instrument azimuth, degrees clockwise from North.
+    '''
 
     unit = String.T(default='DEGREES', optional=True, xmlstyle='attribute')
     # fixed unit
 
 
 class Dip(FloatWithUnit):
-    '''Instrument dip in degrees down from horizontal. Together
-    azimuth and dip describe the direction of the sensitive axis of
-    the instrument.'''
+    '''
+    Instrument dip in degrees down from horizontal. Together azimuth and dip
+    describe the direction of the sensitive axis of the instrument.
+    '''
 
     unit = String.T(default='DEGREES', optional=True, xmlstyle='attribute')
     # fixed unit
 
 
 class Distance(FloatWithUnit):
-    '''Extension of FloatWithUnit for distances, elevations, and depths.'''
+    '''
+    Extension of FloatWithUnit for distances, elevations, and depths.
+    '''
 
     unit = String.T(default='METERS', optional=True, xmlstyle='attribute')
     # NOT fixed unit!
@@ -471,16 +491,19 @@ class Frequency(FloatWithUnit):
 
 
 class SampleRate(FloatWithUnit):
-    '''Sample rate in samples per second.'''
+    '''
+    Sample rate in samples per second.
+    '''
 
     unit = String.T(default='SAMPLES/S', optional=True, xmlstyle='attribute')
     # fixed unit
 
 
 class Person(Object):
-    '''Representation of a person's contact information. A person can
-    belong to multiple agencies and have multiple email addresses and
-    phone numbers.'''
+    '''
+    Representation of a person's contact information. A person can belong to
+    multiple agencies and have multiple email addresses and phone numbers.
+    '''
 
     name_list = List.T(Unicode.T(xmltagname='Name'))
     agency_list = List.T(Unicode.T(xmltagname='Agency'))
@@ -489,9 +512,10 @@ class Person(Object):
 
 
 class FIR(BaseFilter):
-    '''Response: FIR filter. Corresponds to SEED blockette 61. FIR
-    filters are also commonly documented using the Coefficients
-    element.'''
+    '''
+    Response: FIR filter. Corresponds to SEED blockette 61. FIR filters are
+    also commonly documented using the Coefficients element.
+    '''
 
     symmetry = Symmetry.T(xmltagname='Symmetry')
     numerator_coefficient_list = List.T(
@@ -499,10 +523,11 @@ class FIR(BaseFilter):
 
 
 class Coefficients(BaseFilter):
-    '''Response: coefficients for FIR filter. Laplace transforms or
-    IIR filters can be expressed using type as well but the
-    PolesAndZeros should be used instead. Corresponds to SEED
-    blockette 54.'''
+    '''
+    Response: coefficients for FIR filter. Laplace transforms or IIR filters
+    can be expressed using type as well but the PolesAndZeros should be used
+    instead. Corresponds to SEED blockette 54.
+    '''
 
     cf_transfer_function_type = CfTransferFunction.T(
         xmltagname='CfTransferFunctionType')
@@ -511,7 +536,9 @@ class Coefficients(BaseFilter):
 
 
 class Latitude(FloatWithUnit):
-    '''Type for latitude coordinate.'''
+    '''
+    Type for latitude coordinate.
+    '''
 
     unit = String.T(default='DEGREES', optional=True, xmlstyle='attribute')
     # fixed unit
@@ -519,7 +546,9 @@ class Latitude(FloatWithUnit):
 
 
 class Longitude(FloatWithUnit):
-    '''Type for longitude coordinate.'''
+    '''
+    Type for longitude coordinate.
+    '''
 
     unit = String.T(default='DEGREES', optional=True, xmlstyle='attribute')
     # fixed unit
@@ -527,8 +556,9 @@ class Longitude(FloatWithUnit):
 
 
 class PolesZeros(BaseFilter):
-    '''Response: complex poles and zeros. Corresponds to SEED
-    blockette 53.'''
+    '''
+    Response: complex poles and zeros. Corresponds to SEED blockette 53.
+    '''
 
     pz_transfer_function_type = PzTransferFunction.T(
         xmltagname='PzTransferFunctionType')
@@ -609,9 +639,11 @@ class ResponseListElement(Object):
 
 
 class Polynomial(BaseFilter):
-    '''Response: expressed as a polynomial (allows non-linear sensors
-    to be described). Corresponds to SEED blockette 62. Can be used to
-    describe a stage of acquisition or a complete system.'''
+    '''
+    Response: expressed as a polynomial (allows non-linear sensors to be
+    described). Corresponds to SEED blockette 62. Can be used to describe a
+    stage of acquisition or a complete system.
+    '''
 
     approximation_type = Approximation.T(default='MACLAURIN',
                                          xmltagname='ApproximationType')
@@ -624,7 +656,9 @@ class Polynomial(BaseFilter):
 
 
 class Decimation(Object):
-    '''Corresponds to SEED blockette 57.'''
+    '''
+    Corresponds to SEED blockette 57.
+    '''
 
     input_sample_rate = Frequency.T(xmltagname='InputSampleRate')
     factor = Int.T(xmltagname='Factor')
@@ -640,8 +674,10 @@ class Operator(Object):
 
 
 class Comment(Object):
-    '''Container for a comment or log entry. Corresponds to SEED
-    blockettes 31, 51 and 59.'''
+    '''
+    Container for a comment or log entry. Corresponds to SEED blockettes 31, 51
+    and 59.
+    '''
 
     id = Counter.T(optional=True, xmlstyle='attribute')
     value = Unicode.T(xmltagname='Value')
@@ -655,22 +691,28 @@ class Comment(Object):
 
 
 class ResponseList(BaseFilter):
-    '''Response: list of frequency, amplitude and phase values.
-    Corresponds to SEED blockette 55.'''
+    '''
+    Response: list of frequency, amplitude and phase values. Corresponds to
+    SEED blockette 55.
+    '''
 
     response_list_element_list = List.T(
         ResponseListElement.T(xmltagname='ResponseListElement'))
 
 
 class Log(Object):
-    '''Container for log entries.'''
+    '''
+    Container for log entries.
+    '''
 
     entry_list = List.T(Comment.T(xmltagname='Entry'))
 
 
 class ResponseStage(Object):
-    '''This complex type represents channel response and covers SEED
-    blockettes 53 to 56.'''
+    '''
+    This complex type represents channel response and covers SEED blockettes 53
+    to 56.
+    '''
 
     number = Counter.T(xmlstyle='attribute')
     resource_id = String.T(optional=True, xmlstyle='attribute')
@@ -828,8 +870,9 @@ class Response(Object):
 
 
 class BaseNode(Object):
-    '''A base node type for derivation from: Network, Station and
-    Channel types.'''
+    '''
+    A base node type for derivation from: Network, Station and Channel types.
+    '''
 
     code = String.T(xmlstyle='attribute')
     start_date = DummyAwareOptionalTimestamp.T(optional=True,
@@ -859,8 +902,10 @@ class BaseNode(Object):
 
 
 class Channel(BaseNode):
-    '''Equivalent to SEED blockette 52 and parent element for the
-    related the response blockettes.'''
+    '''
+    Equivalent to SEED blockette 52 and parent element for the related the
+    response blockettes.
+    '''
 
     location_code = String.T(xmlstyle='attribute')
     external_reference_list = List.T(
@@ -894,9 +939,11 @@ class Channel(BaseNode):
 
 
 class Station(BaseNode):
-    '''This type represents a Station epoch. It is common to only have
-    a single station epoch with the station's creation and termination
-    dates as the epoch start and end dates.'''
+    '''
+    This type represents a Station epoch. It is common to only have a single
+    station epoch with the station's creation and termination dates as the
+    epoch start and end dates.
+    '''
 
     latitude = Latitude.T(xmltagname='Latitude')
     longitude = Longitude.T(xmltagname='Longitude')
@@ -927,10 +974,12 @@ class Station(BaseNode):
 
 
 class Network(BaseNode):
-    '''This type represents the Network layer, all station metadata is
-    contained within this element. The official name of the network or
-    other descriptive information can be included in the Description
-    element. The Network can contain 0 or more Stations.'''
+    '''
+    This type represents the Network layer, all station metadata is contained
+    within this element. The official name of the network or other descriptive
+    information can be included in the Description element. The Network can
+    contain 0 or more Stations.
+    '''
 
     total_number_stations = Counter.T(optional=True,
                                       xmltagname='TotalNumberStations')
@@ -1031,9 +1080,11 @@ def pyrocko_station_from_channels(nsl, channels, inconsistencies='warn'):
 
 
 class FDSNStationXML(Object):
-    '''Top-level type for Station XML. Required field are Source
-    (network ID of the institution sending the message) and one or
-    more Network containers or one or more Station containers.'''
+    '''
+    Top-level type for Station XML. Required field are Source (network ID of
+    the institution sending the message) and one or more Network containers or
+    one or more Station containers.
+    '''
 
     schema_version = Float.T(default=1.0, xmlstyle='attribute')
     source = String.T(xmltagname='Source')
@@ -1118,7 +1169,8 @@ class FDSNStationXML(Object):
     def from_pyrocko_stations(
             cls, pyrocko_stations, add_flat_responses_from=None):
 
-        ''' Generate :py:class:`FDSNStationXML` from list of
+        '''
+        Generate :py:class:`FDSNStationXML` from list of
         :py:class;`pyrocko.model.Station` instances.
 
         :param pyrocko_stations: list of :py:class;`pyrocko.model.Station`

@@ -19,7 +19,8 @@ logger = logging.getLogger('pyrocko.model.gnss')
 
 
 class GNSSComponent(Object):
-    ''' Component of a GNSSStation
+    '''
+    Component of a GNSSStation
     '''
     unit = StringChoice.T(
         choices=['mm', 'cm', 'm'],
@@ -50,7 +51,8 @@ class GNSSComponent(Object):
 
 
 class GNSSStation(Location):
-    ''' Representation of a GNSS station during a campaign measurement
+    '''
+    Representation of a GNSS station during a campaign measurement
 
     For more information see
     http://kb.unavco.org/kb/assets/660/UNAVCO_Campaign_GPS_GNSS_Handbook.pdf

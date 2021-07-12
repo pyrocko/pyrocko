@@ -2,7 +2,9 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-'''Effective seismological trace viewer.'''
+'''
+Effective seismological trace viewer.
+'''
 from __future__ import absolute_import
 
 import os

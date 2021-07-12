@@ -128,7 +128,8 @@ class Marker(object):
 
     @staticmethod
     def save_markers(markers, fn, fdigits=3):
-        '''Static method to write marker objects to file.
+        '''
+        Static method to write marker objects to file.
 
         :param markers: list of :py:class:`Marker` objects
         :param fn: filename as string
@@ -209,7 +210,8 @@ class Marker(object):
         self.active = False
 
     def set(self, nslc_ids, tmin, tmax):
-        '''Set ``nslc_ids``, start time and end time of :py:class:`Marker`
+        '''
+        Set ``nslc_ids``, start time and end time of :py:class:`Marker`.
 
         :param nslc_ids: list or set of (network, station, location, channel)
             tuples
@@ -221,7 +223,8 @@ class Marker(object):
         self.tmax = util.to_time_float(tmax)
 
     def set_kind(self, kind):
-        '''Set kind of :py:class:`Marker`
+        '''
+        Set kind of :py:class:`Marker`.
 
         :param kind: (optional) integer to distinguish groups of markers
                         (color-coded)
@@ -229,15 +232,20 @@ class Marker(object):
         self.kind = kind
 
     def get_tmin(self):
-        '''Get *start time* of :py:class:`Marker`'''
+        '''
+        Get *start time* of :py:class:`Marker`.
+        '''
         return self.tmin
 
     def get_tmax(self):
-        '''Get *end time* of :py:class:`Marker`'''
+        '''
+        Get *end time* of :py:class:`Marker`.
+        '''
         return self.tmax
 
     def get_nslc_ids(self):
-        '''Get marker's network-station-location-channel pattern.
+        '''
+        Get marker's network-station-location-channel pattern.
 
         :returns: list or set of (network, station, location, channel) tuples
 
@@ -256,19 +264,25 @@ class Marker(object):
         self.alerted = state
 
     def match_nsl(self, nsl):
-        '''See documentation of :py:func:`pyrocko.util.match_nslc`'''
+        '''
+        See documentation of :py:func:`pyrocko.util.match_nslc`.
+        '''
         patterns = ['.'.join(x[:3]) for x in self.nslc_ids]
         return util.match_nslc(patterns, nsl)
 
     def match_nslc(self, nslc):
-        '''See documentation of :py:func:`pyrocko.util.match_nslc`'''
+        '''
+        See documentation of :py:func:`pyrocko.util.match_nslc`.
+        '''
         patterns = ['.'.join(x) for x in self.nslc_ids]
         return util.match_nslc(patterns, nslc)
 
     def one_nslc(self):
-        '''If one *nslc_id* defines this marker return this id.
+        '''
+        If one *nslc_id* defines this marker return this id.
         If more than one *nslc_id* is defined in the :py:class:`Marker`s
-        *nslc_ids* raise :py:exc:`MarkerOneNSLCRequired`.'''
+        *nslc_ids* raise :py:exc:`MarkerOneNSLCRequired`.
+        '''
         if len(self.nslc_ids) != 1:
             raise MarkerOneNSLCRequired()
 
@@ -278,7 +292,9 @@ class Marker(object):
         return ''
 
     def copy(self):
-        ''' Get a copy of this marker. '''
+        '''
+        Get a copy of this marker.
+        '''
         return copy.deepcopy(self)
 
     def __str__(self):
@@ -541,15 +557,16 @@ class Marker(object):
 
 
 class EventMarker(Marker):
-    """
-    An EventMarker is a GUI element representing a seismological event
+    '''
+    GUI element representing a seismological event.
 
     :param event: A :py:class:`pyrocko.model.Event` object containing meta
         information of a seismological event
     :param kind: (optional) integer to distinguish groups of markers
     :param event_hash:  (optional) hash code of event (see:
         :py:meth:`pyrocko.model.Event.get_hash`)
-    """
+    '''
+
     def __init__(self, event, kind=0, event_hash=None):
         Marker.__init__(self, [], event.time, event.time, kind)
         self._event = event
@@ -602,8 +619,10 @@ class EventMarker(Marker):
             outline=self.active)
 
     def get_event(self):
-        '''Return an instance of the :py:class:`pyrocko.model.Event` associated
-        to this :py:class:`EventMarker`'''
+        '''
+        Return an instance of the :py:class:`pyrocko.model.Event` associated
+        to this :py:class:`EventMarker`
+        '''
         return self._event
 
     def draw_trace(self, viewer, p, tr, time_projection, track_projection,
@@ -724,8 +743,10 @@ class PhaseMarker(Marker):
         return ''.join(t)
 
     def get_event(self):
-        '''Return an instance of the :py:class:`pyrocko.model.Event` associated
-        to this :py:class:`EventMarker`'''
+        '''
+        Return an instance of the :py:class:`pyrocko.model.Event` associated
+        to this :py:class:`EventMarker`
+        '''
         return self._event
 
     def get_event_hash(self):

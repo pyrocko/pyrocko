@@ -119,7 +119,6 @@ sampling_check_eps = 1e-5
 
 
 class GFTrace(object):
-
     '''
     Green's Function trace class for handling traces from the GF store.
     '''
@@ -481,7 +480,9 @@ class BaseStore(object):
         return self._records[irecord]
 
     def _get(self, irecord, itmin, nsamples, decimate, implementation):
-        '''Retrieve complete GF trace from storage.'''
+        '''
+        Retrieve complete GF trace from storage.
+        '''
 
         if not self._f_index:
             self.open()
@@ -1561,11 +1562,13 @@ class Store(BaseStore):
         return os.path.join(self.store_dir, 'phases', phase_id + '.phase')
 
     def get_stored_phase(self, phase_id):
-        """Get stored phase from GF store
+        '''
+        Get stored phase from GF store.
 
         :returns: Phase information
         :rtype: :py:class:`pyrocko.spit.SPTree`
-        """
+        '''
+
         if phase_id not in self._phases:
             fn = self.phase_filename(phase_id)
             if not os.path.isfile(fn):
@@ -1764,7 +1767,8 @@ use `fomosto tttlsd` to fix holes.''' % w
             vred=vred)
 
     def make_ttt(self, force=False):
-        '''Compute travel time tables.
+        '''
+        Compute travel time tables.
 
         Travel time tables are computed using the 1D earth model defined in
         :py:attr:`~pyrocko.gf.meta.Config.earthmodel_1d` for each defined phase

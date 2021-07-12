@@ -2,8 +2,11 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-'''Access to the USGS Global Crustal Database.
-Simple queries and statistical analysis'''
+'''
+Access to the USGS Global Crustal Database.
+
+Simple queries and statistical analysis
+'''
 from __future__ import absolute_import
 
 import numpy as num
@@ -137,7 +140,8 @@ class VelocityProfile(Object):
         return pubYear(self.publication_reference)
 
     def interpolateProfile(self, depths, phase='p', stepped=True):
-        '''Get a continuous velocity function at arbitrary depth
+        '''
+        Get a continuous velocity function at arbitrary depth.
 
         :param depth: Depths to interpolate
         :type depth: :class:`numpy.ndarray`
@@ -170,10 +174,12 @@ class VelocityProfile(Object):
         return res
 
     def plot(self, axes=None):
-        ''' Plot the velocity profile, see :class:`pyrocko.cake`.
+        '''
+        Plot the velocity profile, see :class:`pyrocko.cake`.
 
         :param axes: Axes to plot into.
-        :type axes: :class:`matplotlib.Axes`'''
+        :type axes: :class:`matplotlib.Axes`
+        '''
 
         import matplotlib.pyplot as plt
 
@@ -186,7 +192,9 @@ class VelocityProfile(Object):
             plt.show()
 
     def getLayeredModel(self):
-        ''' Get a layered model, see :class:`pyrocko.cake.LayeredModel`. '''
+        '''
+        Get a layered model, see :class:`pyrocko.cake.LayeredModel`.
+        '''
         def iterLines():
             for il, m in enumerate(self.iterLayers()):
                 yield self.d[il], m, ''
@@ -194,7 +202,9 @@ class VelocityProfile(Object):
         return LayeredModel.from_scanlines(iterLines())
 
     def iterLayers(self):
-        ''' Iterator returns a :class:`pyrocko.cake.Material` for each layer'''
+        '''
+        Iterator yielding a :class:`pyrocko.cake.Material` for each layer.
+        '''
         for il in range(self.nlayers):
             yield Material(vp=self.vp[il],
                            vs=self.vs[il])
@@ -216,7 +226,8 @@ class VelocityProfile(Object):
         return num.any(self.vs)
 
     def get_weeded(self):
-        ''' Get weeded representation of layers used in the profile.
+        '''
+        Get weeded representation of layers used in the profile.
         See :func:`pyrocko.cake.get_weeded` for details.
         '''
         weeded = num.zeros((self.nlayers, 4))
@@ -237,7 +248,8 @@ class VelocityProfile(Object):
 
 
 class CrustDB(object):
-    ''' CrustDB  is a container for :class:`VelocityProfile` and provides
+    '''
+    CrustDB is a container for :class:`VelocityProfile` and provides
     functions for spatial selection, querying, processing and visualising
     data from the Global Crustal Database.
     '''
@@ -309,7 +321,8 @@ class CrustDB(object):
         return self.data_matrix
 
     def velocityMatrix(self, depth_range=(0, 60000.), ddepth=100., phase='p'):
-        '''Create a regular sampled velocity matrix
+        '''
+        Create a regular sampled velocity matrix.
 
         :param depth_range: Depth range, ``(dmin, dmax)``,
             defaults to ``(0, 6000.)``
@@ -338,7 +351,8 @@ class CrustDB(object):
 
     def rmsRank(self, ref_profile, depth_range=(0, 3500.), ddepth=100.,
                 phase='p'):
-        '''Correlates ``ref_profile`` to each profile in the database
+        '''
+        Correlates ``ref_profile`` to each profile in the database.
 
         :param ref_profile: Reference profile
         :type ref_profile: :class:`VelocityProfile`
@@ -367,7 +381,8 @@ class CrustDB(object):
 
     def histogram2d(self, depth_range=(0., 60000.), vel_range=None,
                     ddepth=100., dvbin=100., ddbin=2000., phase='p'):
-        '''Create a 2D Histogram of all the velocity profiles
+        '''
+        Create a 2D Histogram of all the velocity profiles.
 
         Check :func:`numpy.histogram2d` for more information.
 
@@ -405,7 +420,8 @@ class CrustDB(object):
                                normed=False)
 
     def meanVelocity(self, depth_range=(0., 60000.), ddepth=100., phase='p'):
-        '''Mean velocity profile plus std variation
+        '''
+        Get mean and standard deviation of velocity profile.
 
         :param depth_range: Depth range in [m], ``(dmin, dmax)``,
             defaults to ``(0., 60000.)``
@@ -424,7 +440,8 @@ class CrustDB(object):
         return sdepth, v_mean.flatten(), v_std.flatten()
 
     def modeVelocity(self, depth_range=(0., 60000.), ddepth=100., phase='p'):
-        '''Mode velocity profile plus std variation
+        '''
+        Get mode velocity profile and standard deviation.
 
         :param depth_range: Depth range in [m], ``(dmin, dmax)``,
             defaults to ``(0., 60000.)``
@@ -443,7 +460,8 @@ class CrustDB(object):
         return sdepth, v_mode.flatten(), v_counts.flatten()
 
     def medianVelocity(self, depth_range=(0., 60000.), ddepth=100., phase='p'):
-        '''Median velocity profile plus std variation
+        '''
+        Median velocity profile plus std variation.
 
         :param depth_range: Depth range in [m], ``(dmin, dmax)``,
             defaults to ``(0., 60000.)``
@@ -463,7 +481,8 @@ class CrustDB(object):
 
     def plotHistogram(self, vel_range=None, bins=36, phase='vp',
                       axes=None):
-        '''Plot 1D histogram of seismic velocities in the container
+        '''
+        Plot 1D histogram of seismic velocities in the container.
 
         :param vel_range: Velocity range, defaults to (5.5, 8.5)
         :type vel_range: tuple, optional
@@ -512,7 +531,8 @@ class CrustDB(object):
              aspect=.02,
              phase='p',
              axes=None):
-        ''' Plot a two 2D Histogram of seismic velocities
+        '''
+        Plot a two 2D Histogram of seismic velocities.
 
         :param depth_range: Depth range, ``(dmin, dmax)``,
             defaults to ``(0, 60)``
@@ -617,7 +637,9 @@ class CrustDB(object):
             plt.show()
 
     def plotVelocitySurface(self, v_max, d_min=0., d_max=6000., axes=None):
-        '''Plot a triangulated a depth surface exceeding velocity'''
+        '''
+        Plot a triangulated a depth surface exceeding velocity.
+        '''
 
         import matplotlib.pyplot as plt
 
@@ -654,7 +676,8 @@ class CrustDB(object):
         gmt.save(outfile)
 
     def exceedVelocity(self, v_max, d_min=0, d_max=60):
-        ''' Returns the last depth ``v_max`` has not been exceeded.
+        '''
+        Returns the last depth ``v_max`` has not been exceeded.
 
         :param v_max: maximal velocity
         :type vmax: float
@@ -683,7 +706,8 @@ class CrustDB(object):
         return self.profile_exceed_velocity
 
     def selectRegion(self, west, east, south, north):
-        '''Select profiles within a region by geographic corner coordinates
+        '''
+        Select profiles within a region by geographic corner coordinates.
 
         :param west: west corner
         :type west: float
@@ -706,7 +730,8 @@ class CrustDB(object):
         return r_container
 
     def selectPolygon(self, poly):
-        '''Select profiles within a polygon.
+        '''
+        Select profiles within a polygon.
 
         The algorithm is called the **Ray Casting Method**
 
@@ -739,7 +764,8 @@ class CrustDB(object):
         return r_container
 
     def selectLocation(self, lat, lon, radius=10):
-        '''Select profiles at a geographic location within a ``radius``.
+        '''
+        Select profiles at a geographic location within a ``radius``.
 
         :param lat: Latitude in [deg]
         :type lat: float
@@ -760,7 +786,8 @@ class CrustDB(object):
         return r_container
 
     def selectMinLayers(self, nlayers):
-        '''Select profiles with more than ``nlayers``
+        '''
+        Select profiles with more than ``nlayers``.
 
         :param nlayers: Minimum number of layers
         :type nlayers: int
@@ -777,7 +804,8 @@ class CrustDB(object):
         return r_container
 
     def selectMaxLayers(self, nlayers):
-        '''Select profiles with more than ``nlayers``.
+        '''
+        Select profiles with more than ``nlayers``.
 
         :param nlayers: Maximum number of layers
         :type nlayers: int
@@ -794,7 +822,8 @@ class CrustDB(object):
         return r_container
 
     def selectMinDepth(self, depth):
-        '''Select profiles describing layers deeper than ``depth``
+        '''
+        Select profiles describing layers deeper than ``depth``.
 
         :param depth: Minumum depth in [m]
         :type depth: float
@@ -810,7 +839,8 @@ class CrustDB(object):
         return r_container
 
     def selectMaxDepth(self, depth):
-        '''Select profiles describing layers shallower than ``depth``
+        '''
+        Select profiles describing layers shallower than ``depth``.
 
         :param depth: Maximum depth in [m]
         :type depth: float
@@ -826,7 +856,8 @@ class CrustDB(object):
         return r_container
 
     def selectVp(self):
-        '''Select profiles describing P Wave velocity
+        '''
+        Select profiles describing P wave velocity.
 
         :returns Selected profiles
         :rtype: :class:`CrustDB`
@@ -840,7 +871,8 @@ class CrustDB(object):
         return r_container
 
     def selectVs(self):
-        '''Select profiles describing P Wave velocity
+        '''
+        Select profiles describing P wave velocity.
 
         :returns: Selected profiles
         :rtype: :class:`CrustDB`
@@ -859,7 +891,8 @@ class CrustDB(object):
         return r_container
 
     def exportCSV(self, filename=None):
-        '''Export a CSV file as specified in the header below
+        '''
+        Export as CSV file.
 
         :param filename: Export filename
         :type filename: str
@@ -870,7 +903,8 @@ class CrustDB(object):
                 file.write(profile._csv())
 
     def exportYAML(self, filename=None):
-        '''Exports a readable file YAML :filename:
+        '''
+        Export as YAML file.
 
         :param filename: Export filename
         :type filename: str
@@ -898,7 +932,8 @@ class CrustDB(object):
         return data_path
 
     def _read(self, database_file):
-        '''Reads in the the GSN databasefile and puts it in CrustDB
+        '''
+        Reads in the the GSN database file and puts it in CrustDB.
 
         File format:
 

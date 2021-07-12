@@ -213,8 +213,8 @@ class PsGrnConfigFull(PsGrnConfig):
 #
 #------------------------------------------------------------------------------
 #
-#	PARAMETERS FOR SOURCE-OBSERVATION CONFIGURATIONS
-#	================================================
+#        PARAMETERS FOR SOURCE-OBSERVATION CONFIGURATIONS
+#        ================================================
 # 1. the uniform depth of the observation points [km], switch for oceanic (0)
 #    or continental(1) earthquakes;
 # 2. number of (horizontal) observation distances (> 1 and <= nrmax defined in
@@ -236,8 +236,8 @@ class PsGrnConfigFull(PsGrnConfig):
  %(str_depth_grid)s
 #------------------------------------------------------------------------------
 #
-#	PARAMETERS FOR TIME SAMPLING
-#	============================
+#        PARAMETERS FOR TIME SAMPLING
+#        ============================
 # 1. number of time samples (<= ntmax def. in psgglob.h) and time window [days].
 #
 #    Note that nt (> 0) should be power of 2 (the fft-rule). If nt = 1, the
@@ -249,8 +249,8 @@ class PsGrnConfigFull(PsGrnConfig):
  %(n_t2)i    %(max_time)f
 #------------------------------------------------------------------------------
 #
-#	PARAMETERS FOR WAVENUMBER INTEGRATION
-#	=====================================
+#        PARAMETERS FOR WAVENUMBER INTEGRATION
+#        =====================================
 # 1. relative accuracy of the wave-number integration (suggested: 0.1 - 0.01)
 # 2. factor (> 0 and < 1) for including influence of earth's gravity on the
 #    deformation field (e.g. 0/1 = without / with 100percent gravity effect).
@@ -259,8 +259,8 @@ class PsGrnConfigFull(PsGrnConfig):
  %(sw_gravity)i
 #------------------------------------------------------------------------------
 #
-#	PARAMETERS FOR OUTPUT FILES
-#	===========================
+#        PARAMETERS FOR OUTPUT FILES
+#        ===========================
 #
 # 1. output directory
 # 2. file names for 3 displacement components (uz, ur, ut)
@@ -283,8 +283,8 @@ class PsGrnConfigFull(PsGrnConfig):
  %(str_tilt_filenames)s %(str_gravity_filenames)s
 #------------------------------------------------------------------------------
 #
-#	GLOBAL MODEL PARAMETERS
-#	=======================
+#        GLOBAL MODEL PARAMETERS
+#        =======================
 # 1. number of data lines of the layered model (<= lmax as defined in psgglob.h)
 #
 #    The surface and the upper boundary of the half-space as well as the
@@ -298,7 +298,7 @@ class PsGrnConfigFull(PsGrnConfig):
 #    sublayers. Errors due to the discretisation are limited within about
 #    5percent (changeable, see psgglob.h).
 #
-# 2....	parameters of the multilayered model
+# 2....        parameters of the multilayered model
 #
 #    Burgers rheology (a Kelvin-Voigt body and a Maxwell body in series
 #    connection) for relaxation of shear modulus is implemented. No relaxation
@@ -586,7 +586,8 @@ class PsCmpRectangularSource(Location, gf.seismosizer.Cloneable):
     opening = Float.T(default=0.0)
 
     def update(self, **kwargs):
-        '''Change some of the source models parameters.
+        '''
+        Change some of the source models parameters.
 
         Example::
 
@@ -711,7 +712,6 @@ class PsCmpTensileSF(Location, gf.seismosizer.Cloneable):
 
 
 class PsCmpShearSF(Location, gf.seismosizer.Cloneable):
-
     '''
     Shear fault source model component.
 

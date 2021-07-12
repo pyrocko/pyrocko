@@ -2,7 +2,8 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-'''Interface to use CRUST2.0 model by Laske, Masters and Reif.
+'''
+Interface to use CRUST2.0 model by Laske, Masters and Reif.
 
 All functions defined in this module return SI units (m, m/s, kg/m^3).
 
@@ -80,7 +81,9 @@ LICE, LWATER, LSOFTSED, LHARDSED, LUPPERCRUST, LMIDDLECRUST, \
 
 
 class Crust2Profile(object):
-    '''Representation of a CRUST2.0 key profile.'''
+    '''
+    Representation of a CRUST2.0 key profile.
+    '''
 
     layer_names = (
         'ice', 'water', 'soft sed.', 'hard sed.', 'upper crust',
@@ -97,7 +100,8 @@ class Crust2Profile(object):
         self._elevation = elevation
 
     def get_weeded(self, include_waterlayer=False):
-        '''Get layers used in the profile.
+        '''
+        Get layers used in the profile.
 
         :param include_waterlayer: include water layer if ``True``. Default is
             ``False``
@@ -132,7 +136,8 @@ class Crust2Profile(object):
         return num.array(layers).T
 
     def get_layer(self, ilayer):
-        '''Get parameters for a layer.
+        '''
+        Get parameters for a layer.
 
         :param ilayer: id of layer
         :returns: thickness, vp, vs, density
@@ -173,7 +178,8 @@ mantle ave. vp, vs, rho: %15.5g %15.5g %15.5g
                  Crust2Profile.layer_names)]))
 
     def crustal_thickness(self):
-        '''Get total crustal thickness
+        '''
+        Get total crustal thickness.
 
         Takes into account ice layer.
         Does not take into account water layer.
@@ -182,7 +188,8 @@ mantle ave. vp, vs, rho: %15.5g %15.5g %15.5g
         return num.sum(self._thickness[3:]) + self._thickness[LICE]
 
     def averages(self):
-        '''Get crustal averages for vp, vs and density and total crustal thickness,
+        '''
+        Get crustal averages for vp, vs, density and total crustal thickness.
 
         Takes into account ice layer.
         Does not take into account water layer.
@@ -219,7 +226,8 @@ def _clip(x, mi, ma):
 
 
 class Crust2(object):
-    '''Access CRUST2.0 model.
+    '''
+    Access CRUST2.0 model.
 
         :param directory: Directory with the data files which contain the
             CRUST2.0 model data. If this is set to ``None``, builtin CRUST2.0
@@ -351,7 +359,9 @@ class Crust2(object):
 
     @staticmethod
     def instance():
-        '''Get the global default Crust2 instance.'''
+        '''
+        Get the global default Crust2 instance.
+        '''
 
         if Crust2._instance is None:
             Crust2._instance = Crust2()
@@ -360,14 +370,17 @@ class Crust2(object):
 
 
 def get_profile_keys():
-    '''Get list of all profile keys.'''
+    '''
+    Get list of all profile keys.
+    '''
 
     crust2 = Crust2.instance()
     return list(crust2.profile_keys)
 
 
 def get_profile(*args, **kwargs):
-    '''Get Crust2x2 profile for given location or profile key.
+    '''
+    Get Crust2x2 profile for given location or profile key.
 
     Get profile for (lat,lon) or raw profile for given string key.
     '''

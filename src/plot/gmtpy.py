@@ -2,7 +2,9 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-'''A Python interface to GMT.'''
+'''
+A Python interface to GMT.
+'''
 
 # This file is part of GmtPy (http://emolch.github.io/gmtpy/)
 # See there for copying and licensing information.
@@ -198,8 +200,10 @@ def replace_bbox(bbox, *args):
 
 
 def escape_shell_arg(s):
-    '''This function should be used for debugging output only - it could be
-    insecure.'''
+    '''
+    This function should be used for debugging output only - it could be
+    insecure.
+    '''
 
     if re.search(r'[^a-zA-Z0-9._/=-]', s):
         return "'" + s.replace("'", "'\\''") + "'"
@@ -208,8 +212,10 @@ def escape_shell_arg(s):
 
 
 def escape_shell_args(args):
-    '''This function should be used for debugging output only - it could be
-    insecure.'''
+    '''
+    This function should be used for debugging output only - it could be
+    insecure.
+    '''
 
     return ' '.join([escape_shell_arg(x) for x in args])
 
@@ -263,7 +269,8 @@ graph_colors = [tango_colors[_x] for _x in (
 
 
 def color(x=None):
-    '''Generate a string for GMT option arguments expecting a color.
+    '''
+    Generate a string for GMT option arguments expecting a color.
 
     If ``x`` is None, a random color is returned. If it is an integer, the
     corresponding ``gmtpy.graph_colors[x]`` or black returned. If it is a
@@ -448,218 +455,218 @@ VERBOSE                 = FALSE'''
 
 _gmt_defaults_by_version['4.3.0'] = r'''
 #
-#	GMT-SYSTEM 4.3.0 Defaults file
+#        GMT-SYSTEM 4.3.0 Defaults file
 #
 #-------- Plot Media Parameters -------------
-PAGE_COLOR		= 255/255/255
-PAGE_ORIENTATION	= portrait
-PAPER_MEDIA		= a4+
+PAGE_COLOR                = 255/255/255
+PAGE_ORIENTATION        = portrait
+PAPER_MEDIA                = a4+
 #-------- Basemap Annotation Parameters ------
-ANNOT_MIN_ANGLE		= 20
-ANNOT_MIN_SPACING	= 0
-ANNOT_FONT_PRIMARY	= Helvetica
-ANNOT_FONT_SIZE_PRIMARY	= 12p
-ANNOT_OFFSET_PRIMARY	= 0.075i
-ANNOT_FONT_SECONDARY	= Helvetica
-ANNOT_FONT_SIZE_SECONDARY	= 16p
-ANNOT_OFFSET_SECONDARY	= 0.075i
-DEGREE_SYMBOL		= ring
-HEADER_FONT		= Helvetica
-HEADER_FONT_SIZE	= 36p
-HEADER_OFFSET		= 0.1875i
-LABEL_FONT		= Helvetica
-LABEL_FONT_SIZE		= 14p
-LABEL_OFFSET		= 0.1125i
-OBLIQUE_ANNOTATION	= 1
-PLOT_CLOCK_FORMAT	= hh:mm:ss
-PLOT_DATE_FORMAT	= yyyy-mm-dd
-PLOT_DEGREE_FORMAT	= +ddd:mm:ss
-Y_AXIS_TYPE		= hor_text
+ANNOT_MIN_ANGLE                = 20
+ANNOT_MIN_SPACING        = 0
+ANNOT_FONT_PRIMARY        = Helvetica
+ANNOT_FONT_SIZE_PRIMARY        = 12p
+ANNOT_OFFSET_PRIMARY        = 0.075i
+ANNOT_FONT_SECONDARY        = Helvetica
+ANNOT_FONT_SIZE_SECONDARY        = 16p
+ANNOT_OFFSET_SECONDARY        = 0.075i
+DEGREE_SYMBOL                = ring
+HEADER_FONT                = Helvetica
+HEADER_FONT_SIZE        = 36p
+HEADER_OFFSET                = 0.1875i
+LABEL_FONT                = Helvetica
+LABEL_FONT_SIZE                = 14p
+LABEL_OFFSET                = 0.1125i
+OBLIQUE_ANNOTATION        = 1
+PLOT_CLOCK_FORMAT        = hh:mm:ss
+PLOT_DATE_FORMAT        = yyyy-mm-dd
+PLOT_DEGREE_FORMAT        = +ddd:mm:ss
+Y_AXIS_TYPE                = hor_text
 #-------- Basemap Layout Parameters ---------
-BASEMAP_AXES		= WESN
-BASEMAP_FRAME_RGB	= 0/0/0
-BASEMAP_TYPE		= plain
-FRAME_PEN		= 1.25p
-FRAME_WIDTH		= 0.075i
-GRID_CROSS_SIZE_PRIMARY	= 0i
-GRID_PEN_PRIMARY	= 0.25p
-GRID_CROSS_SIZE_SECONDARY	= 0i
-GRID_PEN_SECONDARY	= 0.5p
-MAP_SCALE_HEIGHT	= 0.075i
-POLAR_CAP		= 85/90
-TICK_LENGTH		= 0.075i
-TICK_PEN		= 0.5p
-X_AXIS_LENGTH		= 9i
-Y_AXIS_LENGTH		= 6i
-X_ORIGIN		= 1i
-Y_ORIGIN		= 1i
-UNIX_TIME		= FALSE
-UNIX_TIME_POS		= BL/-0.75i/-0.75i
-UNIX_TIME_FORMAT	= %Y %b %d %H:%M:%S
+BASEMAP_AXES                = WESN
+BASEMAP_FRAME_RGB        = 0/0/0
+BASEMAP_TYPE                = plain
+FRAME_PEN                = 1.25p
+FRAME_WIDTH                = 0.075i
+GRID_CROSS_SIZE_PRIMARY        = 0i
+GRID_PEN_PRIMARY        = 0.25p
+GRID_CROSS_SIZE_SECONDARY        = 0i
+GRID_PEN_SECONDARY        = 0.5p
+MAP_SCALE_HEIGHT        = 0.075i
+POLAR_CAP                = 85/90
+TICK_LENGTH                = 0.075i
+TICK_PEN                = 0.5p
+X_AXIS_LENGTH                = 9i
+Y_AXIS_LENGTH                = 6i
+X_ORIGIN                = 1i
+Y_ORIGIN                = 1i
+UNIX_TIME                = FALSE
+UNIX_TIME_POS                = BL/-0.75i/-0.75i
+UNIX_TIME_FORMAT        = %Y %b %d %H:%M:%S
 #-------- Color System Parameters -----------
-COLOR_BACKGROUND	= 0/0/0
-COLOR_FOREGROUND	= 255/255/255
-COLOR_NAN		= 128/128/128
-COLOR_IMAGE		= adobe
-COLOR_MODEL		= rgb
-HSV_MIN_SATURATION	= 1
-HSV_MAX_SATURATION	= 0.1
-HSV_MIN_VALUE		= 0.3
-HSV_MAX_VALUE		= 1
+COLOR_BACKGROUND        = 0/0/0
+COLOR_FOREGROUND        = 255/255/255
+COLOR_NAN                = 128/128/128
+COLOR_IMAGE                = adobe
+COLOR_MODEL                = rgb
+HSV_MIN_SATURATION        = 1
+HSV_MAX_SATURATION        = 0.1
+HSV_MIN_VALUE                = 0.3
+HSV_MAX_VALUE                = 1
 #-------- PostScript Parameters -------------
-CHAR_ENCODING		= ISOLatin1+
-DOTS_PR_INCH		= 300
-N_COPIES		= 1
-PS_COLOR		= rgb
-PS_IMAGE_COMPRESS	= none
-PS_IMAGE_FORMAT		= ascii
-PS_LINE_CAP		= round
-PS_LINE_JOIN		= miter
-PS_MITER_LIMIT		= 35
-PS_VERBOSE		= FALSE
-GLOBAL_X_SCALE		= 1
-GLOBAL_Y_SCALE		= 1
+CHAR_ENCODING                = ISOLatin1+
+DOTS_PR_INCH                = 300
+N_COPIES                = 1
+PS_COLOR                = rgb
+PS_IMAGE_COMPRESS        = none
+PS_IMAGE_FORMAT                = ascii
+PS_LINE_CAP                = round
+PS_LINE_JOIN                = miter
+PS_MITER_LIMIT                = 35
+PS_VERBOSE                = FALSE
+GLOBAL_X_SCALE                = 1
+GLOBAL_Y_SCALE                = 1
 #-------- I/O Format Parameters -------------
-D_FORMAT		= %lg
-FIELD_DELIMITER		= tab
-GRIDFILE_SHORTHAND	= FALSE
-GRID_FORMAT		= nf
-INPUT_CLOCK_FORMAT	= hh:mm:ss
-INPUT_DATE_FORMAT	= yyyy-mm-dd
-IO_HEADER		= FALSE
-N_HEADER_RECS		= 1
-OUTPUT_CLOCK_FORMAT	= hh:mm:ss
-OUTPUT_DATE_FORMAT	= yyyy-mm-dd
-OUTPUT_DEGREE_FORMAT	= +D
-XY_TOGGLE		= FALSE
+D_FORMAT                = %lg
+FIELD_DELIMITER                = tab
+GRIDFILE_SHORTHAND        = FALSE
+GRID_FORMAT                = nf
+INPUT_CLOCK_FORMAT        = hh:mm:ss
+INPUT_DATE_FORMAT        = yyyy-mm-dd
+IO_HEADER                = FALSE
+N_HEADER_RECS                = 1
+OUTPUT_CLOCK_FORMAT        = hh:mm:ss
+OUTPUT_DATE_FORMAT        = yyyy-mm-dd
+OUTPUT_DEGREE_FORMAT        = +D
+XY_TOGGLE                = FALSE
 #-------- Projection Parameters -------------
-ELLIPSOID		= WGS-84
-MAP_SCALE_FACTOR	= default
-MEASURE_UNIT		= inch
+ELLIPSOID                = WGS-84
+MAP_SCALE_FACTOR        = default
+MEASURE_UNIT                = inch
 #-------- Calendar/Time Parameters ----------
-TIME_FORMAT_PRIMARY	= full
-TIME_FORMAT_SECONDARY	= full
-TIME_EPOCH		= 2000-01-01T00:00:00
-TIME_IS_INTERVAL	= OFF
-TIME_INTERVAL_FRACTION	= 0.5
-TIME_LANGUAGE		= us
-TIME_UNIT		= d
-TIME_WEEK_START		= Sunday
-Y2K_OFFSET_YEAR		= 1950
+TIME_FORMAT_PRIMARY        = full
+TIME_FORMAT_SECONDARY        = full
+TIME_EPOCH                = 2000-01-01T00:00:00
+TIME_IS_INTERVAL        = OFF
+TIME_INTERVAL_FRACTION        = 0.5
+TIME_LANGUAGE                = us
+TIME_UNIT                = d
+TIME_WEEK_START                = Sunday
+Y2K_OFFSET_YEAR                = 1950
 #-------- Miscellaneous Parameters ----------
-HISTORY			= TRUE
-INTERPOLANT		= akima
-LINE_STEP		= 0.01i
-VECTOR_SHAPE		= 0
-VERBOSE			= FALSE'''
+HISTORY                        = TRUE
+INTERPOLANT                = akima
+LINE_STEP                = 0.01i
+VECTOR_SHAPE                = 0
+VERBOSE                        = FALSE'''
 
 
 _gmt_defaults_by_version['4.3.1'] = r'''
 #
-#	GMT-SYSTEM 4.3.1 Defaults file
+#        GMT-SYSTEM 4.3.1 Defaults file
 #
 #-------- Plot Media Parameters -------------
-PAGE_COLOR		= 255/255/255
-PAGE_ORIENTATION	= portrait
-PAPER_MEDIA		= a4+
+PAGE_COLOR                = 255/255/255
+PAGE_ORIENTATION        = portrait
+PAPER_MEDIA                = a4+
 #-------- Basemap Annotation Parameters ------
-ANNOT_MIN_ANGLE		= 20
-ANNOT_MIN_SPACING	= 0
-ANNOT_FONT_PRIMARY	= Helvetica
-ANNOT_FONT_SIZE_PRIMARY	= 12p
-ANNOT_OFFSET_PRIMARY	= 0.075i
-ANNOT_FONT_SECONDARY	= Helvetica
-ANNOT_FONT_SIZE_SECONDARY	= 16p
-ANNOT_OFFSET_SECONDARY	= 0.075i
-DEGREE_SYMBOL		= ring
-HEADER_FONT		= Helvetica
-HEADER_FONT_SIZE	= 36p
-HEADER_OFFSET		= 0.1875i
-LABEL_FONT		= Helvetica
-LABEL_FONT_SIZE		= 14p
-LABEL_OFFSET		= 0.1125i
-OBLIQUE_ANNOTATION	= 1
-PLOT_CLOCK_FORMAT	= hh:mm:ss
-PLOT_DATE_FORMAT	= yyyy-mm-dd
-PLOT_DEGREE_FORMAT	= +ddd:mm:ss
-Y_AXIS_TYPE		= hor_text
+ANNOT_MIN_ANGLE                = 20
+ANNOT_MIN_SPACING        = 0
+ANNOT_FONT_PRIMARY        = Helvetica
+ANNOT_FONT_SIZE_PRIMARY        = 12p
+ANNOT_OFFSET_PRIMARY        = 0.075i
+ANNOT_FONT_SECONDARY        = Helvetica
+ANNOT_FONT_SIZE_SECONDARY        = 16p
+ANNOT_OFFSET_SECONDARY        = 0.075i
+DEGREE_SYMBOL                = ring
+HEADER_FONT                = Helvetica
+HEADER_FONT_SIZE        = 36p
+HEADER_OFFSET                = 0.1875i
+LABEL_FONT                = Helvetica
+LABEL_FONT_SIZE                = 14p
+LABEL_OFFSET                = 0.1125i
+OBLIQUE_ANNOTATION        = 1
+PLOT_CLOCK_FORMAT        = hh:mm:ss
+PLOT_DATE_FORMAT        = yyyy-mm-dd
+PLOT_DEGREE_FORMAT        = +ddd:mm:ss
+Y_AXIS_TYPE                = hor_text
 #-------- Basemap Layout Parameters ---------
-BASEMAP_AXES		= WESN
-BASEMAP_FRAME_RGB	= 0/0/0
-BASEMAP_TYPE		= plain
-FRAME_PEN		= 1.25p
-FRAME_WIDTH		= 0.075i
-GRID_CROSS_SIZE_PRIMARY	= 0i
-GRID_PEN_PRIMARY	= 0.25p
-GRID_CROSS_SIZE_SECONDARY	= 0i
-GRID_PEN_SECONDARY	= 0.5p
-MAP_SCALE_HEIGHT	= 0.075i
-POLAR_CAP		= 85/90
-TICK_LENGTH		= 0.075i
-TICK_PEN		= 0.5p
-X_AXIS_LENGTH		= 9i
-Y_AXIS_LENGTH		= 6i
-X_ORIGIN		= 1i
-Y_ORIGIN		= 1i
-UNIX_TIME		= FALSE
-UNIX_TIME_POS		= BL/-0.75i/-0.75i
-UNIX_TIME_FORMAT	= %Y %b %d %H:%M:%S
+BASEMAP_AXES                = WESN
+BASEMAP_FRAME_RGB        = 0/0/0
+BASEMAP_TYPE                = plain
+FRAME_PEN                = 1.25p
+FRAME_WIDTH                = 0.075i
+GRID_CROSS_SIZE_PRIMARY        = 0i
+GRID_PEN_PRIMARY        = 0.25p
+GRID_CROSS_SIZE_SECONDARY        = 0i
+GRID_PEN_SECONDARY        = 0.5p
+MAP_SCALE_HEIGHT        = 0.075i
+POLAR_CAP                = 85/90
+TICK_LENGTH                = 0.075i
+TICK_PEN                = 0.5p
+X_AXIS_LENGTH                = 9i
+Y_AXIS_LENGTH                = 6i
+X_ORIGIN                = 1i
+Y_ORIGIN                = 1i
+UNIX_TIME                = FALSE
+UNIX_TIME_POS                = BL/-0.75i/-0.75i
+UNIX_TIME_FORMAT        = %Y %b %d %H:%M:%S
 #-------- Color System Parameters -----------
-COLOR_BACKGROUND	= 0/0/0
-COLOR_FOREGROUND	= 255/255/255
-COLOR_NAN		= 128/128/128
-COLOR_IMAGE		= adobe
-COLOR_MODEL		= rgb
-HSV_MIN_SATURATION	= 1
-HSV_MAX_SATURATION	= 0.1
-HSV_MIN_VALUE		= 0.3
-HSV_MAX_VALUE		= 1
+COLOR_BACKGROUND        = 0/0/0
+COLOR_FOREGROUND        = 255/255/255
+COLOR_NAN                = 128/128/128
+COLOR_IMAGE                = adobe
+COLOR_MODEL                = rgb
+HSV_MIN_SATURATION        = 1
+HSV_MAX_SATURATION        = 0.1
+HSV_MIN_VALUE                = 0.3
+HSV_MAX_VALUE                = 1
 #-------- PostScript Parameters -------------
-CHAR_ENCODING		= ISOLatin1+
-DOTS_PR_INCH		= 300
-N_COPIES		= 1
-PS_COLOR		= rgb
-PS_IMAGE_COMPRESS	= none
-PS_IMAGE_FORMAT		= ascii
-PS_LINE_CAP		= round
-PS_LINE_JOIN		= miter
-PS_MITER_LIMIT		= 35
-PS_VERBOSE		= FALSE
-GLOBAL_X_SCALE		= 1
-GLOBAL_Y_SCALE		= 1
+CHAR_ENCODING                = ISOLatin1+
+DOTS_PR_INCH                = 300
+N_COPIES                = 1
+PS_COLOR                = rgb
+PS_IMAGE_COMPRESS        = none
+PS_IMAGE_FORMAT                = ascii
+PS_LINE_CAP                = round
+PS_LINE_JOIN                = miter
+PS_MITER_LIMIT                = 35
+PS_VERBOSE                = FALSE
+GLOBAL_X_SCALE                = 1
+GLOBAL_Y_SCALE                = 1
 #-------- I/O Format Parameters -------------
-D_FORMAT		= %lg
-FIELD_DELIMITER		= tab
-GRIDFILE_SHORTHAND	= FALSE
-GRID_FORMAT		= nf
-INPUT_CLOCK_FORMAT	= hh:mm:ss
-INPUT_DATE_FORMAT	= yyyy-mm-dd
-IO_HEADER		= FALSE
-N_HEADER_RECS		= 1
-OUTPUT_CLOCK_FORMAT	= hh:mm:ss
-OUTPUT_DATE_FORMAT	= yyyy-mm-dd
-OUTPUT_DEGREE_FORMAT	= +D
-XY_TOGGLE		= FALSE
+D_FORMAT                = %lg
+FIELD_DELIMITER                = tab
+GRIDFILE_SHORTHAND        = FALSE
+GRID_FORMAT                = nf
+INPUT_CLOCK_FORMAT        = hh:mm:ss
+INPUT_DATE_FORMAT        = yyyy-mm-dd
+IO_HEADER                = FALSE
+N_HEADER_RECS                = 1
+OUTPUT_CLOCK_FORMAT        = hh:mm:ss
+OUTPUT_DATE_FORMAT        = yyyy-mm-dd
+OUTPUT_DEGREE_FORMAT        = +D
+XY_TOGGLE                = FALSE
 #-------- Projection Parameters -------------
-ELLIPSOID		= WGS-84
-MAP_SCALE_FACTOR	= default
-MEASURE_UNIT		= inch
+ELLIPSOID                = WGS-84
+MAP_SCALE_FACTOR        = default
+MEASURE_UNIT                = inch
 #-------- Calendar/Time Parameters ----------
-TIME_FORMAT_PRIMARY	= full
-TIME_FORMAT_SECONDARY	= full
-TIME_EPOCH		= 2000-01-01T00:00:00
-TIME_IS_INTERVAL	= OFF
-TIME_INTERVAL_FRACTION	= 0.5
-TIME_LANGUAGE		= us
-TIME_UNIT		= d
-TIME_WEEK_START		= Sunday
-Y2K_OFFSET_YEAR		= 1950
+TIME_FORMAT_PRIMARY        = full
+TIME_FORMAT_SECONDARY        = full
+TIME_EPOCH                = 2000-01-01T00:00:00
+TIME_IS_INTERVAL        = OFF
+TIME_INTERVAL_FRACTION        = 0.5
+TIME_LANGUAGE                = us
+TIME_UNIT                = d
+TIME_WEEK_START                = Sunday
+Y2K_OFFSET_YEAR                = 1950
 #-------- Miscellaneous Parameters ----------
-HISTORY			= TRUE
-INTERPOLANT		= akima
-LINE_STEP		= 0.01i
-VECTOR_SHAPE		= 0
-VERBOSE			= FALSE'''
+HISTORY                        = TRUE
+INTERPOLANT                = akima
+LINE_STEP                = 0.01i
+VECTOR_SHAPE                = 0
+VERBOSE                        = FALSE'''
 
 
 _gmt_defaults_by_version['4.4.0'] = r'''
@@ -1149,7 +1156,7 @@ def get_gmt_version(gmtdefaultsbinary, gmthomedir=None):
 
     if not m:
         raise GMTInstallationProblem(
-            "Can't extract version number from output of %s"
+            "Can't extract version number from output of %s."
             % gmtdefaultsbinary)
 
     return str(m.group(1).decode('ascii'))
@@ -1172,7 +1179,7 @@ def detect_gmt_installations():
         m = re.search(br'Version\s+(\d+(\.\d+)*)', stderr, re.M)
         if not m:
             raise GMTInstallationProblem(
-                "Can't version number from output of GMT")
+                "Can't get version number from output of GMT.")
 
         version = str(m.group(1).decode('ascii'))
         if version[0] != '5':
@@ -1180,19 +1187,19 @@ def detect_gmt_installations():
             m = re.search(br'^\s+executables\s+(.+)$', stderr, re.M)
             if not m:
                 raise GMTInstallationProblem(
-                    "Can't extract executables dir from output of GMT")
+                    "Can't extract executables dir from output of GMT.")
 
             gmtbin = str(m.group(1).decode('ascii'))
 
             m = re.search(br'^\s+shared data\s+(.+)$', stderr, re.M)
             if not m:
                 raise GMTInstallationProblem(
-                    "Can't extract shared dir from output of GMT")
+                    "Can't extract shared dir from output of GMT.")
 
             gmtshare = str(m.group(1).decode('ascii'))
             if not gmtshare.endswith('/share'):
                 raise GMTInstallationProblem(
-                    "Can't determine GMTHOME from output of GMT")
+                    "Can't determine GMTHOME from output of GMT.")
 
             gmthome = gmtshare[:-6]
 
@@ -1237,7 +1244,9 @@ def appropriate_defaults_version(version):
 
 
 def gmt_default_config(version):
-    '''Get default GMT configuration dict for given version.'''
+    '''
+    Get default GMT configuration dict for given version.
+    '''
 
     xversion = appropriate_defaults_version(version)
 
@@ -1444,7 +1453,9 @@ def make_bbox(width, height, gmt_config, margins=(0.8, 0.8, 0.8, 0.8)):
 
 def gmtdefaults_as_text(version='newest'):
 
-    '''Get the built-in gmtdefaults.'''
+    '''
+    Get the built-in gmtdefaults.
+    '''
 
     if version not in _gmt_installations:
         logging.warn('GMT version %s not installed, taking version %s instead'
@@ -1458,7 +1469,9 @@ def gmtdefaults_as_text(version='newest'):
 
 
 def savegrd(x, y, z, filename, title=None, naming='xy'):
-    '''Write COARDS compliant netcdf (grd) file.'''
+    '''
+    Write COARDS compliant netcdf (grd) file.
+    '''
 
     assert y.size, x.size == z.shape
     ny, nx = z.shape
@@ -1510,7 +1523,9 @@ def to_array(var):
 
 
 def loadgrd(filename):
-    '''Read COARDS compliant netcdf (grd) file.'''
+    '''
+    Read COARDS compliant netcdf (grd) file.
+    '''
 
     nc = netcdf.netcdf_file(filename, 'r')
     vkeys = list(nc.variables.keys())
@@ -1596,7 +1611,8 @@ def guess_field_size(x_sorted, y_sorted, z=None, mode=None):
 
 
 def griddata_auto(x, y, z, mode=None):
-    '''Grid tabular XYZ data by binning.
+    '''
+    Grid tabular XYZ data by binning.
 
     This function does some extra work to guess the size of the grid. This
     should work fine if the input values are already defined on an rectilinear
@@ -1606,7 +1622,8 @@ def griddata_auto(x, y, z, mode=None):
 
     The points do not have to be given in any particular order. Grid nodes
     without data are assigned the NaN value. If multiple data points map to the
-    same grid node, their average is assigned to the grid node. '''
+    same grid node, their average is assigned to the grid node.
+    '''
 
     x, y, z = [num.asarray(X) for X in (x, y, z)]
     assert x.size == y.size == z.size
@@ -1662,13 +1679,15 @@ def doublegrid(x, y, z):
 
 
 class Guru(object):
-    '''Abstract base class providing template interpolation, accessible as
+    '''
+    Abstract base class providing template interpolation, accessible as
     attributes.
 
     Classes deriving from this one, have to implement a :py:meth:`get_params`
     method, which is called to get a dict to do ordinary
     ``"%(key)x"``-substitutions. The deriving class must also provide a dict
-    with the templates.'''
+    with the templates.
+    '''
 
     def __init__(self):
         self.templates = {}
@@ -1712,7 +1731,9 @@ class Guru(object):
 
 
 def nice_value(x):
-    '''Round ``x`` to nice value.'''
+    '''
+    Round ``x`` to nice value.
+    '''
 
     exp = 1.0
     sign = 1
@@ -1739,7 +1760,8 @@ def nice_value(x):
 
 
 class AutoScaler(object):
-    '''Tunable 1D autoscaling based on data range.
+    '''
+    Tunable 1D autoscaling based on data range.
 
     Instances of this class may be used to determine nice minima, maxima and
     increments for ax annotations, as well as suitable common exponents for
@@ -1815,7 +1837,8 @@ class AutoScaler(object):
             exp_factor=3,
             no_exp_interval=(-3, 5)):
 
-        '''Create new AutoScaler instance.
+        '''
+        Create new AutoScaler instance.
 
         The parameters are described in the AutoScaler documentation.
         '''
@@ -1831,13 +1854,15 @@ class AutoScaler(object):
 
     def make_scale(self, data_range, override_mode=None):
 
-        '''Get nice minimum, maximum and increment for given data range.
+        '''
+        Get nice minimum, maximum and increment for given data range.
 
         Returns ``(minimum, maximum, increment)`` or ``(maximum, minimum,
         -increment)``, depending on whether data_range is ``(data_min,
         data_max)`` or ``(data_max, data_min)``. If ``override_mode`` is
         defined, the mode attribute is temporarily overridden by the given
-        value. '''
+        value.
+        '''
 
         data_min = min(data_range)
         data_max = max(data_range)
@@ -1910,9 +1935,11 @@ class AutoScaler(object):
             return mi, ma, inc
 
     def make_exp(self, x):
-        '''Get nice exponent for notation of ``x``.
+        '''
+        Get nice exponent for notation of ``x``.
 
-        For ax annotations, give tick increment as ``x``.'''
+        For ax annotations, give tick increment as ``x``.
+        '''
 
         if self.exp is not None:
             return self.exp
@@ -1927,10 +1954,12 @@ class AutoScaler(object):
         return math.floor(math.log10(x)/self.exp_factor)*self.exp_factor
 
     def guess_autoscale_mode(self, data_min, data_max):
-        '''Guess mode of operation, based on data range.
+        '''
+        Guess mode of operation, based on data range.
 
         Used to map ``'auto'`` mode to ``'0-max'``, ``'min-0'``, ``'min-max'``
-        or ``'symmetric'``.'''
+        or ``'symmetric'``.
+        '''
 
         a = 'min-max'
         if data_min >= 0.0:
@@ -1953,7 +1982,8 @@ class AutoScaler(object):
 
 
 class Ax(AutoScaler):
-    '''Ax description with autoscaling capabilities.
+    '''
+    Ax description with autoscaling capabilities.
 
     The ax is described by the :py:class:`AutoScaler` public attributes, plus
     the following additional attributes (with default values given in
@@ -2005,7 +2035,9 @@ class Ax(AutoScaler):
         self.masking = masking
 
     def label_str(self, exp, unit):
-        '''Get label string including the unit and multiplier.'''
+        '''
+        Get label string including the unit and multiplier.
+        '''
 
         slabel, sunit, sexp = '', '', ''
         if self.label:
@@ -2030,7 +2062,8 @@ class Ax(AutoScaler):
     def make_params(self, data_range, ax_projection=False, override_mode=None,
                     override_scaled_unit_factor=None):
 
-        '''Get minimum, maximum, increment and label string for ax display.'
+        '''
+        Get minimum, maximum, increment and label string for ax display.'
 
         Returns minimum, maximum, increment and label string including unit and
         multiplier for given data range.
@@ -2038,7 +2071,8 @@ class Ax(AutoScaler):
         If ``ax_projection`` is True, values suitable to be displayed on the ax
         are returned, e.g. min, max and inc are returned in scaled units.
         Otherwise the values are returned in the original units, without any
-        scaling applied. '''
+        scaling applied.
+        '''
 
         sf = self.scaled_unit_factor
 
@@ -2066,7 +2100,8 @@ class Ax(AutoScaler):
 
 class ScaleGuru(Guru):
 
-    '''2D/3D autoscaling and ax annotation facility.
+    '''
+    2D/3D autoscaling and ax annotation facility.
 
     Instances of this class provide automatic determination of plot ranges,
     tick increments and scaled annotations, as well as label/unit handling. It
@@ -2200,7 +2235,8 @@ class ScaleGuru(Guru):
 
     def get_params(self, ax_projection=False):
 
-        '''Get dict with output parameters.
+        '''
+        Get dict with output parameters.
 
         For each data dimension, ax minimum, maximum, increment and a label
         string (including unit and exponential factor) are determined. E.g. in
@@ -2213,7 +2249,8 @@ class ScaleGuru(Guru):
         latter case, the :py:attr:`Ax.scaled_unit` and
         :py:attr:`Ax.scaled_unit_factor` attributes as set on the axes are
         respected and that a common 10^x factor is factored out and put to the
-        label string. '''
+        label string.
+        '''
 
         xmi, xma, xinc, xlabel = self.axes[0].make_params(
             self.data_ranges[0], ax_projection)
@@ -2251,7 +2288,9 @@ class ScaleGuru(Guru):
 
 class GumSpring(object):
 
-    '''Sizing policy implementing a minimal size, plus a desire to grow.'''
+    '''
+    Sizing policy implementing a minimal size, plus a desire to grow.
+    '''
 
     def __init__(self, minimal=None, grow=None):
         self.minimal = minimal
@@ -2291,7 +2330,8 @@ def distribute(sizes, grows, space):
 
 class Widget(Guru):
 
-    '''Base class of the gmtpy layout system.
+    '''
+    Base class of the gmtpy layout system.
 
     The Widget class provides the basic functionality for the nesting and
     placing of elements on the output page, and maintains the sizing policies
@@ -2316,11 +2356,14 @@ class Widget(Guru):
 
     The convention is, that all sizes are given in PostScript points.
     Conversion factors are provided as constants :py:const:`inch` and
-    :py:const:`cm` in the gmtpy module. '''
+    :py:const:`cm` in the gmtpy module.
+    '''
 
     def __init__(self, horizontal=None, vertical=None, parent=None):
 
-        '''Create new widget.'''
+        '''
+        Create new widget.
+        '''
 
         Guru.__init__(self)
 
@@ -2345,23 +2388,29 @@ class Widget(Guru):
 
     def set_parent(self, parent):
 
-        '''Set the parent widget.
+        '''
+        Set the parent widget.
 
         This method should not be called directly. The :py:meth:`set_widget`
-        methods are responsible for calling this. '''
+        methods are responsible for calling this.
+        '''
 
         self.parent = parent
         self.dirtyfy()
 
     def get_parent(self):
 
-        '''Get the widgets parent widget.'''
+        '''
+        Get the widgets parent widget.
+        '''
 
         return self.parent
 
     def get_root(self):
 
-        '''Get the root widget in the layout hierarchy.'''
+        '''
+        Get the root widget in the layout hierarchy.
+        '''
 
         if self.parent is not None:
             return self.get_parent()
@@ -2370,7 +2419,8 @@ class Widget(Guru):
 
     def set_horizontal(self, minimal=None, grow=None):
 
-        '''Set the horizontal sizing policy of the Widget.
+        '''
+        Set the horizontal sizing policy of the Widget.
 
 
         :param minimal: new minimal width of the widget
@@ -2385,7 +2435,8 @@ class Widget(Guru):
 
     def set_vertical(self, minimal=None, grow=None):
 
-        '''Set the horizontal sizing policy of the Widget.
+        '''
+        Set the horizontal sizing policy of the Widget.
 
         :param minimal: new minimal height of the widget
         :param grow:    new vertical grow disire of the widget
@@ -2399,7 +2450,8 @@ class Widget(Guru):
 
     def set_aspect(self, aspect=None):
 
-        '''Set aspect constraint on the widget.
+        '''
+        Set aspect constraint on the widget.
 
         The aspect is given as height divided by width.
         '''
@@ -2409,8 +2461,10 @@ class Widget(Guru):
 
     def set_policy(self, minimal=(None, None), grow=(None, None), aspect=None):
 
-        '''Shortcut to set sizing and aspect constraints in a single method
-        call.'''
+        '''
+        Shortcut to set sizing and aspect constraints in a single method
+        call.
+        '''
 
         self.set_horizontal(minimal[0], grow[0])
         self.set_vertical(minimal[1], grow[1])
@@ -2423,7 +2477,8 @@ class Widget(Guru):
 
     def legalize(self, size, offset):
 
-        '''Get legal size for widget.
+        '''
+        Get legal size for widget.
 
         Returns: (new_size, new_offset)
 
@@ -2457,7 +2512,8 @@ class Widget(Guru):
 
     def get_min_size(self):
 
-        '''Get minimum size of widget.
+        '''
+        Get minimum size of widget.
 
         Used by the layout managers. Should be overloaded in derived classes.
         '''
@@ -2472,7 +2528,8 @@ class Widget(Guru):
 
     def get_grow(self):
 
-        '''Get widget's desire to grow.
+        '''
+        Get widget's desire to grow.
 
         Used by the layout managers. Should be overloaded in derived classes.
         '''
@@ -2481,10 +2538,12 @@ class Widget(Guru):
 
     def set_size(self, size, offset):
 
-        '''Set the widget's current size.
+        '''
+        Set the widget's current size.
 
         Should not be called directly. It is the layout manager's
-        responsibility to call this. '''
+        responsibility to call this.
+        '''
 
         (sh, sv), inner_offset = self.legalize(size, offset)
         self.offset = inner_offset
@@ -2519,7 +2578,8 @@ class Widget(Guru):
 
     def get_corners(self, descend=False):
 
-        '''Get coordinates of the corners of the widget.
+        '''
+        Get coordinates of the corners of the widget.
 
         Returns list with coordinate tuples.
 
@@ -2537,7 +2597,8 @@ class Widget(Guru):
 
     def get_sizes(self):
 
-        '''Get sizes of this widget and all it's children.
+        '''
+        Get sizes of this widget and all it's children.
 
         Returns a list with size tuples.
         '''
@@ -2549,7 +2610,9 @@ class Widget(Guru):
 
     def do_layout(self):
 
-        '''Triggers layouting of the widget hierarchy, if needed.'''
+        '''
+        Triggers layouting of the widget hierarchy, if needed.
+        '''
 
         if self.parent is not None:
             return self.parent.do_layout()
@@ -2567,7 +2630,8 @@ class Widget(Guru):
 
     def get_children(self):
 
-        '''Get sub-widgets contained in this widget.
+        '''
+        Get sub-widgets contained in this widget.
 
         Returns a list of widgets.
         '''
@@ -2576,7 +2640,8 @@ class Widget(Guru):
 
     def get_size(self):
 
-        '''Get current size and position of the widget.
+        '''
+        Get current size and position of the widget.
 
         Triggers layouting and returns
         ``((width, height), (xoffset, yoffset))``
@@ -2588,10 +2653,12 @@ class Widget(Guru):
 
     def get_params(self):
 
-        '''Get current size and position of the widget.
+        '''
+        Get current size and position of the widget.
 
         Triggers layouting and returns dict with keys ``'xoffset'``,
-        ``'yoffset'``, ``'width'`` and ``'height'``. '''
+        ``'yoffset'``, ``'width'`` and ``'height'``.
+        '''
 
         self.do_layout()
         (w, h), (xo, yo) = self.get_size()
@@ -2600,25 +2667,30 @@ class Widget(Guru):
 
     def width(self):
 
-        '''Get current width of the widget.
+        '''
+        Get current width of the widget.
 
-        Triggers layouting and returns width.'''
+        Triggers layouting and returns width.
+        '''
 
         self.do_layout()
         return self.horizontal.get_value()
 
     def height(self):
 
-        '''Get current height of the widget.
+        '''
+        Get current height of the widget.
 
-        Triggers layouting and return height.'''
+        Triggers layouting and return height.
+        '''
 
         self.do_layout()
         return self.vertical.get_value()
 
     def bbox(self):
 
-        '''Get PostScript bounding box for this widget.
+        '''
+        Get PostScript bounding box for this widget.
 
         Triggers layouting and returns values suitable to create PS bounding
         box, representing the widgets current size and position.
@@ -2630,7 +2702,8 @@ class Widget(Guru):
 
     def dirtyfy(self):
 
-        '''Set dirty flag on top level widget in the hierarchy.
+        '''
+        Set dirty flag on top level widget in the hierarchy.
 
         Called by various methods, to indicate, that the widget hierarchy needs
         new layouting.
@@ -2644,7 +2717,8 @@ class Widget(Guru):
 
 class CenterLayout(Widget):
 
-    '''A layout manager which centers its single child widget.
+    '''
+    A layout manager which centers its single child widget.
 
     The child widget may be oversized.
     '''
@@ -2681,7 +2755,9 @@ class CenterLayout(Widget):
 
     def set_widget(self, widget=None):
 
-        '''Set the child widget, which shall be centered.'''
+        '''
+        Set the child widget, which shall be centered.
+        '''
 
         if widget is None:
             widget = Widget()
@@ -2699,7 +2775,8 @@ class CenterLayout(Widget):
 
 class FrameLayout(Widget):
 
-    '''A layout manager containing a center widget sorrounded by four margin
+    '''
+    A layout manager containing a center widget sorrounded by four margin
     widgets.
 
     ::
@@ -2744,7 +2821,9 @@ class FrameLayout(Widget):
             parent=self)
 
     def set_fixed_margins(self, left, right, top, bottom):
-        '''Give margins fixed size constraints.'''
+        '''
+        Give margins fixed size constraints.
+        '''
 
         self.left.set_horizontal(left, 0)
         self.right.set_horizontal(right, 0)
@@ -2752,9 +2831,11 @@ class FrameLayout(Widget):
         self.bottom.set_vertical(bottom, 0)
 
     def set_min_margins(self, left, right, top, bottom, grow=0.0001):
-        '''Give margins a minimal size and the possibility to grow.
+        '''
+        Give margins a minimal size and the possibility to grow.
 
-        The desire to grow is set to a very small number.'''
+        The desire to grow is set to a very small number.
+        '''
         self.left.set_horizontal(left, grow)
         self.right.set_horizontal(right, grow)
         self.top.set_vertical(top, grow)
@@ -2850,10 +2931,12 @@ class FrameLayout(Widget):
 
     def set_widget(self, which='center', widget=None):
 
-        '''Set one of the sub-widgets.
+        '''
+        Set one of the sub-widgets.
 
         ``which`` should be one of ``'left'``, ``'right'``, ``'top'``,
-        ``'bottom'`` or ``'center'``. '''
+        ``'bottom'`` or ``'center'``.
+        '''
 
         if widget is None:
             widget = Widget()
@@ -2867,10 +2950,12 @@ class FrameLayout(Widget):
 
     def get_widget(self, which='center'):
 
-        '''Get one of the sub-widgets.
+        '''
+        Get one of the sub-widgets.
 
         ``which`` should be one of ``'left'``, ``'right'``, ``'top'``,
-        ``'bottom'`` or ``'center'``. '''
+        ``'bottom'`` or ``'center'``.
+        '''
 
         if which in ('left', 'right', 'top', 'bottom', 'center'):
             return self.__dict__[which]
@@ -2883,7 +2968,8 @@ class FrameLayout(Widget):
 
 class GridLayout(Widget):
 
-    '''A layout manager which arranges its sub-widgets in a grid.
+    '''
+    A layout manager which arranges its sub-widgets in a grid.
 
     The grid spacing is flexible and based on the sizing policies of the
     contained sub-widgets. If an equidistant grid is needed, the sizing
@@ -2897,7 +2983,9 @@ class GridLayout(Widget):
 
     def __init__(self, nx=2, ny=2, horizontal=None, vertical=None):
 
-        '''Create new grid layout with ``nx`` columns and ``ny`` rows.'''
+        '''
+        Create new grid layout with ``nx`` columns and ``ny`` rows.
+        '''
 
         Widget.__init__(self, horizontal, vertical)
         self.grid = []
@@ -3010,10 +3098,12 @@ class GridLayout(Widget):
 
     def set_widget(self, ix, iy, widget=None):
 
-        '''Set one of the sub-widgets.
+        '''
+        Set one of the sub-widgets.
 
         Sets the sub-widget in column ``ix`` and row ``iy``. The indices are
-        counted from zero. '''
+        counted from zero.
+        '''
 
         if widget is None:
             widget = Widget()
@@ -3023,10 +3113,12 @@ class GridLayout(Widget):
 
     def get_widget(self, ix, iy):
 
-        '''Get one of the sub-widgets.
+        '''
+        Get one of the sub-widgets.
 
         Gets the sub-widget from column ``ix`` and row ``iy``. The indices are
-        counted from zero.'''
+        counted from zero.
+        '''
 
         return self.grid[iy][ix]
 
@@ -3099,7 +3191,9 @@ def text_box(
 
 
 class TableLiner(object):
-    '''Utility class to turn tables into lines.'''
+    '''
+    Utility class to turn tables into lines.
+    '''
 
     def __init__(self, in_columns=None, in_rows=None, encoding='utf-8'):
         self.in_columns = in_columns
@@ -3119,7 +3213,9 @@ class TableLiner(object):
 
 
 class LineStreamChopper(object):
-    '''File-like object to buffer data.'''
+    '''
+    File-like object to buffer data.
+    '''
 
     def __init__(self, liner):
         self.chopsize = None
@@ -3176,7 +3272,8 @@ font_tab_rev = dict((v, k) for (k, v) in font_tab.items())
 
 
 class GMT(object):
-    '''A thin wrapper to GMT command execution.
+    '''
+    A thin wrapper to GMT command execution.
 
     A dict ``config`` may be given to override some of the default GMT
     parameters. The ``version`` argument may be used to select a specific GMT
@@ -3309,7 +3406,8 @@ class GMT(object):
 
     def _gmtcommand(self, command, *addargs, **kwargs):
 
-        '''Execute arbitrary GMT command.
+        '''
+        Execute arbitrary GMT command.
 
         See docstring in __getattr__ for details.
         '''
@@ -3470,7 +3568,8 @@ class GMT(object):
 
     def __getattr__(self, command):
 
-        '''Maps to call self._gmtcommand(command, \\*addargs, \\*\\*kwargs).
+        '''
+        Maps to call self._gmtcommand(command, \\*addargs, \\*\\*kwargs).
 
         Execute arbitrary GMT command.
 
@@ -3537,10 +3636,12 @@ class GMT(object):
         return f
 
     def tempfilename(self, name=None):
-        '''Get filename for temporary file in the private temp directory.
+        '''
+        Get filename for temporary file in the private temp directory.
 
            If no ``name`` argument is given, a random name is picked. If
-           ``name`` is given, returns a path ending in that ``name``.'''
+           ``name`` is given, returns a path ending in that ``name``.
+        '''
 
         if not name:
             name = ''.join(
@@ -3551,7 +3652,9 @@ class GMT(object):
         return fn
 
     def tempfile(self, name=None):
-        '''Create and open a file in the private temp directory.'''
+        '''
+        Create and open a file in the private temp directory.
+        '''
 
         fn = self.tempfilename(name)
         f = open(fn, 'wb')
@@ -3669,7 +3772,9 @@ class GMT(object):
         return get_bbox(self.output.getvalue())
 
     def get_command_log(self):
-        '''Get the command log.'''
+        '''
+        Get the command log.
+        '''
 
         return self.command_log
 
@@ -3680,7 +3785,9 @@ class GMT(object):
         return s
 
     def page_size_points(self):
-        '''Try to get paper size of output postscript file in points.'''
+        '''
+        Try to get paper size of output postscript file in points.
+        '''
 
         pm = paper_media(self.gmt_config).lower()
         if pm.endswith('+') or pm.endswith('-'):
@@ -3711,7 +3818,8 @@ class GMT(object):
         return None, None
 
     def default_layout(self, with_palette=False):
-        '''Get a default layout for the output page.
+        '''
+        Get a default layout for the output page.
 
         One of three different layouts is choosen, depending on the
         `PAPER_MEDIA` setting in the GMT configuration dict.
@@ -3734,7 +3842,8 @@ class GMT(object):
 
         In any case, a reference to the innermost :py:class:`FrameLayout`
         instance is returned. The top-level layout can be accessed by calling
-        :py:meth:`Widget.get_parent` on the returned layout. '''
+        :py:meth:`Widget.get_parent` on the returned layout.
+        '''
 
         if self.layout is None:
             w, h = self.page_size_points()
@@ -3799,7 +3908,9 @@ class GMT(object):
         return self.layout
 
     def draw_layout(self, layout):
-        '''Use psxy to draw layout; for debugging'''
+        '''
+        Use psxy to draw layout; for debugging
+        '''
 
         # corners = layout.get_corners(descend=True)
         rects = num.array(layout.get_sizes(), dtype=float)

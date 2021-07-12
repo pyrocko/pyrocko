@@ -2392,7 +2392,9 @@ def read_leap_seconds2():
 
 
 def gps_utc_offset(t_utc):
-    '''Time offset t_gps - t_utc for a given t_utc.'''
+    '''
+    Time offset t_gps - t_utc for a given t_utc.
+    '''
     ls = read_leap_seconds2()
     i = 0
     if t_utc < ls[0][0]:
@@ -2407,7 +2409,9 @@ def gps_utc_offset(t_utc):
 
 
 def utc_gps_offset(t_gps):
-    '''Time offset t_utc - t_gps for a given t_gps.'''
+    '''
+    Time offset t_utc - t_gps for a given t_gps.
+    '''
     ls = read_leap_seconds2()
 
     if t_gps < ls[0][0] + ls[0][1] - 9:

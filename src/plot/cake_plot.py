@@ -131,7 +131,9 @@ tango_colors = {
 
 
 def path2colorint(path):
-    '''Calculate an integer representation deduced from path's given name.'''
+    '''
+    Calculate an integer representation deduced from path's given name.
+    '''
     s = sum([ord(char) for char in path.phase.given_name()])
     return s
 

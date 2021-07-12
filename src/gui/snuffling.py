@@ -128,7 +128,8 @@ class Choice(object):
 
 
 class Snuffling(object):
-    '''Base class for user snufflings.
+    '''
+    Base class for user snufflings.
 
     Snufflings are plugins for snuffler (and other applications using the
     :py:class:`pyrocko.pile_viewer.PileOverview` class defined in

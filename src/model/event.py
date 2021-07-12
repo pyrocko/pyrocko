@@ -56,7 +56,8 @@ class Tag(StringPattern):
 
 
 class Event(Location):
-    '''Seismic event representation
+    '''
+    Representation of a seismic event.
 
     :param lat: latitude of hypocenter (default 0.0)
     :param lon: longitude of hypocenter (default 0.0)
@@ -384,7 +385,8 @@ def detect_format(filename):
 
 
 def load_events(filename, format='detect'):
-    '''Read events file.
+    '''
+    Read events file.
 
     :param filename: name of file as str
     :param format: file format: ``'detect'``, ``'basic'``, or ``'yaml'``
@@ -422,7 +424,8 @@ def load_one_event(filename, format='detect'):
 
 
 def dump_events(events, filename=None, stream=None, format='basic'):
-    '''Write events file.
+    '''
+    Write events file.
 
     :param events: list of :py:class:`Event` objects
     :param filename: name of file as str

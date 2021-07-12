@@ -3,7 +3,8 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
-'''Classical seismic ray theory for layered earth models (*layer cake* models).
+'''
+Classical seismic ray theory for layered earth models (*layer cake* models).
 
 This module can be used to e.g. calculate arrival times, ray paths, reflection
 and transmission coefficients, take-off and incidence angles and geometrical
@@ -99,7 +100,8 @@ class InvalidArguments(CakeError):
 
 
 class Material(object):
-    '''Isotropic elastic material.
+    '''
+    Isotropic elastic material.
 
     :param vp: P-wave velocity [m/s]
     :param vs: S-wave velocity [m/s]
@@ -191,7 +193,7 @@ class Material(object):
         if qp is not None or qs is not None:
             if not (qk is None and qmu is None):
                 raise InvalidArguments(
-                    'if qp or qs are given, qk and qmu should not be given.')
+                    'If qp or qs are given, qk and qmu should not be given.')
 
             if qp is None:
                 if self.vs != 0.0:
@@ -239,7 +241,8 @@ class Material(object):
         self.burger_valpha = burgers[2]
 
     def astuple(self):
-        '''Get independant material properties as a tuple.
+        '''
+        Get independant material properties as a tuple.
 
         Returns a tuple with ``(vp, vs, rho, qp, qs)``.
         '''
@@ -249,13 +252,16 @@ class Material(object):
         return self.astuple() == other.astuple()
 
     def lame(self):
-        '''Get Lame's parameter lambda and shear modulus.'''
+        '''
+        Get Lame's parameter lambda and shear modulus.
+        '''
         mu = self.vs**2 * self.rho
         lam = self.vp**2 * self.rho - 2.0*mu
         return lam, mu
 
     def lame_lambda(self):
-        '''Get Lame's parameter lambda.
+        '''
+        Get Lame's parameter lambda.
 
         Returned units are [Pa].
         '''
@@ -263,37 +269,50 @@ class Material(object):
         return lam
 
     def shear_modulus(self):
-        '''Get shear modulus.
+        '''
+        Get shear modulus.
 
         Returned units are [Pa].
         '''
         return self.vs**2 * self.rho
 
     def poisson(self):
-        '''Get Poisson's ratio.'''
+        '''
+        Get Poisson's ratio.
+        '''
         lam, mu = self.lame()
         return lam / (2.0*(lam+mu))
 
     def bulk(self):
-        '''Get bulk modulus.'''
+        '''
+        Get bulk modulus.
+        '''
         lam, mu = self.lame()
         return lam + 2.0*mu/3.0
 
     def youngs(self):
-        '''Get Young's modulus.'''
+        '''
+        Get Young's modulus.
+        '''
         lam, mu = self.lame()
         return mu * (3.0*lam + 2.0*mu) / (lam+mu)
 
     def vp_vs_ratio(self):
-        '''Get vp/vs ratio.'''
+        '''
+        Get vp/vs ratio.
+        '''
         return self.vp/self.vs
 
     def qmu(self):
-        '''Get shear attenuation coefficient Qmu.'''
+        '''
+        Get shear attenuation coefficient Qmu.
+        '''
         return self.qs
 
     def qk(self):
-        '''Get bulk attenuation coefficient Qk.'''
+        '''
+        Get bulk attenuation coefficient Qk.
+        '''
         if self.vs == 0. and self.qs == 0.:
             return self.qp
         else:
@@ -305,7 +324,9 @@ class Material(object):
                 return (1.-s)/(1.0/self.qp - s/self.qs)
 
     def burgers(self):
-        '''Get Burger parameters.'''
+        '''
+        Get Burger parameters.
+        '''
         return self.burger_eta1, self.burger_eta2, self.burger_valpha
 
     def _rayleigh_equation(self, cr):
@@ -317,9 +338,11 @@ class Material(object):
         return (2.0-cr_b)**2 - 4.0 * math.sqrt(1.0-cr_a) * math.sqrt(1.0-cr_b)
 
     def rayleigh(self):
-        '''Get rayleigh velocity assuming a homogenous halfspace.
+        '''
+        Get Rayleigh velocity assuming a homogenous halfspace.
 
-        Returned units are [m/s].'''
+        Returned units are [m/s].
+        '''
         return bisect(self._rayleigh_equation, 0.001*self.vs, self.vs)
 
     def _has_default_burgers(self):
@@ -330,7 +353,9 @@ class Material(object):
         return False
 
     def describe(self):
-        '''Get a readable listing of the material properties.'''
+        '''
+        Get a readable listing of the material properties.
+        '''
         template = '''
 P wave velocity     [km/s]    : %12g
 S wave velocity     [km/s]    : %12g
@@ -381,7 +406,7 @@ relaxation: valpha            : %12g
 
 class Leg(object):
     '''
-    Represents a continuous piece of wave propagation in a phase definition
+    Represents a continuous piece of wave propagation in a phase definition.
 
      **Attributes:**
 
@@ -449,7 +474,8 @@ class InvalidKneeDef(CakeError):
 
 
 class Knee(object):
-    '''Represents a change in wave propagation within a :py:class:`PhaseDef`.
+    '''
+    Represents a change in wave propagation within a :py:class:`PhaseDef`.
 
     **Attributes:**
 
@@ -573,7 +599,8 @@ class Knee(object):
         return self.direction == direction and self.in_mode == mode
 
     def out_direction(self):
-        '''Get outgoing direction.
+        '''
+        Get outgoing direction.
 
         Returns one of the constants :py:const:`UP` or :py:const:`DOWN`.
         '''
@@ -671,7 +698,8 @@ class PhaseDefParseError(CakeError):
 
 class PhaseDef(object):
 
-    '''Definition of a seismic phase arrival, based on ray propagation path.
+    '''
+    Definition of a seismic phase arrival, based on ray propagation path.
 
     :param definition: string representation of the phase in Cake's phase
         syntax
@@ -799,7 +827,8 @@ class PhaseDef(object):
 
     @staticmethod
     def classic(phasename):
-        '''Get phase definitions based on classic phase name.
+        '''
+        Get phase definitions based on classic phase name.
 
         :param phasename: classic name of a phase
         :returns: list of PhaseDef objects
@@ -995,11 +1024,15 @@ class PhaseDef(object):
         self._events.append(ev)
 
     def first_leg(self):
-        '''Get the first leg in phase definition.'''
+        '''
+        Get the first leg in phase definition.
+        '''
         return self._events[0]
 
     def last_leg(self):
-        '''Get the last leg in phase definition.'''
+        '''
+        Get the last leg in phase definition.
+        '''
         return self._events[-1]
 
     def legs(self):
@@ -1018,7 +1051,9 @@ class PhaseDef(object):
         return (knee for knee in self if isinstance(knee, Knee))
 
     def definition(self):
-        '''Get original definition of the phase.'''
+        '''
+        Get original definition of the phase.
+        '''
         return self._definition
 
     def given_name(self):
@@ -1044,7 +1079,9 @@ class PhaseDef(object):
         return None
 
     def used_repr(self):
-        '''Translate into textual representation (cake phase syntax).'''
+        '''
+        Translate into textual representation (cake phase syntax).
+        '''
         def strdepth(x):
             if isinstance(x, float):
                 return '%g' % (x/1000.)
@@ -1104,7 +1141,9 @@ class PhaseDef(object):
             '\n - '.join(str(ev) for ev in self) + sarrive
 
     def copy(self):
-        '''Get a deep copy of it.'''
+        '''
+        Get a deep copy of it.
+        '''
         return copy.deepcopy(self)
 
 
@@ -1138,7 +1177,8 @@ def psv_surface_ind(in_mode, out_mode):
 
 
 def psv_surface(material, p, energy=False):
-    '''Scatter matrix for free surface reflection/conversions.
+    '''
+    Scatter matrix for free surface reflection/conversions.
 
     :param material: material, object of type :py:class:`Material`
     :param p: flat ray parameter [s/m]
@@ -1195,7 +1235,8 @@ def psv_solid_ind(in_direction, out_direction, in_mode, out_mode):
 
 
 def psv_solid(material1, material2, p, energy=False):
-    '''Scatter matrix for solid-solid interface.
+    '''
+    Scatter matrix for solid-solid interface.
 
     :param material1: material above, object of type :py:class:`Material`
     :param material2: material below, object of type :py:class:`Material`
@@ -1331,7 +1372,8 @@ class CannotPropagate(PathFailed):
 
 
 class Layer(object):
-    '''Representation of a layer in a layered earth model.
+    '''
+    Representation of a layer in a layered earth model.
 
     :param ztop: depth of top of layer
     :param zbot: depth of bottom of layer
@@ -1370,7 +1412,8 @@ class Layer(object):
         self._use_potential_interpolation = (None, potint_p, potint_s)
 
     def potint_coefs(self, mode):
-        '''Get coefficients for potential interpolation.
+        '''
+        Get coefficients for potential interpolation.
 
         :param mode: mode of wave propagation, :py:const:`P` or :py:const:`S`
         :returns: coefficients ``(a, b)``
@@ -1401,12 +1444,16 @@ class Layer(object):
             self.at_top(z)
 
     def at_bottom(self, z):
-        '''Tolerantly check if given depth is at the bottom of the layer.'''
+        '''
+        Tolerantly check if given depth is at the bottom of the layer.
+        '''
 
         return abs(self.zbot - z) < ZEPS
 
     def at_top(self, z):
-        '''Tolerantly check if given depth is at the top of the layer.'''
+        '''
+        Tolerantly check if given depth is at the top of the layer.
+        '''
         return abs(self.ztop - z) < ZEPS
 
     def pflat_top(self, p):
@@ -1502,18 +1549,22 @@ class Layer(object):
             (ubot * radius(self.zbot) - p) > 0.)
 
     def zturn_potint(self, p, mode):
-        '''Get turning depth for given ray parameter and propagation mode.'''
+        '''
+        Get turning depth for given ray parameter and propagation mode.
+        '''
 
         a, b = self.potint_coefs(mode)
         r = num.exp(num.log(a*p)/(1.0-b))
         return earthradius-r
 
     def propagate(self, p, mode, direction):
-        '''Propagate ray through layer.
+        '''
+        Propagate ray through layer.
 
         :param p: ray parameter
         :param mode: propagation mode
-        :param direction: in direction (:py:const:`UP` or :py:const:`DOWN`'''
+        :param direction: in direction (:py:const:`UP` or :py:const:`DOWN`
+        '''
         if direction == DOWN:
             zin, zout = self.ztop, self.zbot
         else:
@@ -1528,8 +1579,9 @@ class Layer(object):
             return direction
 
     def resize(self, depth_min=None, depth_max=None):
-        '''Change layer thinkness and interpolate :py:class:`Material` if
-        required.'''
+        '''
+        Change layer thinkness and interpolate material if required.
+        '''
         if depth_min:
             mtop = self.material(depth_min)
 
@@ -1552,7 +1604,8 @@ def radius(z):
 
 
 class HomogeneousLayer(Layer):
-    '''Representation of a homogeneous layer in a layered earth model.
+    '''
+    Representation of a homogeneous layer in a layered earth model.
 
     Base class: :py:class:`Layer`.
     '''
@@ -1653,7 +1706,8 @@ class HomogeneousLayer(Layer):
 
 
 class GradientLayer(Layer):
-    '''Representation of a gradient layer in a layered earth model.
+    '''
+    Representation of a gradient layer in a layered earth model.
 
     Base class: :py:class:`Layer`.
     '''
@@ -1787,7 +1841,8 @@ class GradientLayer(Layer):
 
 
 class Discontinuity(object):
-    '''Base class for discontinuities in layered earth model.
+    '''
+    Base class for discontinuities in layered earth model.
 
     Subclasses are: :py:class:`Interface` and :py:class:`Surface`.
     '''
@@ -1808,7 +1863,8 @@ class Discontinuity(object):
 
 
 class Interface(Discontinuity):
-    '''Representation of an interface in a layered earth model.
+    '''
+    Representation of an interface in a layered earth model.
 
     Base class: :py:class:`Discontinuity`.
     '''
@@ -1860,7 +1916,8 @@ class Interface(Discontinuity):
 
 
 class Surface(Discontinuity):
-    '''Representation of the surface discontinuity in a layered earth model.
+    '''
+    Representation of the surface discontinuity in a layered earth model.
 
     Base class: :py:class:`Discontinuity`.
     '''
@@ -1929,7 +1986,9 @@ class Walker(object):
 
 
 class RayElement(object):
-    '''An element of a :py:class:`RayPath`.'''
+    '''
+    An element of a :py:class:`RayPath`.
+    '''
 
     def __eq__(self, other):
         return type(self) == type(other) and self.__dict__ == other.__dict__
@@ -2082,7 +2141,9 @@ class HeadwaveStraight(Straight):
 
 
 class Kink(RayElement):
-    '''An interaction of a ray with a :py:class:`Discontinuity`.'''
+    '''
+    An interaction of a ray with a :py:class:`Discontinuity`.
+    '''
 
     def __init__(
             self,
@@ -2156,14 +2217,18 @@ class RayPath(object):
         self._is_headwave = is_headwave
 
     def copy(self):
-        '''Get a copy of it.'''
+        '''
+        Get a copy of it.
+        '''
 
         c = copy.copy(self)
         c.elements = list(self.elements)
         return c
 
     def endgaps(self, zstart, zstop):
-        '''Get information needed for end point adjustments.'''
+        '''
+        Get information needed for end point adjustments.
+        '''
 
         return (
             zstart,
@@ -2183,7 +2248,9 @@ class RayPath(object):
         self._prange_dp = dp
 
     def used_phase(self, p=None, eps=1.):
-        '''Calculate phase definition from ray path.'''
+        '''
+        Calculate phase definition from ray path.
+        '''
 
         used = PhaseDef()
         fleg = self.phase.first_leg()
@@ -2246,22 +2313,30 @@ class RayPath(object):
         return used
 
     def pmax(self):
-        '''Get maximum valid ray parameter.'''
+        '''
+        Get maximum valid ray parameter.
+        '''
         self._check_have_prange()
         return self._pmax
 
     def pmin(self):
-        '''Get minimum valid ray parameter.'''
+        '''
+        Get minimum valid ray parameter.
+        '''
         self._check_have_prange()
         return self._pmin
 
     def xmin(self):
-        '''Get minimal distance.'''
+        '''
+        Get minimal distance.
+        '''
         self._analyse()
         return self._xmin
 
     def xmax(self):
-        '''Get maximal distance.'''
+        '''
+        Get maximal distance.
+        '''
         self._analyse()
         return self._xmax
 
@@ -2272,7 +2347,9 @@ class RayPath(object):
         return (k for k in self.elements if isinstance(k, Kink))
 
     def straights(self):
-        '''Iterate over ray segments.'''
+        '''
+        Iterate over ray segments.
+        '''
         return (s for s in self.elements if isinstance(s, Straight))
 
     def headwave_straight(self):
@@ -2281,13 +2358,17 @@ class RayPath(object):
                 return s
 
     def first_straight(self):
-        '''Get first ray segment.'''
+        '''
+        Get first ray segment.
+        '''
         for s in self.elements:
             if isinstance(s, Straight):
                 return s
 
     def last_straight(self):
-        '''Get last ray segment.'''
+        '''
+        Get last ray segment.
+        '''
         for s in reversed(self.elements):
             if isinstance(s, Straight):
                 return s
@@ -2301,7 +2382,9 @@ class RayPath(object):
             operator.mul, (k.efficiency(p) for k in self.kinks()), 1.)
 
     def spreading(self, p, endgaps):
-        '''Get geometrical spreading factor.'''
+        '''
+        Get geometrical spreading factor.
+        '''
         if self._is_headwave:
             return 0.0
 
@@ -2376,7 +2459,9 @@ class RayPath(object):
             return xe, te
 
     def xt_endgaps_ptest(self, p, endgaps):
-        '''Check if ray parameter is valid at source and receiver.'''
+        '''
+        Check if ray parameter is valid at source and receiver.
+        '''
 
         zstart, zstop, dirstart, dirstop = endgaps
         firsts = self.first_straight()
@@ -2384,7 +2469,9 @@ class RayPath(object):
         return num.logical_and(firsts.test(p, zstart), lasts.test(p, zstop))
 
     def xt(self, p, endgaps):
-        '''Calculate distance and traveltime for given ray parameter.'''
+        '''
+        Calculate distance and traveltime for given ray parameter.
+        '''
 
         if isinstance(p, num.ndarray):
             sx = num.zeros(p.size)
@@ -2466,7 +2553,9 @@ class RayPath(object):
             points_per_straight=20,
             x_for_headwave=None):
 
-        '''Get geometrical representation of ray path.'''
+        '''
+        Get geometrical representation of ray path.
+        '''
 
         if self._is_headwave:
             assert p.size == 1
@@ -2610,7 +2699,9 @@ class RayPath(object):
             return filled(p, xh.size), x+xh, t+th
 
     def interpolate_x2pt_linear(self, x, endgaps):
-        '''Get approximate ray parameter and traveltime for distance.'''
+        '''
+        Get approximate ray parameter and traveltime for distance.
+        '''
 
         self._analyse()
 
@@ -2695,22 +2786,30 @@ class RayPath(object):
         return '%-15s %-17s %s' % (self.phase.definition(), su, ''.join(x))
 
     def critical_pstart(self, endgaps):
-        '''Get critical ray parameter for source depth choice.'''
+        '''
+        Get critical ray parameter for source depth choice.
+        '''
 
         return self.first_straight().critical_p_in(endgaps)
 
     def critical_pstop(self, endgaps):
-        '''Get critical ray parameter for receiver depth choice.'''
+        '''
+        Get critical ray parameter for receiver depth choice.
+        '''
 
         return self.last_straight().critical_p_out(endgaps)
 
     def ranges(self, endgaps):
-        '''Get valid ranges of ray parameter, distance, and traveltime.'''
+        '''
+        Get valid ranges of ray parameter, distance, and traveltime.
+        '''
         p, x, t = self.draft_pxt(endgaps)
         return p.min(), p.max(), x.min(), x.max(), t.min(), t.max()
 
     def describe(self, endgaps=None, as_degrees=False):
-        '''Get textual representation.'''
+        '''
+        Get textual representation.
+        '''
 
         self._analyse()
 
@@ -2790,7 +2889,8 @@ class Ray(object):
         self.draft_pxt = draft_pxt
 
     def given_phase(self):
-        '''Get phase definition which was used to create the ray.
+        '''
+        Get phase definition which was used to create the ray.
 
         :returns: :py:class:`PhaseDef` object
         '''
@@ -2798,7 +2898,8 @@ class Ray(object):
         return self.path.phase
 
     def used_phase(self):
-        '''Compute phase definition from propagation path.
+        '''
+        Compute phase definition from propagation path.
 
         :returns: :py:class:`PhaseDef` object
         '''
@@ -2835,7 +2936,8 @@ class Ray(object):
             raise RefineFailed()
 
     def takeoff_angle(self):
-        '''Get takeoff angle of ray.
+        '''
+        Get takeoff angle of ray.
 
         The angle is returned in [degrees].
         '''
@@ -2843,7 +2945,8 @@ class Ray(object):
         return self.path.first_straight().angle_in(self.p, self.endgaps)
 
     def incidence_angle(self):
-        '''Get incidence angle of ray.
+        '''
+        Get incidence angle of ray.
 
         The angle is returned in [degrees].
         '''
@@ -2851,7 +2954,8 @@ class Ray(object):
         return self.path.last_straight().angle_out(self.p, self.endgaps)
 
     def efficiency(self):
-        '''Get conversion/reflection efficiency of the ray.
+        '''
+        Get conversion/reflection efficiency of the ray.
 
         A value between 0 and 1 is returned, reflecting the relative amount of
         energy which is transmitted along the ray and not lost by reflections
@@ -2861,7 +2965,9 @@ class Ray(object):
         return self.path.efficiency(self.p)
 
     def spreading(self):
-        '''Get geometrical spreading factor.'''
+        '''
+        Get geometrical spreading factor.
+        '''
 
         return self.path.spreading(self.p, self.endgaps)
 
@@ -2872,7 +2978,8 @@ class Ray(object):
         return ((x2-x1)**2 + (y2-y1)**2)*4.0*math.pi
 
     def zxt_path_subdivided(self, points_per_straight=20):
-        '''Get geometrical representation of ray path.
+        '''
+        Get geometrical representation of ray path.
 
         Three arrays (depth, distance, time) with points on the ray's path of
         propagation are returned. The number of points which are used in each
@@ -2930,7 +3037,8 @@ class LayeredModelError(CakeError):
 
 
 class LayeredModel(object):
-    '''Representation of a layer cake model.
+    '''
+    Representation of a layer cake model.
 
     There are several ways to initialize an instance of this class.
 
@@ -2961,7 +3069,8 @@ class LayeredModel(object):
         self._pathcache = {}
 
     def copy_with_elevation(self, elevation):
-        '''Get a copy of the model with surface layer stretched to given elevation.
+        '''
+        Get copy of the model with surface layer stretched to given elevation.
 
         :param elevation: new surface elevation in [m]
 
@@ -2985,7 +3094,8 @@ class LayeredModel(object):
         return abs(z1-z2) < ZEPS
 
     def append(self, element):
-        '''Add a layer or discontinuity at bottom of model.
+        '''
+        Add a layer or discontinuity at bottom of model.
 
         :param element: object of subclass of  :py:class:`Layer` or
             :py:class:`Discontinuity`.
@@ -3004,7 +3114,8 @@ class LayeredModel(object):
         self._elements.append(element)
 
     def elements(self, direction=DOWN):
-        '''Iterate over all elements of the model.
+        '''
+        Iterate over all elements of the model.
 
         :param direction: direction of traversal :py:const:`DOWN` or
             :py:const:`UP`.
@@ -3019,7 +3130,8 @@ class LayeredModel(object):
             return reversed(self._elements)
 
     def layers(self, direction=DOWN):
-        '''Iterate over all layers of model.
+        '''
+        Iterate over all layers of model.
 
         :param direction: direction of traversal :py:const:`DOWN` or
             :py:const:`UP`.
@@ -3034,7 +3146,8 @@ class LayeredModel(object):
                 el for el in reversed(self._elements) if isinstance(el, Layer))
 
     def layer(self, z, direction=DOWN):
-        '''Get layer for given depth.
+        '''
+        Get layer for given depth.
 
         :param z: depth [m]
         :param direction: direction of traversal :py:const:`DOWN` or
@@ -3053,7 +3166,8 @@ class LayeredModel(object):
         return Walker(self._elements)
 
     def material(self, z, direction=DOWN):
-        '''Get material at given depth.
+        '''
+        Get material at given depth.
 
         :param z: depth [m]
         :param direction: direction of traversal :py:const:`DOWN` or
@@ -3068,12 +3182,14 @@ class LayeredModel(object):
         return lyr.material(z)
 
     def discontinuities(self):
-        '''Iterate over all discontinuities of the model.'''
+        '''
+        Iterate over all discontinuities of the model.'''
 
         return (el for el in self._elements if isinstance(el, Discontinuity))
 
     def discontinuity(self, name_or_z):
-        '''Get discontinuity by name or depth.
+        '''
+        Get discontinuity by name or depth.
 
         :param name_or_z: name of discontinuity or depth [m] as float value
         '''
@@ -3090,7 +3206,8 @@ class LayeredModel(object):
         return candi[0]
 
     def adapt_phase(self, phase):
-        '''Adapt a phase definition for use with this model.
+        '''
+        Adapt a phase definition for use with this model.
 
         This returns a copy of the phase definition, where named
         discontinuities are replaced with the actual depth of these, as defined
@@ -3373,7 +3490,8 @@ class LayeredModel(object):
             zstop=0.0,
             refine=True):
 
-        '''Compute rays and traveltimes for given distances.
+        '''
+        Compute rays and traveltimes for given distances.
 
         :param distances: list or array of distances [deg]
         :param phases: a :py:class:`PhaseDef` object or a list of such objects.
@@ -3419,7 +3537,8 @@ class LayeredModel(object):
 
     @classmethod
     def from_scanlines(cls, producer):
-        '''Create layer cake model from sequence of materials at depths.
+        '''
+        Create layer cake model from sequence of materials at depths.
 
         :param producer: iterable yielding (depth, material, name) tuples
 
@@ -3624,7 +3743,8 @@ class LayeredModel(object):
         return out_layers
 
     def simplify(self, max_rel_error=0.001):
-        '''Get representation of model with lower resolution.
+        '''
+        Get representation of model with lower resolution.
 
         Returns an approximation of the model. All discontinuities are kept,
         but layer stacks with continuous model parameters are represented, if
@@ -3634,7 +3754,8 @@ class LayeredModel(object):
         difference to the original model is below ``max_rel_error``. The
         difference is measured as the RMS error of the fit normalized by the
         mean of the input (i.e. the fitted curves should deviate, on average,
-        less than 0.1% from the input curves if ``max_rel_error`` = 0.001).'''
+        less than 0.1% from the input curves if ``max_rel_error`` = 0.001).
+        '''
 
         mod_simple = LayeredModel()
 
@@ -3659,13 +3780,15 @@ class LayeredModel(object):
         return mod_simple
 
     def extract(self, depth_min=None, depth_max=None):
-        '''Extract :py:class:`LayeredModel` from :py:class:`LayeredModel`.
+        '''
+        Extract :py:class:`LayeredModel` from :py:class:`LayeredModel`.
 
         :param depth_min: depth of upper cut or name of :py:class:`Interface`
         :param depth_max: depth of lower cut or name of :py:class:`Interface`
 
         Interpolates a :py:class:`GradientLayer` at ``depth_min`` and/or
-        ``depth_max``.'''
+        ``depth_max``.
+        '''
 
         if isinstance(depth_min, (str, newstr)):
             depth_min = self.discontinuity(depth_min).z
@@ -3843,9 +3966,14 @@ class LayeredModel(object):
         elements = list(self.elements())
 
         if len(elements) != 2:
-            raise LayeredModelError('More than one layer in earthmodel')
+            raise LayeredModelError(
+                'Homogeneous model required but found more than one layer in '
+                'earthmodel.')
+
         if not isinstance(elements[1], HomogeneousLayer):
-            raise LayeredModelError('Layer has to be a HomogeneousLayer')
+            raise LayeredModelError(
+                'Homogeneous model required but element #1 is not of type '
+                'HomogeneousLayer.')
 
         return elements[1].m
 
@@ -3854,7 +3982,8 @@ class LayeredModel(object):
 
 
 def read_hyposat_model(fn):
-    '''Reader for HYPOSAT earth model files.
+    '''
+    Reader for HYPOSAT earth model files.
 
     To be used as producer in :py:meth:`LayeredModel.from_scanlines`.
 
@@ -3881,7 +4010,8 @@ def read_hyposat_model(fn):
 
 
 def read_nd_model(fn):
-    '''Reader for TauP style '.nd' (named discontinuity) files.
+    '''
+    Reader for TauP style '.nd' (named discontinuity) files.
 
     To be used as producer in :py:meth:`LayeredModel.from_scanlines`.
 
@@ -4027,7 +4157,8 @@ def builtin_model_filename(modelname):
 
 
 def load_model(fn='ak135-f-continental.m', format='nd', crust2_profile=None):
-    '''Load layered earth model from file.
+    '''
+    Load layered earth model from file.
 
     :param fn: filename
     :param format: format
@@ -4077,7 +4208,8 @@ def load_model(fn='ak135-f-continental.m', format='nd', crust2_profile=None):
 
 
 def castagna_vs_to_vp(vs):
-    '''Calculate vp from vs using castagna's relation.
+    '''
+    Calculate vp from vs using Castagna's relation.
 
     Castagna's relation (the mudrock line) is an empirical relation for vp/vs
     for siliciclastic rocks (i.e. sandstones and shales). [Castagna et al.,
@@ -4093,7 +4225,8 @@ def castagna_vs_to_vp(vs):
 
 
 def castagna_vp_to_vs(vp):
-    '''Calculate vp from vs using castagna's relation.
+    '''
+    Calculate vp from vs using Castagna's relation.
 
     Castagna's relation (the mudrock line) is an empirical relation for vp/vs
     for siliciclastic rocks (i.e. sandstones and shales). [Castagna et al.,

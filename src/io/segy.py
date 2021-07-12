@@ -48,7 +48,8 @@ class SEGYError(Exception):
 
 
 def iload(filename, load_data, endianness='>'):
-    '''Read SEGY file.
+    '''
+    Read SEGY file.
 
        filename -- Name of SEGY file.
        load_data -- If True, the data is read, otherwise only read headers.

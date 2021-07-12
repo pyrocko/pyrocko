@@ -33,7 +33,7 @@ def make_seismogram(
     ts = r / vs
 
     if ts <= tp:
-        raise AhfullgreenError('unsupported material properties')
+        raise AhfullgreenError('Unsupported material properties: ts <= tp')
 
     tpad = stf.t_cutoff() or deltat * 10.
 
@@ -117,7 +117,7 @@ def add_seismogram(
     ns = [out.size for out in (out_n, out_e, out_d) if out is not None]
 
     if not all(n == ns[0] for n in ns):
-        raise AhfullgreenError('length of component arrays must be identical')
+        raise AhfullgreenError('Length of component arrays are not identical.')
 
     n = ns[0]
 

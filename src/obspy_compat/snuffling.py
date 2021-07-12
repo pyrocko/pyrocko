@@ -8,7 +8,9 @@ from pyrocko import obspy_compat as oc
 
 
 class ObsPyStreamSnuffling(sn.Snuffling):
-    '''Snuffling to fiddle with an ObsPy stream.'''
+    '''
+    Snuffling to fiddle with an ObsPy stream.
+    '''
 
     def __init__(self, obspy_stream=None, *args, **kwargs):
         sn.Snuffling.__init__(self, *args, **kwargs)

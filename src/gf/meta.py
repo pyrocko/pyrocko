@@ -404,7 +404,7 @@ class InvalidTimingSpecification(ValidationError):
 
 class Timing(SObject):
     '''
-    Definition of a time instant relative to one or more named phase arrivals
+    Definition of a time instant relative to one or more named phase arrivals.
 
     Instances of this class can be used e.g. in cutting and tapering
     operations. They can hold an absolute time or an offset to a named phase
@@ -685,7 +685,9 @@ class MultiLocation(Object):
         return int(self.coords5.shape[0])
 
     def get_latlon(self):
-        ''' Get all coordinates as lat lon
+        '''
+        Get all coordinates as lat/lon.
+
         :returns: Coordinates in Latitude, Longitude
         :rtype: :class:`numpy.ndarray`, (N, 2)
         '''
@@ -695,9 +697,10 @@ class MultiLocation(Object):
         return latlons
 
     def get_corner_coords(self):
-        '''Returns the corner coordinates of the multi location object
+        '''
+        Returns the corner coordinates of the multi-location object.
 
-        :returns: In LatLon: lower left, upper left, upper right, lower right
+        :returns: In lat/lon: lower left, upper left, upper right, lower right
         :rtype: tuple
         '''
         latlon = self.get_latlon()
@@ -742,7 +745,8 @@ class InvalidNComponents(Exception):
 
 
 class DiscretizedSource(Object):
-    '''Base class for discretized sources.
+    '''
+    Base class for discretized sources.
 
     To compute synthetic seismograms, the parameterized source models (see of
     :py:class:`~pyrocko.gf.seismosizer.Source` derived classes) are first

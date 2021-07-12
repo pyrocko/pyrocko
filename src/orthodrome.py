@@ -66,10 +66,11 @@ def float_array_broadcast(*args):
 
 
 class Loc(object):
-    '''Simple location representation
+    '''
+    Simple location representation.
 
-        :attrib lat: Latitude degree
-        :attrib lon: Longitude degree
+    :attrib lat: Latitude degree
+    :attrib lon: Longitude degree
     '''
     def __init__(self, lat, lon):
         self.lat = lat
@@ -77,7 +78,8 @@ class Loc(object):
 
 
 def clip(x, mi, ma):
-    ''' Clipping data array ``x``
+    '''
+    Clip values of an array.
 
     :param x: Continunous data to be clipped
     :param mi: Clip minimum
@@ -93,7 +95,8 @@ def clip(x, mi, ma):
 
 
 def wrap(x, mi, ma):
-    '''Wrapping continuous data to fundamental phase values.
+    '''
+    Wrapping continuous data to fundamental phase values.
 
     .. math::
         x_{\\mathrm{wrapped}} = x_{\\mathrm{cont},i} -
@@ -126,8 +129,9 @@ def _latlon_pair(args):
 
 
 def cosdelta(*args):
-    '''Cosine of the angular distance between two points ``a`` and ``b`` on
-    a sphere.
+    '''
+    Cosine of the angular distance between two points ``a`` and ``b`` on a
+    sphere.
 
     This function (find implementation below) returns the cosine of the
     distance angle 'delta' between two points ``a`` and ``b``, coordinates of
@@ -165,8 +169,9 @@ def cosdelta(*args):
 
 
 def cosdelta_numpy(a_lats, a_lons, b_lats, b_lons):
-    '''Cosine of the angular distance between two points ``a`` and ``b``
-    on a sphere.
+    '''
+    Cosine of the angular distance between two points ``a`` and ``b`` on a
+    sphere.
 
     This function returns the cosines of the distance
     angles *delta* between two points ``a`` and ``b`` given as
@@ -197,7 +202,8 @@ def cosdelta_numpy(a_lats, a_lons, b_lats, b_lons):
 
 
 def azimuth(*args):
-    '''Azimuth calculation
+    '''
+    Azimuth calculation.
 
     This function (find implementation below) returns azimuth ...
     between points ``a`` and ``b``, coordinates of
@@ -235,7 +241,8 @@ def azimuth(*args):
 
 
 def azimuth_numpy(a_lats, a_lons, b_lats, b_lons, _cosdelta=None):
-    '''Calculation of the azimuth (*track angle*) from a location A towards B.
+    '''
+    Calculation of the azimuth (*track angle*) from a location A towards B.
 
     This function returns azimuths (*track angles*) from locations A towards B
     given in :py:class:`numpy.ndarray`. Coordinates are expected to be given in
@@ -312,8 +319,9 @@ def azibazi_numpy(a_lats, a_lons, b_lats, b_lons, implementation='c'):
 
 
 def azidist_numpy(*args):
-    '''Calculation of the azimuth (*track angle*) and the distance from
-    locations A towards B on a sphere.
+    '''
+    Calculation of the azimuth (*track angle*) and the distance from locations
+    A towards B on a sphere.
 
     The assisting functions used are :py:func:`pyrocko.orthodrome.cosdelta` and
     :py:func:`pyrocko.orthodrome.azimuth`
@@ -336,7 +344,8 @@ def azidist_numpy(*args):
 
 
 def distance_accurate50m(*args, **kwargs):
-    ''' Accurate distance calculation based on a spheroid of rotation.
+    '''
+    Accurate distance calculation based on a spheroid of rotation.
 
     Function returns distance in meter between points A and B, coordinates of
     which must be given in geographical coordinates and in degrees.
@@ -431,7 +440,8 @@ def distance_accurate50m(*args, **kwargs):
 def distance_accurate50m_numpy(
         a_lats, a_lons, b_lats, b_lons, implementation='c'):
 
-    ''' Accurate distance calculation based on a spheroid of rotation.
+    '''
+    Accurate distance calculation based on a spheroid of rotation.
 
     Function returns distance in meter between points ``a`` and ``b``,
     coordinates of which must be given in geographical coordinates and in
@@ -549,7 +559,8 @@ def distance_accurate50m_numpy(
 
 
 def ne_to_latlon(lat0, lon0, north_m, east_m):
-    '''Transform local cartesian coordinates to latitude and longitude.
+    '''
+    Transform local cartesian coordinates to latitude and longitude.
 
     From east and north coordinates (``x`` and ``y`` coordinate
     :py:class:`numpy.ndarray`)  relative to a reference differences in
@@ -587,8 +598,8 @@ def ne_to_latlon(lat0, lon0, north_m, east_m):
 
 
 def azidist_to_latlon(lat0, lon0, azimuth_deg, distance_deg):
-    '''(Durchreichen??).
-
+    '''
+    (Durchreichen??).
     '''
 
     return azidist_to_latlon_rad(
@@ -596,7 +607,8 @@ def azidist_to_latlon(lat0, lon0, azimuth_deg, distance_deg):
 
 
 def azidist_to_latlon_rad(lat0, lon0, azimuth_rad, distance_rad):
-    ''' Absolute latitudes and longitudes are calculated from relative changes.
+    '''
+    Absolute latitudes and longitudes are calculated from relative changes.
 
     For numerical stability a range between of ``-1.0`` and ``1.0`` is
     enforced for ``c`` and ``alpha``.
@@ -676,7 +688,8 @@ def azidist_to_latlon_rad(lat0, lon0, azimuth_rad, distance_rad):
 
 
 def ne_to_latlon_alternative_method(lat0, lon0, north_m, east_m):
-    '''Transform local cartesian coordinates to latitude and longitude.
+    '''
+    Transform local cartesian coordinates to latitude and longitude.
 
     Like :py:func:`pyrocko.orthodrome.ne_to_latlon`,
     but this method (implementation below), although it should be numerically
@@ -770,7 +783,8 @@ def ne_to_latlon_alternative_method(lat0, lon0, north_m, east_m):
 
 
 def latlon_to_ne(*args):
-    '''Relative cartesian coordinates with respect to a reference location.
+    '''
+    Relative cartesian coordinates with respect to a reference location.
 
     For two locations, a reference location A and another location B, given in
     geographical coordinates in degrees, the corresponding cartesian
@@ -806,7 +820,8 @@ def latlon_to_ne(*args):
 
 
 def latlon_to_ne_numpy(lat0, lon0, lat, lon):
-    '''Relative cartesian coordinates with respect to a reference location.
+    '''
+    Relative cartesian coordinates with respect to a reference location.
 
     For two locations, a reference location (``lat0``, ``lon0``) and another
     location B, given in geographical coordinates in degrees,
@@ -903,7 +918,8 @@ def distance_accurate15nm(lat1, lon1, lat2, lon2):
 
 
 def positive_region(region):
-    '''Normalize parameterization of a rectangular geographical region.
+    '''
+    Normalize parameterization of a rectangular geographical region.
 
     :param region: ``(west, east, south, north)``
     :returns: ``(west, east, south, north)``, where ``west <= east`` and
@@ -995,7 +1011,8 @@ def radius_to_region(lat, lon, radius):
 
 
 def geographic_midpoint(lats, lons, weights=None):
-    '''Calculate geographic midpoints by finding the center of gravity.
+    '''
+    Calculate geographic midpoints by finding the center of gravity.
 
     This method suffers from instabilities if points are centered around the
     poles.

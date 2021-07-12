@@ -26,14 +26,18 @@ class BeachballView(qw.QWidget):
         self.update()
 
     def paintEvent(self, paint_ev):
-        '''Called by QT whenever widget needs to be painted.'''
+        '''
+        Called by QT whenever widget needs to be painted.
+        '''
 
         painter = qw.QPainter(self)
         painter.setRenderHint(qw.QPainter.Antialiasing)
         self.drawit(painter)
 
     def drawit(self, p):
-        '''Draw beachball into painter.'''
+        '''
+        Draw beachball into painter.
+        '''
 
         h = self.height()
         w = self.width()

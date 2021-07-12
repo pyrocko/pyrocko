@@ -621,7 +621,9 @@ class FigureFrame(qw.QFrame):
         return self.figure
 
     def draw(self):
-        '''Draw with AGG, then queue for Qt update.'''
+        '''
+        Draw with AGG, then queue for Qt update.
+        '''
         self.canvas.draw()
 
     def closeEvent(self, ev):

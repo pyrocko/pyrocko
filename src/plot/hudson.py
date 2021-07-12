@@ -9,7 +9,8 @@ from pyrocko import moment_tensor as pmt
 
 
 def project(mt):
-    '''Calculate Hudson's (u, v) coordinates for a given moment tensor.
+    '''
+    Calculate Hudson's (u, v) coordinates for a given moment tensor.
 
     The moment tensor can be given as a
     :py:class:`pyrocko.moment_tensor.MomentTensor` object, or by anything that
@@ -27,7 +28,9 @@ def project(mt):
 
 def draw_axes(axes, color='black', fontsize=12, linewidth=1.5):
 
-    '''Plot axes and annotations of Hudson's MT decomposition diagram.'''
+    '''
+    Plot axes and annotations of Hudson's MT decomposition diagram.
+    '''
 
     axes.set_axis_off()
     axes.set_aspect(1.0)

@@ -118,7 +118,9 @@ def m_float_or_none(x):
 
 
 def make_chunks(items):
-    """Split a list of integers into sublists of consecutive elements."""
+    '''
+    Split a list of integers into sublists of consecutive elements.
+    '''
     return [list(map(operator.itemgetter(1), g)) for k, g in groupby(
         enumerate(items), (lambda x: x[1]-x[0]))]
 
@@ -2698,7 +2700,9 @@ def MakePileViewerMainClass(base):
                 logger.warning('unsupported file type')
 
         def paintEvent(self, paint_ev):
-            """Called by QT whenever widget needs to be painted"""
+            '''
+            Called by QT whenever widget needs to be painted.
+            '''
             painter = qg.QPainter(self)
 
             if self.menuitem_antialias.isChecked():
@@ -2845,7 +2849,9 @@ def MakePileViewerMainClass(base):
                         with_label=True)
 
         def drawit(self, p, printmode=False, w=None, h=None):
-            """This performs the actual drawing."""
+            '''
+            This performs the actual drawing.
+            '''
 
             self.timer_draw.start()
 
@@ -3572,7 +3578,8 @@ def MakePileViewerMainClass(base):
             self.update()
 
         def set_selected_markers(self, markers):
-            '''Set a list of markers selected
+            '''
+            Set a list of markers selected
 
             :param markers: list of markers
             '''
@@ -3985,7 +3992,9 @@ class LineEditWithAbort(qw.QLineEdit):
 
 
 class PileViewer(qw.QFrame):
-    '''PileViewerMain + Controls + Inputline'''
+    '''
+    PileViewerMain + Controls + Inputline
+    '''
 
     def __init__(
             self, pile,
@@ -4137,7 +4146,9 @@ class PileViewer(qw.QFrame):
         self.hist_ind = len(self.history)
 
     def inputline_aborted(self):
-        '''Hide the input line.'''
+        '''
+        Hide the input line.
+        '''
         self.viewer.setFocus(qc.Qt.OtherFocusReason)
         self.hist_ind = len(self.history)
         self.input_area.hide()

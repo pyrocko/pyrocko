@@ -379,7 +379,8 @@ class ScenarioGenerator(LocationGenerator):
             cls, path,
             center_lat=None, center_lon=None, radius=None,
             targets=AVAILABLE_TARGETS, stationxml=None, force=False):
-        """Initialize a Scenario and create a ``scenario.yml``
+        '''
+        Initialize a Scenario and create a ``scenario.yml``
 
         :param path: Path to create the scenerio in
         :type path: str
@@ -400,7 +401,7 @@ class ScenarioGenerator(LocationGenerator):
         :type stationxml: str
         :returns: Scenario
         :rtype: :class:`pyrocko.scenario.ScenarioGenerator`
-        """
+        '''
         import os.path as op
 
         if op.exists(path) and not force:

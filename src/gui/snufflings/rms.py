@@ -15,7 +15,9 @@ class RootMeanSquareSnuffling(Snuffling):
     '''
 
     def setup(self):
-        '''Customization of the snuffling.'''
+        '''
+        Customization of the snuffling.
+        '''
 
         self.set_name('Block RMS')
         self.add_parameter(Param(
@@ -23,7 +25,9 @@ class RootMeanSquareSnuffling(Snuffling):
         self.set_live_update(False)
 
     def call(self):
-        '''Main work routine of the snuffling.'''
+        '''
+        Main work routine of the snuffling.
+        '''
 
         self.cleanup()
 
@@ -76,6 +80,8 @@ class RootMeanSquareSnuffling(Snuffling):
 
 
 def __snufflings__():
-    '''Returns a list of snufflings to be exported by this module.'''
+    '''
+    Returns a list of snufflings to be exported by this module.
+    '''
 
     return [RootMeanSquareSnuffling()]

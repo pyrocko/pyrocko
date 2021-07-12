@@ -3,7 +3,9 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-'''Lightweight declarative YAML and XML data binding for Python.'''
+'''
+Lightweight declarative YAML and XML data binding for Python.
+'''
 from __future__ import absolute_import, print_function
 
 import datetime
@@ -243,7 +245,8 @@ def classnames(cls):
 
 def expand_stream_args(mode):
     def wrap(f):
-        '''Decorator to enhance functions taking stream objects.
+        '''
+        Decorator to enhance functions taking stream objects.
 
         Wraps a function f(..., stream, ...) so that it can also be called as
         f(..., filename='myfilename', ...) or as f(..., string='mydata', ...).
@@ -1381,7 +1384,9 @@ class DateTimestamp(Object):
 
 class StringPattern(String):
 
-    '''Any ``str`` matching pattern ``%(pattern)s``.'''
+    '''
+    Any ``str`` matching pattern ``%(pattern)s``.
+    '''
 
     dummy_for = str
     pattern = '.*'
@@ -1410,7 +1415,9 @@ class StringPattern(String):
 
 class UnicodePattern(Unicode):
 
-    '''Any ``unicode`` matching pattern ``%(pattern)s``.'''
+    '''
+    Any ``unicode`` matching pattern ``%(pattern)s``.
+    '''
 
     dummy_for = newstr
     pattern = '.*'
@@ -1439,7 +1446,9 @@ class UnicodePattern(Unicode):
 
 class StringChoice(String):
 
-    '''Any ``str`` out of ``%(choices)s``.'''
+    '''
+    Any ``str`` out of ``%(choices)s``.
+    '''
 
     dummy_for = str
     choices = []
@@ -2045,7 +2054,9 @@ def clone(x, pool=None):
 
 
 class YPathError(Exception):
-    '''This exception is raised for invalid ypath specifications.'''
+    '''
+    This exception is raised for invalid ypath specifications.
+    '''
     pass
 
 

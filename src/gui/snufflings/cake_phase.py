@@ -202,7 +202,8 @@ class CakePhase(Snuffling):
         self.set_parameter_choices('chosen_model', self._models)
 
     def add_model_to_choice(self):
-        '''Called from trigger 'Add Model'.
+        '''
+        Called from trigger 'Add Model'.
 
         Adds another choice to the drop down 'Model' menu.
         '''
@@ -216,7 +217,8 @@ class CakePhase(Snuffling):
         self.call()
 
     def add_phase_definition(self):
-        ''' Called from trigger 'Add Phase Definition'.
+        '''
+        Called from trigger 'Add Phase Definition'.
 
         Adds another phase option.
         Requires a reset of the GUI.
@@ -247,6 +249,8 @@ class CakePhase(Snuffling):
 
 
 def __snufflings__():
-    '''Returns a list of snufflings to be exported by this module.'''
+    '''
+    Returns a list of snufflings to be exported by this module.
+    '''
 
     return [CakePhase()]

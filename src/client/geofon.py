@@ -21,7 +21,9 @@ km = 1000.
 
 
 class Geofon(EarthquakeCatalog):
-    '''Access the Geofon earthquake catalog '''
+    '''
+    Access the GEOFON earthquake catalog.
+    '''
     def __init__(self, get_moment_tensors=True):
         self.events = {}
         self._get_moment_tensors = get_moment_tensors

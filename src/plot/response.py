@@ -57,7 +57,8 @@ def draw(
         style={},
         label=None):
 
-    '''Draw instrument response in Bode plot style to given Matplotlib axes
+    '''
+    Draw instrument response in Bode plot style to given Matplotlib axes
 
     :param response: instrument response as a
         :py:class:`pyrocko.trace.FrequencyResponse` object
@@ -99,7 +100,9 @@ def draw(
 
 
 def setup_axes(axes_amplitude=None, axes_phase=None):
-    '''Configure axes in Bode plot style.'''
+    '''
+    Configure axes in Bode plot style.
+    '''
 
     if axes_amplitude is not None:
         axes_amplitude.set_ylabel('Amplitude ratio')
@@ -259,7 +262,7 @@ def load_response_information(
     elif format == 'pf':
         if fake_input_units is not None:
             raise Exception(
-                'cannot guess true input units from plain response files')
+                'Cannot guess input units from plain response files.')
 
         resp = guts.load(filename=filename)
         resps.append(resp)

@@ -141,7 +141,9 @@ class Cell(object):
             axes.plot(points[1], points[0], color=(0.1, 0.1, 0.0, 0.1))
 
     def check_holes(self):
-        ''' Check if :py:class:`Cell` or its' children contain NaNs'''
+        '''
+        Check if :py:class:`Cell` or its children contain NaNs.
+        '''
         if self.children:
             return any([child.check_holes() for child in self.children])
         else:
@@ -221,7 +223,8 @@ class SPTree(object):
     def __init__(self, f=None, ftol=None, xbounds=None, xtols=None,
                  filename=None, addargs=()):
 
-        '''Create n-dimensional space partitioning interpolator.
+        '''
+        Create n-dimensional space partitioning interpolator.
 
         :param f: callable function f(x) where x is a vector of size n
         :param ftol: target accuracy |f_interp(x) - f(x)| <= ftol
@@ -437,7 +440,9 @@ class SPTree(object):
             self._fill(child)
 
     def check_holes(self):
-        '''Check for NaNs in :py:class:`SPTree`'''
+        '''
+        Check for NaNs in :py:class:`SPTree`
+        '''
         return self.root.check_holes()
 
     def plot_2d(self, axes=None, x=None, dims=None):

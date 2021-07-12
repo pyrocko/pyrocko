@@ -157,7 +157,9 @@ def to01(c):
 
 
 def nice_value(x):
-    '''Round x to nice value.'''
+    '''
+    Round x to nice value.
+    '''
 
     if x == 0.0:
         return 0.0
@@ -431,9 +433,11 @@ class AutoScaler(Object):
             return mi, ma, inc
 
     def make_exp(self, x):
-        '''Get nice exponent for notation of ``x``.
+        '''
+        Get nice exponent for notation of ``x``.
 
-        For ax annotations, give tick increment as ``x``.'''
+        For ax annotations, give tick increment as ``x``.
+        '''
 
         if self.exp is not None:
             return self.exp
@@ -448,10 +452,12 @@ class AutoScaler(Object):
         return math.floor(math.log10(x)/self.exp_factor)*self.exp_factor
 
     def guess_autoscale_mode(self, data_min, data_max):
-        '''Guess mode of operation, based on data range.
+        '''
+        Guess mode of operation, based on data range.
 
         Used to map ``'auto'`` mode to ``'0-max'``, ``'min-0'``, ``'min-max'``
-        or ``'symmetric'``.'''
+        or ``'symmetric'``.
+        '''
 
         a = 'min-max'
         if data_min >= 0.0:

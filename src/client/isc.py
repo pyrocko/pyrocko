@@ -17,7 +17,8 @@ km = 1000.
 
 
 class ISC(EarthquakeCatalog):
-    '''Interfacing the catalog of the Internation Seismological Centre (ISC).
+    '''
+    Interfacing the catalog of the Internation Seismological Centre (ISC).
     '''
 
     def __init__(self, catalog=None):
@@ -106,7 +107,8 @@ class ISC(EarthquakeCatalog):
         return self.events[name]
 
     def get_phase_markers(self, time_range, station_codes, phases):
-        '''Download phase picks from ISC catalog and return them as a list
+        '''
+        Download phase picks from ISC catalog and return them as a list
         of `pyrocko.gui.PhaseMarker` instances.
 
         :param time_range: Tuple with (tmin tmax)

@@ -57,7 +57,9 @@ class Problems(object):
 
 
 class EventDataAccess(object):
-    '''Abstract base class for event data access (see rdseed.py)'''
+    '''
+    Abstract base class for event data access (see rdseed.py).
+    '''
 
     def __init__(self, events=None, stations=None, datapile=None):
 
@@ -77,17 +79,22 @@ class EventDataAccess(object):
         return self._pile
 
     def get_pyrocko_events(self):
-        '''Extract :py:class:`model.Event` instances from the volume'''
+        '''
+        Extract :py:class:`model.Event` instances from the volume.
+        '''
 
         if not self._events:
             self._events = self._get_events_from_file()
         return self._events
 
     def get_pyrocko_station(self, tr, relative_event=None):
-        '''Get the underlying :py:class:`trace.Channel`
-        for a :py:class:`trace.Trace`
+        '''
+        Get station information for a given trace.
 
-        :param tr: :py:class:`trace.Trace` instance'''
+        :param tr: :py:class:`trace.Trace` instance
+
+        :returns: :py:class:`model.station.Station` objects.
+        '''
 
         self._update_stations()
         s = copy.deepcopy(self._stations[tr.nslc_id[:3]])
@@ -96,15 +103,20 @@ class EventDataAccess(object):
         return s
 
     def get_pyrocko_channel(self, tr):
-        '''Get the underlying :py:class:`trace.Channel` information
-        for a :py:class:`trace.Trace`
+        '''
+        Get channel information for a given trace.
 
-        :param tr: :py:class:`trace.Trace` instance'''
+        :param tr: :py:class:`trace.Trace` instance
+
+        :returns: :py:class:`model.station.Channel` objects.
+        '''
         sta = self.get_station(tr)
         return sta.get_channel(tr.channel)
 
     def get_pyrocko_stations(self):
-        '''Exctract a list of :py:class:`model.Station` instances.'''
+        '''
+        Exctract a list of :py:class:`model.Station` instances.
+        '''
         return list(self._get_stations().values())
 
     def _get_stations(self, relative_event=None):

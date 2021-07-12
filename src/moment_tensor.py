@@ -81,7 +81,8 @@ def rotation_from_angle_and_axis(angle, axis):
 
 
 def random_rotation(x=None):
-    '''Get random rotation matrix.
+    '''
+    Get random rotation matrix.
 
     A random rotation matrix, drawn from a uniform distrubution in the space
     of rotations is returned, after Avro 1992 - "Fast random rotation
@@ -149,7 +150,8 @@ def random_strike_dip_rake(
 
 
 def to6(m):
-    '''Get non-redundant components from symmetric 3x3 matrix
+    '''
+    Get non-redundant components from symmetric 3x3 matrix.
 
     :returns: 1D NumPy array with entries ordered like
         ``(a_xx, a_yy, a_zz, a_xy, a_xz, a_yz)``
@@ -169,7 +171,8 @@ def symmat6(a_xx, a_yy, a_zz, a_xy, a_xz, a_yz):
 
 
 def values_to_matrix(values):
-    '''Convert anything to moment tensor represented as a NumPy matrix.
+    '''
+    Convert anything to moment tensor represented as a NumPy matrix.
 
     Transforms :py:class:`MomentTensor` objects, tuples, lists and NumPy arrays
     with 3x3 or 3, 4, 6, or 7 elements into NumPy 3x3 matrix objects.
@@ -260,7 +263,8 @@ magnitude_1Nm = moment_to_magnitude(1.0)
 
 
 def euler_to_matrix(alpha, beta, gamma):
-    '''Given euler angle triplet, create rotation matrix
+    '''
+    Given euler angle triplet, create rotation matrix
 
     Given coordinate system `(x,y,z)` and rotated system `(xs,ys,zs)`
     the line of nodes is the intersection between the `x,y` and the `xs,ys`
@@ -293,7 +297,9 @@ def euler_to_matrix(alpha, beta, gamma):
 
 
 def matrix_to_euler(rotmat):
-    '''Get eulerian angle triplet from rotation matrix.'''
+    '''
+    Get eulerian angle triplet from rotation matrix.
+    '''
 
     ex = cvec(1., 0., 0.)
     ez = cvec(0., 0., 1.)
@@ -318,7 +324,8 @@ def matrix_to_euler(rotmat):
 
 
 def unique_euler(alpha, beta, gamma):
-    '''Uniquify eulerian angle triplet.
+    '''
+    Uniquify eulerian angle triplet.
 
     Put eulerian angle triplet into ranges compatible with
     ``(dip, strike, -rake)`` conventions in seismology::
@@ -689,7 +696,9 @@ class MomentTensor(Object):
         return float(self.both_strike_dip_rake()[1][2])
 
     def both_strike_dip_rake(self):
-        '''Get both possible (strike,dip,rake) triplets.'''
+        '''
+        Get both possible (strike,dip,rake) triplets.
+        '''
         results = []
         for rotmat in self._rotmats:
             alpha, beta, gamma = [r2d*x for x in matrix_to_euler(rotmat)]
@@ -698,15 +707,21 @@ class MomentTensor(Object):
         return results
 
     def p_axis(self):
-        '''Get direction of p axis.'''
+        '''
+        Get direction of p axis.
+        '''
         return (self._m_eigenvecs.T)[0]
 
     def t_axis(self):
-        '''Get direction of t axis.'''
+        '''
+        Get direction of t axis.
+        '''
         return (self._m_eigenvecs.T)[2]
 
     def null_axis(self):
-        '''Get diretion of the null axis.'''
+        '''
+        Get diretion of the null axis.
+        '''
         return self._m_eigenvecs.T[1]
 
     def eigenvals(self):
@@ -722,7 +737,8 @@ class MomentTensor(Object):
         '''
         Get the eigenvalues and eigenvectors of the moment tensor.
 
-        :returns: ``(ep, en, et, vp, vn, vt)``'''
+        :returns: ``(ep, en, et, vp, vn, vt)``
+        '''
 
         vp = self.p_axis().A.flatten()
         vn = self.null_axis().A.flatten()
@@ -731,11 +747,15 @@ class MomentTensor(Object):
         return ep, en, et, vp, vn, vt
 
     def both_slip_vectors(self):
-        '''Get both possible slip directions.'''
+        '''
+        Get both possible slip directions.
+        '''
         return [rotmat*cvec(1., 0., 0.) for rotmat in self._rotmats]
 
     def m(self):
-        '''Get plain moment tensor as 3x3 matrix.'''
+        '''
+        Get plain moment tensor as 3x3 matrix.
+        '''
         return self._m.copy()
 
     def m6(self):
@@ -747,7 +767,8 @@ class MomentTensor(Object):
         return to6(self._m)
 
     def m_up_south_east(self):
-        '''Get moment tensor in up-south-east convention as 3x3 matrix.
+        '''
+        Get moment tensor in up-south-east convention as 3x3 matrix.
 
         .. math::
             :nowrap:
@@ -769,27 +790,33 @@ class MomentTensor(Object):
         return self._to_east_north_up.T * self._m * self._to_east_north_up
 
     def m6_up_south_east(self):
-        '''Get moment tensor in up-south-east convention as a six-element array.
+        '''
+        Get moment tensor in up-south-east convention as a six-element array.
 
         :returns: ``(muu, mss, mee, mus, mue, mse)``
         '''
         return to6(self.m_up_south_east())
 
     def m6_east_north_up(self):
-        '''Get moment tensor in east-north-up convention as a six-element array.
+        '''
+        Get moment tensor in east-north-up convention as a six-element array.
 
         :returns: ``(mee, mnn, muu, men, meu, mnu)``
         '''
         return to6(self.m_east_north_up())
 
     def m_plain_double_couple(self):
-        '''Get plain double couple with same scalar moment as moment tensor.'''
+        '''
+        Get plain double couple with same scalar moment as moment tensor.
+        '''
         rotmat1 = self._rotmats[0]
         m = rotmat1.T * MomentTensor._m_unrot * rotmat1 * self.scalar_moment()
         return m
 
     def moment_magnitude(self):
-        '''Get moment magnitude of moment tensor.'''
+        '''
+        Get moment magnitude of moment tensor.
+        '''
         return moment_to_magnitude(self.scalar_moment())
 
     def scalar_moment(self):
@@ -865,7 +892,8 @@ Moment Tensor [Nm]: Mnn = %6.3f,  Mee = %6.3f, Mdd = %6.3f,
         return mt
 
     def standard_decomposition(self):
-        '''Decompose moment tensor into isotropic, DC and CLVD components.
+        '''
+        Decompose moment tensor into isotropic, DC and CLVD components.
 
         Standard decomposition according to e.g. Jost and Herrmann 1989 is
         returned as::

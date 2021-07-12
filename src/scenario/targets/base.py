@@ -12,7 +12,8 @@ from ..base import Generator
 class TargetGenerator(Generator):
 
     def get_time_range(self, sources):
-        ''' Get the target's time range.
+        '''
+        Get the target's time range.
 
         In the easiest case this is the sources' time range, yet for waveform
         targets we have to consider vmin, vmax
@@ -23,7 +24,8 @@ class TargetGenerator(Generator):
         return num.min(times), num.max(times)
 
     def get_targets(self):
-        ''' Returns a list of targets, used class-internally to forward model.
+        '''
+        Returns a list of targets, used class-internally to forward model.
         '''
         return []
 

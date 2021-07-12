@@ -2,7 +2,9 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-'''Effective seismological trace viewer.'''
+'''
+Effective seismological trace viewer.
+'''
 from __future__ import absolute_import
 
 import os
@@ -49,7 +51,8 @@ def extend_paths(paths):
 
 
 def snuffle(pile=None, **kwargs):
-    '''View pile in a snuffler window.
+    '''
+    View pile in a snuffler window.
 
     :param pile: :py:class:`pile.Pile` object to be visualized
     :param stations: list of `pyrocko.model.Station` objects or ``None``

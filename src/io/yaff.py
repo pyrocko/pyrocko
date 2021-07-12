@@ -2,7 +2,9 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-'''File IO module for SICK traces format.'''
+'''
+File IO module for SICK traces format.
+'''
 from __future__ import division, absolute_import
 import os
 from struct import unpack

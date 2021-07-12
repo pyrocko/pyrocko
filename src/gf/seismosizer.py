@@ -940,7 +940,8 @@ class HalfSinusoidSTF(STF):
 
 
 class SmoothRampSTF(STF):
-    '''Smooth-ramp type source time function for near-field displacement.
+    '''
+    Smooth-ramp type source time function for near-field displacement.
     Based on moment function of double-couple point source proposed by Bruestle
     and Mueller (PEPI, 1983).
 
@@ -2530,7 +2531,9 @@ class RingfaultSource(SourceWithMagnitude):
 
 
 class CombiSource(Source):
-    '''Composite source model.'''
+    '''
+    Composite source model.
+    '''
 
     discretized_source_class = meta.DiscretizedMTSource
 
