@@ -5,10 +5,13 @@
 from __future__ import absolute_import, division
 
 import math
+import logging
 import numpy as num
 from . import trace
 from .guts import Float, Object
 from . import ahfullgreen_ext as ext
+
+logger = logging.getLogger('pyrocko.fomosto.ahfullgreen')
 
 
 guts_prefix = 'pf'
@@ -36,8 +39,8 @@ def make_seismogram(
     tp = r / vp
     ts = r / vs
 
-    if ts <= tp:
-        raise AhfullgreenError('Unsupported material properties: ts <= tp')
+    if ts < tp:
+        raise AhfullgreenError('unsupported material properties: ts < tp')
 
     tpad = stf.t_cutoff() or deltat * 10.
 
@@ -76,10 +79,16 @@ def make_seismogram(
         math.pi * num.minimum(
             1.0, (omega[icut:] - omega_cut) / (omega_max - omega_cut)))
 
-    ext.add_seismogram(
-        float(vp), float(vs), float(density), float(qp), float(qs),
-        x, f, m6, oc_c, out_spec_delta, out_spec_offset,
-        specs[0], specs[1], specs[2], want_far, want_intermediate, want_near)
+    if num.all(x == 0.0):
+        logger.warn(
+            'Source and receiver are at the same position -> setting GF for '
+            'this combination to zero.')
+    else:
+        ext.add_seismogram(
+            float(vp), float(vs), float(density), float(qp), float(qs),
+            x, f, m6, oc_c, out_spec_delta, out_spec_offset,
+            specs[0], specs[1], specs[2],
+            want_far, want_intermediate, want_near)
 
     outs = []
     for i, component in enumerate('ned'):
