@@ -184,7 +184,7 @@ class SerialHamster(object):
     def _regression(self, t):
         toff = t[0]
         t = t-toff
-        i = num.arange(t.size, dtype=num.float)
+        i = num.arange(t.size, dtype=float)
         r_deltat, r_tmin, r, tt, stderr = stats.linregress(i, t)
         if self.tune_to_quickones:
             for ii in range(2):
@@ -203,7 +203,7 @@ class SerialHamster(object):
         if len(self.times) < self.min_detection_size:
             return
 
-        t = num.array(self.times, dtype=num.float)
+        t = num.array(self.times, dtype=float)
         r_deltat, r_tmin = self._regression(t)
 
         if self.disallow_uneven_sampling_rates:
@@ -287,7 +287,7 @@ class SerialHamster(object):
 
         if self.tmin is not None and self.deltat is not None:
             for channel, values in zip(self.channels, self.values):
-                v = num.array(values, dtype=num.int)
+                v = num.array(values, dtype=int)
 
                 tr = trace.Trace(
                     network=self.network,

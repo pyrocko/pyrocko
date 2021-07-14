@@ -1171,7 +1171,7 @@ def psv_surface(material, p, energy=False):
         scatter = num.array([
             [- vsp_term**2 + pcc_term, 4.0*p*coslam/vp*vsp_term],
             [4.0*p*cosphi/vs*vsp_term, vsp_term**2 - pcc_term]],
-            dtype=num.complex) / denom
+            dtype=complex) / denom
 
     if not energy:
         return scatter
@@ -1234,7 +1234,7 @@ def psv_solid(material1, material2, p, energy=False):
          2.0*rho2*vs2**2*p*cosphi2, rho2*vs2*(1.0-2.0*vs2**2*p**2)],
         [-rho1*vp1*(1.0-2.0*vs1**2*p**2), 2.0*rho1*vs1**2*p*coslam1,
          rho2*vp2*(1.0-2.0*vs2**2*p**2), -2.0*rho2*vs2**2*p*coslam2]],
-        dtype=num.complex)
+        dtype=complex)
     N = M.copy()
     N[0] *= -1.0
     N[3] *= -1.0
@@ -1251,7 +1251,7 @@ def psv_solid(material1, material2, p, energy=False):
             vs2 = vp2*1e-16
         normvec = num.array([
             vp1*rho1*(cosphi1+eps), vs1*rho1*(coslam1+eps),
-            vp2*rho2*(cosphi2+eps), vs2*rho2*(coslam2+eps)], dtype=num.complex)
+            vp2*rho2*(cosphi2+eps), vs2*rho2*(coslam2+eps)], dtype=complex)
         escatter = scatter*num.conj(scatter) * num.real(
             normvec[:, num.newaxis] / normvec[num.newaxis, :])
 
@@ -2547,7 +2547,7 @@ class RayPath(object):
             t_ = t[i]
             indices = num.where(num.logical_and(0. <= t_, t_ <= tmax[i]))[0]
             n = indices.size + 2
-            zs_, xs_, ts_ = [num.empty(n, dtype=num.float) for j in range(3)]
+            zs_, xs_, ts_ = [num.empty(n, dtype=float) for j in range(3)]
             zs_[1:-1] = z[i, indices]
             xs_[1:-1] = x[i, indices]
             ts_[1:-1] = t[i, indices]
@@ -2581,7 +2581,7 @@ class RayPath(object):
                 self.critical_pstop(endgaps))
 
             if pcrit < self._pmin:
-                empty = num.array([], dtype=num.float)
+                empty = num.array([], dtype=float)
                 return empty, empty, empty
 
             elif pcrit >= self._pmax:
@@ -2590,7 +2590,7 @@ class RayPath(object):
 
             else:
                 n = num.searchsorted(cp, pcrit) + 1
-                rp, rx, rt = num.empty((3, n), dtype=num.float)
+                rp, rx, rt = num.empty((3, n), dtype=float)
                 rp[:-1] = cp[:n-1]
                 rx[:-1] = cx[:n-1]
                 rt[:-1] = ct[:n-1]
@@ -3387,7 +3387,7 @@ class LayeredModel(object):
             (distance, arrival time)
         '''
 
-        distances = num.asarray(distances, dtype=num.float)
+        distances = num.asarray(distances, dtype=float)
 
         arrivals = []
         for path in self.gather_paths(phases, zstart=zstart, zstop=zstop):
@@ -3543,7 +3543,7 @@ class LayeredModel(object):
             mat = self.material(z, direction)
             data.append(mat.astuple())
 
-        data = num.array(data, dtype=num.float)
+        data = num.array(data, dtype=float)
         data_means = num.mean(data, axis=0)
         nmax = len(layers) // 2
         accept = False

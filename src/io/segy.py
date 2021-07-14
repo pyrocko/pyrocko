@@ -32,7 +32,7 @@ def unpack_ibm_f4(data):
     exponent = (ibm >> 24) & 0x7f
     mantissa = (ibm & 0x00ffffff) / float(pow(2, 24))
     xxx = (1 - 2 * sign) * mantissa * (16.0 ** (exponent - 64))\
-        .astype(num.float)
+        .astype(float)
     # for i in range(len(data)/4):
     #    yyy = ibm2ieee(struct.unpack('>L', data[i*4:(i+1)*4])[0])
     #    print('y', sign[i], exponent[i] - 64, mantissa[i])

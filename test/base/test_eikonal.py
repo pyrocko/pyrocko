@@ -210,8 +210,8 @@ class EikonalTestCase(unittest.TestCase):
         sx = a * num.sin(a*(2.*num.pi))
         sy = a * num.cos(a*(2.*num.pi))
 
-        isx = nx//2 + num.round(sx / delta).astype(num.int)
-        isy = ny//2 + num.round(sy / delta).astype(num.int)
+        isx = nx//2 + num.round(sx / delta).astype(int)
+        isy = ny//2 + num.round(sy / delta).astype(int)
 
         speeds[isy, isx] = 0.00001
 

@@ -159,7 +159,7 @@ class ParstackTestCase(unittest.TestCase):
             narrays = 20
             arrays = []
             for iarray in range(narrays):
-                arrays.append(num.arange(nsamples, dtype=num.float))
+                arrays.append(num.arange(nsamples, dtype=float))
 
             offsets = num.arange(narrays, dtype=num.int32)
 
@@ -290,10 +290,10 @@ class ParstackTestCase(unittest.TestCase):
 
         tts = num.fromiter((tcal(station_targets[nsl][0], i)
                            for i in range(nnorth*neast)
-                           for nsl in nsls), dtype=num.float)
+                           for nsl in nsls), dtype=float)
 
         arrays = [
-            station_stalta_traces[nsl].ydata.astype(num.float) for nsl in nsls]
+            station_stalta_traces[nsl].ydata.astype(float) for nsl in nsls]
         offsets = num.array(
             [int(round(station_stalta_traces[nsl].tmin / deltat))
              for nsl in nsls], dtype=num.int32)
@@ -337,9 +337,9 @@ class ParstackTestCase(unittest.TestCase):
 
     def test_limited(self):
         arrays = [
-            num.array([0, 0, 0, 0, 0, 0, 0, 1, 0, -1, 0], dtype=num.float),
-            num.array([0, 0, 0, 0, 0, 0, 1, 0, -1, 0, 0], dtype=num.float),
-            num.array([0, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0], dtype=num.float)]
+            num.array([0, 0, 0, 0, 0, 0, 0, 1, 0, -1, 0], dtype=float),
+            num.array([0, 0, 0, 0, 0, 0, 1, 0, -1, 0, 0], dtype=float),
+            num.array([0, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0], dtype=float)]
 
         offsets = num.array([0, 0, 0], dtype=num.int32)
         shifts = -num.array([
@@ -347,7 +347,7 @@ class ParstackTestCase(unittest.TestCase):
             [7, 6, 5],
             [6, 5, 4]], dtype=num.int32)
 
-        weights = num.ones((3, 3), dtype=num.float)
+        weights = num.ones((3, 3), dtype=float)
 
         mat, ioff = parstack(arrays, offsets, shifts, weights, 0)
 

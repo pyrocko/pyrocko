@@ -165,7 +165,7 @@ def symmat6(a_xx, a_yy, a_zz, a_xy, a_xz, a_yz):
 
     return num.matrix([[a_xx, a_xy, a_xz],
                        [a_xy, a_yy, a_yz],
-                       [a_xz, a_yz, a_zz]], dtype=num.float)
+                       [a_xz, a_yz, a_zz]], dtype=float)
 
 
 def values_to_matrix(values):
@@ -186,7 +186,7 @@ def values_to_matrix(values):
     '''
 
     if isinstance(values, (tuple, list)):
-        values = num.asarray(values, dtype=num.float)
+        values = num.asarray(values, dtype=float)
 
     if isinstance(values, MomentTensor):
         return values.m()
@@ -214,7 +214,7 @@ def values_to_matrix(values):
             return mt
 
         elif values.shape == (3, 3):
-            return num.asmatrix(values, dtype=num.float)
+            return num.asmatrix(values, dtype=float)
 
     raise Exception('cannot convert object to 3x3 matrix')
 
@@ -288,7 +288,7 @@ def euler_to_matrix(alpha, beta, gamma):
 
     mat = num.matrix([[cb*cg-ca*sb*sg,  sb*cg+ca*cb*sg,  sa*sg],
                       [-cb*sg-ca*sb*cg, -sb*sg+ca*cb*cg, sa*cg],
-                      [sa*sb,           -sa*cb,          ca]], dtype=num.float)
+                      [sa*sb,           -sa*cb,          ca]], dtype=float)
     return mat
 
 
@@ -386,11 +386,11 @@ def unique_euler(alpha, beta, gamma):
 
 
 def cvec(x, y, z):
-    return num.matrix([[x, y, z]], dtype=num.float).T
+    return num.matrix([[x, y, z]], dtype=float).T
 
 
 def rvec(x, y, z):
-    return num.matrix([[x, y, z]], dtype=num.float)
+    return num.matrix([[x, y, z]], dtype=float)
 
 
 def eigh_check(a):
@@ -492,13 +492,13 @@ class MomentTensor(Object):
     magnitude__ = Float.T(default=None, optional=True)  # read-only
 
     _flip_dc = num.matrix(
-        [[0., 0., -1.], [0., -1., 0.], [-1., 0., 0.]], dtype=num.float)
+        [[0., 0., -1.], [0., -1., 0.], [-1., 0., 0.]], dtype=float)
     _to_up_south_east = num.matrix(
-        [[0., 0., -1.], [-1., 0., 0.], [0., 1., 0.]], dtype=num.float).T
+        [[0., 0., -1.], [-1., 0., 0.], [0., 1., 0.]], dtype=float).T
     _to_east_north_up = num.matrix(
-        [[0., 1., 0.], [1., 0., 0.], [0., 0., -1.]], dtype=num.float)
+        [[0., 1., 0.], [1., 0., 0.], [0., 0., -1.]], dtype=float)
     _m_unrot = num.matrix(
-        [[0., 0., -1.], [0., 0., 0.], [-1., 0., 0.]], dtype=num.float)
+        [[0., 0., -1.], [0., 0., 0.], [-1., 0., 0.]], dtype=float)
 
     _u_evals, _u_evecs = eigh_check(_m_unrot)
 

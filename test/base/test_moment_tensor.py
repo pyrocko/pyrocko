@@ -41,7 +41,7 @@ class MomentTensorTestCase(unittest.TestCase):
             m = num.matrix(
                 [[ms[0], ms[3], ms[4]],
                  [ms[3], ms[1], ms[5]],
-                 [ms[4], ms[5], ms[2]]], dtype=num.float)
+                 [ms[4], ms[5], ms[2]]], dtype=float)
 
             m1 = MomentTensor(m=m)
             m_plain = m1.m_plain_double_couple()
@@ -77,7 +77,7 @@ class MomentTensorTestCase(unittest.TestCase):
         m_enu = num.matrix(
             [[0.66, 0.53, -0.18],
              [0.53, -0.70, -0.35],
-             [-0.18, -0.36, 0.04]], dtype=num.float)
+             [-0.18, -0.36, 0.04]], dtype=float)
         m = MomentTensor(m_east_north_up=m_enu)
         self.assertEqual(m_enu[0, 0], m.m()[1, 1])
         self.assertEqual(m_enu[1, 1], m.m()[0, 0])

@@ -145,7 +145,7 @@ def analyse_gps_tags(header, gps_tags, offset, nsamples):
             icontrol = num.array(
                 [x[0] for x in control_points], dtype=num.int64)
             tcontrol = num.array(
-                [x[1] for x in control_points], dtype=num.float)
+                [x[1] for x in control_points], dtype=float)
             # robust against steps:
             slope = num.median(
                 (tcontrol[1:] - tcontrol[:-1])
@@ -161,7 +161,7 @@ def analyse_gps_tags(header, gps_tags, offset, nsamples):
             control_points.append((offset + nsamples - 1, tmax))
 
         icontrol = num.array([x[0] for x in control_points], dtype=num.int64)
-        tcontrol = num.array([x[1] for x in control_points], dtype=num.float)
+        tcontrol = num.array([x[1] for x in control_points], dtype=float)
 
         return tmin, tmax, icontrol, tcontrol, ok
 
@@ -497,7 +497,7 @@ def iload(fn, load_data=True, interpolation='sinc'):
 
     leaps = num.array(
         [x[0] + util.gps_utc_offset(x[0]) for x in util.read_leap_seconds2()],
-        dtype=num.float)
+        dtype=float)
 
     if load_data and icontrol is not None:
         ncontrol_this = num.sum(
@@ -515,11 +515,11 @@ def iload(fn, load_data=True, interpolation='sinc'):
 
             if interpolation == 'sinc' and icontrol is not None:
 
-                ydata = num.empty(nsamples_ip, dtype=num.float)
+                ydata = num.empty(nsamples_ip, dtype=float)
                 try:
                     signal_ext.antidrift(
                         icontrol, tcontrol,
-                        arr.astype(num.float), tmin_ip, deltat, ydata)
+                        arr.astype(float), tmin_ip, deltat, ydata)
 
                 except signal_ext.Error as e:
                     e = DataCubeError(str(e))

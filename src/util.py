@@ -761,7 +761,7 @@ class ArangeError(Exception):
     pass
 
 
-def arange2(start, stop, step, dtype=num.float, epsilon=1e-6, error='raise'):
+def arange2(start, stop, step, dtype=float, epsilon=1e-6, error='raise'):
     '''
     Return evenly spaced numbers over a specified interval.
 
@@ -897,7 +897,7 @@ def diff_fd_1d_4o(dt, data):
     '''
     import scipy.signal
 
-    ddata = num.empty_like(data, dtype=num.float)
+    ddata = num.empty_like(data, dtype=float)
 
     if data.size >= 5:
         ddata[2:-2] = scipy.signal.lfilter(
@@ -949,7 +949,7 @@ def diff_fd_2d_4o(dt, data):
     '''
     import scipy.signal
 
-    ddata = num.empty_like(data, dtype=num.float)
+    ddata = num.empty_like(data, dtype=float)
 
     if data.size >= 5:
         ddata[2:-2] = scipy.signal.lfilter(
@@ -978,7 +978,7 @@ def diff_fd_2d_2o(dt, data):
     '''
     import scipy.signal
 
-    ddata = num.empty_like(data, dtype=num.float)
+    ddata = num.empty_like(data, dtype=float)
 
     if data.size >= 3:
         ddata[1:-1] = scipy.signal.lfilter(
@@ -1090,7 +1090,7 @@ def decimate(x, q, n=None, ftype='iir', zi=None, ioff=0):
     b, a, n = decimate_coeffs(q, n, ftype)
 
     if zi is None or zi is True:
-        zi_ = num.zeros(max(len(a), len(b))-1, dtype=num.float)
+        zi_ = num.zeros(max(len(a), len(b))-1, dtype=float)
     else:
         zi_ = zi
 

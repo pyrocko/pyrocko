@@ -438,7 +438,7 @@ class OrthodromeTestCase(unittest.TestCase):
     def test_rotations(self):
         for lat in num.linspace(-90., 90., 20):
             for lon in num.linspace(-180., 180., 20):
-                point = num.array([lat, lon], dtype=num.float)
+                point = num.array([lat, lon], dtype=float)
                 xyz = orthodrome.latlon_to_xyz(point)
                 rot = orthodrome.rot_to_00(point[0], point[1])
                 p2 = num.dot(rot, xyz)

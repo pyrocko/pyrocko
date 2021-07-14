@@ -19,7 +19,7 @@ def timeit(f, duration=1.0):
 def mktrace(n):
     tmin = 1234567890.
     t = trace.Trace(
-        tmin=tmin, deltat=0.05, ydata=num.empty(n, dtype=num.float))
+        tmin=tmin, deltat=0.05, ydata=num.empty(n, dtype=float))
     return t
 
 

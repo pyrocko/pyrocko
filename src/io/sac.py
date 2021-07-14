@@ -302,7 +302,7 @@ iqb1 iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
                 self.data.append(num.array(num.fromstring(
                     filedata[nbh+iblock*nbb:nbh+(iblock+1)*nbb],
                     dtype=dtype),
-                    dtype=num.float))
+                    dtype=float))
 
             if len(filedata) > nbh+nblocks*nbb:
                 logger.warning(

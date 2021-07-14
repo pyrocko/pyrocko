@@ -394,7 +394,7 @@ as in --phases.''')
             else:
                 distances = num.array(
                     list(map(
-                        float, options.sdist.split(','))), dtype=num.float)
+                        float, options.sdist.split(','))), dtype=float)
 
             if not as_degrees:
                 distances *= r2d * cake.km / cake.earthradius
@@ -415,7 +415,7 @@ as in --phases.''')
             if distances is not None:
                 distances = num.concatenate((distances, [distance_sr]))
             else:
-                distances = num.array([distance_sr], dtype=num.float)
+                distances = num.array([distance_sr], dtype=float)
 
         if distances is not None:
             d['distances'] = distances

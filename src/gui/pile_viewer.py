@@ -212,7 +212,7 @@ syear = 60*60*24*365.  # /
 
 acceptable_tincs = num.array([
     1, 2, 5, 10, 20, 30, 60, 60*5, 60*10, 60*20, 60*30, 60*60, 60*60*3,
-    60*60*6, 60*60*12, sday, smonth, syear], dtype=num.float)
+    60*60*6, 60*60*12, sday, smonth, syear], dtype=float)
 
 
 working_system_time_range = \
@@ -3357,7 +3357,7 @@ def MakePileViewerMainClass(base):
                                             or self.highpass is not None:
 
                                         it = num.arange(
-                                            trace.data_len(), dtype=num.float)
+                                            trace.data_len(), dtype=float)
                                         detr_data, m, b = detrend(
                                             it, trace.get_ydata())
 

@@ -64,7 +64,7 @@ def read_dat1_chk1(f, data_format, diff_flag, nsamples):
         while len(samples) < nsamples:
             samples.extend(map(float, f.readline().split()))
 
-        data = num.array(samples[:nsamples], dtype=num.int)
+        data = num.array(samples[:nsamples], dtype=int)
 
     else:
         raise GSE1LoadError(

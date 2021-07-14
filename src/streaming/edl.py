@@ -329,7 +329,7 @@ class TimeEstimator(object):
         while len(self._queue) > self._nlookback:
             self._queue.pop(0)
 
-        ns, ts = num.array(self._queue, dtype=num.float).T
+        ns, ts = num.array(self._queue, dtype=float).T
 
         tpredicts = self._t0 + ns * self._deltat
 
@@ -433,7 +433,7 @@ class Record(object):
         for i in range(self._mod.ncomps):
             tr = trace.Trace(
                 '', 'ed', '', 'p%i' % i,
-                deltat=num.float(self._mod.ncomps)/self._mod.sample_rate,
+                deltat=float(self._mod.ncomps)/self._mod.sample_rate,
                 tmin=self.time,
                 ydata=self._values[i::3])
 

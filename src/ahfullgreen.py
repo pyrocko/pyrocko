@@ -23,9 +23,9 @@ def make_seismogram(
     if stf is None:
         stf = Impulse()
 
-    x = num.asarray(x, num.float)
-    f = num.asarray(f, num.float)
-    m6 = num.asarray(m6, num.float)
+    x = num.asarray(x, float)
+    f = num.asarray(f, float)
+    m6 = num.asarray(m6, float)
 
     r = math.sqrt(num.sum(x**2))
 
@@ -48,7 +48,7 @@ def make_seismogram(
     specs = []
     for component in 'ned':
         if component in wanted_components:
-            specs.append(num.zeros(nspec, dtype=num.complex))
+            specs.append(num.zeros(nspec, dtype=complex))
         else:
             specs.append(None)
 
@@ -61,7 +61,7 @@ def make_seismogram(
     out_spec_offset = 0.0
 
     omega = out_spec_offset + out_spec_delta * num.arange(nspec)
-    coeffs_stf = stf(omega/(2.*math.pi)).astype(num.complex)
+    coeffs_stf = stf(omega/(2.*math.pi)).astype(complex)
     coeffs_stf *= num.exp(1.0j * omega * tstart)
 
     omega_max = 2.0 * math.pi * 0.5 / deltat
@@ -166,7 +166,7 @@ class Impulse(object):
         return None
 
     def __call__(self, f):
-        return num.ones(f.size, dtype=num.complex)
+        return num.ones(f.size, dtype=complex)
 
 
 class Gauss(object):

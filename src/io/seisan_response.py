@@ -95,7 +95,7 @@ class SeisanResponseFile(object):
                     data[ix].extend(unpack_fixed(
                         'f8,f8,f8,f8,f8,f8,f8,f8,f8,f8', line))
 
-            response_table = num.array(data, dtype=num.float)
+            response_table = num.array(data, dtype=float)
 
         if filetype == 'poles-and-zeros':
             assert False, 'poles-and-zeros file type not implemented yet ' \
@@ -188,7 +188,7 @@ class SeisanResponseFile(object):
         return s**2/(omega0**2 + s**2 + 2.0*s*omega0*self.damping)
 
     def _response_prototype_and_filters(self, freqs):
-        freqs = num.asarray(freqs, dtype=num.float)
+        freqs = num.asarray(freqs, dtype=float)
         iomega = 1.0j * 2. * num.pi * freqs
 
         trans = iomega * self._prototype_response_velocity(iomega)
@@ -206,7 +206,7 @@ class SeisanResponseFile(object):
         return trans
 
     def _response_tabulated(self, freqs):
-        freqs = num.asarray(freqs, dtype=num.float)
+        freqs = num.asarray(freqs, dtype=float)
         return self.sampled_response.evaluate(freqs)
 
     def _response_from_poles_and_zeros(self, freqs):

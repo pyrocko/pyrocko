@@ -54,7 +54,7 @@ def guess_azimuth_dip_from_name(channel_name):
 
 
 def mkvec(x, y, z):
-    return num.array([x, y, z], dtype=num.float)
+    return num.array([x, y, z], dtype=float)
 
 
 def are_orthogonal(enus, eps=0.05):

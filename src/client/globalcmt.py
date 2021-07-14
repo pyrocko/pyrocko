@@ -117,7 +117,7 @@ class GlobalCMT(EarthquakeCatalog):
                     [data.mrr, data.mrt, data.mrp,
                      data.mrt, data.mtt, data.mtp,
                      data.mrp, data.mtp, data.mpp],
-                    dtype=num.float).reshape(3, 3)
+                    dtype=float).reshape(3, 3)
 
                 m *= 10.0**(data.exponent-7)
                 mt = MomentTensor(m_up_south_east=m)

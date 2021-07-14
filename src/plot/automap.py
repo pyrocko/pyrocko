@@ -85,7 +85,7 @@ class FloatTile(Object):
     ymin = Float.T()
     dx = Float.T()
     dy = Float.T()
-    data = Array.T(shape=(None, None), dtype=num.float, serialize_as='table')
+    data = Array.T(shape=(None, None), dtype=float, serialize_as='table')
 
     def __init__(self, xmin, ymin, dx, dy, data):
         Object.__init__(self, init_props=False)
@@ -697,7 +697,7 @@ class Map(Object):
                 plon, plat = [float(x) for x in ls.split()]
                 points.append((plat, plon))
 
-        points = num.array(points, dtype=num.float)
+        points = num.array(points, dtype=float)
         return num.any(points_in_region(points, self._wesn))
 
     def have_coastlines(self):
@@ -770,8 +770,8 @@ class Map(Object):
             font_sizes = [
                 (font_size or label_font_size) for font_size in font_sizes]
 
-            sx = num.array(sx, dtype=num.float)
-            sy = num.array(sy, dtype=num.float)
+            sx = num.array(sx, dtype=float)
+            sy = num.array(sy, dtype=float)
 
             xs, ys = self.project(lats, lons)
 
@@ -1328,8 +1328,8 @@ class CPT(Object):
             colors.append(level.color_min)
             colors.append(level.color_max)
 
-        r, g, b = num.array(colors, dtype=num.float).T
-        vals = num.array(vals, dtype=num.float)
+        r, g, b = num.array(colors, dtype=float).T
+        vals = num.array(vals, dtype=float)
 
         vmin, vmax = self.levels[0].vmin, self.levels[-1].vmax
         x = num.linspace(vmin, vmax, nlevels+1)

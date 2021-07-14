@@ -24,7 +24,7 @@ def numeq(a, b, eps):
 
 
 def floats(list_):
-    return num.array(list_, dtype=num.float)
+    return num.array(list_, dtype=float)
 
 
 def is_multiple(x, d, eps):
@@ -184,8 +184,8 @@ class TraceTestCase(unittest.TestCase):
 
     def testRotation(self):
         s2 = math.sqrt(2.)
-        ndata = num.array([s2, s2], dtype=num.float)
-        edata = num.array([s2, 0.], dtype=num.float)
+        ndata = num.array([s2, s2], dtype=float)
+        edata = num.array([s2, 0.], dtype=float)
         dt = 1.0
         n = trace.Trace(deltat=dt, ydata=ndata, tmin=100, channel='N')
         e = trace.Trace(deltat=dt, ydata=edata, tmin=100, channel='E')
@@ -216,9 +216,9 @@ class TraceTestCase(unittest.TestCase):
 
     def testProjection(self):
         s2 = math.sqrt(2.)
-        ndata = num.array([s2, s2], dtype=num.float)
-        edata = num.array([s2, 0.], dtype=num.float)
-        ddata = num.array([1., -1.], dtype=num.float)
+        ndata = num.array([s2, s2], dtype=float)
+        edata = num.array([s2, 0.], dtype=float)
+        ddata = num.array([1., -1.], dtype=float)
         dt = 1.0
         n = trace.Trace(deltat=dt, ydata=ndata, tmin=100, channel='N')
         e = trace.Trace(deltat=dt, ydata=edata, tmin=100, channel='E')
@@ -227,7 +227,7 @@ class TraceTestCase(unittest.TestCase):
         cazi = math.cos(azi*d2r)
         sazi = math.sin(azi*d2r)
         rot45 = num.array(
-            [[cazi, sazi, 0], [-sazi, cazi, 0], [0, 0, -1]], dtype=num.float)
+            [[cazi, sazi, 0], [-sazi, cazi, 0], [0, 0, -1]], dtype=float)
 
         def C(x):
             return model.Channel(x)
@@ -273,25 +273,25 @@ class TraceTestCase(unittest.TestCase):
 
     def testExtend(self):
         tmin = sometime
-        t = trace.Trace(tmin=tmin, ydata=num.ones(10, dtype=num.float))
+        t = trace.Trace(tmin=tmin, ydata=num.ones(10, dtype=float))
         tmax = t.tmax
         t.extend(tmin-10.2, tmax+10.7)
         assert int(round(tmin-t.tmin)) == 10
         assert int(round(t.tmax-tmax)) == 11
-        assert num.all(t.ydata[:10] == num.zeros(10, dtype=num.float))
-        assert num.all(t.ydata[-11:] == num.zeros(11, dtype=num.float))
-        assert num.all(t.ydata[10:-11] == num.ones(10, dtype=num.float))
+        assert num.all(t.ydata[:10] == num.zeros(10, dtype=float))
+        assert num.all(t.ydata[-11:] == num.zeros(11, dtype=float))
+        assert num.all(t.ydata[10:-11] == num.ones(10, dtype=float))
 
-        t = trace.Trace(tmin=tmin, ydata=num.arange(10, dtype=num.float)+1.)
+        t = trace.Trace(tmin=tmin, ydata=num.arange(10, dtype=float)+1.)
         t.extend(tmin-10.2, tmax+10.7, fillmethod='repeat')
-        assert num.all(t.ydata[:10] == num.ones(10, dtype=num.float))
-        assert num.all(t.ydata[-11:] == num.zeros(11, dtype=num.float)+10.)
-        assert num.all(t.ydata[10:-11] == num.arange(10, dtype=num.float)+1.)
+        assert num.all(t.ydata[:10] == num.ones(10, dtype=float))
+        assert num.all(t.ydata[-11:] == num.zeros(11, dtype=float)+10.)
+        assert num.all(t.ydata[10:-11] == num.arange(10, dtype=float)+1.)
 
     def testAppend(self):
-        a = trace.Trace(ydata=num.zeros(0, dtype=num.float), tmin=sometime)
+        a = trace.Trace(ydata=num.zeros(0, dtype=float), tmin=sometime)
         for i in range(10000):
-            a.append(num.arange(1000, dtype=num.float))
+            a.append(num.arange(1000, dtype=float))
         assert a.ydata.size == 10000*1000
 
     def testDownsampling(self):
@@ -309,7 +309,7 @@ class TraceTestCase(unittest.TestCase):
                     num.random.random() * dt1 + num.random.random() * dt2]:
 
                 n = 1024
-                xdata = num.arange(n, dtype=num.float)
+                xdata = num.arange(n, dtype=float)
                 ydata = num.exp(-((xdata-n/2)/10.)**2)
 
                 for orig_snap in (True, False):
@@ -354,7 +354,7 @@ class TraceTestCase(unittest.TestCase):
         for i in range(100):
             n = 10000
             t = trace.Trace(
-                tmin=tmin, deltat=0.05, ydata=num.ones(n, dtype=num.float))
+                tmin=tmin, deltat=0.05, ydata=num.ones(n, dtype=float))
             t.lowpass(4,  5.)
             t.highpass(4, 0.1)
         # d1 = time.time() - b
@@ -362,14 +362,14 @@ class TraceTestCase(unittest.TestCase):
         for i in range(100):
             n = 10000
             t = trace.Trace(
-                tmin=tmin, deltat=0.05, ydata=num.ones(n, dtype=num.float))
+                tmin=tmin, deltat=0.05, ydata=num.ones(n, dtype=float))
             t.bandpass_fft(0.1, 5.)
         # d2 = time.time() - b
 
         for i in range(100):
             n = 10000
             t = trace.Trace(
-                tmin=tmin, deltat=0.05, ydata=num.ones(n, dtype=num.float))
+                tmin=tmin, deltat=0.05, ydata=num.ones(n, dtype=float))
             t.bandstop(3, 0.1, 5.)
         # d2 = time.time() - b
 
@@ -377,7 +377,7 @@ class TraceTestCase(unittest.TestCase):
         n = 20
         tmin = sometime
         t = trace.Trace(
-            tmin=tmin, deltat=0.05, ydata=num.ones(n, dtype=num.float))
+            tmin=tmin, deltat=0.05, ydata=num.ones(n, dtype=float))
         tmax = t.tmax
         t.ydata[:3] = 0.0
         t.ydata[-3:] = 0.0
@@ -385,7 +385,7 @@ class TraceTestCase(unittest.TestCase):
         assert abs(t.tmin - (tmin + 0.05*3)) < 0.05*0.01
         assert abs(t.tmax - (tmax - 0.05*3)) < 0.05*0.01
         t = trace.Trace(
-            tmin=tmin, deltat=0.05, ydata=num.zeros(n, dtype=num.float))
+            tmin=tmin, deltat=0.05, ydata=num.zeros(n, dtype=float))
         ok = False
         try:
             t.crop_zeros()
@@ -395,7 +395,7 @@ class TraceTestCase(unittest.TestCase):
         assert ok
 
         t = trace.Trace(
-            tmin=tmin, deltat=0.05, ydata=num.ones(n, dtype=num.float))
+            tmin=tmin, deltat=0.05, ydata=num.ones(n, dtype=float))
         t.crop_zeros()
         assert t.ydata.size == 20
 
@@ -411,10 +411,10 @@ class TraceTestCase(unittest.TestCase):
 
                 a = trace.Trace(
                     tmin=tmin, deltat=deltat,
-                    ydata=num.zeros(5, dtype=num.float))
+                    ydata=num.zeros(5, dtype=float))
                 b = trace.Trace(
                     tmin=tmin+(ioffs+distortion)*deltat, deltat=deltat,
-                    ydata=num.ones(3, dtype=num.float))
+                    ydata=num.ones(3, dtype=float))
 
                 a.add(b, interpolate=False)
                 assert numeq(a.ydata, result, 0.001)
@@ -423,16 +423,16 @@ class TraceTestCase(unittest.TestCase):
         for toff in num.random.random(100):
             t1 = trace.Trace(
                 tmin=sometime, deltat=0.05,
-                ydata=num.ones(5, dtype=num.float))
+                ydata=num.ones(5, dtype=float))
             t2 = trace.Trace(
                 tmin=sometime-toff*0.1, deltat=0.05,
-                ydata=num.ones(5, dtype=num.float))
+                ydata=num.ones(5, dtype=float))
             t1.add(t2, interpolate=False)
 
     def testPeaks(self):
         n = 1000
         t = trace.Trace(
-            tmin=0, deltat=0.1, ydata=num.zeros(n, dtype=num.float))
+            tmin=0, deltat=0.1, ydata=num.zeros(n, dtype=float))
         t.ydata[1] = 1.
         t.ydata[500] = 1.
         t.ydata[999] = 1.
@@ -483,7 +483,7 @@ class TraceTestCase(unittest.TestCase):
 
     def testNumpyCorrelate(self):
         primes = num.array(
-            [1, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31], dtype=num.int)
+            [1, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31], dtype=int)
         n = 6
         lines = []
         have_flips, have_errs = False, False
@@ -760,9 +760,9 @@ class TraceTestCase(unittest.TestCase):
     def benchmark_sinc(self):
         n = 10000000
         i_control = num.array([0., n-1], dtype=num.int64)
-        t_control = num.array([0., n-1], dtype=num.float)
-        s_in = num.zeros(n, dtype=num.float)
-        s_out = num.zeros(n, dtype=num.float)
+        t_control = num.array([0., n-1], dtype=float)
+        s_in = num.zeros(n, dtype=float)
+        s_out = num.zeros(n, dtype=float)
         tmin = 0.
         deltat = 1.0
         from pyrocko import signal_ext

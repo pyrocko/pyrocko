@@ -16,9 +16,9 @@ class CombiSource(gf.Source):
         if subsources:
 
             lats = num.array(
-                [subsource.lat for subsource in subsources], dtype=num.float)
+                [subsource.lat for subsource in subsources], dtype=float)
             lons = num.array(
-                [subsource.lon for subsource in subsources], dtype=num.float)
+                [subsource.lon for subsource in subsources], dtype=float)
 
             assert num.all(lats == lats[0]) and num.all(lons == lons[0])
             lat, lon = lats[0], lons[0]

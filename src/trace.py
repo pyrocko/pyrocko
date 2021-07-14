@@ -709,7 +709,7 @@ class Trace(Object):
                 '%g' % (deltat, deltat2))
 
         data = self.ydata
-        data_pad = num.zeros(ntrans, dtype=num.float)
+        data_pad = num.zeros(ntrans, dtype=float)
         data_pad[:ndata] = data
         fdata = num.fft.rfft(data_pad)
         fdata2 = num.zeros((ntrans2+1)//2, dtype=fdata.dtype)
@@ -791,7 +791,7 @@ class Trace(Object):
         from pyrocko import signal_ext
 
         i_control = num.array([0, self.ydata.size-1], dtype=num.int64)
-        t_control = num.array([tmin_new, tmax_new], dtype=num.float)
+        t_control = num.array([tmin_new, tmax_new], dtype=float)
 
         r = (tmax_new - tmin_new) / self.deltat + 1.0
         n_new = int(round(r))
@@ -802,9 +802,9 @@ class Trace(Object):
 
         tmax_new = tmin_new + (n_new-1) * self.deltat
 
-        ydata_new = num.empty(n_new, dtype=num.float)
+        ydata_new = num.empty(n_new, dtype=float)
         signal_ext.antidrift(i_control, t_control,
-                             self.ydata.astype(num.float),
+                             self.ydata.astype(float),
                              tmin_new, self.deltat, ydata_new)
 
         self.tmin = tmin_new
@@ -1061,7 +1061,7 @@ class Trace(Object):
         if td_taper:
             self.taper(td_taper)
 
-        ydata = self.get_ydata().astype(num.float)
+        ydata = self.get_ydata().astype(float)
         if demean:
             ydata -= ydata.mean()
 
@@ -1096,7 +1096,7 @@ class Trace(Object):
         ck = (nf, deltaf)
         if ck not in Trace.cached_frequencies:
             Trace.cached_frequencies[ck] = deltaf * num.arange(
-                nf, dtype=num.float)
+                nf, dtype=float)
 
         return Trace.cached_frequencies[ck]
 
@@ -1152,15 +1152,15 @@ class Trace(Object):
         if interpolate:
             from pyrocko import signal_ext
             n = xself.data_len()
-            ydata_new = num.empty(n, dtype=num.float)
+            ydata_new = num.empty(n, dtype=float)
             i_control = num.array([0, n-1], dtype=num.int64)
             tref = tmin
             t_control = num.array(
                 [float(xself.tmin-tref), float(xself.tmax-tref)],
-                dtype=num.float)
+                dtype=float)
 
             signal_ext.antidrift(i_control, t_control,
-                                 xself.ydata.astype(num.float),
+                                 xself.ydata.astype(float),
                                  float(tmin-tref), xself.deltat, ydata_new)
 
             xself.ydata = ydata_new
@@ -1539,7 +1539,7 @@ class Trace(Object):
 
             data = self.ydata
 
-            data_pad = num.zeros(ntrans, dtype=num.float)
+            data_pad = num.zeros(ntrans, dtype=float)
             data_pad[:ndata] = data
             if demean:
                 data_pad[:ndata] -= data.mean()
@@ -1729,7 +1729,7 @@ class Trace(Object):
             taper = Gauss(f0, a=bandwidth)
             weights = taper.evaluate(freqs)
             nhalf = freqs.size
-            analytic_spec = num.zeros(n, dtype=num.complex)
+            analytic_spec = num.zeros(n, dtype=complex)
             analytic_spec[:nhalf] = coefs*weights
 
             enorm = num.abs(analytic_spec[:nhalf])**2
@@ -1754,11 +1754,11 @@ class Trace(Object):
 
         deltaf = 1./(self.deltat*ntrans)
         nfreqs = ntrans//2 + 1
-        transfer = num.ones(nfreqs, dtype=num.complex)
+        transfer = num.ones(nfreqs, dtype=complex)
         hi = snapper(nfreqs, deltaf)
         if freqlimits is not None:
             a, b, c, d = freqlimits
-            freqs = num.arange(hi(d)-hi(a), dtype=num.float)*deltaf \
+            freqs = num.arange(hi(d)-hi(a), dtype=float)*deltaf \
                 + hi(a)*deltaf
 
             if invert:
@@ -2073,7 +2073,7 @@ def degapper(
                     if not virtual:
                         if fillmethod == 'interpolate':
                             filler = a.ydata[-1] + (
-                                ((1.0 + num.arange(idist-1, dtype=num.float))
+                                ((1.0 + num.arange(idist-1, dtype=float))
                                  / idist) * (b.ydata[0]-a.ydata[-1])
                             ).astype(a.ydata.dtype)
                         elif fillmethod == 'zeros':
@@ -2794,7 +2794,7 @@ class FrequencyResponse(Object):
     '''
 
     def evaluate(self, freqs):
-        coefs = num.ones(freqs.size, dtype=num.complex)
+        coefs = num.ones(freqs.size, dtype=complex)
         return coefs
 
     def is_scalar(self):
@@ -2926,7 +2926,7 @@ class PoleZeroResponse(FrequencyResponse):
     def evaluate(self, freqs):
         jomeg = 1.0j * 2.*num.pi*freqs
 
-        a = num.ones(freqs.size, dtype=num.complex)*self.constant
+        a = num.ones(freqs.size, dtype=complex)*self.constant
         for z in self.zeros:
             a *= jomeg-z
         for p in self.poles:
@@ -2968,16 +2968,16 @@ class SampledResponse(FrequencyResponse):
         ``None`` (the default) the endpoints are returned.
     '''
 
-    frequencies = Array.T(shape=(None,), dtype=num.float, serialize_as='list')
-    values = Array.T(shape=(None,), dtype=num.complex, serialize_as='list')
+    frequencies = Array.T(shape=(None,), dtype=float, serialize_as='list')
+    values = Array.T(shape=(None,), dtype=complex, serialize_as='list')
     left = Complex.T(optional=True)
     right = Complex.T(optional=True)
 
     def __init__(self, frequencies, values, left=None, right=None):
         FrequencyResponse.__init__(
             self,
-            frequencies=asarray_1d(frequencies, num.float),
-            values=asarray_1d(values, num.complex))
+            frequencies=asarray_1d(frequencies, float),
+            values=asarray_1d(values, complex))
 
     def evaluate(self, freqs):
         ereal = num.interp(
@@ -3026,7 +3026,7 @@ class IntegrationResponse(FrequencyResponse):
 
     def evaluate(self, freqs):
         nonzero = freqs != 0.0
-        resp = num.empty(freqs.size, dtype=num.complex)
+        resp = num.empty(freqs.size, dtype=complex)
         resp[nonzero] = self.gain / (1.0j * 2. * num.pi*freqs[nonzero])**self.n
         resp[num.logical_not(nonzero)] = 0.0
         return resp
@@ -3084,7 +3084,7 @@ class MultiplyResponse(FrequencyResponse):
         FrequencyResponse.__init__(self, responses=responses)
 
     def evaluate(self, freqs):
-        a = num.ones(freqs.size, dtype=num.complex)
+        a = num.ones(freqs.size, dtype=complex)
         for resp in self.responses:
             a *= resp.evaluate(freqs)
 
@@ -3488,7 +3488,7 @@ def co_lfilter(target, b, a):
 
             zi = states.get(input)
             if zi is None:
-                zi = num.zeros(max(len(a), len(b))-1, dtype=num.float)
+                zi = num.zeros(max(len(a), len(b))-1, dtype=float)
 
             output = input.copy(data=False)
             try:
@@ -3717,7 +3717,7 @@ def do_fft(tr, filter):
     else:
         ndata = tr.ydata.size
         nfft = nextpow2(ndata)
-        padded = num.zeros(nfft, dtype=num.float)
+        padded = num.zeros(nfft, dtype=float)
         padded[:ndata] = tr.ydata
         spectrum = num.fft.rfft(padded)
         df = 1.0 / (tr.deltat * nfft)

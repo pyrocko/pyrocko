@@ -98,8 +98,8 @@ def weed_stations(stations, nwanted, neighborhood=3, default_badness=1.0,
                   badnesses=None,
                   badnesses_ns={}, badnesses_nsl={}, badnesses_nslc={}):
 
-    azimuths = num.zeros(len(stations), dtype=num.float)
-    dists = num.zeros(len(stations), dtype=num.float)
+    azimuths = num.zeros(len(stations), dtype=float)
+    dists = num.zeros(len(stations), dtype=float)
     for ista, sta in enumerate(stations):
         azimuths[ista] = sta.azimuth
         dists[ista] = sta.dist_deg

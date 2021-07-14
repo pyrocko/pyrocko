@@ -182,7 +182,7 @@ class Array(Object):
                 data = val.astype(self.serialize_dtype).tostring()
                 return literal(b64encode(data).decode('utf-8'))
             elif self.serialize_as == 'list':
-                if self.dtype == num.complex:
+                if self.dtype == complex:
                     return [repr(x) for x in val]
                 else:
                     return val.tolist()

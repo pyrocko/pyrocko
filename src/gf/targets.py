@@ -283,7 +283,7 @@ class SatelliteTarget(StaticTarget):
     '''
     theta = Array.T(
         shape=(None,),
-        dtype=num.float,
+        dtype=float,
         serialize_as='base64-compat',
         help='Horizontal angle towards satellite\'s line of sight in radians.'
              '\n\n        .. important::\n\n'
@@ -292,7 +292,7 @@ class SatelliteTarget(StaticTarget):
 
     phi = Array.T(
         shape=(None,),
-        dtype=num.float,
+        dtype=float,
         serialize_as='base64-compat',
         help='Theta is look vector elevation angle towards satellite from'
              ' horizon in radians. Matrix of theta towards satellite\'s'

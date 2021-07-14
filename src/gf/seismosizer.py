@@ -184,7 +184,7 @@ def discretize_rect_source(deltas, deltat, time, north, east, depth,
     xl = num.linspace(-0.5 * (ln - dl), 0.5 * (ln - dl), nl)
     xw = num.linspace(-0.5 * (wd - dw), 0.5 * (wd - dw), nw)
 
-    points = num.empty((n, 3), dtype=num.float)
+    points = num.empty((n, 3), dtype=float)
     points[:, 0] = num.tile(xl, nw)
     points[:, 1] = num.repeat(xw, nl)
     points[:, 2] = 0.0
@@ -364,7 +364,7 @@ class Range(SObject):
     stop = Float.T(optional=True)
     step = Float.T(optional=True)
     n = Int.T(optional=True)
-    values = Array.T(optional=True, dtype=num.float, shape=(None,))
+    values = Array.T(optional=True, dtype=float, shape=(None,))
 
     spacing = StringChoice.T(
         choices=['lin', 'log', 'symlog'],
@@ -443,7 +443,7 @@ class Range(SObject):
                 raise InvalidGridDef(
                     '"%s" is not a valid range specification' % s)
 
-            return dict(values=num.array(vals, dtype=num.float))
+            return dict(values=num.array(vals, dtype=float))
 
         d = m.groupdict()
         try:
@@ -672,11 +672,11 @@ class STF(Object, Cloneable):
         tl = math.floor(tref / deltat) * deltat
         th = math.ceil(tref / deltat) * deltat
         if tl == th:
-            return num.array([tl], dtype=num.float), num.ones(1)
+            return num.array([tl], dtype=float), num.ones(1)
         else:
             return (
-                num.array([tl, th], dtype=num.float),
-                num.array([th - tref, tref - tl], dtype=num.float) / deltat)
+                num.array([tl, th], dtype=float),
+                num.array([th - tref, tref - tl], dtype=float) / deltat)
 
     def base_key(self):
         return (type(self).__name__,)
@@ -692,12 +692,12 @@ def sshift(times, amplitudes, tshift, deltat):
     if t0 == t1:
         return times, amplitudes
 
-    amplitudes2 = num.zeros(amplitudes.size + 1, dtype=num.float)
+    amplitudes2 = num.zeros(amplitudes.size + 1, dtype=float)
 
     amplitudes2[:-1] += (t1 - tshift) / deltat * amplitudes
     amplitudes2[1:] += (tshift - t0) / deltat * amplitudes
 
-    times2 = num.arange(times.size + 1, dtype=num.float) * \
+    times2 = num.arange(times.size + 1, dtype=float) * \
         deltat + times[0] + t0
 
     return times2, amplitudes2
@@ -744,8 +744,8 @@ class BoxcarSTF(STF):
             t_edges = num.linspace(
                 tmin - 0.5 * deltat, tmax + 0.5 * deltat, nt + 1)
             t = tmin_stf + self.duration * num.array(
-                [0.0, 0.0, 1.0, 1.0], dtype=num.float)
-            f = num.array([0., 1., 1., 0.], dtype=num.float)
+                [0.0, 0.0, 1.0, 1.0], dtype=float)
+            f = num.array([0., 1., 1., 0.], dtype=float)
             amplitudes = util.plf_integrate_piecewise(t_edges, t, f)
             amplitudes /= num.sum(amplitudes)
 
@@ -840,8 +840,8 @@ class TriangularSTF(STF):
             t_edges = num.linspace(
                 tmin - 0.5 * deltat, tmax + 0.5 * deltat, nt + 1)
             t = tmin_stf + self.duration * num.array(
-                [0.0, self.peak_ratio, 1.0], dtype=num.float)
-            f = num.array([0., 1., 0.], dtype=num.float)
+                [0.0, self.peak_ratio, 1.0], dtype=float)
+            f = num.array([0., 1., 0.], dtype=float)
             amplitudes = util.plf_integrate_piecewise(t_edges, t, f)
             amplitudes /= num.sum(amplitudes)
         else:
@@ -1416,7 +1416,7 @@ class ExplosionSource(SourceWithDerivedMagnitude):
                 'magnitude.')
 
         points = num.array(
-            [[self.north_shift, self.east_shift, self.depth]], dtype=num.float)
+            [[self.north_shift, self.east_shift, self.depth]], dtype=float)
 
         interpolation = target.interpolation if target else 'multilinear'
         try:
@@ -1742,7 +1742,7 @@ class VLVDSource(SourceWithDerivedMagnitude):
                 'magnitude.')
 
         points = num.array(
-            [[self.north_shift, self.east_shift, self.depth]], dtype=num.float)
+            [[self.north_shift, self.east_shift, self.depth]], dtype=float)
 
         try:
             shear_moduli = store.config.get_shear_moduli(
@@ -2542,9 +2542,9 @@ class CombiSource(Source):
                 'Need at least one sub-source to create a CombiSource object.')
 
         lats = num.array(
-            [subsource.lat for subsource in subsources], dtype=num.float)
+            [subsource.lat for subsource in subsources], dtype=float)
         lons = num.array(
-            [subsource.lon for subsource in subsources], dtype=num.float)
+            [subsource.lon for subsource in subsources], dtype=float)
 
         lat, lon = lats[0], lons[0]
         if not num.all(lats == lat) and num.all(lons == lon):
@@ -2611,7 +2611,7 @@ class SFSource(Source):
         times, amplitudes = self.effective_stf_pre().discretize_t(
             store.config.deltat, self.time)
         forces = amplitudes[:, num.newaxis] * num.array(
-            [[self.fn, self.fe, self.fd]], dtype=num.float)
+            [[self.fn, self.fe, self.fd]], dtype=float)
 
         return meta.DiscretizedSFSource(forces=forces,
                                         **self._dparams_base_repeated(times))
@@ -3449,9 +3449,9 @@ class LocalEngine(Engine):
             rate = store_.config.sample_rate
 
         tmin = num.fromiter(
-            (t.tmin for t in targets), dtype=num.float, count=len(targets))
+            (t.tmin for t in targets), dtype=float, count=len(targets))
         tmax = num.fromiter(
-            (t.tmax for t in targets), dtype=num.float, count=len(targets))
+            (t.tmax for t in targets), dtype=float, count=len(targets))
 
         itmin = num.floor(tmin * rate).astype(num.int64)
         itmax = num.ceil(tmax * rate).astype(num.int64)
@@ -3566,7 +3566,7 @@ class LocalEngine(Engine):
             deltat, 0.0)
 
         # repeat end point to prevent boundary effects
-        padded_data = num.empty(data.size + amplitudes.size, dtype=num.float)
+        padded_data = num.empty(data.size + amplitudes.size, dtype=float)
         padded_data[:data.size] = data
         padded_data[data.size:] = data[-1]
         data = num.convolve(amplitudes, padded_data)
@@ -3803,7 +3803,7 @@ class SourceGroup(Object):
 
     def __getattr__(self, k):
         return num.fromiter((getattr(s, k) for s in self),
-                            dtype=num.float)
+                            dtype=float)
 
     def __iter__(self):
         raise NotImplementedError(

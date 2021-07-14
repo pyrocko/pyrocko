@@ -1353,7 +1353,7 @@ in the directory {dir}'''.format(
             if not os.path.exists(fn):
                 continue
 
-            data = num.loadtxt(fn, skiprows=1, dtype=num.float)
+            data = num.loadtxt(fn, skiprows=1, dtype=float)
 
             try:
                 _, idxs = pscmp_component_mapping[component]

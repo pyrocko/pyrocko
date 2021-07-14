@@ -54,7 +54,7 @@ def get_offset_and_length(arrays, offsets, shifts):
     if shifts.ndim == 2:
         shifts = num.reshape(shifts, (nshifts*narrays))
 
-    lengths = num.array([a.size for a in arrays], dtype=num.int)
+    lengths = num.array([a.size for a in arrays], dtype=int)
     imin = offsets[0] + shifts[0]
     imax = imin + lengths[0]
     for iarray in range(len(arrays)):
@@ -81,7 +81,7 @@ def parstack_numpy(
 
     narrays = offsets.size
 
-    lengths = num.array([a.size for a in arrays], dtype=num.int)
+    lengths = num.array([a.size for a in arrays], dtype=int)
     if lengthout < 0:
         imin, nsamp = get_offset_and_length(arrays, offsets, shifts)
     else:
@@ -89,7 +89,7 @@ def parstack_numpy(
         imin = offsetout
 
     nshifts = shifts.size // narrays
-    result = num.zeros(nsamp*nshifts, dtype=num.float)
+    result = num.zeros(nsamp*nshifts, dtype=float)
 
     for ishift in range(nshifts):
         for iarray in range(narrays):

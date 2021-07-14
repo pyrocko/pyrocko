@@ -92,7 +92,7 @@ def check_resp(resp, value, frequency, limit_db, prelude=''):
         return
 
     value_resp = num.abs(
-        resp.evaluate(num.array([frequency], dtype=num.float)))[0]
+        resp.evaluate(num.array([frequency], dtype=float)))[0]
 
     if value_resp == 0.0:
         raise InconsistentResponseInformation(
@@ -992,7 +992,7 @@ def pyrocko_station_from_channels(nsl, channels, inconsistencies='warn'):
             logger.warn(mess)
             logger.warn(' -> using mean values')
 
-    apos = num.array([x.position_values for x in channels], dtype=num.float)
+    apos = num.array([x.position_values for x in channels], dtype=float)
     mlat, mlon, mele, mdep = num.nansum(apos, axis=0) \
         / num.sum(num.isfinite(apos), axis=0)
 

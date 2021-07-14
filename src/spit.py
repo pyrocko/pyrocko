@@ -29,7 +29,7 @@ class Cell(object):
     def __init__(self, tree, index, f=None):
         self.tree = tree
         self.index = index
-        self.depths = num.log2(index).astype(num.int)
+        self.depths = num.log2(index).astype(int)
         self.bad = False
         self.children = []
         n = 2**self.depths
@@ -76,7 +76,7 @@ class Cell(object):
 
     def interpolate_many(self, x):
         if self.children:
-            result = num.empty(x.shape[0], dtype=num.float)
+            result = num.empty(x.shape[0], dtype=float)
             result[:] = None
             for cell in self.children:
                 indices = num.where(
@@ -110,12 +110,12 @@ class Cell(object):
 
                 return result
             else:
-                result = num.empty(x.shape[0], dtype=num.float)
+                result = num.empty(x.shape[0], dtype=float)
                 result[:] = None
                 return result
 
     def slice(self, x):
-        x = num.array(x, dtype=num.float)
+        x = num.array(x, dtype=float)
         x_mask = not_(num.isfinite(x))
         x_ = x.copy()
         x_[x_mask] = 0.0
@@ -156,7 +156,7 @@ class Cell(object):
 
         npoints = coords[0].size * coords[1].size
         g = num.meshgrid(*coords[::-1])[::-1]
-        points = num.empty((npoints, self.tree.ndim), dtype=num.float)
+        points = num.empty((npoints, self.tree.ndim), dtype=float)
         for idim in range(self.tree.ndim):
             try:
                 idimout = dims.index(idim)
@@ -164,7 +164,7 @@ class Cell(object):
             except ValueError:
                 points[:, idim] = x[idim]
 
-        fi = num.empty((coords[0].size, coords[1].size), dtype=num.float)
+        fi = num.empty((coords[0].size, coords[1].size), dtype=float)
         fi_r = fi.ravel()
         fi_r[...] = self.interpolate_many(points)
 
@@ -186,7 +186,7 @@ class Cell(object):
         coords = num.linspace(xb[0], xb[1], 1+int((xb[1]-xb[0])/d))
 
         npoints = coords.size
-        points = num.empty((npoints, self.tree.ndim), dtype=num.float)
+        points = num.empty((npoints, self.tree.ndim), dtype=float)
         for idim in range(self.tree.ndim):
             if idim == dim:
                 points[:, idim] = coords
@@ -239,22 +239,22 @@ class SPTree(object):
             self.ncells = 0
             self.addargs = addargs
 
-            self.xbounds = num.asarray(xbounds, dtype=num.float)
+            self.xbounds = num.asarray(xbounds, dtype=float)
             assert self.xbounds.ndim == 2
             assert self.xbounds.shape[1] == 2
             self.ndim = self.xbounds.shape[0]
 
-            self.xtols = num.asarray(xtols, dtype=num.float)
+            self.xtols = num.asarray(xtols, dtype=float)
             assert self.xtols.ndim == 1 and self.xtols.size == self.ndim
 
             self.maxdepths = num.ceil(num.log2(
                 num.maximum(
                     1.0,
                     (self.xbounds[:, 1] - self.xbounds[:, 0]) / self.xtols)
-                )).astype(num.int)
+                )).astype(int)
 
             self.root = None
-            self.ones_int = num.ones(self.ndim, dtype=num.int)
+            self.ones_int = num.ones(self.ndim, dtype=int)
 
             cc = num.ix_(*[num.arange(3)]*self.ndim)
             w = num.zeros([3]*self.ndim + [self.ndim, 2])
@@ -352,7 +352,7 @@ class SPTree(object):
             self.f_values, tuple(float(xx) for xx in x), self.f, self.addargs)
 
     def interpolate(self, x):
-        x = num.asarray(x, dtype=num.float)
+        x = num.asarray(x, dtype=float)
         assert x.ndim == 1 and x.size == self.ndim
         if not all_(and_(self.xbounds[:, 0] <= x, x <= self.xbounds[:, 1])):
             raise OutOfBounds()
@@ -377,7 +377,7 @@ class SPTree(object):
 
         fis = cell.interpolate_many(xtestpoints)
         fes = num.array(
-            [self._f_cached(x) for x in xtestpoints], dtype=num.float)
+            [self._f_cached(x) for x in xtestpoints], dtype=float)
 
         iffes = num.isfinite(fes)
         iffis = num.isfinite(fis)
@@ -447,7 +447,7 @@ class SPTree(object):
             x = num.zeros(self.ndim)
             x[-2:] = None
 
-        x = num.asarray(x, dtype=num.float)
+        x = num.asarray(x, dtype=float)
         if dims is None:
             dims = [i for (i, v) in enumerate(x) if not num.isfinite(v)]
 
@@ -472,7 +472,7 @@ class SPTree(object):
             x = num.zeros(self.ndim)
             x[-1:] = None
 
-        x = num.asarray(x, dtype=num.float)
+        x = num.asarray(x, dtype=float)
         if dims is None:
             dims = [i for (i, v) in enumerate(x) if not num.isfinite(v)]
 
@@ -509,7 +509,7 @@ def nditer_outer(x):
 
     return num.nditer(
         x,
-        op_axes=(num.identity(len(x_), dtype=num.int)-1).tolist() + add)
+        op_axes=(num.identity(len(x_), dtype=int)-1).tolist() + add)
 
 
 if __name__ == '__main__':

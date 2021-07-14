@@ -109,13 +109,13 @@ class PileTestCase(unittest.TestCase):
         shutil.rmtree(datadir)
 
     def testMemTracesFile(self):
-        tr = trace.Trace(ydata=num.arange(100, dtype=num.float))
+        tr = trace.Trace(ydata=num.arange(100, dtype=float))
 
         f = pile.MemTracesFile(None, [tr])
         p = pile.Pile()
         p.add_file(f)
         for tr in p.iter_all(include_last=True):
-            assert numeq(tr.ydata, num.arange(100, dtype=num.float), 0.001)
+            assert numeq(tr.ydata, num.arange(100, dtype=float), 0.001)
 
 
 if __name__ == "__main__":

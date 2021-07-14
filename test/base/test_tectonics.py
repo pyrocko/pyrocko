@@ -55,7 +55,7 @@ class TectonicsTestCase(unittest.TestCase):
 
         assert len(plates) == 52
 
-        point = num.array([-25., 135.], dtype=num.float)
+        point = num.array([-25., 135.], dtype=float)
         for plate in plates:
             plate.max_interpoint_distance()
             assert (plate.name == 'AU') == plate.contains_point(point)

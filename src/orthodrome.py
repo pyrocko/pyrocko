@@ -62,7 +62,7 @@ except AttributeError:
 
 def float_array_broadcast(*args):
     return num.broadcast_arrays(*[
-        num.asarray(x, dtype=num.float) for x in args])
+        num.asarray(x, dtype=float) for x in args])
 
 
 class Loc(object):
@@ -511,7 +511,7 @@ def distance_accurate50m_numpy(
     ii_neq = num.where(num.logical_not(eq))[0]
 
     if num.all(eq):
-        return num.zeros_like(eq, dtype=num.float)
+        return num.zeros_like(eq, dtype=float)
 
     def extr(x):
         if isinstance(x, num.ndarray) and x.size > 1:
@@ -539,7 +539,7 @@ def distance_accurate50m_numpy(
     h1 = (3.*r-1.)/(2.*c)
     h2 = (3.*r+1.)/(2.*s)
 
-    dists = num.zeros(eq.size, dtype=num.float)
+    dists = num.zeros(eq.size, dtype=float)
     dists[ii_neq] = d * (
         1. +
         earth_oblateness * h1 * num.sin(f)**2 * num.cos(g)**2 -
@@ -1265,7 +1265,7 @@ def contains_points(polygon, points):
     mask_y = 0. <= points_xyz[:, 1]
     mask_z = 0. <= points_xyz[:, 2]
 
-    result = num.zeros(points.shape[0], dtype=num.int)
+    result = num.zeros(points.shape[0], dtype=int)
 
     for ix in [-1, 1]:
         for iy in [-1, 1]:
@@ -1274,7 +1274,7 @@ def contains_points(polygon, points):
                     and_(cneg(ix, mask_x), cneg(iy, mask_y)),
                     cneg(iz, mask_z))
 
-                center_xyz = num.array([ix, iy, iz], dtype=num.float)
+                center_xyz = num.array([ix, iy, iz], dtype=float)
 
                 lat, lon = xyz_to_latlon(center_xyz)
                 rot = rot_to_00(lat, lon)

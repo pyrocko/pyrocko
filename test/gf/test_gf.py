@@ -30,7 +30,7 @@ km = 1000.
 
 
 def arr(x):
-    return num.asarray(x, dtype=num.float)
+    return num.asarray(x, dtype=float)
 
 
 def numeq(a, b, eps):
@@ -791,7 +791,7 @@ class GFTestCase(unittest.TestCase):
                     data.append((distance, tnew - t))
 
                 if nrepeats != 1:
-                    d, t1 = num.array(data, dtype=num.float).T
+                    d, t1 = num.array(data, dtype=float).T
                     nread = nrepeats * store.config.ns[0]
                     smmap = implementation
                     label = 'nrepeats %i, impl %s' % (nrepeats, smmap)
@@ -821,7 +821,7 @@ class GFTestCase(unittest.TestCase):
                                          store.config.ns[0])
                         args = (sdepths, distances, comps)
                         weights = num.repeat([weight], n)
-                        delays = num.arange(n, dtype=num.float) \
+                        delays = num.arange(n, dtype=float) \
                             * store.config.deltat * 0.5
 
                         t = time.time()
@@ -836,7 +836,7 @@ class GFTestCase(unittest.TestCase):
                                      tnew - t))
 
                     if nrepeats != 1:
-                        d, t1 = num.array(data, dtype=num.float).T
+                        d, t1 = num.array(data, dtype=float).T
                         nread = nrepeats * store.config.ns[0] \
                             * store.config.ncomponents
                         label = 'nrepeats %i, weight %g, impl %s' % (

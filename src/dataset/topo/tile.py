@@ -41,7 +41,7 @@ class Tile(object):
         kernel = num.ones((ndeci+1, ndeci+1))
         kernel /= num.sum(kernel)
         data = scipy.signal.convolve2d(
-            self.data.astype(num.float), kernel, mode='valid')
+            self.data.astype(float), kernel, mode='valid')
 
         self.data = data[::ndeci, ::ndeci].astype(self.data.dtype)
         self.xmin += ndeci/2

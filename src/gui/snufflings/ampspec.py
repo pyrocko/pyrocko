@@ -80,7 +80,7 @@ class AmpSpec(Snuffling):
             val = i_tr/maxval*100.
             pb.set_status(pblabel, val)
 
-            tr.ydata = tr.ydata.astype(num.float)
+            tr.ydata = tr.ydata.astype(float)
             tr.ydata -= tr.ydata.mean()
             f, a = tr.spectrum()
             minf = min([f.min(), minf])

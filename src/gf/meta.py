@@ -102,7 +102,7 @@ class Result(SeismosizerResult):
 class StaticResult(SeismosizerResult):
     result = Dict.T(
         String.T(),
-        Array.T(shape=(None,), dtype=num.float, serialize_as='base64'))
+        Array.T(shape=(None,), dtype=float, serialize_as='base64'))
 
 
 class GNSSCampaignResult(StaticResult):
@@ -114,11 +114,11 @@ class SatelliteResult(StaticResult):
 
     theta = Array.T(
         optional=True,
-        shape=(None,), dtype=num.float, serialize_as='base64')
+        shape=(None,), dtype=float, serialize_as='base64')
 
     phi = Array.T(
         optional=True,
-        shape=(None,), dtype=num.float, serialize_as='base64')
+        shape=(None,), dtype=float, serialize_as='base64')
 
 
 class KiteSceneResult(SatelliteResult):
@@ -640,19 +640,19 @@ class OutOfBounds(Exception):
 class MultiLocation(Object):
 
     lats = Array.T(
-        optional=True, shape=(None,), dtype=num.float,
+        optional=True, shape=(None,), dtype=float,
         help='Latitudes of targets.')
     lons = Array.T(
-        optional=True, shape=(None,), dtype=num.float,
+        optional=True, shape=(None,), dtype=float,
         help='Longitude of targets.')
     north_shifts = Array.T(
-        optional=True, shape=(None,), dtype=num.float,
+        optional=True, shape=(None,), dtype=float,
         help='North shifts of targets.')
     east_shifts = Array.T(
-        optional=True, shape=(None,), dtype=num.float,
+        optional=True, shape=(None,), dtype=float,
         help='East shifts of targets.')
     elevation = Array.T(
-        optional=True, shape=(None,), dtype=num.float,
+        optional=True, shape=(None,), dtype=float,
         help='Elevations of targets.')
 
     def __init__(self, *args, **kwargs):
@@ -763,14 +763,14 @@ class DiscretizedSource(Object):
     specified directly (:py:attr:`lats`, :py:attr:`lons`).
     '''
 
-    times = Array.T(shape=(None,), dtype=num.float)
-    lats = Array.T(shape=(None,), dtype=num.float, optional=True)
-    lons = Array.T(shape=(None,), dtype=num.float, optional=True)
+    times = Array.T(shape=(None,), dtype=float)
+    lats = Array.T(shape=(None,), dtype=float, optional=True)
+    lons = Array.T(shape=(None,), dtype=float, optional=True)
     lat = Float.T(optional=True)
     lon = Float.T(optional=True)
-    north_shifts = Array.T(shape=(None,), dtype=num.float, optional=True)
-    east_shifts = Array.T(shape=(None,), dtype=num.float, optional=True)
-    depths = Array.T(shape=(None,), dtype=num.float)
+    north_shifts = Array.T(shape=(None,), dtype=float, optional=True)
+    east_shifts = Array.T(shape=(None,), dtype=float, optional=True)
+    depths = Array.T(shape=(None,), dtype=float)
 
     @classmethod
     def check_scheme(cls, scheme):
@@ -944,8 +944,8 @@ class DiscretizedSource(Object):
         lats, lons = num.hstack(latlons)
 
         if all((s.lats is None and s.lons is None) for s in sources):
-            rlats = num.array([s.lat for s in sources], dtype=num.float)
-            rlons = num.array([s.lon for s in sources], dtype=num.float)
+            rlats = num.array([s.lat for s in sources], dtype=float)
+            rlons = num.array([s.lon for s in sources], dtype=float)
             same_ref = num.all(
                 rlats == rlats[0]) and num.all(rlons == rlons[0])
         else:
@@ -1011,7 +1011,7 @@ class DiscretizedSource(Object):
 
 
 class DiscretizedExplosionSource(DiscretizedSource):
-    m0s = Array.T(shape=(None,), dtype=num.float)
+    m0s = Array.T(shape=(None,), dtype=float)
 
     provided_schemes = (
         'elastic2',
@@ -1131,7 +1131,7 @@ class DiscretizedExplosionSource(DiscretizedSource):
 
 
 class DiscretizedSFSource(DiscretizedSource):
-    forces = Array.T(shape=(None, 3), dtype=num.float)
+    forces = Array.T(shape=(None, 3), dtype=float)
 
     provided_schemes = (
         'elastic5',
@@ -1221,7 +1221,7 @@ class DiscretizedSFSource(DiscretizedSource):
 
 class DiscretizedMTSource(DiscretizedSource):
     m6s = Array.T(
-        shape=(None, 6), dtype=num.float,
+        shape=(None, 6), dtype=float,
         help='rows with (m_nn, m_ee, m_dd, m_ne, m_nd, m_ed)')
 
     provided_schemes = (
@@ -1354,7 +1354,7 @@ class DiscretizedMTSource(DiscretizedSource):
 
 
 class DiscretizedPorePressureSource(DiscretizedSource):
-    pp = Array.T(shape=(None,), dtype=num.float)
+    pp = Array.T(shape=(None,), dtype=float)
 
     provided_schemes = (
         'poroelastic10',
@@ -2000,14 +2000,14 @@ class ConfigTypeA(Config):
 
     def _update(self):
         self.mins = num.array(
-            [self.source_depth_min, self.distance_min], dtype=num.float)
+            [self.source_depth_min, self.distance_min], dtype=float)
         self.maxs = num.array(
-            [self.source_depth_max, self.distance_max], dtype=num.float)
+            [self.source_depth_max, self.distance_max], dtype=float)
         self.deltas = num.array(
             [self.source_depth_delta, self.distance_delta],
-            dtype=num.float)
+            dtype=float)
         self.ns = num.floor((self.maxs - self.mins) / self.deltas +
-                            vicinity_eps).astype(num.int) + 1
+                            vicinity_eps).astype(int) + 1
         self.effective_maxs = self.mins + self.deltas * (self.ns - 1)
         self.deltat = 1.0/self.sample_rate
         self.nrecords = num.product(self.ns) * self.ncomponents
@@ -2081,10 +2081,10 @@ class ConfigTypeA(Config):
             vb_fl = 1.0 - (xb - xb_fl)
             vb_ce = (1.0 - (xb_ce - xb)) * (xb_ce - xb_fl)
 
-            ia_fl = xa_fl.astype(num.int)
-            ia_ce = xa_ce.astype(num.int)
-            ib_fl = xb_fl.astype(num.int)
-            ib_ce = xb_ce.astype(num.int)
+            ia_fl = xa_fl.astype(int)
+            ia_ce = xa_ce.astype(int)
+            ib_fl = xb_fl.astype(int)
+            ib_ce = xb_ce.astype(int)
 
             if num.any(ia_fl < 0) or num.any(ia_fl >= na):
                 raise OutOfBounds()
@@ -2098,13 +2098,13 @@ class ConfigTypeA(Config):
             if num.any(ib_ce < 0) or num.any(ib_ce >= nb):
                 raise OutOfBounds()
 
-            irecords = num.empty(a.size*4, dtype=num.int)
+            irecords = num.empty(a.size*4, dtype=int)
             irecords[0::4] = ia_fl*nb*ng + ib_fl*ng + ig
             irecords[1::4] = ia_ce*nb*ng + ib_fl*ng + ig
             irecords[2::4] = ia_fl*nb*ng + ib_ce*ng + ig
             irecords[3::4] = ia_ce*nb*ng + ib_ce*ng + ig
 
-            weights = num.empty(a.size*4, dtype=num.float)
+            weights = num.empty(a.size*4, dtype=float)
             weights[0::4] = va_fl * vb_fl
             weights[1::4] = va_ce * vb_fl
             weights[2::4] = va_fl * vb_ce
@@ -2257,22 +2257,22 @@ class ConfigTypeB(Config):
             self.receiver_depth_min,
             self.source_depth_min,
             self.distance_min],
-            dtype=num.float)
+            dtype=float)
 
         self.maxs = num.array([
             self.receiver_depth_max,
             self.source_depth_max,
             self.distance_max],
-            dtype=num.float)
+            dtype=float)
 
         self.deltas = num.array([
             self.receiver_depth_delta,
             self.source_depth_delta,
             self.distance_delta],
-            dtype=num.float)
+            dtype=float)
 
         self.ns = num.floor((self.maxs - self.mins) / self.deltas +
-                            vicinity_eps).astype(num.int) + 1
+                            vicinity_eps).astype(int) + 1
         self.effective_maxs = self.mins + self.deltas * (self.ns - 1)
         self.deltat = 1.0/self.sample_rate
         self.nrecords = num.product(self.ns) * self.ncomponents
@@ -2352,12 +2352,12 @@ class ConfigTypeB(Config):
             vc_fl = 1.0 - (xc - xc_fl)
             vc_ce = (1.0 - (xc_ce - xc)) * (xc_ce - xc_fl)
 
-            ia_fl = xa_fl.astype(num.int)
-            ia_ce = xa_ce.astype(num.int)
-            ib_fl = xb_fl.astype(num.int)
-            ib_ce = xb_ce.astype(num.int)
-            ic_fl = xc_fl.astype(num.int)
-            ic_ce = xc_ce.astype(num.int)
+            ia_fl = xa_fl.astype(int)
+            ia_ce = xa_ce.astype(int)
+            ib_fl = xb_fl.astype(int)
+            ib_ce = xb_ce.astype(int)
+            ic_fl = xc_fl.astype(int)
+            ic_ce = xc_ce.astype(int)
 
             if num.any(ia_fl < 0) or num.any(ia_fl >= na):
                 raise OutOfBounds()
@@ -2377,7 +2377,7 @@ class ConfigTypeB(Config):
             if num.any(ic_ce < 0) or num.any(ic_ce >= nc):
                 raise OutOfBounds()
 
-            irecords = num.empty(a.size*8, dtype=num.int)
+            irecords = num.empty(a.size*8, dtype=int)
             irecords[0::8] = ia_fl*nb*nc*ng + ib_fl*nc*ng + ic_fl*ng + ig
             irecords[1::8] = ia_ce*nb*nc*ng + ib_fl*nc*ng + ic_fl*ng + ig
             irecords[2::8] = ia_fl*nb*nc*ng + ib_ce*nc*ng + ic_fl*ng + ig
@@ -2387,7 +2387,7 @@ class ConfigTypeB(Config):
             irecords[6::8] = ia_fl*nb*nc*ng + ib_ce*nc*ng + ic_ce*ng + ig
             irecords[7::8] = ia_ce*nb*nc*ng + ib_ce*nc*ng + ic_ce*ng + ig
 
-            weights = num.empty(a.size*8, dtype=num.float)
+            weights = num.empty(a.size*8, dtype=float)
             weights[0::8] = va_fl * vb_fl * vc_fl
             weights[1::8] = va_ce * vb_fl * vc_fl
             weights[2::8] = va_fl * vb_ce * vc_fl
@@ -2588,22 +2588,22 @@ class ConfigTypeC(Config):
             self.source_depth_min,
             self.source_east_shift_min,
             self.source_north_shift_min],
-            dtype=num.float)
+            dtype=float)
 
         self.maxs = num.array([
             self.source_depth_max,
             self.source_east_shift_max,
             self.source_north_shift_max],
-            dtype=num.float)
+            dtype=float)
 
         self.deltas = num.array([
             self.source_depth_delta,
             self.source_east_shift_delta,
             self.source_north_shift_delta],
-            dtype=num.float)
+            dtype=float)
 
         self.ns = num.floor((self.maxs - self.mins) / self.deltas +
-                            vicinity_eps).astype(num.int) + 1
+                            vicinity_eps).astype(int) + 1
         self.effective_maxs = self.mins + self.deltas * (self.ns - 1)
         self.deltat = 1.0/self.sample_rate
         self.nreceivers = len(self.receivers)
@@ -2690,12 +2690,12 @@ class ConfigTypeC(Config):
             vc_fl = 1.0 - (xc - xc_fl)
             vc_ce = (1.0 - (xc_ce - xc)) * (xc_ce - xc_fl)
 
-            ia_fl = xa_fl.astype(num.int)
-            ia_ce = xa_ce.astype(num.int)
-            ib_fl = xb_fl.astype(num.int)
-            ib_ce = xb_ce.astype(num.int)
-            ic_fl = xc_fl.astype(num.int)
-            ic_ce = xc_ce.astype(num.int)
+            ia_fl = xa_fl.astype(int)
+            ia_ce = xa_ce.astype(int)
+            ib_fl = xb_fl.astype(int)
+            ib_ce = xb_ce.astype(int)
+            ic_fl = xc_fl.astype(int)
+            ic_ce = xc_ce.astype(int)
 
             if num.any(ia_fl < 0) or num.any(ia_fl >= na):
                 raise OutOfBounds()
@@ -2717,7 +2717,7 @@ class ConfigTypeC(Config):
 
             irig = ir*na*nb*nc*ng + ig
 
-            irecords = num.empty(a.size*8, dtype=num.int)
+            irecords = num.empty(a.size*8, dtype=int)
             irecords[0::8] = ia_fl*nb*nc*ng + ib_fl*nc*ng + ic_fl*ng + irig
             irecords[1::8] = ia_ce*nb*nc*ng + ib_fl*nc*ng + ic_fl*ng + irig
             irecords[2::8] = ia_fl*nb*nc*ng + ib_ce*nc*ng + ic_fl*ng + irig
@@ -2727,7 +2727,7 @@ class ConfigTypeC(Config):
             irecords[6::8] = ia_fl*nb*nc*ng + ib_ce*nc*ng + ic_ce*ng + irig
             irecords[7::8] = ia_ce*nb*nc*ng + ib_ce*nc*ng + ic_ce*ng + irig
 
-            weights = num.empty(a.size*8, dtype=num.float)
+            weights = num.empty(a.size*8, dtype=float)
             weights[0::8] = va_fl * vb_fl * vc_fl
             weights[1::8] = va_ce * vb_fl * vc_fl
             weights[2::8] = va_fl * vb_ce * vc_fl
@@ -2774,7 +2774,7 @@ class ConfigTypeC(Config):
         source_depths = source.depths - self.source_origin.depth
 
         n = dists.size
-        ireceivers = num.empty(nc, dtype=num.int)
+        ireceivers = num.empty(nc, dtype=int)
         ireceivers.fill(self.lookup_ireceiver(receiver))
 
         return (ireceivers,
@@ -2992,7 +2992,7 @@ def start_stop_num(start, stop, step, num, mi, ma, inc, eps=1e-5):
 
 def nditer_outer(x):
     return num.nditer(
-        x, op_axes=(num.identity(len(x), dtype=num.int)-1).tolist())
+        x, op_axes=(num.identity(len(x), dtype=int)-1).tolist())
 
 
 def nodes(xs):
@@ -3002,15 +3002,15 @@ def nodes(xs):
     nodes = num.empty((nnodes, ndim), dtype=xs[0].dtype)
     for idim in range(ndim-1, -1, -1):
         x = xs[idim]
-        nrepeat = num.prod(ns[idim+1:], dtype=num.int)
-        ntile = num.prod(ns[:idim], dtype=num.int)
+        nrepeat = num.prod(ns[idim+1:], dtype=int)
+        ntile = num.prod(ns[:idim], dtype=int)
         nodes[:, idim] = num.repeat(num.tile(x, ntile), nrepeat)
 
     return nodes
 
 
 def filledi(x, n):
-    a = num.empty(n, dtype=num.int)
+    a = num.empty(n, dtype=int)
     a.fill(x)
     return a
 

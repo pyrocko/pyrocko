@@ -657,18 +657,18 @@ class GutsTestCase(unittest.TestCase):
             ('l2', Tuple.T(None, Int.T(), default=(1,), optional=True),
                 [None, (), (3, 4)],
                 [(1,), (), (3, 4)]),
-            ('m', Array.T(shape=(None,), dtype=num.int, serialize_as='list'),
+            ('m', Array.T(shape=(None,), dtype=int, serialize_as='list'),
                 [num.arange(0), num.arange(2)],
                 [num.arange(0), num.arange(2)]),
-            ('n', Array.T(shape=(None,), dtype=num.int, serialize_as='list',
+            ('n', Array.T(shape=(None,), dtype=int, serialize_as='list',
                           optional=True),
                 [None, num.arange(0), num.arange(2)],
                 [None, num.arange(0), num.arange(2)]),
-            ('o', Array.T(shape=(None,), dtype=num.int, serialize_as='list',
+            ('o', Array.T(shape=(None,), dtype=int, serialize_as='list',
                           default=num.arange(2)),
                 [None, num.arange(0), num.arange(2), num.arange(3)],
                 [num.arange(2), num.arange(0), num.arange(2), num.arange(3)]),
-            ('p', Array.T(shape=(None,), dtype=num.int, serialize_as='list',
+            ('p', Array.T(shape=(None,), dtype=int, serialize_as='list',
                           default=num.arange(2), optional=True),
                 [None, num.arange(0), num.arange(2), num.arange(3)],
                 [num.arange(2), num.arange(0), num.arange(2), num.arange(3)]),
@@ -743,12 +743,12 @@ class GutsTestCase(unittest.TestCase):
                     xmltagname = 'aroot'
                     arr = Array.T(
                         shape=shape,
-                        dtype=num.int,
+                        dtype=int,
                         serialize_as=serialize_as,
                         serialize_dtype='>i8')
 
                 n = shape[0] or 10
-                a = A(arr=num.arange(n, dtype=num.int))
+                a = A(arr=num.arange(n, dtype=int))
                 b = load_string(a.dump())
                 self.assertTrue(num.all(a.arr == b.arr))
 
@@ -758,7 +758,7 @@ class GutsTestCase(unittest.TestCase):
 
                 if shape[0] is not None:
                     with self.assertRaises(ValidationError):
-                        a = A(arr=num.arange(n+10, dtype=num.int))
+                        a = A(arr=num.arange(n+10, dtype=int))
                         a.validate()
 
         for s0 in [None, 2, 10]:
@@ -767,11 +767,11 @@ class GutsTestCase(unittest.TestCase):
                     xmltagname = 'aroot'
                     arr = Array.T(
                         shape=(s0, s1),
-                        dtype=num.int)
+                        dtype=int)
 
                 n0 = s0 or 100
                 n1 = s1 or 100
-                a = A(arr=num.arange(n0*n1, dtype=num.int).reshape((n0, n1)))
+                a = A(arr=num.arange(n0*n1, dtype=int).reshape((n0, n1)))
                 b = load_string(a.dump())
                 self.assertTrue(num.all(a.arr == b.arr))
 
@@ -785,7 +785,7 @@ class GutsTestCase(unittest.TestCase):
         class A(Object):
             arr = Array.T(serialize_as='base64+meta')
 
-        for dtype in (num.int, num.float):
+        for dtype in (int, float):
             a = A(arr=num.zeros((3, 3), dtype=dtype))
             b = load_string(a.dump())
             assert a.arr.shape == b.arr.shape

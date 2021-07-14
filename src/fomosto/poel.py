@@ -60,7 +60,7 @@ def str_complex_vals(vals):
 
 
 class PoelSourceFunction(Object):
-    data = Array.T(shape=(None, 2), dtype=num.float)
+    data = Array.T(shape=(None, 2), dtype=float)
 
     def string_for_config(self):
         return '\n'.join([
@@ -69,7 +69,7 @@ class PoelSourceFunction(Object):
 
 
 class PoelModel(Object):
-    data = Array.T(shape=(None, 6), dtype=num.float)
+    data = Array.T(shape=(None, 6), dtype=float)
 
     def string_for_config(self):
         srows = []
@@ -88,14 +88,14 @@ class PoelConfig(Object):
     source_function_p = Float.T(default=1.0)
     source_function_i = PoelSourceFunction.T(
         default=PoelSourceFunction.D(
-            data=num.array([[0., 0.], [10., 1.]], dtype=num.float)))
+            data=num.array([[0., 0.], [10., 1.]], dtype=float)))
 
     t_window = Float.T(default=500.)
     accuracy = Float.T(default=0.025)
     isurfcon = Int.T(default=1)
     model = PoelModel.T(
         default=PoelModel(data=num.array([[
-            0.00, 0.4E+09, 0.2, 0.4, 0.75, 5.00]], dtype=num.float)))
+            0.00, 0.4E+09, 0.2, 0.4, 0.75, 5.00]], dtype=float)))
 
     def items(self):
         return dict(self.T.inamevals(self))
@@ -109,13 +109,13 @@ class PoelConfigFull(PoelConfig):
     no_depths = Int.T(default=10)
     depths = Array.T(
         shape=(None,),
-        dtype=num.float,
-        default=num.array([10.0, 100.0], dtype=num.float))
+        dtype=float,
+        default=num.array([10.0, 100.0], dtype=float))
     sw_equidistant_x = Int.T(default=1)
     no_distances = Int.T(default=10)
     distances = Array.T(
         shape=(None,),
-        dtype=num.float,
+        dtype=float,
         default=num.array([10., 100.]))
 
     no_t_samples = Int.T(default=51)
@@ -459,7 +459,7 @@ poel has been invoked as "%s"''' % (
         fns = self.config.get_output_filenames(self.tempdir)
         traces = []
         for comp, fn in zip(poel_components, fns):
-            data = num.loadtxt(fn, skiprows=1, dtype=num.float)
+            data = num.loadtxt(fn, skiprows=1, dtype=float)
             nsamples, ntraces = data.shape
             ntraces -= 1
             tmin = data[0, 0]

@@ -1566,7 +1566,7 @@ def griddata_regular(x, y, z, xvals, yvals):
     zindi = zindi[order]
 
     zindi, z = blockmean(zindi, z)
-    znew = num.empty(nx*ny, dtype=num.float)
+    znew = num.empty(nx*ny, dtype=float)
     znew[:] = num.nan
     znew[zindi] = z
     return znew.reshape(ny, nx)
@@ -2908,19 +2908,19 @@ class GridLayout(Widget):
     def sub_min_sizes_as_array(self):
         esh = num.array(
             [[w.get_min_size()[0] for w in row] for row in self.grid],
-            dtype=num.float)
+            dtype=float)
         esv = num.array(
             [[w.get_min_size()[1] for w in row] for row in self.grid],
-            dtype=num.float)
+            dtype=float)
         return esh, esv
 
     def sub_grows_as_array(self):
         egh = num.array(
             [[w.get_grow()[0] for w in row] for row in self.grid],
-            dtype=num.float)
+            dtype=float)
         egv = num.array(
             [[w.get_grow()[1] for w in row] for row in self.grid],
-            dtype=num.float)
+            dtype=float)
         return egh, egv
 
     def get_min_size(self):
@@ -3798,7 +3798,7 @@ class GMT(object):
         '''Use psxy to draw layout; for debugging'''
 
         # corners = layout.get_corners(descend=True)
-        rects = num.array(layout.get_sizes(), dtype=num.float)
+        rects = num.array(layout.get_sizes(), dtype=float)
         rects_wid = rects[:, 0, 0]
         rects_hei = rects[:, 0, 1]
         rects_center_x = rects[:, 1, 0] + rects_wid*0.5
@@ -3807,7 +3807,7 @@ class GMT(object):
         prects = (rects_center_x, rects_center_y, num.arange(nrects),
                   num.zeros(nrects), rects_hei, rects_wid)
 
-        # points = num.array(corners, dtype=num.float)
+        # points = num.array(corners, dtype=float)
 
         cptfile = self.tempfilename() + '.cpt'
         self.makecpt(

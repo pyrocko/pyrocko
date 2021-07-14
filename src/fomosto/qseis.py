@@ -712,7 +712,7 @@ in the directory %s'''.lstrip() % (
             if not os.path.exists(fn):
                 continue
 
-            data = num.loadtxt(fn, skiprows=1, dtype=num.float)
+            data = num.loadtxt(fn, skiprows=1, dtype=float)
             nsamples, ntraces = data.shape
             ntraces -= 1
             vred = self.config.time_reduction_velocity

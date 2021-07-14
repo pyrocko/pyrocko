@@ -204,7 +204,7 @@ mantle ave. vp, vs, rho: %15.5g %15.5g %15.5g
 
 
 def _sa2arr(sa):
-    return num.array([float(x) for x in sa], dtype=num.float)
+    return num.array([float(x) for x in sa], dtype=float)
 
 
 def _wrap(x, mi, ma):
@@ -411,7 +411,7 @@ def plot(func, filename, **kwargs):
     lats = num.linspace(-90., 90., nlats)
     lons = num.linspace(-180., 180., nlons)
 
-    vecfunc = num.vectorize(func, [num.float])
+    vecfunc = num.vectorize(func, [float])
     latss, lonss = num.meshgrid(lats, lons)
     thickness = vecfunc(latss, lonss)
 

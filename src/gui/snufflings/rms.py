@@ -58,13 +58,13 @@ class RootMeanSquareSnuffling(Snuffling):
                         channel=tr.channel+'-RMS',
                         tmin=tmin + 0.5*tinc,
                         deltat=tinc,
-                        ydata=num.zeros(n, dtype=num.float),
+                        ydata=num.zeros(n, dtype=float),
                         meta={'tabu': True})
 
                 # create and insert the current sample
                 i = int(round((tr.tmin - tmin)/tinc))
                 if 0 <= i and i < n:
-                    tr.ydata = num.asarray(tr.ydata, num.float)
+                    tr.ydata = num.asarray(tr.ydata, float)
                     tr.ydata -= num.mean(tr.ydata)
                     value = num.sqrt(num.sum(tr.ydata**2)/tr.ydata.size)
 

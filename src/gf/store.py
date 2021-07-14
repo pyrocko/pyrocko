@@ -817,7 +817,7 @@ class BaseStore(object):
 
         delays = delays / deltat
         irecords2 = num.repeat(irecords, 2)
-        delays2 = num.empty(irecords2.size, dtype=num.float)
+        delays2 = num.empty(irecords2.size, dtype=float)
         delays2[0::2] = num.floor(delays)
         delays2[1::2] = num.ceil(delays)
         weights2 = num.repeat(weights, 2)
@@ -1720,7 +1720,7 @@ use `fomosto tttlsd` to fix holes.''' % w
             else:
                 raise MakeTimingParamsFailed(msg)
 
-        xs, tmins, tmaxs = num.array(data, dtype=num.float).T
+        xs, tmins, tmaxs = num.array(data, dtype=float).T
 
         tlens = tmaxs - tmins
 

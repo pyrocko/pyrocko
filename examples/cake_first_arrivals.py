@@ -21,7 +21,7 @@ for distance in distances:
     for ray in rays[:1]:
         data.append((distance, ray.t))
 
-phase_distances, phase_time = num.array(data, dtype=num.float).T
+phase_distances, phase_time = num.array(data, dtype=float).T
 
 # Plot the arrival times
 mpl_init(fontsize=fontsize)

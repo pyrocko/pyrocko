@@ -25,7 +25,7 @@ class Plate(Object):
     name = String.T(
         help='Name of the tectonic plate.')
     points = Array.T(
-        dtype=num.float, shape=(None, 2),
+        dtype=float, shape=(None, 2),
         help='Points on the plate.')
 
     def max_interpoint_distance(self):
@@ -45,9 +45,9 @@ class Boundary(Object):
     name1 = String.T()
     name2 = String.T()
     kind = String.T()
-    points = Array.T(dtype=num.float, shape=(None, 2))
-    cpoints = Array.T(dtype=num.float, shape=(None, 2))
-    itypes = Array.T(dtype=num.int, shape=(None))
+    points = Array.T(dtype=float, shape=(None, 2))
+    cpoints = Array.T(dtype=float, shape=(None, 2))
+    itypes = Array.T(dtype=int, shape=(None))
 
     def split_types(self, groups=None):
         xyz = od.latlon_to_xyz(self.points)
@@ -67,7 +67,7 @@ class Boundary(Object):
 
             groupmap = num.array(
                 [d[name] for name in self._index_to_type],
-                dtype=num.int)
+                dtype=int)
 
         iswitch = num.concatenate(
             ([0],
@@ -196,8 +196,8 @@ class PeterBird2003(PlatesDataset):
         d2 = {}
         for k in d:
             d2[k] = (
-                num.array([x[:2] for x in d[k]], dtype=num.float),
-                num.array([x[2] for x in d[k]], dtype=num.int))
+                num.array([x[:2] for x in d[k]], dtype=float),
+                num.array([x[2] for x in d[k]], dtype=int))
 
         fpath = self.fpath('PB2002_boundaries.dig.txt')
         boundaries = []
@@ -213,7 +213,7 @@ class PeterBird2003(PlatesDataset):
                         name1=name1,
                         name2=name2,
                         kind=kind,
-                        points=num.array(data, dtype=num.float),
+                        points=num.array(data, dtype=float),
                         cpoints=cpoints,
                         itypes=itypes))
 
@@ -242,7 +242,7 @@ class PeterBird2003(PlatesDataset):
                 if line.startswith(b'***'):
                     plates.append(Plate(
                         name=name,
-                        points=num.array(data, dtype=num.float)))
+                        points=num.array(data, dtype=float)))
 
                     data = []
                 elif line.startswith(b' '):
@@ -335,7 +335,7 @@ class GSRM1(StrainRateDataset):
                 t = line.split()
                 data.append(list(map(float, t)))
 
-        arr = num.array(data, dtype=num.float)
+        arr = num.array(data, dtype=float)
 
         if region is not None:
             points = arr[:, 1::-1]

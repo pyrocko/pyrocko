@@ -738,7 +738,7 @@ qssp has been invoked as "%s"'''.lstrip() % (
         fns = self.config.get_output_filenames(self.tempdir)
         traces = {}
         for comp, fn in zip(self.config.components, fns):
-            data = num.loadtxt(fn, skiprows=1, dtype=num.float)
+            data = num.loadtxt(fn, skiprows=1, dtype=float)
             nsamples, ntraces = data.shape
             ntraces -= 1
             deltat = (data[-1, 0] - data[0, 0])/(nsamples-1)

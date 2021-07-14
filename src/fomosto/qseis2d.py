@@ -738,7 +738,7 @@ in the directory %s'''.lstrip() % (
     def get_traces(self):
 
         fn = self.config.get_output_filename(self.tempdir)
-        data = num.loadtxt(fn, skiprows=1, dtype=num.float)
+        data = num.loadtxt(fn, skiprows=1, dtype=float)
         nsamples, ntraces = data.shape
         deltat = (data[-1, 0] - data[0, 0]) / (nsamples - 1)
         toffset = data[0, 0]

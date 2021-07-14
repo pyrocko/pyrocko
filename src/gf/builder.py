@@ -17,7 +17,7 @@ from . import store
 
 
 def int_arr(*args):
-    return num.array(args, dtype=num.int)
+    return num.array(args, dtype=int)
 
 
 class Interrupted(store.StoreError):
