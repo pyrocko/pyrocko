@@ -7,11 +7,12 @@ Arch Linux with default Python 3.
 .. code-block:: bash
     :caption: **Arch Linux** (e.g. 2021.06.01)
 
-    sudo pacman -Syu git make gcc python python-setuptools \
+    sudo pacman -Syu git make gcc patch python python-setuptools \
         python-numpy python-scipy python-matplotlib \
-        python-pyqt5 qt5-webengine qt5-svg \
+        python-pyqt5 qt5-webengine qt5-svg qt5-webkit \
         python-cairo python-opengl python-progressbar \
-        python-requests python-yaml python-jinja
+        python-requests python-yaml python-jinja \
+        python-nose python-coverage
 
     cd ~/src/   # or wherever you keep your source packages
     git clone https://git.pyrocko.org/pyrocko/pyrocko.git pyrocko
