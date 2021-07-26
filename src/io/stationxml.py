@@ -163,6 +163,9 @@ class DummyAwareOptionalTimestamp(Object):
                         if year > this_year + 100:
                             return None  # StationXML contained a dummy date
 
+                        if year < 1903:  # for macOS, 1900-01-01 dummy dates
+                            return None
+
                     else:  # 32bit end of time is in 2038
                         if this_year < 2037 and year > 2037 or year < 1903:
                             return None  # StationXML contained a dummy date
