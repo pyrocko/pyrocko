@@ -267,12 +267,13 @@ def _request(
         itry += 1
         try:
             urlopen_ = opener.open if opener else urlopen
-            while True:
-                try:
-                    resp = urlopen_(req, **url_args)
-                    break
-                except TypeError:
-                    del url_args['context']  # context not avail before 3.4.3
+            try:
+                resp = urlopen_(req, **url_args)
+            except TypeError:
+                # context and cafile not avail before 3.4.3, 2.7.9
+                url_args.pop('context', None)
+                url_args.pop('cafile', None)
+                resp = urlopen_(req, **url_args)
 
             logger.debug('Response: %s' % resp.getcode())
             if resp.getcode() == 204:
