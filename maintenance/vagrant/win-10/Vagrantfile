@@ -6,8 +6,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
      vb.customize ["modifyvm", :id, "--memory", "4096"]
      vb.customize ["modifyvm", :id, "--cpus", "2"]
   end
-  config.vm.network :private_network, ip: '192.168.115.15'
-  config.vm.network :forwarded_port, guest: 22, host: 22015, id: 'ssh'
+  config.vm.network :private_network, ip: '192.168.115.17'
+  config.vm.network :forwarded_port, guest: 22, host: 22017, id: 'ssh'
 
   config.vm.guest = :windows
   config.vm.communicator = "winrm"
