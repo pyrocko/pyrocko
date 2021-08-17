@@ -1017,6 +1017,45 @@ class SubPile(TracesGroup):
         return s
 
 
+class Batch(object):
+    '''
+    Batch of waveforms from window wise data extraction.
+
+    Encapsulates state and results yielded for each window in window wise
+    waveform extraction with the :py:meth:`Pile.chopper` method (when the
+    `style='batch'` keyword argument set).
+
+    *Attributes:*
+
+    .. py:attribute:: tmin
+
+        Start of this time window.
+
+    .. py:attribute:: tmax
+
+        End of this time window.
+
+    .. py:attribute:: i
+
+        Index of this time window in sequence.
+
+    .. py:attribute:: n
+
+        Total number of time windows in sequence.
+
+    .. py:attribute:: traces
+
+        Extracted waveforms for this time window.
+    '''
+
+    def __init__(self, tmin, tmax, i, n, traces):
+        self.tmin = tmin
+        self.tmax = tmax
+        self.i = i
+        self.n = n
+        self.traces = traces
+
+
 class Pile(TracesGroup):
     '''
     Waveform archive lookup, data loading and caching infrastructure.
@@ -1192,7 +1231,8 @@ class Pile(TracesGroup):
             group_selector=None, trace_selector=None,
             want_incomplete=True, degap=True, maxgap=5, maxlap=None,
             keep_current_files_open=False, accessor_id=None,
-            snap=(round, round), include_last=False, load_data=True):
+            snap=(round, round), include_last=False, load_data=True,
+            style=None):
 
         '''
         Get iterator for shifting window wise data extraction from waveform
@@ -1228,8 +1268,11 @@ class Pile(TracesGroup):
         :param load_data: whether to load the waveform data. If set to
             ``False``, traces with no data samples, but with correct
             meta-information are returned
-        :returns: itererator yielding a list of :py:class:`pyrocko.trace.Trace`
-            objects for every extracted time window
+        :param style: set to ``'batch'`` to yield waveforms and information
+            about the chopper state as :py:class:`Batch` objects. By default
+            lists of :py:class:`pyrocko.trace.Trace` objects are yielded.
+        :returns: iterator providing extracted waveforms for each extracted
+            window. See ``style`` argument for details.
         '''
         if tmin is None:
             if self.tmin is None:
@@ -1254,13 +1297,11 @@ class Pile(TracesGroup):
 
         open_files = self.open_files[accessor_id]
 
-        iwin = 0
-        while True:
+        eps = tinc * 1e-6
+        nwin = int(((tmax - eps) - tmin) / tinc) + 1
+        for iwin in range(nwin):
             chopped = []
             wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)
-            eps = tinc*1e-6
-            if wmin >= tmax-eps:
-                break
 
             chopped, used_files = self.chop(
                 wmin-tpad, wmax+tpad, group_selector, trace_selector, snap,
@@ -1276,7 +1317,16 @@ class Pile(TracesGroup):
                 chopped, degap, maxgap, maxlap, want_incomplete, wmax, wmin,
                 tpad)
 
-            yield processed
+            if style == 'batch':
+                yield Batch(
+                    tmin=wmin,
+                    tmax=wmax,
+                    i=iwin,
+                    n=nwin,
+                    traces=processed)
+
+            else:
+                yield processed
 
             unused_files = open_files - used_files
 
@@ -1284,8 +1334,6 @@ class Pile(TracesGroup):
                 file = unused_files.pop()
                 file.drop_data()
                 open_files.remove(file)
-
-            iwin += 1
 
         if not keep_current_files_open:
             while open_files:

@@ -6,5 +6,7 @@
    .. autoclass:: Pile
       :members:
 
+   .. autoclass:: Batch
+      :members:
 
    .. autofunction:: make_pile
