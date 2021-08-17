@@ -70,20 +70,24 @@ escidoc:4098/IS_8.1_rev1.pdf">Understanding
     '''
     def setup(self):
 
-        self.set_name('STA LTA')
+        self.set_name('STA LTA Detector')
+
+        self.add_parameter(Param(
+            'Highpass [Hz]', 'highpass', None, 0.001, 1000.,
+            low_is_none=True))
+
+        self.add_parameter(Param(
+            'Lowpass [Hz]', 'lowpass', None, 0.001, 1000.,
+            high_is_none=True))
+
         self.add_parameter(Param(
             'Short Window [s]', 'swin', 30., 0.01, 2*h))
         self.add_parameter(Param(
             'Ratio',  'ratio', 3., 1.1, 20.))
         self.add_parameter(Param(
             'Level', 'level', 0.5, 0., 1.))
-        self.add_parameter(Param(
-            'Processing Block length (rel. to long window)', 'block_factor',
-            10., 2., 100.,))
         self.add_parameter(Switch(
             'Show trigger level traces', 'show_level_traces', False))
-        self.add_parameter(Switch(
-            'Apply to full dataset', 'apply_to_all', False))
         self.add_parameter(Choice(
             'Variant', 'variant', 'centered', ['centered', 'right']))
         self.add_parameter(Choice(
@@ -92,7 +96,15 @@ escidoc:4098/IS_8.1_rev1.pdf">Understanding
         self.add_parameter(
             Switch('Detect on sum trace', 'apply_to_sum', False))
 
+        self.add_trigger(
+            'Copy passband from Main', self.copy_passband)
+
         self.set_live_update(False)
+
+    def copy_passband(self):
+        viewer = self.get_viewer()
+        self.set_parameter('lowpass', viewer.lowpass)
+        self.set_parameter('highpass', viewer.highpass)
 
     def call(self):
         '''
@@ -106,50 +118,52 @@ escidoc:4098/IS_8.1_rev1.pdf">Understanding
         tpad = lwin
 
         data_pile = self.get_pile()
-        tmin, tmax = data_pile.get_tmin() + tpad, data_pile.get_tmax() - tpad
+
         viewer = self.get_viewer()
+        deltat_min = viewer.content_deltat_range()[0]
 
-        if not self.apply_to_all:
-            vtmin, vtmax = viewer.get_time_range()
-            tmin = max(vtmin, tmin)
-            tmax = min(vtmax, tmax)
-
-        tinc = min(lwin * self.block_factor, tmax-tmin)
+        tinc = max(lwin * 2., 500000. * deltat_min)
 
         show_level_traces = self.show_level_traces
 
-        if show_level_traces and tmax-tmin > lwin * 150:
-            self.error(
-                'Processing time window is longer than 50 x LTA window. '
-                'Turning off display of level traces.')
-            show_level_traces = False
+        nsamples_added = [0]
+
+        def update_sample_count(traces):
+            for tr in traces:
+                nsamples_added[0] += tr.data_len()
 
         markers = []
-        for traces in data_pile.chopper(
-                tmin=tmin, tmax=tmax, tinc=tinc, tpad=tpad,
+
+        for batch in self.chopper_selected_traces(
+                tinc=tinc, tpad=tpad,
                 want_incomplete=False,
+                fallback=True,
+                style='batch',
+                mode='visible',
+                progress='Calculating STA/LTA',
+                responsive=True,
+                marker_selector=lambda marker: marker.tmin != marker.tmax,
                 trace_selector=lambda x: not (x.meta and x.meta.get(
                     'tabu', False))):
 
             sumtrace = None
             isum = 0
-            for tr in traces:
-                if viewer.lowpass is not None:
-                    tr.lowpass(4, viewer.lowpass, nyquist_exception=True)
+            for tr in batch.traces:
+                if self.lowpass is not None:
+                    tr.lowpass(4, self.lowpass, nyquist_exception=True)
 
-                if viewer.highpass is not None:
-                    tr.highpass(4, viewer.highpass, nyquist_exception=True)
+                if self.highpass is not None:
+                    tr.highpass(4, self.highpass, nyquist_exception=True)
 
-                if self.variant == 'centered':
-                    tr.sta_lta_centered(
-                        swin, lwin,
-                        scalingmethod=scalingmethod_map[self.scalingmethod])
-                elif self.variant == 'right':
-                    tr.sta_lta_right(
-                        swin, lwin,
-                        scalingmethod=scalingmethod_map[self.scalingmethod])
+                sta_lta = {
+                    'centered': tr.sta_lta_centered,
+                    'right': tr.sta_lta_right}[self.variant]
 
-                tr.chop(tr.wmin, min(tr.wmax, tmax))
+                sta_lta(
+                    swin, lwin,
+                    scalingmethod=scalingmethod_map[self.scalingmethod])
+
+                tr.chop(batch.tmin, batch.tmax)
 
                 if not self.apply_to_sum:
                     markers.extend(trace_to_pmarkers(tr, self.level, swin))
@@ -165,7 +179,9 @@ escidoc:4098/IS_8.1_rev1.pdf">Understanding
                         ydata=num.zeros(ny))
 
                     sumtrace.set_codes(
-                        network='', station='SUM', location='cg', channel='')
+                        network='', station='SUM',
+                        location='cg', channel='')
+
                     sumtrace.meta = {'tabu': True}
 
                 sumtrace.add(tr, left=None, right=None)
@@ -179,12 +195,21 @@ escidoc:4098/IS_8.1_rev1.pdf">Understanding
                                           [('*', '*', '*', '*')]))
 
                 if show_level_traces:
+                    update_sample_count([sumtrace])
                     self.add_trace(sumtrace)
 
             self.add_markers(markers)
 
             if show_level_traces:
-                self.add_traces(traces)
+                update_sample_count(batch.traces)
+                self.add_traces(batch.traces)
+
+            if show_level_traces and nsamples_added[0] > 10000000:
+                self.error(
+                    'Limit reached. Turning off further display of level '
+                    'traces to prevent memory exhaustion.')
+
+                show_level_traces = False
 
 
 def trace_to_pmarkers(tr, level, swin, nslc_ids=None):
