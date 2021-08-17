@@ -12,6 +12,7 @@ from __future__ import absolute_import
 
 import os
 import sys
+import time
 import logging
 import traceback
 import tempfile
@@ -179,6 +180,7 @@ class Snuffling(object):
         self._cli_params = {}
         self._filename = None
         self._force_panel = False
+        self._call_in_progress = False
 
     def setup(self):
         '''
@@ -915,7 +917,8 @@ class Snuffling(object):
             raise Exception('invalid mode argument')
 
     def chopper_selected_traces(self, fallback=False, marker_selector=None,
-                                mode='inview', main_bandpass='False',
+                                mode='inview', main_bandpass=False,
+                                progress=None, responsive=False,
                                 *args, **kwargs):
         '''
         Iterate over selected traces.
@@ -927,17 +930,38 @@ class Snuffling(object):
         marker. Additional arguments to the chopper are handed over from
         *\\*args* and *\\*\\*kwargs*.
 
-        :param fallback: if ``True``, if no selection has been marked, use the
-                content currently visible in the viewer.
-        :param marker_selector: if not ``None`` a callback to filter markers.
-        :param mode: set to ``'inview'`` (default) to only include selections
-                currently shown in the viewer (excluding traces accessible
-                through vertical scrolling), ``'visible'`` to include all
-                traces not currenly hidden by hide or quick-select commands
-                (including traces accessible through vertical scrolling), or
-                ``'all'`` to disable any restrictions.
-        :param main_bandpass: if ``True``, apply main control high- and lowpass
-                filters to traces.
+        :param fallback:
+            If ``True``, if no selection has been marked, use the content
+            currently visible in the viewer.
+
+        :param marker_selector:
+            If not ``None`` a callback to filter markers.
+
+        :param mode:
+            Set to ``'inview'`` (default) to only include selections currently
+            shown in the viewer (excluding traces accessible through vertical
+            scrolling), ``'visible'`` to include all traces not currently
+            hidden by hide or quick-select commands (including traces
+            accessible through vertical scrolling), or ``'all'`` to disable any
+            restrictions.
+
+        :param main_bandpass:
+            If ``True``, apply main control high- and lowpass filters to
+            traces. Note: use with caution. Processing is fixed to use 4th
+            order Butterworth highpass and lowpass and the signal is always
+            demeaned before filtering. FFT filtering, rotation, demean and
+            bandpass settings from the graphical interface are not respected
+            here. Padding is not automatically adjusted so results may include
+            artifacts.
+
+        :param progress:
+            If given a string a progress bar is shown to the user. The string
+            is used as the label for the progress bar.
+
+        :param responsive:
+            If set to ``True``, occasionally allow UI events to be processed.
+            If used in combination with ``progress``, this allows the iterator
+            to be aborted by the user.
         '''
 
         try:
@@ -958,6 +982,8 @@ class Snuffling(object):
             trace_selector_arg = kwargs.pop('trace_selector', rtrue)
             trace_selector_viewer = self.get_viewer_trace_selector(mode)
 
+            style_arg = kwargs.pop('style', None)
+
             if main_bandpass:
                 def apply_filters(traces):
                     for tr in traces:
@@ -970,27 +996,73 @@ class Snuffling(object):
                 def apply_filters(traces):
                     return traces
 
+            pb = viewer.parent().get_progressbars()
+
+            time_last = [time.time()]
+
+            def update_progress(label, batch):
+                time_now = time.time()
+                if responsive:
+                    # start processing events with one second delay, so that
+                    # e.g. cleanup actions at startup do not cause track number
+                    # changes etc.
+                    if time_last[0] + 1. < time_now:
+                        qw.qApp.processEvents()
+                else:
+                    # redraw about once a second
+                    if time_last[0] + 1. < time_now:
+                        viewer.repaint()
+
+                    time_last[0] = time.time()  # use time after drawing
+
+                abort = pb.set_status(
+                    label, batch.i*100./batch.n, responsive)
+                abort |= viewer.window().is_closing()
+
+                return abort
+
             if markers:
-                for marker in markers:
-                    if not marker.nslc_ids:
-                        trace_selector_marker = rtrue
-                    else:
-                        def trace_selector_marker(tr):
-                            return marker.match_nslc(tr.nslc_id)
+                for imarker, marker in enumerate(markers):
+                    try:
+                        if progress:
+                            label = '%s: %i/%i' % (
+                                progress, imarker+1, len(markers))
 
-                    def trace_selector(tr):
-                        return trace_selector_arg(tr) \
-                            and trace_selector_viewer(tr) \
-                            and trace_selector_marker(tr)
+                            pb.set_status(label, 0, responsive)
 
-                    for traces in pile.chopper(
-                            tmin=marker.tmin,
-                            tmax=marker.tmax,
-                            trace_selector=trace_selector,
-                            *args,
-                            **kwargs):
+                        if not marker.nslc_ids:
+                            trace_selector_marker = rtrue
+                        else:
+                            def trace_selector_marker(tr):
+                                return marker.match_nslc(tr.nslc_id)
 
-                        yield apply_filters(traces)
+                        def trace_selector(tr):
+                            return trace_selector_arg(tr) \
+                                and trace_selector_viewer(tr) \
+                                and trace_selector_marker(tr)
+
+                        for batch in pile.chopper(
+                                tmin=marker.tmin,
+                                tmax=marker.tmax,
+                                trace_selector=trace_selector,
+                                style='batch',
+                                *args,
+                                **kwargs):
+
+                            if progress:
+                                abort = update_progress(label, batch)
+                                if abort:
+                                    return
+
+                            batch.traces = apply_filters(batch.traces)
+                            if style_arg == 'batch':
+                                yield batch
+                            else:
+                                yield batch.traces
+
+                    finally:
+                        if progress:
+                            pb.set_status(label, 100., responsive)
 
             elif fallback:
                 def trace_selector(tr):
@@ -998,21 +1070,52 @@ class Snuffling(object):
                         and trace_selector_viewer(tr)
 
                 tmin, tmax = viewer.get_time_range()
-                for traces in pile.chopper(
-                        tmin=tmin,
-                        tmax=tmax,
-                        trace_selector=trace_selector,
-                        *args,
-                        **kwargs):
 
-                    yield apply_filters(traces)
+                if not pile.is_empty():
+                    ptmin = pile.get_tmin()
+                    tpad = kwargs.get('tpad', 0.0)
+                    if ptmin > tmin:
+                        tmin = ptmin + tpad
+                    ptmax = pile.get_tmax()
+                    if ptmax < tmax:
+                        tmax = ptmax - tpad
+
+                try:
+                    if progress:
+                        label = progress
+                        pb.set_status(label, 0, responsive)
+
+                    for batch in pile.chopper(
+                            tmin=tmin,
+                            tmax=tmax,
+                            trace_selector=trace_selector,
+                            style='batch',
+                            *args,
+                            **kwargs):
+
+                        if progress:
+                            abort = update_progress(label, batch)
+
+                            if abort:
+                                return
+
+                        batch.traces = apply_filters(batch.traces)
+
+                        if style_arg == 'batch':
+                            yield batch
+                        else:
+                            yield batch.traces
+
+                finally:
+                    if progress:
+                        pb.set_status(label, 100., responsive)
+
             else:
                 raise NoTracesSelected()
 
         except NoViewerSet:
             pile = self.get_pile()
-            for traces in pile.chopper(*args, **kwargs):
-                yield traces
+            return pile.chopper(*args, **kwargs)
 
     def get_selected_time_range(self, fallback=False):
         '''
@@ -1561,7 +1664,13 @@ class Snuffling(object):
         self._markers = []
 
     def check_call(self):
+
+        if self._call_in_progress:
+            self.show_message('error', 'Previous action still in progress.')
+            return
+
         try:
+            self._call_in_progress = True
             self.call()
             return 0
 
@@ -1572,9 +1681,15 @@ class Snuffling(object):
             logger.error('%s: Snuffling action failed' % self._name)
             return 1
 
-        except Exception:
-            logger.exception(
-                '%s: Snuffling action raised an exception' % self._name)
+        except Exception as e:
+            message = '%s: Snuffling action raised an exception: %s' % (
+                self._name, str(e))
+
+            logger.exception(message)
+            self.show_message('error', message)
+
+        finally:
+            self._call_in_progress = False
 
     def call(self):
         '''
