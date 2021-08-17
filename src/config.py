@@ -64,9 +64,10 @@ class ConfigBase(Object):
 class SnufflerConfig(ConfigBase):
     visible_length_setting = List.T(
         VisibleLengthSetting.T(),
-        default=[VisibleLengthSetting(key='Short', value=6000.),
-                 VisibleLengthSetting(key='Medium', value=20000.),
-                 VisibleLengthSetting(key='Long', value=60000.)])
+        default=[VisibleLengthSetting(key='Short', value=20000.),
+                 VisibleLengthSetting(key='Medium', value=60000.),
+                 VisibleLengthSetting(key='Long', value=120000.),
+                 VisibleLengthSetting(key='Extra Long', value=600000.)])
     phase_key_mapping = Dict.T(
         String.T(), String.T(), default=default_phase_key_mapping)
     demean = Bool.T(default=True)
