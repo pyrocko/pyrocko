@@ -2,10 +2,16 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
+
 from __future__ import absolute_import
-from pyrocko.gui.snuffling import Snuffling, Param
-from pyrocko.trace import Trace
+
+import time
+from collections import defaultdict
+
 import numpy as num
+
+from pyrocko.gui.snuffling import Snuffling, Param, Switch
+from pyrocko.trace import Trace, NoData
 
 
 class RootMeanSquareSnuffling(Snuffling):
@@ -20,9 +26,30 @@ class RootMeanSquareSnuffling(Snuffling):
         '''
 
         self.set_name('Block RMS')
+
+        self.add_parameter(Param(
+            'Highpass [Hz]', 'highpass', None, 0.001, 1000.,
+            low_is_none=True))
+
+        self.add_parameter(Param(
+            'Lowpass [Hz]', 'lowpass', None, 0.001, 1000.,
+            high_is_none=True))
+
         self.add_parameter(Param(
             'Block Length [s]', 'block_length', 100., 0.1, 3600.))
+
+        self.add_parameter(Switch(
+            'Group channels', 'group_channels', True))
+
+        self.add_trigger(
+            'Copy passband from Main', self.copy_passband)
+
         self.set_live_update(False)
+
+    def copy_passband(self):
+        viewer = self.get_viewer()
+        self.set_parameter('lowpass', viewer.lowpass)
+        self.set_parameter('highpass', viewer.highpass)
 
     def call(self):
         '''
@@ -33,50 +60,90 @@ class RootMeanSquareSnuffling(Snuffling):
 
         tinc = self.block_length
 
-        tmin, tmax = self.get_selected_time_range(fallback=True)
-        n = int((tmax-tmin)/tinc)
+        tpad = 0.0
+        for freq in (self.highpass, self.lowpass):
+            if freq is not None:
+                tpad = max(tpad, 1./freq)
 
-        rms_by_nslc = {}
-        for traces in self.chopper_selected_traces(
+        targets = {}
+        tlast = time.time()
+        for batch in self.chopper_selected_traces(
                 tinc=tinc,
+                tpad=tpad,
                 want_incomplete=False,
+                style='batch',
+                mode='visible',
+                progress='Calculating RMS',
+                responsive=True,
                 fallback=True):
 
-            for tr in traces:
+            tcur = batch.tmin + 0.5 * tinc
 
-                # ignore the block if it extends past the region of interest
-                if tr.tmax > tmax:
-                    continue
+            if self.group_channels:
+                def grouping(nslc):
+                    return nslc[:3] + (nslc[3][:-1],)
+
+            else:
+                def grouping(nslc):
+                    return nslc
+
+            rms = defaultdict(list)
+            for tr in batch.traces:
 
                 # don't work traces produced by this (and other) snuffling
                 if tr.meta and 'tabu' in tr.meta and tr.meta['tabu']:
                     continue
 
-                # create a trace of required length if none has been
-                # initialized yet
-                if tr.nslc_id not in rms_by_nslc:
-                    rms_by_nslc[tr.nslc_id] = Trace(
-                        network=tr.network,
-                        station=tr.station,
-                        location=tr.location,
-                        channel=tr.channel+'-RMS',
-                        tmin=tmin + 0.5*tinc,
+                if self.lowpass is not None:
+                    tr.lowpass(4, self.lowpass, nyquist_exception=True)
+
+                if self.highpass is not None:
+                    tr.highpass(4, self.highpass, nyquist_exception=True)
+
+                try:
+                    tr.chop(batch.tmin, batch.tmax)
+
+                    rms[grouping(tr.nslc_id)].append(
+                        num.sqrt(num.sum(tr.ydata**2)/tr.ydata.size))
+
+                except NoData:
+                    continue
+
+            tnow = time.time()
+
+            insert_now = False
+            if tnow > tlast + 0.8:
+                insert_now = True
+                tlast = tnow
+
+            for key, values in rms.items():
+                target = targets.get(key, None)
+
+                if not target \
+                        or abs((target.tmax + tinc) - tcur) > 0.01 * tinc \
+                        or insert_now:
+
+                    if target:
+                        self.add_trace(target)
+
+                    target = targets[key] = Trace(
+                        network=key[0],
+                        station=key[1],
+                        location=key[2],
+                        channel=key[3] + '-RMS',
+                        tmin=tcur,
                         deltat=tinc,
-                        ydata=num.zeros(n, dtype=float),
+                        ydata=num.zeros(0, dtype=float),
                         meta={'tabu': True})
 
-                # create and insert the current sample
-                i = int(round((tr.tmin - tmin)/tinc))
-                if 0 <= i and i < n:
-                    tr.ydata = num.asarray(tr.ydata, float)
-                    tr.ydata -= num.mean(tr.ydata)
-                    value = num.sqrt(num.sum(tr.ydata**2)/tr.ydata.size)
+                value = num.atleast_1d(
+                    num.sqrt(num.sum(num.array(values, dtype=num.float)**2)))
 
-                    rms_by_nslc[tr.nslc_id].ydata[i] = value
+                targets[key].append(value)
 
         # add the newly created traces to the viewer
-        if rms_by_nslc.values():
-            self.add_traces(list(rms_by_nslc.values()))
+        if targets.values():
+            self.add_traces(list(targets.values()))
 
 
 def __snufflings__():
