@@ -218,7 +218,21 @@ acceptable_tincs = num.array([
 
 
 working_system_time_range = \
-    pyrocko.util.working_system_time_range(1950, 2030)
+    pyrocko.util.working_system_time_range()
+
+initial_time_range = []
+
+try:
+    initial_time_range.append(
+        calendar.timegm((1950, 1, 1, 0, 0, 0)))
+except Exception:
+    initial_time_range.append(working_system_time_range[0])
+
+try:
+    initial_time_range.append(
+        calendar.timegm((time.gmtime().tm_year + 11, 1, 1, 0, 0, 0)))
+except Exception:
+    initial_time_range.append(working_system_time_range[1])
 
 
 def is_working_time(t):
@@ -434,7 +448,7 @@ class TimeScaler(pyrocko.plot.AutoScaler):
                 mi, working_system_time_range[0]+syear*1.5))
 
             incy = int(round(inc/syear))
-            y = int(num.floor(time.gmtime(mi_year)[0]/incy)*incy)
+            y = int(num.ceil(time.gmtime(mi_year)[0]/incy)*incy)
 
             while True:
                 tick = calendar.timegm((y, 1, 1, 0, 0, 0))
@@ -1668,10 +1682,10 @@ def MakePileViewerMainClass(base):
 
         def set_time_range(self, tmin, tmax):
             if tmin is None:
-                tmin = working_system_time_range[0]
+                tmin = initial_time_range[0]
 
             if tmax is None:
-                tmax = working_system_time_range[1]
+                tmax = initial_time_range[1]
 
             if tmin > tmax:
                 tmin, tmax = tmax, tmin
@@ -2537,9 +2551,9 @@ def MakePileViewerMainClass(base):
             pile = self.get_pile()
             tmin, tmax = pile.get_tmin(), pile.get_tmax()
             if tmin is None:
-                tmin = working_system_time_range[0]
+                tmin = initial_time_range[0]
             if tmax is None:
-                tmax = working_system_time_range[1]
+                tmax = initial_time_range[1]
 
             return tmin, tmax
 
