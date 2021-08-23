@@ -107,6 +107,10 @@ typedef struct {
     double t;
     int fix;
     int nsvs;
+    double lat;
+    double lon;
+    double elevation;
+    double temp;
 } gps_tag_t;
 
 typedef struct {
@@ -199,8 +203,10 @@ datacube_error_t int32_array_append(int32_array_t *arr, int32_t x) {
     return SUCCESS;
 }
 
-datacube_error_t gps_tag_array_append(gps_tag_array_t *arr, size_t ipos,
-                              double t, int fix, int nsvs) {
+datacube_error_t gps_tag_array_append(
+        gps_tag_array_t *arr, size_t ipos,
+        double t, int fix, int nsvs,
+        double lat, double lon, double elevation, double temp) {
     gps_tag_t *p, *el;
     size_t n;
     if (arr->fill == arr->size) {
@@ -219,8 +225,26 @@ datacube_error_t gps_tag_array_append(gps_tag_array_t *arr, size_t ipos,
     el->fix = fix;
     el->nsvs = nsvs;
 
+    el->lat = lat;
+    el->lon = lon;
+    el->elevation = elevation;
+    el->temp = temp;
+
     arr->fill++;
 
+    return SUCCESS;
+}
+
+
+datacube_error_t parse_gps_xpv_mpv_header(
+    char *header, double *temp, double *lat, double *lon, double *elevation
+) {
+    header += 4;
+    if (4 != sscanf(header, "%5lf%8lf%9lf%6lf", temp, lat, lon, elevation)) {
+        return BAD_GPS_BLOCK;
+    }
+    lat[0] /= 100000;
+    lon[0] /= 100000;
     return SUCCESS;
 }
 
@@ -510,7 +534,7 @@ datacube_error_t datacube_read_gps_block(reader_t *reader) {
     char *b;
     struct tm tm;
     time_t t;
-    double tgps, tshift;
+    double tgps, tshift, lat, lon, elevation, temp;
     int msecs;
     int gps_utc_time_offset;
     int current_fix_source;
@@ -518,7 +542,6 @@ datacube_error_t datacube_read_gps_block(reader_t *reader) {
     int gps_utc_offset_flag;
 
     err = datacube_read(reader, 79);
-
     reader->buf_fill = 0;
     if (reader->ipos_gps == (size_t)(-1)) {
         return SUCCESS;
@@ -564,9 +587,30 @@ datacube_error_t datacube_read_gps_block(reader_t *reader) {
     tgps = t + tshift / 1000000.0 - reader->tdelay +
         ((gps_utc_offset_flag == 0) ? 0 : gps_utc_time_offset);
 
+    b = strstr(reader->buf, ">XPV");
+    if (b != NULL) {
+        err = parse_gps_xpv_mpv_header(b, &temp, &lat, &lon, &elevation);
+        if (err != SUCCESS) {
+            return err;
+        }
+        goto finish;
+    }
+
+    b = strstr(reader->buf, ">MPV");
+    if (b != NULL) {
+        err = parse_gps_xpv_mpv_header(b, &temp, &lat, &lon, &elevation);
+        if (err != SUCCESS) {
+            return err;
+        }
+        goto finish;
+    }
+
+    finish:
     if (current_fix_source != 0 || number_usable_svs >= 1) {
-        err = gps_tag_array_append(&reader->gps_tags, reader->ipos_gps, tgps,
-                current_fix_source, number_usable_svs);
+        err = gps_tag_array_append(
+                &reader->gps_tags, reader->ipos_gps, tgps,
+                current_fix_source, number_usable_svs,
+                lat, lon, elevation, temp);
 
         if (err != SUCCESS) {
             return err;
@@ -959,7 +1003,7 @@ static PyObject* transfer_arrays(reader_t *reader) {
 
 static PyObject* gps_tags_to_pytup(reader_t *reader) {
     PyObject *out;
-    PyObject *aipos, *at, *afix, *ansvs;
+    PyObject *aipos, *at, *afix, *ansvs, *lats, *lons, *elevations, *temps;
     size_t n;
     size_t i;
     npy_intp array_dims[1];
@@ -971,6 +1015,12 @@ static PyObject* gps_tags_to_pytup(reader_t *reader) {
     at = PyArray_SimpleNew(1, array_dims, NPY_FLOAT64);
     afix = PyArray_SimpleNew(1, array_dims, NPY_INT8);
     ansvs = PyArray_SimpleNew(1, array_dims, NPY_INT8);
+
+    lats = PyArray_SimpleNew(1, array_dims, NPY_FLOAT64);
+    lons = PyArray_SimpleNew(1, array_dims, NPY_FLOAT64);
+    elevations = PyArray_SimpleNew(1, array_dims, NPY_FLOAT64);
+    temps = PyArray_SimpleNew(1, array_dims, NPY_FLOAT64);
+
     if (aipos == NULL || at == NULL || afix == NULL || ansvs == NULL) {
         return NULL;
     }
@@ -980,8 +1030,13 @@ static PyObject* gps_tags_to_pytup(reader_t *reader) {
         ((double*)PyArray_DATA((PyArrayObject*)at))[i] = reader->gps_tags.elements[i].t;
         ((int8_t*)PyArray_DATA((PyArrayObject*)afix))[i] = reader->gps_tags.elements[i].fix;
         ((int8_t*)PyArray_DATA((PyArrayObject*)ansvs))[i] = reader->gps_tags.elements[i].nsvs;
+
+        ((double*)PyArray_DATA((PyArrayObject*)lats))[i] = reader->gps_tags.elements[i].lat;
+        ((double*)PyArray_DATA((PyArrayObject*)lons))[i] = reader->gps_tags.elements[i].lon;
+        ((double*)PyArray_DATA((PyArrayObject*)elevations))[i] = reader->gps_tags.elements[i].elevation;
+        ((double*)PyArray_DATA((PyArrayObject*)temps))[i] = reader->gps_tags.elements[i].temp;
     }
-    out = Py_BuildValue("(NNNN)", aipos, at, afix, ansvs);
+    out = Py_BuildValue("(NNNNNNNN)", aipos, at, afix, ansvs, lats, lons, elevations, temps);
     return out;
 }
 

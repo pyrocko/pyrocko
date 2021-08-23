@@ -16,7 +16,7 @@ from pyrocko.guts import Object, Int, String, Timestamp
 
 from . import io_common
 
-logger = logging.getLogger('pyrocko.io.datacube')
+logger = logging.getLogger(__name__)
 
 N_GPS_TAGS_WANTED = 200  # must match definition in datacube_ext.c
 
@@ -180,6 +180,91 @@ def analyse_gps_tags(header, gps_tags, offset, nsamples):
         tmax = tmin + (nsamples - 1) * deltat
         icontrol, tcontrol = None, None
         return tmin, tmax, icontrol, tcontrol, None
+
+
+def plot_gnss_location_timeline(fn):
+    from datetime import datetime
+
+    from matplotlib import pyplot as plt
+
+    fig, axes = plt.subplots(3, 1)
+
+    header, gps_tags, nsamples = get_time_infos(fn)
+    ipos, time, fix, nsvs, lats, lons, elevations, temps = gps_tags
+
+    t = num.array([datetime.utcfromtimestamp(t) for t in time])
+
+    lats_median = num.median(lats)
+    lons_median = num.median(lons)
+
+    lats -= lats_median
+    lons -= lons_median
+
+    vmin = min(lats.min(), lons.min()) * 1.1
+    vmax = max(lats.max(), lons.max()) * 1.1
+
+    for ax, data in zip(axes, (lats, lons, elevations)):
+        ax.grid(alpha=.3)
+        ax.scatter(t, data, s=6)
+        ax.axhline(num.median(data), c='k', ls='--', alpha=.4)
+
+    ax_lat = axes[0]
+    ax_lon = axes[1]
+    ax_elev = axes[2]
+
+    ax_lat.set_ylabel('Latitude [°]')
+    ax_lon.set_ylabel('Longitude [°]')
+    ax_elev.set_ylabel('Elevation [m]')
+
+    ax_lat.text(0.01, 0.05, 'Relative to %.5f°' % lats_median,
+                transform=ax_lat.transAxes)
+    ax_lon.text(0.01, 0.05, 'Relative to %.5f°' % lons_median,
+                transform=ax_lon.transAxes)
+
+    ax_lat.set_xticklabels([])
+    ax_lon.set_xticklabels([])
+    ax_lat.set_ylim(vmin, vmax)
+    ax_lon.set_ylim(vmin, vmax)
+
+    ax_elev.set_xlabel('Date')
+    plt.show()
+
+
+def extract_stations(fns):
+    import io
+    import sys
+    from pyrocko.model import Station
+    from pyrocko.guts import dump_all
+
+    stations = {}
+
+    for fn in fns:
+        sta_name = os.path.splitext(fn)[1].lstrip('.')
+        if sta_name in stations:
+            logger.warning('Cube %s already in list!', sta_name)
+            continue
+
+        header, gps_tags, nsamples = get_time_infos(fn)
+        ipos, t, fix, nsvs, lats, lons, elevations, temps = gps_tags
+
+        lat_median = num.median(lats)
+        lon_median = num.median(lons)
+        elevation_median = num.median(elevations)
+
+        sta = Station(
+            network='',
+            station=sta_name,
+            name=sta_name,
+            location='',
+            lat=lat_median,
+            lon=lon_median,
+            elevation=elevation_median
+        )
+        stations[sta_name] = sta
+
+    f = io.BytesIO()
+    dump_all(stations.values(), stream=f)
+    sys.stdout.write(f.getvalue().decode())
 
 
 def plot_timeline(fns):
@@ -441,7 +526,7 @@ def get_extended_timing_context(fn):
             if num.sum(gps_tags[2]) > 0:
                 break
 
-    ipos, t, fix, nsvs = [num.concatenate(x) for x in zip(*aggregated)]
+    ipos, t, fix, nsvs, *_ = [num.concatenate(x) for x in zip(*aggregated)]
 
 #    return ipos, t, fix, nsvs, header, ioff, nsamples_total
     return ipos, t, fix, nsvs, header, 0, nsamples_base
@@ -600,9 +685,22 @@ def detect(first512):
 
 
 if __name__ == '__main__':
-    import sys
-    fns = sys.argv[1:]
-    if len(fns) > 1:
-        plot_timeline(fns)
-    else:
-        plot_timeline(fns[0])
+    import argparse
+    parser = argparse.ArgumentParser(description='Datacube reader')
+
+    parser.add_argument(
+        'action', choices=['timeline', 'gnss', 'stations'],
+        help='Action')
+    parser.add_argument(
+        'files', nargs='+')
+
+    args = parser.parse_args()
+    if args.action == 'timeline':
+        plot_timeline(args.files)
+
+    elif args.action == 'gnss':
+        for fn in args.files:
+            plot_gnss_location_timeline(fn)
+
+    elif args.action == 'stations':
+        extract_stations(args.files)
