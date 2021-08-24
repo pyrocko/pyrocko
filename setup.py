@@ -307,7 +307,7 @@ class CustomInstallCommand(install):
                 and sys.executable \
                 and not is_windows:
 
-            target = os.path.join(self.install_scripts, 'pyrocko-python.exe')
+            target = os.path.join(self.install_scripts, 'pyrocko-python')
             if os.path.exists(target):
                 os.unlink(target)
 
