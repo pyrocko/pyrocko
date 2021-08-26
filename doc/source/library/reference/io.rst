@@ -30,9 +30,7 @@
     pyrocko.io.stationxml
     pyrocko.io.suds
     pyrocko.io.yaff
-
-
-
+    pyrocko.io.tdms_idas
 
 .. toctree::
     :maxdepth: 2
@@ -58,6 +56,4 @@
     io/stationxml
     io/suds
     io/yaff
-
-
-
+    io/tdms_idas
