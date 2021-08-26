@@ -16,7 +16,7 @@ from pyrocko.guts import StringChoice, Float, List, Bool
 from pyrocko.gui.marker import PhaseMarker, EventMarker
 from pyrocko import gf, model, util, trace, io
 from pyrocko.response import DifferentiationResponse
-from pyrocko.io_common import FileSaveError
+from pyrocko.io.io_common import FileSaveError
 from pyrocko import pile
 
 from ..station import StationGenerator, RandomStationGenerator
