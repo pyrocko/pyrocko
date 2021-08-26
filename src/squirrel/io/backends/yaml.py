@@ -21,7 +21,11 @@ def provided_formats():
 
 
 def detect_pyrocko_yaml(first512):
-    first512 = first512.decode('utf-8')
+    try:
+        first512 = first512.decode('utf-8')
+    except UnicodeDecodeError:
+        return False
+
     for line in first512.splitlines():
         if line.startswith('--- !pf.'):
             return True

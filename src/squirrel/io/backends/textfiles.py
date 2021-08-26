@@ -19,7 +19,11 @@ def provided_formats():
 
 
 def detect_pyrocko_stations(first512):
-    first512 = first512.decode('utf-8')
+    try:
+        first512 = first512.decode('utf-8')
+    except UnicodeDecodeError:
+        return False
+
     for line in first512.splitlines():
         t = line.split(None, 5)
         if len(t) in (5, 6):
@@ -50,7 +54,11 @@ rake2 duration time tags moment
 
 
 def detect_pyrocko_events(first512):
-    first512 = first512.decode('utf-8')
+    try:
+        first512 = first512.decode('utf-8')
+    except UnicodeDecodeError:
+        return False
+
     lines = first512.splitlines()[:-1]
     ok = 0
     for line in lines:
