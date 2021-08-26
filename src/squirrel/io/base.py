@@ -13,11 +13,12 @@ from pyrocko.io_common import FileLoadError
 from pyrocko.progress import progress
 
 from .backends import \
-    mseed, sac, datacube, stationxml, textfiles, virtual, yaml
+    mseed, sac, datacube, stationxml, textfiles, virtual, yaml, tdms_idas
 
 from ..model import to_kind_ids
 
-backend_modules = [mseed, sac, datacube, stationxml, textfiles, virtual, yaml]
+backend_modules = [
+    mseed, sac, datacube, stationxml, textfiles, virtual, yaml, tdms_idas]
 
 
 logger = logging.getLogger('pyrocko.sqirrel.io')
