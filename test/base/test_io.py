@@ -18,7 +18,6 @@ from pyrocko.io import mseed, trace, util, suds, quakeml
 from .. import common
 
 abc = 'abcdefghijklmnopqrstuvwxyz'
-NTF = tempfile.NamedTemporaryFile
 op = os.path
 
 
@@ -212,12 +211,13 @@ class IOTestCase(unittest.TestCase):
                 mseed_bytes = get_bytes(
                     [tr],
                     record_length=record_length, steim=2)
-                with tempfile.NamedTemporaryFile('wb') as f:
-                    f.write(mseed_bytes)
-                    f.flush()
 
-                    ltr = io.load(f.name, format='mseed')[0]
-                    num.testing.assert_equal(tr.ydata, ltr.ydata)
+                fn = os.path.join(self.tmpdir, 'mseed_bytes')
+                with open(fn, 'wb') as f:
+                    f.write(mseed_bytes)
+
+                ltr = io.load(fn, format='mseed')[0]
+                num.testing.assert_equal(tr.ydata, ltr.ydata)
 
     def testMSeedAppend(self):
         c = '12'
@@ -235,10 +235,11 @@ class IOTestCase(unittest.TestCase):
             c, c, c, c,
             ydata=get_ydata(), tmin=0. + nsample*deltat, deltat=deltat)
 
-        with tempfile.NamedTemporaryFile('wb') as f:
-            io.save([tr1], f.name)
-            io.save([tr2], f.name, append=True)
-            tr_load = io.load(f.name)[0]
+        fn = os.path.join(self.tmpdir, 'mseed_append')
+        io.save([tr1], fn)
+        io.save([tr2], fn, append=True)
+
+        tr_load = io.load(fn)[0]
 
         num.testing.assert_equal(
             tr_load.ydata, num.concatenate([tr1.ydata, tr2.ydata]))
@@ -257,22 +258,22 @@ class IOTestCase(unittest.TestCase):
             c, c, c, c,
             ydata=get_ydata(), tmin=0., deltat=deltat)
 
-        with tempfile.NamedTemporaryFile('wb') as f:
-            io.save([tr1], f.name, record_length=512)
+        fn = os.path.join(self.tmpdir, 'mseed_offset')
+        io.save([tr1], fn, record_length=512)
 
-            trs = tuple(iload(f.name, offset=0, segment_size=512))
+        trs = tuple(iload(fn, offset=0, segment_size=512))
 
-            trs_nsamples = sum(tr.ydata.size for tr in trs)
-            assert nsample == trs_nsamples
-            assert len(trs) == os.path.getsize(f.name) // 512
+        trs_nsamples = sum(tr.ydata.size for tr in trs)
+        assert nsample == trs_nsamples
+        assert len(trs) == os.path.getsize(fn) // 512
 
-            trs = [tr for tr in iload(
-                    f.name,
-                    offset=512,
-                    segment_size=512,
-                    nsegments=1)]
-            assert len(trs) == 1
-            assert trs[0].tmin != 0.
+        trs = [tr for tr in iload(
+                fn,
+                offset=512,
+                segment_size=512,
+                nsegments=1)]
+        assert len(trs) == 1
+        assert trs[0].tmin != 0.
 
     def testReadSEGY(self):
         fpath = common.test_data_file('test2.segy')
