@@ -434,7 +434,7 @@ static void copy_memory(char *record, int reclen, void *mem)
     MemoryInfo *info = (MemoryInfo *)mem;
     if (memcpy(info->head, record, reclen) == NULL)
         fprintf(stderr, "Could not write to memory\n");
-    info->head = (void *)(char *)info->head + reclen;
+    info->head = (void *)((char *)info->head + reclen);
     info->nbytes_written += (size_t)reclen;
 }
 
