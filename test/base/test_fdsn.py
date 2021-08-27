@@ -137,12 +137,12 @@ class FDSNTestCase(unittest.TestCase):
     def test_response(self, ntest=None):
         tmin = stt('2014-01-01 00:00:00')
         tmax = stt('2014-01-02 00:00:00')
-        #LD.PAL
-        #SC.Y22A..UHZ
+        # LD.PAL
+        # SC.Y22A..UHZ
         sx = fdsn.station(
             site='iris',
-            #network='II',
-            #station='BFZ,ZKR',
+            # network='II',
+            # station='BFZ,ZKR',
             network='GE',
             channel='??Z',
             startbefore=tmin,
@@ -186,7 +186,7 @@ class FDSNTestCase(unittest.TestCase):
                 nslc, timespan=(tmin, tmax),
                 fake_input_units='M/S', stages=stages)
 
-            #print(sxr)
+            # print(sxr)
             print(sxr.summary_stages())
 
             resp_er = trace.Evalresp(
