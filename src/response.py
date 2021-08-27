@@ -404,28 +404,28 @@ class ButterworthResponse(FrequencyResponse):
 
     def to_digital(self, deltat):
         b, a = signal.butter(
-            int(self.order), float(self.corner)*2.*deltat,
+            self.order, self.corner*2.*deltat,
             self.type, analog=False)
 
         return DigitalFilterResponse(b, a, deltat)
 
     def to_analog(self):
         b, a = signal.butter(
-            int(self.order), float(self.corner*2.*math.pi),
+            self.order, self.corner*2.*math.pi,
             self.type, analog=True)
 
         return AnalogFilterResponse(b, a)
 
     def to_digital_polezero(self, deltat):
         z, p, k = signal.butter(
-            self.order, self.corner,
-            btype=self.type, analog=False, output='zpk', fs=1.0/deltat)
+            self.order, self.corner*2*deltat,
+            btype=self.type, analog=False, output='zpk')
 
         return DigitalPoleZeroResponse(z, p, k, deltat)
 
     def evaluate(self, freqs):
         b, a = signal.butter(
-            int(self.order), float(self.corner*2.*math.pi),
+            self.order, self.corner*2.*math.pi,
             self.type, analog=True)
 
         return signal.freqs(b, a, freqs*2.*math.pi)[1]

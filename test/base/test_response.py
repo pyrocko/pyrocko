@@ -182,8 +182,11 @@ class ResponseTestCase(unittest.TestCase):
             'butter', 'butter_pz', 'butter_pz_analog', 'butter_pz_digital_pz']
 
         for method in ['zoh', 'foh', 'euler', 'bilinear', 'backward_diff']:
-            resps.append(butter_pz.to_digital(deltat, method=method))
-            labels.append('butter_pz_digital_' + method)
+            try:
+                resps.append(butter_pz.to_digital(deltat, method=method))
+                labels.append('butter_pz_digital_' + method)
+            except ValueError:
+                pass
 
         if show_plot:
             from pyrocko.plot.response import plot
@@ -198,8 +201,11 @@ class ResponseTestCase(unittest.TestCase):
         labels = ['butter', 'butter_analog']
 
         for method in ['zoh', 'foh', 'euler', 'bilinear', 'backward_diff']:
-            resps.append(butter_analog.to_digital(deltat, method=method))
-            labels.append('butter_analog_digital_' + method)
+            try:
+                resps.append(butter_analog.to_digital(deltat, method=method))
+                labels.append('butter_analog_digital_' + method)
+            except ValueError:
+                pass
 
         if show_plot:
             from pyrocko.plot.response import plot
