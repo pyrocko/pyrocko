@@ -156,7 +156,8 @@ def tjoin(seconds, offset, deltat):
         return None
 
     if deltat is not None and deltat < 1e-3:
-        return util.hpfloat(seconds) + util.hpfloat(offset*g_offset_time_unit)
+        return util.to_time_float(seconds) \
+            + util.to_time_float(offset*g_offset_time_unit)
     else:
         return seconds + offset*g_offset_time_unit
 
