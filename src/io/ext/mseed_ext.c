@@ -388,7 +388,7 @@ mseed_store_traces(PyObject *m, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
-    outfile = fopen(filename, append == Py_True ? "a" : "w");
+    outfile = fopen(filename, append == Py_True ? "ab" : "wb");
     if (outfile == NULL)
     {
         PyErr_SetString(PyExc_OSError, "Error opening file.");
