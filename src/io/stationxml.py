@@ -153,7 +153,7 @@ class Delivery(Object):
         payload = self.expect()
         if len(payload) != 1:
             raise DeliveryError(
-                'Expected 1 element but got %n.' % len(payload))
+                'Expected 1 element but got %i.' % len(payload))
 
         return payload[0]
 
