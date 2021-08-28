@@ -506,8 +506,7 @@ class ColorbarControl(qc.QObject):
         self.abs_toggle.setToolTip('Show absolute values')
         self.abs_toggle.setSizePolicy(qw.QSizePolicy())
         self.abs_toggle.setCheckable(True)
-        self.abs_toggle.toggled.connect(
-            self.show_absolute_toggled.emit)
+        self.abs_toggle.toggled.connect(self.toggle_absolute)
 
         self.controls = qw.QWidget()
         layout = qw.QHBoxLayout()
@@ -538,6 +537,10 @@ class ColorbarControl(qc.QObject):
         else:
             r_cmap = cmap + '_r'
         self.set_cmap_name(r_cmap)
+
+    def toggle_absolute(self, toggled):
+        self.symetry_toggle.setChecked(not toggled)
+        self.show_absolute_toggled.emit(toggled)
 
     def widgets(self):
         return (self.lname, self.cmap_options, self.controls)
