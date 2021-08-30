@@ -12,6 +12,7 @@ import logging
 import enum
 
 from matplotlib.cm import get_cmap
+from matplotlib.colors import Normalize
 
 from .qt_compat import qc, qg, qw, use_pyqt5
 
@@ -54,12 +55,15 @@ def make_QPolygonF(xdata, ydata):
     return qpoints
 
 
-def get_colormap_qimage(cmap_name):
+def get_colormap_qimage(cmap_name, vmin=None, vmax=None):
     NCOLORS = 512
+    norm = Normalize()
+    norm.vmin = vmin
+    norm.vmax = vmax
 
     return qg.QImage(
         get_cmap(cmap_name)(
-            num.linspace(0., 1., NCOLORS),
+            norm(num.linspace(0., 1., NCOLORS)),
             alpha=None, bytes=True),
         NCOLORS, 1, qg.QImage.Format_RGBX8888)
 
@@ -455,6 +459,7 @@ class ColorbarControl(qc.QObject):
 
     cmap_changed = qc.pyqtSignal(str)
     show_absolute_toggled = qc.pyqtSignal(bool)
+    show_integrate_toggled = qc.pyqtSignal(bool)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -466,13 +471,14 @@ class ColorbarControl(qc.QObject):
             qw.QSizePolicy(qw.QSizePolicy.Minimum, qw.QSizePolicy.Minimum))
 
         self.cmap_options = qw.QComboBox()
-        self.cmap_options.setIconSize(qc.QSize(50, 15))
-        for cmap in self.AVAILABLE_CMAPS:
+        self.cmap_options.setIconSize(qc.QSize(64, 12))
+        for ic, cmap in enumerate(self.AVAILABLE_CMAPS):
             pixmap = qg.QPixmap.fromImage(
                 get_colormap_qimage(cmap))
-            icon = qg.QIcon(pixmap.scaled(50, 15))
+            icon = qg.QIcon(pixmap.scaled(64, 12))
 
             self.cmap_options.addItem(icon, '', cmap)
+            self.cmap_options.setItemData(ic, cmap, qc.Qt.ToolTipRole)
 
         # self.cmap_options.setCurrentIndex(self.cmap_name)
         self.cmap_options.currentIndexChanged.connect(self.set_cmap)
@@ -480,14 +486,21 @@ class ColorbarControl(qc.QObject):
             qw.QSizePolicy(qw.QSizePolicy.Minimum, qw.QSizePolicy.Minimum))
 
         self.colorslider = ColorbarSlider(self)
+        self.colorslider.setSizePolicy(
+            qw.QSizePolicy.MinimumExpanding | qw.QSizePolicy.ExpandFlag,
+            qw.QSizePolicy.MinimumExpanding | qw.QSizePolicy.ExpandFlag
+        )
         self.clip_changed = self.colorslider.clip_changed
 
+        btn_size = qw.QSizePolicy(
+            qw.QSizePolicy.Maximum | qw.QSizePolicy.ShrinkFlag,
+            qw.QSizePolicy.Maximum | qw.QSizePolicy.ShrinkFlag)
 
         self.symetry_toggle = qw.QPushButton()
         self.symetry_toggle.setIcon(
             qg.QIcon.fromTheme('object-flip-horizontal'))
         self.symetry_toggle.setToolTip('Symetric clip values')
-        self.symetry_toggle.setSizePolicy(qw.QSizePolicy())
+        self.symetry_toggle.setSizePolicy(btn_size)
         self.symetry_toggle.setCheckable(True)
         self.symetry_toggle.toggled.connect(self.toggle_symetry)
         self.symetry_toggle.setChecked(True)
@@ -496,29 +509,47 @@ class ColorbarControl(qc.QObject):
         self.reverse_toggle.setIcon(
             qg.QIcon.fromTheme('object-rotate-right'))
         self.reverse_toggle.setToolTip('Reverse the colormap')
-        self.reverse_toggle.setSizePolicy(qw.QSizePolicy())
+        self.reverse_toggle.setSizePolicy(btn_size)
         self.reverse_toggle.setCheckable(True)
         self.reverse_toggle.toggled.connect(self.toggle_reverse_cmap)
 
         self.abs_toggle = qw.QPushButton()
         self.abs_toggle.setIcon(
-            qg.QIcon.fromTheme('go-top'))
+            qg.QIcon.fromTheme('go-bottom'))
         self.abs_toggle.setToolTip('Show absolute values')
-        self.abs_toggle.setSizePolicy(qw.QSizePolicy())
+        self.abs_toggle.setSizePolicy(btn_size)
         self.abs_toggle.setCheckable(True)
         self.abs_toggle.toggled.connect(self.toggle_absolute)
+
+        self.int_toggle = qw.QPushButton()
+        self.int_toggle.setText('∫')
+        self.int_toggle.setToolTip(
+            'Integrate traces (e.g. strain rate -> strain)')
+        self.int_toggle.setSizePolicy(btn_size)
+        self.int_toggle.setCheckable(True)
+        print(self.abs_toggle.width())
+        self.int_toggle.setMaximumSize(
+            24,
+            self.int_toggle.maximumSize().height())
+        self.int_toggle.toggled.connect(self.show_integrate_toggled.emit)
+
+        v_splitter = qw.QFrame()
+        v_splitter.setFrameShape(qw.QFrame.VLine)
+        v_splitter.setFrameShadow(qw.QFrame.Sunken)
 
         self.controls = qw.QWidget()
         layout = qw.QHBoxLayout()
         layout.addWidget(self.colorslider)
         layout.addWidget(self.symetry_toggle)
         layout.addWidget(self.reverse_toggle)
+        layout.addWidget(v_splitter)
         layout.addWidget(self.abs_toggle)
+        layout.addWidget(self.int_toggle)
         self.controls.setLayout(layout)
 
     def set_cmap(self, idx):
         self.set_cmap_name(self.cmap_options.itemData(idx))
-    
+
     def set_cmap_name(self, cmap_name):
         self.cmap_name = cmap_name
         self.colorslider.set_cmap_name(cmap_name)
@@ -578,7 +609,7 @@ class ColorbarSlider(qw.QWidget):
 
     def get_cmap_name(self):
         return self.cmap_name
-    
+
     def set_symetry(self, symetry):
         self._sym_locked = symetry
         if self._sym_locked:
@@ -696,12 +727,13 @@ class ColorbarSlider(qw.QWidget):
         self._mouse_inside = False
         self.repaint()
 
-
     def paintEvent(self, e):
         p = qg.QPainter(self)
         self._set_window(p.window())
 
-        p.drawImage(p.window(), get_colormap_qimage(self.cmap_name))
+        p.drawImage(
+            p.window(),
+            get_colormap_qimage(self.cmap_name, self.clip_min, self.clip_max))
 
         left_line = self._get_left_line()
         right_line = self._get_right_line()

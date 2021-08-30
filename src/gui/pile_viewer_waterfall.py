@@ -28,6 +28,7 @@ class TraceWaterfall:
         self._data_cache = None
 
         self._show_absolute = False
+        self._integrate = False
         self._clip_min = 0.
         self._clip_max = 1.
         self._common_scale = True
@@ -43,6 +44,9 @@ class TraceWaterfall:
         assert 0. <= clip_min < clip_max <= 1.
         self._clip_min = clip_min
         self._clip_max = clip_max
+
+    def set_integrate(self, integrate):
+        self._integrate = integrate
 
     def show_absolute_values(self, show_absolute):
         self._show_absolute = show_absolute
@@ -66,6 +70,7 @@ class TraceWaterfall:
         sha1.update(self._clip_min.hex().encode())
         sha1.update(self._clip_max.hex().encode())
         sha1.update(bytes(self._show_absolute))
+        sha1.update(bytes(self._integrate))
         for tr in self.traces:
             sha1.update(bytes(tr.ydata[:10]))
 
@@ -86,6 +91,8 @@ class TraceWaterfall:
         data = num.zeros((self.ntraces, img_nsamples), dtype=dtype)
         empty_data = num.ones((self.ntraces, img_nsamples), dtype=num.bool)
 
+        deltats = num.zeros(self.ntraces) if self._integrate else None
+
         for itr, tr in enumerate(self.traces):
             tr_data = tr.ydata
 
@@ -105,11 +112,19 @@ class TraceWaterfall:
             data[itr, img_ibeg:img_iend] = tr_data[ibeg:iend]
             empty_data[itr, img_ibeg:img_iend] = False
 
+            if self._integrate:
+                deltats[itr] = tr.deltat
+
+        if self._integrate:
+            data = num.cumsum(data, axis=1) * deltats[:, num.newaxis]
+            # data -= data.mean(axis=1)[:, num.newaxis]
+
         if self._common_scale:
             data /= num.abs(data).max(axis=1)[:, num.newaxis]
 
         vmax = num.abs(data).max()
         vmin = -vmax
+
         if self._show_absolute:
             data = num.abs(data)
             vmin = data.min()

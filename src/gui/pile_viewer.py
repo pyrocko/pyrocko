@@ -1146,6 +1146,7 @@ def MakePileViewerMainClass(base):
             self.waterfall_clip_min = 0.
             self.waterfall_clip_max = 1.
             self.waterfall_show_absolute = False
+            self.waterfall_integrate = False
 
             self.automatic_updates = True
 
@@ -3251,6 +3252,7 @@ def MakePileViewerMainClass(base):
                 waterfall.set_time_range(self.tmin, self.tmax)
                 waterfall.set_traces(processed_traces)
                 waterfall.set_cmap(self.waterfall_cmap)
+                waterfall.set_integrate(self.waterfall_integrate)
                 waterfall.set_clip(
                     self.waterfall_clip_min, self.waterfall_clip_max)
                 waterfall.show_absolute_values(self.waterfall_show_absolute)
@@ -3294,12 +3296,12 @@ def MakePileViewerMainClass(base):
 
                     if not contains_cursor:
                         continue
-                    
+
                     font_large = p.font()
                     font_large.setPointSize(MIN_LABEL_SIZE_PT)
                     p.setFont(font_large)
                     draw_label(p, lx, ly, plabel, label_bg, 'ML')
-                    p.setFont(font)                
+                    p.setFont(font)
 
             for lab in annot_labels:
                 lab.draw()
@@ -3677,18 +3679,22 @@ def MakePileViewerMainClass(base):
         def rot_change(self, value, ignore):
             self.rotate = value
             self.update()
-        
+
         def waterfall_cmap_change(self, cmap):
             self.waterfall_cmap = cmap
             self.update()
-        
+
         def waterfall_clip_change(self, clip_min, clip_max):
             self.waterfall_clip_min = clip_min
             self.waterfall_clip_max = clip_max
             self.update()
-        
+
         def waterfall_show_absolute_change(self, toggle):
             self.waterfall_show_absolute = toggle
+            self.update()
+
+        def waterfall_set_integrate(self, toggle):
+            self.waterfall_integrate = toggle
             self.update()
 
         def set_selected_markers(self, markers):
@@ -4366,6 +4372,9 @@ class PileViewer(qw.QFrame):
         )
         self.colorbar_control.show_absolute_toggled.connect(
             self.viewer.waterfall_show_absolute_change
+        )
+        self.colorbar_control.show_integrate_toggled.connect(
+            self.viewer.waterfall_set_integrate
         )
 
         for icontrol, control in enumerate((
