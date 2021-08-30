@@ -262,7 +262,7 @@ class DCSource(Seismosizer):
         self.add_parameter(
             Param('East shift', 'east_km', 0.0, -50., 50.))
         self.add_parameter(
-            Param('Depth', 'depth_km', 10.0, 0.0, 600.0))
+            Param('Depth', 'depth_km', 10.0, -100.0, 600.0))
         self.add_parameter(
             Param('Magnitude', 'magnitude', 6.0, 0.0, 10.0))
         self.add_parameter(
