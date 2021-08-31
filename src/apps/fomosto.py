@@ -40,6 +40,8 @@ subcommand_descriptions = {
     'tttview':       'plot travel time table',
     'tttextract':    'extract selected travel times',
     'tttlsd':        'fix holes in travel time tables',
+    'sat':           'create stored ray attribute table',
+    'satview':       'plot stored ray attribute table',
     'server':        'run seismosizer server',
     'download':      'download GF store from a server',
     'modelview':     'plot earthmodels',
@@ -65,6 +67,8 @@ subcommand_usages = {
     'tttview':       'tttview [store-dir] <phase-ids> [options]',
     'tttextract':    'tttextract [store-dir] <phase> <selection>',
     'tttlsd':        'tttlsd [store-dir] <phase>',
+    'sat':           'sat [store-dir] [options]',
+    'satview':       'satview [store-dir] <phase-ids> [options]',
     'server':        'server [options] <store-super-dir> ...',
     'download':      'download [options] <site> <store-id>',
     'modelview':     'modelview <selection>',
@@ -96,6 +100,8 @@ Subcommands:
     tttview       %(tttview)s
     tttextract    %(tttextract)s
     tttlsd        %(tttlsd)s
+    sat           %(sat)s
+    satview       %(satview)s
     server        %(server)s
     download      %(download)s
     modelview     %(modelview)s
@@ -803,46 +809,11 @@ def mkp(s):
     return [phasedef_or_horvel(ps) for ps in s.split(',')]
 
 
-def command_ttt(args):
-    def setup(parser):
-        parser.add_option(
-            '--force', dest='force', action='store_true',
-            help='overwrite existing files')
-
-    parser, options, args = cl_parse('ttt', args, setup=setup)
-
-    store_dir = get_store_dir(args)
-    try:
-        store = gf.Store(store_dir)
-        store.make_ttt(force=options.force)
-
-    except gf.StoreError as e:
-        die(e)
-
-
-def command_tttview(args):
+def stored_attribute_table_plots(phase_ids, options, args, attribute):
     import numpy as num
-    import matplotlib.pyplot as plt
-    from pyrocko.plot.cake_plot import mpl_init, labelspace, xscaled, yscaled
-    mpl_init()
+    from pyrocko.plot.cake_plot import labelspace, xscaled, yscaled, mpl_init
 
-    def setup(parser):
-        parser.add_option(
-            '--source-depth', dest='source_depth', type=float,
-            help='Source depth in km')
-
-        parser.add_option(
-            '--receiver-depth', dest='receiver_depth', type=float,
-            help='Receiver depth in km')
-
-    parser, options, args = cl_parse(
-        'tttview', args, setup=setup,
-        details="Comma seperated <phase-ids>, eg. 'fomosto tttview Pdiff,S'.")
-
-    try:
-        phase_ids = args.pop().split(',')
-    except Exception:
-        parser.error('cannot get <phase-ids> argument')
+    plt = mpl_init()
 
     np = 1
     store_dir = get_store_dir(args)
@@ -862,11 +833,11 @@ def command_tttview(args):
                 else:
                     receiver_depth = 0.0
 
-            phase = store.get_stored_phase(phase_id)
+            phase = store.get_stored_phase(phase_id, attribute)
             axes = plt.subplot(2, len(phase_ids), np)
             labelspace(axes)
-            xscaled(1./km, axes)
-            yscaled(1./km, axes)
+            xscaled(1. / km, axes)
+            yscaled(1. / km, axes)
             x = None
             if isinstance(store.config, gf.ConfigTypeB):
                 x = (receiver_depth, None, None)
@@ -884,25 +855,134 @@ def command_tttview(args):
                              num_d)
 
     if options.source_depth is not None:
-        source_depth = options.source_depth * 1000.0
+        source_depth = options.source_depth * km
     else:
         source_depth = store.config.source_depth_min + (
-            store.config.source_depth_max - store.config.source_depth_min)/2.
+            store.config.source_depth_max - store.config.source_depth_min) / 2.
 
     if isinstance(store.config, gf.ConfigTypeA):
-        arrivals = num.empty(num_d)
+        attribute_vals = num.empty(num_d)
         for phase_id in phase_ids:
-            arrivals[:] = num.NAN
+            attribute_vals[:] = num.NAN
             for i, d in enumerate(distances):
-                arrivals[i] = store.t(phase_id, (source_depth, d))
-            axes.plot(distances/1000.0, arrivals, label=phase_id)
-        axes.set_title('source source_depth %s km' % (source_depth/1000.0))
+                if attribute == 'phase':
+                    attribute_vals[i] = store.t(phase_id, (source_depth, d))
+                    ylabel = 'TT [s]'
+                else:
+                    attribute_vals[i] = store.get_stored_attribute(
+                        phase_id, options.attribute, (source_depth, d))
+                    ylabel = '%s [deg]' % options.attribute
+
+            axes.plot(distances / km, attribute_vals, label=phase_id)
+
+        axes.set_title('source source_depth %s km' % (source_depth / km))
         axes.set_xlabel('distance [km]')
-        axes.set_ylabel('TT [s]')
+        axes.set_ylabel(ylabel)
         axes.legend()
 
     plt.tight_layout()
     mpl_show(plt)
+
+
+def command_ttt(args):
+    def setup(parser):
+        parser.add_option(
+            '--force', dest='force', action='store_true',
+            help='overwrite existing files')
+
+    parser, options, args = cl_parse('ttt', args, setup=setup)
+
+    store_dir = get_store_dir(args)
+    try:
+        store = gf.Store(store_dir)
+        store.make_ttt(force=options.force)
+
+    except gf.StoreError as e:
+        die(e)
+
+
+def command_tttview(args):
+
+    def setup(parser):
+        parser.add_option(
+            '--source-depth', dest='source_depth', type=float,
+            help='Source depth in km')
+
+        parser.add_option(
+            '--receiver-depth', dest='receiver_depth', type=float,
+            help='Receiver depth in km')
+
+    parser, options, args = cl_parse(
+        'tttview', args, setup=setup,
+        details="Comma seperated <phase-ids>, eg. 'fomosto tttview Pdiff,S'.")
+
+    try:
+        phase_ids = args.pop().split(',')
+    except Exception:
+        parser.error('cannot get <phase-ids> argument')
+
+    stored_attribute_table_plots(phase_ids, options, args, attribute='phase')
+
+
+def command_sat(args):
+    def setup(parser):
+        parser.add_option(
+            '--force', dest='force', action='store_true',
+            help='overwrite existing files')
+
+        parser.add_option(
+            '--attribute',
+            action='store',
+            dest='attribute',
+            type='choice',
+            choices=gf.store.available_stored_tables[1::],
+            default='takeoff_angle',
+            help='calculate interpolation table for selected ray attributes.')
+
+    parser, options, args = cl_parse('sat', args, setup=setup)
+
+    store_dir = get_store_dir(args)
+    try:
+        store = gf.Store(store_dir)
+        store.make_stored_table(options.attribute, force=options.force)
+
+    except gf.StoreError as e:
+        die(e)
+
+
+def command_satview(args):
+
+    def setup(parser):
+        parser.add_option(
+            '--source-depth', dest='source_depth', type=float,
+            help='Source depth in km')
+
+        parser.add_option(
+            '--receiver-depth', dest='receiver_depth', type=float,
+            help='Receiver depth in km')
+
+        parser.add_option(
+            '--attribute',
+            action='store',
+            dest='attribute',
+            type='choice',
+            choices=gf.store.available_stored_tables[1::],
+            default='takeoff_angle',
+            help='view selected ray attribute.')
+
+    parser, options, args = cl_parse(
+        'satview', args, setup=setup,
+        details="Comma seperated <phase-ids>, eg. 'fomosto satview Pdiff,S'.")
+
+    try:
+        phase_ids = args.pop().split(',')
+    except Exception:
+        parser.error('cannot get <phase-ids> argument')
+
+    logger.info('Plotting stored attribute %s' % options.attribute)
+
+    stored_attribute_table_plots(
+        phase_ids, options, args, attribute=options.attribute)
 
 
 def command_tttextract(args):

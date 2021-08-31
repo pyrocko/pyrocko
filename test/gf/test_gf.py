@@ -979,6 +979,64 @@ class GFTestCase(unittest.TestCase):
             ph = store.get_stored_phase(phase_id + '.lsd')
             assert not ph.check_holes()
 
+    def test_interpolated_attribute(self):
+        from time import time
+        attribute = 'takeoff_angle'
+        for typ in ['a']:
+            store_dir = self.get_regional_ttt_store_dir(typ)
+
+            phase_id = 'P'
+
+            args_list = [
+                (10*km, 100*km),
+                (10.*km, 120.*km),
+                (20.*km, 530.*km)]
+
+            store = gf.Store(store_dir)
+            store.make_tat()
+
+            for args in args_list:
+                t0 = time()
+                for _ in range(100):
+                    interpolated_attribute = store.get_stored_attribute(
+                        phase_id, attribute, args)
+                t1 = time()
+                table_time = (t1 - t0) / 100
+                print('\nTable time', table_time)
+                print('Table angle', interpolated_attribute)
+                receiver_depth, source_depth, distance = (
+                    store.config.receiver_depth,) + args
+                t2 = time()
+                for i in range(100):
+                    rays = store.config.earthmodel_1d.arrivals(
+                        phases=phase_id,
+                        distances=[distance * cake.m2d],
+                        zstart=source_depth,
+                        zstop=receiver_depth)
+                cake_attribute = min(
+                    [getattr(ray, attribute)() for ray in rays])
+                t3 = time()
+                cake_time = (t3 - t2) / 100
+                print('Cake time', cake_time)
+                print('Cake angle', cake_attribute)
+                print('Speedup', cake_time / table_time)
+                self.assertTrue(
+                    numeq(interpolated_attribute, cake_attribute, 0.005))
+
+            # many attributes
+            nrays = 500
+            distances = num.linspace(100*km, 500*km, nrays)
+            coords = num.array([distances, num.full_like(distances, 10*km)]).T
+            t4 = time()
+            store.get_many_stored_attributes(
+                phase_id, attribute, coords)
+            t5 = time()
+            table_time = (t5 - t4)
+            print('\nTable time', table_time, 'for', nrays, 'rays')
+
+        with self.assertRaises(gf.error.StoreError):
+            store.get_stored_attribute(phase_id, 'incidence_angle', args)
+
     def dummy_store(self):
 
         conf = gf.ConfigTypeA(
