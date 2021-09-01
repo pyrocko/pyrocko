@@ -690,7 +690,7 @@ def add_radiobuttongroup(menu, menudef, target, default=None):
 
 
 def sort_actions(menu):
-    actions = menu.actions()
+    actions = [act for act in menu.actions() if not act.menu()]
     for action in actions:
         menu.removeAction(action)
     actions.sort(key=lambda x: newstr(x.text()))
@@ -826,49 +826,60 @@ def MakePileViewerMainClass(base):
             help_menu.addSeparator()
 
             file_menu.addAction(
+                qg.QIcon.fromTheme('document-open'),
                 'Open waveform files...',
                 self.open_waveforms)
 
             file_menu.addAction(
+                qg.QIcon.fromTheme('document-open'),
                 'Open waveform directory...',
                 self.open_waveform_directory)
 
             file_menu.addAction(
+                qg.QIcon.fromTheme('document-open'),
                 'Open station files...',
                 self.open_stations)
 
             file_menu.addAction(
+                qg.QIcon.fromTheme('document-open'),
                 'Open StationXML files...',
                 self.open_stations_xml)
 
             file_menu.addAction(
+                qg.QIcon.fromTheme('document-open'),
                 'Open event file...',
                 self.read_events)
 
             file_menu.addSeparator()
             file_menu.addAction(
+                qg.QIcon.fromTheme('document-open'),
                 'Open marker file...',
                 self.read_markers)
 
             file_menu.addAction(
+                qg.QIcon.fromTheme('document-save'),
                 'Save markers...',
                 self.write_markers)
 
             file_menu.addAction(
+                qg.QIcon.fromTheme('document-save-as'),
                 'Save selected markers...',
                 self.write_selected_markers)
 
             file_menu.addSeparator()
             file_menu.addAction(
+                qg.QIcon.fromTheme('document-print'),
                 'Print',
                 self.printit)
 
             file_menu.addAction(
+                qg.QIcon.fromTheme('insert-image'),
                 'Save as SVG or PNG',
                 self.savesvg)
 
             file_menu.addSeparator()
             file_menu.addAction(
+                qg.QIcon.fromTheme('window-close'),
                 'Close',
                 self.myclose)
 
