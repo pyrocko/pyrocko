@@ -248,6 +248,20 @@ datacube_error_t parse_gps_xpv_mpv_header(
     return SUCCESS;
 }
 
+datacube_error_t parse_gps_rpv_header(
+    char *header, double *temp, double *lat, double *lon, double *elevation
+) {
+    /* the rpv record does not contain elevation */
+    header += 4;
+    if (3 != sscanf(header, "%5lf%8lf%9lf", temp, lat, lon)) {
+        return BAD_GPS_BLOCK;
+    }
+    lat[0] /= 100000;
+    lon[0] /= 100000;
+    elevation[0] = -999999.;
+    return SUCCESS;
+}
+
 datacube_error_t bookmark_array_append(bookmark_array_t *arr,
                                        size_t ipos, off_t fpos) {
     bookmark_t *p, *el;
@@ -599,6 +613,15 @@ datacube_error_t datacube_read_gps_block(reader_t *reader) {
     b = strstr(reader->buf, ">MPV");
     if (b != NULL) {
         err = parse_gps_xpv_mpv_header(b, &temp, &lat, &lon, &elevation);
+        if (err != SUCCESS) {
+            return err;
+        }
+        goto finish;
+    }
+
+    b = strstr(reader->buf, ">RPV");
+    if (b != NULL) {
+        err = parse_gps_rpv_header(b, &temp, &lat, &lon, &elevation);
         if (err != SUCCESS) {
             return err;
         }

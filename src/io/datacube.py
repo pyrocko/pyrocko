@@ -182,52 +182,90 @@ def analyse_gps_tags(header, gps_tags, offset, nsamples):
         return tmin, tmax, icontrol, tcontrol, None
 
 
-def plot_gnss_location_timeline(fn):
-    from datetime import datetime
-
+def plot_gnss_location_timeline(fns):
     from matplotlib import pyplot as plt
+    from pyrocko.orthodrome import latlon_to_ne_numpy
+    not_ = num.logical_not
+    h = 3600.
 
-    fig, axes = plt.subplots(3, 1)
+    fig = plt.figure()
 
-    header, gps_tags, nsamples = get_time_infos(fn)
-    ipos, time, fix, nsvs, lats, lons, elevations, temps = gps_tags
+    axes = []
+    for i in range(4):
+        axes.append(
+            fig.add_subplot(4, 1, i+1, sharex=axes[-1] if axes else None))
 
-    t = num.array([datetime.utcfromtimestamp(t) for t in time])
+    background_colors = [
+        color('aluminium1'),
+        color('aluminium2')]
 
-    lats_median = num.median(lats)
-    lons_median = num.median(lons)
+    tref = None
+    for ifn, fn in enumerate(fns):
+        header, gps_tags, nsamples = get_time_infos(fn)
+        _, t, fix, nsvs, lats, lons, elevations, _ = gps_tags
 
-    lats -= lats_median
-    lons -= lons_median
+        fix = fix.astype(bool)
 
-    vmin = min(lats.min(), lons.min()) * 1.1
-    vmax = max(lats.max(), lons.max()) * 1.1
+        if t.size < 2:
+            logger.warning('Need at least 2 gps tags for plotting: %s' % fn)
 
-    for ax, data in zip(axes, (lats, lons, elevations)):
+        if tref is None:
+            tref = util.day_start(t[0])
+            lat, lon, elevation = coordinates_from_gps(gps_tags)
+
+        norths, easts = latlon_to_ne_numpy(lat, lon, lats, lons)
+
+        for ax, data in zip(axes, (norths, easts, elevations, nsvs)):
+
+            tspan = t[num.array([0, -1])]
+
+            ax.axvspan(*((tspan - tref) / h), color=background_colors[ifn % 2])
+            med = num.median(data)
+            ax.plot(
+                (tspan - tref) / h,
+                [med, med],
+                ls='--',
+                c='k',
+                lw=3,
+                alpha=0.5)
+
+            ax.plot(
+                (t[not_(fix)] - tref) / h, data[not_(fix)], 'o',
+                ms=1.5,
+                mew=0,
+                color=color('scarletred2'))
+
+            ax.plot(
+                (t[fix] - tref) / h, data[fix], 'o',
+                ms=1.5,
+                mew=0,
+                color=color('aluminium6'))
+
+    for ax in axes:
         ax.grid(alpha=.3)
-        ax.scatter(t, data, s=6)
-        ax.axhline(num.median(data), c='k', ls='--', alpha=.4)
 
-    ax_lat = axes[0]
-    ax_lon = axes[1]
-    ax_elev = axes[2]
+    ax_lat, ax_lon, ax_elev, ax_nsv = axes
 
-    ax_lat.set_ylabel('Latitude [°]')
-    ax_lon.set_ylabel('Longitude [°]')
+    ax_lat.set_ylabel('Northing [m]')
+    ax_lon.set_ylabel('Easting [m]')
     ax_elev.set_ylabel('Elevation [m]')
+    ax_nsv.set_ylabel('Number of Satellites')
 
-    ax_lat.text(0.01, 0.05, 'Relative to %.5f°' % lats_median,
-                transform=ax_lat.transAxes)
-    ax_lon.text(0.01, 0.05, 'Relative to %.5f°' % lons_median,
-                transform=ax_lon.transAxes)
+    ax_lat.get_xaxis().set_tick_params(labelbottom=False)
+    ax_lon.get_xaxis().set_tick_params(labelbottom=False)
+    ax_nsv.set_xlabel(
+        'Hours after %s' % util.time_to_str(tref, format='%Y-%m-%d'))
 
-    ax_lat.set_xticklabels([])
-    ax_lon.set_xticklabels([])
-    ax_lat.set_ylim(vmin, vmax)
-    ax_lon.set_ylim(vmin, vmax)
+    fig.suptitle(
+        u'Lat: %.5f\u00b0 Lon: %.5f\u00b0 Elevation: %g m' % (
+            lat, lon, elevation))
 
-    ax_elev.set_xlabel('Date')
     plt.show()
+
+
+def coordinates_from_gps(gps_tags):
+    ipos, t, fix, nsvs, lats, lons, elevations, temps = gps_tags
+    return tuple(num.median(x) for x in (lats, lons, elevations))
 
 
 def extract_stations(fns):
@@ -245,21 +283,18 @@ def extract_stations(fns):
             continue
 
         header, gps_tags, nsamples = get_time_infos(fn)
-        ipos, t, fix, nsvs, lats, lons, elevations, temps = gps_tags
 
-        lat_median = num.median(lats)
-        lon_median = num.median(lons)
-        elevation_median = num.median(elevations)
+        lat, lon, elevation = coordinates_from_gps(gps_tags)
 
         sta = Station(
             network='',
             station=sta_name,
             name=sta_name,
             location='',
-            lat=lat_median,
-            lon=lon_median,
-            elevation=elevation_median
-        )
+            lat=lat,
+            lon=lon,
+            elevation=elevation)
+
         stations[sta_name] = sta
 
     f = io.BytesIO()
@@ -526,7 +561,7 @@ def get_extended_timing_context(fn):
             if num.sum(gps_tags[2]) > 0:
                 break
 
-    ipos, t, fix, nsvs, *_ = [num.concatenate(x) for x in zip(*aggregated)]
+    ipos, t, fix, nsvs = [num.concatenate(x) for x in zip(*aggregated)][:4]
 
 #    return ipos, t, fix, nsvs, header, ioff, nsamples_total
     return ipos, t, fix, nsvs, header, 0, nsamples_base
@@ -699,8 +734,7 @@ if __name__ == '__main__':
         plot_timeline(args.files)
 
     elif args.action == 'gnss':
-        for fn in args.files:
-            plot_gnss_location_timeline(fn)
+        plot_gnss_location_timeline(args.files)
 
     elif args.action == 'stations':
         extract_stations(args.files)
