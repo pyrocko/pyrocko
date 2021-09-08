@@ -441,7 +441,7 @@ class LinValControl(ValControl):
         return int(round((value-self.mi)/(self.ma-self.mi) * 10000.))
 
 
-class ColorbarControl(qc.QObject):
+class ColorbarControl(qw.QWidget):
 
     AVAILABLE_CMAPS = (
         'viridis',

@@ -813,7 +813,8 @@ def MakePileViewerMainClass(base):
 
             file_menu = self.menu.addMenu('File')
             view_menu = self.menu.addMenu('View')
-            scale_menu = self.menu.addMenu('Scale')
+            options_menu = self.menu.addMenu('Options')
+            scale_menu = self.menu.addMenu('Scaling')
             sort_menu = self.menu.addMenu('Sorting')
             self.toggle_panel_menu = self.menu.addMenu('Snufflings')
 
@@ -918,22 +919,6 @@ def MakePileViewerMainClass(base):
             self.scaling_base = self.menuitems_scaling_base[0][1]
             scale_menu.addSeparator()
 
-            self.menuitem_showscalerange = scale_menu.addAction(
-                'Show Scale Ranges')
-            self.menuitem_showscalerange.setCheckable(True)
-            self.menuitem_showscalerange.setChecked(
-                self.config.show_scale_ranges)
-
-            self.menuitem_showscaleaxis = scale_menu.addAction(
-                'Show Scale Axes')
-            self.menuitem_showscaleaxis.setCheckable(True)
-            self.menuitem_showscaleaxis.setChecked(
-                self.config.show_scale_axes)
-
-            self.menuitem_showzeroline = scale_menu.addAction(
-                'Show Zero Lines')
-            self.menuitem_showzeroline.setCheckable(True)
-
             self.menuitem_fixscalerange = scale_menu.addAction(
                 'Fix Scale Ranges')
             self.menuitem_fixscalerange.setCheckable(True)
@@ -1022,6 +1007,7 @@ def MakePileViewerMainClass(base):
             menudef = [(x.key, x.value) for x in
                        self.config.visible_length_setting]
 
+            # View menu
             self.menuitems_visible_length = add_radiobuttongroup(
                     view_menu, menudef,
                     self.visible_length_change)
@@ -1037,21 +1023,6 @@ def MakePileViewerMainClass(base):
                     self.viewmode_change, default=ViewMode.Wiggle)
             view_menu.addSeparator()
 
-            options_menu = view_menu.addMenu('Options')
-
-            self.menuitem_distances_3d = view_menu.addAction(
-                '3D distances',
-                self.distances_3d_changed)
-            self.menuitem_distances_3d.setCheckable(True)
-
-            self.menuitem_antialias = view_menu.addAction(
-                'Antialiasing')
-            self.menuitem_antialias.setCheckable(True)
-
-            self.menuitem_liberal_fetch = options_menu.addAction(
-                'Liberal Fetch Optimization')
-            self.menuitem_liberal_fetch.setCheckable(True)
-
             self.menuitem_cliptraces = view_menu.addAction(
                 'Clip Traces')
             self.menuitem_cliptraces.setCheckable(True)
@@ -1066,6 +1037,36 @@ def MakePileViewerMainClass(base):
             self.menuitem_colortraces = view_menu.addAction(
                 'Color Traces')
             self.menuitem_colortraces.setCheckable(True)
+            self.menuitem_antialias = view_menu.addAction(
+                'Antialiasing')
+            self.menuitem_antialias.setCheckable(True)
+
+            view_menu.addSeparator()
+            self.menuitem_showscalerange = view_menu.addAction(
+                'Show Scale Ranges')
+            self.menuitem_showscalerange.setCheckable(True)
+            self.menuitem_showscalerange.setChecked(
+                self.config.show_scale_ranges)
+
+            self.menuitem_showscaleaxis = view_menu.addAction(
+                'Show Scale Axes')
+            self.menuitem_showscaleaxis.setCheckable(True)
+            self.menuitem_showscaleaxis.setChecked(
+                self.config.show_scale_axes)
+
+            self.menuitem_showzeroline = view_menu.addAction(
+                'Show Zero Lines')
+            self.menuitem_showzeroline.setCheckable(True)
+
+            # Options Menu
+            self.menuitem_demean = options_menu.addAction('Demean')
+            self.menuitem_demean.setCheckable(True)
+            self.menuitem_demean.setChecked(self.config.demean)
+
+            self.menuitem_distances_3d = options_menu.addAction(
+                '3D distances',
+                self.distances_3d_changed)
+            self.menuitem_distances_3d.setCheckable(True)
 
             self.menuitem_allowdownsampling = options_menu.addAction(
                 'Allow Downsampling')
@@ -1077,9 +1078,7 @@ def MakePileViewerMainClass(base):
             self.menuitem_degap.setCheckable(True)
             self.menuitem_degap.setChecked(True)
 
-            self.menuitem_demean = view_menu.addAction('Demean')
-            self.menuitem_demean.setCheckable(True)
-            self.menuitem_demean.setChecked(self.config.demean)
+            options_menu.addSeparator()
 
             self.menuitem_fft_filtering = options_menu.addAction(
                 'FFT Filtering')
@@ -1090,17 +1089,20 @@ def MakePileViewerMainClass(base):
             self.menuitem_lphp.setCheckable(True)
             self.menuitem_lphp.setChecked(True)
 
+            options_menu.addSeparator()
             self.menuitem_watch = options_menu.addAction(
                 'Watch Files')
             self.menuitem_watch.setCheckable(True)
+
+            self.menuitem_liberal_fetch = options_menu.addAction(
+                'Liberal Fetch Optimization')
+            self.menuitem_liberal_fetch.setCheckable(True)
 
             self.visible_length = menudef[0][1]
 
             self.snufflings_menu.addAction(
                 'Reload Snufflings',
                 self.setup_snufflings)
-
-            self.menu.addSeparator()
 
             # Disable ShadowPileTest
             if False:
@@ -3670,6 +3672,12 @@ def MakePileViewerMainClass(base):
             for item, mode in self.menuitems_viewmode:
                 if item.isChecked():
                     self.view_mode = mode
+
+            # if self.view_mode is ViewMode.Waterfall:
+            #     self.parent().hide_colorbar(False)
+            # else:
+            #     self.parent().hide_colorbar(True)
+
             self.update()
 
         def set_scaling_hook(self, k, hook):
@@ -4447,6 +4455,8 @@ class PileViewer(qw.QFrame):
             0, 0, qw.QSizePolicy.Expanding, qw.QSizePolicy.Expanding)
         layout.addItem(spacer, 4, 0, 1, 3)
 
+        # self.hide_colorbar(True)
+
         self.adjust_controls()
         return frame
 
@@ -4477,3 +4487,7 @@ class PileViewer(qw.QFrame):
 
     def get_pile(self):
         return self.viewer.get_pile()
+
+    def hide_colorbar(self, hidden):
+        for widget in self.colorbar_control.widgets():
+            widget.setHidden(hidden)
