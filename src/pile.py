@@ -1298,7 +1298,11 @@ class Pile(TracesGroup):
         open_files = self.open_files[accessor_id]
 
         eps = tinc * 1e-6
-        nwin = int(((tmax - eps) - tmin) / tinc) + 1
+        if tinc != 0.0:
+            nwin = int(((tmax - eps) - tmin) / tinc) + 1
+        else:
+            nwin = 1
+
         for iwin in range(nwin):
             chopped = []
             wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)
