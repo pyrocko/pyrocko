@@ -16,7 +16,8 @@ from optparse import OptionParser, Option, OptionValueError
 
 import numpy as num
 
-from .. import util, config, pile, model, io, trace
+from pyrocko import util, config, pile, model, io, trace
+from pyrocko.io import stationxml
 
 pjoin = os.path.join
 
@@ -42,6 +43,12 @@ name_to_dtype = {
     'int64': num.int64,
     'float32': num.float32,
     'float64': num.float64}
+
+
+output_units = {
+    'acceleration': 'M/S**2',
+    'velocity': 'M/S',
+    'displacement': 'M'}
 
 
 def str_to_seconds(s):
@@ -124,12 +131,12 @@ def main(args=None):
         help='only include files whose paths match REGEX')
 
     parser.add_option(
-        '--stations',
-        dest='station_fns',
+        '--station-xml',
+        dest='station_xml_fns',
         action='append',
         default=[],
-        metavar='STATIONS',
-        help='read station information from file STATIONS')
+        metavar='STATIONXML',
+        help='read station metadata from file STATIONXML')
 
     parser.add_option(
         '--event', '--events',
@@ -302,6 +309,30 @@ def main(args=None):
              'Default is 4096 bytes, which is commonly used for archiving.'
              % ', '.join(str(b) for b in io.mseed.VALID_RECORD_LENGTHS))
 
+    quantity_choices = ('acceleration', 'velocity', 'displacement')
+    parser.add_option(
+        '--output-quantity',
+        dest='output_quantity',
+        choices=quantity_choices,
+        help='deconvolve instrument transfer function. Choices: %s'
+        % ', '.join(quantity_choices))
+
+    parser.add_option(
+        '--restitution-frequency-band',
+        default='0.001,100.0',
+        dest='str_fmin_fmax',
+        metavar='FMIN,FMAX',
+        help='frequency band for instrument deconvolution as FMIN,FMAX in Hz. '
+        'Default: "%default"')
+
+    sample_snap_choices = ('shift', 'interpolate')
+    parser.add_option(
+        '--sample-snap',
+        dest='sample_snap',
+        choices=sample_snap_choices,
+        help='shift/interpolate traces so that samples are at even multiples '
+        'of sampling rate. Choices: %s' % ', '.join(sample_snap_choices))
+
     (options, args) = parser.parse_args(args)
 
     if len(args) == 0:
@@ -363,9 +394,13 @@ def main(args=None):
 
             replacements.append((k, m.group(1), m.group(2)))
 
-    stations = []
-    for stations_fn in options.station_fns:
-        stations.extend(model.load_stations(stations_fn))
+    sx = None
+    if options.station_xml_fns:
+        sxs = []
+        for station_xml_fn in options.station_xml_fns:
+            sxs.append(stationxml.load_xml(filename=station_xml_fn))
+
+        sx = stationxml.primitive_merge(sxs)
 
     events = []
     for event_fn in options.event_fns:
@@ -409,9 +444,16 @@ def main(args=None):
     if not output_path:
         die('--output not given')
 
-    tpad = 0.
+    fmin, fmax = map(float, options.str_fmin_fmax.split(','))
+    tfade_factor = 2.0
+    ffade_factor = 1.5
+    if options.output_quantity:
+        tpad = 2*tfade_factor/fmin
+    else:
+        tpad = 0.
+
     if target_deltat is not None:
-        tpad = target_deltat * 10.
+        tpad += target_deltat * 10.
 
     if tinc is None:
         if ((tmax or p.tmax) - (tmin or p.tmin)) \
@@ -419,7 +461,7 @@ def main(args=None):
             die('use --tinc=huge to really produce such large output files '
                 'or use --tinc=INC to split into smaller files.')
 
-    kwargs = dict(tmin=tmin, tmax=tmax, tinc=tinc, tpad=tpad)
+    kwargs = dict(tmin=tmin, tmax=tmax, tinc=tinc, tpad=tpad, style='batch')
 
     if options.traversal == 'channel-by-channel':
         it = p.chopper_grouped(gather=lambda tr: tr.nslc_id, **kwargs)
@@ -442,12 +484,17 @@ def main(args=None):
         save_kwargs['record_length'] = options.record_length
         save_kwargs['steim'] = options.steim
 
-    for traces in it:
+    for batch in it:
+        traces = batch.traces
         if traces:
-            twmin = min(tr.wmin for tr in traces)
-            twmax = max(tr.wmax for tr in traces)
+            twmin = batch.tmin
+            twmax = batch.tmax
             logger.info('processing %s - %s, %i traces' %
                         (tts(twmin), tts(twmax), len(traces)))
+
+            if options.sample_snap:
+                for tr in traces:
+                    tr.snap(interpolate=options.sample_snap == 'interpolate')
 
             if target_deltat is not None:
                 out_traces = []
@@ -459,11 +506,42 @@ def main(args=None):
                         if options.output_data_type == 'same':
                             tr.ydata = tr.ydata.astype(tr.ydata.dtype)
 
-                        tr.chop(tr.wmin, tr.wmax)
                         out_traces.append(tr)
 
                     except (trace.TraceTooShort, trace.NoData):
                         pass
+
+                traces = out_traces
+
+            if options.output_quantity:
+                out_traces = []
+                tfade = tfade_factor / fmin
+                ftap = (fmin / ffade_factor, fmin, fmax, ffade_factor * fmax)
+                for tr in traces:
+                    try:
+                        response = sx.get_pyrocko_response(
+                            tr.nslc_id,
+                            timespan=(tr.tmin, tr.tmax),
+                            fake_input_units=output_units[
+                                options.output_quantity])
+
+                        rest_tr = tr.transfer(
+                            tfade, ftap, response, invert=True, demean=True)
+
+                        out_traces.append(rest_tr)
+
+                    except stationxml.NoResponseInformation as e:
+                        logger.warn(
+                            'Cannot restitute: %s (no response)' % str(e))
+
+                    except stationxml.MultipleResponseInformation as e:
+                        logger.warn(
+                            'Cannot restitute: %s (multiple responses found)'
+                            % str(e))
+
+                    except (trace.TraceTooShort, trace.NoData):
+                        logger.warn(
+                            'Trace too short: %s' % '.'.join(tr.nslc_id))
 
                 traces = out_traces
 
@@ -484,8 +562,16 @@ def main(args=None):
                     tr.set_codes(**r)
 
             if output_path:
+                otraces = []
+                for tr in traces:
+                    try:
+                        otr = tr.chop(twmin, twmax, inplace=False)
+                        otraces.append(otr)
+                    except trace.NoData:
+                        pass
+
                 try:
-                    io.save(traces, output_path, format=options.output_format,
+                    io.save(otraces, output_path, format=options.output_format,
                             overwrite=options.force,
                             additional=dict(
                                 wmin_year=tts(twmin, format='%Y'),
