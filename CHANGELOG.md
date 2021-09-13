@@ -4,11 +4,24 @@ All notable changes to Pyrocko are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-[##](##) [Unreleased]
+## Unreleased
 
-*empty*
+### Changed
+- Improved RMS and STA/LTA Snufflings (keep responsive while processing, abort
+  button, more options).
 
-[##](##) [2021.06.29]
+### Added
+- Reading of GNSS location information from datacube files.
+- Jackseis: added possibility to restitute data to displacement, velocity, or
+  acceleration.
+
+### Fixed
+- Fix problems with Station-XML files containing 1900-01-01 dummy dates
+  (macOS).
+- Correct 'pyrocko-python' symlink on Linux which was broken in v2021.06.29
+  (affects grondown scripts).
+
+## v2021.06.29
 
 ### Added
 - Windows support (experimental).
@@ -35,9 +48,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Fixed an error in Double-DC source which caused incorrect placement of the
   sub-sources.
 
-[##](##) [2021.04.02]
+## v2021.04.02
 
-[###](###) Added
+### Added
 - RectangularSource: added opening_fraction to model tensile dislocations
 - New command line option for jackseis: `--record-length`
 - Timing definition offsets can now take `%` as suffix to scale phase
@@ -72,7 +85,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Snuffler now asks for confirmation when the user attempts to close the
   window.
 
-## [2020.10.26]
+## v2020.10.26
 
 ### Fixed
 - Fix errors with corrupt WADL returned by GEONET FDSN web service.
@@ -84,7 +97,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `True`, to be consistent with the behaviour before the introduction of that
   flag.
 
-## [2020.10.08]
+## v2020.10.08
 
 ### Added
 - Support for rotational seismograms in GF stores and Fomosto QSSP2017 backend.
@@ -103,7 +116,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `install_prerequisites.py` rather than through `setup.py
   install_prerequisites`.
 
-## [2020.08.18]
+## v2020.08.18
 
 ### Added
 - Respect sensor azimuth and dip when converting RESP to StationXML.
@@ -123,12 +136,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Fix buggy marker removal in Snuffler
 - Various small bug fixes and documentation improvements.
 
-## [2020.03.30] - 2020-03-30
+## v2020.03.30
 
 ### Fixed
 - Fix Python 2 issue affecting `fomosto server`
 
-## [2020.03.13] - 2020-03-13
+## v2020.03.13
 
 ### Added
 - Event objects now have an `extras` dict to hold user defined attributes.
@@ -143,7 +156,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Fixed
 - Fix a bug in static modelling time handling.
 
-## [v2020.03.03] - 2020-03-03
+## v2020.03.03
 
 ### Added
 - `fomosto`:
@@ -171,7 +184,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (`store_calc_timeseries`).
 - Fix failing maps snuffling when running multiple Snuffler instances.
 
-## [v2020.02.10] - 2020-02-10
+## v2020.02.10
 
 ### Added
 - Support querying all stations with `GLOBAL` from ISC.
@@ -210,7 +223,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Fix a numerical bug in recursive STA/LTA.
 - Improved SeedLink acquisition.
 
-## [v2019.06.06] - 2019-06-06
+## v2019.06.06
 
 ### Added
 - Shortcut to get Kite `Scene` from `SatelliteResult` and direct
@@ -223,12 +236,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Changed
 - Automap now defaults to not show any scale.
 
-## [v2019.05.03] - 2019-05-03
+## v2019.05.03
 
 ### Fixed
 - Improved compatibility with Anaconda.
 
-## [v2019.05.02] - 2019-05-02
+## v2019.05.02
 
 ### Added
 - `gf`:
@@ -278,7 +291,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - setup: UnicodeDecodeError
 - fuzzy beachball plotting bugs
 
-## [v2019.05.02] - 2019-05-02
+## v2019.05.02
 
 ### Added
 
@@ -301,7 +314,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - gf: quantity velocity from displacement through `num.diff`
 
 
-## [v2018.09.13] - 2018-09-13
+## v2018.09.13
 
 ### Added
 - Snuffler map added
@@ -335,7 +348,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Updated web service URLs and online catalog parsers
 
 
-## [v2018.01.29] - 2018-01-29
+## v2018.01.29
 
 ### Added
 - `pyrocko.obspy_compat` compatibility with basic ObsPy classes (see https://pyrocko.org/docs/)
@@ -350,7 +363,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - old `requests` compatibility
 - various bugfixes
 
-## [v2018.01.16] - 2018-01-16
+## v2018.01.16
 
 ### Added
 - improvements to `colosseo` / `scenario`
@@ -366,7 +379,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - py2/3 related bugs in `cake` and `guts`
 - incorrect handling of moment/magnitude in `moment_tensor.MomentTensor.randam_mt()`
 
-## [v2017.12.13] - 2017-12-13
+## v2017.12.13
 
 ### Added
 - new `pyrocko.model`: `GNSSCampaign` model
@@ -383,7 +396,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `snuffler`: marker table print menu
 - `snuffler.maps`: upgrade to OpenLayers4
 
-## [v2017.11.22] - 2017-11-22
+## v2017.11.22
 
 ### Added
 - QuakeML - Include moment tensor to `pyrocko.model.event`
@@ -396,7 +409,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `pyrocko.pile` caching
 - automap SRTM download authentication
 
-## [v2017.11.16] - 2017-11-16
+## v2017.11.16
 
 ### Added
 - Python 2/3 support
