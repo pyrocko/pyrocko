@@ -1091,7 +1091,7 @@ class FDSNStationXML(Object):
     sender = String.T(optional=True, xmltagname='Sender')
     module = String.T(optional=True, xmltagname='Module')
     module_uri = String.T(optional=True, xmltagname='ModuleURI')
-    created = Timestamp.T(xmltagname='Created')
+    created = Timestamp.T(optional=True, xmltagname='Created')
     network_list = List.T(Network.T(xmltagname='Network'))
 
     xmltagname = 'FDSNStationXML'
