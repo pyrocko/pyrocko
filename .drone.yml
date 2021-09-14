@@ -174,6 +174,13 @@ kind: pipeline
 type: docker
 name: tests-base
 
+trigger:
+  branch:
+    exclude:
+    - conda
+    - pip
+    - release
+
 steps:
 
 - name: tests-base
@@ -224,6 +231,14 @@ kind: pipeline
 type: docker
 name: tests-gf
 
+trigger:
+  branch:
+    exclude:
+    - conda
+    - pip
+    - release
+
+
 steps:
 - name: tests-gf
   image: pyrocko-nest
@@ -271,6 +286,13 @@ steps:
 kind: pipeline
 type: docker
 name: tests-examples
+
+trigger:
+  branch:
+    exclude:
+    - conda
+    - pip
+    - release
 
 steps:
 - name: tests-examples
@@ -320,6 +342,13 @@ kind: pipeline
 type: docker
 name: tests-gui
 
+trigger:
+  branch:
+    exclude:
+    - conda
+    - pip
+    - release
+
 steps:
 - name: tests-gui
   image: pyrocko-nest
@@ -363,6 +392,13 @@ steps:
 kind: pipeline
 type: exec
 name: tests-windows
+
+trigger:
+  branch:
+    exclude:
+    - conda
+    - pip
+    - release
 
 platform:
   os: windows
@@ -482,6 +518,13 @@ depends_on:
 - tests-gf
 - tests-examples
 - tests-gui
+
+trigger:
+  branch:
+    exclude:
+    - conda
+    - pip
+    - release
 
 steps:
 - name: build
