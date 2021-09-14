@@ -131,7 +131,7 @@ def main(args=None):
         help='only include files whose paths match REGEX')
 
     parser.add_option(
-        '--station-xml',
+        '--stationxml',
         dest='station_xml_fns',
         action='append',
         default=[],
