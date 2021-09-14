@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+*empty*
+
+## v2021.09.14
+
 ### Changed
 - Improved RMS and STA/LTA Snufflings (keep responsive while processing, abort
   button, more options).
