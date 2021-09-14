@@ -463,6 +463,11 @@ steps:
 - name: build
   commands:
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\vagrant\\miniconda3\\Lib\\site-packages\\pyrocko
+  - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\vagrant\\miniconda3\\envs\\py36
+  - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\vagrant\\miniconda3\\envs\\py37
+  - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\vagrant\\miniconda3\\envs\\py38
+  - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\vagrant\\miniconda3\\envs\\py39
+
   - conda create -y -n py36 python=3.6 m2-tar m2-gzip m2-patch setuptools numpy=1.14
   - conda run -n py36 python setup.py install
   - conda run -n py36 python setup.py bdist_wheel
