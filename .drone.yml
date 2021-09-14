@@ -691,9 +691,12 @@ depends_on:
 - coverage
 - flake8
 - docs
+- tests-windows
 - pip
+- pip-windows
 - conda-packages-linux
 - conda-packages-osx
+- conda-packages-windows
 
 trigger:
   status:
