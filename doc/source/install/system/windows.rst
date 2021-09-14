@@ -42,7 +42,7 @@ command line and you have a C compiler installed.
 
     git clone https://git.pyrocko.org/pyrocko/pyrocko.git
     cd pyrocko
-    conda install git setuptools m2-patch
+    conda install git setuptools m2-tar m2-gzip m2-patch
     conda install numpy scipy matplotlib pyqt pyyaml progressbar2 requests jinja2 nose
     python setup.py install
 

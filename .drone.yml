@@ -427,19 +427,19 @@ steps:
 - name: build
   commands:
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\vagrant\\miniconda3\\Lib\\site-packages\\pyrocko
-  - conda create -y -n py36 python=3.6 m2-patch setuptools numpy=1.14
+  - conda create -y -n py36 python=3.6 m2-tar m2-gzip m2-patch setuptools numpy=1.14
   - conda run -n py36 python setup.py install
   - conda run -n py36 python setup.py bdist_wheel
 
-  - conda create -y -n py37 python=3.7 m2-patch setuptools numpy=1.14
+  - conda create -y -n py37 python=3.7 m2-tar m2-gzip m2-patch setuptools numpy=1.14
   - conda run -n py37 python setup.py install
   - conda run -n py37 python setup.py bdist_wheel
 
-  - conda create -y -n py38 python=3.8 m2-patch setuptools numpy=1.14
+  - conda create -y -n py38 python=3.8 m2-tar m2-gzip m2-patch setuptools numpy=1.14
   - conda run -n py38 python setup.py install
   - conda run -n py38 python setup.py bdist_wheel
 
-  - conda create -y -n py39 python=3.9 m2-patch setuptools numpy=1.16
+  - conda create -y -n py39 python=3.9 m2-tar m2-gzip m2-patch setuptools numpy=1.16
   - conda run -n py39 python setup.py install
   - conda run -n py39 python setup.py bdist_wheel
 
