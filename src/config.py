@@ -6,10 +6,14 @@ from __future__ import absolute_import
 import os
 import os.path as op
 from copy import deepcopy
+import logging
 
 from . import util
 from .guts import Object, Float, String, load, dump, List, Dict, TBase, \
     Tuple, StringChoice, Bool
+
+
+logger = logging.getLogger('pyrocko.config')
 
 guts_prefix = 'pf'
 
@@ -177,9 +181,15 @@ def raw_config(config_name='config'):
     if conf_mtime_now != g_conf_mtime.get(config_name, None):
         g_conf[config_name] = load(filename=conf_path)
         if not isinstance(g_conf[config_name], config_cls[config_name]):
+            with open(conf_path, 'r') as fconf:
+                logger.warning('Config file content:')
+                for line in fconf:
+                    logger.warning('   ' + line)
+
             raise BadConfig('config file does not contain a '
-                            'valid "%s" section.' %
-                            config_cls[config_name].__name__)
+                            'valid "%s" section. Found: %s' %
+                            config_cls[config_name].__name__,
+                            type(g_conf[config_name]))
 
         g_conf_mtime[config_name] = conf_mtime_now
 
