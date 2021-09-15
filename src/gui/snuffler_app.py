@@ -611,6 +611,7 @@ class SnufflerWindow(qw.QMainWindow):
         self.add_tab('Main', self.pile_viewer)
 
         self.pile_viewer.setup_snufflings()
+        self.setMenuBar(self.pile_viewer.menu)
 
         self.main_controls = self.pile_viewer.controls()
         self.add_panel('Main Controls', self.main_controls, visible=controls)

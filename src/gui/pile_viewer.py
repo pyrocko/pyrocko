@@ -672,10 +672,13 @@ def add_radiobuttongroup(menu, menudef, target, default=None):
     group.setExclusionPolicy(qw.QActionGroup.ExclusionPolicy.Exclusive)
     menuitems = []
 
-    for name, value in menudef:
+    for name, value, *shortcut in menudef:
         action = menu.addAction(name)
         action.setCheckable(True)
         action.setActionGroup(group)
+        if shortcut:
+            action.setShortcut(shortcut[0])
+
         group.triggered.connect(target)
         menuitems.append((action, value))
         if default is not None and (
@@ -714,23 +717,7 @@ class PileViewerMainException(Exception):
 
 
 class PileViewerMenuBar(qw.QMenuBar):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.menus = {}
-        self.active_menu = None
-
-    def add_section(self, name):
-        self.active_section = name
-        self.menus[name] = self.addMenu(name)
-        self.active_menu = self.menus[name]
-        return self.active_menu
-
-    def addAction(self, *args, **kwargs):
-        if not self.active_menu:
-            return super().addAction(*args, **kwargs)
-        return self.active_menu.addAction(*args, **kwargs)
-
+    ...
 
 class PileViewerMenu(qw.QMenu):
 
@@ -811,14 +798,14 @@ def MakePileViewerMainClass(base):
 
             self.menu = menu or PileViewerMenu(self)
 
-            file_menu = self.menu.addMenu('File')
-            view_menu = self.menu.addMenu('View')
-            options_menu = self.menu.addMenu('Options')
-            scale_menu = self.menu.addMenu('Scaling')
-            sort_menu = self.menu.addMenu('Sorting')
-            self.toggle_panel_menu = self.menu.addMenu('Snufflings')
+            file_menu = self.menu.addMenu('&File')
+            view_menu = self.menu.addMenu('&View')
+            options_menu = self.menu.addMenu('&Options')
+            scale_menu = self.menu.addMenu('&Scaling')
+            sort_menu = self.menu.addMenu('S&orting')
+            self.toggle_panel_menu = self.menu.addMenu('Snu&fflings')
 
-            help_menu = self.menu.addMenu('Help')
+            help_menu = self.menu.addMenu('&Help')
 
             self.snufflings_menu = self.toggle_panel_menu.addMenu(
                 'Run Snuffling')
@@ -829,7 +816,8 @@ def MakePileViewerMainClass(base):
             file_menu.addAction(
                 qg.QIcon.fromTheme('document-open'),
                 'Open waveform files...',
-                self.open_waveforms)
+                self.open_waveforms,
+                qg.QKeySequence(qc.Qt.CTRL + qc.Qt.Key_O))
 
             file_menu.addAction(
                 qg.QIcon.fromTheme('document-open'),
@@ -837,30 +825,27 @@ def MakePileViewerMainClass(base):
                 self.open_waveform_directory)
 
             file_menu.addAction(
-                qg.QIcon.fromTheme('document-open'),
                 'Open station files...',
                 self.open_stations)
 
             file_menu.addAction(
-                qg.QIcon.fromTheme('document-open'),
                 'Open StationXML files...',
                 self.open_stations_xml)
 
             file_menu.addAction(
-                qg.QIcon.fromTheme('document-open'),
                 'Open event file...',
                 self.read_events)
 
             file_menu.addSeparator()
             file_menu.addAction(
-                qg.QIcon.fromTheme('document-open'),
                 'Open marker file...',
                 self.read_markers)
 
             file_menu.addAction(
                 qg.QIcon.fromTheme('document-save'),
                 'Save markers...',
-                self.write_markers)
+                self.write_markers,
+                qg.QKeySequence(qc.Qt.CTRL + qc.Qt.Key_S))
 
             file_menu.addAction(
                 qg.QIcon.fromTheme('document-save-as'),
@@ -871,12 +856,14 @@ def MakePileViewerMainClass(base):
             file_menu.addAction(
                 qg.QIcon.fromTheme('document-print'),
                 'Print',
-                self.printit)
+                self.printit,
+                qg.QKeySequence(qc.Qt.Key_Print))
 
             file_menu.addAction(
                 qg.QIcon.fromTheme('insert-image'),
                 'Save as SVG or PNG',
-                self.savesvg)
+                self.savesvg,
+                qg.QKeySequence(qc.Qt.CTRL + qc.Qt.Key_E))
 
             file_menu.addSeparator()
             file_menu.addAction(
@@ -887,15 +874,18 @@ def MakePileViewerMainClass(base):
             # Scale Menu
             menudef = [
                 ('Individual Scale',
-                    lambda tr: tr.nslc_id),
+                 lambda tr: tr.nslc_id,
+                 qg.QKeySequence(qc.Qt.Key_I)),
                 ('Common Scale',
-                    lambda tr: None),
+                 lambda tr: None,
+                 qg.QKeySequence(qc.Qt.Key_C)),
                 ('Common Scale per Station',
-                    lambda tr: (tr.network, tr.station)),
+                 lambda tr: (tr.network, tr.station),
+                 qg.QKeySequence(qc.Qt.Key_S)),
                 ('Common Scale per Station Location',
-                    lambda tr: (tr.network, tr.station, tr.location)),
+                 lambda tr: (tr.network, tr.station, tr.location)),
                 ('Common Scale per Component',
-                    lambda tr: (tr.channel)),
+                 lambda tr: (tr.channel)),
             ]
 
             self.menuitems_scaling = add_radiobuttongroup(
@@ -934,12 +924,14 @@ def MakePileViewerMainClass(base):
 
             menudef = [
                 ('Sort by Names',
-                    lambda tr: ()),
+                    lambda tr: (),
+                    qg.QKeySequence(qc.Qt.Key_N)),
                 ('Sort by Distance',
                     lambda tr: self.station_attrib(
                         tr,
                         lambda sta: (m_float_or_none(sta.dist_m),),
-                        lambda tr: (None,))),
+                        lambda tr: (None,)),
+                    qg.QKeySequence(qc.Qt.Key_D)),
                 ('Sort by Azimuth',
                     lambda tr: self.station_attrib(
                         tr,
@@ -1112,8 +1104,10 @@ def MakePileViewerMainClass(base):
                 test_action.setCheckable(True)
 
             help_menu.addAction(
+                qg.QIcon.fromTheme('preferences-desktop-keyboard'),
                 'Snuffler Controls',
-                self.help)
+                self.help,
+                qg.QKeySequence(qc.Qt.Key_H))
 
             help_menu.addAction(
                 'About',
@@ -2110,7 +2104,6 @@ def MakePileViewerMainClass(base):
             self.show_all = False
             dt = self.tmax - self.tmin
             tmid = (self.tmin + self.tmax) / 2.
-
             try:
                 keytext = str(key_event.text())
             except UnicodeEncodeError:
@@ -2123,7 +2116,7 @@ def MakePileViewerMainClass(base):
                 self.interrupt_following()
                 self.set_time_range(self.tmin+dt, self.tmax+dt)
 
-            elif key_event.key() == qc.Qt.Key_Up:
+            elif key_event.key() is qc.Qt.Key_Up:
                 for m in self.selected_markers():
                     if isinstance(m, PhaseMarker):
                         if key_event.modifiers() & qc.Qt.ShiftModifier:
@@ -2132,7 +2125,7 @@ def MakePileViewerMainClass(base):
                             p = 1 if m.get_polarity() != 1 else None
                         m.set_polarity(p)
 
-            elif key_event.key() == qc.Qt.Key_Down:
+            elif key_event.key() is qc.Qt.Key_Down:
                 for m in self.selected_markers():
                     if isinstance(m, PhaseMarker):
                         if key_event.modifiers() & qc.Qt.ShiftModifier:
@@ -2389,6 +2382,8 @@ def MakePileViewerMainClass(base):
                 if key_event.modifiers() & qc.Qt.ShiftModifier:
                     amount = 10
                 self.nudge_selected_markers(dir*amount)
+            else:
+                super().keyPressEvent(key_event)
 
             if keytext != '' and keytext in 'degaApPnN':
                 self.emit_selected_markers()
@@ -2811,11 +2806,15 @@ def MakePileViewerMainClass(base):
             self.drawit(painter)
 
             logger.debug(
-                'Time spent drawing: %.3f %.3f %.3f %.3f %.3f' %
+                'Time spent drawing:   '
+                ' user:%.3f sys:%.3f children_user:%.3f'
+                ' childred_sys:%.3f elapsed:%.3f' %
                 (self.timer_draw - self.timer_cutout))
 
             logger.debug(
-                'Time spent processing: %.3f %.3f %.3f %.3f %.3f' %
+                'Time spent processing:'
+                ' user:%.3f sys:%.3f children_user:%.3f'
+                ' childred_sys:%.3f elapsed:%.3f' %
                 self.timer_cutout.get())
 
             self.time_spent_painting = self.timer_draw.get()[-1]
@@ -3662,6 +3661,7 @@ def MakePileViewerMainClass(base):
             for menuitem, scaling_key in self.menuitems_scaling:
                 if menuitem.isChecked():
                     self.scaling_key = scaling_key
+            self.update()
 
         def apply_scaling_hooks(self, data_ranges):
             for k in sorted(self.scaling_hooks.keys()):
@@ -3673,10 +3673,12 @@ def MakePileViewerMainClass(base):
                 if item.isChecked():
                     self.view_mode = mode
 
-            # if self.view_mode is ViewMode.Waterfall:
-            #     self.parent().hide_colorbar(False)
-            # else:
-            #     self.parent().hide_colorbar(True)
+            if self.view_mode is ViewMode.Waterfall:
+                self.parent().show_colorbar_ctrl(True)
+                self.parent().show_gain_ctrl(False)
+            else:
+                self.parent().show_colorbar_ctrl(False)
+                self.parent().show_gain_ctrl(True)
 
             self.update()
 
@@ -4187,11 +4189,8 @@ class PileViewer(qw.QFrame):
         layout = qw.QGridLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        self.setLayout(layout)
 
         self.menu = PileViewerMenuBar(self)
-        self.menu.setNativeMenuBar(True)
-        layout.setMenuBar(self.menu)
 
         if use_opengl:
             self.viewer = GLPileViewerMain(
@@ -4232,6 +4231,9 @@ class PileViewer(qw.QFrame):
         self.inputline.textEdited.connect(
             self.inputline_changed)
 
+        self.inputline.setPlaceholderText(
+            u'Quick commands: e.g. \'c HH?\' to select channels. '
+            u'Use ↑ or ↓ to navigate.')
         self.inputline.setFocusPolicy(qc.Qt.ClickFocus)
         self.input_area.hide()
         self.history = None
@@ -4266,6 +4268,8 @@ class PileViewer(qw.QFrame):
             self.adjust_controls)
         self.viewer.about_to_close.connect(
             self.save_inputline_history)
+
+        self.setLayout(layout)
 
     def cleanup(self):
         self.viewer.cleanup()
@@ -4455,9 +4459,8 @@ class PileViewer(qw.QFrame):
             0, 0, qw.QSizePolicy.Expanding, qw.QSizePolicy.Expanding)
         layout.addItem(spacer, 4, 0, 1, 3)
 
-        # self.hide_colorbar(True)
-
         self.adjust_controls()
+        self.viewer.viewmode_change(ViewMode.Wiggle)
         return frame
 
     def marker_editor(self):
@@ -4488,6 +4491,10 @@ class PileViewer(qw.QFrame):
     def get_pile(self):
         return self.viewer.get_pile()
 
-    def hide_colorbar(self, hidden):
-        for widget in self.colorbar_control.widgets():
-            widget.setHidden(hidden)
+    def show_colorbar_ctrl(self, show):
+        for w in self.colorbar_control.widgets():
+            w.setVisible(show)
+
+    def show_gain_ctrl(self, show):
+        for w in self.gain_control.widgets():
+            w.setVisible(show)
