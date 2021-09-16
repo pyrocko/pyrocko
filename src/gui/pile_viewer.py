@@ -669,7 +669,7 @@ class Projection(object):
 
 def add_radiobuttongroup(menu, menudef, target, default=None):
     group = qw.QActionGroup(menu)
-    group.setExclusionPolicy(qw.QActionGroup.ExclusionPolicy.Exclusive)
+    group.setExclusive(True)
     menuitems = []
 
     for name, value, *shortcut in menudef:
