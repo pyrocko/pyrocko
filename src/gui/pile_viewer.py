@@ -802,8 +802,8 @@ def MakePileViewerMainClass(base):
             view_menu = self.menu.addMenu('&View')
             options_menu = self.menu.addMenu('&Options')
             scale_menu = self.menu.addMenu('&Scaling')
-            sort_menu = self.menu.addMenu('S&orting')
-            self.toggle_panel_menu = self.menu.addMenu('Snu&fflings')
+            sort_menu = self.menu.addMenu('Sor&ting')
+            self.toggle_panel_menu = self.menu.addMenu('Sn&ufflings')
 
             help_menu = self.menu.addMenu('&Help')
 
@@ -1065,6 +1065,8 @@ def MakePileViewerMainClass(base):
             self.menuitem_demean = options_menu.addAction('Demean')
             self.menuitem_demean.setCheckable(True)
             self.menuitem_demean.setChecked(self.config.demean)
+            self.menuitem_demean.setShortcut(
+                qg.QKeySequence(qc.Qt.Key_Underscore))
 
             self.menuitem_distances_3d = options_menu.addAction(
                 '3D distances',
@@ -1605,7 +1607,7 @@ def MakePileViewerMainClass(base):
                 self.load([str(dn)])
 
         def open_stations(self, fns=None):
-            caption = 'Select one or more files to open'
+            caption = 'Select one or more Pyrocko station files to open'
 
             if not fns:
                 fns, _ = fnpatch(qw.QFileDialog.getOpenFileNames(
@@ -1622,12 +1624,12 @@ def MakePileViewerMainClass(base):
         def open_stations_xml(self, fns=None):
             from pyrocko.io import stationxml
 
-            caption = 'Select one or more StationXML files to open'
-
+            caption = 'Select one or more StationXML files'
             if not fns:
                 fns, _ = fnpatch(qw.QFileDialog.getOpenFileNames(
                     self, caption, options=qfiledialog_options,
-                    filter='StationXML *.xml (*.xml *.XML);;All files (*)'))
+                    filter='StationXML (*.xml *.XML *.stationxml *.stationXML)'
+                           ';;All files (*)'))
 
             try:
                 stations = [
@@ -1835,7 +1837,7 @@ def MakePileViewerMainClass(base):
             '''
             Open QFileDialog to open, read and add markers to the pile viewer.
             '''
-            caption = "Selet one or more files to open"
+            caption = "Selet one or more marker files to open"
             if not fn:
                 fn, _ = fnpatch(qw.QFileDialog.getOpenFileName(
                     self, caption, options=qfiledialog_options))
@@ -2144,7 +2146,7 @@ def MakePileViewerMainClass(base):
                             p = -1 if m.get_polarity() != -1 else None
                         m.set_polarity(p)
 
-            elif keytext == qc.Qt.Key_B:
+            elif key == qc.Qt.Key_B:
                 dt = self.tmax - self.tmin
                 self.interrupt_following()
                 self.set_time_range(self.tmin-dt, self.tmax-dt)
@@ -2176,7 +2178,7 @@ def MakePileViewerMainClass(base):
                 pmarkers.sort(key=lambda m: (
                     marker_to_itrack(m), (m.tmin + m.tmax) / 2.0))
 
-                if key_event.key() == qc.Qt.Key_Backtab:
+                if key == qc.Qt.Key_Backtab:
                     pmarkers.reverse()
 
                 smarkers = self.selected_markers()
@@ -2268,7 +2270,7 @@ def MakePileViewerMainClass(base):
             elif keytext == 'R':
                 self.setup_snufflings()
 
-            elif key_event.key() == qc.Qt.Key_Backspace:
+            elif key == qc.Qt.Key_Backspace:
                 self.remove_selected_markers()
 
             elif keytext == 'a':
@@ -2328,34 +2330,34 @@ def MakePileViewerMainClass(base):
                     marker.set_kind(int(keytext))
                 self.emit_selected_markers()
 
-            elif key_event.key() in fkey_map:
-                self.handle_fkeys(key_event.key())
+            elif key in fkey_map:
+                self.handle_fkeys(key)
 
-            elif key_event.key() == qc.Qt.Key_Escape:
+            elif key == qc.Qt.Key_Escape:
                 if self.picking:
                     self.stop_picking(0, 0, abort=True)
 
-            elif key_event.key() == qc.Qt.Key_PageDown:
+            elif key == qc.Qt.Key_PageDown:
                 self.scroll_tracks(
                     self.shown_tracks_range[1]-self.shown_tracks_range[0])
 
-            elif key_event.key() == qc.Qt.Key_PageUp:
+            elif key == qc.Qt.Key_PageUp:
                 self.scroll_tracks(
                     self.shown_tracks_range[0]-self.shown_tracks_range[1])
 
-            elif keytext == '+':
+            elif key == qc.Qt.Key_Plus:
                 self.zoom_tracks(0., 1.)
 
-            elif keytext == '-':
+            elif key == qc.Qt.Key_Minus:
                 self.zoom_tracks(0., -1.)
 
-            elif keytext == '=':
+            elif key == qc.Qt.Key_Equal:
                 ntracks_shown = self.shown_tracks_range[1] - \
                     self.shown_tracks_range[0]
                 dtracks = self.initial_ntracks_shown_max - ntracks_shown
                 self.zoom_tracks(0., dtracks)
 
-            elif keytext == ':':
+            elif key == qc.Qt.Key_Colon:
                 self.want_input.emit()
 
             elif keytext == 'g':
