@@ -679,12 +679,13 @@ def add_radiobuttongroup(menu, menudef, target, default=None):
         if shortcut:
             action.setShortcut(shortcut[0])
 
-        group.triggered.connect(target)
         menuitems.append((action, value))
         if default is not None and (
                 name.lower().replace(' ', '_') == default or
                 value == default):
             action.setChecked(True)
+
+    group.triggered.connect(target)
 
     if default is None:
         menuitems[0][0].setChecked(True)
@@ -817,7 +818,7 @@ def MakePileViewerMainClass(base):
                 qg.QIcon.fromTheme('document-open'),
                 'Open waveform files...',
                 self.open_waveforms,
-                qg.QKeySequence(qc.Qt.CTRL + qc.Qt.Key_O))
+                qg.QKeySequence.Open)
 
             file_menu.addAction(
                 qg.QIcon.fromTheme('document-open'),
@@ -845,19 +846,20 @@ def MakePileViewerMainClass(base):
                 qg.QIcon.fromTheme('document-save'),
                 'Save markers...',
                 self.write_markers,
-                qg.QKeySequence(qc.Qt.CTRL + qc.Qt.Key_S))
+                qg.QKeySequence.Save)
 
             file_menu.addAction(
                 qg.QIcon.fromTheme('document-save-as'),
                 'Save selected markers...',
-                self.write_selected_markers)
+                self.write_selected_markers,
+                qg.QKeySequence.SaveAs)
 
             file_menu.addSeparator()
             file_menu.addAction(
                 qg.QIcon.fromTheme('document-print'),
                 'Print',
                 self.printit,
-                qg.QKeySequence(qc.Qt.Key_Print))
+                qg.QKeySequence.Print)
 
             file_menu.addAction(
                 qg.QIcon.fromTheme('insert-image'),
@@ -866,22 +868,25 @@ def MakePileViewerMainClass(base):
                 qg.QKeySequence(qc.Qt.CTRL + qc.Qt.Key_E))
 
             file_menu.addSeparator()
-            file_menu.addAction(
+            close = file_menu.addAction(
                 qg.QIcon.fromTheme('window-close'),
                 'Close',
                 self.myclose)
+            close.setShortcuts(
+                (qg.QKeySequence(qc.Qt.Key_Q),
+                 qg.QKeySequence(qc.Qt.Key_X)))
 
             # Scale Menu
             menudef = [
                 ('Individual Scale',
                  lambda tr: tr.nslc_id,
-                 qg.QKeySequence(qc.Qt.Key_I)),
+                 qg.QKeySequence(qc.Qt.Key_S, qc.Qt.Key_I)),
                 ('Common Scale',
                  lambda tr: None,
-                 qg.QKeySequence(qc.Qt.Key_C)),
+                 qg.QKeySequence(qc.Qt.Key_S, qc.Qt.Key_C)),
                 ('Common Scale per Station',
                  lambda tr: (tr.network, tr.station),
-                 qg.QKeySequence(qc.Qt.Key_S)),
+                 qg.QKeySequence(qc.Qt.Key_S, qc.Qt.Key_S)),
                 ('Common Scale per Station Location',
                  lambda tr: (tr.network, tr.station, tr.location)),
                 ('Common Scale per Component',
@@ -1050,6 +1055,13 @@ def MakePileViewerMainClass(base):
                 'Show Zero Lines')
             self.menuitem_showzeroline.setCheckable(True)
 
+            view_menu.addSeparator()
+            view_menu.addAction(
+                qg.QIcon.fromTheme('view-fullscreen'),
+                'Fullscreen',
+                self.toggle_fullscreen,
+                qg.QKeySequence(qc.Qt.Key_F11))
+
             # Options Menu
             self.menuitem_demean = options_menu.addAction('Demean')
             self.menuitem_demean.setCheckable(True)
@@ -1107,7 +1119,7 @@ def MakePileViewerMainClass(base):
                 qg.QIcon.fromTheme('preferences-desktop-keyboard'),
                 'Snuffler Controls',
                 self.help,
-                qg.QKeySequence(qc.Qt.Key_H))
+                qg.QKeySequence(qc.Qt.Key_Question))
 
             help_menu.addAction(
                 'About',
@@ -1127,9 +1139,9 @@ def MakePileViewerMainClass(base):
             self.track_to_screen = Projection()
             self.track_to_nslc_ids = {}
 
-            self.old_vec = None
-            self.old_processed_traces = None
-            self.old_chopped_traces = None
+            self.cached_vec = None
+            self.cached_processed_traces = None
+            self.cached_chopped_traces = {}
 
             self.timer = qc.QTimer(self)
             self.timer.timeout.connect(self.periodical)
@@ -2104,19 +2116,18 @@ def MakePileViewerMainClass(base):
             self.show_all = False
             dt = self.tmax - self.tmin
             tmid = (self.tmin + self.tmax) / 2.
+
+            key = key_event.key()
             try:
                 keytext = str(key_event.text())
             except UnicodeEncodeError:
                 return
 
-            if keytext == '?':
-                self.help()
-
-            elif keytext == ' ':
+            if key == qc.Qt.Key_Space:
                 self.interrupt_following()
                 self.set_time_range(self.tmin+dt, self.tmax+dt)
 
-            elif key_event.key() is qc.Qt.Key_Up:
+            elif key == qc.Qt.Key_Up:
                 for m in self.selected_markers():
                     if isinstance(m, PhaseMarker):
                         if key_event.modifiers() & qc.Qt.ShiftModifier:
@@ -2125,7 +2136,7 @@ def MakePileViewerMainClass(base):
                             p = 1 if m.get_polarity() != 1 else None
                         m.set_polarity(p)
 
-            elif key_event.key() is qc.Qt.Key_Down:
+            elif key == qc.Qt.Key_Down:
                 for m in self.selected_markers():
                     if isinstance(m, PhaseMarker):
                         if key_event.modifiers() & qc.Qt.ShiftModifier:
@@ -2134,12 +2145,12 @@ def MakePileViewerMainClass(base):
                             p = -1 if m.get_polarity() != -1 else None
                         m.set_polarity(p)
 
-            elif keytext == 'b':
+            elif keytext == qc.Qt.Key_B:
                 dt = self.tmax - self.tmin
                 self.interrupt_following()
                 self.set_time_range(self.tmin-dt, self.tmax-dt)
 
-            elif key_event.key() in (qc.Qt.Key_Tab, qc.Qt.Key_Backtab):
+            elif key in (qc.Qt.Key_Tab, qc.Qt.Key_Backtab):
                 self.interrupt_following()
 
                 tgo = None
@@ -2251,9 +2262,6 @@ def MakePileViewerMainClass(base):
                     self.interrupt_following()
                     self.set_time_range(tgo-dt/2., tgo+dt/2.)
 
-            elif keytext == 'q' or keytext == 'x':
-                self.myclose(keytext)
-
             elif keytext == 'r':
                 if self.pile.reload_modified():
                     self.reloaded = True
@@ -2351,17 +2359,6 @@ def MakePileViewerMainClass(base):
             elif keytext == ':':
                 self.want_input.emit()
 
-            elif keytext == 'f':
-                if self.window().windowState() & qc.Qt.WindowFullScreen or \
-                        self.window().windowState() & qc.Qt.WindowMaximized:
-
-                    self.window().showNormal()
-                else:
-                    if macosx:
-                        self.window().showMaximized()
-                    else:
-                        self.window().showFullScreen()
-
             elif keytext == 'g':
                 self.go_to_selection()
 
@@ -2428,6 +2425,16 @@ def MakePileViewerMainClass(base):
                 if not isinstance(marker, EventMarker):
                     marker.tmin += npixels * (d-c)/b
                     marker.tmax += npixels * (d-c)/b
+
+        def toggle_fullscreen(self):
+            if self.window().windowState() & qc.Qt.WindowFullScreen or \
+                    self.window().windowState() & qc.Qt.WindowMaximized:
+                self.window().showNormal()
+            else:
+                if macosx:
+                    self.window().showMaximized()
+                else:
+                    self.window().showFullScreen()
 
         def about(self):
             fn = pyrocko.util.data_file('snuffler.png')
@@ -3029,10 +3036,14 @@ def MakePileViewerMainClass(base):
                 demean=self.menuitem_demean.isChecked())
 
             if not printmode and show_boxes:
-                if processed_traces and \
-                        self.view_mode is not ViewMode.Waterfall:
+                if self.view_mode is ViewMode.Wiggle:
                     self.draw_trace_boxes(
                         p, self.time_projection, track_projections)
+                elif self.view_mode is ViewMode.Waterfall \
+                        and not processed_traces:
+                    self.draw_trace_boxes(
+                        p, self.time_projection, track_projections)
+
 
             p.setFont(font)
             label_bg = qg.QBrush(qg.QColor(255, 255, 255, 100))
@@ -3043,7 +3054,25 @@ def MakePileViewerMainClass(base):
             self.track_to_nslc_ids = {}
             nticks = 0
             annot_labels = []
-            if processed_traces:
+
+            if self.view_mode is ViewMode.Waterfall and processed_traces:
+                waterfall = self.waterfall
+                waterfall.set_time_range(self.tmin, self.tmax)
+                waterfall.set_traces(processed_traces)
+                waterfall.set_cmap(self.waterfall_cmap)
+                waterfall.set_integrate(self.waterfall_integrate)
+                waterfall.set_clip(
+                    self.waterfall_clip_min, self.waterfall_clip_max)
+                waterfall.show_absolute_values(
+                    self.waterfall_show_absolute)
+
+                rect = qc.QRectF(
+                    0, self.ax_height,
+                    self.width(), self.height() - self.ax_height*2
+                )
+                waterfall.draw_waterfall(p, rect=rect)
+
+            elif self.view_mode is ViewMode.Wiggle and processed_traces:
                 show_scales = self.menuitem_showscalerange.isChecked() \
                     or self.menuitem_showscaleaxis.isChecked()
 
@@ -3182,8 +3211,7 @@ def MakePileViewerMainClass(base):
                                                 - lab.rect.width() - 10 \
                                                 - uoff
                                 else:
-                                    if not self.menuitem_showboxes\
-                                            .isChecked():
+                                    if not show_boxes:
                                         qpoints = make_QPolygonF(
                                             [umax-20-uoff,
                                              umax-10-uoff,
@@ -3284,23 +3312,6 @@ def MakePileViewerMainClass(base):
                     if self.menuitem_cliptraces.isChecked():
                         p.setClipRect(0, 0, int(w), int(h))
 
-                if self.view_mode is ViewMode.Waterfall:
-                    waterfall = self.waterfall
-                    waterfall.set_time_range(self.tmin, self.tmax)
-                    waterfall.set_traces(processed_traces)
-                    waterfall.set_cmap(self.waterfall_cmap)
-                    waterfall.set_integrate(self.waterfall_integrate)
-                    waterfall.set_clip(
-                        self.waterfall_clip_min, self.waterfall_clip_max)
-                    waterfall.show_absolute_values(
-                        self.waterfall_show_absolute)
-
-                    rect = qc.QRectF(
-                        0, self.ax_height,
-                        self.width(), self.height() - self.ax_height*2
-                    )
-                    waterfall.draw_waterfall(p, rect=rect)
-
             if self.floating_marker:
                 self.floating_marker.draw(
                     p, self.time_projection, vcenter_projection)
@@ -3377,8 +3388,8 @@ def MakePileViewerMainClass(base):
             return ndecimate, tpad, tsee
 
         def clean_update(self):
-            self.old_processed_traces = None
-            self.old_chopped_traces = None
+            self.cached_processed_traces = None
+            self.cached_chopped_traces = {}
             self.update()
 
         def get_adequate_tpad(self):
@@ -3442,19 +3453,18 @@ def MakePileViewerMainClass(base):
                 min_deltat_allow, self.rotate, self.shown_tracks_range,
                 ads, self.pile.get_update_count())
 
-            dtmin = 0. if not self.old_vec else tmin_ - self.old_vec[0]
-            dtmax = 0. if not self.old_vec else tmax_ - self.old_vec[1]
+            dtmin = 0. if not self.cached_vec else tmin_ - self.cached_vec[0]
+            dtmax = 0. if not self.cached_vec else tmax_ - self.cached_vec[1]
 
-            if (self.old_vec
-                    and self.old_vec[0] <= vec[0]
-                    and vec[1] <= self.old_vec[1]
-                    and vec[2:] == self.old_vec[2:]
+            if (self.cached_vec
+                    and self.cached_vec[0] <= vec[0]
+                    and vec[1] <= self.cached_vec[1]
+                    and vec[2:] == self.cached_vec[2:]
                     and not (self.reloaded or self.menuitem_watch.isChecked())
-                    and self.old_processed_traces is not None):
+                    and self.cached_processed_traces is not None):
 
                 logger.debug('Using cached traces')
-                processed_traces = self.old_processed_traces
-                fresh_traces = False
+                processed_traces = self.cached_processed_traces
 
             else:
                 processed_traces = []
@@ -3607,16 +3617,24 @@ def MakePileViewerMainClass(base):
 
                 processed_traces = self.post_process_hooks(processed_traces)
 
-                self.old_processed_traces = processed_traces
-                self.old_vec = vec
-                fresh_traces = True
+                self.cached_processed_traces = processed_traces
+                self.cached_vec = vec
 
-            if not self.old_chopped_traces or fresh_traces or dtmin or dtmax:
-                chopped_traces = []
-                for trace in processed_traces:
+            chopped_traces = []
+            for trace in processed_traces:
+                chop_tmin = tmin_ - trace.deltat*4
+                chop_tmax = tmax_ + trace.deltat*4
+                trace_hash = trace.hash(unsafe=True)
+
+                # Use cache if tmin and tmax have not changed
+                if dtmin == 0. and dtmax == 0. \
+                        and trace_hash in self.cached_chopped_traces:
+                    ctrace = self.cached_chopped_traces[trace_hash]
+
+                else:
                     try:
                         ctrace = trace.chop(
-                            tmin_-trace.deltat*4., tmax_+trace.deltat*4.,
+                            chop_tmin, chop_tmax,
                             inplace=False)
 
                     except pyrocko.trace.NoData:
@@ -3625,10 +3643,8 @@ def MakePileViewerMainClass(base):
                     if ctrace.data_len() < 2:
                         continue
 
-                    chopped_traces.append(ctrace)
-                    self.old_chopped_traces = chopped_traces
-            else:
-                chopped_traces = self.old_chopped_traces
+                self.cached_chopped_traces[trace_hash] = ctrace
+                chopped_traces.append(ctrace)
 
             self.timer_cutout.stop()
             return chopped_traces
@@ -3672,14 +3688,44 @@ def MakePileViewerMainClass(base):
             for item, mode in self.menuitems_viewmode:
                 if item.isChecked():
                     self.view_mode = mode
+                    break
+            else:
+                raise AttributeError('unknown view mode')
+
+            items_waterfall_disabled = (
+                self.menuitem_showscaleaxis,
+                self.menuitem_showscalerange,
+                self.menuitem_showzeroline,
+                self.menuitem_colortraces,
+                self.menuitem_cliptraces,
+                *(itm[0] for itm in self.menuitems_visible_length)
+            )
+
+            for item in items_waterfall_disabled:
+                item.blockSignals(True)
 
             if self.view_mode is ViewMode.Waterfall:
                 self.parent().show_colorbar_ctrl(True)
                 self.parent().show_gain_ctrl(False)
+
+                for item in items_waterfall_disabled:
+                    item._prev_state = bool(item.isChecked())
+                    item.setDisabled(True)
+                self.visible_length = 180.
             else:
                 self.parent().show_colorbar_ctrl(False)
                 self.parent().show_gain_ctrl(True)
 
+                for item in items_waterfall_disabled:
+                    prev_state = getattr(
+                        item, '_prev_state', item.isChecked())
+                    item.setChecked(prev_state)
+                    item.setDisabled(False)
+
+            for item in items_waterfall_disabled:
+                item.blockSignals(False)
+
+            self.visible_length_change()
             self.update()
 
         def set_scaling_hook(self, k, hook):

@@ -13,7 +13,7 @@ from .qt_compat import qc, qg, qw
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_CMAP = 'plasma'
+DEFAULT_CMAP = 'viridis'
 
 
 class TraceWaterfall:
@@ -69,18 +69,18 @@ class TraceWaterfall:
         sha1 = hashlib.sha1()
         sha1.update(self.tmin.hex().encode())
         sha1.update(self.tmax.hex().encode())
-        sha1.update(self.cmap.name.encode())
         sha1.update(self._clip_min.hex().encode())
         sha1.update(self._clip_max.hex().encode())
+        sha1.update(self.cmap.name.encode())
         sha1.update(bytes(self._show_absolute))
         sha1.update(bytes(self._integrate))
+        sha1.update(bytes(len(self.traces)))
         for tr in self.traces:
-            sha1.update(bytes(tr.ydata[:10]))
-            sha1.update(bytes(tr.ydata[-10:]))
+            sha1.update(tr.hash(unsafe=True).encode())
 
         return sha1
 
-    def get_data(self, px_x, px_y):
+    def get_image(self, px_x, px_y):
         hash = self.get_state_hash()
         hash.update(bytes(px_x))
         hash.update(bytes(px_y))
@@ -88,17 +88,24 @@ class TraceWaterfall:
         data_hash = hash.hexdigest()
 
         if self._data_cache and self._data_cache[-1] == data_hash:
+            logger.debug('using cached image')
             return self._data_cache
 
-        traces_step = max(1, int(len(self.traces) // px_y))
+        # Undersample in space
+        traces_step = int(len(self.traces) // px_y) + 1
         traces = self.traces[::traces_step]
+        img_rows = len(traces)
+
+        # Undersample in time
+        raw_deltat = min(tr.deltat for tr in traces)
+        raw_nsamples = int(round((self.tmax - self.tmin) / raw_deltat)) + 1
+
+        img_undersample = max(1, int(raw_nsamples // (2*px_x)))
+        img_deltat = raw_deltat * img_undersample
+        img_nsamples = int(round((self.tmax - self.tmin) / img_deltat)) + 1
 
         dtypes = set(tr.ydata.dtype for tr in traces)
         dtype = num.float64 if num.float64 in dtypes else num.float32
-
-        img_deltat = min(tr.deltat for tr in traces)
-        img_nsamples = int(round((self.tmax - self.tmin) / img_deltat)) + 1
-        img_rows = len(traces)
 
         data = num.zeros((img_rows, img_nsamples), dtype=dtype)
         empty_data = num.ones_like(data, dtype=num.bool)
@@ -106,16 +113,18 @@ class TraceWaterfall:
         deltats = num.zeros(img_rows) if self._integrate else None
 
         logger.debug(
-            'image render: using [::%d] trace'
+            'image render: using [::%d] traces at %d time undersampling'
             ' - rect (%d, %d), data: (%d, %d)',
-            traces_step, px_y, px_x, *data.shape)
+            traces_step, img_undersample, px_y, px_x, *data.shape)
 
         for itr, tr in enumerate(traces):
             tr_data = tr.ydata
 
             if tr.deltat != img_deltat:
-                data_time_vec = tr.tmin + num.arange(tr.ydata.size)*img_deltat
-                tr_data = num.interp(data_time_vec, tr.get_xdata(), tr.ydata)
+                time_vec = tr.tmin \
+                    + num.arange((tr.tmax - tr.tmin) // img_deltat) \
+                    * img_deltat
+                tr_data = num.interp(time_vec, tr.get_xdata(), tr.ydata)
 
             ibeg = max(0, t2ind(self.tmin - tr.tmin, img_deltat, round))
             iend = min(
@@ -174,6 +183,6 @@ class TraceWaterfall:
             raise AttributeError('No traces to paint.')
 
         rect = rect or p.window()
-        trace_data, img, *_ = self.get_data(
+        trace_data, img, *_ = self.get_image(
             int(rect.width()), int(rect.height()))
         p.drawImage(rect, img)

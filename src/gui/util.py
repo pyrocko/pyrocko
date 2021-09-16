@@ -443,18 +443,18 @@ class LinValControl(ValControl):
 class ColorbarControl(qw.QWidget):
 
     AVAILABLE_CMAPS = (
-        'seismic',
-        'RdBu',
-        'YlGn',
+        'viridis',
+        'plasma',
+        'magma',
         'binary',
         'Reds',
         'copper',
-        'viridis',
-        'plasma',
-        'magma'
+        'seismic',
+        'RdBu',
+        'YlGn',
     )
 
-    DEFAULT_CMAP = 'seismic'
+    DEFAULT_CMAP = 'viridis'
 
     cmap_changed = qc.pyqtSignal(str)
     show_absolute_toggled = qc.pyqtSignal(bool)
@@ -462,8 +462,6 @@ class ColorbarControl(qw.QWidget):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        self.cmap_name = self.DEFAULT_CMAP
 
         self.lname = qw.QLabel("Colormap")
         self.lname.setSizePolicy(
@@ -545,6 +543,8 @@ class ColorbarControl(qw.QWidget):
         layout.addWidget(self.abs_toggle)
         layout.addWidget(self.int_toggle)
         self.controls.setLayout(layout)
+
+        self.set_cmap_name(self.DEFAULT_CMAP)
 
     def set_cmap(self, idx):
         self.set_cmap_name(self.cmap_options.itemData(idx))
