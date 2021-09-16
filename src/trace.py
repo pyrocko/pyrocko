@@ -11,6 +11,7 @@ import time
 import math
 import copy
 import logging
+import hashlib
 
 import numpy as num
 from scipy import signal
@@ -163,6 +164,23 @@ class Trace(Object):
 
         self._growbuffer = None
         self._update_ids()
+
+    def hash(self, unsafe=False):
+        sha1 = hashlib.sha1()
+        for code in self.nslc_id:
+            sha1.update(code.encode())
+        sha1.update(self.tmin.hex().encode())
+        sha1.update(self.tmax.hex().encode())
+        sha1.update(self.deltat.hex().encode())
+
+        if self.ydata is not None:
+            if not unsafe:
+                sha1.update(memoryview(self.ydata))
+            else:
+                sha1.update(memoryview(self.ydata[:32]))
+                sha1.update(memoryview(self.ydata[-32:]))
+
+        return sha1.hexdigest()
 
     def name(self):
         '''
