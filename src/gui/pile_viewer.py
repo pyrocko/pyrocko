@@ -720,10 +720,9 @@ class PileViewerMainException(Exception):
 class PileViewerMenuBar(qw.QMenuBar):
     ...
 
-class PileViewerMenu(qw.QMenu):
 
-    def add_section(self, name):
-        return self.addSeparator()
+class PileViewerMenu(qw.QMenu):
+    ...
 
 
 def MakePileViewerMainClass(base):
@@ -3044,7 +3043,6 @@ def MakePileViewerMainClass(base):
                     self.draw_trace_boxes(
                         p, self.time_projection, track_projections)
 
-
             p.setFont(font)
             label_bg = qg.QBrush(qg.QColor(255, 255, 255, 100))
 
@@ -3701,29 +3699,20 @@ def MakePileViewerMainClass(base):
                 *(itm[0] for itm in self.menuitems_visible_length)
             )
 
-            for item in items_waterfall_disabled:
-                item.blockSignals(True)
-
             if self.view_mode is ViewMode.Waterfall:
                 self.parent().show_colorbar_ctrl(True)
                 self.parent().show_gain_ctrl(False)
 
                 for item in items_waterfall_disabled:
-                    item._prev_state = bool(item.isChecked())
                     item.setDisabled(True)
+
                 self.visible_length = 180.
             else:
                 self.parent().show_colorbar_ctrl(False)
                 self.parent().show_gain_ctrl(True)
 
                 for item in items_waterfall_disabled:
-                    prev_state = getattr(
-                        item, '_prev_state', item.isChecked())
-                    item.setChecked(prev_state)
                     item.setDisabled(False)
-
-            for item in items_waterfall_disabled:
-                item.blockSignals(False)
 
             self.visible_length_change()
             self.update()
