@@ -237,8 +237,8 @@ class ScenarioTestCase(unittest.TestCase):
             target_generators=[
                 targets.WaveformGenerator(
                     store_id=ScenarioTestCase.store_id,
-                    station_generators=targets.RandomStationGenerator(
-                        avoid_water=False),
+                    station_generators=[
+                        targets.RandomStationGenerator(avoid_water=False)],
                     noise_generator=targets.waveform.WhiteNoiseGenerator(),
                     seismogram_quantity='velocity'),
                 targets.InSARGenerator(

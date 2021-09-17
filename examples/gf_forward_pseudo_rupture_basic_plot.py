@@ -4,29 +4,39 @@ from pyrocko.plot.dynamic_rupture import RuptureView
 
 km = 1e3
 
-# Download a Greens Functions store
-store_id = 'crust2_ib'
+# The store we are going extract data from:
+store_id = 'iceland_reg_v2'
+
+# First, download a Greens Functions store. If you already have one that you
+# would like to use, you can skip this step and point the *store_superdirs* in
+# the next step to that directory.
 if not op.exists(store_id):
     gf.ws.download_gf_store(site='kinherd', store_id=store_id)
 
+# We need a pyrocko.gf.Engine object which provides us with the traces
+# extracted from the store. In this case we are going to use a local
+# engine since we are going to query a local store.
+engine = gf.LocalEngine(store_superdirs=['.'])
 
-engine = gf.LocalEngine(store_superdirs=['.'], use_config=True)
+# The dynamic parameter used for discretization of the PseudoDynamicRupture are
+# extracted from the stores config file.
 store = engine.get_store(store_id)
 
+# Let's define the source now with its extension, orientation etc.
 dyn_rupture = gf.PseudoDynamicRupture(
     # At lat 0. and lon 0. (default)
-    north_shift=2*km,
-    east_shift=2*km,
-    depth=3*km,
+    north_shift=2.*km,
+    east_shift=2.*km,
+    depth=3.*km,
     strike=43.,
     dip=89.,
     rake=88.,
 
-    length=26*km,
-    width=12*km,
+    length=15*km,
+    width=5*km,
 
-    nx=30,
-    ny=20,
+    nx=10,
+    ny=5,
 
     # Relative nucleation between -1. and 1.
     nucleation_x=-.6,
@@ -35,7 +45,7 @@ dyn_rupture = gf.PseudoDynamicRupture(
     anchor='top',
 
     # Threads used for modelling
-    nthreads=0,
+    nthreads=1,
 
     # Force pure shear rupture
     pure_shear=True)
@@ -47,6 +57,6 @@ plot = RuptureView(dyn_rupture, figsize=(8, 4))
 plot.draw_patch_parameter('traction')
 plot.draw_time_contour(store)
 plot.draw_nucleation_point()
-plot.save('dynamic_simple_tractions.png')
+plot.save('dynamic_basic_tractions.png')
 # Alternatively plot on screen
 # plot.show_plot()

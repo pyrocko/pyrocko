@@ -36,11 +36,11 @@ tracts = tractions.TractionComposition(
 
 # Let's define the source now with its extension, orientation etc.
 source = gf.PseudoDynamicRupture(
-    lat=-21.,
-    lon=32.,
+    lat=6.45,
+    lon=37.06,
     length=30000.,
     width=10000.,
-    strike=165.,
+    strike=215.,
     dip=45.,
     anchor='top',
     gamma=0.6,
@@ -59,11 +59,11 @@ source.discretize_patches(store)
 # Define the rupture map object parameters as image center coordinates,
 # radius in m and the size of the image
 map_kwargs = dict(
-    lat=-21.,
-    lon=32.,
-    radius=15000.,
-    width=30.,
-    height=30.,
+    lat=6.50,
+    lon=37.06,
+    radius=20000.,
+    width=25.,
+    height=25.,
     source=source,
     show_topo=True)
 
@@ -80,7 +80,7 @@ m.save('traction_map.png')
 # contour at 3 s is displayed together with nucleation point.
 m = dynamic_rupture.RuptureMap(**map_kwargs)
 m.draw_dislocation(time=3, cmap='summer')
-m.draw_dislocation_vector(time=3, S='i10.', I='x50')
+m.draw_dislocation_vector(time=3, S='i15.', I='x20')
 m.draw_time_contour(store, clevel=[3])
 m.draw_dislocation_contour(time=3, clevel=[0.15])
 m.draw_nucleation_point()

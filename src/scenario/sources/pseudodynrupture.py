@@ -55,6 +55,12 @@ class PseudoDynamicRuptureGenerator(SourceGenerator):
     gamma = Float.T(
         default=0.8)
 
+    def draw_slip(self, rstate):
+        if self.slip_min is not None and self.slip_max is not None:
+            return rstate.uniform(self.slip_min, self.slip_max)
+        else:
+            return rstate.rand()
+
     def get_source(self, ievent):
         rstate = self.get_rstate(ievent)
         time = rstate.uniform(self.time_min, self.time_max)
@@ -65,32 +71,19 @@ class PseudoDynamicRuptureGenerator(SourceGenerator):
         nucleation_y = self.nucleation_y if self.nucleation_y is not None \
             else rstate.uniform(-1., 1.)
 
-        # After K. Thingbaijam et al. (2017) - Tab. 1, Normal faulting
-        def scale_from_mag(magnitude, a, b):
-            return 10**(a + b*magnitude)
-
         def scale_from_slip(slip, a, b):
             return 10**((num.log10(slip) - a) / b)
 
         if self.slip_min is not None and self.slip_max is not None:
-            slip = rstate.uniform(self.slip_min, self.slip_max)
-            magnitude = None
+            slip = self.draw_slip(rstate)
             # After K. Thingbaijam et al. (2017) - Tab. 2, Normal faulting
             length = scale_from_slip(slip, a=-2.302, b=1.302)
             width = scale_from_slip(slip, a=-3.698, b=2.512)
 
-        elif self.magnitude_min is not None and self.magnitude_max is not None:
-            magnitude = rstate.uniform(self.magnitude_min, self.magnitude_max)
-            slip = None
-            # After K. Thingbaijam et al. (2017) - Tab. 2, Normal faulting
-            length = scale_from_mag(magnitude, a=-1.722, b=0.485)
-            width = scale_from_mag(magnitude, a=-0.829, b=0.323)
-
         else:
-            magnitude = self.draw_magnitude(rstate)
-            slip = None
-            length = scale_from_mag(magnitude, a=-1.722, b=0.485)
-            width = scale_from_mag(magnitude, a=-0.829, b=0.323)
+            slip = self.draw_slip(rstate)
+            length = scale_from_slip(slip, a=-2.302, b=1.302)
+            width = scale_from_slip(slip, a=-3.698, b=2.512)
 
         length = length if not self.length else self.length
         width = width if not self.width else self.width
@@ -120,7 +113,6 @@ class PseudoDynamicRuptureGenerator(SourceGenerator):
             strike=float(strike),
             dip=float(dip),
             rake=float(rake),
-            magnitude=magnitude,
             slip=slip,
             nucleation_x=float(nucleation_x),
             nucleation_y=float(nucleation_y),

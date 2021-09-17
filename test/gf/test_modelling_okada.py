@@ -518,7 +518,7 @@ class OkadaTestCase(unittest.TestCase):
         width_total = 10000.
 
         nlength = 3
-        nwidth = 501
+        nwidth = 101
         length = length_total / nlength
         width = width_total / nwidth
 
@@ -621,7 +621,7 @@ class OkadaTestCase(unittest.TestCase):
         length_total = 10000.
         width_total = length_total
 
-        nlength = 31
+        nlength = 21
         nwidth = nlength
         length = length_total / nlength
         width = width_total / nwidth

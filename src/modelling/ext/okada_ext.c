@@ -3,6 +3,9 @@
 #include "Python.h"
 #include <assert.h>
 #include <stdio.h>
+#ifdef _WIN32
+    #define _USE_MATH_DEFINES
+#endif
 #include <math.h>
 #include "numpy/arrayobject.h"
 #include <numpy/npy_math.h>

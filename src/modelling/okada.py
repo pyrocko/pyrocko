@@ -37,7 +37,7 @@ class AnalyticalSource(Location):
 
     vr = Float.T(
         default=0.,
-        help='Rupture velocity',
+        help='Rupture velocity [m/s]',
         optional=True)
 
     @property
@@ -116,25 +116,25 @@ class OkadaSource(AnalyticalRectangularSource):
 
     poisson__ = Float.T(
         default=0.25,
-        help='Poisson\'s ratio, default 0.25',
+        help='Poisson\'s ratio :math:`\\nu`',
         optional=True)
 
     lamb__ = Float.T(
-        help='First Lame\' s parameter [Pa]',
+        help='First Lame\' s parameter :math:`\\lambda` [Pa]',
         optional=True)
 
     shearmod__ = Float.T(
         default=32.0e9,
-        help='Shear modulus along the plane [Pa]',
+        help='Shear modulus along the plane :math:`\\mu` [Pa]',
         optional=True)
 
     @property
     def poisson(self):
         '''
-        Calculation of Poisson ratio (if not given).
+        Calculation of Poisson\' s ratio :math:`\\nu` (if not given).
 
-        The Poisson ratio :math:`\\nu` can be calculated from the Lame
-        parameters :math`\\lambda` and :math:`\\mu` using :math:`\\nu =
+        The Poisson\' s ratio :math:`\\nu` can be calculated from the Lame
+        parameters :math:`\\lambda` and :math:`\\mu` using :math:`\\nu =
         \\frac{\\lambda}{2(\\lambda + \\mu)}` (e.g. Mueller 2007).
         '''
 
@@ -153,9 +153,10 @@ class OkadaSource(AnalyticalRectangularSource):
     @property
     def lamb(self):
         '''
-        Calculation of first Lame parameter (if not given).
+        Calculation of first Lame\' s parameter (if not given).
 
-        Poisson ratio and shear modulus must be available.
+        Poisson\' s ratio :math:`\\nu` and shear modulus :math:`\\mu` must be
+        available.
         '''
 
         if self.lamb__ is not None:
@@ -174,9 +175,9 @@ class OkadaSource(AnalyticalRectangularSource):
     @property
     def shearmod(self):
         '''
-        Calculation of shear modulus (if not given).
+        Calculation of shear modulus :math:`\\mu` (if not given).
 
-        Poisson ratio must be available.
+        Poisson ratio\' s :math:`\\nu` must be available.
 
         .. important ::
 
@@ -202,10 +203,9 @@ class OkadaSource(AnalyticalRectangularSource):
     @property
     def seismic_moment(self):
         '''
-        Scalar Seismic moment.
+        Scalar Seismic moment :math:`M_0`.
 
-        Code copied from Kite
-        Disregarding the opening (as for now)
+        Code copied from Kite. It disregards the opening (as for now).
         We assume :math:`M_0 = mu A D`
 
         .. important ::
@@ -232,7 +232,7 @@ class OkadaSource(AnalyticalRectangularSource):
     @property
     def moment_magnitude(self):
         '''
-        Moment magnitude from Seismic moment.
+        Moment magnitude :math:`M_\\mathrm{w}` from Seismic moment.
 
         We assume :math:`M_\\mathrm{w} = {\\frac{2}{3}}\\log_{10}(M_0) - 10.7`
 
@@ -357,10 +357,11 @@ def make_okada_coefficient_matrix(
     '''
     Build coefficient matrix for given fault patches.
 
-    The BEM for a discretized fault and the determination of the slip
-    distribution from stress drop is based on the relation :math:`stress =
-    coefmat \\cdot displ`. Here the coefficient matrix is built, based on
-    the displacements from Okada's solution and their partial derivatives.
+    The boundary element method (BEM) for a discretized fault and the
+    determination of the slip distribution from stress drop is based on the
+    relation :math:`stress = coefmat \\cdot displ`. Here the coefficient matrix
+    is built, based on the displacements from Okada's solution and their
+    partial derivatives.
 
     :param source_patches_list: Source patches, to be used in BEM.
     :type source_patches_list: list of
@@ -656,5 +657,6 @@ __all__ = [
     'AnalyticalSource',
     'AnalyticalRectangularSource',
     'OkadaSource',
+    'OkadaPatch',
     'make_okada_coefficient_matrix',
     'invert_fault_dislocations_bem']

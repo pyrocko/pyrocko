@@ -60,17 +60,20 @@ source.discretize_patches(store)
 # over time with a sampling interval of 1 s
 viewer = dynamic_rupture.RuptureView(source=source)
 viewer.draw_source_dynamics(variable='moment', deltat=1, store=store)
+viewer.save('dynamic_view_source_moment.png')
 viewer.show_plot()
 
 # Initialize the viewer and display the seismic moment release of one single
 # boundary element (patch) over time
 viewer = dynamic_rupture.RuptureView(source=source)
 viewer.draw_patch_dynamics(variable='moment', nx=3, ny=3, deltat=1)
+viewer.save('dynamic_view_patch_moment.png')
 viewer.show_plot()
 
 # Initialize the viewer and display the traction vector length.
 viewer.draw_patch_parameter('traction')
 viewer.draw_nucleation_point()
+viewer.save('dynamic_view_source_traction.png')
 viewer.show_plot()
 
 # Initialize the viewer and generate a more complex plot of the dislocation at
@@ -81,4 +84,5 @@ viewer.draw_dislocation(time=3, cmap='summer')
 viewer.draw_time_contour(store, clevel=[3])
 viewer.draw_dislocation_contour(time=3, clevel=[0.15])
 viewer.draw_nucleation_point()
+viewer.save('dynamic_view_source_dislocation.png')
 viewer.show_plot()
