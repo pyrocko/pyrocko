@@ -521,7 +521,7 @@ class ColorbarControl(qw.QWidget):
         self.int_toggle = qw.QPushButton()
         self.int_toggle.setText('∫')
         self.int_toggle.setToolTip(
-            'Integrate traces (e.g. strain rate -> strain)')
+            u'Integrate traces (e.g. strain rate → strain)')
         self.int_toggle.setSizePolicy(btn_size)
         self.int_toggle.setCheckable(True)
         print(self.abs_toggle.width())

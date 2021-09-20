@@ -2,6 +2,7 @@ import logging
 import hashlib
 import time
 import numpy as num
+from scipy import signal
 
 from matplotlib.cm import get_cmap
 from matplotlib.colors import Normalize
@@ -147,12 +148,14 @@ class TraceWaterfall:
         if self._common_scale:
             data /= num.abs(data).max(axis=1)[:, num.newaxis]
 
-        vmax = num.abs(data).max()
-        vmin = -vmax
-
         if self._show_absolute:
-            data = num.abs(data)
+            data = num.abs(signal.hilbert(data, axis=1))
+            vmax = data.max()
             vmin = data.min()
+        else:
+            vmax = num.abs(data).max()
+            vmin = -vmax
+
         vrange = vmax - vmin
 
         self.norm.vmin = vmin + self._clip_min*vrange
