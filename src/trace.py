@@ -853,7 +853,7 @@ class Trace(Object):
                 raise AboveNyquist(message)
 
     def lowpass(self, order, corner, nyquist_warn=True,
-                nyquist_exception=False, demean=True):
+                nyquist_exception=False, demean=True, dtype=num.float32):
 
         '''
         Apply Butterworth lowpass to the trace.
@@ -877,14 +877,14 @@ class Trace(Object):
                 'scipy.signal.butter(). You may need to downsample the '
                 'signal before filtering.')
 
-        data = self.ydata.astype(num.float64)
+        data = self.ydata.astype(dtype)
         if demean:
             data -= num.mean(data)
         self.drop_growbuffer()
         self.ydata = signal.lfilter(b, a, data)
 
     def highpass(self, order, corner, nyquist_warn=True,
-                 nyquist_exception=False, demean=True):
+                 nyquist_exception=False, demean=True, dtype=num.float64):
 
         '''
         Apply butterworth highpass to the trace.
@@ -902,7 +902,7 @@ class Trace(Object):
         (b, a) = _get_cached_filter_coefs(
             order, [corner*2.0*self.deltat], btype='high')
 
-        data = self.ydata.astype(num.float64)
+        data = self.ydata.astype(dtype)
         if len(a) != order+1 or len(b) != order+1:
             logger.warning(
                 'Erroneous filter coefficients returned by '
@@ -913,7 +913,8 @@ class Trace(Object):
         self.drop_growbuffer()
         self.ydata = signal.lfilter(b, a, data)
 
-    def bandpass(self, order, corner_hp, corner_lp, demean=True):
+    def bandpass(self, order, corner_hp, corner_lp, demean=True,
+                 dtype=num.float64):
         '''
         Apply butterworth bandpass to the trace.
 
@@ -930,13 +931,14 @@ class Trace(Object):
             order,
             [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)],
             btype='band')
-        data = self.ydata.astype(num.float64)
+        data = self.ydata.astype(dtype)
         if demean:
             data -= num.mean(data)
         self.drop_growbuffer()
         self.ydata = signal.lfilter(b, a, data)
 
-    def bandstop(self, order, corner_hp, corner_lp, demean=True):
+    def bandstop(self, order, corner_hp, corner_lp, demean=True,
+                 dtype=num.float64):
         '''
         Apply bandstop (attenuates frequencies in band) to the trace.
 
@@ -953,7 +955,7 @@ class Trace(Object):
             order,
             [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)],
             btype='bandstop')
-        data = self.ydata.astype(num.float64)
+        data = self.ydata.astype(dtype)
         if demean:
             data -= num.mean(data)
         self.drop_growbuffer()

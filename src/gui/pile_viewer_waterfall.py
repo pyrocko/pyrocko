@@ -34,6 +34,7 @@ class TraceWaterfall:
         self._clip_min = 0.
         self._clip_max = 1.
         self._common_scale = True
+        self._median_filter = (3, 3)
 
         self.set_cmap(DEFAULT_CMAP)
 
@@ -51,6 +52,9 @@ class TraceWaterfall:
 
     def set_integrate(self, integrate):
         self._integrate = integrate
+
+    def set_median_filter(self, median_filter_size=False):
+        self._median_filter = median_filter_size
 
     def show_absolute_values(self, show_absolute):
         self._show_absolute = show_absolute
@@ -75,6 +79,7 @@ class TraceWaterfall:
         sha1.update(bytes(self._show_absolute))
         sha1.update(bytes(self._integrate))
         sha1.update(bytes(len(self.traces)))
+        sha1.update(bytes(self._median_filter))
         for tr in self.traces:
             sha1.update(tr.hash(unsafe=True).encode())
 
@@ -150,6 +155,11 @@ class TraceWaterfall:
 
         if self._show_absolute:
             data = num.abs(signal.hilbert(data, axis=1))
+
+        if self._median_filter:
+            data = ndimage.median_filter(data, self._median_filter)
+
+        if self._show_absolute:
             vmax = data.max()
             vmin = data.min()
         else:
