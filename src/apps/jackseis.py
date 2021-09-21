@@ -31,7 +31,7 @@ description = '''A simple tool to manipulate waveform archive data.'''
 
 tfmt = 'YYYY-mm-dd HH:MM:SS[.xxx]'
 tts = util.time_to_str
-stt = util.str_to_time
+stt = util.str_to_time_fillup
 
 
 def die(message):
@@ -123,7 +123,7 @@ def process(get_pile, options):
             tmin = stt(options.tmin)
         except Exception:
             die('invalid argument to --tmin. '
-                'Expected format is ""')
+                'Expected format is "%s" % tfmt')
 
     tmax = None
     if options.tmax is not None:
