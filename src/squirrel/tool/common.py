@@ -215,11 +215,11 @@ def squirrel_query_from_arguments(args):
     if args.kinds:
         d['kind'] = args.kinds
     if args.tmin:
-        d['tmin'] = util.str_to_time(args.tmin)
+        d['tmin'] = util.str_to_time_fillup(args.tmin)
     if args.tmax:
-        d['tmax'] = util.str_to_time(args.tmax)
+        d['tmax'] = util.str_to_time_fillup(args.tmax)
     if args.time:
-        d['tmin'] = d['tmax'] = util.str_to_time(args.time)
+        d['tmin'] = d['tmax'] = util.str_to_time_fillup(args.time)
     if args.codes:
         d['codes'] = tuple(args.codes.split('.'))
 
