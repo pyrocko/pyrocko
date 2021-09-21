@@ -18,7 +18,8 @@ except ImportError:
 import os.path as op
 from .base import Source, Constraint
 from ..model import make_waveform_promise_nut, ehash, InvalidWaveform, \
-    order_summary, WaveformOrder, g_tmin, g_tmax, codes_to_str_abbreviated
+    order_summary, WaveformOrder, g_tmin, g_tmax, g_tmin_queries, \
+    codes_to_str_abbreviated
 from ..database import ExecuteGet1Error
 from pyrocko.client import fdsn
 
@@ -668,7 +669,7 @@ class FDSNSource(Source):
         cpath = os.path.abspath(self._get_channels_path())
         nuts = squirrel.iter_nuts('channel', path=cpath)
 
-        tmin = g_tmin
+        tmin = g_tmin_queries
         tmax = g_tmax
 
         selection = []

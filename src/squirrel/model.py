@@ -42,6 +42,11 @@ g_content_kind_ids = (
 g_tmin, g_tmax = util.get_working_system_time_range()[:2]
 
 
+try:
+    g_tmin_queries = max(g_tmin, util.str_to_time_fillup('1900-01-01'))
+except Exception:
+    g_tmin_queries = g_tmin
+
 def to_kind(kind_id):
     return g_content_kinds[kind_id]
 
