@@ -1579,6 +1579,20 @@ def str_to_time(s, format='%Y-%m-%d %H:%M:%S.OPTFRAC'):
 stt = str_to_time
 
 
+def str_to_time_fillup(s):
+    '''
+    Default :py:func:`str_to_time` with filling in of missing values.
+
+    Allows e.g. `'2010-01-01 00:00:00'` as `'2010-01-01 00:00'`,
+    `'2010-01-01 00'`, ..., or `'2010'`.
+    '''
+
+    if len(s) in (4, 7, 10, 13, 16):
+        s += '0000-01-01 00:00:00'[len(s):]
+
+    return str_to_time(s)
+
+
 def time_to_str(t, format='%Y-%m-%d %H:%M:%S.3FRAC'):
     '''
     Get string representation for floating point system time.
