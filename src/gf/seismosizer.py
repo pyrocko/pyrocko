@@ -2585,6 +2585,8 @@ class CombiSource(Source):
 class SFSource(Source):
     '''
     A single force point source.
+
+    Supported GF schemes: `'elastic5'`.
     '''
 
     discretized_source_class = meta.DiscretizedSFSource

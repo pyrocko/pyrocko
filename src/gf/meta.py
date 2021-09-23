@@ -2205,8 +2205,8 @@ class ConfigTypeB(Config):
     * Symmetries like in :py:class:`ConfigTypeA` but has additional index for
       receiver depth
 
-    * High level index variables: ``(source_depth, receiver_distance,
-      receiver_depth, component)``
+    * High level index variables: ``(receiver_depth, source_depth,
+      receiver_distance, component)``
     '''
 
     receiver_depth_min = Float.T(
