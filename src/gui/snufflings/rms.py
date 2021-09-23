@@ -6,12 +6,16 @@
 from __future__ import absolute_import
 
 import time
+import logging
 from collections import defaultdict
 
 import numpy as num
 
 from pyrocko.gui.snuffling import Snuffling, Param, Switch
 from pyrocko.trace import Trace, NoData
+from pyrocko import util
+
+logger = logging.getLogger('pyrocko.gui.snuffling.rms')
 
 
 class RootMeanSquareSnuffling(Snuffling):
@@ -40,6 +44,9 @@ class RootMeanSquareSnuffling(Snuffling):
 
         self.add_parameter(Switch(
             'Group channels', 'group_channels', True))
+
+        self.add_parameter(Switch(
+            'Log RMS', 'log', False))
 
         self.add_trigger(
             'Copy passband from Main', self.copy_passband)
@@ -102,9 +109,19 @@ class RootMeanSquareSnuffling(Snuffling):
 
                 try:
                     tr.chop(batch.tmin, batch.tmax)
+                    val = 0.0
+                    if tr.ydata.size != 0:
+                        y = tr.ydata.astype(float)
+                        if num.any(num.isnan(y)):
+                            logger.error(
+                                'NaN value in trace %s (%s - %s)' % (
+                                    '.'.join(tr.nslc_id),
+                                    util.time_to_str(tr.tmin),
+                                    util.time_to_str(tr.tmax)))
 
-                    rms[grouping(tr.nslc_id)].append(
-                        num.sqrt(num.sum(tr.ydata**2)/tr.ydata.size))
+                        val = num.sqrt(num.sum(y**2)/tr.ydata.size)
+
+                    rms[grouping(tr.nslc_id)].append(val)
 
                 except NoData:
                     continue
@@ -138,6 +155,9 @@ class RootMeanSquareSnuffling(Snuffling):
 
                 value = num.atleast_1d(
                     num.sqrt(num.sum(num.array(values, dtype=num.float)**2)))
+
+                if self.log and value != 0.0:
+                    value = num.log(value)
 
                 targets[key].append(value)
 
