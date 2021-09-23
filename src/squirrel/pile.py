@@ -219,7 +219,8 @@ class Pile(object):
             group_selector=None, trace_selector=None,
             want_incomplete=True, degap=True, maxgap=5, maxlap=None,
             keep_current_files_open=False, accessor_id='default',
-            snap=(round, round), include_last=False, load_data=True):
+            snap=(round, round), include_last=False, load_data=True,
+            style=None):
 
         '''
         Get iterator for shifting window wise data extraction from waveform
@@ -254,8 +255,11 @@ class Pile(object):
         :param load_data: whether to load the waveform data. If set to
             ``False``, traces with no data samples, but with correct
             meta-information are returned
-        :returns: itererator yielding a list of :py:class:`pyrocko.trace.Trace`
-            objects for every extracted time window
+        :param style: set to ``'batch'`` to yield waveforms and information
+        about the chopper state as :py:class:`pyrocko.pile.Batch` objects. By
+        default lists of :py:class:`pyrocko.trace.Trace` objects are yielded.
+        :returns: iterator providing extracted waveforms for each extracted
+            window. See ``style`` argument for details.
         '''
 
         if tmin is None:
@@ -277,13 +281,17 @@ class Pile(object):
             return
 
         nut_selector = trace_callback_to_nut_callback(trace_selector)
-        iwin = 0
-        while True:
-            chopped = []
+
+        eps = tinc * 1e-6
+        if tinc != 0.0:
+            nwin = int(((tmax - eps) - tmin) / tinc) + 1
+        else:
+            nwin = 1
+
+        print(self)
+
+        for iwin in range(nwin):
             wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)
-            eps = tinc*1e-6
-            if wmin >= tmax-eps:
-                break
 
             chopped, used_files = self.chop(
                 wmin-tpad, wmax+tpad, nut_selector, snap,
@@ -293,9 +301,18 @@ class Pile(object):
                 chopped, degap, maxgap, maxlap, want_incomplete, wmax, wmin,
                 tpad)
 
-            yield processed
+            print(iwin, len(processed))
 
-            iwin += 1
+            if style == 'batch':
+                yield classic_pile.Batch(
+                    tmin=wmin,
+                    tmax=wmax,
+                    i=iwin,
+                    n=nwin,
+                    traces=processed)
+
+            else:
+                yield processed
 
         if not keep_current_files_open:
             self._squirrel.clear_accessor(accessor_id, 'waveform')

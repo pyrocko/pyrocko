@@ -1305,7 +1305,6 @@ class Pile(TracesGroup):
                 nwin = 1
 
         for iwin in range(nwin):
-            chopped = []
             wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)
 
             chopped, used_files = self.chop(
