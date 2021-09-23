@@ -29,7 +29,7 @@ class RootMeanSquareSnuffling(Snuffling):
         Customization of the snuffling.
         '''
 
-        self.set_name('Block RMS')
+        self.set_name('RMS')
 
         self.add_parameter(Param(
             'Highpass [Hz]', 'highpass', None, 0.001, 1000.,
