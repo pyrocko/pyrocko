@@ -18,5 +18,5 @@ coordinates = num.array([lat_grid.ravel(), lon_grid.ravel()]).T
 
 land_mask = gshhg.get_land_mask(coordinates).reshape(*lat_grid.shape)
 
-plt.pcolormesh(lons, lats, land_mask, cmap='Greys')
+plt.pcolormesh(lons, lats, land_mask, cmap='Greys', shading='nearest')
 plt.show()
