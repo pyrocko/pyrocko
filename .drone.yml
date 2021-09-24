@@ -415,8 +415,7 @@ platform:
 steps:
 - name: install
   commands:
-  - xcopy C:\\vagrant\\test-data\\data test\\data\\ /E
-  - xcopy C:\\vagrant\\test-data\\example_run_dir test\\example_run_dir\\ /E
+  - xcopy C:\\vagrant\\test-data test\\data\\ /E /Y
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\vagrant\\miniconda3\\Lib\\site-packages\\pyrocko
   - python setup.py install
 
