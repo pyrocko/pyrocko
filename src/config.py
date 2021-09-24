@@ -187,9 +187,9 @@ def raw_config(config_name='config'):
                     logger.warning('   ' + line)
 
             raise BadConfig('config file does not contain a '
-                            'valid "%s" section. Found: %s' %
-                            config_cls[config_name].__name__,
-                            type(g_conf[config_name]))
+                            'valid "%s" section. Found: %s' % (
+                                config_cls[config_name].__name__,
+                                type(g_conf[config_name])))
 
         g_conf_mtime[config_name] = conf_mtime_now
 
