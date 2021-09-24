@@ -24,7 +24,7 @@ steps:
   - python3 -m pyrocko.print_version short > build/html/version.txt
 
 - name: stage
-  image: pyrocko-aux
+  image: pyrocko-util
   pull: never
   commands:
   - maintenance/drone-rsync.sh doc/build/html/ ${DRONE_COMMIT}/docs/
@@ -37,7 +37,7 @@ steps:
       from_secret: rsync-key
 
 - name: stage-www
-  image: pyrocko-aux
+  image: pyrocko-util
   pull: never
 
   when:
@@ -56,7 +56,7 @@ steps:
       from_secret: rsync-key
 
 - name: deploy-www
-  image: pyrocko-aux
+  image: pyrocko-util
   pull: never
 
   when:
@@ -95,7 +95,7 @@ steps:
     PLAT: manylinux1_x86_64
 
 - name: test-pure-pip-manylinux1_x86_64
-  image: pyrocko-aux
+  image: pyrocko-util
   pull: never
   when:
     branch:
@@ -127,7 +127,7 @@ steps:
   - python setup.py sdist
 
 - name: stage-manylinux1_x86_64
-  image: pyrocko-aux
+  image: pyrocko-util
   pull: never
   commands:
   - maintenance/drone-rsync.sh wheels/ ${DRONE_COMMIT}/wheels/
@@ -215,7 +215,7 @@ steps:
     - candidate
 
 - name: stage
-  image: pyrocko-aux
+  image: pyrocko-util
   pull: never
   commands:
   - maintenance/drone-rsync.sh coverage.*  ${DRONE_COMMIT}/coverage/data/
@@ -274,7 +274,7 @@ steps:
     - candidate
 
 - name: stage
-  image: pyrocko-aux
+  image: pyrocko-util
   pull: never
   commands:
   - maintenance/drone-rsync.sh coverage.*  ${DRONE_COMMIT}/coverage/data/
@@ -331,7 +331,7 @@ steps:
     - candidate
 
 - name: stage
-  image: pyrocko-aux
+  image: pyrocko-util
   pull: never
   commands:
   - maintenance/drone-rsync.sh coverage.*  ${DRONE_COMMIT}/coverage/data/
@@ -384,7 +384,7 @@ steps:
     - candidate
 
 - name: stage
-  image: pyrocko-aux
+  image: pyrocko-util
   pull: never
   commands:
   - maintenance/drone-rsync.sh coverage.*  ${DRONE_COMMIT}/coverage/data/
@@ -554,7 +554,7 @@ steps:
   - python3 -m coverage html
 
 - name: stage
-  image: pyrocko-aux
+  image: pyrocko-util
   pull: never
   commands:
   - maintenance/drone-rsync.sh htmlcov/ ${DRONE_COMMIT}/coverage/
