@@ -26,6 +26,22 @@ benchmark_results = []
 g_matplotlib_inited = False
 
 
+def get_gf_engine():
+    from pyrocko import gf
+    return gf.get_engine(
+        [os.path.join(os.path.dirname(__file__), 'data', 'gf_stores')])
+
+
+def have_gf_store(store_id):
+    from pyrocko import gf
+    engine = get_gf_engine()
+    try:
+        engine.get_store(store_id)
+        return True, ''
+    except gf.NoSuchStore:
+        return False, 'GF store "%s" not available' % store_id
+
+
 def matplotlib_use_agg():
     global g_matplotlib_inited
     if not g_matplotlib_inited:
@@ -45,7 +61,7 @@ def test_data_file(fn):
             raise unittest.SkipTest(
                 'need internet access to download data file')
 
-        url = 'http://data.pyrocko.org/testing/' + fn
+        url = 'http://data.pyrocko.org/testing/pyrocko/' + fn
         logger.info('downloading %s' % url)
         util.download_file(url, fpath)
 

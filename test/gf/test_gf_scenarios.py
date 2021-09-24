@@ -11,6 +11,8 @@ from pyrocko import gf, util, model
 from pyrocko import moment_tensor as pmt
 from pyrocko import orthodrome as od
 
+from ..common import get_gf_engine, have_gf_store
+
 logger = logging.getLogger('pyrocko.test.test_gf_scenarios')
 km = 1000.
 d2r = math.pi/180.
@@ -43,15 +45,6 @@ def to_kiwi_source(source):
         rise_time=source.stf.duration)
 
 
-def have_store(store_id):
-    engine = gf.get_engine()
-    try:
-        engine.get_store(store_id)
-        return True
-    except gf.NoSuchStore:
-        return False
-
-
 def have_kiwi():
     try:
         import tunguska  # noqa
@@ -65,10 +58,10 @@ class GFScenariosTestCase(unittest.TestCase):
     store_id2 = 'chile_70km_crust'
 
     @unittest.skipUnless(
-            have_store(store_id),
+            have_gf_store(store_id),
             'GF Store "%s" is not available' % store_id)
-    def test_regional(self):
-        engine = gf.get_engine()
+    def benchmark_regional(self):
+        engine = get_gf_engine()
 
         nsources = 10
         nstations = 10
@@ -158,7 +151,7 @@ class GFScenariosTestCase(unittest.TestCase):
                     del resp
 
     @unittest.skipUnless(
-            have_store(store_id2),
+            have_gf_store(store_id2),
             'GF Store "%s" is not available' % store_id2)
     @unittest.skipUnless(
             have_kiwi(),

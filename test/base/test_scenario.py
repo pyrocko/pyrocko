@@ -3,22 +3,14 @@ import unittest
 from tempfile import mkdtemp
 import shutil
 
-from pyrocko import scenario, util, gf, config
+from pyrocko import scenario, util, config
 from pyrocko.scenario import targets
 from pyrocko.plot import gmtpy
+from ..common import get_gf_engine, have_gf_store
 
 util.force_dummy_progressbar = True
 
 km = 1000.
-
-
-def have_store(store_id):
-    engine = gf.get_engine()
-    try:
-        engine.get_store(store_id)
-        return True, ''
-    except gf.NoSuchStore:
-        return False, 'GF store "%s" not available' % store_id
 
 
 def have_kite():
@@ -36,7 +28,7 @@ def have_srtm_credentials():
 
 
 class ScenarioTestCase(unittest.TestCase):
-    store_id = 'crust2_m5_hardtop_8Hz_fine'
+    store_id = 'crust2_mf'
     store_id_static = 'ak135_static'
 
     tempdirs = []
@@ -47,7 +39,7 @@ class ScenarioTestCase(unittest.TestCase):
             continue
             shutil.rmtree(d)
 
-    @unittest.skipUnless(*have_store(store_id))
+    @unittest.skipUnless(*have_gf_store(store_id))
     def test_scenario_waveforms(self):
         tempdir = mkdtemp(prefix='pyrocko-scenario')
         self.tempdirs.append(tempdir)
@@ -88,7 +80,7 @@ class ScenarioTestCase(unittest.TestCase):
             tmax = source.time + 100*km / vmin
             return tmin, tmax
 
-        engine = gf.get_engine()
+        engine = get_gf_engine()
         generator.init_modelling(engine)
 
         ref_sources = generator.get_sources()
@@ -147,8 +139,8 @@ class ScenarioTestCase(unittest.TestCase):
     @unittest.skipUnless(
         have_kite(),
         'Kite is not available')
-    @unittest.skipUnless(*have_store(store_id))
-    @unittest.skipUnless(*have_store(store_id_static))
+    @unittest.skipUnless(*have_gf_store(store_id))
+    @unittest.skipUnless(*have_gf_store(store_id_static))
     def test_scenario_insar(self):
         tempdir = mkdtemp(prefix='pyrocko-scenario')
         self.tempdirs.append(tempdir)
@@ -179,7 +171,7 @@ class ScenarioTestCase(unittest.TestCase):
                 nevents=3)
         )
 
-        engine = gf.get_engine()
+        engine = get_gf_engine()
         generator.init_modelling(engine)
 
         collection = scenario.ScenarioCollection(tempdir, engine)
@@ -188,7 +180,7 @@ class ScenarioTestCase(unittest.TestCase):
         s = collection.get_scenario('insar')
         s.ensure_data()
 
-    @unittest.skipUnless(*have_store(store_id_static))
+    @unittest.skipUnless(*have_gf_store(store_id_static))
     def test_scenario_gnss(self):
         tempdir = mkdtemp(prefix='pyrocko-scenario')
         self.tempdirs.append(tempdir)
@@ -219,7 +211,7 @@ class ScenarioTestCase(unittest.TestCase):
                 nevents=3)
         )
 
-        engine = gf.get_engine()
+        engine = get_gf_engine()
         generator.init_modelling(engine)
 
         collection = scenario.ScenarioCollection(tempdir, engine)
@@ -231,8 +223,8 @@ class ScenarioTestCase(unittest.TestCase):
     @unittest.skipUnless(
         have_kite(),
         'Kite is not available')
-    @unittest.skipUnless(*have_store(store_id))
-    @unittest.skipUnless(*have_store(store_id_static))
+    @unittest.skipUnless(*have_gf_store(store_id))
+    @unittest.skipUnless(*have_gf_store(store_id_static))
     def test_scenario_combinations(self):
 
         generator = scenario.ScenarioGenerator(
@@ -271,7 +263,7 @@ class ScenarioTestCase(unittest.TestCase):
                 nevents=3)
         )
 
-        engine = gf.get_engine()
+        engine = get_gf_engine()
         generator.init_modelling(engine)
 
         for src in scenario.sources.AVAILABLE_SOURCES:
@@ -290,12 +282,9 @@ class ScenarioTestCase(unittest.TestCase):
             generator.get_insar_scenes()
             generator.get_gnss_campaigns()
 
-    @unittest.skipUnless(*have_store(store_id_static))
+    @unittest.skipUnless(*have_gf_store(store_id_static))
     @unittest.skipUnless(
         gmtpy.have_gmt(), 'GMT not available')
-    @unittest.skipUnless(
-        have_srtm_credentials(),
-        'No Earthdata credentials in config.')
     def test_scenario_map(self):
         tempdir = mkdtemp(prefix='pyrocko-scenario')
         self.tempdirs.append(tempdir)
@@ -336,7 +325,7 @@ class ScenarioTestCase(unittest.TestCase):
                 nevents=3)
         )
 
-        engine = gf.get_engine()
+        engine = get_gf_engine()
 
         collection = scenario.ScenarioCollection(tempdir, engine)
         collection.add_scenario('plot', generator)
