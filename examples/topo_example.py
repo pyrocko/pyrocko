@@ -1,5 +1,6 @@
 import numpy as num
-from pyrocko import topo, plot, orthodrome as od
+from pyrocko import plot, orthodrome as od
+from pyrocko.dataset import topo
 
 lon_min, lon_max, lat_min, lat_max = 14.34, 14.50, 40.77, 40.87
 dem_name = 'SRTMGL3'

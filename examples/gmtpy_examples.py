@@ -4,7 +4,7 @@ import shutil
 import random
 import math
 import numpy as num
-from pyrocko.gmtpy import GMT, inch, cm, golden_ratio, Ax, ScaleGuru, \
+from pyrocko.plot.gmtpy import GMT, inch, cm, golden_ratio, Ax, ScaleGuru, \
     GridLayout, FrameLayout, check_have_gmt, is_gmt5
 
 

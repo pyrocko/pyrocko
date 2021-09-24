@@ -2,7 +2,7 @@ import os
 
 from pyrocko.gf import LocalEngine, Target, DCSource, ws
 from pyrocko import trace
-from pyrocko.marker import PhaseMarker
+from pyrocko.gui.marker import PhaseMarker
 
 # The store we are going extract data from:
 store_id = 'iceland_reg_v2'
