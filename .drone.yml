@@ -108,13 +108,14 @@ steps:
   - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
 
 - name: test-mixed-pip-manylinux1_x86_64
-  image: pyrocko-nest
+  image: pyrocko-fat-nest
   pull: never
   when:
     branch:
       exclude:
       - release
   commands:
+  - ln -sf /pyrocko-test-data test/data
   - pip3 install -f wheels --no-index --no-deps pyrocko
   - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
 
@@ -184,9 +185,10 @@ trigger:
 steps:
 
 - name: tests-base
-  image: pyrocko-nest
+  image: pyrocko-fat-nest
   pull: never
   commands:
+  - ln -sf /pyrocko-test-data test/data
   - python3 setup.py install -f
   - pip3 install utm
   - pip3 install git+https://github.com/pyrocko/kite
@@ -195,9 +197,10 @@ steps:
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
 - name: tests-base-hptime
-  image: pyrocko-nest
+  image: pyrocko-fat-nest
   pull: never
   commands:
+  - ln -sf /pyrocko-test-data test/data
   - python3 setup.py install -f
   - pip3 install utm
   - pip3 install git+https://github.com/pyrocko/kite
@@ -241,9 +244,10 @@ trigger:
 
 steps:
 - name: tests-gf
-  image: pyrocko-nest
+  image: pyrocko-fat-nest
   pull: never
   commands:
+  - ln -sf /pyrocko-test-data test/data
   - python3 setup.py install -f
   - pip3 install utm
   - pip3 install git+https://github.com/pyrocko/kite
@@ -252,9 +256,10 @@ steps:
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
 - name: tests-gf-hptime
-  image: pyrocko-nest
+  image: pyrocko-fat-nest
   pull: never
   commands:
+  - ln -sf /pyrocko-test-data test/data
   - python3 setup.py install -f
   - pip3 install utm
   - pip3 install git+https://github.com/pyrocko/kite
@@ -296,9 +301,10 @@ trigger:
 
 steps:
 - name: tests-examples
-  image: pyrocko-nest
+  image: pyrocko-fat-nest
   pull: never
   commands:
+  - ln -sf /pyrocko-test-data test/data
   - python3 setup.py install -f
   - pip3 install utm
   - pip3 install git+https://github.com/pyrocko/kite
@@ -307,9 +313,10 @@ steps:
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
 - name: tests-examples-hptime
-  image: pyrocko-nest
+  image: pyrocko-fat-nest
   pull: never
   commands:
+  - ln -sf /pyrocko-test-data test/data
   - python3 setup.py install -f
   - pip3 install utm
   - pip3 install git+https://github.com/pyrocko/kite
@@ -351,18 +358,20 @@ trigger:
 
 steps:
 - name: tests-gui
-  image: pyrocko-nest
+  image: pyrocko-fat-nest
   pull: never
   commands:
+  - ln -sf /pyrocko-test-data test/data
   - python3 setup.py install -f
   - pip3 install obspy
   - xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m nose test.gui test.base.test_obspy_compat:ObsPyCompatTestCase.test_obspy_fiddle test.base.test_obspy_compat:ObsPyCompatTestCase.test_obspy_snuffle
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
 - name: tests-gui-hptime
-  image: pyrocko-nest
+  image: pyrocko-fat-nest
   pull: never
   commands:
+  - ln -sf /pyrocko-test-data test/data
   - python3 setup.py install -f
   - pip3 install obspy
   - xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m nose test.gui test.base.test_obspy_compat:ObsPyCompatTestCase.test_obspy_fiddle test.base.test_obspy_compat:ObsPyCompatTestCase.test_obspy_snuffle
@@ -576,7 +585,7 @@ platform:
 steps:
 - name: build-test
   commands:
-  - ln -s /data/local/home/pyrocko-testing/.vagrant.d $HOME/.vagrant.d
+  - ln -sf /data/local/home/pyrocko-testing/.vagrant.d $HOME/.vagrant.d
   - cd maintenance/conda/boxes/centos-7
   - ./outside.sh dryrun
   when:
@@ -586,7 +595,7 @@ steps:
 
 - name: build-test-upload
   commands:
-  - ln -s /data/local/home/pyrocko-testing/.vagrant.d $HOME/.vagrant.d
+  - ln -sf /data/local/home/pyrocko-testing/.vagrant.d $HOME/.vagrant.d
   - cd maintenance/conda/boxes/centos-7
   - ./outside.sh upload
   environment:
@@ -617,7 +626,7 @@ platform:
 steps:
 - name: build-test
   commands:
-  - ln -s /data/local/home/pyrocko-testing/.vagrant.d $HOME/.vagrant.d
+  - ln -sf /data/local/home/pyrocko-testing/.vagrant.d $HOME/.vagrant.d
   - cd maintenance/conda/boxes/osx
   - ./outside.sh dryrun
   when:
@@ -627,7 +636,7 @@ steps:
 
 - name: build-test-upload
   commands:
-  - ln -s /data/local/home/pyrocko-testing/.vagrant.d $HOME/.vagrant.d
+  - ln -sf /data/local/home/pyrocko-testing/.vagrant.d $HOME/.vagrant.d
   - cd maintenance/conda/boxes/osx
   - ./outside.sh upload
   environment:
