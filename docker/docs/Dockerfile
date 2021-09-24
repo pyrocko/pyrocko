@@ -11,10 +11,10 @@ RUN apt-get install -y make git
 RUN apt-get install -y python3-dev python3-setuptools python3-numpy-dev
 
 # docs requirements
-RUN apt-get install -y python3-sphinx \
+RUN apt-get install -y \
     texlive-fonts-recommended texlive-latex-extra \
-    texlive-latex-recommended texlive-generic-extra
-RUN pip3 install git+https://git.pyrocko.org/pyrocko/sphinx-sleekcat-theme.git
+    texlive-latex-recommended
+RUN pip3 install sphinx==1.8.5 git+https://git.pyrocko.org/pyrocko/sphinx-sleekcat-theme.git
 
 # base runtime requirements
 RUN apt-get install -y \

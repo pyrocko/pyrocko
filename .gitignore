@@ -38,4 +38,5 @@ __pycache__/
 /maintenance/pip/pyrocko/
 /maintenance/pip/wheels/
 
-
+/docker/pyrocko-test-data/
+/docker/*/pyrocko-test-data/
