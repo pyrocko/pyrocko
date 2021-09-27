@@ -530,14 +530,6 @@ class ColorbarControl(qw.QWidget):
             self.int_toggle.maximumSize().height())
         self.int_toggle.toggled.connect(self.show_integrate_toggled.emit)
 
-        self.median_toggle = qw.QPushButton()
-        self.median_toggle.setIcon(
-            qg.QIcon.fromTheme('go-bottom'))
-        self.median_toggle.setToolTip('Median filter')
-        self.median_toggle.setSizePolicy(btn_size)
-        self.median_toggle.setCheckable(True)
-        self.median_toggle.toggled.connect(self.toggle_median)
-
         v_splitter = qw.QFrame()
         v_splitter.setFrameShape(qw.QFrame.VLine)
         v_splitter.setFrameShadow(qw.QFrame.Sunken)
@@ -550,7 +542,6 @@ class ColorbarControl(qw.QWidget):
         layout.addWidget(v_splitter)
         layout.addWidget(self.abs_toggle)
         layout.addWidget(self.int_toggle)
-        layout.addWidget(self.median_toggle)
         self.controls.setLayout(layout)
 
         self.set_cmap_name(self.DEFAULT_CMAP)
