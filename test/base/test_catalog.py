@@ -12,7 +12,7 @@ def near(a, b, eps):
 
 
 def is_the_haiti_event_geofon(ev):
-    assert near(ev.magnitude, 7.2, 0.001)
+    assert near(ev.magnitude, 7.2, 0.1)
     assert near(ev.lat, 18.36, 0.001)
     assert near(ev.lon, -72.57, 0.001)
     assert near(ev.depth, 20000., 1.)
