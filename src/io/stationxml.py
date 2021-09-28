@@ -142,7 +142,7 @@ class Delivery(Object):
             if context:
                 message += ' (%s)' % context
 
-            if self.errors > 1:
+            if len(self.errors) > 1:
                 message += ' Additional errors pending.'
 
             raise _exceptions[name](message)
@@ -1450,6 +1450,7 @@ class Response(Object):
 
             input_units = self.instrument_sensitivity.input_units.name.upper()
 
+            conresp = None
             try:
                 conresp = conversion[
                     fake_input_units.upper(), input_units]
