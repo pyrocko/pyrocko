@@ -42,8 +42,8 @@ class Plate(Object):
 
 class Boundary(Object):
 
-    name1 = String.T()
-    name2 = String.T()
+    plate_name1 = String.T()
+    plate_name2 = String.T()
     kind = String.T()
     points = Array.T(dtype=float, shape=(None, 2))
     cpoints = Array.T(dtype=float, shape=(None, 2))
@@ -175,17 +175,17 @@ class PeterBird2003(PlatesDataset):
         with open(fpath, 'rb') as f:
             data = []
             for line in f:
-                t = line.split()
-                s = t[1].lstrip(b':')
-                name1 = str(s[0:2].decode('ascii'))
-                name2 = str(s[3:5].decode('ascii'))
-                kind = s[2]
+                lsplit = line.split()
+                name = lsplit[1].lstrip(b':').decode('ascii')
+                plate_name1 = str(name[0:2])
+                plate_name2 = str(name[3:5])
+                kind = name[2]
 
-                alon, alat, blon, blat = list(map(float, t[2:6]))
+                alon, alat, blon, blat = list(map(float, lsplit[2:6]))
                 mlat = (alat + blat) * 0.5
                 dlon = ((blon - alon) + 180.) % 360. - 180.
                 mlon = alon + dlon * 0.5
-                typ = str(t[14].strip(b':*').decode('ascii'))
+                typ = str(lsplit[14].strip(b':*').decode('ascii'))
 
                 if typ not in type_to_index:
                     ntyp += 1
@@ -193,7 +193,7 @@ class PeterBird2003(PlatesDataset):
                     index_to_type.append(typ)
 
                 ityp = type_to_index[typ]
-                d[name1, kind, name2].append((mlat, mlon, ityp))
+                d[plate_name1, kind, plate_name2].append((mlat, mlon, ityp))
 
         d2 = {}
         for k in d:
@@ -203,17 +203,17 @@ class PeterBird2003(PlatesDataset):
 
         fpath = self.fpath('PB2002_boundaries.dig.txt')
         boundaries = []
-        name1 = ''
-        name2 = ''
+        plate_name1 = ''
+        plate_name2 = ''
         kind = '-'
         with open(fpath, 'rb') as f:
             data = []
             for line in f:
                 if line.startswith(b'***'):
-                    cpoints, itypes = d2[name1, kind, name2]
+                    cpoints, itypes = d2[plate_name1, kind, plate_name2]
                     boundaries.append(Boundary(
-                        name1=name1,
-                        name2=name2,
+                        plate_name1=plate_name1,
+                        plate_name2=plate_name2,
                         kind=kind,
                         points=num.array(data, dtype=float),
                         cpoints=cpoints,
@@ -226,9 +226,9 @@ class PeterBird2003(PlatesDataset):
                 elif line.startswith(b' '):
                     data.append(list(map(float, line.split(b',')))[::-1])
                 else:
-                    s = line.strip()
-                    name1 = str(s[0:2].decode('ascii'))
-                    name2 = str(s[3:5].decode('ascii'))
+                    s = line.strip().decode('ascii')
+                    plate_name1 = str(s[0:2])
+                    plate_name2 = str(s[3:5])
                     kind = s[2]
 
         return boundaries

@@ -1223,12 +1223,14 @@ class Map(Object):
                         psxy_kwargs.append(kwargs)
 
                         if boundary.kind == '\\':
-                            if boundary.name2 in candi_fixed:
-                                candi_fixed[boundary.name2] += neast*nnorth
+                            if boundary.plate_name2 in candi_fixed:
+                                candi_fixed[boundary.plate_name2] += \
+                                    neast*nnorth
 
                         elif boundary.kind == '/':
-                            if boundary.name1 in candi_fixed:
-                                candi_fixed[boundary.name1] += neast*nnorth
+                            if boundary.plate_name1 in candi_fixed:
+                                candi_fixed[boundary.plate_name1] += \
+                                    neast*nnorth
 
             candi_fixed = [name for name in sorted(
                 list(candi_fixed.keys()), key=lambda name: -candi_fixed[name])]

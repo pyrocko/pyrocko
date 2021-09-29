@@ -18,13 +18,13 @@ class TectonicsTestCase(unittest.TestCase):
         bird = tectonics.PeterBird2003()
         boundaries = bird.get_boundaries()
         for boundary in boundaries:
-            if (boundary.name1, boundary.kind, boundary.name2) == (
+            if (boundary.plate_name1, boundary.kind, boundary.plate_name2) == (
                     'PS', '/', 'PA'):
                 tt = boundary.split_types()
                 assert len(tt) == 1
                 assert tt[0][0] == 'SUB'
 
-            if (boundary.name1, boundary.kind, boundary.name2) == (
+            if (boundary.plate_name1, boundary.kind, boundary.plate_name2) == (
                     'AS', '-', 'AT'):
 
                 lastpoint = None
