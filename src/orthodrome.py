@@ -69,8 +69,8 @@ class Loc(object):
     '''
     Simple location representation.
 
-    :attrib lat: Latitude degree
-    :attrib lon: Longitude degree
+    :attrib lat: Latitude in [deg].
+    :attrib lon: Longitude in [deg].
     '''
     def __init__(self, lat, lon):
         self.lat = lat
@@ -81,14 +81,14 @@ def clip(x, mi, ma):
     '''
     Clip values of an array.
 
-    :param x: Continunous data to be clipped
-    :param mi: Clip minimum
-    :param ma: Clip maximum
+    :param x: Continunous data to be clipped.
+    :param mi: Clip minimum.
+    :param ma: Clip maximum.
     :type x: :py:class:`numpy.ndarray`
     :type mi: float
     :type ma: float
 
-    :return: Clipped data
+    :return: Clipped data.
     :rtype: :py:class:`numpy.ndarray`
     '''
     return num.minimum(num.maximum(mi, x), ma)
@@ -106,14 +106,14 @@ def wrap(x, mi, ma):
         x_{\\mathrm{wrapped}}\\; \\in
             \\;[ r_{\\mathrm{min}},\\, r_{\\mathrm{max}}].
 
-    :param x: Continunous data to be wrapped
-    :param mi: Minimum value of wrapped data
-    :param ma: Maximum value of wrapped data
+    :param x: Continunous data to be wrapped.
+    :param mi: Minimum value of wrapped data.
+    :param ma: Maximum value of wrapped data.
     :type x: :py:class:`numpy.ndarray`
     :type mi: float
     :type ma: float
 
-    :return: Wrapped data
+    :return: Wrapped data.
     :rtype: :py:class:`numpy.ndarray`
     '''
     return x - num.floor((x-mi)/(ma-mi)) * (ma-mi)
@@ -150,12 +150,12 @@ def cosdelta(*args):
                      \\cos(A_{\\mathrm{lat'}})  \\cos( B_{\\mathrm{lat'}} )
                      \\cos( B_{\\mathrm{lon'}} - A_{\\mathrm{lon'}} )
 
-    :param a: Location point A
+    :param a: Location point A.
     :type a: :py:class:`pyrocko.orthodrome.Loc`
-    :param b: Location point B
+    :param b: Location point B.
     :type b: :py:class:`pyrocko.orthodrome.Loc`
 
-    :return: cosdelta
+    :return: Cosdelta.
     :rtype: float
     '''
 
@@ -182,16 +182,16 @@ def cosdelta_numpy(a_lats, a_lons, b_lats, b_lons):
     Please find the details of the implementation in the documentation of
     the function :py:func:`pyrocko.orthodrome.cosdelta` above.
 
-    :param a_lats: Latitudes (degree) point A
-    :param a_lons: Longitudes (degree) point A
-    :param b_lats: Latitudes (degree) point B
-    :param b_lons: Longitudes (degree) point B
+    :param a_lats: Latitudes in [deg] point A.
+    :param a_lons: Longitudes in [deg] point A.
+    :param b_lats: Latitudes in [deg] point B.
+    :param b_lons: Longitudes in [deg] point B.
     :type a_lats: :py:class:`numpy.ndarray`
     :type a_lons: :py:class:`numpy.ndarray`
     :type b_lats: :py:class:`numpy.ndarray`
     :type b_lons: :py:class:`numpy.ndarray`
 
-    :return: cosdelta
+    :return: Cosdelta.
     :type b_lons: :py:class:`numpy.ndarray`, ``(N)``
     '''
     return num.minimum(
@@ -223,9 +223,9 @@ def azimuth(*args):
                 {\\sin ( B_{\\mathrm{lat'}} ) - \\sin( A_{\\mathrm{lat'}}
                   cosdelta) } \\right]
 
-    :param a: Location point A
+    :param a: Location point A.
     :type a: :py:class:`pyrocko.orthodrome.Loc`
-    :param b: Location point B
+    :param b: Location point B.
     :type b: :py:class:`pyrocko.orthodrome.Loc`
 
     :return: Azimuth in degree
@@ -252,16 +252,16 @@ def azimuth_numpy(a_lats, a_lons, b_lats, b_lons, _cosdelta=None):
     function :py:func:`pyrocko.orthodrome.azimuth`.
 
 
-    :param a_lats: Latitudes (degree) point A
-    :param a_lons: Longitudes (degree) point A
-    :param b_lats: Latitudes (degree) point B
-    :param b_lons: Longitudes (degree) point B
+    :param a_lats: Latitudes in [deg] point A.
+    :param a_lons: Longitudes in [deg] point A.
+    :param b_lats: Latitudes in [deg] point B.
+    :param b_lons: Longitudes in [deg] point B.
     :type a_lats: :py:class:`numpy.ndarray`, ``(N)``
     :type a_lons: :py:class:`numpy.ndarray`, ``(N)``
     :type b_lats: :py:class:`numpy.ndarray`, ``(N)``
     :type b_lons: :py:class:`numpy.ndarray`, ``(N)``
 
-    :return: Azimuths in degrees
+    :return: Azimuths in [deg].
     :rtype: :py:class:`numpy.ndarray`, ``(N)``
     '''
     if _cosdelta is None:
@@ -274,6 +274,13 @@ def azimuth_numpy(a_lats, a_lons, b_lats, b_lons, _cosdelta=None):
 
 
 def azibazi(*args, **kwargs):
+    '''
+    Azimuth and backazimuth from location A towards B and back.
+
+    :returns: Azimuth in [deg] from A to B, back azimuth in [deg] from B to A.
+    :rtype: tuple[float, float]
+    '''
+
     alat, alon, blat, blon = _latlon_pair(args)
     if alat == blat and alon == blon:
         return 0., 180.
@@ -298,6 +305,24 @@ def azibazi(*args, **kwargs):
 
 
 def azibazi_numpy(a_lats, a_lons, b_lats, b_lons, implementation='c'):
+    '''
+    Azimuth and backazimuth from location A towards B and back.
+
+    Arguments are given as :py:class:`numpy.ndarray`.
+
+    :param a_lats: Latitude(s) in [deg] of point A.
+    :type a_lats: :py:class:`numpy.ndarray`
+    :param a_lons: Longitude(s) in [deg] of point A.
+    :type a_lons: :py:class:`numpy.ndarray`
+    :param b_lats: Latitude(s) in [deg] of point B.
+    :type b_lats: :py:class:`numpy.ndarray`
+    :param b_lons: Longitude(s) in [deg] of point B.
+    :type b_lons: :py:class:`numpy.ndarray`
+
+    :returns: Azimuth(s) in [deg] from A to B,
+        back azimuth(s) in [deg] from B to A.
+    :rtype: :py:class:`numpy.ndarray`, :py:class:`numpy.ndarray`
+    '''
 
     a_lats, a_lons, b_lats, b_lons = float_array_broadcast(
         a_lats, a_lons, b_lats, b_lons)
@@ -326,16 +351,16 @@ def azidist_numpy(*args):
     The assisting functions used are :py:func:`pyrocko.orthodrome.cosdelta` and
     :py:func:`pyrocko.orthodrome.azimuth`
 
-    :param a_lats: Latitudes (degree) point A
-    :param a_lons: Longitudes (degree) point A
-    :param b_lats: Latitudes (degree) point B
-    :param b_lons: Longitudes (degree) point B
+    :param a_lats: Latitudes in [deg] point A.
+    :param a_lons: Longitudes in [deg] point A.
+    :param b_lats: Latitudes in [deg] point B.
+    :param b_lons: Longitudes in [deg] point B.
     :type a_lats: :py:class:`numpy.ndarray`, ``(N)``
     :type a_lons: :py:class:`numpy.ndarray`, ``(N)``
     :type b_lats: :py:class:`numpy.ndarray`, ``(N)``
     :type b_lons: :py:class:`numpy.ndarray`, ``(N)``
 
-    :return: Azimuths in degrees, distances in degrees
+    :return: Azimuths in [deg], distances in [deg].
     :rtype: :py:class:`numpy.ndarray`, ``(2xN)``
     '''
     _cosdelta = cosdelta_numpy(*args)
@@ -398,12 +423,12 @@ def distance_accurate50m(*args, **kwargs):
                  \\cdot \\cos^2(F) \\sin^2(G)]
 
 
-    :param a: Location point A
+    :param a: Location point A.
     :type a: :py:class:`pyrocko.orthodrome.Loc`
-    :param b: Location point B
+    :param b: Location point B.
     :type b: :py:class:`pyrocko.orthodrome.Loc`
 
-    :return: Distance in meter
+    :return: Distance in [m].
     :rtype: float
     '''
 
@@ -495,16 +520,16 @@ def distance_accurate50m_numpy(
             \\cos^2(G_i) - h_{2,i}\\, f_{\\mathrm{oblate}}
             \\cdot \\cos^2(F_i) \\sin^2(G_i)]
 
-    :param a_lats: Latitudes (degree) point A
-    :param a_lons: Longitudes (degree) point A
-    :param b_lats: Latitudes (degree) point B
-    :param b_lons: Longitudes (degree) point B
+    :param a_lats: Latitudes in [deg] point A.
+    :param a_lons: Longitudes in [deg] point A.
+    :param b_lats: Latitudes in [deg] point B.
+    :param b_lons: Longitudes in [deg] point B.
     :type a_lats: :py:class:`numpy.ndarray`, ``(N)``
     :type a_lons: :py:class:`numpy.ndarray`, ``(N)``
     :type b_lats: :py:class:`numpy.ndarray`, ``(N)``
     :type b_lons: :py:class:`numpy.ndarray`, ``(N)``
 
-    :return: Distances in meter
+    :return: Distances in [m].
     :rtype: :py:class:`numpy.ndarray`, ``(N)``
     '''
 
@@ -577,16 +602,16 @@ def ne_to_latlon(lat0, lon0, north_m, east_m):
 
     The projection used preserves the azimuths of the input points.
 
-    :param lat0: Latitude origin of the cartesian coordinate system.
-    :param lon0: Longitude origin of the cartesian coordinate system.
-    :param north_m: Northing distances from origin in meters.
-    :param east_m: Easting distances from origin in meters.
+    :param lat0: Latitude origin of the cartesian coordinate system in [deg].
+    :param lon0: Longitude origin of the cartesian coordinate system in [deg].
+    :param north_m: Northing distances from origin in [m].
+    :param east_m: Easting distances from origin in [m].
     :type north_m: :py:class:`numpy.ndarray`, ``(N)``
     :type east_m: :py:class:`numpy.ndarray`, ``(N)``
     :type lat0: float
     :type lon0: float
 
-    :return: Array with latitudes and longitudes
+    :return: Array with latitudes and longitudes in [deg].
     :rtype: :py:class:`numpy.ndarray`, ``(2xN)``
 
     '''
@@ -599,7 +624,22 @@ def ne_to_latlon(lat0, lon0, north_m, east_m):
 
 def azidist_to_latlon(lat0, lon0, azimuth_deg, distance_deg):
     '''
-    (Durchreichen??).
+    Absolute latitudes and longitudes are calculated from relative changes.
+
+    Convenience wrapper to :py:func:`azidist_to_latlon_rad` with azimuth and
+    distance given in degrees.
+
+    :param lat0: Latitude origin of the cartesian coordinate system in [deg].
+    :type lat0: float
+    :param lon0: Longitude origin of the cartesian coordinate system in [deg].
+    :type lon0: float
+    :param azimuth_deg: Azimuth from origin in [deg].
+    :type azimuth_deg: :py:class:`numpy.ndarray`, ``(N)``
+    :param distance_deg: Distances from origin in [deg].
+    :type distance_deg: :py:class:`numpy.ndarray`, ``(N)``
+
+    :return: Array with latitudes and longitudes in [deg].
+    :rtype: :py:class:`numpy.ndarray`, ``(2xN)``
     '''
 
     return azidist_to_latlon_rad(
@@ -648,16 +688,16 @@ def azidist_to_latlon_rad(lat0, lon0, azimuth_rad, distance_rad):
                             \\cdot \\alpha_i
                              \\text{, with $\\alpha_i \\in [-\\pi,\\pi]$}
 
-    :param lat0: Latitude origin of the cartesian coordinate system.
-    :param lon0: Longitude origin of the cartesian coordinate system.
-    :param distance_rad: Distances from origin in radians.
-    :param azimuth_rad: Azimuth from radians.
+    :param lat0: Latitude origin of the cartesian coordinate system in [deg].
+    :param lon0: Longitude origin of the cartesian coordinate system in [deg].
+    :param distance_rad: Distances from origin in [rad].
+    :param azimuth_rad: Azimuth from origin in [rad].
     :type distance_rad: :py:class:`numpy.ndarray`, ``(N)``
     :type azimuth_rad: :py:class:`numpy.ndarray`, ``(N)``
     :type lat0: float
     :type lon0: float
 
-    :return: Array with latitudes and longitudes
+    :return: Array with latitudes and longitudes in [deg].
     :rtype: :py:class:`numpy.ndarray`, ``(2xN)``
     '''
 
@@ -740,16 +780,16 @@ def ne_to_latlon_alternative_method(lat0, lon0, north_m, east_m):
                                       \\frac{\\gamma_i}{|\\gamma_i|},
                                      \\text{ with}\\; \\gamma \\in [-\\pi,\\pi]
 
-    :param lat0: Latitude origin of the cartesian coordinate system.
-    :param lon0: Longitude origin of the cartesian coordinate system.
-    :param north_m: Northing distances from origin in meters.
-    :param east_m: Easting distances from origin in meters.
+    :param lat0: Latitude origin of the cartesian coordinate system in [deg].
+    :param lon0: Longitude origin of the cartesian coordinate system in [deg].
+    :param north_m: Northing distances from origin in [m].
+    :param east_m: Easting distances from origin in [m].
     :type north_m: :py:class:`numpy.ndarray`, ``(N)``
     :type east_m: :py:class:`numpy.ndarray`, ``(N)``
     :type lat0: float
     :type lon0: float
 
-    :return: Array with latitudes and longitudes
+    :return: Array with latitudes and longitudes in [deg].
     :rtype: :py:class:`numpy.ndarray`, ``(2xN)``
     '''
 
@@ -803,13 +843,13 @@ def latlon_to_ne(*args):
         e &= D_{AB} \\cdot
             \\sin( \\frac{\\pi }{180} \\varphi_{\\mathrm{azi},AB})
 
-    :param refloc: Location reference point
+    :param refloc: Location reference point.
     :type refloc: :py:class:`pyrocko.orthodrome.Loc`
-    :param loc: Location of interest
+    :param loc: Location of interest.
     :type loc: :py:class:`pyrocko.orthodrome.Loc`
 
-    :return: Northing and easting from refloc to location
-    :rtype: tuple, float
+    :return: Northing and easting from refloc to location in [m].
+    :rtype: tuple[float, float]
 
     '''
 
@@ -829,12 +869,12 @@ def latlon_to_ne_numpy(lat0, lon0, lat, lon):
     Assisting functions are :py:func:`azimuth`
     and :py:func:`distance_accurate50m`.
 
-    :param lat0: reference location latitude
-    :param lon0: reference location longitude
-    :param lat: absolute location latitude
-    :param lon: absolute location longitude
+    :param lat0: Latitude of the reference location in [deg].
+    :param lon0: Longitude of the reference location in [deg].
+    :param lat: Latitude of the absolute location in [deg].
+    :param lon: Longitude of the absolute location in [deg].
 
-    :return: ``(n, e)``: relative north and east positions
+    :return: ``(n, e)``: relative north and east positions in [m].
     :rtype: :py:class:`numpy.ndarray`, ``(2xN)``
 
     Implemented formulations:
@@ -921,9 +961,12 @@ def positive_region(region):
     '''
     Normalize parameterization of a rectangular geographical region.
 
-    :param region: ``(west, east, south, north)``
+    :param region: ``(west, east, south, north)`` in [deg].
+    :type region: tuple of float
+
     :returns: ``(west, east, south, north)``, where ``west <= east`` and
-        where ``west`` and ``east`` are in the range ``[-180., 180.+360.[``
+        where ``west`` and ``east`` are in the range ``[-180., 180.+360.]``.
+    :rtype: tuple of float
     '''
     west, east, south, north = [float(x) for x in region]
 
@@ -946,10 +989,13 @@ def points_in_region(p, region):
     '''
     Check what points are contained in a rectangular geographical region.
 
-    :param p: NumPy array of shape ``(N, 2)`` where each row is a
-        ``(lat, lon)`` pair [deg]
-    :param region: ``(west, east, south, north)`` [deg]
-    :returns: NumPy array of shape ``(N)``, type ``bool``
+    :param p: ``(lat, lon)`` pairs in [deg].
+    :type p: :py:class:`numpy.ndarray` ``(N, 2)``
+    :param region: ``(west, east, south, north)`` region boundaries in [deg].
+    :type region: tuple of float
+
+    :returns: Mask, returning ``True`` for each point within the region.
+    :rtype: :py:class:`numpy.ndarray` of bool, shape ``(N)``
     '''
 
     w, e, s, n = positive_region(region)
@@ -964,9 +1010,13 @@ def point_in_region(p, region):
     '''
     Check if a point is contained in a rectangular geographical region.
 
-    :param p: ``(lat, lon)`` [deg]
-    :param region: ``(west, east, south, north)`` [deg]
-    :returns: ``bool``
+    :param p: ``(lat, lon)`` in [deg].
+    :type p: tuple of float
+    :param region: ``(west, east, south, north)`` region boundaries in [deg].
+    :type region: tuple of float
+
+    :returns: ``True``, if point is in region, else ``False``.
+    :rtype: bool
     '''
 
     w, e, s, n = positive_region(region)
@@ -981,9 +1031,16 @@ def radius_to_region(lat, lon, radius):
     '''
     Get a rectangular region which fully contains a given circular region.
 
-    :param lat,lon: center of circular region [deg]
-    :param radius: radius of circular region [m]
-    :return: rectangular region as ``(east, west, south, north)`` [deg]
+    :param lat: Latitude of the center point of circular region in [deg].
+    :type lat: float
+    :param lon: Longitude of the center point of circular region in [deg].
+    :type lon: float
+    :param radius: Radius of circular region in [m].
+    :type radius: float
+
+    :returns: Rectangular region as ``(east, west, south, north)`` in [deg] or
+        ``None``.
+    :rtype: tuple[float, float, float, float]
     '''
     radius_deg = radius * m2d
     if radius_deg < 45.:
@@ -1017,14 +1074,14 @@ def geographic_midpoint(lats, lons, weights=None):
     This method suffers from instabilities if points are centered around the
     poles.
 
-    :param lats: array of latitudes
-    :param lons: array of longitudes
-    :param weights: array weighting factors (optional)
+    :param lats: Latitudes in [deg].
+    :param lons: Longitudes in [deg].
+    :param weights: Weighting factors.
     :type lats: :py:class:`numpy.ndarray`, ``(N)``
     :type lons: :py:class:`numpy.ndarray`, ``(N)``
-    :type weights: :py:class:`numpy.ndarray`, ``(N)``
+    :type weights: optional, :py:class:`numpy.ndarray`, ``(N)``
 
-    :return: Latitudes and longitudes of the modpoints
+    :return: Latitudes and longitudes of the midpoints in [deg].
     :rtype: :py:class:`numpy.ndarray`, ``(2xN)``
     '''
     if not weights:
@@ -1065,7 +1122,7 @@ def geodetic_to_ecef(lat, lon, alt):
     :type alt: float
 
     :return: ECEF Cartesian coordinates (X, Y, Z) in [m].
-    :rtype: tuple, float
+    :rtype: tuple[float, float, float]
 
     .. [#1] https://en.wikipedia.org/wiki/ECEF
     .. [#2] https://en.wikipedia.org/wiki/Geographic_coordinate_conversion
@@ -1253,16 +1310,6 @@ def contains_points(polygon, points):
     '''
     Test which points are inside polygon on a sphere.
 
-    :param polygon: Point coordinates defining the polygon [deg].
-    :type polygon: :py:class:`numpy.ndarray` of shape (N, 2), second index
-        0=lat, 1=lon
-    :param points: Coordinates of points to test [deg].
-    :type points: :py:class:`numpy.ndarray` of shape (N, 2), second index
-        0=lat, 1=lon
-
-    :returns: Boolean mask array.
-    :rtype: :py:class:`numpy.ndarray` of shape (N,)
-
     The inside of the polygon is defined as the area which is to the left hand
     side of an observer walking the polygon line, points in order, on the
     sphere. Lines between the polygon points are treated as great circle paths.
@@ -1273,6 +1320,16 @@ def contains_points(polygon, points):
     The algorithm works by consecutive cutting of the polygon into (almost)
     hemispheres and subsequent Gnomonic projections to perform the
     point-in-polygon tests on a 2D plane.
+
+    :param polygon: Point coordinates defining the polygon [deg].
+    :type polygon: :py:class:`numpy.ndarray` of shape ``(N, 2)``, second index
+        0=lat, 1=lon
+    :param points: Coordinates of points to test [deg].
+    :type points: :py:class:`numpy.ndarray` of shape ``(N, 2)``, second index
+        0=lat, 1=lon
+
+    :returns: Boolean mask array.
+    :rtype: :py:class:`numpy.ndarray` of shape ``(N,)``.
     '''
 
     and_ = num.logical_and
@@ -1326,12 +1383,16 @@ def contains_point(polygon, point):
     '''
     Test if point is inside polygon on a sphere.
 
+    Convenience wrapper to :py:func:`contains_points` to test a single point.
+
     :param polygon: Point coordinates defining the polygon [deg].
-    :type polygon: :py:class:`numpy.ndarray` of shape (N, 2), second index
+    :type polygon: :py:class:`numpy.ndarray` of shape ``(N, 2)``, second index
         0=lat, 1=lon
     :param point: Coordinates ``(lat, lon)`` of point to test [deg].
+    :type point: tuple of float
 
-    Convenience wrapper to :py:func:`contains_points` to test a single point.
+    :returns: ``True``, if point is located within polygon, else ``False``.
+    :rtype: bool
     '''
 
     return bool(
