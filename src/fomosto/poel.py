@@ -11,6 +11,7 @@ from subprocess import Popen, PIPE
 from os.path import join as pjoin
 
 import numpy as num
+import signal
 
 from pyrocko.guts import Object, Float, Int, List, String
 from pyrocko.guts_array import Array
@@ -22,7 +23,8 @@ logger = logging.getLogger('pyrocko.fomosto.poel')
 
 # how to call the programs
 program_bins = {
-    'poel': 'poel',
+    'poel.2012': 'fomosto_poel2012',
+    'poel.2006': 'poel',
 }
 
 
@@ -81,6 +83,7 @@ class PoelModel(Object):
 
 
 class PoelConfig(Object):
+    poel_version = String.T(default='2012')
     s_radius = Float.T(default=0.0)
     s_type = Int.T(default=0)
     source_function_p = Float.T(default=1.0)
@@ -353,14 +356,15 @@ class PoelError(Exception):
 
 class PoelRunner(object):
 
-    def __init__(self, tmp=None):
+    def __init__(self, tmp=None, keep_tmp=False):
 
         self.tempdir = mkdtemp(prefix='poelrun', dir=tmp)
-        self.program = program_bins['poel']
+        self.keep_tmp = keep_tmp
         self.config = None
 
     def run(self, config):
         self.config = config
+        program = program_bins['poel.%s' % config.poel_version]
 
         input_fn = pjoin(self.tempdir, 'input')
 
@@ -373,18 +377,24 @@ class PoelRunner(object):
 
         f.write(poel_input)
         f.close()
-        program = self.program
 
         old_wd = os.getcwd()
 
         os.chdir(self.tempdir)
+        interrupted = []
 
+        def signal_handler(signum, frame):
+            os.kill(proc.pid, signal.SIGTERM)
+            interrupted.append(True)
+
+        original = signal.signal(signal.SIGINT, signal_handler)
         try:
-            proc = Popen(program, stdin=PIPE, stdout=PIPE, stderr=PIPE)
-        except OSError:
-            os.chdir(old_wd)
-            raise PoelError(
-                '''could not start poel executable: "%s"
+            try:
+                proc = Popen(program, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+            except OSError:
+                os.chdir(old_wd)
+                raise PoelError(
+                    '''could not start poel executable: "%s"
 Available fomosto backends and download links to the modelling codes are listed
 on
 
@@ -392,7 +402,12 @@ on
 
 ''' % program)
 
-        (poel_output, poel_error) = proc.communicate('input\n')
+            (poel_output, poel_error) = proc.communicate(b'input\n')
+        finally:
+            signal.signal(signal.SIGINT, original)
+
+        if interrupted:
+            raise KeyboardInterrupt()
 
         logger.debug(
             '===== begin poel output =====\n%s===== end poel output ====='
@@ -408,10 +423,11 @@ on
                 'poel had a non-zero exit state: %i' % proc.returncode)
         if poel_error:
             errmess.append('poel emitted something via stderr')
-        if poel_output.lower().find('error') != -1:
+        if poel_output.lower().find(b'error') != -1:
             errmess.append("the string 'error' appeared in poel output")
 
         if errmess:
+            self.keep_tmp = True
             os.chdir(old_wd)
             raise PoelError(
                 '''===== begin poel input =====\n%s===== end poel input =====
@@ -477,7 +493,13 @@ poel has been invoked as "%s"''' % (
         return traces
 
     def __del__(self):
-        shutil.rmtree(self.tempdir)
+        if self.tempdir:
+            if not self.keep_tmp:
+                shutil.rmtree(self.tempdir)
+                self.tempdir = None
+            else:
+                logger.warn(
+                    'not removing temporary directory: %s' % self.tempdir)
 
 
 class PoelGFBuilder(gf.builder.Builder):
@@ -551,7 +573,10 @@ class PoelGFBuilder(gf.builder.Builder):
 
 
 def init(store_dir, variant):
-    if variant is not None:
+    if variant is None:
+        variant = '2012'
+
+    if variant not in ('2006', '2012'):
         raise gf.store.StoreError('unsupported variant: %s' % variant)
 
     poel = PoelConfig()
@@ -559,7 +584,7 @@ def init(store_dir, variant):
     store_id = os.path.basename(os.path.realpath(store_dir))
 
     config = gf.meta.ConfigTypeB(
-        modelling_code_id='poel',
+        modelling_code_id='poel.%s' % variant,
         id=store_id,
         ncomponents=10,
         component_scheme='poroelastic10',
