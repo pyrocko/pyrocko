@@ -638,7 +638,7 @@ class TBase(object):
                 return '(%s)%s' % (
                     ' | '.join(sclass(cls) for cls in self.cls), sadd)
             else:
-                return '%s%s' % (sclass(cls), sadd)
+                return '%s%s' % (sclass(self.cls), sadd)
 
     @classmethod
     def props_help_string(cls):
