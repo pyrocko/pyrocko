@@ -776,6 +776,9 @@ class EventParameters(Object):
 
 
 class QuakeML(Object):
+    '''
+    QuakeML data container.
+    '''
     xmltagname = 'quakeml'
     xmlns = 'http://quakeml.org/xmlns/quakeml/1.2'
     guessable_xmlns = [xmlns, guts_xmlns]
@@ -787,7 +790,10 @@ class QuakeML(Object):
 
     def get_pyrocko_events(self):
         '''
-        Extract a list of :py:class:`pyrocko.model.Event` instances
+        Get event information in Pyrocko's basic event format.
+
+        :rtype:
+            List of :py:class:`pyrocko.model.event.Event` objects.
         '''
         events = []
         for e in self.event_parameters.event_list:
@@ -796,6 +802,12 @@ class QuakeML(Object):
         return events
 
     def get_pyrocko_phase_markers(self):
+        '''
+        Get pick information in Pyrocko's basic marker format.
+
+        :rtype:
+            List of :py:class:`pyrocko.gui.marker.PhaseMarker` objects.
+        '''
         markers = []
         for e in self.event_parameters.event_list:
             markers.extend(e.get_pyrocko_phase_markers())
@@ -803,11 +815,40 @@ class QuakeML(Object):
         return markers
 
     @classmethod
-    def load_xml(cls, *args, **kwargs):
-        kwargs['ns_hints'] = [
-            'http://quakeml.org/xmlns/quakeml/1.2',
-            'http://quakeml.org/xmlns/bed/1.2']
+    def load_xml(cls, stream=None, filename=None, string=None):
+        '''
+        Load QuakeML data from stream, file or string.
 
-        kwargs['ns_ignore'] = True
+        :param stream:
+            Stream open for reading in binary mode.
+        :type stream:
+            file-like object, optional
 
-        return super(QuakeML, cls).load_xml(*args, **kwargs)
+        :param filename:
+            Path to file to be opened for reading.
+        :type filename:
+            str, optional
+
+        :param string:
+            String with QuakeML data to be deserialized.
+        :type string:
+            str, optional
+
+        The arguments ``stream``, ``filename``, and ``string`` are mutually
+        exclusive.
+
+        :returns:
+            Parsed QuakeML data structure.
+        :rtype:
+            :py:class:`QuakeML` object
+
+        '''
+
+        return super(QuakeML, cls).load_xml(
+            stream=stream,
+            filename=filename,
+            string=string,
+            ns_hints=[
+                'http://quakeml.org/xmlns/quakeml/1.2',
+                'http://quakeml.org/xmlns/bed/1.2'],
+            ns_ignore=True)
