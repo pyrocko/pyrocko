@@ -59,36 +59,36 @@ class AnalyticalRectangularSource(AnalyticalSource):
 
     strike = Float.T(
         default=0.0,
-        help='Strike direction in [deg], measured clockwise from north')
+        help='Strike direction in [deg], measured clockwise from north.')
 
     dip = Float.T(
         default=90.0,
-        help='Dip angle in [deg], measured downward from horizontal')
+        help='Dip angle in [deg], measured downward from horizontal.')
 
     rake = Float.T(
         default=0.0,
         help='Rake angle in [deg], measured counter-clockwise from '
-             'right-horizontal in on-plane view')
+             'right-horizontal in on-plane view.')
 
     al1 = Float.T(
         default=0.,
-        help='Left edge source plane coordinate [m]')
+        help='Left edge source plane coordinate [m].')
 
     al2 = Float.T(
         default=0.,
-        help='Right edge source plane coordinate [m]')
+        help='Right edge source plane coordinate [m].')
 
     aw1 = Float.T(
         default=0.,
-        help='Lower edge source plane coordinate [m]')
+        help='Lower edge source plane coordinate [m].')
 
     aw2 = Float.T(
         default=0.,
-        help='Upper edge source plane coordinate [m]')
+        help='Upper edge source plane coordinate [m].')
 
     slip = Float.T(
         default=0.,
-        help='Slip on the rectangular source area [m]',
+        help='Slip on the rectangular source area [m].',
         optional=True)
 
     @property
@@ -111,21 +111,21 @@ class OkadaSource(AnalyticalRectangularSource):
 
     opening = Float.T(
         default=0.,
-        help='Opening of the plane in [m]',
+        help='Opening of the plane in [m].',
         optional=True)
 
     poisson__ = Float.T(
         default=0.25,
-        help='Poisson\'s ratio :math:`\\nu`',
+        help='Poisson\'s ratio :math:`\\nu`.',
         optional=True)
 
     lamb__ = Float.T(
-        help='First Lame\' s parameter :math:`\\lambda` [Pa]',
+        help='First Lame\' s parameter :math:`\\lambda` [Pa].',
         optional=True)
 
     shearmod__ = Float.T(
         default=32.0e9,
-        help='Shear modulus along the plane :math:`\\mu` [Pa]',
+        help='Shear modulus along the plane :math:`\\mu` [Pa].',
         optional=True)
 
     @property
@@ -181,10 +181,10 @@ class OkadaSource(AnalyticalRectangularSource):
 
         .. important ::
 
-            We assume a perfect elastic solid with :math:`K=\\frac{5}{3}\\mu`
+            We assume a perfect elastic solid with :math:`K=\\frac{5}{3}\\mu`.
 
             Through :math:`\\mu = \\frac{3K(1-2\\nu)}{2(1+\\nu)}` this leads to
-            :math:`\\mu = \\frac{8(1+\\nu)}{1-2\\nu}`
+            :math:`\\mu = \\frac{8(1+\\nu)}{1-2\\nu}`.
 
         '''
 
@@ -206,17 +206,19 @@ class OkadaSource(AnalyticalRectangularSource):
         Scalar Seismic moment :math:`M_0`.
 
         Code copied from Kite. It disregards the opening (as for now).
-        We assume :math:`M_0 = mu A D`
+        We assume :math:`M_0 = mu A D`.
 
         .. important ::
 
-            We assume a perfect elastic solid with :math:`K=\\frac{5}{3}\\mu`
+            We assume a perfect elastic solid with :math:`K=\\frac{5}{3}\\mu`.
 
             Through :math:`\\mu = \\frac{3K(1-2\\nu)}{2(1+\\nu)}` this leads to
-            :math:`\\mu = \\frac{8(1+\\nu)}{1-2\\nu}`
+            :math:`\\mu = \\frac{8(1+\\nu)}{1-2\\nu}`.
 
-        :return: Seismic moment release
-        :rtype: float
+        :return:
+            Seismic moment release.
+        :rtype:
+            float
         '''
 
         mu = self.shearmod
@@ -232,12 +234,14 @@ class OkadaSource(AnalyticalRectangularSource):
     @property
     def moment_magnitude(self):
         '''
-        Moment magnitude :math:`M_\\mathrm{w}` from Seismic moment.
+        Moment magnitude :math:`M_\\mathrm{w}` from seismic moment.
 
-        We assume :math:`M_\\mathrm{w} = {\\frac{2}{3}}\\log_{10}(M_0) - 10.7`
+        We assume :math:`M_\\mathrm{w} = {\\frac{2}{3}}\\log_{10}(M_0) - 10.7`.
 
-        :returns: Moment magnitude
-        :rtype: float
+        :returns:
+            Moment magnitude.
+        :rtype:
+            float
         '''
         return mt.moment_to_magnitude(self.seismic_moment)
 
@@ -245,8 +249,10 @@ class OkadaSource(AnalyticalRectangularSource):
         '''
         Build source information array for okada_ext.okada input.
 
-        :return: array of the source data as input for okada_ext.okada
-        :rtype: :py:class:`numpy.ndarray`, ``(1, 9)``
+        :return:
+            Source data as input for okada_ext.okada.
+        :rtype:
+            :py:class:`~numpy.ndarray`: ``(9, )``
         '''
         return num.array([
             self.northing,
@@ -263,9 +269,10 @@ class OkadaSource(AnalyticalRectangularSource):
         '''
         Build source dislocation for okada_ext.okada input.
 
-        :return: array of the source dislocation data as input for
-            okada_ext.okada
-        :rtype: :py:class:`numpy.ndarray`, ``(1, 3)``
+        :return:
+            Source dislocation data as input for okada_ext.okada
+        :rtype:
+            :py:class:`~numpy.ndarray`: ``(3, )``
         '''
         return num.array([
             num.cos(self.rake * d2r) * self.slip,
@@ -279,12 +286,20 @@ class OkadaSource(AnalyticalRectangularSource):
         Fault orientation, slip and elastic parameters are passed to the
         sub-faults unchanged.
 
-        :param nlength: Number of patches in strike direction
-        :type nlength: int
-        :param nwidth: Number of patches in down-dip direction
-        :type nwidth: int
-        :return: Discrete fault patches
-        :rtype: list of :py:class:`~pyrocko.modelling.okada.OkadaPatch` objects
+        :param nlength:
+            Number of patches in strike direction.
+        :type nlength:
+            int
+
+        :param nwidth:
+            Number of patches in down-dip direction.
+        :type nwidth:
+            int
+
+        :return:
+            Discrete fault patches.
+        :rtype:
+            list of :py:class:`~pyrocko.modelling.okada.OkadaPatch`
         '''
         assert nlength > 0
         assert nwidth > 0
@@ -323,13 +338,13 @@ class OkadaSource(AnalyticalRectangularSource):
 
         return (
             [OkadaPatch(
-                 parent=self,
-                 ix=src_point[0],
-                 iy=src_point[1],
-                 north_shift=coord[0],
-                 east_shift=coord[1],
-                 depth=coord[2],
-                 al1=al1, al2=al2, aw1=aw1, aw2=aw2, **kwargs)
+                parent=self,
+                ix=src_point[0],
+                iy=src_point[1],
+                north_shift=coord[0],
+                east_shift=coord[1],
+                depth=coord[2],
+                al1=al1, al2=al2, aw1=aw1, aw2=aw2, **kwargs)
              for src_point, coord in zip(source_points, source_points_rot)],
             source_points)
 
@@ -363,18 +378,27 @@ def make_okada_coefficient_matrix(
     is built, based on the displacements from Okada's solution and their
     partial derivatives.
 
-    :param source_patches_list: Source patches, to be used in BEM.
-    :type source_patches_list: list of
-        :py:class:`~pyrocko.modelling.okada.OkadaSource` objects
-    :param pure_shear: If ``True``, only shear forces are taken into account.
-    :type pure_shear: optional, bool
-    :param rotate_sdn: If ``True``, rotate to strike, dip, normal.
-    :type rotate_sdn: optional, bool
-    :param nthreads: Number of threads.
-    :type nthreads: optional, int
+    :param source_patches_list:
+        Source patches, to be used in BEM.
+    :type source_patches_list:
+        list of :py:class:`~pyrocko.modelling.okada.OkadaSource`.
+    :param pure_shear:
+        If ``True``, only shear forces are taken into account.
+    :type pure_shear:
+        optional, bool
+    :param rotate_sdn:
+        If ``True``, rotate to strike, dip, normal.
+    :type rotate_sdn:
+        optional, bool
+    :param nthreads:
+        Number of threads.
+    :type nthreads:
+        optional, int
 
-    :return: Coefficient matrix for all source combinations.
-    :rtype: :py:class:`numpy.ndarray`,
+    :return:
+        Coefficient matrix for all source combinations.
+    :rtype:
+        :py:class:`~numpy.ndarray`:
         ``(len(source_patches_list) * 3, len(source_patches_list) * 3)``
     '''
 
@@ -590,32 +614,44 @@ def invert_fault_dislocations_bem(
     calculated using the solution of Okada (1992) for a rectangular fault in a
     homogeneous half space (``source_list``).
 
-    :param stress_field: Stress change [Pa] for each source patch (as
+    :param stress_field:
+        Stress change [Pa] for each source patch (as
         ``stress_field[isource, icomponent]`` where isource indexes the source
         patch and ``icomponent`` indexes component, ordered (strike, dip,
         tensile).
-    :type stress_field: :py:class:`numpy.ndarray`, shape ``(nsources, 3)``
+    :type stress_field:
+        :py:class:`~numpy.ndarray`: ``(nsources, 3)``
 
-    :param coef_mat: Coefficient matrix connecting source patch
-        dislocations and the stress field.
-    :type coef_mat: optional, :py:class:`numpy.ndarray`, shape
+    :param coef_mat:
+        Coefficient matrix connecting source patch dislocations and the stress
+        field.
+    :type coef_mat:
+        optional, :py:class:`~numpy.ndarray`:
         ``(len(source_list) * 3, len(source_list) * 3)``
 
-    :param source_list: list of all source patches to be used for BEM.
-    :type source_list: optional, list of
-        :py:class:`~pyrocko.modelling.okada.OkadaSource` objects
+    :param source_list:
+        Source patches to be used for BEM.
+    :type source_list:
+        optional, list of
+        :py:class:`~pyrocko.modelling.okada.OkadaSource`
 
-    :param epsilon: If given, values in ``coef_mat`` smaller than ``epsilon``
-        are set to zero.
-    :type epsilon: optional, float
+    :param epsilon:
+        If given, values in ``coef_mat`` smaller than ``epsilon`` are set to
+        zero.
+    :type epsilon:
+        optional, float
 
-    :param nthreads: Number of threads allowed.
-    :type nthreads: int
+    :param nthreads:
+        Number of threads allowed.
+    :type nthreads:
+        int
 
-    :return: Inverted displacements as ``displacements[isource, icomponent]``
+    :return:
+        Inverted displacements as ``displacements[isource, icomponent]``
         where isource indexes the source patch and ``icomponent`` indexes
         component, ordered (strike, dip, tensile).
-    :rtype: :py:class:`numpy.ndarray`, ``(nsources, 3)``
+    :rtype:
+        :py:class:`~numpy.ndarray`: ``(nsources, 3)``
     '''
 
     if source_list is not None and coef_mat is None:
