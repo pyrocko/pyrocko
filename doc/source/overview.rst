@@ -16,6 +16,7 @@ standalone tools for everyday seismological practice:
 * :doc:`apps/cake/index`: travel-time and ray-path computations for 1D layered earthmodels
 * :doc:`apps/fomosto/index`: a tool to manage pre-calculated Green's function stores
 * :doc:`apps/jackseis/index`: a command-line tool for common waveform archive data manipulations
+* :doc:`apps/colosseo/index`: forward model full-fledged randomized synthetic datasets
 
 To download the software or if you wish to contribute, please use the `Pyrocko
 project page <https://git.pyrocko.org/pyrocko/pyrocko>`_. If you want to
