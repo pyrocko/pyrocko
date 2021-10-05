@@ -206,10 +206,9 @@ def plot_directivity(
     :type azi_end: float
     :param dazi: Delta azimuth, bin size [deg]
     :type dazi: float
-    :param phase_begin: Start time of the window
-    :type phase_begin: :py:class:`~pyrocko.gf.meta.Timing`
-    :param phase_end: End time of the window
-    :type phase_end: :py:class:`~pyrocko.gf.meta.Timing`
+    :param phases: Phases to define start and end of time window
+    :type phases: :py:class:`dict` with :py:class:`str` keys and
+        :py:class:`~pyrocko.gf.meta.Timing` values
     :param quantity: Seismogram quantity, default ``displacement``
     :type quantity: str
     :param envelope: Plot envelop instead of seismic trace
