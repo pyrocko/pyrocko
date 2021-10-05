@@ -6,9 +6,9 @@ km = 1e3
 # The store we are going extract data from:
 store_id = 'iceland_reg_v2'
 
-# First, download a Greens Functions store. If you already have one that you
-# would like to use, you can skip this step and point the *store_superdirs* in
-# the next step to that directory.
+# First, download a Green's functions store. If you already have one that you
+# would like to use, you can skip this step and point the *store_superdirs* to
+# the containing directory.
 if not op.exists(store_id):
     gf.ws.download_gf_store(site='kinherd', store_id=store_id)
 
@@ -17,12 +17,12 @@ if not op.exists(store_id):
 # engine since we are going to query a local store.
 engine = gf.LocalEngine(store_superdirs=['.'])
 
-# The dynamic parameter used for discretization of the PseudoDynamicRupture are
-# extracted from the stores config file.
+# The dynamic parameters used for discretization of the PseudoDynamicRupture
+# are extracted from the store's config file.
 store = engine.get_store(store_id)
 
 # Let's define the source now with its extension, orientation etc.
-dyn_rupture = gf.PseudoDynamicRupture(
+rupture = gf.PseudoDynamicRupture(
     lat=0.,
     lon=0.,
     north_shift=2.*km,
@@ -50,8 +50,8 @@ dyn_rupture = gf.PseudoDynamicRupture(
     # Force pure shear rupture
     pure_shear=True)
 
-# Recalculate slip, that rupture magnitude fits given magnitude
-dyn_rupture.rescale_slip(magnitude=7.0, store=store)
+# Recalculate slip, so that the rupture's magnitude fits the given value
+rupture.rescale_slip(magnitude=7.0, store=store)
 
 # Create waveform target, where synthetic waveforms are calculated for
 waveform_target = gf.Target(
@@ -59,8 +59,9 @@ waveform_target = gf.Target(
     lon=0.,
     east_shift=10*km,
     north_shift=10.*km,
+    interpolation='multilinear',
     store_id=store_id)
 
 # Get synthetic waveforms and display them in snuffler
-result = engine.process(dyn_rupture, waveform_target)
-result.snuffle()
+response = engine.process(rupture, waveform_target)
+response.snuffle()
