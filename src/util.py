@@ -2664,16 +2664,24 @@ def qsplit(s):
         for x in g_re_qsplit.findall(s)]
 
 
+g_have_warned_threadpoolctl = False
+
+
 class threadpool_limits_dummy(object):
 
     def __init__(self, *args, **kwargs):
         pass
 
     def __enter__(self):
-        logger.warning(
-            'Cannot control number of BLAS threads because `threadpoolctl` '
-            'module is not available. You may want to install '
-            '`threadpoolctl`.')
+        global g_have_warned_threadpoolctl
+
+        if not g_have_warned_threadpoolctl:
+            logger.warning(
+                'Cannot control number of BLAS threads because '
+                '`threadpoolctl` module is not available. You may want to '
+                'install `threadpoolctl`.')
+
+            g_have_warned_threadpoolctl = True
 
         return self
 
