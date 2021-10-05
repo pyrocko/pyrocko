@@ -8,9 +8,9 @@ km = 1e3
 # The store we are going extract data from:
 store_id = 'iceland_reg_v2'
 
-# First, download a Greens Functions store. If you already have one that you
-# would like to use, you can skip this step and point the *store_superdirs* in
-# the next step to that directory.
+# First, download a Green's functions store. If you already have one that you
+# would like to use, you can skip this step and point the *store_superdirs* to
+# the containing directory.
 if not op.exists(store_id):
     gf.ws.download_gf_store(site='kinherd', store_id=store_id)
 
@@ -19,12 +19,12 @@ if not op.exists(store_id):
 # engine since we are going to query a local store.
 engine = gf.LocalEngine(store_superdirs=['.'])
 
-# The dynamic parameter used for discretization of the PseudoDynamicRupture are
-# extracted from the stores config file.
+# The dynamic parameters used for discretization of the PseudoDynamicRupture
+# are extracted from the store's config file.
 store = engine.get_store(store_id)
 
 # Let's define the source now with its extension, orientation etc.
-dyn_rupture = gf.PseudoDynamicRupture(
+rupture = gf.PseudoDynamicRupture(
     lat=0.,
     lon=0.,
     north_shift=2.*km,
@@ -66,16 +66,16 @@ dyn_rupture = gf.PseudoDynamicRupture(
         ])
 )
 
-dyn_rupture.discretize_patches(store)
+rupture.discretize_patches(store)
 
 # Plot the absolute tractions from strike, dip, normal
-plot = RuptureView(dyn_rupture, figsize=(8, 4))
+plot = RuptureView(rupture, figsize=(8, 4))
 plot.draw_patch_parameter('traction')
 plot.draw_nucleation_point()
 plot.save('dynamic_complex_tractions.png')
 
 # Plot the modelled dislocations
-plot = RuptureView(dyn_rupture, figsize=(8, 4))
+plot = RuptureView(rupture, figsize=(8, 4))
 plot.draw_dislocation()
 # We can also define a time for the snapshot:
 # plot.draw_dislocation(time=1.5)
@@ -92,7 +92,8 @@ waveform_target = gf.Target(
     lon=0.,
     east_shift=10*km,
     north_shift=30.*km,
+    interpolation='multilinear',
     store_id=store_id)
 
-result = engine.process(dyn_rupture, waveform_target)
-result.snuffle()
+response = engine.process(rupture, waveform_target)
+response.snuffle()

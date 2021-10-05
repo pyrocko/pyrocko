@@ -6,14 +6,14 @@ Pseudo Dynamic Rupture - *A stress-based self-similar finite source model*
 Introduction
 ************
 
-Physics-based, dynamic rupture models, which rely on few parameters only, are needed to allow a realistic forward modelling and to reduce the effort and non-uniqueness of the inversion. The :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture` is a simplified, quasi-dynamic, semi-analytical rupture model suited for wavefield and static displacement simulations and earthquake source inversion. The rupture builds on the class of self-similar crack models. On one hand it is approximative as it neglects inertia and so far the details of frictional effects, and treats the rupture front growth in a simplified way.  On the other hand, it is complete as the slip fulfils the boundary condition on the broken plane for every instantaneous rupture front geometry and applied stress.
+Physics-based, dynamic rupture models, which rely on few parameters only, are needed for realistic forward modelling and to reduce the effort and non-uniqueness of the inversion. The :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture` is a simplified, quasi-dynamic, semi-analytical rupture model suited for wavefield and static displacement simulation and earthquake source inversion. The rupture model builds on the class of self-similar crack models. On one hand it is approximative as it neglects inertia and so far the details of frictional effects and treats the rupture front growth in a simplified way.  On the other hand, it is complete as the slip fulfils the boundary condition on the broken plane for every instantaneous rupture front geometry and applied stress.
 
 Theoretical foundation
 ======================
 
 .. note ::
     
-    Dahm, T., Metz, M., Heimann, S., Isken, M. P. (2021). A self-similar dynamic rupture model based on the simplified wave-rupture analogy. Geophysical Journal International. Volume 225, Issue 3, June 2021, Pages 1586–1604, https://doi.org/10.1093/gji/ggab045
+    Dahm, T., Heimann, S., Metz, M., Isken, M. P. (2021). A self-similar dynamic rupture model based on the simplified wave-rupture analogy. Geophysical Journal International. Volume 225, Issue 3, June 2021, Pages 1586–1604, https://doi.org/10.1093/gji/ggab045
 
 .. contents :: Content
   :depth: 4
@@ -23,7 +23,7 @@ Source implementation details
 *****************************
 
 
-The implementation of the pseudo dynamic rupture model into the Pyrocko and Pyrocko-GF framework is based on [Dahm2021]_. Essential building blocks are the classes :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture` and :py:class:`~pyrocko.gf.tractions.AbstractTractionField`. Additionally the model is constrained by the subsurface underground model as provided by the :py:class:`~pyrocko.gf.seismosizer.Store`. See [Dahm2021_] which describes the rupture source model in detail.
+The implementation of the pseudo dynamic rupture model into the Pyrocko and Pyrocko-GF framework is based on [Dahm2021]_. Essential building blocks are the class :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture` and in the :py:class:`~pyrocko.gf.tractions.AbstractTractionField` subclasses. Additionally the model is constrained by the subsurface underground model as provided by the metadata in the Pyrocko GF :py:class:`~pyrocko.gf.store.Store`. See [Dahm2021_] which describes the rupture source model in detail.
 
 .. figure :: /static/pseudo-dynamic-flow-2.svg
     :align: center
@@ -44,14 +44,16 @@ In this section we will show the parametrisation, introspection and resulting se
 Forward calculation of waveforms and static displacement
 ========================================================
 
-Parametrisation of the source model is straight forward, as for any other Pyrocko-GF source. In the below code example we parametrize a shallow bi-directional strike-slip source.
+Parametrisation of the source model is straight forward, as for any other Pyrocko-GF source. In the below code example we parametrize a shallow bidirectional strike-slip source.
 
-More details on dynamic and static Green's function databases and other source models are layed out in :doc:`pyrocko-gf`.
+More details on dynamic and static Green's function databases and other source models are laid out in section :doc:`pyrocko-gf`.
 
 
 Simple pseudo dynamic rupture forward model
 -------------------------------------------
-We create a simple forward model and calculate waveforms for one seismic station (:py:class:`~pyrocko.gf.targets.Target`) at about 14 km distance - The tractions will be aligned to force the defined ``rake``. The modeled waveform is displayed in the *snuffler* GUI.
+We create a simple forward model and calculate waveforms for one seismic station (:py:class:`~pyrocko.gf.targets.Target`) at about 14 km distance - The tractions will be aligned to force the defined slip rake angle. The modeled waveform is displayed in the :doc:`Snuffler <../apps/snuffler/index>` application.
+
+**Important:** the spatial sampling of the GF store used in the example must be dense enough to prevent aliasing artifacts.
 
 Download :download:`gf_forward_pseudo_rupture_basic.py </../../examples/gf_forward_pseudo_rupture_basic.py>`
 
@@ -59,26 +61,27 @@ Download :download:`gf_forward_pseudo_rupture_basic.py </../../examples/gf_forwa
     :language: python
 
 
+
 Traction and stress field parametrisation
 =========================================
 
 The rupture plane can be exposed to different stress/traction field models which drive and interact with the rupture process.
 
-A :class:`~pyrocko.gf.tractions.TractionField` constrains the absolute traction field:
+A :class:`~pyrocko.gf.tractions.TractionField` defines the absolute stress release on the fault plane:
 
     * :class:`~pyrocko.gf.tractions.UniformTractions`
     * :class:`~pyrocko.gf.tractions.HomogeneousTractions`
     * :class:`~pyrocko.gf.tractions.DirectedTractions`
     * :class:`~pyrocko.gf.tractions.FractalTractions`
 
-An :py:class:`~pyrocko.gf.tractions.AbstractTractionField` modify an existing :class:`~pyrocko.gf.tractions.TractionField`:
+An :py:class:`~pyrocko.gf.tractions.AbstractTractionField` can modify an existing :class:`~pyrocko.gf.tractions.TractionField`:
 
     * :class:`~pyrocko.gf.tractions.RectangularTaper`
     * :class:`~pyrocko.gf.tractions.DepthTaper`
 
 These fields can be used independently or be combined into a :py:class:`~pyrocko.gf.tractions.TractionComposition`, where :py:class:`~pyrocko.gf.tractions.TractionField` are stacked and :py:class:`~pyrocko.gf.tractions.AbstractTractionField` are multiplied with the stack. See the reference and code for implementation details.
 
-Pure tractions can be visualised using the utility function :py:func:`pyrocko.gf.tractions.plot_tractions`.
+Pure tractions can be visualised using the utility function :py:func:`~pyrocko.gf.tractions.plot_tractions`.
 
 
 
@@ -90,7 +93,7 @@ Convenience functions for plotting and introspection of the dynamic rupture mode
 Traction and rupture evolution
 ------------------------------
 
-Initialize a simple dynamic rupture with uniform rake tractions and visualize the tractions and rupture propagation using the :py:mod:`pyrocko.plot.dynamic_rupture` module.
+Initialize a simple dynamic rupture with uniform rake tractions and visualize the tractions and rupture propagation.
 
 Download :download:`gf_forward_pseudo_rupture_basic_plot.py </../../examples/gf_forward_pseudo_rupture_basic_plot.py>`
 
@@ -103,17 +106,19 @@ Download :download:`gf_forward_pseudo_rupture_basic_plot.py </../../examples/gf_
     :alt: Rupture propagation and tractions of a simple dynamic rupture source
         with uniform rake tractions
 
-    Absolute tractions of a simple dynamic source model with a uniform rake. Contour lines show the propagation of the rupture front.
+    Absolute tractions of a simple dynamic source model with a uniform rake. Contour lines are isochrones of the rupture front.
 
 
 Rupture propagation
 -------------------
 
-We can investigate the rupture propagation speed :math:`v_r` with :py:meth:`~pyrocko.plot.dynamic_rupture.RuptureView.draw_patch_parameter`:
+We can investigate the rupture propagation speed :math:`v_r` with :py:meth:`~pyrocko.plot.dynamic_rupture.RuptureView.draw_patch_parameter`.
+Rupture speed is proportional to the S-wave velocity in the Earth model and scaled with the attribute :py:gattr:`~pyrocko.gf.seismosizer.PseudoDynamicRupture.gamma`.
 
 .. code-block :: python
 
-    plot = RuptureView(dyn_rupture)
+    # rupture is a PseudoDynamicRupture object
+    plot = RuptureView(rupture)
 
     plot.draw_patch_parameter('vr')
     plot.draw_time_contour(store)
@@ -127,7 +132,7 @@ We can investigate the rupture propagation speed :math:`v_r` with :py:meth:`~pyr
     :alt: Rupture propagation and tractions of a simple dynamic rupture source
         with uniform rake tractions
 
-    Rupture propagation speed of a simple dynamic source model with a uniform rake. Contour lines show the propagation of the rupture front.
+    Rupture propagation speed of a simple dynamic source model. Contour lines are isochrones of the rupture front.
 
 
 Slip distribution
@@ -137,7 +142,8 @@ Dislocations of the dynamic rupture source can be plotted with :py:meth:`~pyrock
 
 .. code-block :: python
 
-    plot = RuptureView(dyn_rupture)
+    # rupture is a PseudoDynamicRupture object
+    plot = RuptureView(rupture)
 
     plot.draw_dislocation()
     plot.draw_time_contour(store)
@@ -151,21 +157,20 @@ Dislocations of the dynamic rupture source can be plotted with :py:meth:`~pyrock
     :alt: Rupture propagation and dislocation of a simple dynamic rupture source
         with uniform rake tractions
 
-    Absolute dislocation of a simple dynamic rupture source model with uniform rake tractions.
-    Contour lines show the propagation of the rupture front.
+    Absolute dislocation of a simple dynamic rupture source model with uniform rake tractions. Contour lines are isochrones of the rupture front.
 
 
 Rupture evolution
 -----------------
 
-We can animate the rupture evolution using the :py:func:`pyrocko.plot.dynamic_rupture.rupture_movie` function.
+We can animate the rupture evolution using the :py:func:`~pyrocko.plot.dynamic_rupture.rupture_movie` function.
 
 .. code-block :: python
 
     from pyrocko.plot.dynamic_rupture import rupture_movie
 
     rupture_movie(
-        dyn_rupture, store, 'dislocation',
+        rupture, store, 'dislocation',
         plot_type='view')
 
 
@@ -182,9 +187,9 @@ We can animate the rupture evolution using the :py:func:`pyrocko.plot.dynamic_ru
 Combined complex traction fields
 --------------------------------
 
-In this example we will combine different traction fields: :py:class:`~pyrocko.gf.tractions.DirectedTractions`, :py:class:`~pyrocko.gf.tractions.FractalTractions` and :py:class:`~pyrocko.gf.tractions.RectangularTaper`.
+In this example we will combine different traction fields: :py:class:`~pyrocko.gf.tractions.DirectedTractions`, :py:class:`~pyrocko.gf.tractions.FractalTractions` and taper them using :py:class:`~pyrocko.gf.tractions.RectangularTaper`.
 
-After plotting the tractions and final dislocations we will forward model the waveforms.
+After plotting the tractions and final dislocations, we will forward model the waveforms.
 
 Download :download:`gf_forward_pseudo_rupture_complex.py </../../examples/gf_forward_pseudo_rupture_complex.py>`
 
@@ -208,7 +213,7 @@ Download :download:`gf_forward_pseudo_rupture_complex.py </../../examples/gf_for
     :alt: Rupture propagation and dislocation of a complex dynamic rupture source
         with uniform rake tractions and random fractal perturbations.
 
-    Absolute dislocation of a complex dynamic rupture source with uniform rake and superimposed random fractal perturbations. Contour lines show the propagation of the rupture front.
+    Absolute dislocation of a complex dynamic rupture source with uniform rake and superimposed random fractal perturbations. Contour lines are isochrones of the rupture front.
 
 
 .. figure :: /static/dynamic_complex_waveforms_snuffler.png
@@ -216,23 +221,23 @@ Download :download:`gf_forward_pseudo_rupture_complex.py </../../examples/gf_for
     :width: 80%
     :alt: Synthetic waveforms modelled from the pseudo dynamic rupture source model.
 
-    Synthetic waveforms generated by :doc:`pyrocko-gf` from the pseudo dynamic rupture model at ~31 km distance.
+    Synthetic waveforms generated by :doc:`Pyrocko-GF <pyrocko-gf>` from the pseudo dynamic rupture model at 31 km distance.
 
 
 
-Moment rate function / Source time function
+Moment rate function / source time function
 -------------------------------------------
 
-With this example we demonstrate, how the moment rate function or source time function (STF) of a rupture can be simulated using the slip changes on each subfault, the average shear modulus and the subfault areas:
+With this example we demonstrate, how the moment rate :math:`\dot{M}(t)` or source time function (STF) of a rupture can be simulated using the slip rate on each subfault :math:`\dot{u_i}(t)`, the average shear modulus :math:`\mu` and the subfault areas :math:`A_i`:
 
-.. math:: STF = \dot{dM} = \sum_{i_{sf}=1}^{n_{sf}} \dot{du_{i_{sf}}} \mu A_{i_{sf}}
+.. math::  \dot{M}(t) = \sum_{i=1}^{n_{sf}} \dot{u_i}(t) \mu A_i
 
-Use the method :py:meth:`pyrocko.plot.dynamic_rupture.RuptureView.draw_source_dynamics`.
+Use the method :py:meth:`~pyrocko.plot.dynamic_rupture.RuptureView.draw_source_dynamics`:
 
 
 .. code-block :: python
 
-    plot = RuptureView(dyn_rupture)
+    plot = RuptureView(rupture)
 
     # variable can be:
     #    - 'stf', 'moment_rate':            moment rate function
@@ -255,24 +260,24 @@ Use the method :py:meth:`pyrocko.plot.dynamic_rupture.RuptureView.draw_source_dy
 Individual time-dependent subfault characteristics
 --------------------------------------------------
 
-Sometimes it might be also interesting to check the time-dependent behaviour of an individual subfaults.
+Sometimes it might be also interesting to check the time-dependent behaviour of an individual subfault.
 
-Use the method :py:meth:`pyrocko.plot.dynamic_rupture.RuptureView.draw_patch_dynamics`.
+Use the method :py:meth:`~pyrocko.plot.dynamic_rupture.RuptureView.draw_patch_dynamics`:
 
 .. code-block :: python
 
-    plot = RuptureView(dyn_rupture)
+    plot = RuptureView(rupture)
 
     # nx and ny are the indices of the subfault along strike (nx) and down dip (ny)
     # variable can be:
     #    - 'dislocation':                   length of subfault dislocation vector [m]
     #    - 'dislocation_<x, y, z>':         subfault dislocation vector component
     #                                       in strike, updip or normal direction in [m]
-    #    - 'slip_rate':                     subfault slip change in [m/s]
+    #    - 'slip_rate':                     subfault slip rate in [m/s]
     #    - 'moment_rate':                   subfault moment rate function
     #    - 'cumulative_moment', 'moment':   subfault summed moment function
     # of the rupture
-    plot.draw_patch_dynamics(variable='slip_rate', nx=15, ny=10, store=store)
+    plot.draw_patch_dynamics(variable='slip_rate', nx=6, ny=3, store=store)
     plot.show_plot()
 
 
@@ -281,13 +286,13 @@ Use the method :py:meth:`pyrocko.plot.dynamic_rupture.RuptureView.draw_patch_dyn
     :width: 70%
     :alt: Slip rate function of a single subfault of the complex dynamic rupture source with uniform rake tractions and random fractal perturbations.
 
-    Slip rate function of a single subfault (:math:`n_x=20, n_y=10`) of the complex dynamic rupture source with uniform rake tractions and random fractal perturbations.
+    Slip rate function of a single subfault (:math:`n_x=6, n_y=3`) of the complex dynamic rupture source with uniform rake tractions and random fractal perturbations.
 
 
 Radiated seismic energy
 -----------------------
 
-For rather complex ruptures also directivity effects in the waveforms are of interest. Using the function :py:func:`pyrocko.plot.directivity.plot_directivity` allows to plot synthetic waveforms or its envelopes at a certain distance from the source in a circular plot. It provides an easy way of visual directivity effect imaging.
+For rather complex ruptures also directivity effects in the waveforms are of interest. Using the function :py:func:`~pyrocko.plot.directivity.plot_directivity` allows to plot synthetic waveforms or its envelopes at a certain distance from the source in a circular plot. It provides an easy way of visual directivity effect imaging.
 
 .. code-block :: python
 
@@ -296,8 +301,11 @@ For rather complex ruptures also directivity effects in the waveforms are of int
     # many more possible arguments are provided in the help of plot_directivity
     resp = plot_directivity(
         engine,
-        dyn_rupture,
+        rupture,
         store_id,
+        phases={
+            'P': '{cake:p|cake:P}-10%',
+            'S': '{cake:s|cake:S}+50'},
 
         # distance and azimuthal density of modelled waveforms
         distance=300*km,
@@ -322,4 +330,4 @@ For rather complex ruptures also directivity effects in the waveforms are of int
 **********
 References
 **********
-.. [Dahm2021] Dahm, T., Metz, M., Heimann, S., Isken, M. P. (2021). A self-similar dynamic rupture model based on the simplified wave-rupture analogy. Geophysical Journal International. Volume 225, Issue 3, June 2021, Pages 1586–1604, https://doi.org/10.1093/gji/ggab045
+.. [Dahm2021] Dahm, T., Heimann, S., Metz, M., Isken, M. P. (2021). A self-similar dynamic rupture model based on the simplified wave-rupture analogy. Geophysical Journal International. Volume 225, Issue 3, June 2021, Pages 1586–1604, https://doi.org/10.1093/gji/ggab045

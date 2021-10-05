@@ -34,7 +34,8 @@ def planck_window(N, epsilon):
 
 
 class AbstractTractionField(Object):
-    ''' Abstract traction field
+    '''
+    Base class for multiplicative traction fields (tapers).
 
     Fields of this type a re multiplied in the
     :py:class:`~pyrocko.gf.tractions.TractionComposition`
@@ -46,7 +47,8 @@ class AbstractTractionField(Object):
 
 
 class TractionField(AbstractTractionField):
-    ''' Traction field
+    '''
+    Base class for additive traction fields.
 
     Fields of this type are added in the
     :py:class:`~pyrocko.gf.tractions.TractionComposition`
@@ -58,7 +60,8 @@ class TractionField(AbstractTractionField):
 
 
 class TractionComposition(TractionField):
-    ''' Composition of traction fields
+    '''
+    Composition of traction fields.
 
     :py:class:`~pyrocko.gf.tractions.TractionField` and
     :py:class:`~pyrocko.gf.tractions.AbstractTractionField` can be combined
@@ -67,7 +70,7 @@ class TractionComposition(TractionField):
     components = List.T(
         AbstractTractionField.T(),
         default=[],
-        help='Ordered list of tractions')
+        help='Ordered list of tractions.')
 
     def get_tractions(self, nx, ny, patches=None):
         npatches = nx * ny
@@ -86,27 +89,13 @@ class TractionComposition(TractionField):
         return tractions
 
     def add_component(self, field):
-        logger.debug('adding traction component')
+        logger.debug('Adding traction component.')
         self.components.append(field)
 
 
-class UniformTractions(TractionField):
-    ''' Uniform traction field
-
-    The traction field is uniform in strike, dip and normal direction.
-    This realisation is not only simple but also unrealistic.
-    '''
-    traction = Float.T(
-        default=1.,
-        help='Uniform traction in strike, dip and normal direction [Pa]')
-
-    def get_tractions(self, nx, ny, patches=None):
-        npatches = nx * ny
-        return num.full((npatches, 3), self.traction)
-
-
 class HomogeneousTractions(TractionField):
-    ''' Homogeneous traction field
+    '''
+    Homogeneous traction field.
 
     The traction vectors in strike, dip and normal direction are acting
     homogeneously on the rupture plane.
@@ -114,13 +103,13 @@ class HomogeneousTractions(TractionField):
 
     strike = Float.T(
         default=1.,
-        help='Tractions in strike direction [Pa]')
+        help='Tractions in strike direction [Pa].')
     dip = Float.T(
         default=1.,
-        help='Traction in dip direction (up) [Pa]')
+        help='Traction in dip direction (up) [Pa].')
     normal = Float.T(
         default=1.,
-        help='Traction in normal direction [Pa]')
+        help='Traction in normal direction [Pa].')
 
     def get_tractions(self, nx, ny, patches=None):
         npatches = nx * ny
@@ -131,20 +120,21 @@ class HomogeneousTractions(TractionField):
 
 
 class DirectedTractions(TractionField):
-    ''' Directed traction field
+    '''
+    Directed traction field.
 
     The traction vectors are following a uniform ``rake``.
     '''
 
     rake = Float.T(
         default=0.,
-        help='rake angle in [deg], '
+        help='Rake angle in [deg], '
              'measured counter-clockwise from right-horizontal '
              'in on-plane view. Rake is translated into homogenous tractions '
              'in strike and up-dip direction.')
     traction = Float.T(
         default=1.,
-        help='Traction in rake direction [Pa]')
+        help='Traction in rake direction [Pa].')
 
     def get_tractions(self, nx, ny, patches=None):
         npatches = nx * ny
@@ -157,7 +147,8 @@ class DirectedTractions(TractionField):
 
 
 class SelfSimilarTractions(TractionField):
-    ''' Traction model following Power & Tullis (1991).
+    '''
+    Traction model following Power & Tullis (1991).
 
     The traction vectors are calculated as a sum of 2D-cosines with a constant
     amplitude / wavelength ratio. The wavenumber kx and ky are constant for
@@ -172,24 +163,24 @@ class SelfSimilarTractions(TractionField):
     '''
     rank = Int.T(
         default=1,
-        help='maximum summed cosine wavenumber/spatial frequency.')
+        help='Maximum summed cosine wavenumber/spatial frequency.')
 
     rake = Float.T(
         default=0.,
-        help='rake angle in [deg], '
+        help='Rake angle in [deg], '
              'measured counter-clockwise from right-horizontal '
              'in on-plane view. Rake is translated into homogenous tractions '
              'in strike and up-dip direction.')
 
     traction_max = Float.T(
         default=1.,
-        help='maximum traction vector length [Pa]')
+        help='Maximum traction vector length [Pa].')
 
     phases = Array.T(
         optional=True,
         dtype=num.float,
         shape=(None,),
-        help='phase shift of the cosines in [rad].')
+        help='Phase shift of the cosines in [rad].')
 
     def get_phases(self):
         if self.phases is not None:
@@ -219,7 +210,8 @@ class SelfSimilarTractions(TractionField):
 
 
 class FractalTractions(TractionField):
-    ''' Fractal traction field
+    '''
+    Fractal traction field.
     '''
 
     rseed = Int.T(
@@ -230,14 +222,14 @@ class FractalTractions(TractionField):
 
     rake = Float.T(
         default=0.,
-        help='rake angle in [deg], '
+        help='Rake angle in [deg], '
              'measured counter-clockwise from right-horizontal '
              'in on-plane view. Rake is translated into homogenous tractions '
              'in strike and up-dip direction.')
 
     traction_max = Float.T(
         default=1.,
-        help='maximum traction vector length [Pa]')
+        help='Maximum traction vector length [Pa].')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -255,7 +247,7 @@ class FractalTractions(TractionField):
     def get_tractions(self, nx, ny, patches=None):
         if patches is None:
             raise AttributeError(
-                'patches needs to be given for this traction field')
+                'Patches needs to be given for this traction field.')
         npatches = nx * ny
         dx = -patches[0].al1 + patches[0].al2
         dy = -patches[0].aw1 + patches[0].aw2
@@ -308,7 +300,7 @@ class RectangularTaper(AbstractTractionField):
     type = StringChoice.T(
         choices=('tukey', ),
         default='tukey',
-        help='Type of the taper, default "tukey"')
+        help='Type of the taper, default: "tukey".')
 
     def get_tractions(self, nx, ny, patches=None):
         if self.type == 'tukey':
@@ -316,20 +308,20 @@ class RectangularTaper(AbstractTractionField):
             y = tukey_window(ny, self.width)
             return (x[:, num.newaxis] * y).ravel()[:, num.newaxis]
 
-        raise AttributeError('unknown type %s' % self.type)
+        raise AttributeError('Unknown type: %s' % self.type)
 
 
 class DepthTaper(AbstractTractionField):
     depth_start = Float.T(
-        help='Depth where the taper begins [km]')
+        help='Depth where the taper begins [m].')
 
     depth_stop = Float.T(
-        help='Depth where taper stops, and drops to 0. [km]')
+        help='Depth where taper ends and drops to zero [m].')
 
     type = StringChoice.T(
         choices=('linear', ),
         default='linear',
-        help='Type of the taper, default "linear"')
+        help='Type of the taper, default: "linear".')
 
     def get_tractions(self, nx, ny, patches):
         assert self.depth_stop > self.depth_start
@@ -345,23 +337,35 @@ class DepthTaper(AbstractTractionField):
 
 
 def plot_tractions(tractions, nx=15, ny=12, depth=10*km, component='strike'):
-    '''Plot choosen traction model for quick inspection
+    '''
+    Plot traction model for quick inspection.
 
-    :param tractions: traction field or traction composition to be displayed
-    :type tractions: :py:class:`pyrocko.gf.tractions.TractionField`
-    :param nx: number of patches along strike
-    :type nx: optional, int
-    :param ny: number of patches down dip
-    :type ny: optional, int
-    :param depth: depth of the rupture plane center in [m]
-    :type depth: optional, float
-    :param component: choice, which component of the traction is displayed.
-        Choose between:
-        - "tx":        along strike tractions
-        - "ty":        up dip tractions
-        - "tz":        normal tractions
-        - "absolut":   length of the traction vector
-    :type component: optional, str
+    :param tractions:
+        Traction field or traction composition to be displayed.
+    :type tractions:
+        :py:class:`pyrocko.gf.tractions.TractionField`
+
+    :param nx:
+        Number of patches along strike.
+    :type nx:
+        optional, int
+
+    :param ny:
+        Number of patches down dip.
+    :type ny:
+        optional, int
+
+    :param depth:
+        Depth of the rupture plane center in [m].
+    :type depth:
+        optional, float
+
+    :param component:
+        Choice of traction component to be shown. Available: ``'tx'`` (along
+        strike), ``'ty'`` (up dip), ``'tz'`` (normal), ``'absolute'`` (vector
+        length).
+    :type component:
+        optional, str
     '''
     import matplotlib.pyplot as plt
     from pyrocko.modelling.okada import OkadaSource
@@ -383,10 +387,10 @@ def plot_tractions(tractions, nx=15, ny=12, depth=10*km, component='strike'):
 
     if component in comp2idx:
         tractions = tractions[:, comp2idx[component]].reshape(nx, ny)
-    elif component == 'absolut':
+    elif component == 'absolute':
         tractions = num.linalg.norm(tractions, axis=1).reshape(nx, ny)
     else:
-        raise ValueError('given component is not valid.')
+        raise ValueError('Given component is not valid.')
 
     fig = plt.figure()
     ax = fig.gca()
@@ -396,22 +400,10 @@ def plot_tractions(tractions, nx=15, ny=12, depth=10*km, component='strike'):
     plt.show()
 
 
-if __name__ == '__main__':
-    tractions = TractionComposition(
-        components=[
-            UniformTractions(traction=45e3),
-            RectangularTaper(),
-            DepthTaper(depth_start=10.*km, depth_stop=30.*km)
-        ])
-
-    plot_tractions(tractions)
-
-
 __all__ = [
     'AbstractTractionField',
     'TractionField',
     'TractionComposition',
-    'UniformTractions',
     'HomogeneousTractions',
     'DirectedTractions',
     'FractalTractions',
