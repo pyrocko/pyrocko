@@ -338,23 +338,34 @@ class DepthTaper(AbstractTractionField):
 
 def plot_tractions(tractions, nx=15, ny=12, depth=10*km, component='strike'):
     '''
-    Plot choosen traction model for quick inspection.
+    Plot traction model for quick inspection.
 
-    :param tractions: traction field or traction composition to be displayed
-    :type tractions: :py:class:`pyrocko.gf.tractions.TractionField`
-    :param nx: number of patches along strike
-    :type nx: optional, int
-    :param ny: number of patches down dip
-    :type ny: optional, int
-    :param depth: depth of the rupture plane center in [m]
-    :type depth: optional, float
-    :param component: choice, which component of the traction is displayed.
-        Choose between:
-        - "tx":        along strike tractions
-        - "ty":        up dip tractions
-        - "tz":        normal tractions
-        - "absolut":   length of the traction vector
-    :type component: optional, str
+    :param tractions:
+        Traction field or traction composition to be displayed.
+    :type tractions:
+        :py:class:`pyrocko.gf.tractions.TractionField`
+
+    :param nx:
+        Number of patches along strike.
+    :type nx:
+        optional, int
+
+    :param ny:
+        Number of patches down dip.
+    :type ny:
+        optional, int
+
+    :param depth:
+        Depth of the rupture plane center in [m].
+    :type depth:
+        optional, float
+
+    :param component:
+        Choice of traction component to be shown. Available: ``'tx'`` (along
+        strike), ``'ty'`` (up dip), ``'tz'`` (normal), ``'absolute'`` (vector
+        length).
+    :type component:
+        optional, str
     '''
     import matplotlib.pyplot as plt
     from pyrocko.modelling.okada import OkadaSource
@@ -376,7 +387,7 @@ def plot_tractions(tractions, nx=15, ny=12, depth=10*km, component='strike'):
 
     if component in comp2idx:
         tractions = tractions[:, comp2idx[component]].reshape(nx, ny)
-    elif component == 'absolut':
+    elif component == 'absolute':
         tractions = num.linalg.norm(tractions, axis=1).reshape(nx, ny)
     else:
         raise ValueError('Given component is not valid.')
