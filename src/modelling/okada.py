@@ -131,9 +131,9 @@ class OkadaSource(AnalyticalRectangularSource):
     @property
     def poisson(self):
         '''
-        Calculation of Poisson\' s ratio :math:`\\nu` (if not given).
+        Poisson\' s ratio :math:`\\nu` (if not given).
 
-        The Poisson\' s ratio :math:`\\nu` can be calculated from the Lame
+        The Poisson\' s ratio :math:`\\nu` can be calculated from the Lame\'
         parameters :math:`\\lambda` and :math:`\\mu` using :math:`\\nu =
         \\frac{\\lambda}{2(\\lambda + \\mu)}` (e.g. Mueller 2007).
         '''
@@ -153,10 +153,18 @@ class OkadaSource(AnalyticalRectangularSource):
     @property
     def lamb(self):
         '''
-        Calculation of first Lame\' s parameter (if not given).
+        First Lame\' s parameter :math:`\\lambda` (if not given).
 
         Poisson\' s ratio :math:`\\nu` and shear modulus :math:`\\mu` must be
-        available.
+        available to calculate the first Lame\' s parameter :math:`\\lambda`.
+
+        .. important ::
+
+            We assume a perfect elastic solid with :math:`K=\\frac{5}{3}\\mu`.
+
+            Through :math:`\\nu = \\frac{\\lambda}{2(\\lambda + \\mu)}` this
+            leads to :math:`\\lambda = \\frac{2 \\mu \\nu}{1-2\\nu}`.
+
         '''
 
         if self.lamb__ is not None:
@@ -175,7 +183,7 @@ class OkadaSource(AnalyticalRectangularSource):
     @property
     def shearmod(self):
         '''
-        Calculation of shear modulus :math:`\\mu` (if not given).
+        Shear modulus :math:`\\mu` (if not given).
 
         Poisson ratio\' s :math:`\\nu` must be available.
 
@@ -247,10 +255,14 @@ class OkadaSource(AnalyticalRectangularSource):
 
     def source_patch(self):
         '''
-        Build source information array for okada_ext.okada input.
+        Get source location and geometry array for okada_ext.okada input.
+
+        The values are defined according to Okada (1992).
 
         :return:
-            Source data as input for okada_ext.okada.
+            Source data as input for okada_ext.okada. The order is
+            northing [m], easting [m], depth [m], strike [deg], dip [deg],
+            al1 [m], al2 [m], aw1 [m], aw2 [m].
         :rtype:
             :py:class:`~numpy.ndarray`: ``(9, )``
         '''
@@ -267,10 +279,14 @@ class OkadaSource(AnalyticalRectangularSource):
 
     def source_disloc(self):
         '''
-        Build source dislocation for okada_ext.okada input.
+        Get source dislocation array for okada_ext.okada input.
+
+        The given slip is splitted into a strike and an updip part based on the
+        source rake.
 
         :return:
-            Source dislocation data as input for okada_ext.okada
+            Source dislocation data as input for okada_ext.okada. The order is
+            dislocation in strike [m], dislocation updip [m], opening [m].
         :rtype:
             :py:class:`~numpy.ndarray`: ``(3, )``
         '''
@@ -373,23 +389,27 @@ def make_okada_coefficient_matrix(
     Build coefficient matrix for given fault patches.
 
     The boundary element method (BEM) for a discretized fault and the
-    determination of the slip distribution from stress drop is based on the
-    relation :math:`stress = coefmat \\cdot displ`. Here the coefficient matrix
-    is built, based on the displacements from Okada's solution and their
-    partial derivatives.
+    determination of the slip distribution :math:`\\Delta u` from stress drop
+    :math:`\\Delta \\sigma` is based on
+    :math:`\\Delta \\sigma = \\mathbf{C} \\cdot \\Delta u`. Here the
+    coefficient matrix :math:`\\mathbf{C}` is built, based on the displacements
+    from Okada's solution (Okada, 1992) and their partial derivatives.
 
     :param source_patches_list:
         Source patches, to be used in BEM.
     :type source_patches_list:
         list of :py:class:`~pyrocko.modelling.okada.OkadaSource`.
+
     :param pure_shear:
         If ``True``, only shear forces are taken into account.
     :type pure_shear:
         optional, bool
+
     :param rotate_sdn:
         If ``True``, rotate to strike, dip, normal.
     :type rotate_sdn:
         optional, bool
+
     :param nthreads:
         Number of threads.
     :type nthreads:

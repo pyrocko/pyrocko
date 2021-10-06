@@ -2,6 +2,12 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
+'''
+
+
+Analytical crack solutions for surface displacements and fault dislocations.
+
+'''
 import numpy as num
 import logging
 
@@ -35,8 +41,8 @@ class GriffithCrack(Object):
              '[:math:`\\sigma_{3,r} - \\sigma_{3,c}`, '
              ':math:`\\sigma_{2,r} - \\sigma_{2,c}`, '
              ':math:`\\sigma_{1,r} - \\sigma_{1,c}`] :math:`=` '
-             '[:math:`\\Delta stress_{strike}, '
-             '\\Delta stress_{dip}, \\Delta stress_{tensile}`].',
+             '[:math:`\\Delta \\sigma_{strike}, '
+             '\\Delta \\sigma_{dip}, \\Delta \\sigma_{tensile}`].',
         default=num.array([0., 0., 0.]))
 
     @property
@@ -66,7 +72,7 @@ class GriffithCrack(Object):
             Dislocations at each observation point in strike, dip and
             tensile direction.
         :rtype:
-            :py:class:`@numpy.ndarray`: ``(N, 3)``
+            :py:class:`~numpy.ndarray`: ``(N, 3)``
         '''
 
         if type(x_obs) is not num.ndarray:
@@ -213,6 +219,7 @@ class GriffithCrack(Object):
             If :math:`x1_obs = 0.`, displacment is calculated along x2-axis.
         :type x1_obs:
             :py:class:`~numpy.ndarray`: ``(M,)``
+
         :param x2_obs:
             Observation point coordinates along x2-axis.
             If :math:`x2_obs = 0.`, displacment is calculated along x1-axis.
