@@ -242,7 +242,6 @@ class MyValueEdit(qw.QLineEdit):
 class ValControl(qc.QObject):
 
     valchange = qc.pyqtSignal(object, int)
-    max_change_rate = 30  # max changes per second
 
     def __init__(
             self,
@@ -282,8 +281,6 @@ class ValControl(qc.QObject):
 
         self.type = None
         self.mute = False
-
-        self._lastchange = None
 
     def widgets(self):
         return self.lname, self.lvalue, self.slider
@@ -397,12 +394,6 @@ class ValControl(qc.QObject):
             self.fire_valchange()
 
     def fire_valchange(self):
-        if self._lastchange:
-            t = time.time()
-            dt = t - self._lastchange
-            if dt < 1./self.max_change_rate:
-                return
-            self._lastchange = t
 
         if self.mute:
             return
