@@ -1,7 +1,7 @@
 import numpy as num
 import os.path as op
 
-import matplotlib.pyplot as plt
+from matplotlib import pyplot as plt, cm, colors
 
 from pyrocko import gf
 
@@ -31,18 +31,18 @@ store = engine.get_store(store_id)
 source_params = dict(
     north_shift=2. * km,
     east_shift=2. * km,
-    depth=3.5 * km,
+    depth=1.0 * km,
     length=6. * km,
-    width=3. * km,
+    width=6. * km,
     strike=0.,
-    dip=0.,
+    dip=80.,
     rake=45.,
     anchor='top',
     decimation_factor=1)
 
 dyn_rupture = gf.PseudoDynamicRupture(
-    nx=1,
-    ny=1,
+    nx=5,
+    ny=5,
     pure_shear=True,
     **source_params)
 
@@ -76,8 +76,8 @@ easts2d = num.tile(easts, len(norths))
 static_target = gf.StaticTarget(
     lats=num.ones(norths2d.size) * dyn_rupture.effective_lat,
     lons=num.ones(norths2d.size) * dyn_rupture.effective_lon,
-    north_shifts=norths2d.ravel(),
-    east_shifts=easts2d.ravel(),
+    north_shifts=norths2d,
+    east_shifts=easts2d,
     interpolation='nearest_neighbor',
     store_id=store_id)
 
@@ -99,31 +99,45 @@ down_rect = synth_disp_rect['displacement.d']
 down_dyn = synth_disp_dyn['displacement.d']
 down_diff = down_rect - down_dyn
 
-vmin = num.min([down_rect, down_dyn, down_diff])
-vmax = num.max([down_rect, down_dyn, down_diff])
+vabsmax = num.max(num.abs([down_rect, down_dyn, down_diff]))
+vmin = -vabsmax
+vmax = vabsmax
 
-fig, axes = plt.subplots(3, 1, sharex=True)
+fig = plt.figure(figsize=(10, 10))
+axes = []
+for i in [1, 2, 3]:
+    axes.append(fig.add_subplot(2, 2, i, aspect=1.0))
+
+cax = fig.add_axes((0.6, 0.125, 0.02, 0.3))
+
+cmap = 'RdBu_r'
+norm = colors.Normalize(vmin=vmin, vmax=vmax)
 
 for ax, (down, label) in zip(
-        axes,
+        axes[:3],
         zip((down_rect, down_dyn, down_diff),
             (r'$u_{Z, rect}$', r'$u_{Z, dyn}$', r'$\Delta u_{Z}$'))):
-    cntr = ax.tricontourf(
-        E, N, down, levels=14, cmap='RdBu_r',
-        vmin=vmin,
-        vmax=vmax)
 
-    cbar = fig.colorbar(
-        cntr,
-        ax=ax,
-        orientation='vertical',
-        aspect=10,
-        shrink=1.)
+    ax.pcolormesh(
+        easts/km, norths/km, down.reshape(ngrid, ngrid),
+        cmap=cmap, norm=norm, shading='gouraud')
 
-    cbar.ax.set_ylabel(label + ' [m]')
+    ax.set_title(label)
 
-    ax.set_ylabel('Easting [m]')
+axes[1].set_xlabel('Easting [km]')
+axes[2].set_xlabel('Easting [km]')
+axes[0].set_ylabel('Northing [km]')
+axes[2].set_ylabel('Northing [km]')
 
-axes[-1].set_xlabel('Northing [m]')
+axes[0].get_xaxis().set_tick_params(
+    bottom=True, labelbottom=False, top=False, labeltop=False)
+
+axes[1].get_yaxis().set_tick_params(
+    left=True, right=False, labelleft=False, labelright=False)
+
+cbar = fig.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax)
+cbar.ax.set_ylabel('$u$ [m]')
+
+fig.savefig('gf_forward_pseudo_rupture_static.png')
 
 plt.show()
