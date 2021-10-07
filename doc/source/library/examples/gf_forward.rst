@@ -1,6 +1,9 @@
 Forward modeling synthetic seismograms and displacements
 ========================================================
 
+.. contents :: Content
+  :depth: 4
+
 Calculate synthetic seismograms from a local GF store
 -----------------------------------------------------
 
@@ -25,8 +28,6 @@ Download :download:`gf_forward_example1.py </../../examples/gf_forward_example1.
 
 Calculate synthetic seismograms using the Pseudo Dynamic Rupture
 ----------------------------------------------------------------
-
-
 
 Download :download:`gf_forward_pseudo_rupture_waveforms.py </../../examples/gf_forward_pseudo_rupture_waveforms.py>`
 
