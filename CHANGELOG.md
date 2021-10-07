@@ -25,12 +25,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `PseudoDynamicRupture` as `colosseo` input.
 - New `aggressive_oversampling` attribute for both `gf.RectangularSource` and
   `gf.PseudoDynamicRupture` allowing for hard oversampling of the basesources.
+- RMS Snuffling: Option to show log RMS.
+- New example on how to create QuakeML files from scratch.
 
 ### Fixed
 *empty*
 
 ### Changed
-*empty*
+- Renamed Snuffling "Block RMS" to "RMS".
+- Fomosto QSEIS backend can now handle non-zero (negative) top layer depth,
+  e.g. for models including the atmosphere.
 
 ## v2021.09.14
 
