@@ -24,22 +24,31 @@ rect_source = RectangularSource(
     dip=76.6,
     rake=-.4,
     anchor='top',
-
     nucleation_x=-.57,
     nucleation_y=-.59,
     velocity=2070.,
-
     length=27*km,
     width=9.4*km,
     slip=1.4)
 
 
+# import matplotlib.pyplot as plt
+# fig = plt.figure(figsize=(7,5))
+# axes = fig.add_subplot(111, polar=True)
+
 resp = plot_directivity(
     engine, rect_source, store_id,
-    distance=300*km, dazi=5., component='R',
-    plot_mt='full', show_phases=True,
+    # axes=axes,
+    distance=300*km,
+    dazi=5.,
+    component='R',
+    plot_mt='full',
+    show_phases=True,
     phases={
         'First': 'first{stored:begin}-10%',
         'Last': 'last{stored:end}+20'
     },
-    quantity='displacement', envelope=True)
+    quantity='displacement',
+    envelope=False)
+
+# fig.savefig('directivity_rectangular.png')

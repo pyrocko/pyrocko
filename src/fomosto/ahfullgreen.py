@@ -220,7 +220,7 @@ class AhfullGFBuilder(gf.builder.Builder):
                     (index+1, self.nblocks))
 
 
-def init(store_dir, variant):
+def init(store_dir, variant, config_params=None):
     assert variant is None
 
     modelling_code_id = 'ahfullgreen'
@@ -229,7 +229,7 @@ def init(store_dir, variant):
 
     ahfullgreen = AhfullgreenConfig()
 
-    config = gf.meta.ConfigTypeA(
+    d = dict(
         id=store_id,
         ncomponents=10,
         sample_rate=20.,
@@ -250,6 +250,10 @@ def init(store_dir, variant):
                 id='anyS',
                 definition='S,s,\\S,\\s')])
 
+    if config_params is not None:
+        d.update(config_params)
+
+    config = gf.meta.ConfigTypeA(**d)
     config.validate()
     return gf.store.Store.create_editables(
         store_dir, config=config, extra={'ahfullgreen': ahfullgreen})

@@ -65,9 +65,9 @@ Classes covered in these examples:
  * :class:`pyrocko.gf.seismosizer.DCSource` (a representation of a double
    couple source object),
  * :class:`pyrocko.gf.seismosizer.RectangularExplosionSource` (a
-   representation of a rectangular explostion source), 
+   representation of a rectangular explosion source),
  * :class:`pyrocko.gf.seismosizer.CLVDSource` (a representation of a
-   compensated linear vector diploe source object)
+   compensated linear vector dipole source object)
  * :class:`pyrocko.gf.seismosizer.DoubleDCSource` (a representation of a
    double double-couple source object).
 
@@ -111,7 +111,7 @@ Beachballs from source objects
 This example shows how to add beachballs of various sizes to the corners of a
 plot by obtaining the moment tensor from four different source object types:
 :class:`pyrocko.gf.seismosizer.DCSource` (upper left),
-:class:`pyrocko.gf.seismosizer.RectangularExplosionSource` (upper right), 
+:class:`pyrocko.gf.seismosizer.RectangularExplosionSource` (upper right),
 :class:`pyrocko.gf.seismosizer.CLVDSource` (lower left) and
 :class:`pyrocko.gf.seismosizer.DoubleDCSource` (lower right).
 
@@ -201,7 +201,7 @@ components.
 The function :py:func:`pyrocko.plot.hudson.project` may be used to get the
 *(u,v)* coordinates for a given (full) moment tensor used for positioning the
 symbol in the plot. The function :py:func:`pyrocko.plot.hudson.draw_axes` can
-be used to conveniently draw the axes and annotions. Note, that we follow the
+be used to conveniently draw the axes and annotations. Note, that we follow the
 original convention introduced by Hudson, to place the negative CLVD on the
 right hand side.
 
@@ -220,9 +220,36 @@ Download :download:`hudson_diagram.py </../../examples/hudson_diagram.py>`
 Source radiation plot
 ---------------------
 
-The directivity and radiation characteristics of any point or finite 
+The directivity and radiation characteristics of any point or finite
 :py:class:`~pyrocko.gf.seismosizer.Source` model can be illustrated with
 :py:func:`~pyrocko.plot.directivity.plot_directivity`.
+
+Radiation pattern effects
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following educational example illustrates radiation pattern effects from a
+point source in a homogeneous full space. Analytical Green's functions for a
+homogeneous full space are computed within the example code by use of the
+ahfullgreen backend of Fomosto.
+
+Download
+:download:`plot_directivity.py </../../examples/plot_radiation_pattern.py>`
+
+.. literalinclude :: /../../examples/plot_radiation_pattern.py
+    :language: python
+
+.. figure :: /static/radiation_pattern.png
+    :align: center
+    :alt: Source radiation pattern of a double-couple point source in
+        a homogeneous full space.
+
+    Radial component radiation pattern for a double-couple point source in a
+    homogeneous full space observed in the plane of the source at a distance of
+    10 km. Note that the S waves seen in this example are pure near-field
+    effects. They get less pronounced when going to higher frequencies.
+
+Directivity effects
+^^^^^^^^^^^^^^^^^^^
 
 Synthetic seismic traces (R, T or Z) are forward-modelled at a defined radius,
 covering the full or partial azimuthal range and projected on a polar plot.

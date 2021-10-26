@@ -33,6 +33,7 @@ QUANTITY_LABEL = {
 def get_azimuthal_targets(
         store_id, source, radius,
         azi_begin=0., azi_end=360., dazi=1.,
+        depth=0.0,
         interpolation='multilinear',
         components='RTZ', quantity='displacement'):
 
@@ -54,7 +55,7 @@ def get_azimuthal_targets(
         assert comp in dips.keys()
 
     target_kwargs = dict(
-        quantity='displacement',
+        quantity=quantity,
         interpolation=interpolation,
         store_id=store_id)
 
@@ -64,6 +65,7 @@ def get_azimuthal_targets(
             lon=source.lon,
             north_shift=coords[0, iazi] + source.north_shift,
             east_shift=coords[1, iazi] + source.east_shift,
+            depth=depth,
             azimuth={
                 'R': azi,
                 'T': azi+90.,
@@ -98,12 +100,11 @@ def get_seismogram_array(
         assert hasattr(target, 'azimuth')
         assert target.dazi
 
-        if fmin and fmax:
-            tr.bandpass(2, fmin, fmax)
-        elif fmin:
-            tr.highpass(4, fmin)
-        elif fmax:
-            tr.lowpass(4, fmax)
+        if fmin is not None:
+            tr.highpass(4, fmin, demean=False)
+
+        if fmax is not None:
+            tr.lowpass(4, fmax, demean=False)
 
         tmin = min(tmin, tr.tmin) if tmin else tr.tmin
         tmax = max(tmax, tr.tmax) if tmax else tr.tmax
@@ -115,7 +116,6 @@ def get_seismogram_array(
             tr.envelope()
 
     data = num.array([tr.get_ydata() for tr in traces])
-    data -= data.mean()
     nsamples = data.shape[1]
     return data, num.linspace(tmin, tmax, nsamples)
 
@@ -179,6 +179,8 @@ def plot_directivity(
         distance=300*km, azi_begin=0., azi_end=360., dazi=1.,
         phases={'P': 'first{stored:any_P}-10%',
                 'S': 'last{stored:any_S}+50'},
+        interpolation='multilinear',
+        target_depth=0.0,
         quantity='displacement', envelope=False,
         component='R', fmin=0.01, fmax=0.1,
         hillshade=True, cmap=None,
@@ -211,7 +213,7 @@ def plot_directivity(
         :py:class:`~pyrocko.gf.meta.Timing` values
     :param quantity: Seismogram quantity, default ``displacement``
     :type quantity: str
-    :param envelope: Plot envelop instead of seismic trace
+    :param envelope: Plot envelope instead of seismic trace
     :type envelope: bool
     :param component: Forward modelled component, default ``R``. Choose from
         `RTZ`
@@ -222,7 +224,7 @@ def plot_directivity(
     :type fmax: float
     :param hillshade: Enable hillshading, default ``True``
     :type hillshade: bool
-    :param cmap: Matplotlit colormap to use, default ``seismic``.
+    :param cmap: Matplotlib colormap to use, default ``seismic``.
         When ``envelope`` is ``True`` the default colormap will be ``Reds``.
     :type cmap: str
     :param plot_mt: Plot a centered moment tensor, default ``full``.
@@ -230,7 +232,7 @@ def plot_directivity(
     :type plot_mt: str, bool
     :param show_phases: Show annotations, default ``True``
     :type show_phases: bool
-    :param show_description: Show desciption, default ``True``
+    :param show_description: Show description, default ``True``
     :type show_description: bool
     :param reverse_time: Reverse time axis. First phases arrive at the center,
         default ``False``
@@ -259,6 +261,8 @@ def plot_directivity(
 
     targets, azimuths = get_azimuthal_targets(
         store_id, source, distance, azi_begin, azi_end, dazi,
+        depth=target_depth,
+        interpolation=interpolation,
         components='R', quantity=quantity)
     ref_target = targets[0]
     store = engine.get_store(store_id)
@@ -271,8 +275,6 @@ def plot_directivity(
 
     nucl_depth = source.depth
     nucl_distance = distance
-
-    anch_x, anch_y = map_anchor[source.anchor]
 
     if hasattr(source, 'nucleation_x') and hasattr(source, 'nucleation_y'):
         try:
@@ -367,7 +369,7 @@ def plot_directivity(
 
     mesh = ax.pcolormesh(
         azimuths * d2r, times, data,
-        cmap=cmw.cmap, shading='gouraud', zorder=0)
+        cmap=cmw.cmap, norm=cmw.norm, shading='gouraud', zorder=0)
 
     if hillshade:
         mesh.update_scalarmappable()
