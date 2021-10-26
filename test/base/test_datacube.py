@@ -21,9 +21,9 @@ class DataCubeTestCase(unittest.TestCase):
         traces_d = io.load(fpath, getdata=True, format='detect')
 
         mimas = [
-            (30572, 87358),
-            (46168, 80639),
-            (53108, 73114)]
+            (24464, 88087),
+            (42794, 80074),
+            (53039, 73741)]
 
         for tr_h, tr_d, (mi, ma) in zip(traces_h, traces_d, mimas):
             assert tr_h.tmin == tr_d.tmin
@@ -129,6 +129,39 @@ class DataCubeTestCase(unittest.TestCase):
             assert abs(
                 trb.tmin - util.stt('2017-01-01 00:00:00')) \
                 < trb.deltat * 0.001
+
+    def test_subsample_shift(self):
+        for fn in ['test_gps_rect_100.cube', 'test_gps_rect_200.cube']:
+            fpath = common.test_data_file(fn)
+
+            datacube.APPLY_SUBSAMPLE_SHIFT_CORRECTION = False
+            traces_uncorrected = io.load(fpath, getdata=True, format='detect')
+
+            datacube.APPLY_SUBSAMPLE_SHIFT_CORRECTION = True
+            traces_corrected = io.load(fpath, getdata=True, format='detect')
+
+            traces_corrected2 = []
+            for tr in traces_uncorrected:
+                tr.set_codes(location='uncorrected')
+                tr2 = tr.copy()
+                tcorr = 0.199 * tr2.deltat + 0.0003
+                tr2.shift(-tcorr)
+                tr2.snap(interpolate=True)
+                traces_corrected2.append(tr2)
+                tr2.set_codes(location='corrected (comparison)')
+
+            for tr, tr2 in zip(traces_corrected, traces_corrected2):
+                tr.set_codes(location='corrected')
+                tmin = tr.tmin + 1.0
+                tmax = tr.tmax - 1.0
+                data1 = tr.chop(tmin, tmax, inplace=False).get_ydata()
+                data2 = tr2.chop(tmin, tmax, inplace=False).get_ydata()
+                err = num.sqrt(num.sum((data1 - data2)**2))/data1.size
+                assert err < 1.0
+
+            # from pyrocko import trace
+            # trace.snuffle(
+            #     traces_uncorrected + traces_corrected + traces_corrected2)
 
 
 if __name__ == "__main__":

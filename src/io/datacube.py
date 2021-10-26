@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 N_GPS_TAGS_WANTED = 200  # must match definition in datacube_ext.c
 
+APPLY_SUBSAMPLE_SHIFT_CORRECTION = True
+
 
 def color(c):
     c = plot.color(c)
@@ -57,14 +59,22 @@ def make_control_point(ipos_block, t_block, tref, deltat):
     (slope, offset), cov = num.polyfit(x, y, 1, cov=True)
 
     slope_err, offset_err = num.sqrt(num.diag(cov))
+
     slope_err_limit = 1.0e-10
+    if ipos_block.size < N_GPS_TAGS_WANTED // 2:
+        slope_err_limit *= (200. / ipos_block.size)
+
     offset_err_limit = 5.0e-3
 
     if slope_err > slope_err_limit:
-        raise ControlPointError('slope error too large')
+        raise ControlPointError(
+            'Slope error too large: %g (limit: %g' % (
+                slope_err, slope_err_limit))
 
     if offset_err > offset_err_limit:
-        raise ControlPointError('offset error too large')
+        raise ControlPointError(
+            'Offset error too large: %g (limit: %g' % (
+                offset_err, offset_err_limit))
 
     ic = ipos_block[ipos_block.size//2]
     tc = offset + slope * (ic - ipos0)
@@ -103,11 +113,18 @@ def analyse_gps_tags(header, gps_tags, offset, nsamples):
     nsvs = nsvs[ok]
 
     blocksize = N_GPS_TAGS_WANTED // 2
+    if ipos.size < blocksize:
+        blocksize = max(10, ipos.size // 4)
+        logger.warning(
+            'Small number of GPS tags found. '
+            'Reducing analysis block size to %i tags. '
+            'Time correction may be unreliable.' % blocksize)
 
     try:
         if ipos.size < blocksize:
             raise ControlPointError(
-                'could not safely determine time corrections from gps')
+                'Cannot determine GPS time correction: '
+                'Too few GPS tags found: %i' % ipos.size)
 
         j = 0
         control_points = []
@@ -118,8 +135,9 @@ def analyse_gps_tags(header, gps_tags, offset, nsamples):
             try:
                 ic, tc = make_control_point(ipos_block, t_block, tref, deltat)
                 control_points.append((ic, tc))
-            except ControlPointError:
-                pass
+            except ControlPointError as e:
+                logger.debug(str(e))
+
             j += blocksize
 
         ipos_last = ipos[-blocksize:]
@@ -127,12 +145,13 @@ def analyse_gps_tags(header, gps_tags, offset, nsamples):
         try:
             ic, tc = make_control_point(ipos_last, t_last, tref, deltat)
             control_points.append((ic, tc))
-        except ControlPointError:
-            pass
+        except ControlPointError as e:
+            logger.debug(str(e))
 
         if len(control_points) < 2:
             raise ControlPointError(
-                'could not safely determine time corrections from gps')
+                'Could not safely determine time corrections from GPS: '
+                'unable to construct two or more control points')
 
         i0, t0 = control_points[0]
         i1, t1 = control_points[1]
@@ -163,9 +182,15 @@ def analyse_gps_tags(header, gps_tags, offset, nsamples):
         icontrol = num.array([x[0] for x in control_points], dtype=num.int64)
         tcontrol = num.array([x[1] for x in control_points], dtype=float)
 
+        # corrected 2021-10-26: This sub-sample time shift introduced by the
+        # Cube's ADC was previously not recognized.
+        if APPLY_SUBSAMPLE_SHIFT_CORRECTION:
+            tcontrol -= 0.199 * deltat + 0.0003
+
         return tmin, tmax, icontrol, tcontrol, ok
 
-    except ControlPointError:
+    except ControlPointError as e:
+        logger.error(str(e))
 
         tmin = util.str_to_time(header['S_DATE'] + header['S_TIME'],
                                 format='%y/%m/%d%H:%M:%S')
@@ -178,8 +203,9 @@ def analyse_gps_tags(header, gps_tags, offset, nsamples):
                 + util.gps_utc_offset(tmin)
 
         tmax = tmin + (nsamples - 1) * deltat
-        icontrol, tcontrol = None, None
-        return tmin, tmax, icontrol, tcontrol, None
+        icontrol = num.array([offset, offset+nsamples - 1], dtype=num.int64)
+        tcontrol = num.array([tmin, tmax])
+        return tmin, tmax, icontrol, tcontrol, ok
 
 
 def plot_gnss_location_timeline(fns):
@@ -332,8 +358,13 @@ def plot_timeline(fns):
     tref = num.median(t - ipos * deltat)
     tref = round(tref / deltat) * deltat
 
+    if APPLY_SUBSAMPLE_SHIFT_CORRECTION:
+        tcorr = 0.199 * deltat + 0.0003
+    else:
+        tcorr = 0.0
+
     x = ipos*deltat
-    y = (t - tref) - ipos*deltat
+    y = (t - tref) - ipos*deltat - tcorr
 
     bfix = fix != 0
     bnofix = fix == 0
@@ -364,8 +395,9 @@ def plot_timeline(fns):
 
     ymin = (math.floor(tred.min() / deltat)-1) * deltat
     ymax = (math.ceil(tred.max() / deltat)+1) * deltat
+    # ymin = min(ymin, num.min(y))
+    # ymax = max(ymax, num.max(y))
 
-    # axes.set_ylim(ymin, ymax)
     if ymax - ymin < 1000 * deltat:
         ygrid = math.floor(tred.min() / deltat) * deltat
         while ygrid < ymax:
@@ -729,7 +761,17 @@ if __name__ == '__main__':
     parser.add_argument(
         'files', nargs='+')
 
+    parser.add_argument(
+        '--loglevel', '-l',
+        choices=['critical', 'error', 'warning', 'info', 'debug'],
+        default='info',
+        help='Set logger level. Default: %(default)s')
+
     args = parser.parse_args()
+
+    util.setup_logging('pyrocko.io.datacube', args.loglevel)
+    logging.getLogger('matplotlib.font_manager').disabled = True
+
     if args.action == 'timeline':
         plot_timeline(args.files)
 
