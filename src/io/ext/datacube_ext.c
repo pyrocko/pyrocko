@@ -1,11 +1,17 @@
 #define NPY_NO_DEPRECATED_API 7
 
-#include <locale.h>
+
 #include "Python.h"
 #include "numpy/arrayobject.h"
 
+#include <locale.h>
+#ifdef __APPLE__
+    #include <xlocale.h>
+#endif
+
 #ifdef _WIN32
     #define timegm _mkgmtime
+    #define sscanf sscanf_s
 
     char * strsep(char **sp, char *sep)
     {
@@ -16,6 +22,48 @@
         if (*p != '\0') *p++ = '\0';
         *sp = p;
         return(s);
+    }
+
+
+    #define locale_t         _locale_t
+    #define freelocale       _free_locale
+
+    #define LC_GLOBAL_LOCALE ((locale_t)-1)
+    #define LC_ALL_MASK      LC_ALL
+    #define LC_COLLATE_MASK  LC_COLLATE
+    #define LC_CTYPE_MASK    LC_CTYPE
+    #define LC_MONETARY_MASK LC_MONETARY
+    #define LC_NUMERIC_MASK  LC_NUMERIC
+    #define LC_TIME_MASK     LC_TIME
+
+    // Base locale is ignored and mixing of masks is not supported
+    #define newlocale(mask, locale, base) _create_locale(mask, locale)
+
+    locale_t uselocale(locale_t new_locale)
+    {
+        // Retrieve the current per thread locale setting
+        int bIsPerThread = (_configthreadlocale(0) == _ENABLE_PER_THREAD_LOCALE);
+
+        // Retrieve the current thread-specific locale
+        locale_t old_locale = bIsPerThread ? _get_current_locale() : LC_GLOBAL_LOCALE;
+
+        if(new_locale == LC_GLOBAL_LOCALE)
+        {
+            // Restore the global locale
+            _configthreadlocale(_DISABLE_PER_THREAD_LOCALE);
+        }
+        else if(new_locale != NULL)
+        {
+            // Configure the thread to set the locale only for this thread
+            _configthreadlocale(_ENABLE_PER_THREAD_LOCALE);
+
+            // Set all locale categories
+            for(int i = LC_MIN; i <= LC_MAX; i++)
+                setlocale(i, "C");
+                /*setlocale(i, new_locale->locinfo->lc_category[i].locale);*/
+        }
+
+        return old_locale;
     }
 #endif
 
@@ -827,7 +875,7 @@ datacube_error_t datacube_load(reader_t *reader) {
     off_t roffset;
     int gps_ti, f_time, gps_on;
     backjump_t backjump;
-    float toffset;
+    double toffset;
     int nblocks_needed;
 
     /* block types:
@@ -950,7 +998,7 @@ datacube_error_t datacube_load(reader_t *reader) {
 
                 nblocks_needed = (int)ceil(N_GPS_TAGS_WANTED / (gps_ti * 60.));
                 toffset = (gps_ti + f_time) * 60.0 * nblocks_needed;
-                roffset = toffset * 1.0/reader->deltat * (reader->nchannels * 4 + 1) + nblocks_needed * (gps_ti*60) * 80;
+                roffset = (off_t)(toffset * 1.0/reader->deltat * (reader->nchannels * 4 + 1) + nblocks_needed * (gps_ti*60) * 80);
 
             } else if (gps_on == 1) { /* continuous GPS */
                 roffset = datacube_tell(reader) * 2;
@@ -1104,7 +1152,7 @@ int pyarray_to_bookmarks(reader_t *reader, PyObject *barr) {
     carr = (int64_t*)PyArray_DATA((PyArrayObject*)barr);
 
     for (i=0; i<n; i++) {
-        bookmark_array_append(&reader->bookmarks, carr[i*2], carr[i*2+1]);
+        bookmark_array_append(&reader->bookmarks, (size_t)carr[i*2], (off_t)carr[i*2+1]);
     }
     return 0;
 }
