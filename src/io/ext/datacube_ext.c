@@ -569,9 +569,13 @@ datacube_error_t datacube_read_gps_block(reader_t *reader) {
         return SUCCESS;
     }
 
+
     b = strstr(reader->buf, ">RTM");
     if (b == NULL) {
-        return BAD_GPS_BLOCK;
+        b = strstr(reader->buf, ">MTM");
+        if (b == NULL) {
+            return BAD_GPS_BLOCK;
+        }
     }
     b += 4;
 
