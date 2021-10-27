@@ -1,5 +1,6 @@
 #define NPY_NO_DEPRECATED_API 7
 
+#include <locale.h>
 #include "Python.h"
 #include "numpy/arrayobject.h"
 
@@ -1122,6 +1123,10 @@ static PyObject* w_datacube_load(PyObject *m, PyObject *args) {
     ssize_t offset_want, nsamples_want;
 
     struct module_state *st = GETSTATE(m);
+
+    locale_t loc = newlocale(LC_ALL_MASK, "C", NULL);
+    uselocale(loc);
+    freelocale(loc);
 
     if (!PyArg_ParseTuple(args, "iinnO", &f, &load_data,
                           &offset_want, &nsamples_want, &barr)) {
