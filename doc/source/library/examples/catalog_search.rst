@@ -1,8 +1,26 @@
-Earthquake catalog search
-=========================
+Earthquake catalog
+==================
 
 Pyrocko provides access to some online earthquake catalogs via the
 :mod:`pyrocko.client.catalog` module.
+
+
+QuakeML import
+--------------
+
+This example shows how to read `QuakeML <https://quake.ethz.ch/quakeml/docs/REC?action=AttachFile&do=get&target=QuakeML-BED-20130214b.pdf>` event catalogs using :func:`~pyrocko.model.quakeml.QuakeML_load_xml()`.
+The function :meth:`~pyrocko.io.quakeml.QuakeML.get_pyrocko_events()` is used to obtain events in pyrocko format.
+If a moment tensor is provided as [``Mrr, Mtt, Mpp, Mrt, Mrp, Mtp``], this is converted to [``mnn, mee, mdd, mne, mnd, med``]. The strike, dip and rake values appearing in the pyrocko event are calculated from the moment tensor.
+
+.. literalinclude :: /../../examples/readnwrite_quakml.py
+    :language: python
+
+
+Creating QuakeML from scratch
+-----------------------------
+
+.. literalinclude :: /../../examples/make_quakeml.py
+    :language: python
 
 
 Searching the GlobalCMT catalog
