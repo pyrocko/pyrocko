@@ -2601,13 +2601,18 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
 
     @property
     def patch_mask(self):
-        if self.patch_mask__ is not None:
+        if (self.patch_mask__ is not None and
+                self.patch_mask__.shape == (self.nx * self.ny,)):
+
             return self.patch_mask__
         else:
             return num.ones(self.nx * self.ny, dtype=bool)
 
     @patch_mask.setter
     def patch_mask(self, patch_mask):
+        if isinstance(patch_mask, list):
+            patch_mask = num.array(patch_mask)
+
         self.patch_mask__ = patch_mask
 
     def get_tractions(self):
