@@ -90,8 +90,6 @@ synth_disp_rect = result.results_list[0][0].result
 result = engine.process(dyn_rupture, static_target)
 
 targets_static = result.request.targets_static
-N = targets_static[0].coords5[:, 2]
-E = targets_static[0].coords5[:, 3]
 synth_disp_dyn = result.results_list[0][0].result
 
 # Extract static vertical displacement and plot
