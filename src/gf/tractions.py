@@ -234,7 +234,7 @@ class FractalTractions(TractionField):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.rseed is None:
-            self.rseed = num.random.randint(0, 2**32-1)
+            self.rseed = num.random.randint(0, 2**31-1)
         self._data = None
 
     def _get_data(self, nx, ny):
