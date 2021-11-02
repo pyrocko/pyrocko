@@ -121,32 +121,32 @@ def make_colormap(
     '''
     Create gmt-readable colormap cpt file called my_<cmap>.cpt.
 
-    :type vmin:
-        Minimum value covered by the colormap.
     :param vmin:
+        Minimum value covered by the colormap.
+    :type vmin:
         float
 
-    :type vmax:
-        Maximum value covered by the colormap.
     :param vmax:
+        Maximum value covered by the colormap.
+    :type vmax:
         float
 
-    :type C:
-        Comma seperated R/G/B values for cmap definition.
     :param C:
+        Comma seperated R/G/B values for cmap definition.
+    :type C:
         optional, str
 
-    :type cmap:
+    :param cmap:
         Name of the colormap. Colormap is stored as "my_<cmap>.cpt".
         If name is equivalent to a matplotlib colormap, R/G/B strings are
         extracted from this colormap.
-    :param cmap:
+    :type cmap:
         optional, str
 
-    :type space:
+    :param space:
         If ``True``, the range of the colormap is broadened below vmin
         and above vmax.
-    :param space: optional, bool
+    :type space: optional, bool
     '''
 
     scaler = AutoScaler(mode='min-max')
@@ -772,7 +772,7 @@ class RuptureMap(Map):
 
         :param cbar:
             If ``True``, a colorbar corresponding to the grid data is
-            added. Keywordarguments are parsed to it.
+            added. Keyword arguments are parsed to it.
         :type cbar:
             optional, bool
         '''
