@@ -1,4 +1,8 @@
-#!/usr/bin/python3
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+
 from subprocess import check_call, CalledProcessError
 
 import os
@@ -24,9 +28,6 @@ from pyrocko.gf.seismosizer import map_anchor
 from pyrocko.dataset.topo.tile import Tile
 
 logger = logging.getLogger(__name__)
-
-gmtpy.check_have_gmt()
-gmt = gmtpy.GMT()
 
 km = 1e3
 
@@ -96,6 +97,7 @@ def _mplcmap_to_gmtcpt_code(mplcmap, steps=256):
 
 
 def make_colormap(
+        gmt,
         vmin,
         vmax,
         C=None,
@@ -821,7 +823,7 @@ class RuptureMap(Map):
 
         cpt = []
         if not op.exists('my_%s.cpt' % kwargs['cmap']):
-            make_colormap(clim[0], clim[1],
+            make_colormap(self.gmt, clim[0], clim[1],
                           cmap=kwargs['cmap'], space=False)
             cpt = [kwargs['cmap']]
 
