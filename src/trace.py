@@ -941,10 +941,6 @@ class Trace(Object):
         self.drop_growbuffer()
         self.ydata = signal.lfilter(b, a, data)
 
-    def abshilbert(self):
-        self.drop_growbuffer()
-        self.ydata = num.abs(hilbert(self.ydata))
-
     def envelope(self, inplace=True):
         '''
         Calculate the envelope of the trace.
@@ -960,12 +956,14 @@ class Trace(Object):
         where H is the Hilbert-Transform of the signal Y.
         '''
 
+        y = self.ydata.astype(float)
+        env = num.abs(hilbert(y))
         if inplace:
             self.drop_growbuffer()
-            self.ydata = num.sqrt(self.ydata**2 + hilbert(self.ydata)**2)
+            self.ydata = env
         else:
             tr = self.copy(data=False)
-            tr.ydata = num.sqrt(self.ydata**2 + hilbert(self.ydata)**2)
+            tr.ydata = env
             return tr
 
     def taper(self, taperer, inplace=True, chop=False):
@@ -3379,6 +3377,7 @@ def hilbert(x, N=None):
     if num.iscomplexobj(x):
         logger.warning('imaginary part of x ignored.')
         x = num.real(x)
+
     Xf = num.fft.fft(x, N, axis=0)
     h = num.zeros(N)
     if N % 2 == 0:

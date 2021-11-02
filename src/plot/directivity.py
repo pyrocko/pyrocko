@@ -112,7 +112,7 @@ def get_seismogram_array(
     for tr in traces:
         tr.extend(tmin, tmax, fillmethod='repeat')
         if envelope:
-            tr.abshilbert()
+            tr.envelope()
 
     data = num.array([tr.get_ydata() for tr in traces])
     data -= data.mean()

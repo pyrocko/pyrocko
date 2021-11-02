@@ -29,7 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - New example on how to create QuakeML files from scratch.
 
 ### Fixed
-*empty*
+- Fixed `Trace.envelope`.
 
 ### Changed
 - Renamed Snuffling "Block RMS" to "RMS".
