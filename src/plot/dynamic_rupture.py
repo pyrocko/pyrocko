@@ -62,16 +62,27 @@ def get_kwargs(cls):
 
 def _save_grid(lats, lons, data, filename):
     '''
-    Save lat-lon gridded data as gmt .grd file
+    Save lat-lon gridded data as gmt .grd file.
 
-    :param lats: Grid latitude coordinates [degree]
-    :type lats: iterable
-    :param lons: Grid longitude coordinates [degree]
-    :type lons: iterable
-    :param data: Grid data of any kind
-    :type data: :py:class:`numpy.ndarray`, ``(n_lons, n_lats)``
-    :param filename: Filename of the written grid file
-    :type filename: str
+    :param lats:
+        Grid latitude coordinates in [deg].
+    :type lats:
+        iterable
+
+    :param lons:
+        Grid longitude coordinates in [deg].
+    :type lons:
+        iterable
+
+    :param data:
+        Grid data of any kind.
+    :type data:
+        :py:class:`~numpy.ndarray`, ``(n_lons, n_lats)``
+
+    :param filename:
+        Filename of the written grid file.
+    :type filename:
+        str
     '''
 
     gmtpy.savegrd(lons, lats, data, filename=filename, naming='lonlat')
@@ -79,13 +90,17 @@ def _save_grid(lats, lons, data, filename):
 
 def _mplcmap_to_gmtcpt_code(mplcmap, steps=256):
     '''
-    Get gmt readable R/G/A code from a given matplotlib colormap
+    Get gmt readable R/G/A code from a given matplotlib colormap.
 
-    :param mplcmap: Name of the demanded matplotlib colormap
-    :type mplcmap: str
+    :param mplcmap:
+        Name of the demanded matplotlib colormap.
+    :type mplcmap:
+        str
 
-    :returns: Series of comma seperate R/G/B values for gmtpy usage
-    :rtype: str
+    :returns:
+        Series of comma seperate R/G/B values for gmtpy usage.
+    :rtype:
+        str
     '''
 
     cmap = cm.get_cmap(mplcmap)
@@ -104,20 +119,33 @@ def make_colormap(
         cmap=None,
         space=False):
     '''
-    Create gmt-readable colormap cpt file called my_<cmap>.cpt
+    Create gmt-readable colormap cpt file called my_<cmap>.cpt.
 
-    :type vmin: Minimum value covered by the colormap
-    :param vmin: float
-    :type vmax: Maximum value covered by the colormap
-    :param vmax: float
-    :type C: comma seperated R/G/B values for cmap definition.
-    :param C: optional, str
-    :type cmap: Name of the colormap. Colormap is stored as "my_<cmap>.cpt".
+    :type vmin:
+        Minimum value covered by the colormap.
+    :param vmin:
+        float
+
+    :type vmax:
+        Maximum value covered by the colormap.
+    :param vmax:
+        float
+
+    :type C:
+        Comma seperated R/G/B values for cmap definition.
+    :param C:
+        optional, str
+
+    :type cmap:
+        Name of the colormap. Colormap is stored as "my_<cmap>.cpt".
         If name is equivalent to a matplotlib colormap, R/G/B strings are
         extracted from this colormap.
-    :param cmap: optional, str
-    :type space: If True, the range of the colormap is broadened below vmin and
-        above vmax.
+    :param cmap:
+        optional, str
+
+    :type space:
+        If ``True``, the range of the colormap is broadened below vmin
+        and above vmax.
     :param space: optional, bool
     '''
 
@@ -162,13 +190,17 @@ def make_colormap(
 
 def clear_temp(gridfiles=[], cpts=[]):
     '''
-    Clear all temporary needed grid and colormap cpt files
+    Clear all temporary needed grid and colormap cpt files.
 
-    :param gridfiles: List of all "...grd" files, which shall be deleted
-    :type gridfiles: optional, list
-    :param cpts: List of all cmaps, whose corresponding "my_<cmap>.cpt" file
-        shall be deleted
-    :type cpts: optional, list
+    :param gridfiles:
+        List of all "...grd" files, which shall be deleted.
+    :type gridfiles:
+        optional, list
+
+    :param cpts:
+        Cmaps, whose corresponding "my_<cmap>.cpt" file shall be deleted.
+    :type cpts:
+        optional, list
     '''
 
     for fil in gridfiles:
@@ -185,18 +217,28 @@ def clear_temp(gridfiles=[], cpts=[]):
 
 def xy_to_latlon(source, x, y):
     '''
-    Convert x and y relative coordinates on extended ruptures into latlon
+    Convert x and y relative coordinates on extended ruptures into latlon.
 
-    :param source: Extended source class, on which the given point is located
-    :type source: :py:class:`pyrocko.gf.seismosizer.RectangularSource` or
-        :py:class:`pyrocko.gf.seismosizer.PseudoDynamicRupture`
-    :param x: Relative point coordinate along strike (range: -1:1)
-    :type x: float or :py:class:`numpy.ndarray`
-    :param y: Relative downdip point coordinate (range: -1:1)
-    :type y: float or :py:class:`numpy.ndarray`
+    :param source:
+        Extended source class, on which the given point is located.
+    :type source:
+        :py:class:`~pyrocko.gf.seismosizer.RectangularSource` or
+        :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture`
 
-    :returns: Latitude and Longitude [degrees] of the given point
-    :rtype: tuple of float
+    :param x:
+        Relative point coordinate along strike (range: -1:1).
+    :type x:
+        float or :py:class:`~numpy.ndarray`
+
+    :param y:
+        Relative downdip point coordinate (range: -1:1).
+    :type y:
+        float or :py:class:`~numpy.ndarray`
+
+    :returns:
+        Latitude and Longitude of the given point in [deg].
+    :rtype:
+        tuple of float
     '''
 
     s = source
@@ -216,18 +258,28 @@ def xy_to_latlon(source, x, y):
 
 def xy_to_lw(source, x, y):
     '''
-    Convert x and y relative coordinates on extended ruptures into length width
+    Convert relative coordinates on extended ruptures into length and width.
 
-    :param source: Extended source class, on which the given points are located
-    :type source: :py:class:`pyrocko.gf.seismosizer.RectangularSource` or
-        :py:class:`pyrocko.gf.seismosizer.PseudoDynamicRupture`
-    :param x: Relative point coordinates along strike (range: -1:1)
-    :type x: float or :py:class:`numpy.ndarray`
-    :param y: Relative downdip point coordinates (range: -1:1)
-    :type y: float or :py:class:`numpy.ndarray`
+    :param source:
+        Extended source, on which the given points are located.
+    :type source:
+        :py:class:`~pyrocko.gf.seismosizer.RectangularSource` or
+        :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture`
 
-    :returns: length and downdip width [m] of the given points from the anchor
-    :rtype: tuple of float
+    :param x:
+        Relative point coordinates along strike (range: -1:1).
+    :type x:
+        float or :py:class:`~numpy.ndarray`
+
+    :param y:
+        Relative downdip point coordinates (range: -1:1).
+    :type y:
+        float or :py:class:`~numpy.ndarray`
+
+    :returns:
+        Length and downdip width of the given points from the anchor in [m].
+    :rtype:
+        tuple of float
     '''
 
     length, width = source.length, source.width
@@ -293,16 +345,22 @@ c2disl = dict([('x', 0), ('y', 1), ('z', 2)])
 
 def _make_gmt_conf(fontcolor, size):
     '''
-    Update different gmt parameters depending on figure size and fontcolor
+    Update different gmt parameters depending on figure size and fontcolor.
 
-    :param fontcolor: GMT readable colorcode / colorstring for the font
-    :type fontcolor: str
-    :param size: Tuple of the figure size (width, height) [centimetre]
-    :type size: tuple of float
+    :param fontcolor:
+        GMT readable colorcode or colorstring for the font.
+    :type fontcolor:
+        str
 
-    :returns: estimate best fitting fontsize,
-        Dictionary of different gmt configuration parameter
-    :rtype: float, dict
+    :param size:
+        Tuple of the figure size (width, height) in [cm].
+    :type size:
+        tuple of float
+
+    :returns:
+        Best fitting fontsize, GMT configuration parameter
+    :rtype:
+        float, dict
     '''
 
     color = fontcolor
@@ -335,8 +393,9 @@ class SourceError(Exception):
 
 
 class RuptureMap(Map):
-    ''' Map plotting of attributes and results of the
-        :py:class:`pyrocko.gf.seismosizer.PseudoDynamicRupture`
+    '''
+    Map plotting of attributes and results of the
+    :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture`.
     '''
 
     def __init__(
@@ -379,15 +438,14 @@ class RuptureMap(Map):
     @property
     def size(self):
         '''
-        Figure size [cm]
+        Figure size in [cm].
         '''
-
         return (self.width, self.height)
 
     @property
     def font(self):
         '''
-        Font style (size and type)
+        Font style (size and type).
         '''
 
         return '%sp,%s' % (self._fontsize, fonttype)
@@ -397,8 +455,7 @@ class RuptureMap(Map):
         '''
         PseudoDynamicRupture whose attributes are plotted.
 
-        Note, that source.patches attribute needs to be calculated
-        :type source: :py:class:`pyrocko.gf.seismosizer.PseudoDynamicRupture`
+        Note, that source.patches attribute needs to be calculated in advance.
         '''
 
         if self._source is None:
@@ -442,14 +499,16 @@ class RuptureMap(Map):
 
     def _patches_to_lw(self):
         '''
-        Generate regular rect. length-width grid based on the patch distance
+        Generate regular rect. length-width grid based on the patch distance.
 
         Prerequesite is a regular grid of patches (constant lengths and widths)
-        Both coordinates are given relative to the source anchor point [in m]
-        The grid is extended from the patch centres to the edges of the source
+        Both coordinates are given relative to the source anchor point in [m]
+        The grid is extended from the patch centres to the edges of the source.
 
-        :returns: lengths along strike, widths downdip
-        :rtype: :py:class:`numpy.ndarray`, :py:class:`numpy.ndarray`
+        :returns:
+            Lengths along strike, widths downdip in [m].
+        :rtype:
+            :py:class:`~numpy.ndarray`, :py:class:`~numpy.ndarray`
         '''
 
         source = self.source
@@ -476,16 +535,18 @@ class RuptureMap(Map):
 
     def _xy_to_lw(self, x, y):
         '''
-        Generate regular rect. length-width grid based on the xy coordinates
+        Generate regular rect. length-width grid based on the xy coordinates.
 
         Prerequesite is a regular grid with constant dx and dy. x and y are
         relative coordinates on the rupture plane (range -1:1) along strike and
         downdip.
         Length and width are obtained relative to the source anchor point
-        [in m].
+        in [m].
 
-        :returns: lengths along strike [m], widths downdip [m]
-        :rtype: :py:class:`numpy.ndarray`, :py:class:`numpy.ndarray`
+        :returns:
+            Lengths along strike, widths downdip in [m].
+        :rtype:
+            :py:class:`~numpy.ndarray`, :py:class:`~numpy.ndarray`
         '''
 
         x, y = num.unique(x), num.unique(y)
@@ -505,28 +566,43 @@ class RuptureMap(Map):
                     north_shift=0., east_shift=0., strike=0.):
 
         '''
-        Coordinate transformation from the topo tile grid into length-width
+        Coordinate transformation from the topo tile grid into length-width.
 
         The topotile latlon grid is rotated into the length width grid. The
         width is defined here as its horizontal component. The resulting grid
         is used for interpolation of grid data.
 
-        :param ref_lat: Reference latitude, from which length-width relative
-            coordinatesgrid are calculated
-        :type ref_lat: float
-        :param ref_lon: Reference longitude, from which length-width relative
-            coordinatesgrid are calculated
-        :type ref_lon: float
-        :param north_shift: North shift of the reference point [m]
-        :type north_shift: optional, float
-        :param east_shift: East shift of the reference point [m]
-        :type east_shift: optional, float
-        :param strike: striking of the length axis compared to the North axis
-            [degree]
-        :type strike: optional, float
+        :param ref_lat:
+            Reference latitude, from which length-width relative coordinates
+            grid are calculated.
+        :type ref_lat:
+            float
 
-        :returns: topotile grid nodes as array of length-width coordinates
-        :rtype: :py:class:`numpy.ndarray`, ``(n_nodes, 2)``
+        :param ref_lon:
+            Reference longitude, from which length-width relative coordinates
+            grid are calculated.
+        :type ref_lon:
+            float
+
+        :param north_shift:
+            North shift of the reference point in [m].
+        :type north_shift:
+            optional, float
+
+        :param east_shift:
+            East shift of the reference point [m].
+        :type east_shift:
+            optional, float
+
+        :param strike:
+            striking of the length axis compared to the North axis in [deg].
+        :type strike:
+            optional, float
+
+        :returns:
+            Topotile grid nodes as array of length-width coordinates.
+        :rtype:
+            :py:class:`~numpy.ndarray`, ``(n_nodes, 2)``
         '''
 
         t = self._get_topotile()
@@ -551,17 +627,21 @@ class RuptureMap(Map):
 
     def _prep_patch_grid_data(self, data):
         '''
-        Extend patch data from patch centres to the outer source edges
+        Extend patch data from patch centres to the outer source edges.
 
         Patch data is always defined in the centre of the patches. For
         interpolation the data is extended here to the edges of the rupture
         plane.
 
-        :param data: Patch wise data
-        :type data: :py:class:`numpy.ndarray`
+        :param data:
+            Patch wise data.
+        :type data:
+            :py:class:`~numpy.ndarray`
 
-        :returns: Extended data array
-        :rtype: :py:class:`numpy.ndarray`
+        :returns:
+            Extended data array.
+        :rtype:
+            :py:class:`~numpy.ndarray`
         '''
 
         shape = (self.source.nx + 2, self.source.ny + 2)
@@ -581,19 +661,30 @@ class RuptureMap(Map):
 
     def _regular_data_to_grid(self, lengths, widths, data, filename):
         '''
-        Interpolate regular data onto topotile grid
+        Interpolate regular data onto topotile grid.
 
         Regular gridded data is interpolated onto the latlon grid of the
         topotile. It is then stored as a gmt-readable .grd-file.
 
-        :param lengths: Grid coordinates along strike relative to anchor [m]
-        :type lengths: :py:class:`numpy.ndarray`
-        :param widths: Grid coordinates downdip relative to anchor [m]
-        :type widths: :py:class:`numpy.ndarray`
-        :param data: Data grid array
-        :type data: :py:class:`numpy.ndarray`
-        :param filename: Filename, where grid is stored
-        :type filename: str
+        :param lengths:
+            Grid coordinates along strike relative to anchor in [m].
+        :type lengths:
+            :py:class:`~numpy.ndarray`
+
+        :param widths:
+            Grid coordinates downdip relative to anchor in [m].
+        :type widths:
+            :py:class:`~numpy.ndarray`
+
+        :param data:
+            Data grid array.
+        :type data:
+            :py:class:`~numpy.ndarray`
+
+        :param filename:
+            Filename, where grid is stored.
+        :type filename:
+            str
         '''
 
         source = self.source
@@ -623,8 +714,10 @@ class RuptureMap(Map):
         '''
         Generate a grid file based on regular patch wise data.
 
-        :param data: Patchwise data grid array
-        :type data: :py:class:`numpy.ndarray`
+        :param data:
+            Patchwise grid data.
+        :type data:
+            :py:class:`~numpy.ndarray`
         '''
 
         lengths, widths = self._patches_to_lw()
@@ -635,17 +728,25 @@ class RuptureMap(Map):
 
     def xy_data_to_grid(self, x, y, data, *args, **kwargs):
         '''
-        Generate a grid file based on regular gridded data using xy coordinates
+        Generate a grid file based on gridded data using xy coordinates.
 
         Convert a grid based on relative fault coordinates (range -1:1) along
         strike (x) and downdip (y) into a .grd file.
 
-        :param x: Relative point coordinate along strike (range: -1:1)
-        :type x: float or :py:class:`numpy.ndarray`
-        :param y: Relative downdip point coordinate (range: -1:1)
-        :type y: float or :py:class:`numpy.ndarray`
-        :param data: Patchwise data grid array
-        :type data: :py:class:`numpy.ndarray`
+        :param x:
+            Relative point coordinate along strike (range: -1:1).
+        :type x:
+            float or :py:class:`~numpy.ndarray`
+
+        :param y:
+            Relative downdip point coordinate (range: -1:1).
+        :type y:
+            float or :py:class:`~numpy.ndarray`
+
+        :param data:
+            Patchwise grid data.
+        :type data:
+            :py:class:`~numpy.ndarray`
         '''
 
         lengths, widths = self._xy_to_lw(x, y)
@@ -656,16 +757,24 @@ class RuptureMap(Map):
 
     def draw_image(self, gridfile, cmap, cbar=True, **kwargs):
         '''
-        Draw grid data as image and include, if whished, a colorbar
+        Draw grid data as image and include, if whished, a colorbar.
 
-        :param gridfile: File of the grid which shall be plotted
-        :type gridfile: str
-        :param cmap: Name of the colormap, which shall be used. A .cpt-file
-            "my_<cmap>.cpt" must exist
-        :type cmap: str
-        :param cbar: If True, a colorbar corresponding to the grid data is
+        :param gridfile:
+            File of the grid which shall be plotted.
+        :type gridfile:
+            str
+
+        :param cmap:
+            Name of the colormap, which shall be used. A .cpt-file
+            "my_<cmap>.cpt" must exist.
+        :type cmap:
+            str
+
+        :param cbar:
+            If ``True``, a colorbar corresponding to the grid data is
             added. Keywordarguments are parsed to it.
-        :type cbar: optional, bool
+        :type cbar:
+            optional, bool
         '''
 
         self.gmt.grdimage(
@@ -691,25 +800,45 @@ class RuptureMap(Map):
             **kwargs):
 
         '''
-        Draw grid data as contour lines
+        Draw grid data as contour lines.
 
-        :param gridfile: File of the grid which shall be plotted
-        :type gridfile: str
-        :param contour_int: Interval of contour lines in units of the gridfile
-        :type contour_int: float
-        :param anot_int: Interval of labelled contour lines in units of the
-            gridfile. Must be a integer multiple of contour_int
-        :type anot_int: float
-        :param angle: Rotation angle of the labels [degree]
-        :type angle: optional, float
-        :param unit: Name of the unit in the grid file. It will be displayed
-            behind the label on labelled contour lines
-        :type unit: optional, str
-        :param color: GMT readable color code/str of the contour lines
-        :type color: optional, str
-        :param style: Line style of the contour lines. If not given, solid
-            lines are plotted
-        :type style: optional, str
+        :param gridfile:
+            File of the grid which shall be plotted.
+        :type gridfile:
+            str
+
+        :param contour_int:
+            Interval of contour lines in units of the gridfile.
+        :type contour_int:
+            float
+
+        :param anot_int:
+            Interval of labelled contour lines in units of the gridfile. Must
+            be a integer multiple of contour_int.
+        :type anot_int:
+            float
+
+        :param angle:
+            Rotation angle of the labels in [deg].
+        :type angle:
+            optional, float
+
+        :param unit:
+            Name of the unit in the grid file. It will be displayed behind the
+            label on labelled contour lines.
+        :type unit:
+            optional, str
+
+        :param color:
+            GMT readable color code or string of the contour lines.
+        :type color:
+            optional, str
+
+        :param style:
+            Line style of the contour lines. If not given, solid lines are
+            plotted.
+        :type style:
+            optional, str
         '''
 
         pen_size = self._fontsize / 40.
@@ -742,16 +871,24 @@ class RuptureMap(Map):
 
     def draw_colorbar(self, cmap, label='', anchor='top_right', **kwargs):
         '''
-        Draw a colorbar based on a existing colormap
+        Draw a colorbar based on a existing colormap.
 
-        :param cmap: Name of the colormap, which shall be used. A .cpt-file
-            "my_<cmap>.cpt" must exist
-        :type cmap: str
-        :param label: Title of the colorbar
-        :type label: optional, str
-        :param anchor: Placement of the colorbar. Combine 'top', 'center' and
-            'bottom' with 'left', None for middle and 'right'
-        :type anchor: optional, str
+        :param cmap:
+            Name of the colormap, which shall be used. A .cpt-file
+            "my_<cmap>.cpt" must exist.
+        :type cmap:
+            str
+
+        :param label:
+            Title of the colorbar.
+        :type label:
+            optional, str
+
+        :param anchor:
+            Placement of the colorbar. Combine 'top', 'center' and 'bottom'
+            with 'left', None for middle and 'right'.
+        :type anchor:
+            optional, str
         '''
 
         if not kwargs:
@@ -781,19 +918,28 @@ class RuptureMap(Map):
             **kwargs)
 
     def draw_vector(self, x_gridfile, y_gridfile, vcolor='', **kwargs):
-        ''' Draw vectors based on two grid files
+        '''
+        Draw vectors based on two grid files.
 
         Two grid files for vector lengths in x and y need to be given. The
         function calls gmt.grdvector. All arguments defined for this function
         in gmt can be passed as keyword arguments. Different standard settings
         are applied if not defined differently.
 
-        :param x_gridfile: File of the grid defining vector lengths in x
-        :type x_gridfile: str
-        :param y_gridfile: File of the grid defining vector lengths in y
-        :type y_gridfile: str
-        :param vcolor: Vector face color as defined in "G" option
-        :type vcolor: str
+        :param x_gridfile:
+            File of the grid defining vector lengths in x.
+        :type x_gridfile:
+            str
+
+        :param y_gridfile:
+            File of the grid defining vector lengths in y.
+        :type y_gridfile:
+            str
+
+        :param vcolor:
+            Vector face color as defined in "G" option.
+        :type vcolor:
+            str
         '''
 
         kwargs['S'] = kwargs.get('S', 'il1.')
@@ -809,10 +955,12 @@ class RuptureMap(Map):
 
     def draw_dynamic_data(self, data, **kwargs):
         '''
-        Draw an image of any data gridded on the patches e.g dislocation
+        Draw an image of any data gridded on the patches e.g dislocation.
 
-        :param data: Patchwise data grid array
-        :type data: :py:class:`numpy.ndarray`
+        :param data:
+            Patchwise grid data.
+        :type data:
+            :py:class:`~numpy.ndarray`
         '''
 
         plot_data = data
@@ -834,14 +982,16 @@ class RuptureMap(Map):
         clear_temp(gridfiles=[tmp_grd_file], cpts=cpt)
 
     def draw_patch_parameter(self, attribute, **kwargs):
-        '''Draw an image of a chosen patch attribute e.g traction
+        '''
+        Draw an image of a chosen patch attribute e.g traction.
 
-        :param attribute: Patch attribute, which is plotted. All patch
-            attributes can be taken (see doc of
-            :py:class:`pyrocko.modelling.okada.OkadaSource`) and also
-            ``traction``, ``tx``, ``ty`` or ``tz`` to display the
+        :param attribute:
+            Patch attribute, which is plotted. All patch attributes can be
+            taken (see doc of :py:class:`~pyrocko.modelling.okada.OkadaSource`)
+            and also ``traction``, ``tx``, ``ty`` or ``tz`` to display the
             length or the single components of the traction vector.
-        :type attribute: str
+        :type attribute:
+            str
         '''
 
         a = attribute
@@ -868,13 +1018,17 @@ class RuptureMap(Map):
         self.draw_dynamic_data(data, **kwargs)
 
     def draw_time_contour(self, store, clevel=[], **kwargs):
-        '''Draw high contour lines of the rupture front propgation time
+        '''
+        Draw high contour lines of the rupture front propgation time.
 
-        :param store: Greens function store, which is used for time calculation
-        :type store: :py:class:`pyrocko.gf.store.Store`
-        :param clevel: List of times, for which contour lines are drawn,
-            optional
-        :type clevel: list of float
+        :param store:
+            Greens function store, which is used for time calculation.
+        :type store:
+            :py:class:`~pyrocko.gf.store.Store`
+        :param clevel:
+            List of times, for which contour lines are drawn.
+        :type clevel:
+            optional, list of float
         '''
 
         _, _, _, _, points_xy = self.source._discretize_points(store, cs='xyz')
@@ -906,17 +1060,29 @@ class RuptureMap(Map):
         clear_temp(gridfiles=[tmp_grd_file], cpts=[])
 
     def draw_points(self, lats, lons, symbol='point', size=None, **kwargs):
-        '''Draw points at given locations
+        '''
+        Draw points at given locations.
 
-        :param lats: Point latitude coordinates [degree]
-        :type lats: iterable
-        :param lons: Point longitude coordinates [degree]
-        :type lons: iterable
-        :param symbol: Define symbol of the points
-            (``'star', 'circle', 'point', 'triangle'``) - default is ``point``
-        :type symbol: optional, str
-        :param size: Size of the points in points
-        :type size: optional, float
+        :param lats:
+            Point latitude coordinates in [deg].
+        :type lats:
+            iterable
+
+        :param lons:
+            Point longitude coordinates in [deg].
+        :type lons:
+            iterable
+
+        :param symbol:
+            Define symbol of the points (``'star', 'circle', 'point',
+            'triangle'``) - default is ``point``.
+        :type symbol:
+            optional, str
+
+        :param size:
+            Size of the points in [points].
+        :type size:
+            optional, float
         '''
 
         sym_to_gmt = dict(
@@ -944,7 +1110,9 @@ class RuptureMap(Map):
             **kwargs)
 
     def draw_nucleation_point(self, **kwargs):
-        ''' Plot the nucleation point onto the map '''
+        '''
+        Plot the nucleation point onto the map.
+        '''
 
         nlat, nlon = xy_to_latlon(
             self.source, self.source.nucleation_x, self.source.nucleation_y)
@@ -952,17 +1120,23 @@ class RuptureMap(Map):
         self.draw_points(nlat, nlon, **kwargs)
 
     def draw_dislocation(self, time=None, component='', **kwargs):
-        ''' Draw dislocation onto map at any time
+        '''
+        Draw dislocation onto map at any time.
 
-        For a given time (if ``time`` is ``None``, ``tmax`` is used)
-        and given component the patchwise dislocation is plotted onto the map.
+        For a given time (if ``time`` is ``None``, ``tmax`` is used)  and given
+        component the patchwise dislocation is plotted onto the map.
 
-        :param time: time after origin, for which dislocation is computed. If
-            ``None``, ``tmax`` is taken.
-        :type time: optional, float
-        :param component: Dislocation component, which shall be plotted: ``x``
-            along strike, ``y`` along updip, ``z`` normal. If ``None``, the
-            length of the dislocation vector is plotted
+        :param time:
+            Time after origin, for which dislocation is computed. If ``None``,
+            ``tmax`` is taken.
+        :type time:
+            optional, float
+
+        :param component:
+            Dislocation component, which shall be plotted: ``x`` along strike,
+            ``y`` along updip, ``z`` normal. If ``None``, the
+            length of the dislocation vector is plotted.
+        :type component: optional, str
         '''
 
         disl = self.source.get_slip(time=time)
@@ -979,20 +1153,28 @@ class RuptureMap(Map):
 
     def draw_dislocation_contour(
             self, time=None, component=None, clevel=[], **kwargs):
-        ''' Draw dislocation contour onto map at any time
+        '''
+        Draw dislocation contour onto map at any time.
 
-        For a given time (if ``time`` is ``None``, ``tmax`` is used)
-        and given component the patchwise dislocation is plotted as contour
-        onto the map.
+        For a given time (if ``time`` is ``None``, ``tmax`` is used) and given
+        component the patchwise dislocation is plotted as contour onto the map.
 
-        :param time: time after origin, for which dislocation is computed. If
-            ``None``, ``tmax`` is taken.
-        :type time: optional, float
-        :param component: Dislocation component, which shall be plotted: ``x``
-            along strike, ``y`` along updip, ``z`` normal``. If ``None``,
-            the length of the dislocation vector is plotted
-        :param clevel: List of times, for which contour lines are drawn
-        :type clevel: optional, list of float
+        :param time:
+            Time after origin, for which dislocation is computed. If ``None``,
+            ``tmax`` is taken.
+        :type time:
+            optional, float
+
+        :param component:
+            Dislocation component, which shall be plotted: ``x`` along strike,
+            ``y`` along updip, ``z`` normal``. If ``None``, the length of the
+            dislocation vector is plotted.
+        :type component: optional, str
+
+        :param clevel:
+            Times, for which contour lines are drawn.
+        :type clevel:
+            optional, list of float
         '''
 
         disl = self.source.get_slip(time=time)
@@ -1031,14 +1213,17 @@ class RuptureMap(Map):
         clear_temp(gridfiles=[tmp_grd_file], cpts=[])
 
     def draw_dislocation_vector(self, time=None, **kwargs):
-        '''Draw vector arrows onto map indicating direction of dislocation
+        '''
+        Draw vector arrows onto map indicating direction of dislocation.
 
         For a given time (if ``time`` is ``None``, ``tmax`` is used)
         and given component the dislocation is plotted as vectors onto the map.
 
-        :param time: time after origin [s], for which dislocation is computed.
-            If ``None``, ``tmax`` is used.
-        :type time: optional, float
+        :param time:
+            Time after origin [s], for which dislocation is computed. If
+            ``None``, ``tmax`` is used.
+        :type time:
+            optional, float
         '''
 
         disl = self.source.get_slip(time=time)
@@ -1062,7 +1247,8 @@ class RuptureMap(Map):
         clear_temp(gridfiles=tmp_grd_files, cpts=[])
 
     def draw_top_edge(self, **kwargs):
-        '''Indicate rupture top edge on map
+        '''
+        Indicate rupture top edge on map.
         '''
 
         outline = self.source.outline(cs='latlondepth')
@@ -1079,8 +1265,9 @@ class RuptureMap(Map):
 
 
 class RuptureView(Object):
-    ''' Plot of attributes and results of the
-        :py:class:`pyrocko.gf.seismosizer.PseudoDynamicRupture`.
+    '''
+    Plot of attributes and results of the
+    :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture`.
     '''
 
     _patches_to_lw = RuptureMap._patches_to_lw
@@ -1099,10 +1286,11 @@ class RuptureView(Object):
 
     @property
     def source(self):
-        ''' PseudoDynamicRupture whose attributes are plotted.
+        '''
+        PseudoDynamicRupture whose attributes are plotted.
 
         Note, that source.patches attribute needs to be calculated for
-        :type source: :py:class:`pyrocko.gf.seismosizer.PseudoDynamicRupture`
+        :type source: :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture`.
         '''
 
         if self._source is None:
@@ -1234,17 +1422,23 @@ class RuptureView(Object):
                 patheffects.Normal()])
 
     def draw_points(self, length, width, *args, **kwargs):
-        ''' Draw a point onto the figure.
+        '''
+        Draw a point onto the figure.
 
         Args and kwargs can be defined according to
         :py:func:`matplotlib.pyplot.scatter`.
 
-        :param length: Point(s) coordinate on the rupture plane along strike
-            relative to the anchor point [m]
-        :type length: float, :py:class:`numpy.ndarray`
-        :param width: Point(s) coordinate on the rupture plane along downdip
-            relative to the anchor point [m]
-        :type width: float, :py:class:`numpy.ndarray`
+        :param length:
+            Point(s) coordinate on the rupture plane along strike relative to
+            the anchor point in [m].
+        :type length:
+            float, :py:class:`~numpy.ndarray`
+
+        :param width:
+            Point(s) coordinate on the rupture plane along downdip relative to
+            the anchor point in [m].
+        :type width:
+            float, :py:class:`~numpy.ndarray`
         '''
 
         if self._axes is not None:
@@ -1254,10 +1448,13 @@ class RuptureView(Object):
             self._axes.scatter(length, width, *args, **kwargs)
 
     def draw_dynamic_data(self, data, **kwargs):
-        ''' Draw an image of any data gridded on the patches e.g dislocation
+        '''
+        Draw an image of any data gridded on the patches e.g dislocation.
 
-        :param data: Patchwise data grid array
-        :type data: :py:class:`numpy.ndarray`
+        :param data:
+            Patchwise grid data.
+        :type data:
+            :py:class:`~numpy.ndarray`
         '''
 
         plot_data = data
@@ -1284,14 +1481,16 @@ class RuptureView(Object):
         self._draw_image(length=length, width=width, data=data, **kwargs)
 
     def draw_patch_parameter(self, attribute, **kwargs):
-        ''' Draw an image of a chosen patch attribute e.g traction
+        '''
+        Draw an image of a chosen patch attribute e.g traction.
 
-        :param attribute: Patch attribute, which is plotted. All patch
-            attributes can be taken (see doc of
-            :py:class:`pyrocko.modelling.okada.OkadaSource`) and also
-            ``'traction', 'tx', 'ty', 'tz'`` to display the length
+        :param attribute:
+            Patch attribute, which is plotted. All patch attributes can be
+            taken (see doc of :py:class:`~pyrocko.modelling.okada.OkadaSource`)
+            and also ``'traction', 'tx', 'ty', 'tz'`` to display the length
             or the single components of the traction vector.
-        :type attribute: str
+        :type attribute:
+            str
         '''
 
         a = attribute
@@ -1318,14 +1517,21 @@ class RuptureView(Object):
         return self.draw_dynamic_data(data=data, **kwargs)
 
     def draw_time_contour(self, store, clevel=[], **kwargs):
-        ''' Draw high resolution contours of the rupture front propgation time
-
-        :param store: Greens function store, which is used for time calculation
-        :type store: :py:class:`pyrocko.gf.store.Store`
-        :param clevel: levels of the contour lines. If no levels are given,
-            they are automatically computed based on tmin and tmax
-        :type clevel: optional, list
         '''
+        Draw high resolution contours of the rupture front propgation time
+
+        :param store:
+            Greens function store, which is used for time calculation.
+        :type store:
+            :py:class:`~pyrocko.gf.store.Store`
+
+        :param clevel:
+            Levels of the contour lines. If no levels are given, they are
+            automatically computed based on ``tmin`` and ``tmax``.
+        :type clevel:
+            optional, list
+        '''
+
         source = self.source
         default_kwargs = dict(
             colors='#474747ff'
@@ -1351,24 +1557,32 @@ class RuptureView(Object):
                            clevel=clevel, unit='s', **default_kwargs)
 
     def draw_nucleation_point(self, **kwargs):
-        ''' Draw the nucleation point onto the map '''
+        '''
+        Draw the nucleation point onto the map.
+        '''
 
         nuc_x, nuc_y = self.source.nucleation_x, self.source.nucleation_y
         length, width = xy_to_lw(self.source, nuc_x, nuc_y)
         self.draw_points(length, width, marker='o', **kwargs)
 
     def draw_dislocation(self, time=None, component='', **kwargs):
-        ''' Draw dislocation onto map at any time
+        '''
+        Draw dislocation onto map at any time.
 
         For a given time (if ``time`` is ``None``, ``tmax`` is used)
         and given component the patchwise dislocation is plotted onto the map.
 
-        :param time: time after origin [s], for which dislocation is computed.
+        :param time:
+            Time after origin [s], for which dislocation is computed.
             If ``None``, ``tmax`` is taken.
-        :type time: optional, float
-        :param component: Dislocation component, which shall be plotted: ``x``
+        :type time:
+            optional, float
+
+        :param component:
+            Dislocation component, which shall be plotted: ``x``
             along strike, ``y`` along updip, ``z`` normal. If ``None``, the
             length of the dislocation vector is plotted
+        :type component: optional, str
         '''
 
         disl = self.source.get_slip(time=time)
@@ -1385,18 +1599,24 @@ class RuptureView(Object):
 
     def draw_dislocation_contour(
             self, time=None, component=None, clevel=[], **kwargs):
-        ''' Draw dislocation contour onto map at any time
+        '''
+        Draw dislocation contour onto map at any time.
 
         For a given time (if time is ``None``, ``tmax`` is used) and given
         component the patchwise dislocation is plotted as contour onto the map.
 
-        :param time: time after origin, for which dislocation is computed. If
-            None, tmax is taken.
-        :type time: optional, float
-        :param component: Dislocation component, which shall be plotted. ``x``
+        :param time:
+            Time after origin, for which dislocation is computed. If
+            ``None``, ``tmax`` is taken.
+        :type time:
+            optional, float
+
+        :param component:
+            Dislocation component, which shall be plotted. ``x``
             along strike, ``y`` along updip, ``z`` - normal. If ``None``
-            is given, the length of the dislocation vector is plotted
-        :type component: str
+            is given, the length of the dislocation vector is plotted.
+        :type component:
+            optional, str
         '''
 
         disl = self.source.get_slip(time=time)
@@ -1427,7 +1647,8 @@ class RuptureView(Object):
 
     def draw_source_dynamics(
             self, variable, store, deltat=None, *args, **kwargs):
-        ''' Display dynamic source parameter
+        '''
+        Display dynamic source parameter.
 
         Fast inspection possibility for the cumulative moment and the source
         time function approximation (assuming equal paths between different
@@ -1435,16 +1656,24 @@ class RuptureView(Object):
         far field perpendicular to the source strike), so the cumulative moment
         rate function.
 
-        :param variable: Dynamic parameter, which shall be plotted. Choose
+        :param variable:#
+            Dynamic parameter, which shall be plotted. Choose
             between 'moment_rate' ('stf') or 'cumulative_moment' ('moment')
-        :type variable: str
-        :param store: Greens function store, whose store.config.deltat defines
-            the time increment between two parameter snapshots. If store is not
-            given, the time increment is defined is taken from deltat.
-        :type store: :py:class:`pyrocko.gf.store.Store`
-        :param deltat: Time increment between two parameter snapshots. If not
-            given, store.config.deltat is used to define deltat
-        :type deltat: optional, float
+        :type variable:
+            str
+
+        :param store:
+            Greens function store, whose store.config.deltat defines
+            the time increment between two parameter snapshots. If ``store`` is
+            not given, the time increment is defined is taken from ``deltat``.
+        :type store:
+            :py:class:`~pyrocko.gf.store.Store`
+
+        :param deltat:
+            Time increment between two parameter snapshots. If not
+            given, store.config.deltat is used to define ``deltat``.
+        :type deltat:
+            optional, float
         '''
 
         v = variable
@@ -1469,26 +1698,41 @@ class RuptureView(Object):
 
     def draw_patch_dynamics(
             self, variable, nx, ny, store=None, deltat=None, *args, **kwargs):
-        ''' Display dynamic boundary element / patch parameter
+        '''
+        Display dynamic boundary element / patch parameter.
 
         Fast inspection possibility for different dynamic parameter for a
         single patch / boundary element. The chosen parameter is plotted for
         the chosen patch.
 
-        :param variable: Dynamic parameter, which shall be plotted. Choose
-            between 'moment_rate' ('stf') or 'cumulative_moment' ('moment')
-        :type variable: str
-        :param nx: Patch index along strike (range: 0:self.source.nx - 1)
-        :type nx: int
-        :param nx: Patch index downdip (range: 0:self.source.ny - 1)
-        :type nx: int
-        :param store: Greens function store, whose store.config.deltat defines
-            the time increment between two parameter snapshots. If store is not
-            given, the time increment is defined is taken from deltat.
-        :type store: optional, :py:class:`pyrocko.gf.store.Store`
-        :param deltat: Time increment between two parameter snapshots. If not
-            given, store.config.deltat is used to define deltat
-        :type deltat: optional, float
+        :param variable:
+            Dynamic parameter, which shall be plotted. Choose
+            between 'moment_rate' ('stf') or 'cumulative_moment' ('moment').
+        :type variable:
+            str
+
+        :param nx:
+            Patch index along strike (range: 0:source.nx - 1).
+        :type nx:
+            int
+
+        :param nx:
+            Patch index downdip (range: 0:source.ny - 1).
+        :type nx:
+            int
+
+        :param store:
+            Greens function store, whose store.config.deltat defines
+            the time increment between two parameter snapshots. If ``store`` is
+            not given, the time increment is defined is taken from ``deltat``.
+        :type store:
+            optional, :py:class:`~pyrocko.gf.store.Store`
+
+        :param deltat:
+            Time increment between two parameter snapshots. If not given,
+            store.config.deltat is used to define ``deltat``.
+        :type deltat:
+            optional, float
         '''
 
         v = variable
@@ -1549,13 +1793,20 @@ class RuptureView(Object):
         return self._fig
 
     def save(self, filename, dpi=None):
-        ''' Save plot to file
-
-        :param filename: filename and path, where the plot is stored at
-        :type filename: str
-        :param dpi: Resolution of the output plot [dpi]
-        :type dpi: int
         '''
+        Save plot to file.
+
+        :param filename:
+            Filename and path, where the plot is stored.
+        :type filename:
+            str
+
+        :param dpi:
+            Resolution of the output plot in [dpi].
+        :type dpi:
+            int
+        '''
+
         self.finalize()
         try:
             self._fig.savefig(fname=filename, dpi=dpi, bbox_inches='tight')
@@ -1565,29 +1816,41 @@ class RuptureView(Object):
         self._clear_all()
 
     def show_plot(self):
-        ''' Show plot '''
+        '''
+        Show plot.
+        '''
+
         self.finalize()
         plt.show()
         self._clear_all()
 
 
 def render_movie(fn_path, output_path, framerate=20):
-    ''' Generate a mp4 movie based on given png files using
-        `ffmpeg <https://ffmpeg.org>`_.
+    '''
+    Generate a mp4 movie based on given png files using
+    `ffmpeg <https://ffmpeg.org>`_.
 
     Render a movie based on a set of given .png files in fn_path. All files
     must have a filename specified by ``fn_path`` (e.g. giving ``fn_path`` with
     ``/temp/f%04.png`` a valid png filename would be ``/temp/f0001.png``). The
     files must have a numbering, indicating their order in the movie.
 
-    :param fn_path: Path and fileformat specification of the input .png files.
-    :type fn_path: str
-    :param output_path: Path and filename of the output ``.mp4`` movie file
-    :type output_path: str
-    :param deltat: Time between individual frames (``1 / framerate``) [s]
-    :type deltat: optional, float
+    :param fn_path:
+        Path and fileformat specification of the input .png files.
+    :type fn_path:
+        str
 
+    :param output_path:
+        Path and filename of the output ``.mp4`` movie file.
+    :type output_path:
+        str
+
+    :param deltat:
+        Time between individual frames (``1 / framerate``) in [s].
+    :type deltat:
+        optional, float
     '''
+
     try:
         check_call(['ffmpeg', '-loglevel', 'panic'])
     except CalledProcessError:
@@ -1619,17 +1882,25 @@ def render_movie(fn_path, output_path, framerate=20):
 
 
 def render_gif(fn, output_path, loops=-1):
-    ''' Generate a gif based on a given mp4 using ffmpeg
+    '''
+    Generate a gif based on a given mp4 using ffmpeg.
 
     Render a gif based on a given .mp4 movie file in ``fn`` path.
 
-    :param fn: Path and file name of the input .mp4 file.
-    :type fn: str
-    :param output_path: Path and filename of the output animated gif file
-    :type output_path: str
-    :param loops: Number of gif repeats (loops). ``-1`` is not repetition,
-        ``0`` infinite
-    :type loops: optional, integer
+    :param fn:
+        Path and file name of the input .mp4 file.
+    :type fn:
+        str
+
+    :param output_path:
+        Path and filename of the output animated gif file.
+    :type output_path:
+        str
+    :param loops:
+        Number of gif repeats (loops). ``-1`` is not repetition, ``0``
+        infinite.
+    :type loops:
+        optional, integer
     '''
 
     try:
@@ -1670,7 +1941,8 @@ def rupture_movie(
         render_as_gif=False,
         gif_loops=-1,
         **kwargs):
-    ''' Generate a movie based on a given source for dynamic parameter
+    '''
+    Generate a movie based on a given source for dynamic parameter.
 
     Create a MPEG-4 movie or gif of one of the following dynamic parameters
     (``dislocation``, ``dislocation_x`` (along strike), ``dislocation_y``
@@ -1678,42 +1950,72 @@ def rupture_movie(
     If desired, the single snap shots can be stored as images as well.
     ``kwargs`` have to be given according to the chosen ``plot_type``.
 
-    :param source: Pseudo dynamic rupture, for which the movie is produced
-    :type source: :py:class:`pyrocko.gf.seismosizer.PseudoDynamicRupture`
-    :param store: Greens function store, which is used for time calculation. If
-        deltat is not given, it is taken from the store.config.deltat
-    :type store: :py:class:`pyrocko.gf.store.Store`
-    :param variable: Dynamic parameter, which shall be plotted. Choose between
+    :param source:
+        Pseudo dynamic rupture, for which the movie is produced.
+    :type source:
+        :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture`
+
+    :param store:
+        Greens function store, which is used for time calculation. If
+        ``deltat`` is not given, it is taken from the store.config.deltat
+    :type store:
+        :py:class:`~pyrocko.gf.store.Store`
+
+    :param variable:
+        Dynamic parameter, which shall be plotted. Choose between
         ``dislocation``, ``dislocation_x`` (along strike), ``dislocation_y``
         (along updip), ``dislocation_z`` (normal), ``slip_rate`` and
-        ``moment_rate``, default ``dislocation``
-    :type variable: optional, str
-    :param draw_time_contours: If True, corresponding isochrones are drawn on
-        the each plots
-    :type draw_time_contours: optional, bool
-    :param fn_path: Absolut or relative path, where movie (and optional images)
-        are stored
-    :type fn_path: optional, str
-    :param prefix: File prefix used for the movie (and optional image) files
-    :type prefix: optional, str
-    :param plot_type: Choice of plot type: ``map``, ``view`` (map plot using
+        ``moment_rate``, default ``dislocation``.
+    :type variable:
+        optional, str
+
+    :param draw_time_contours:
+        If ``True``, corresponding isochrones are drawn on the each plots.
+    :type draw_time_contours:
+        optional, bool
+
+    :param fn_path:
+        Absolut or relative path, where movie (and optional images) are stored.
+    :type fn_path:
+        optional, str
+
+    :param prefix:
+        File prefix used for the movie (and optional image) files.
+    :type prefix:
+        optional, str
+
+    :param plot_type:
+        Choice of plot type: ``map``, ``view`` (map plot using
         :py:class:`~pyrocko.plot.dynamic_rupture.RuptureMap`
         or plane view using
-        :py:class:`~pyrocko.plot.dynamic_rupture.RuptureView`)
-    :type plot_type: optional, str
-    :param deltat: Time between parameter snapshots. If not given,
-        store.config.deltat is used to define deltat
-    :type deltat: optional, float
-    :param store_images: Choice to store the single .png parameter snapshots in
-        fn_path or not.
-    :type store_images: optional, bool
-    :param render_as_gif: If ``True``, the movie is converted into a gif. If
-        ``False``, the movie is returned as mp4
-    :type render_as_gif: optional, bool
-    :param gif_loops: If ``render_as_gif`` is ``True``, a gif with
-        ``gif_loops`` number of loops (repetitions) is returned.
-        ``-1`` is no repetition, ``0`` infinite.
-    :type gif_loops: optional, integer
+        :py:class:`~pyrocko.plot.dynamic_rupture.RuptureView`).
+    :type plot_type:
+        optional, str
+
+    :param deltat:
+        Time between parameter snapshots. If not given, store.config.deltat is
+        used to define ``deltat``.
+    :type deltat:
+        optional, float
+
+    :param store_images:
+        Choice to store the single .png parameter snapshots in ``fn_path`` or
+        not.
+    :type store_images:
+        optional, bool
+
+    :param render_as_gif:
+        If ``True``, the movie is converted into a gif. If ``False``, the movie
+        is returned as mp4.
+    :type render_as_gif:
+        optional, bool
+
+    :param gif_loops:
+        If ``render_as_gif`` is ``True``, a gif with ``gif_loops`` number of
+        loops (repetitions) is returned. ``-1`` is no repetition, ``0``
+        infinite.
+    :type gif_loops:
+        optional, integer
     '''
 
     v = variable
