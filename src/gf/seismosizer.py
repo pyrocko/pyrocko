@@ -3978,10 +3978,10 @@ class DoubleDCSource(SourceWithMagnitude):
         delta_east = math.sin(self.azimuth * d2r) * self.distance
 
         times1, amplitudes1 = self.effective_stf1_pre().discretize_t(
-            store.config.deltat, self.time - self.delta_time * a1)
+            store.config.deltat, self.time - self.delta_time * a2)
 
         times2, amplitudes2 = self.effective_stf2_pre().discretize_t(
-            store.config.deltat, self.time + self.delta_time * a2)
+            store.config.deltat, self.time + self.delta_time * a1)
 
         nt1 = times1.size
         nt2 = times2.size
@@ -3991,14 +3991,14 @@ class DoubleDCSource(SourceWithMagnitude):
             lon=self.lon,
             times=num.concatenate((times1, times2)),
             north_shifts=num.concatenate((
-                num.repeat(self.north_shift - delta_north * a1, nt1),
-                num.repeat(self.north_shift + delta_north * a2, nt2))),
+                num.repeat(self.north_shift - delta_north * a2, nt1),
+                num.repeat(self.north_shift + delta_north * a1, nt2))),
             east_shifts=num.concatenate((
-                num.repeat(self.east_shift - delta_east * a1, nt1),
-                num.repeat(self.east_shift + delta_east * a2, nt2))),
+                num.repeat(self.east_shift - delta_east * a2, nt1),
+                num.repeat(self.east_shift + delta_east * a1, nt2))),
             depths=num.concatenate((
-                num.repeat(self.depth - self.delta_depth * a1, nt1),
-                num.repeat(self.depth + self.delta_depth * a2, nt2))),
+                num.repeat(self.depth - self.delta_depth * a2, nt1),
+                num.repeat(self.depth + self.delta_depth * a1, nt2))),
             m6s=num.vstack((
                 mot1.m6()[num.newaxis, :] * amplitudes1[:, num.newaxis],
                 mot2.m6()[num.newaxis, :] * amplitudes2[:, num.newaxis])))
