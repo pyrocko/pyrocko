@@ -248,6 +248,7 @@ class ValControl(qc.QObject):
             low_is_none=False,
             high_is_none=False,
             low_is_zero=False,
+            type=float,
             *args):
 
         qc.QObject.__init__(self, *args)
@@ -279,7 +280,7 @@ class ValControl(qc.QObject):
         self.lvalue.edited.connect(
                      self.edited)
 
-        self.type = None
+        self.type = type
         self.mute = False
 
     def widgets(self):
@@ -291,13 +292,11 @@ class ValControl(qc.QObject):
 
         a = math.log(self.ma/self.mi) / 10000.
         value = self.mi*math.exp(a*svalue)
-        if self.type is not None:
-            value = self.type(value)
+        value = self.type(value)
         return value
 
     def v2s(self, value):
-        if self.type is not None:
-            value = self.type(value)
+        value = self.type(value)
 
         if value == 0 or self.mi == 0:
             return 0
@@ -363,9 +362,6 @@ class ValControl(qc.QObject):
     def set_tracking(self, tracking):
         self.slider.setTracking(tracking)
 
-    def set_type(self, value_type):
-        self.type = value_type
-
     def get_value(self):
         return self.cur
 
@@ -417,13 +413,11 @@ class LinValControl(ValControl):
 
     def s2v(self, svalue):
         value = svalue/10000. * (self.ma-self.mi) + self.mi
-        if self.type is not None:
-            value = self.type(value)
+        value = self.type(value)
         return value
 
     def v2s(self, value):
-        if self.type is not None:
-            value = self.type(value)
+        value = self.type(value)
         if self.ma == self.mi:
             return 0
         return int(round((value-self.mi)/(self.ma-self.mi) * 10000.))

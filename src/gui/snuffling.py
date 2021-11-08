@@ -77,7 +77,8 @@ class Param(object):
             low_is_none=None,
             high_is_none=None,
             low_is_zero=False,
-            tracking=True):
+            tracking=True,
+            type=float):
 
         if low_is_none and default == minimum:
             default = None
@@ -93,8 +94,8 @@ class Param(object):
         self.high_is_none = high_is_none
         self.low_is_zero = low_is_zero
         self.tracking = tracking
+        self.type = type
 
-        self.type = type(default)
         self._control = None
 
 
@@ -299,7 +300,7 @@ class Snuffling(object):
                     '--' + param.ident,
                     dest=param.ident,
                     default=param.default,
-                    type='float',
+                    type={float: 'float', int: 'int'}[param.type],
                     help=param.name)
 
     def setup_cli(self):
@@ -1214,12 +1215,14 @@ class Snuffling(object):
                     if param.minimum <= 0.0:
                         param_control = LinValControl(
                             high_is_none=param.high_is_none,
-                            low_is_none=param.low_is_none)
+                            low_is_none=param.low_is_none,
+                            type=param.type)
                     else:
                         param_control = ValControl(
                             high_is_none=param.high_is_none,
                             low_is_none=param.low_is_none,
-                            low_is_zero=param.low_is_zero)
+                            low_is_zero=param.low_is_zero,
+                            type=param.type)
 
                     param_control.setup(
                         param.name,
@@ -1229,7 +1232,6 @@ class Snuffling(object):
                         iparam)
 
                     param_control.set_tracking(param.tracking)
-                    param_control.set_type(param.type)
                     param_control.valchange.connect(
                         self.modified_snuffling_panel)
 
