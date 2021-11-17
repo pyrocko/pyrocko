@@ -1286,9 +1286,6 @@ class Pile(TracesGroup):
                 return
             tmax = self.tmax - tpad
 
-        if tinc is None:
-            tinc = tmax - tmin
-
         if not self.is_relevant(tmin-tpad, tmax+tpad, group_selector):
             return
 
@@ -1297,11 +1294,15 @@ class Pile(TracesGroup):
 
         open_files = self.open_files[accessor_id]
 
-        eps = tinc * 1e-6
-        if tinc != 0.0:
-            nwin = int(((tmax - eps) - tmin) / tinc) + 1
-        else:
+        if tinc is None:
+            tinc = tmax - tmin
             nwin = 1
+        else:
+            eps = tinc * 1e-6
+            if tinc != 0.0:
+                nwin = int(((tmax - eps) - tmin) / tinc) + 1
+            else:
+                nwin = 1
 
         for iwin in range(nwin):
             chopped = []
