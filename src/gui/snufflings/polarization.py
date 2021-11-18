@@ -43,10 +43,10 @@ Investigate patterns of ground motion during the passage of seismic waves.
 This Snuffling can be used to analyze and visualize the polarization of seismic
 waves from 3-component seismic recordings or to check component orientations of
 a seismic sensors when used on signals with known directional properties. The
-spatial pattern of ground movement is shown in horizontal and vertical
+spatial pattern of ground motion is shown in horizontal and vertical
 projections. Principal component analysis and rotation to radial/transverse
 components are available as tools. Time window and filter settings can be
-interactively adjusted.
+adjusted interactively.
 
 Usage
 -----
@@ -379,7 +379,7 @@ Scale*.
 
             lines = []
             dots = []
-            for i in range(3):
+            for _ in range(3):
                 lines.append(
                     axes_tr.plot(
                         [], [], color=self.colors['lines'], lw=1.0)[0])
