@@ -1451,6 +1451,110 @@ class SourceWithDerivedMagnitude(Source):
             **kwargs)
 
 
+class ExplosionLineSource(SourceWithMagnitude):
+
+    length = Float.T(
+        default=0.0,
+        help='length of the line source [m]')
+
+    azimuth = Float.T(
+        default=0.0,
+        help='azimuth direction, clockwise from north [deg]')
+
+    dip = Float.T(
+        default=0.,
+        help='dip direction, downward from horizontal [deg]')
+
+    anchor = StringChoice.T(
+        default='center',
+        choices=['center', 'start'],
+        help='anchor point of the line source, default \'center\''
+    )
+
+    subsource_oversampling = Int.T(
+        default=1,
+        help='Spatial oversampling of the subsources in space'
+    )
+
+    v_start = Float.T(
+        optional=True,
+        help='Propagation Speed of the explosion line in [m/s]'
+    )
+
+    v_end = Float.T(
+        optional=True,
+        help='acceleration (> 0.0) or deceleration (< 0.0) of the explosion'
+    )
+
+    acceleration_exp = Float.T(
+        default=1.,
+        help='exponent for acceleration or deceleration'
+             ' between v_start and v_end. 1.0 is linear.'
+    )
+
+    def get_magnitude(self, store=None, target=None):
+        return self.magnitude
+
+    def get_moment(self, store=None, target=None):
+        return pmt.magnitude_to_moment(self.magnitude)
+
+    def pyrocko_moment_tensor(self, store=None, target=None):
+        a = self.get_moment(store, target) * math.sqrt(2. / 3.)
+        return pmt.MomentTensor(m=pmt.symmat6(a, a, a, 0., 0., 0.))
+
+    def discretize_basesource(self, store, target=None):
+
+        delta_spatial = num.min(store.config.deltas) \
+            / self.subsource_oversampling
+        nsources = 2 * int(math.ceil(self.length / delta_spatial)) + 1
+
+        line_points_asc = num.linspace(0, self.length, nsources)
+
+        if self.anchor == 'center':
+            line_points = num.linspace(
+                -0.5 * self.length, 0.5 * self.length, nsources)
+        elif self.anchor == 'start':
+            line_points = line_points_asc
+        else:
+            raise ValueError('Bad anchor %s' % self.anchor)
+
+        sin_azi = math.sin(self.azimuth * d2r)
+        cos_azi = math.cos(self.azimuth * d2r)
+        sin_dip = math.sin(self.dip * d2r)
+        cos_dip = math.cos(self.dip * d2r)
+
+        points = num.zeros((nsources, 3))
+        points[:, 0] = self.north_shift + line_points * cos_azi * cos_dip
+        points[:, 1] = self.east_shift + line_points * sin_azi * cos_dip
+        points[:, 2] = self.depth + line_points * sin_dip
+
+        times = num.zeros(nsources)
+
+        if self.v_start:
+            v_start = self.v_start
+            v_end = self.v_end or v_start
+
+            v_weight = num.linspace(0, 1., nsources) \
+                ** self.acceleration_exp
+
+            v_gradient = v_start * (1. - v_weight) + v_end * v_weight
+            v_points = num.gradient(line_points_asc) / v_gradient
+            times = num.cumsum(v_points)
+
+        times += self.time
+
+        amplitudes = num.full(nsources, self.moment / nsources)
+
+        return meta.DiscretizedExplosionSource(
+            times=times,
+            lat=self.lat,
+            lon=self.lon,
+            north_shifts=points[:, 0],
+            east_shifts=points[:, 1],
+            depths=points[:, 2],
+            m0s=amplitudes)
+
+
 class ExplosionSource(SourceWithDerivedMagnitude):
     '''
     An isotropic explosion point source.
@@ -5470,6 +5574,7 @@ source_classes = [
     SourceWithMagnitude,
     SourceWithDerivedMagnitude,
     ExplosionSource,
+    ExplosionLineSource,
     RectangularExplosionSource,
     DCSource,
     CLVDSource,
