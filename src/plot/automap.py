@@ -178,6 +178,7 @@ class Map(Object):
     custom_cities = List.T(City.T())
     gmt_config = Dict.T(String.T(), String.T())
     comment = String.T(optional=True)
+    approx_ticks = Int.T(default=4)
 
     def __init__(self, gmtversion='newest', **kwargs):
         Object.__init__(self, **kwargs)
@@ -309,8 +310,8 @@ class Map(Object):
 
         x, y, z = ((west, east), (south, north), (-6000., 4500.))
 
-        xax = gmtpy.Ax(mode='min-max', approx_ticks=3.)
-        yax = gmtpy.Ax(mode='min-max', approx_ticks=3.)
+        xax = gmtpy.Ax(mode='min-max', approx_ticks=self.approx_ticks)
+        yax = gmtpy.Ax(mode='min-max', approx_ticks=self.approx_ticks)
         zax = gmtpy.Ax(mode='min-max', inc=1000., label='Height',
                        scaled_unit='km', scaled_unit_factor=0.001)
 
