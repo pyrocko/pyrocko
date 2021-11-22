@@ -217,7 +217,8 @@ class Map(Object):
         controlled either by ``resolution`` in DPI or by specifying ``width``
         or ``height`` or ``size``, where the latter fits the image into a
         square with given side length. To save transparency use
-        ``psconvert=True``.
+        ``psconvert=True``. To crop the output image with a rectangle to the
+        nearest non-white element set ``crop_eps_mode=True``.
         '''
 
         gmt = self.gmt
