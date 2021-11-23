@@ -263,7 +263,7 @@ def plot_directivity(
         store_id, source, distance, azi_begin, azi_end, dazi,
         depth=target_depth,
         interpolation=interpolation,
-        components='R', quantity=quantity)
+        components=component, quantity=quantity)
     ref_target = targets[0]
     store = engine.get_store(store_id)
     mt = source.pyrocko_moment_tensor(store=store, target=ref_target)
@@ -276,26 +276,15 @@ def plot_directivity(
     nucl_depth = source.depth
     nucl_distance = distance
 
-    if hasattr(source, 'nucleation_x') and hasattr(source, 'nucleation_y'):
-        try:
-            iter(source.nucleation_x)
-            nx = float(source.nucleation_x[0])
-            ny = float(source.nucleation_y[0])
-
-        except TypeError:
-            nx = source.nucleation_x
-            ny = source.nucleation_y
-
-        nucl_distance += nx * source.length/2.
-        nucl_depth += ny*num.sin(source.dip*d2r) * source.width/2.
-
-    if hasattr(source, 'anchor'):
-        anch_x, anch_y = map_anchor[source.anchor]
-        nucl_distance -= anch_x * source.length/2.
-        nucl_depth -= anch_y*num.sin(source.dip*d2r) * source.width/2.
-
     timings = [Timing(p) for p in phases.values()]
     phase_times = [store.t(t, source, ref_target) for t in timings]
+
+    phase_times_phase = {}
+    for t in timings:
+        phase_times_phase[t] = [
+            store.t(t, source, target, extended_source=True) for target in targets
+        ]
+    print(phase_times_phase)
 
     tbegin = min(phase_times)
     tend = max(phase_times)

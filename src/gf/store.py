@@ -1665,7 +1665,7 @@ class Store(BaseStore):
         :param timing: Timing string as described above
         :type timing: str or :py:class:`~pyrocko.gf.meta.Timing`
         :param \\*args: :py:class:`~pyrocko.gf.meta.Config` index tuple, e.g.
-            ``(source_depth, distance, component)`` as in
+            ``(source_depth, distance)`` as in
             :py:class:`~pyrocko.gf.meta.ConfigTypeA`.
         :type \\*args: tuple
         :returns: Phase arrival according to ``timing``
@@ -1674,13 +1674,29 @@ class Store(BaseStore):
 
         if len(args) == 1:
             args = args[0]
-        else:
+        elif len(args) == 2:
             args = self.config.make_indexing_args1(*args)
+        else:
+            raise AttributeError(
+                "Call with source, target or (depth, distance).")
 
         if not isinstance(timing, meta.Timing):
             timing = meta.Timing(timing)
 
         return timing.evaluate(self.get_phase, args)
+
+    def arrivals(self, timing, source=None, target=None, distances=None):
+        if source and target and distances:
+            raise AttributeError(
+                "Call with: source, target or (depth, distance).")
+
+        if source and target:
+            basesource = source.discretize_basesource(self)
+            depths = basesource.depths
+            distances = num.array(
+                [depths, basesource.distances_to(target)]).T
+
+        return self.t(timing, distances)
 
     def make_timing_params(self, begin, end, snap_vred=True, force=False):
 

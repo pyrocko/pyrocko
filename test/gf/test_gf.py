@@ -947,6 +947,31 @@ class GFTestCase(unittest.TestCase):
                 with self.assertRaises(gf.OutOfBounds):
                     store.t('P', args_out)
 
+    def test_timing_arrival(self):
+        typ = 'a'
+        store_dir = self.get_regional_ttt_store_dir(typ)
+        store = gf.Store(store_dir)
+
+        many_dist = [[10*km, 1500*km], [10*km, 2000*km]]
+        res = store.t('P', many_dist)
+        assert res is not None
+        print(res)
+
+        source = gf.RectangularSource(
+            lat=0., lon=0.,
+            depth=10*km,
+            width=5*km, length=10*km)
+
+        target = gf.Target(
+            codes=('', 'STA', '', 'Z'),
+            north_shift=10*km, east_shift=1500*km)
+
+        res = store.arrivals('first(P)', source, target)
+        assert res is not None
+        print(res)
+
+
+
     def test_timing_new_syntax(self):
         for typ, args in [
                 ('a', (10*km, 1500*km)),

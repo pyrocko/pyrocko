@@ -557,12 +557,13 @@ class Timing(SObject):
 
                 if not times:
                     return None
-                elif self.select == 'first':
-                    return min(times)
-                elif self.select == 'last':
-                    return max(times)
-                else:
-                    return times[0]
+
+                if self.select == 'first':
+                    return num.min(times)
+                if self.select == 'last':
+                    return nunm.max(times)
+
+                return times[0]
             else:
                 return offset
 
@@ -2008,7 +2009,7 @@ class ConfigTypeA(Config):
         return args[1]
 
     def get_distance(self, args):
-        return math.sqrt(args[0]**2 + args[1]**2)
+        return num.sqrt(args[0]**2 + args[1]**2)
 
     def get_source_depth(self, args):
         return args[0]
