@@ -1276,20 +1276,20 @@ class Map(Object):
 
                     break
 
-                if self.show_plate_names:
-                    for (lat_candis, lon_candis, plate, color) in label_data:
-                        full_name = bird.full_name(plate.name)
-                        if plate.name == fixed_plate_name:
-                            full_name = '@_' + full_name + '@_'
+            if self.show_plate_names:
+                for (lat_candis, lon_candis, plate, color) in label_data:
+                    full_name = bird.full_name(plate.name)
+                    if plate.name == fixed_plate_name:
+                        full_name = '@_' + full_name + '@_'
 
-                        self.add_area_label(
-                            lat_candis, lon_candis,
-                            full_name,
-                            color=color,
-                            font='3')
+                    self.add_area_label(
+                        lat_candis, lon_candis,
+                        full_name,
+                        color=color,
+                        font='3')
 
-                for kwargs in psxy_kwargs:
-                    self.gmt.psxy(*self.jxyr, **kwargs)
+            for kwargs in psxy_kwargs:
+                self.gmt.psxy(*self.jxyr, **kwargs)
 
 
 def rand(mi, ma):
