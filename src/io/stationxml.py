@@ -196,7 +196,13 @@ def evaluate1(resp, f):
 
 def check_resp(resp, value, frequency, limit_db, prelude, context):
 
-    value_resp = num.abs(evaluate1(resp, frequency))
+    try:
+        value_resp = num.abs(evaluate1(resp, frequency))
+    except response.InvalidResponseError as e:
+        return Delivery(log=[(
+            'warning',
+            'Could not check response: %s' % str(e),
+            context)])
 
     if value_resp == 0.0:
         return Delivery(log=[(
@@ -901,7 +907,8 @@ class PolesZeros(BaseFilter):
         else:
             nfactor = self.normalization_factor
 
-        if self.pz_transfer_function_type != 'DIGITAL (Z-TRANSFORM)':
+        is_digital = self.pz_transfer_function_type == 'DIGITAL (Z-TRANSFORM)'
+        if not is_digital:
             resp = response.PoleZeroResponse(
                 constant=nfactor*cfactor,
                 zeros=[z.value()*factor for z in self.zero_list],
@@ -928,21 +935,28 @@ class PolesZeros(BaseFilter):
                 context))
 
         else:
-            computed_normalization_factor = nfactor / abs(evaluate1(
-                resp, self.normalization_frequency.value))
-
-            db = 20.0 * num.log10(
-                computed_normalization_factor / nfactor)
-
-            if abs(db) > 0.17:
+            if is_digital and not deltat:
                 log.append((
                     'warning',
-                    'Computed and reported normalization factors differ by '
-                    '%g dB: computed: %g, reported: %g' % (
-                        db,
-                        computed_normalization_factor,
-                        nfactor),
+                    'Cannot check computed vs reported normalization '
+                    'factor without knowing the sampling interval.',
                     context))
+            else:
+                computed_normalization_factor = nfactor / abs(evaluate1(
+                    resp, self.normalization_frequency.value))
+
+                db = 20.0 * num.log10(
+                    computed_normalization_factor / nfactor)
+
+                if abs(db) > 0.17:
+                    log.append((
+                        'warning',
+                        'Computed and reported normalization factors differ '
+                        'by %g dB: computed: %g, reported: %g' % (
+                            db,
+                            computed_normalization_factor,
+                            nfactor),
+                        context))
 
         return Delivery([resp], log)
 
@@ -1165,28 +1179,34 @@ class ResponseStage(Object):
                 if pzs.normalization_frequency != normalization_frequency \
                         and normalization_frequency != 0.0:
 
-                    trial = response.MultiplyResponse(pz_resps)
-                    anorm = num.abs(evaluate1(
-                        trial, pzs.normalization_frequency.value))
-                    asens = num.abs(
-                        evaluate1(trial, normalization_frequency))
+                    try:
+                        trial = response.MultiplyResponse(pz_resps)
+                        anorm = num.abs(evaluate1(
+                            trial, pzs.normalization_frequency.value))
+                        asens = num.abs(
+                            evaluate1(trial, normalization_frequency))
 
-                    factor = anorm/asens
+                        factor = anorm/asens
 
-                    if abs(factor - 1.0) > 0.01:
+                        if abs(factor - 1.0) > 0.01:
+                            log.append((
+                                'warning',
+                                'PZ normalization frequency (%g) is different '
+                                'from stage gain frequency (%s) -> Emulating '
+                                'possibly incorrect evalresp behaviour. '
+                                'Correction factor: %g' % (
+                                    pzs.normalization_frequency.value,
+                                    normalization_frequency,
+                                    factor),
+                                context))
+
+                            responses.append(
+                                response.PoleZeroResponse(constant=factor))
+                    except response.InvalidResponseError as e:
                         log.append((
                             'warning',
-                            'PZ normalization frequency (%g) is different '
-                            'from stage gain frequency (%s) -> Emulating '
-                            'possibly incorrect evalresp behaviour. '
-                            'Correction factor: %g' % (
-                                pzs.normalization_frequency.value,
-                                normalization_frequency,
-                                factor),
+                            'Could not check response: %s' % str(e),
                             context))
-
-                        responses.append(
-                            response.PoleZeroResponse(constant=factor))
 
             if len(self.poles_zeros_list) > 1:
                 log.append((
