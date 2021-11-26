@@ -528,6 +528,7 @@ class Squirrel(Selection):
             paths,
             kinds=None,
             format='detect',
+            regex=None,
             check=True,
             progress_viewer='terminal'):
 
@@ -550,6 +551,12 @@ class Squirrel(Selection):
         :param format:
             File format identifier or ``'detect'`` to enable auto-detection
             (available: %(file_formats)s).
+        :type format:
+            str
+
+        :param regex:
+            If not ``None``, files are only included if their paths match the
+            given regular expression pattern.
         :type format:
             str
 
@@ -580,6 +587,7 @@ class Squirrel(Selection):
                 self, util.iter_select_files(
                     paths,
                     show_progress=False,
+                    regex=regex,
                     pass_through=lambda path: path.startswith('virtual:')
                 ), kind_mask, format)
 
