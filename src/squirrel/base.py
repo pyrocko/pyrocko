@@ -71,7 +71,7 @@ def codes_inflate2(codes):
     inflated = list(c_inflated)
     ncodes = len(codes)
     inflated[:ncodes] = codes
-    return inflated
+    return tuple(inflated)
 
 
 def codes_patterns_for_kind(kind, codes):
@@ -1658,6 +1658,38 @@ class Squirrel(Selection):
             self.iter_nuts('channel', *args), key=lambda nut: nut.dkey)
         self._check_duplicates(nuts)
         return [self.get_content(nut) for nut in nuts]
+
+    @filldocs
+    def get_sensors(
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None):
+
+        '''
+        Get sensors matching given constraints.
+
+        %(query_args)s
+
+        :returns:
+            List of :py:class:`~pyrocko.squirrel.model.Sensor` objects.
+
+        See :py:meth:`iter_nuts` for details on time span matching.
+        '''
+
+        tmin, tmax, codes = self._get_selection_args(
+            obj, tmin, tmax, time, codes)
+
+        if codes is not None:
+            if isinstance(codes, str):
+                codes = codes.split('.')
+            codes = tuple(codes_inflate(codes))
+            if codes[4] != '*':
+                codes = codes[:4] + (codes[4][:-1] + '?',) + codes[5:]
+
+        nuts = sorted(
+            self.iter_nuts(
+                'channel', tmin, tmax, codes), key=lambda nut: nut.dkey)
+        self._check_duplicates(nuts)
+        return model.Sensor.from_channels(
+            self.get_content(nut) for nut in nuts)
 
     @filldocs
     def get_responses(

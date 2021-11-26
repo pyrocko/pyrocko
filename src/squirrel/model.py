@@ -9,6 +9,7 @@ import hashlib
 import numpy as num
 from os import urandom
 from base64 import urlsafe_b64encode
+from collections import defaultdict
 
 from pyrocko import util
 from pyrocko.guts import Object, String, Timestamp, Float, Int, Unicode, \
@@ -46,6 +47,7 @@ try:
     g_tmin_queries = max(g_tmin, util.str_to_time_fillup('1900-01-01'))
 except Exception:
     g_tmin_queries = g_tmin
+
 
 def to_kind(kind_id):
     return g_content_kinds[kind_id]
@@ -354,6 +356,23 @@ class Channel(Content):
             self.agency, self.network, self.station, self.location,
             self.channel, self.extra)
 
+    def set_codes(
+            self, agency=None, network=None, station=None, location=None,
+            channel=None, extra=None):
+
+        if agency is not None:
+            self.agency = agency
+        if network is not None:
+            self.network = network
+        if station is not None:
+            self.station = station
+        if location is not None:
+            self.location = location
+        if channel is not None:
+            self.channel = channel
+        if extra is not None:
+            self.extra = extra
+
     @property
     def time_span(self):
         return (self.tmin, self.tmax)
@@ -382,6 +401,53 @@ class Channel(Content):
             self.channel,
             self.azimuth,
             self.dip)
+
+    def _get_sensor_args(self):
+        return (
+            self.agency,
+            self.network,
+            self.station,
+            self.location,
+            self.channel[:-1] + '?',
+            self.extra,
+            self.lat,
+            self.lon,
+            self.elevation,
+            self.depth,
+            self.deltat,
+            self.tmin,
+            self.tmax)
+
+
+class Sensor(Channel):
+    '''
+    Representation of a channel group.
+    '''
+
+    def grouping(self, channel):
+        return channel._get_sensor_args()
+
+    @classmethod
+    def from_channels(cls, channels):
+        groups = defaultdict(list)
+        for channel in channels:
+            groups[channel._get_sensor_args()].append(channel)
+
+        return [cls(
+                agency=args[0],
+                network=args[1],
+                station=args[2],
+                location=args[3],
+                channel=args[4],
+                extra=args[5],
+                lat=args[6],
+                lon=args[7],
+                elevation=args[8],
+                depth=args[9],
+                deltat=args[10],
+                tmin=args[11],
+                tmax=args[12])
+                for args, _ in groups.items()]
 
 
 observational_quantities = [
