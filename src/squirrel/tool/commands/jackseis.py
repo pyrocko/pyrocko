@@ -54,6 +54,14 @@ def setup(subparser):
              'a lot of system memory to merge input traces into huge output '
              'files.')
 
+    sample_snap_choices = ('shift', 'interpolate')
+    p.add_argument(
+        '--sample-snap',
+        dest='sample_snap',
+        choices=sample_snap_choices,
+        help='shift/interpolate traces so that samples are at even multiples '
+        'of sampling rate. Choices: %s' % ', '.join(sample_snap_choices))
+
     p.add_argument(
         '--downsample',
         dest='downsample',
@@ -158,6 +166,44 @@ def setup(subparser):
              'the given type.')
 
     p.add_argument(
+        '--output-record-length',
+        dest='record_length',
+        default=4096,
+        choices=[b for b in io.mseed.VALID_RECORD_LENGTHS],
+        type=int,
+        metavar='RECORD_LENGTH',
+        help='set the mseed record length in bytes. Choices: %s. '
+             'Default is 4096 bytes, which is commonly used for archiving.'
+             % ', '.join(str(b) for b in io.mseed.VALID_RECORD_LENGTHS))
+
+    p.add_argument(
+        '--output-steim',
+        dest='steim',
+        choices=[1, 2],
+        default=2,
+        type=int,
+        metavar='STEIM_COMPRESSION',
+        help='set the mseed STEIM compression. Choices: 1 or 2. '
+             'Default is STEIM-2, which can compress full range int32. '
+             'NOTE: STEIM-2 is limited to 30 bit dynamic range.')
+
+    quantity_choices = ('acceleration', 'velocity', 'displacement')
+    p.add_argument(
+        '--output-quantity',
+        dest='output_quantity',
+        choices=quantity_choices,
+        help='deconvolve instrument transfer function. Choices: %s'
+        % ', '.join(quantity_choices))
+
+    p.add_argument(
+        '--restitution-frequency-band',
+        default='0.001,100.0',
+        dest='str_fmin_fmax',
+        metavar='FMIN,FMAX',
+        help='frequency band for instrument deconvolution as FMIN,FMAX in Hz. '
+             'Default: "%default"')
+
+    p.add_argument(
         '--nthreads',
         metavar='NTHREADS',
         default=1,
@@ -176,5 +222,7 @@ def call(parser, args):
 
     args.station_fns = []
     args.event_fns = []
+    args.station_xml_fns = []
+    args.record_length = int(args.record_length)
 
     return process(get_pile, args)
