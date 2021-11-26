@@ -12,7 +12,7 @@ import fnmatch
 from ..model import QuantityType, separator
 from .. import error
 
-from pyrocko.guts import Object, String, Duration, Float
+from pyrocko.guts import Object, String, Duration, Float, clone
 
 guts_prefix = 'squirrel.ops'
 
@@ -137,11 +137,15 @@ class ReplaceComponentNaming(RegexNaming):
     replacement = String.T(default=r'\1{component}\2')
 
 
+def lsplit_codes(lcodes):
+    return [tuple(codes.split(separator)) for codes in lcodes]
+
+
 class Operator(Object):
 
-    input_codes_filtering = Filtering.T(default=Filtering.D())
-    input_codes_grouping = Grouping.T(default=Grouping.D())
-    output_codes_naming = Naming.T(default=Naming.D())
+    filtering = Filtering.T(default=Filtering.D())
+    grouping = Grouping.T(default=Grouping.D())
+    naming = Naming.T(default=Naming.D())
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
@@ -161,14 +165,16 @@ class Operator(Object):
             if group[1] is None:
                 group[1] = sorted(group[0])
 
-            yield (group[1], self._get_output_names(group[1]))
+            yield (
+                lsplit_codes(group[1]),
+                lsplit_codes(group[2]))
 
     def update_mappings(self, available, registry):
         available = list(available)
         removed, added = odiff(self._available, available)
 
-        filt = self.input_codes_filtering.filter
-        gkey = self.input_codes_grouping.key
+        filt = self.filtering.filter
+        gkey = self.grouping.key
         groups = self._groups
 
         need_update = set()
@@ -203,19 +209,38 @@ class Operator(Object):
             if not group[1]:
                 del groups[k]
             else:
-                group[2] = self._get_output_names(group[1])
+                group[2] = self._out_codes(group[1])
                 register(group)
 
         self._available = available
 
-    def _get_output_names(self, group):
-        return [self.output_codes_naming.get_name(codes) for codes in group]
+    def _out_codes(self, in_codes):
+        return [self.naming.get_name(codes) for codes in in_codes]
 
-    def get_channels(self, *args, **kwargs):
-        pass
-
-    def get_waveforms(self, squirrel, in_codes, out_codes, **kwargs):
+    def get_channels(self, squirrel, group, *args, **kwargs):
+        _, in_codes, out_codes = group
         assert len(in_codes) == 1 and len(out_codes) == 1
+        in_codes_tup = in_codes[0].split(separator)
+        channels = squirrel.get_channels(codes=in_codes_tup, **kwargs)
+        agn, net, sta, loc, cha, ext = out_codes[0].split(separator)
+        channels_out = []
+        for channel in channels:
+            channel_out = clone(channel)
+            channel_out.set_codes(
+                agency=agn,
+                network=net,
+                station=sta,
+                location=loc,
+                channel=cha,
+                extra=ext)
+            channels_out.append(channel_out)
+
+        return channels_out
+
+    def get_waveforms(self, squirrel, group, **kwargs):
+        _, in_codes, out_codes = group
+        assert len(in_codes) == 1 and len(out_codes) == 1
+
         in_codes_tup = in_codes[0].split(separator)
         trs = squirrel.get_waveforms(codes=in_codes_tup, **kwargs)
         agn, net, sta, loc, cha, ext = out_codes[0].split(separator)
@@ -230,6 +255,11 @@ class Operator(Object):
 
         return trs
 
+    # def update_waveforms(self, squirrel, tmin, tmax, codes):
+    #     if codes is None:
+    #         for _, in_codes, out_codes in self._groups.values():
+    #             for codes in
+
 
 class Parameters(Object):
     pass
@@ -243,16 +273,16 @@ class RestitutionParameters(Parameters):
 
 
 class Restitution(Operator):
-    output_codes_naming = Naming(suffix='R{quantity}')
+    naming = Naming(suffix='R{quantity}')
     quantity = QuantityType.T(default='displacement')
 
     @property
     def name(self):
         return 'Restitution(%s)' % self.quantity[0]
 
-    def _get_output_names(self, group):
+    def _out_codes(self, group):
         return [
-            self.output_codes_naming.get_name(codes).format(
+            self.naming.get_name(codes).format(
                 quantity=self.quantity[0])
             for codes in group]
 
@@ -260,8 +290,10 @@ class Restitution(Operator):
         return params.time_taper_factor / params.frequency_min
 
     def get_waveforms(
-            self, squirrel, in_codes, out_codes, params, tmin, tmax, **kwargs):
+            self, squirrel, codes, params, tmin, tmax, **kwargs):
 
+        self_, in_codes, out_codes = squirrel.get_operator_group(codes)
+        assert self is self_
         assert len(in_codes) == 1 and len(out_codes) == 1
         in_codes_tup = tuple(in_codes[0].split(separator))
 
@@ -311,23 +343,32 @@ class Restitution(Operator):
 
 
 class Shift(Operator):
-    output_codes_naming = Naming(suffix='S')
+    naming = Naming(suffix='S')
     delay = Duration.T()
 
 
 class Transform(Operator):
-    input_codes_grouping = Grouping.T(default=ComponentGrouping.D())
-    output_codes_naming = ReplaceComponentNaming(suffix='T{system}')
+    grouping = Grouping.T(default=ComponentGrouping.D())
+    naming = ReplaceComponentNaming(suffix='T{system}')
 
-    def _get_output_names(self, group):
+    def _out_codes(self, group):
         return [
-            self.output_codes_naming.get_name(group[0]).format(
+            self.naming.get_name(group[0]).format(
                 component=c, system=self.components.lower())
             for c in self.components]
 
 
 class ToENZ(Transform):
     components = 'ENZ'
+
+    def get_waveforms(
+            self, squirrel, in_codes, out_codes, params, tmin, tmax, **kwargs):
+
+        trs = squirrel.get_waveforms(
+            codes=lsplit_codes(in_codes), tmin=tmin, tmax=tmax, **kwargs)
+
+        for tr in trs:
+            print(tr)
 
 
 class ToRTZ(Transform):
@@ -349,21 +390,6 @@ class Composition(Operator):
     @property
     def name(self):
         return '(%s ○ %s)' % (self.g.name, self.f.name)
-
-    def iter_mappings(self):
-        g_available = []
-        deps = {}
-        for f_in_codes, f_out_codes in self.f.iter_mappings():
-            g_available.extend(f_out_codes)
-            for codes in f_out_codes:
-                deps[codes] = f_in_codes
-
-        for g_in_codes, g_out_codes in self.g.iter_mappings():
-            gf_in_codes = []
-            for codes in g_in_codes:
-                gf_in_codes.extend(deps[codes])
-
-            yield gf_in_codes, g_out_codes
 
 
 __all__ = [
