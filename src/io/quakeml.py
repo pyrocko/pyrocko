@@ -37,6 +37,14 @@ def one_element_or_none(li):
 
 
 class ResourceIdentifier(StringPattern):
+    '''
+    Identifies resource origin.
+
+    They consist of an authority identifier, a unique resource identifier, and
+    an optional local identifier. The URI schema name smi stands for
+    seismological meta-information, thus indicating a connection to a set of
+    metadata associated with the resource.
+    '''
     pattern = "^(smi|quakeml):[\\w\\d][\\w\\d\\-\\.\\*\\(\\)_~']{2,}/[\\w" +\
         "\\d\\-\\.\\*\\(\\)_~'][\\w\\d\\-\\.\\*\\(\\)\\+\\?_~'=,;#/&]*$"
 
@@ -46,6 +54,9 @@ class WhitespaceOrEmptyStringType(StringPattern):
 
 
 class OriginUncertaintyDescription(StringChoice):
+    '''
+    Preferred uncertainty description.
+    '''
     choices = [
         'horizontal uncertainty',
         'uncertainty ellipse',
@@ -53,10 +64,23 @@ class OriginUncertaintyDescription(StringChoice):
 
 
 class AmplitudeCategory(StringChoice):
+    '''
+    This attribute describes the way the waveform trace is evaluated to get an
+    amplitude value.
+
+
+    This can be just reading a single value for a given point in time (point),
+    taking a mean value over a time interval (mean), integrating the trace
+    over a time interval (integral), specifying just a time interval
+    (duration), or evaluating a period (period).
+    '''
     choices = ['point', 'mean', 'duration', 'period', 'integral', 'other']
 
 
 class OriginDepthType(StringChoice):
+    '''
+    Type of depth determination.
+    '''
     choices = [
         'from location',
         'from moment tensor inversion',
@@ -69,6 +93,9 @@ class OriginDepthType(StringChoice):
 
 
 class OriginType(StringChoice):
+    '''
+    Describes the origin type.
+    '''
     choices = [
         'hypocenter',
         'centroid',
@@ -79,22 +106,41 @@ class OriginType(StringChoice):
 
 
 class MTInversionType(StringChoice):
+    '''
+    Type of moment tensor inversion. Users should avoid to give contradictory
+    information in :py:class:`MTInversionType` and
+    :py:meth:`MomentTensor.method_id`.
+    '''
     choices = ['general', 'zero trace', 'double couple']
 
 
 class EvaluationMode(StringChoice):
+    '''
+    Mode of an evaluation (used in Pick , Amplitude , Magnitude, Origin,
+    FocalMechanism).
+    '''
     choices = ['manual', 'automatic']
 
 
 class EvaluationStatus(StringChoice):
+    '''
+    Status of of an evaluation (used in Pick , Amplitude, Magnitude, Origin,
+    FocalMechanism).
+    '''
     choices = ['preliminary', 'confirmed', 'reviewed', 'final', 'rejected']
 
 
 class PickOnset(StringChoice):
+    '''
+    Flag that roughly categorizes the sharpness of the onset.
+    '''
     choices = ['emergent', 'impulsive', 'questionable']
 
 
 class EventType(StringChoice):
+    '''
+    Describes the type of an event.
+    '''
     choices = [
         'not existing',
         'not reported',
@@ -145,6 +191,9 @@ class EventType(StringChoice):
 
 
 class DataUsedWaveType(StringChoice):
+    '''
+    Type of waveform data.
+    '''
     choices = [
         'P waves',
         'body waves',
@@ -155,10 +204,20 @@ class DataUsedWaveType(StringChoice):
 
 
 class AmplitudeUnit(StringChoice):
+    '''
+    This attribute provides the most likely measurement units.
+
+    The measurement units for physical quantity are described in the
+    :py:gattr:`Amplitude.generic_amplitude` attribute. Possible values are
+    specified as combination of SI base units.
+    '''
     choices = ['m', 's', 'm/s', 'm/(s*s)', 'm*s', 'dimensionless', 'other']
 
 
 class EventDescriptionType(StringChoice):
+    '''
+    Category of earthquake description.
+    '''
     choices = [
         'felt report',
         'Flinn-Engdahl region',
@@ -170,14 +229,23 @@ class EventDescriptionType(StringChoice):
 
 
 class MomentTensorCategory(StringChoice):
+    '''
+    Category of moment tensor inversion.
+    '''
     choices = ['teleseismic', 'regional']
 
 
 class EventTypeCertainty(StringChoice):
+    '''
+    Denotes how certain the information on event type is.
+    '''
     choices = ['known', 'suspected']
 
 
 class SourceTimeFunctionType(StringChoice):
+    '''
+    Type of source time function.
+    '''
     choices = ['box car', 'triangle', 'trapezoid', 'unknown']
 
 
@@ -250,6 +318,10 @@ class IntegerQuantity(Object):
 
 
 class ConfidenceEllipsoid(Object):
+    '''
+    This class represents a description of the location uncertainty as a
+    confidence ellipsoid with arbitrary orientation in space.
+    '''
     semi_major_axis_length = Float.T()
     semi_minor_axis_length = Float.T()
     semi_intermediate_axis_length = Float.T()
@@ -259,6 +331,12 @@ class ConfidenceEllipsoid(Object):
 
 
 class TimeQuantity(Object):
+    '''
+    This type describes a point in time.
+
+    It's given in ISO 8601 format, with optional symmetric or asymmetric
+    uncertainties given in seconds. The time has to be specified in UTC.
+    '''
     value = Timestamp.T()
     uncertainty = Float.T(optional=True)
     lower_uncertainty = Float.T(optional=True)
@@ -267,16 +345,32 @@ class TimeQuantity(Object):
 
 
 class TimeWindow(Object):
+    '''
+    Describes a time window for amplitude measurements.
+
+    Which is given by a central point in time, and points in time before and
+    after this central point. Both points before and after may coincide with
+    the central point.
+    '''
     begin = Float.T()
     end = Float.T()
     reference = Timestamp.T()
 
 
 class ResourceReference(ResourceIdentifier):
+    '''
+    This type is used to refer to QuakeML resources as described in Sect. 3.1
+    in the `QuakeML manual <https://quake.ethz.ch/quakeml/docs/REC?action=Att\
+    achFile&do=get&target=QuakeML-BED-20130214b.pdf>`_.
+    '''
     pass
 
 
 class DataUsed(Object):
+    '''
+    The DataUsed class describes the type of data that has been used for a
+    moment-tensor inversion.
+    '''
     wave_type = DataUsedWaveType.T()
     station_count = Int.T(optional=True)
     component_count = Int.T(optional=True)
@@ -285,11 +379,20 @@ class DataUsed(Object):
 
 
 class EventDescription(Object):
+    '''
+    Free-form string with additional event description.
+
+    This can be a well-known name, like 1906 San Francisco Earthquake.
+    A number of categories can be given in :py:gattr:`type`.
+    '''
     text = Unicode.T()
     type = EventDescriptionType.T(optional=True)
 
 
 class SourceTimeFunction(Object):
+    '''
+    Source time function used in moment-tensor inversion.
+    '''
     type = SourceTimeFunctionType.T()
     duration = Float.T()
     rise_time = Float.T(optional=True)
@@ -297,6 +400,14 @@ class SourceTimeFunction(Object):
 
 
 class OriginQuality(Object):
+    '''
+    This type describes the origin quality.
+
+    It contains various attributes commonly used to describe the
+    quality of an origin, e. g., errors, azimuthal coverage, etc.
+    :py:class:`Origin` objects have an optional attribute of the type
+    :py:gattr:`OriginQuality`.
+    '''
     associated_phase_count = Int.T(optional=True)
     used_phase_count = Int.T(optional=True)
     associated_station_count = Int.T(optional=True)
@@ -312,12 +423,24 @@ class OriginQuality(Object):
 
 
 class Axis(Object):
+    '''
+    This class describes an eigenvector of a moment tensor.
+
+    Which is expressed in its principal-axes system and  uses the angles
+    :py:gattr:`azimuth`, :py:gattr:`plunge`, and the eigenvalue
+    :py:gattr:`length`.
+    '''
     azimuth = RealQuantity.T()
     plunge = RealQuantity.T()
     length = RealQuantity.T()
 
 
 class Tensor(Object):
+    '''
+    The Tensor class represents the six moment-tensor elements Mrr, Mtt, Mpp,
+    Mrt, Mrp, Mtp in the spherical coordinate system defined by local upward
+    vertical (r), North-South (t), and West-East (p) directions.
+    '''
     mrr = RealQuantity.T(xmltagname='Mrr')
     mtt = RealQuantity.T(xmltagname='Mtt')
     mpp = RealQuantity.T(xmltagname='Mpp')
@@ -327,12 +450,23 @@ class Tensor(Object):
 
 
 class NodalPlane(Object):
+    '''
+    This class describes a nodal plane using the attributes :py:gattr:`strike`,
+    :py:gattr:`dip`, and :py:gattr:`rake`.
+    '''
     strike = RealQuantity.T()
     dip = RealQuantity.T()
     rake = RealQuantity.T()
 
 
 class CompositeTime(Object):
+    '''
+    The CompositeTime type allows complex descriptions.
+
+    If the specification is given with no greater accuracy than days (i.e., no
+    time components are given), the date refers to local time. However, if
+    time components are given, they have to refer to UTC.
+    '''
     year = IntegerQuantity.T(optional=True)
     month = IntegerQuantity.T(optional=True)
     day = IntegerQuantity.T(optional=True)
@@ -342,6 +476,14 @@ class CompositeTime(Object):
 
 
 class OriginUncertainty(Object):
+    '''
+    This class describes the location uncertainties of an origin.
+
+    The uncertainty can be described either as a simple circular horizontal
+    uncertainty, an uncertainty ellipse according to IMS1.0, or a confidence
+    ellipsoid. If multiple uncertainty models are given, the preferred variant
+    can be specified in the attribute :py:gattr:`preferred_description`.
+    '''
     horizontal_uncertainty = Float.T(optional=True)
     min_horizontal_uncertainty = Float.T(optional=True)
     max_horizontal_uncertainty = Float.T(optional=True)
@@ -356,6 +498,10 @@ class ResourceReferenceOptional(Union):
 
 
 class CreationInfo(Object):
+    '''
+    CreationInfo is used to describe creation metadata (author, version, and
+    creation time) of a resource.
+    '''
     agency_id = AgencyID.T(optional=True, xmltagname='agencyID')
     agency_uri = ResourceReference.T(optional=True, xmltagname='agencyURI')
     author = Author.T(optional=True)
@@ -365,24 +511,53 @@ class CreationInfo(Object):
 
 
 class StationMagnitudeContribution(Object):
+    '''
+    This class describes the weighting of magnitude values from several
+    :py:class:`StationMagnitude` objects for computing a network magnitude
+    estimation.
+    '''
     station_magnitude_id = ResourceReference.T(xmltagname='stationMagnitudeID')
     residual = Float.T(optional=True)
     weight = Float.T(optional=True)
 
 
 class PrincipalAxes(Object):
+    '''
+    This class describes the principal axes of a moment tensor.
+    :py:gattr:`t_axis` and :py:gattr:`p_axis` are required, while
+    :py:gattr:`n_axis` is optional.
+    '''
     t_axis = Axis.T()
     p_axis = Axis.T()
     n_axis = Axis.T(optional=True)
 
 
 class NodalPlanes(Object):
+    '''
+    This class describes the nodal planes of a moment tensor. The attribute
+    :py:gattr:`preferred_plane` can be used to define which plane is the
+    preferred one.
+    '''
     preferred_plane = Int.T(optional=True, xmlstyle='attribute')
     nodal_plane1 = NodalPlane.T(optional=True)
     nodal_plane2 = NodalPlane.T(optional=True)
 
 
 class WaveformStreamID(Object):
+    '''
+    Reference to a stream description in an inventory.
+
+    This is mostly equivalent to the combination of networkCode, stationCode,
+    locationCode, and channelCode. However, additional information, e.g.,
+    sampling rate, can be referenced by the resourceURI. It is recommended to
+    use resourceURI as a flexible, abstract, and unique stream ID that allows
+    to describe different processing levels, or resampled/filtered products of
+    the same initial stream, without violating the intrinsic meaning of the
+    legacy identifiers (:py:gattr:`network_code`, :py:gattr:`station_code`,
+    :py:gattr:`channel_code`, and :py:gattr:`location_code`). However, for
+    operation in the context of legacy systems, the classical identifier
+    components are supported.
+    '''
     value = ResourceReferenceOptional.T(xmlstyle='content')
     network_code = AnonymousNetworkCode.T(xmlstyle='attribute')
     station_code = AnonymousStationCode.T(xmlstyle='attribute')
@@ -397,12 +572,20 @@ class WaveformStreamID(Object):
 
 
 class Comment(Object):
+    '''
+    Comment holds information on comments to a resource as well as author and
+    creation time information.
+    '''
     id = ResourceReference.T(optional=True, xmlstyle='attribute')
     text = Unicode.T()
     creation_info = CreationInfo.T(optional=True)
 
 
 class MomentTensor(Object):
+    '''
+    This class represents a moment tensor solution for an event. It is an
+    optional part of a :py:class:`FocalMechanism` description.
+    '''
     public_id = ResourceReference.T(
         xmlstyle='attribute', xmltagname='publicID')
     data_used_list = List.T(DataUsed.T())
@@ -441,6 +624,12 @@ class MomentTensor(Object):
 
 
 class Amplitude(Object):
+    '''
+    This class represents a quantification of the waveform anomaly.
+
+    Usually it consists of a single amplitude measurement or a measurement of
+    the visible signal duration for duration magnitudes.
+    '''
     public_id = ResourceReference.T(
         xmlstyle='attribute', xmltagname='publicID')
     comment_list = List.T(Comment.T())
@@ -463,6 +652,14 @@ class Amplitude(Object):
 
 
 class Magnitude(Object):
+    '''
+    Describes a magnitude.
+
+    It can, but does not need to be associated with an origin. Association
+    with an origin is expressed with the optional attribute
+    :py:gattr:`origin_id`. It is either a combination of different magnitude
+    estimations, or it represents the reported magnitude for the given event.
+    '''
     public_id = ResourceReference.T(
         xmlstyle='attribute', xmltagname='publicID')
     comment_list = List.T(Comment.T())
@@ -480,6 +677,9 @@ class Magnitude(Object):
 
 
 class StationMagnitude(Object):
+    '''
+    This class describes the magnitude derived from a single waveform stream.
+    '''
     public_id = ResourceReference.T(
         xmlstyle='attribute', xmltagname='publicID')
     comment_list = List.T(Comment.T())
@@ -493,6 +693,19 @@ class StationMagnitude(Object):
 
 
 class Arrival(Object):
+    '''
+    Successful association of a pick with an origin qualifies this pick as an
+    arrival.
+
+    An arrival thus connects a pick with an origin and provides
+    additional attributes that describe this relationship. Usually
+    qualification of a pick as an arrival for a given origin is a hypothesis,
+    which is based on assumptions about the type of arrival (phase) as well as
+    observed and (on the basis of an earth model) computed arrival times, or
+    the residual, respectively.Additional pick attributes like the horizontal
+    slowness and backazimuth of the observed wave—especially if derived from
+    array data—may further constrain the nature of the arrival.
+    '''
     public_id = ResourceReference.T(
         xmlstyle='attribute', xmltagname='publicID')
     comment_list = List.T(Comment.T())
@@ -515,6 +728,10 @@ class Arrival(Object):
 
 
 class Pick(Object):
+    '''
+    A pick is the observation of an amplitude anomaly in a seismogram at a
+    specific point in time. It is not necessarily related to a seismic event.
+    '''
     public_id = ResourceReference.T(
         xmlstyle='attribute', xmltagname='publicID')
     comment_list = List.T(Comment.T())
@@ -553,6 +770,14 @@ class Pick(Object):
 
 
 class FocalMechanism(Object):
+    '''
+    This class describes the focal mechanism of an event.
+
+    It includes different descriptions like nodal planes, principal axes, and
+    a moment tensor. The moment tensor description is provided by objects of
+    the class :py:class:`MomentTensor` which can be specified as
+    child elements of :py:class:`FocalMechanism`.
+    '''
     public_id = ResourceReference.T(
         xmlstyle='attribute', xmltagname='publicID')
     waveform_id_list = List.T(WaveformStreamID.T(xmltagname='waveformID'))
@@ -573,6 +798,12 @@ class FocalMechanism(Object):
 
 
 class Origin(Object):
+    '''
+    This class represents the focal time and geographical location of an
+    earthquake hypocenter, as well as additional meta-information.
+    :py:class:`Origin` can have objects of type :py:class:`OriginUncertainty`
+    and :py:class:`Arrival` as child elements.
+    '''
     public_id = ResourceReference.T(
         xmlstyle='attribute', xmltagname='publicID')
     composite_time_list = List.T(CompositeTime.T())
@@ -630,6 +861,23 @@ class Origin(Object):
 
 
 class Event(Object):
+    '''
+    The class Event describes a seismic event.
+
+    The Event does not necessarily need to be a tectonic earthquake. An event
+    is usually associated with one or more origins, which contain information
+    about focal time and geographical location of the event. Multiple origins
+    can cover automatic and manual locations, a set of location from different
+    agencies, locations generated with different location programs and earth
+    models, etc. Furthermore, an event is usually associated with one or more
+    magnitudes, and with one or more focal mechanism determinations. In
+    standard QuakeML-BED, :py:class:`Origin`, :py:class:`Magnitude`,
+    :py:class:`StationMagnitude`, and :py:class:`FocalMechanism` are child
+    elements of Event. In BED-RT all these elements are on the same hierarchy
+    level as child elements of :py:class:`EventParameters`. The association of
+    origins, magnitudes, and focal mechanisms to a particular event is
+    expressed using references inside :py:class:`Event`.
+    '''
     public_id = ResourceReference.T(
         xmlstyle='attribute', xmltagname='publicID')
     description_list = List.T(EventDescription.T())
@@ -767,6 +1015,15 @@ class Event(Object):
 
 
 class EventParameters(Object):
+    '''
+    In the bulletin-type (non real-time) model, this class serves as a
+    container for Event objects.
+
+    In the real-time version, it can hold objects of type :py:class:`Event`,
+    :py:class:`Origin`, :py:class:`Magnitude`, :py:class:`StationMagnitude`,
+    :py:class:`FocalMechanism`, Reading, :py:class:`Amplitude` and
+    :py:class:`Pick`.
+    '''
     public_id = ResourceReference.T(
         xmlstyle='attribute', xmltagname='publicID')
     comment_list = List.T(Comment.T())
