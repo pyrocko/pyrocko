@@ -1453,22 +1453,21 @@ class SourceWithDerivedMagnitude(Source):
 
 class ExplosionLineSource(SourceWithMagnitude):
 
-    length = Float.T(
-        default=0.0,
-        help='length of the line source [m]')
+    end_north_shift = Float.T(
+        help="Relative end of the line source [m]."
+    )
 
-    azimuth = Float.T(
-        default=0.0,
-        help='azimuth direction, clockwise from north [deg]')
+    end_east_shift = Float.T(
+        help="Relative end of the line source [m]."
+    )
 
-    dip = Float.T(
+    end_depth = Float.T(
+        help="Relative end of the line source [m]."
+    )
+
+    duration = Float.T(
         default=0.,
-        help='dip direction, downward from horizontal [deg]')
-
-    anchor = StringChoice.T(
-        default='center',
-        choices=['center', 'start'],
-        help='anchor point of the line source, default \'center\''
+        help="Duration of the propagating line source [s]."
     )
 
     subsource_oversampling = Int.T(
@@ -1476,21 +1475,31 @@ class ExplosionLineSource(SourceWithMagnitude):
         help='Spatial oversampling of the subsources in space'
     )
 
-    v_start = Float.T(
-        optional=True,
-        help='Propagation Speed of the explosion line in [m/s]'
-    )
+    def _get_end_location(self):
+        return Location(
+            lat=self.lat, lon=self.lon,
+            north_shift=self.end_north_shift,
+            east_shift=self.end_east_shift,
+            depth=self.end_depth
+        )
 
-    v_end = Float.T(
-        optional=True,
-        help='acceleration (> 0.0) or deceleration (< 0.0) of the explosion'
-    )
+    @property
+    def length(self):
+        return self.distance_3d_to(self._get_end_location())
 
-    acceleration_exp = Float.T(
-        default=1.,
-        help='exponent for acceleration or deceleration'
-             ' between v_start and v_end. 1.0 is linear.'
-    )
+    @property
+    def azimuth(self):
+        return self.azibazi_to(self._get_end_location())[0]
+
+    @property
+    def dip(self):
+        return math.asin((self.end_depth - self.depth) / self.length) * r2d
+
+    @property
+    def velocity(self):
+        if not self.duration:
+            return math.inf
+        return self.length / self.duration
 
     def get_magnitude(self, store=None, target=None):
         return self.magnitude
@@ -1503,47 +1512,30 @@ class ExplosionLineSource(SourceWithMagnitude):
         return pmt.MomentTensor(m=pmt.symmat6(a, a, a, 0., 0., 0.))
 
     def discretize_basesource(self, store, target=None):
+        length = self.length
+        azimuth = self.azimuth
+        dip = self.dip
 
         delta_spatial = num.min(store.config.deltas) \
             / self.subsource_oversampling
-        nsources = 2 * int(math.ceil(self.length / delta_spatial)) + 1
+        nsources = 2 * int(math.ceil(length / delta_spatial)) + 1
 
-        line_points_asc = num.linspace(0, self.length, nsources)
+        line_points = num.linspace(0.0, length, nsources)
 
-        if self.anchor == 'center':
-            line_points = num.linspace(
-                -0.5 * self.length, 0.5 * self.length, nsources)
-        elif self.anchor == 'start':
-            line_points = line_points_asc
-        else:
-            raise ValueError('Bad anchor %s' % self.anchor)
-
-        sin_azi = math.sin(self.azimuth * d2r)
-        cos_azi = math.cos(self.azimuth * d2r)
-        sin_dip = math.sin(self.dip * d2r)
-        cos_dip = math.cos(self.dip * d2r)
+        sin_azi = num.sin(azimuth * d2r)
+        cos_azi = num.cos(azimuth * d2r)
+        sin_dip = num.sin(dip * d2r)
+        cos_dip = num.cos(dip * d2r)
 
         points = num.zeros((nsources, 3))
         points[:, 0] = self.north_shift + line_points * cos_azi * cos_dip
         points[:, 1] = self.east_shift + line_points * sin_azi * cos_dip
         points[:, 2] = self.depth + line_points * sin_dip
 
-        times = num.zeros(nsources)
-
-        if self.v_start:
-            v_start = self.v_start
-            v_end = self.v_end or v_start
-
-            v_weight = num.linspace(0, 1., nsources) \
-                ** self.acceleration_exp
-
-            v_gradient = v_start * (1. - v_weight) + v_end * v_weight
-            v_points = num.gradient(line_points_asc) / v_gradient
-            times = num.cumsum(v_points)
-
+        times = num.linspace(0.0, self.duration, nsources)
         times += self.time
 
-        amplitudes = num.full(nsources, self.moment / nsources)
+        moments = num.full(nsources, self.get_moment() / nsources)
 
         return meta.DiscretizedExplosionSource(
             times=times,
@@ -1552,7 +1544,7 @@ class ExplosionLineSource(SourceWithMagnitude):
             north_shifts=points[:, 0],
             east_shifts=points[:, 1],
             depths=points[:, 2],
-            m0s=amplitudes)
+            m0s=moments)
 
 
 class ExplosionSource(SourceWithDerivedMagnitude):

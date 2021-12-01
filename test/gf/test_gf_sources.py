@@ -402,6 +402,64 @@ class GFSourcesTestCase(unittest.TestCase):
         with self.assertRaises(gf.DerivedMagnitudeError):
             ex.get_volume_change(store, target)
 
+    def test_explosion_line_source(self):
+        line = gf.ExplosionLineSource(
+            magnitude=1.,
+            depth=5 * km,
+            end_north_shift=5 * km,
+            end_east_shift=0. * km,
+            end_depth=5*km)
+
+        assert line.azimuth == 0.
+        assert line.dip == 0.
+        assert line.length == 5 * km
+        assert line.velocity == math.inf
+
+        line.duration = 5.
+        assert line.velocity == 1.*km
+
+        line.end_north_shift = 0. * km
+        line.end_east_shift = 5. * km
+        line.end_depth = 0 * km
+        assert line.azimuth == 90.0
+        assert line.length != 5. * km
+        num.testing.assert_almost_equal(line.dip, -45.)
+
+        line.end_depth = 10 * km
+        num.testing.assert_almost_equal(line.dip, 45.)
+
+        store = self.dummy_store()
+
+        disc_source = line.discretize_basesource(store)
+        assert num.sum(disc_source.moments()) == line.get_moment()
+
+        line.subsource_oversampling = 5
+        disc_source = line.discretize_basesource(store)
+        assert num.sum(disc_source.moments()) == line.get_moment()
+
+        line = gf.ExplosionLineSource(
+            magnitude=1.,
+            north_shift=10 * km,
+            end_north_shift=15 * km,
+            end_east_shift=5. * km,
+            depth=5 * km,
+            end_depth=5*km)
+        disc_source = line.discretize_basesource(store)
+
+        num.testing.assert_almost_equal(
+            disc_source.north_shifts[-1], line.end_north_shift)
+        num.testing.assert_almost_equal(
+            disc_source.east_shifts[-1], line.end_east_shift)
+        num.testing.assert_almost_equal(
+            disc_source.depths[-1], line.end_depth)
+
+        num.testing.assert_almost_equal(
+            disc_source.north_shifts[0], line.north_shift)
+        num.testing.assert_almost_equal(
+            disc_source.east_shifts[0], line.east_shift)
+        num.testing.assert_almost_equal(
+            disc_source.depths[0], line.depth)
+
     def test_rect_source(self):
 
         store = self.dummy_homogeneous_store()
