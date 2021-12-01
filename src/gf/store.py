@@ -1575,7 +1575,11 @@ class Store(BaseStore):
                 raise NoSuchPhase(phase_id)
 
             spt = spit.SPTree(filename=fn)
-            self._phases[phase_id] = spt
+
+            def call_trans(args):
+                return spt(num.transpose(args))
+
+            self._phases[phase_id] = call_trans
 
         return self._phases[phase_id]
 
@@ -1613,14 +1617,7 @@ class Store(BaseStore):
             else:
                 phases = cake.PhaseDef.classic(phase_def)
 
-            def evaluate(args):
-                if len(args) == 2:
-                    zr, zs, x = (self.config.receiver_depth,) + args
-                elif len(args) == 3:
-                    zr, zs, x = args
-                else:
-                    assert False
-
+            def t1(x, zs, zr):
                 t = []
                 if phases:
                     rays = mod.arrivals(
@@ -1636,6 +1633,21 @@ class Store(BaseStore):
                     return min(t)
                 else:
                     return None
+
+            def evaluate(args):
+                args = num.asarray(args)
+
+                x = self.config.get_surface_distance(args)
+                zs = self.config.get_source_depth(args)
+                zr = self.config.get_receiver_depth(args)
+
+                if args.ndim == 1:
+                    return t1(x, zs, zr)
+                else:
+                    return num.array([
+                        t1(x_, zs_, zr_)
+                        for (x_, zs_, zr_)
+                        in zip(x, zs, zr)])
 
             return evaluate
 
@@ -1675,7 +1687,10 @@ class Store(BaseStore):
         if len(args) == 1:
             args = args[0]
         elif len(args) == 2:
-            args = self.config.make_indexing_args1(*args)
+            if isinstance(args[0], meta.DiscretizedSource):
+                args = num.vstack(self.config.make_indexing_args(*args))
+            else:
+                args = self.config.make_indexing_args1(*args)
         else:
             raise AttributeError(
                 "Call with source, target or (depth, distance).")
@@ -1684,19 +1699,6 @@ class Store(BaseStore):
             timing = meta.Timing(timing)
 
         return timing.evaluate(self.get_phase, args)
-
-    def arrivals(self, timing, source=None, target=None, distances=None):
-        if source and target and distances:
-            raise AttributeError(
-                "Call with: source, target or (depth, distance).")
-
-        if source and target:
-            basesource = source.discretize_basesource(self)
-            depths = basesource.depths
-            distances = num.array(
-                [depths, basesource.distances_to(target)]).T
-
-        return self.t(timing, distances)
 
     def make_timing_params(self, begin, end, snap_vred=True, force=False):
 

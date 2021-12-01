@@ -20,7 +20,7 @@ from pyrocko.guts_array import literal, Array
 from pyrocko.model import Location, gnss
 
 from pyrocko import cake, orthodrome, spit, moment_tensor, trace
-from pyrocko.util import num_full
+from pyrocko.util import num_full, first_finite
 
 from .error import StoreError
 
@@ -548,22 +548,32 @@ class Timing(SObject):
             if self.phase_defs:
                 phases = [
                     get_phase(phase_def) for phase_def in self.phase_defs]
-                times = [phase(args) for phase in phases]
+
+                times = num.array(
+                    [phase(args) for phase in phases],
+                    dtype=float)
+
                 if self.offset_is == 'percent':
-                    times = [t*(1.+offset/100.)
-                             for t in times if t is not None]
+                    times *= 1.0 + offset / 100.
                 else:
-                    times = [t+offset for t in times if t is not None]
+                    times += offset
 
-                if not times:
-                    return None
+                if times.ndim == 1:
+                    if self.select == 'first':
+                        return num.nanmin(times)
+                    if self.select == 'last':
+                        return num.nanmax(times)
 
-                if self.select == 'first':
-                    return num.min(times)
-                if self.select == 'last':
-                    return nunm.max(times)
+                    times_finite = times[num.isfinite(times)]
+                    return times_finite[0] if times_finite.size != 0 else None
 
-                return times[0]
+                else:
+                    if self.select == 'first':
+                        return num.nanmin(times, axis=0)
+                    if self.select == 'last':
+                        return num.nanmax(times, axis=0)
+
+                    return first_finite(times, axis=0)
             else:
                 return offset
 
@@ -2018,7 +2028,11 @@ class ConfigTypeA(Config):
         return self.coords[0]
 
     def get_receiver_depth(self, args):
-        return self.receiver_depth
+        args = num.asarray(args)
+        if args.ndim == 2:
+            return num_full(args.shape[0], self.receiver_depth)
+        else:
+            return self.receiver_depth
 
     def _update(self):
         self.mins = num.array(
@@ -2140,11 +2154,17 @@ class ConfigTypeA(Config):
         self._vicinity_function = vicinity_function
         self._vicinities_function = vicinities_function
 
-    def make_indexing_args(self, source, receiver, icomponents):
-        nc = icomponents.size
+    def make_indexing_args(self, source, receiver, icomponents=None):
         dists = source.distances_to(receiver)
         n = dists.size
-        return (num.tile(source.depths, nc//n),
+        if icomponents is None:
+            return (
+                source.depths,
+                dists)
+        else:
+            nc = icomponents.size
+            return (
+                num.tile(source.depths, nc//n),
                 num.tile(dists, nc//n),
                 icomponents)
 
@@ -2260,7 +2280,7 @@ class ConfigTypeB(Config):
         'elastic2', 'elastic5', 'elastic8', 'elastic10', 'poroelastic10']
 
     def get_distance(self, args):
-        return math.sqrt((args[1] - args[0])**2 + args[2]**2)
+        return num.sqrt((args[1] - args[0])**2 + args[2]**2)
 
     def get_surface_distance(self, args):
         return args[2]
@@ -2427,13 +2447,20 @@ class ConfigTypeB(Config):
         self._vicinity_function = vicinity_function
         self._vicinities_function = vicinities_function
 
-    def make_indexing_args(self, source, receiver, icomponents):
-        nc = icomponents.size
+    def make_indexing_args(self, source, receiver, icomponents=None):
         dists = source.distances_to(receiver)
         n = dists.size
+        nc = n if icomponents is None else icomponents.size
         receiver_depths = num.empty(nc)
         receiver_depths.fill(receiver.depth)
-        return (receiver_depths,
+        if icomponents is None:
+            return (
+                receiver_depths,
+                source.depths,
+                dists)
+        else:
+            return (
+                receiver_depths,
                 num.tile(source.depths, nc//n),
                 num.tile(dists, nc//n),
                 icomponents)
@@ -2785,8 +2812,7 @@ class ConfigTypeC(Config):
             reason='No GFs available for receiver at (%g, %g).' %
             receiver.effective_latlon)
 
-    def make_indexing_args(self, source, receiver, icomponents):
-        nc = icomponents.size
+    def make_indexing_args(self, source, receiver, icomponents=None):
 
         dists = source.distances_to(self.source_origin)
         azis, _ = source.azibazis_to(self.source_origin)
@@ -2796,10 +2822,19 @@ class ConfigTypeC(Config):
         source_depths = source.depths - self.source_origin.depth
 
         n = dists.size
+        nc = n if icomponents is None else icomponents.size
+
         ireceivers = num.empty(nc, dtype=int)
         ireceivers.fill(self.lookup_ireceiver(receiver))
-
-        return (ireceivers,
+        if icomponents is None:
+            return (
+                ireceivers,
+                source_depths,
+                source_east_shifts,
+                source_north_shifts)
+        else:
+            return (
+                ireceivers,
                 num.tile(source_depths, nc//n),
                 num.tile(source_east_shifts, nc//n),
                 num.tile(source_north_shifts, nc//n),

@@ -59,7 +59,6 @@ class Cell(object):
             self.f = f
 
     def interpolate(self, x):
-        print(x)
         if self.children:
             for cell in self.children:
                 if all_(and_(cell.xbounds[:, 0] <= x,
@@ -368,7 +367,8 @@ class SPTree(object):
         x = num.asarray(x, dtype=float)
         if x.ndim == 1:
             return self.interpolate(x)
-        return self.interpolate_many(x)
+        else:
+            return self.interpolate_many(x)
 
     def interpolate_many(self, x):
         return self.root.interpolate_many(x)

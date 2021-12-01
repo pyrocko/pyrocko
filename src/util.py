@@ -2700,3 +2700,9 @@ def get_threadpool_limits():
 
     except ImportError:
         return threadpool_limits_dummy
+
+
+def first_finite(a, axis=-1):
+    mask = num.isfinite(a)
+    ii = num.expand_dims(mask.argmax(axis=axis), axis=axis)
+    return num.take_along_axis(a, ii, axis=axis).take(0, axis=axis)

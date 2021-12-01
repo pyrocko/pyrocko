@@ -947,15 +947,18 @@ class GFTestCase(unittest.TestCase):
                 with self.assertRaises(gf.OutOfBounds):
                     store.t('P', args_out)
 
-    def test_timing_arrival(self):
-        typ = 'a'
-        store_dir = self.get_regional_ttt_store_dir(typ)
-        store = gf.Store(store_dir)
+    def test_timing_multi(self):
+        for typ, args in [
+                ('a', [[10*km, 10*km], [1800*km, 2000*km]]),
+                ('b', [[5*km]*2, [10*km]*2, [1800.*km, 2000*km]])]:
 
-        many_dist = [[10*km, 1500*km], [10*km, 2000*km]]
-        res = store.t('P', many_dist)
-        assert res is not None
-        print(res)
+            store_dir = self.get_regional_ttt_store_dir(typ)
+            store = gf.Store(store_dir)
+
+            times = store.t('P', args)
+            for t1, args2 in zip(times, num.transpose(args)):
+                t2 = store.t('P', args2)
+                num.testing.assert_almost_equal(t1, t2)
 
         source = gf.RectangularSource(
             lat=0., lon=0.,
@@ -966,11 +969,17 @@ class GFTestCase(unittest.TestCase):
             codes=('', 'STA', '', 'Z'),
             north_shift=10*km, east_shift=1500*km)
 
-        res = store.arrivals('first(P)', source, target)
-        assert res is not None
-        print(res)
+        for typ in ['a', 'b']:
+            store_dir = self.get_regional_ttt_store_dir(typ)
+            store = gf.Store(store_dir)
 
+            dsource = source.discretize_basesource(store, target)
+            for phase_def in ['stored:P', 'vel_surface:15', 'vel:5', 'cake:P']:
+                times = store.t(phase_def, dsource, target)
 
+                for t1, ssource in zip(times, dsource.split()):
+                    t2 = store.t(phase_def, ssource, target)
+                    num.testing.assert_almost_equal(t1, t2)
 
     def test_timing_new_syntax(self):
         for typ, args in [
