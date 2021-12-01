@@ -1654,7 +1654,7 @@ class Store(BaseStore):
 
         raise StoreError('unsupported phase provider: %s' % provider)
 
-    def t(self, timing, *args):
+    def t(self, timing, *indexing_args):
         '''
         Compute interpolated phase arrivals.
 
@@ -1677,21 +1677,22 @@ class Store(BaseStore):
 
         :param timing: Timing string as described above
         :type timing: str or :py:class:`~pyrocko.gf.meta.Timing`
-        :param \\*args: :py:class:`~pyrocko.gf.meta.Config` index tuple, e.g.
+        :param \\*indexing_args: :py:class:`~pyrocko.gf.meta.Config` index tuple, e.g.
             ``(source_depth, distance)`` as in
             :py:class:`~pyrocko.gf.meta.ConfigTypeA`.
-        :type \\*args: tuple
+    :type \\*indexing_args: tuple
         :returns: Phase arrival according to ``timing``
         :rtype: float or None
         '''
 
-        if len(args) == 1:
-            args = args[0]
-        elif len(args) == 2:
-            if isinstance(args[0], meta.DiscretizedSource):
-                args = num.vstack(self.config.make_indexing_args(*args))
+        if len(indexing_args) == 1:
+            indexing_args = indexing_args[0]
+        elif len(indexing_args) == 2:
+            if isinstance(indexing_args[0], meta.DiscretizedSource):
+                indexing_args = num.vstack(
+                    self.config.make_indexing_args(*indexing_args))
             else:
-                args = self.config.make_indexing_args1(*args)
+                indexing_args = self.config.make_indexing_args1(*indexing_args)
         else:
             raise AttributeError(
                 "Call with source, target or (depth, distance).")
@@ -1699,7 +1700,7 @@ class Store(BaseStore):
         if not isinstance(timing, meta.Timing):
             timing = meta.Timing(timing)
 
-        return timing.evaluate(self.get_phase, args)
+        return timing.evaluate(self.get_phase, indexing_args)
 
     def make_timing_params(self, begin, end, snap_vred=True, force=False):
 

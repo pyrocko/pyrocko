@@ -415,7 +415,7 @@ class GFSourcesTestCase(unittest.TestCase):
         assert line.length == 5 * km
         assert line.velocity == math.inf
 
-        line.duration = 5.
+        line.end_time = 5.
         assert line.velocity == 1.*km
 
         line.end_north_shift = 0. * km

@@ -210,7 +210,7 @@ def plot_directivity(
     :type dazi: float
     :param phases: Phases to define start and end of time window
     :type phases: :py:class:`dict` with :py:class:`str` keys and
-        :py:class:`~pyrocko.gf.meta.Timing` values
+        :py:class:`~pyrocko.gf.meta.Timing` phase definitions as values.
     :param quantity: Seismogram quantity, default ``displacement``
     :type quantity: str
     :param envelope: Plot envelope instead of seismic trace
@@ -273,21 +273,20 @@ def plot_directivity(
         resp, fmin, fmax,
         component=component, envelope=envelope)
 
-    nucl_depth = source.depth
-    nucl_distance = distance
+    timings = {label: Timing(phase) for label, phase in phases.items()}
+    discretized_source = source.discretize_basesource(store)
 
-    timings = [Timing(p) for p in phases.values()]
-    phase_times = [store.t(t, source, ref_target) for t in timings]
+    target_timings = {}
+    for timing in timings.values():
+        target_timings[timing] = num.fromiter(
+            (store.t(timing, discretized_source, target)
+             for target in targets),
+            float)
 
-    phase_times_phase = {}
-    for t in timings:
-        phase_times_phase[t] = [
-            store.t(t, source, target, extended_source=True) for target in targets
-        ]
-    print(phase_times_phase)
+    all_times = num.array(tuple(times for times in target_timings.values()))
+    tbegin = all_times.min()
+    tend = all_times.max()
 
-    tbegin = min(phase_times)
-    tend = max(phase_times)
     tsel = num.logical_and(times >= tbegin, times <= tend)
 
     data = data[:, tsel].T
@@ -369,22 +368,24 @@ def plot_directivity(
 
     if show_phases:
         label_theta = 270.
-        theta = num.linspace(0, 2*num.pi, 360)
+
+        theta = num.fromiter(
+            (target.azimuth for target in targets), float) * d2r
 
         for label, phase_str in phases.items():
-            phase = Timing(phase_str)
+            timing = Timing(phase_str)
+            timing.offset = 0.
+            timing.offset_is_slowness = False
+            timing.offset_is_percent = False
 
-            phase.offset = 0.
-            phase.offset_is_slowness = False
-            phase.offset_is_percent = False
-
-            time = store.t(phase, source, ref_target)
-            times = num_full_like(theta, time)
+            times = num.fromiter(
+                (store.t(timing, discretized_source, target)
+                 for target in targets),
+                float)
 
             ax.plot(theta, times, color='k', alpha=.3, lw=1., ls='--')
-
             ax.text(
-                label_theta*d2r, time, label,
+                theta[0], times[0], label,
                 ha='left', color='k', fontsize='small')
             label_theta += 30.
 

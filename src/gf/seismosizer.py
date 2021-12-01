@@ -1465,14 +1465,14 @@ class ExplosionLineSource(SourceWithMagnitude):
         help="Relative end of the line source [m]."
     )
 
-    duration = Float.T(
-        default=0.,
+    end_time = Timestamp.T(
+        optional = True,
         help="Duration of the propagating line source [s]."
     )
 
     subsource_oversampling = Int.T(
         default=1,
-        help='Spatial oversampling of the subsources in space'
+        help="Spatial oversampling of the subsources in space."
     )
 
     def _get_end_location(self):
@@ -1496,10 +1496,20 @@ class ExplosionLineSource(SourceWithMagnitude):
         return math.asin((self.end_depth - self.depth) / self.length) * r2d
 
     @property
+    def strike(self):
+        return self.azimuth
+
+    @property
     def velocity(self):
         if not self.duration:
             return math.inf
         return self.length / self.duration
+
+    @property
+    def duration(self):
+        if not self.end_time:
+            return 0.
+        return self.end_time - self.time
 
     def get_magnitude(self, store=None, target=None):
         return self.magnitude
@@ -1512,9 +1522,9 @@ class ExplosionLineSource(SourceWithMagnitude):
         return pmt.MomentTensor(m=pmt.symmat6(a, a, a, 0., 0., 0.))
 
     def discretize_basesource(self, store, target=None):
+        dip = self.dip
         length = self.length
         azimuth = self.azimuth
-        dip = self.dip
 
         delta_spatial = num.min(store.config.deltas) \
             / self.subsource_oversampling

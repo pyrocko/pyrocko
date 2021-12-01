@@ -558,6 +558,7 @@ class Timing(SObject):
                 else:
                     times += offset
 
+                times = num.squeeze(times)
                 if times.ndim == 1:
                     if self.select == 'first':
                         return num.nanmin(times)
