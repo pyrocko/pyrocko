@@ -1575,11 +1575,7 @@ class Store(BaseStore):
                 raise NoSuchPhase(phase_id)
 
             spt = spit.SPTree(filename=fn)
-
-            def call_trans(args):
-                return spt(num.transpose(args))
-
-            self._phases[phase_id] = call_trans
+            self._phases[phase_id] = spt
 
         return self._phases[phase_id]
 
@@ -1591,7 +1587,12 @@ class Store(BaseStore):
             provider, phase_def = 'stored', toks[0]
 
         if provider == 'stored':
-            return self.get_stored_phase(phase_def)
+            spt = self.get_stored_phase(phase_def)
+
+            def evaluate(args):
+                return spt(num.transpose(args))
+
+            return evaluate
 
         elif provider == 'vel':
             vel = float(phase_def) * 1000.

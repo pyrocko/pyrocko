@@ -974,7 +974,14 @@ class GFTestCase(unittest.TestCase):
             store = gf.Store(store_dir)
 
             dsource = source.discretize_basesource(store, target)
-            for phase_def in ['stored:P', 'vel_surface:15', 'vel:5', 'cake:P']:
+            for phase_def in [
+                    'stored:P',
+                    'vel_surface:15',
+                    'vel:5',
+                    'cake:P',
+                    '{stored:P}-10',
+                    '{stored:P}-10%']:
+
                 times = store.t(phase_def, dsource, target)
 
                 for t1, ssource in zip(times, dsource.split()):
