@@ -403,6 +403,16 @@ class GFSourcesTestCase(unittest.TestCase):
             ex.get_volume_change(store, target)
 
     def test_explosion_line_source(self):
+
+        line = gf.ExplosionLineSource(
+            magnitude=1.,
+            depth=5 * km)
+
+        assert line.strike == 0.
+        assert line.dip == 0.
+        assert line.length == 0.
+        assert line.velocity == math.inf
+
         line = gf.ExplosionLineSource(
             magnitude=1.,
             depth=5 * km,
@@ -410,7 +420,7 @@ class GFSourcesTestCase(unittest.TestCase):
             end_east_shift=0. * km,
             end_depth=5*km)
 
-        assert line.azimuth == 0.
+        assert line.strike == 0.
         assert line.dip == 0.
         assert line.length == 5 * km
         assert line.velocity == math.inf
@@ -421,7 +431,8 @@ class GFSourcesTestCase(unittest.TestCase):
         line.end_north_shift = 0. * km
         line.end_east_shift = 5. * km
         line.end_depth = 0 * km
-        assert line.azimuth == 90.0
+        assert line.end_depth == 0. * km
+        assert line.strike == 90.0
         assert line.length != 5. * km
         num.testing.assert_almost_equal(line.dip, -45.)
 

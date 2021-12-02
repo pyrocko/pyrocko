@@ -1454,19 +1454,22 @@ class SourceWithDerivedMagnitude(Source):
 class ExplosionLineSource(SourceWithMagnitude):
 
     end_north_shift = Float.T(
+        optional=True,
         help="Relative end of the line source [m]."
     )
 
     end_east_shift = Float.T(
+        optional=True,
         help="Relative end of the line source [m]."
     )
 
     end_depth = Float.T(
+        optional=True,
         help="Relative end of the line source [m]."
     )
 
     end_time = Timestamp.T(
-        optional = True,
+        optional=True,
         help="Duration of the propagating line source [s]."
     )
 
@@ -1478,9 +1481,12 @@ class ExplosionLineSource(SourceWithMagnitude):
     def _get_end_location(self):
         return Location(
             lat=self.lat, lon=self.lon,
-            north_shift=self.end_north_shift,
-            east_shift=self.end_east_shift,
-            depth=self.end_depth
+            north_shift=self.north_shift if self.end_north_shift is None
+                        else self.end_north_shift,
+            east_shift=self.east_shift if self.end_east_shift is None
+                        else self.end_east_shift,
+            depth=self.depth if self.end_depth is None
+                        else self.end_depth
         )
 
     @property
@@ -1488,16 +1494,14 @@ class ExplosionLineSource(SourceWithMagnitude):
         return self.distance_3d_to(self._get_end_location())
 
     @property
-    def azimuth(self):
-        return self.azibazi_to(self._get_end_location())[0]
-
-    @property
     def dip(self):
+        if self.length == 0.0 or self.end_depth is None:
+            return 0.0
         return math.asin((self.end_depth - self.depth) / self.length) * r2d
 
     @property
     def strike(self):
-        return self.azimuth
+                return self.azibazi_to(self._get_end_location())[0]
 
     @property
     def velocity(self):
@@ -1524,7 +1528,7 @@ class ExplosionLineSource(SourceWithMagnitude):
     def discretize_basesource(self, store, target=None):
         dip = self.dip
         length = self.length
-        azimuth = self.azimuth
+        strike = self.strike
 
         delta_spatial = num.min(store.config.deltas) \
             / self.subsource_oversampling
@@ -1532,8 +1536,8 @@ class ExplosionLineSource(SourceWithMagnitude):
 
         line_points = num.linspace(0.0, length, nsources)
 
-        sin_azi = num.sin(azimuth * d2r)
-        cos_azi = num.cos(azimuth * d2r)
+        sin_azi = num.sin(strike * d2r)
+        cos_azi = num.cos(strike * d2r)
         sin_dip = num.sin(dip * d2r)
         cos_dip = num.cos(dip * d2r)
 
