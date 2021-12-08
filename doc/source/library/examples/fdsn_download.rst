@@ -22,7 +22,7 @@ StationXML data manipulation
 ----------------------------
 
 To manipulate `StationXML <http://www.fdsn.org/xml/station/>`_ data through
-Pyrocko use the :py:mod:`pyrocko.fdsn.station` module.  This example will
+Pyrocko use the :py:mod:`pyrocko.io.stationxml` module.  This example will
 change the azimuth and dip values for channels whose codes are X, Y and Z, and
 set all channel instrument's input units to meters.
 
