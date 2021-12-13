@@ -1532,7 +1532,7 @@ class ExplosionLineSource(SourceWithMagnitude):
 
         delta_spatial = num.min(store.config.deltas) \
             / self.subsource_oversampling
-        nsources = 2 * int(math.ceil(length / delta_spatial)) + 1
+        nsources = int(math.ceil(length / delta_spatial)) + 1
 
         line_points = num.linspace(0.0, length, nsources)
 
