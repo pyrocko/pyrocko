@@ -135,8 +135,10 @@ class Delivery(Object):
             message = '%s: %s' % (context, message)
             _logs[name](message)
 
-    def expect(self):
-        self.emit_log()
+    def expect(self, quiet=False):
+        if not quiet:
+            self.emit_log()
+
         if self.errors:
             name, message, context = self.errors[0]
             if context:
@@ -149,8 +151,8 @@ class Delivery(Object):
 
         return self.payload
 
-    def expect_one(self):
-        payload = self.expect()
+    def expect_one(self, quiet=False):
+        payload = self.expect(quiet=quiet)
         if len(payload) != 1:
             raise DeliveryError(
                 'Expected 1 element but got %i.' % len(payload))
