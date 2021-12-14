@@ -288,8 +288,6 @@ class Pile(object):
         else:
             nwin = 1
 
-        print(self)
-
         for iwin in range(nwin):
             wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)
 
@@ -300,8 +298,6 @@ class Pile(object):
             processed = self._process_chopped(
                 chopped, degap, maxgap, maxlap, want_incomplete, wmax, wmin,
                 tpad)
-
-            print(iwin, len(processed))
 
             if style == 'batch':
                 yield classic_pile.Batch(
