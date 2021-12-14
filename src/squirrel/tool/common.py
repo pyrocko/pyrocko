@@ -255,7 +255,7 @@ class SquirrelCommand(object):
         return squirrel_from_selection_arguments(args)
 
     def fail(self, message):
-        raise error.SquirrelError(message)
+        raise error.ToolError(message)
 
 
 __all__ = ['SquirrelCommand']

@@ -96,7 +96,7 @@ Run with --help to get further help.''',
     if target:
         try:
             target(parser, args)
-        except sq.SquirrelError as e:
+        except (sq.SquirrelError, sq.ToolError) as e:
             logger.fatal(str(e))
             sys.exit(1)
 
