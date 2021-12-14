@@ -248,7 +248,7 @@ class Task(object):
             return '? '
 
     def _idisplay(self):
-        i = self._i + 1
+        i = self._i
         if self._n is not None and i > self._n:
             i = self._n
         return i
@@ -257,15 +257,25 @@ class Task(object):
         if self._i is None:
             return self._state
         elif self._n is None:
-            return '%i' % self._idisplay()
+            if self._state != 'working':
+                return '... %s (%i)' % (self._state, self._idisplay())
+            else:
+                return '%i' % self._idisplay()
         else:
-            nw = len(str(self._n))
-            return ('%' + str(nw) + 'i / %i') % (
-                self._idisplay(), self._n)
+            if self._state == 'working':
+                nw = len(str(self._n))
+                return (('%' + str(nw) + 'i / %i') % (
+                    self._idisplay(), self._n)).center(11)
+
+            elif self._state == 'failed':
+                return '... %s (%i / %i)' % (
+                    self._state, self._idisplay(), self._n)
+            else:
+                return '... %s (%i)' % (self._state, self._n)
 
     def _str_percent(self):
-        if self._i is not None and self._n is not None \
-                and self._state == 'working':
+        if self._state == 'working' and self._n is not None and self._n >= 4 \
+                and self._i is not None:
             return '%3.0f%%' % ((100. * self._i) / self._n)
         else:
             return ''
@@ -277,7 +287,8 @@ class Task(object):
             return ''
 
     def _str_bar(self):
-        if self._state == 'working' and self._n and self._i is not None:
+        if self._state == 'working' and self._n is not None and self._n >= 4 \
+                and self._i is not None:
             nb = 20
             fb = nb * float(self._i) / self._n
             ib = int(fb)
@@ -294,10 +305,10 @@ class Task(object):
             return ''
 
     def __str__(self):
-        return '%s%-20s %-11s %-20s%-4s  %s' % (
+        return '%s%-23s %-11s %s%-4s  %s' % (
             self._str_state(),
             self._name,
-            self._str_progress().center(11),
+            self._str_progress(),
             self._str_bar(),
             self._str_percent(),
             self._str_condition())
