@@ -157,6 +157,10 @@ class Trace(Content):
             self.channel, self.extra)
 
     @property
+    def time_span(self):
+        return self.tmin, self.tmax
+
+    @property
     def summary(self):
         return '%s %-16s %s %g' % (
             self.__class__.__name__, self.str_codes, self.str_time_span,
