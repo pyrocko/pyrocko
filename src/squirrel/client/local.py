@@ -7,7 +7,7 @@ from __future__ import absolute_import, print_function
 
 import logging
 
-from pyrocko.guts import List, StringChoice
+from pyrocko.guts import List, StringChoice, String
 from pyrocko import has_paths
 from . import base
 from .. import io
@@ -39,9 +39,14 @@ class LocalData(base.Source, has_paths.HasPaths):
         optional=True,
         help='Content kinds to be added to the Squirrel selection. By default '
              'all known content kinds are added.')
+    regex = String.T(
+        optional=True,
+        help='If not ``None``, files are only included if their paths match '
+             'the given regular expression pattern.')
     format = FileFormat.T(
         default='detect',
         help='Assume files are of given format.')
+
 
     def describe(self):
         return 'localdata'
@@ -50,6 +55,7 @@ class LocalData(base.Source, has_paths.HasPaths):
         squirrel.add(
             self.expand_path(self.paths),
             kinds=self.kinds,
+            regex=self.regex,
             format=self.format,
             check=check,
             progress_viewer=progress_viewer)
