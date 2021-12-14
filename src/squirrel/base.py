@@ -160,6 +160,44 @@ def order_key(order):
     return (order.codes, order.tmin, order.tmax)
 
 
+class Batch(object):
+    '''
+    Batch of waveforms from window wise data extraction.
+
+    Encapsulates state and results yielded for each window in window-wise
+    waveform extraction with the :py:meth:`Squirrel.chopper_waveforms` method.
+
+    *Attributes:*
+
+    .. py:attribute:: tmin
+
+        Start of this time window.
+
+    .. py:attribute:: tmax
+
+        End of this time window.
+
+    .. py:attribute:: i
+
+        Index of this time window in sequence.
+
+    .. py:attribute:: n
+
+        Total number of time windows in sequence.
+
+    .. py:attribute:: traces
+
+        Extracted waveforms for this time window.
+    '''
+
+    def __init__(self, tmin, tmax, i, n, traces):
+        self.tmin = tmin
+        self.tmax = tmax
+        self.i = i
+        self.n = n
+        self.traces = traces
+
+
 class Squirrel(Selection):
     '''
     Prompt, lazy, indexing, caching, dynamic seismological dataset access.
@@ -2094,7 +2132,8 @@ class Squirrel(Selection):
     def chopper_waveforms(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None,
             tinc=None, tpad=0.,
-            want_incomplete=True, degap=True, maxgap=5, maxlap=None,
+            want_incomplete=True, snap_window=False,
+            degap=True, maxgap=5, maxlap=None,
             snap=None, include_last=False, load_data=True,
             accessor_id=None, clear_accessor=True, operator_params=None):
 
@@ -2118,6 +2157,10 @@ class Squirrel(Selection):
             If ``True``, gappy/incomplete traces are included in the result.
         :type want_incomplete:
             bool
+
+        :param snap_window:
+            If ``True``, start time windows at multiples of tinc with respect
+            to system time zero.
 
         :param degap:
             If ``True``, connect traces and remove gaps and overlaps.
@@ -2190,8 +2233,15 @@ class Squirrel(Selection):
                 'waveform promises?')
             return
 
-        tmin = tmin if tmin is not None else self_tmin + tpad
-        tmax = tmax if tmax is not None else self_tmax - tpad
+        if snap_window and tinc is not None:
+            tmin = tmin if tmin is not None else self_tmin
+            tmax = tmax if tmax is not None else self_tmax
+            tmin = math.floor(tmin / tinc) * tinc
+            tmax = math.ceil(tmax / tinc) * tinc
+        else:
+            tmin = tmin if tmin is not None else self_tmin + tpad
+            tmax = tmax if tmax is not None else self_tmax - tpad
+
         tinc = tinc if tinc is not None else tmax - tmin
 
         try:
@@ -2200,8 +2250,14 @@ class Squirrel(Selection):
 
             self._n_choppers_active += 1
 
-            iwin = 0
-            while True:
+            eps = tinc * 1e-6
+            if tinc != 0.0:
+                nwin = int(((tmax - eps) - tmin) / tinc) + 1
+            else:
+                nwin = 1
+
+            for iwin in range(nwin):
+                wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)
                 chopped = []
                 wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)
                 eps = tinc*1e-6
@@ -2222,13 +2278,14 @@ class Squirrel(Selection):
                     accessor_id=accessor_id,
                     operator_params=operator_params)
 
-                for tr in chopped:
-                    tr.wmin = wmin
-                    tr.wmax = wmax
-
                 self.advance_accessor(accessor_id)
 
-                yield chopped
+                yield Batch(
+                    tmin=wmin,
+                    tmax=wmax,
+                    i=iwin,
+                    n=nwin,
+                    traces=chopped)
 
                 iwin += 1
 
