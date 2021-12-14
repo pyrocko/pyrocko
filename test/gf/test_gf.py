@@ -1005,6 +1005,8 @@ class GFTestCase(unittest.TestCase):
                 store.t('{stored:P}+0.1S', args),
                 store.t('{cake:P}', args) + store.t('{vel_surface:10}', args),
                 0.1)
+            assert numeq(
+                store.t('stored:P', args), store.t('gridded:P', args), 1.)
 
     def test_ttt_lsd(self):
         for typ in ['a', 'b']:
@@ -1019,6 +1021,34 @@ class GFTestCase(unittest.TestCase):
 
             ph = store.get_stored_phase(phase_id + '.lsd')
             assert not ph.check_holes()
+
+    def test_ttt_lookup_table(self):
+
+        from pyrocko.spit import SPLookupTable
+        for typ, args in [
+                ('a', [[10*km, 10*km], [1800*km, 2000*km]]),
+                ('b', [[5*km]*2, [10*km]*2, [1800.*km, 2000*km]])]:
+            store_dir = self.get_regional_ttt_store_dir(typ)
+            store = gf.Store(store_dir)
+
+            for phase in ('P', 'S'):
+                sp_tree = store.get_stored_phase(phase)
+
+                sp_lookup = SPLookupTable(
+                    sp_tree,
+                    store.config.nodes(level=-1),
+                    store.config.coords[:-1])
+
+                args = []
+                nargs = 20
+                for bounds in zip(store.config.mins, store.config.maxs):
+                    args.append(num.random.uniform(*bounds, size=nargs))
+                args = num.asarray(args).T
+
+                times_lookup = sp_lookup.lookup(args)
+                times_tree = sp_tree.interpolate_many(args)
+
+                num.testing.assert_array_equal(times_lookup, times_tree)
 
     def dummy_store(self):
 

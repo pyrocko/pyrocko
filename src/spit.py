@@ -5,6 +5,7 @@
 from __future__ import division
 import struct
 import logging
+import time
 import numpy as num
 
 try:
@@ -12,7 +13,7 @@ try:
 except NameError:
     pass
 
-logger = logging.getLogger('pyrocko.spit')
+logger = logging.getLogger(__name__)
 
 or_ = num.logical_or
 and_ = num.logical_and
@@ -499,6 +500,53 @@ class SPTree(object):
 
         if plt:
             plt.show()
+
+
+class SPLookupTable:
+
+    def __init__(self, sp_tree, nodes, coords):
+        """Calculate a static lookup table.
+
+        :param ranges: Ranges in [(min, max, delta), ...]
+                       for each dimension.
+        :type ranges: list[tuple[float, float, float]]
+        """
+        self.sp_tree = sp_tree
+        self.nodes = nodes
+        self.coords = coords
+        self.ndim = nodes.shape[1]
+        self.shape = tuple(coord.size for coord in coords)
+
+        self.bounds = (nodes.min(axis=0), nodes.max(axis=0))
+
+        self._create_lookup_table()
+
+    def _create_lookup_table(self):
+        logger.debug('Creating lookup table, hang in there.')
+
+        t = time.time()
+        self.lookup_table = self.sp_tree.interpolate_many(self.nodes)\
+            .reshape(*self.shape)
+
+        logger.debug('Created lookup table in %.2f s' % (time.time() - t))
+
+    def lookup(self, index_args):
+        index_args = num.asarray(index_args)
+        if index_args.ndim == 1:
+            return self.lookup(index_args[num.newaxis, :])
+
+        if index_args.shape[1] != self.ndim:
+            raise ValueError(
+                'Bad shape %s of input coordinates, expected %s'
+                % (index_args.shape, self.ndim))
+
+        indices = []
+        for dim in range(self.ndim):
+            indices.append(num.argmin(
+                num.abs(self.coords[dim] - index_args[:, dim][:, num.newaxis]),
+                axis=1))
+
+        return self.lookup_table[indices]
 
 
 def getset(d, k, f, addargs):

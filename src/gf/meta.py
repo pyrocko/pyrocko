@@ -381,6 +381,7 @@ _ppat = r'(' \
     r'|vel_surface:' + _fpat + \
     r'|vel:' + _fpat + \
     r'|stored:' + _spat + \
+    r'|gridded:' + _spat + \
     r')'
 
 
@@ -421,6 +422,7 @@ class Timing(SObject):
     Phase definitions can be specified in either of the following ways:
 
     * ``'stored:PHASE_ID'`` - retrieves value from stored travel time table
+    * ``'gridded:PHASE_ID'`` - retrieves value from gridded travel time table
     * ``'cake:CAKE_PHASE_DEF'`` - evaluates first arrival of phase with cake
       (see :py:class:`pyrocko.cake.PhaseDef`)
     * ``'vel_surface:VELOCITY'`` - arrival according to surface distance /
@@ -558,7 +560,7 @@ class Timing(SObject):
                 else:
                     times += offset
 
-                times = num.squeeze(times)
+                times = times.squeeze()
                 if times.ndim == 1:
                     if self.select == 'first':
                         return num.nanmin(times)

@@ -1159,6 +1159,7 @@ class Store(BaseStore):
         self._decimated = {}
         self._extra = {}
         self._phases = {}
+        self._gridded_phases = {}
         for decimate in range(2, 9):
             if os.path.isdir(self._decimated_store_dir(decimate)):
                 self._decimated[decimate] = None
@@ -1579,6 +1580,24 @@ class Store(BaseStore):
 
         return self._phases[phase_id]
 
+    def get_gridded_phase(self, phase_id):
+        '''
+        Get gridded phase from GF store.
+
+        :returns: Phase information
+        :rtype: :py:class:`pyrocko.spit.SPLookupTable`
+        '''
+        sp_tree = self.get_stored_phase(phase_id)
+
+        if phase_id not in self._gridded_phases:
+            self._gridded_phases[phase_id] = \
+                spit.SPLookupTable(
+                    sp_tree,
+                    self.config.nodes(level=-1),
+                    self.config.coords[:-1])
+
+        return self._gridded_phases[phase_id]
+
     def get_phase(self, phase_def):
         toks = phase_def.split(':', 1)
         if len(toks) == 2:
@@ -1591,6 +1610,14 @@ class Store(BaseStore):
 
             def evaluate(args):
                 return spt(num.transpose(args))
+
+            return evaluate
+
+        elif provider == 'gridded':
+            spt_lookup = self.get_gridded_phase(phase_def)
+
+            def evaluate(args):
+                return spt_lookup.lookup(num.transpose(args))
 
             return evaluate
 
