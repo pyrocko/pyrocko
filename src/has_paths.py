@@ -49,12 +49,18 @@ class HasPaths(Object):
                     if isinstance(ele, HasPaths):
                         yield ele
 
+    def effective_path_prefix(self):
+        return self.path_prefix or self._parent_path_prefix
+
     def set_basepath(self, basepath, parent_path_prefix=None):
         self._basepath = basepath
         self._parent_path_prefix = parent_path_prefix
         for val in self.ichildren():
             val.set_basepath(
-                basepath, self.path_prefix or self._parent_path_prefix)
+                basepath, self.effective_path_prefix())
+
+    def set_basepath_from(self, other):
+        self.set_basepath(other.get_basepath(), other.effective_path_prefix())
 
     def get_basepath(self):
         assert self._basepath is not None
@@ -71,8 +77,7 @@ class HasPaths(Object):
                 self._basepath, new_basepath), self.path_prefix))
 
         for val in self.ichildren():
-            val.change_basepath(
-                new_basepath, self.path_prefix or self._parent_path_prefix)
+            val.change_basepath(new_basepath, self.effective_path_prefix())
 
         self._basepath = new_basepath
 
@@ -83,7 +88,7 @@ class HasPaths(Object):
             def extra(path):
                 return path
 
-        path_prefix = self.path_prefix or self._parent_path_prefix
+        path_prefix = self.effective_path_prefix()
 
         if path is None:
             return None
