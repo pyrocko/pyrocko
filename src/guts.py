@@ -77,8 +77,8 @@ g_guessable_xmlns = {}
 guts_types = [
     'Object', 'SObject', 'String', 'Unicode', 'Int', 'Float',
     'Complex', 'Bool', 'Timestamp', 'DateTimestamp', 'StringPattern',
-    'UnicodePattern', 'StringChoice', 'List', 'Dict', 'Tuple', 'Union',
-    'Choice', 'Any']
+    'UnicodePattern', 'StringChoice', 'IntChoice', 'List', 'Dict', 'Tuple',
+    'Union', 'Choice', 'Any']
 
 us_to_cc_regex = re.compile(r'([a-z])_([a-z])')
 
@@ -1508,6 +1508,37 @@ class StringChoice(String):
         def class_help_string(cls):
             dcls = cls.dummy_cls
             doc = dcls.__doc_template__ or StringChoice.__doc_template__
+            return doc % {'choices': repr(dcls.choices)}
+
+
+class IntChoice(Int):
+
+    '''
+    Any ``int`` out of ``%(choices)s``.
+    '''
+
+    dummy_for = int
+    choices = []
+
+    class __T(Int.T):
+        def __init__(self, choices=None, *args, **kwargs):
+            Int.T.__init__(self, *args, **kwargs)
+
+            if choices is not None:
+                self.choices = choices
+            else:
+                self.choices = self.dummy_cls.choices
+
+        def validate_extra(self, val):
+            if val not in self.choices:
+                raise ValidationError(
+                    '%s: %i is not a valid choice out of %s' % (
+                        self.xname(), val, repr(self.choices)))
+
+        @classmethod
+        def class_help_string(cls):
+            dcls = cls.dummy_cls
+            doc = dcls.__doc_template__ or IntChoice.__doc_template__
             return doc % {'choices': repr(dcls.choices)}
 
 
