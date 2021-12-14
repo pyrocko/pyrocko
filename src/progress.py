@@ -6,11 +6,17 @@ import time
 from .get_terminal_size import get_terminal_size
 
 
-spinner = u'\u25dc\u25dd\u25de\u25df'
+# spinner = u'\u25dc\u25dd\u25de\u25df'
+# spinner = '⣾⣽⣻⢿⡿⣟⣯⣷'
+spinner = "◴◷◶◵"
 skull = u'\u2620'
 check = u'\u2714'
+cross = u'\u2716'
 bar = u'[- ]'
 blocks = u'\u2588\u2589\u258a\u258b\u258c\u258d\u258e\u258f '
+
+symbol_done = check
+symbol_failed = cross  # skull
 
 ansi_up = u'\033[%iA'
 ansi_down = u'\033[%iB'
@@ -105,7 +111,7 @@ class TerminalStatusWindow(object):
         self._resize(nlines)
         self._start_show()
 
-        for iline, line in enumerate(lines):
+        for iline, line in enumerate(reversed(lines)):
             if len(line) > sx - 1:
                 line = line[:sx-1]
 
@@ -156,7 +162,12 @@ class Task(object):
         self._group = group
 
     def __call__(self, it):
-        err = False
+        try:
+            self._n = len(it)
+        except TypeError:
+            self._n = None
+
+        clean = False
         try:
             n = 0
             for obj in it:
@@ -165,16 +176,13 @@ class Task(object):
                 n += 1
 
             self.update(n)
-
-        except Exception:
-            err = True
-            raise
+            clean = True
 
         finally:
-            if err:
-                self.fail()
-            else:
+            if clean:
                 self.done()
+            else:
+                self.fail()
 
     def log(self, s):
         if self._logger is not None:
@@ -233,23 +241,34 @@ class Task(object):
             self._ispin += 1
             return spinner[self._ispin % len(spinner)] + ' '
         elif s == 'done':
-            return ''  # check
+            return symbol_done + ' '
         elif s == 'failed':
-            return skull + ' '
+            return symbol_failed + ' '
         else:
             return '? '
+
+    def _idisplay(self):
+        i = self._i + 1
+        if self._n is not None and i > self._n:
+            i = self._n
+        return i
 
     def _str_progress(self):
         if self._i is None:
             return self._state
         elif self._n is None:
-            return '%i' % self._i
+            return '%i' % self._idisplay()
         else:
             nw = len(str(self._n))
-            return ('%' + str(nw) + 'i / %i%s') % (
-                self._i, self._n,
-                '  %3.0f%%' % ((100. * self._i) / self._n)
-                if self._state == 'working' else '')
+            return ('%' + str(nw) + 'i / %i') % (
+                self._idisplay(), self._n)
+
+    def _str_percent(self):
+        if self._i is not None and self._n is not None \
+                and self._state == 'working':
+            return '%3.0f%%' % ((100. * self._i) / self._n)
+        else:
+            return ''
 
     def _str_condition(self):
         if self._condition:
@@ -263,6 +282,8 @@ class Task(object):
             fb = nb * float(self._i) / self._n
             ib = int(fb)
             ip = int((fb - ib) * (len(blocks)-1))
+            if ib == 0 and ip == 0:
+                ip = 1  # indication of start
             s = blocks[0] * ib
             if ib < nb:
                 s += blocks[-1-ip] + (nb - ib - 1) * blocks[-1] + blocks[-2]
@@ -273,14 +294,13 @@ class Task(object):
             return ''
 
     def __str__(self):
-        return '%s%s: %s' % (
+        return '%s%-20s %-11s %-20s%-4s  %s' % (
             self._str_state(),
             self._name,
-            ' '.join([
-                self._str_progress(),
-                self._str_bar(),
-                self._str_condition(),
-                ]))
+            self._str_progress().center(11),
+            self._str_bar(),
+            self._str_percent(),
+            self._str_condition())
 
 
 class Progress(object):
