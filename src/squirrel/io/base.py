@@ -133,7 +133,6 @@ def iload(
         format='detect',
         database=None,
         check=True,
-        commit=True,
         skip_unchanged=False,
         content=g_content_kinds,
         show_progress=True):
@@ -173,12 +172,6 @@ def iload(
         files to debunk modified files (pessimistic mode), or ``False`` to
         deactivate checks (optimistic mode).
     :type check:
-        bool
-
-    :param commit:
-        Flag, whether to commit updated information to the meta-information
-        database.
-    :type commit:
         bool
 
     :param skip_unchanged:
@@ -261,7 +254,12 @@ def iload(
 
     n_files = 0
     tcommit = time.time()
+    if database:
+        transaction = database.transaction()
+        transaction.begin()
+
     database_modified = False
+
     for (format, path), old_nuts in it:
         if task is not None:
             condition = '(nuts: %i from file, %i from cache)\n  %s' % (
@@ -269,11 +267,12 @@ def iload(
             task.update(n_files, condition)
 
         n_files += 1
-        if database and commit and database_modified:
+        if database and database_modified:
             tnow = time.time()
             if tnow - tcommit > 20. or n_files % 1000 == 0:
-                database.commit()
+                transaction.commit()
                 tcommit = tnow
+                transaction.begin()
 
         try:
             if check and old_nuts and old_nuts[0].file_modified():
@@ -335,13 +334,13 @@ def iload(
                         nut.file_mtime = mtime
                         nut.file_size = size
 
-                database.dig(nuts)
+                database.dig(nuts, transaction=transaction)
                 database_modified = True
 
         except FileLoadError:
             logger.error('An error occured while reading file: %s' % path)
             if database:
-                database.reset(path)
+                database.reset(path, transaction=transaction)
                 database_modified = True
 
     if task is not None:
@@ -350,8 +349,8 @@ def iload(
         task.done(condition)
 
     if database:
-        if commit and database_modified:
-            database.commit()
+        transaction.commit()
+        transaction.close()
 
         if temp_selection:
             del temp_selection
@@ -359,6 +358,7 @@ def iload(
     logger.debug(
         'Loading accomplished: from cache: %i, from files: %i, files: %i' % (
             n_db, n_load, n_files))
+
 
 
 __all__ = [

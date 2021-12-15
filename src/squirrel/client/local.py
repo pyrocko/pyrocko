@@ -47,7 +47,6 @@ class LocalData(base.Source, has_paths.HasPaths):
         default='detect',
         help='Assume files are of given format.')
 
-
     def describe(self):
         return 'localdata'
 

@@ -161,6 +161,15 @@ class Task(object):
         self._tcreate = time.time()
         self._group = group
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, tb):
+        if type is None:
+            self.done()
+        else:
+            self.fail()
+
     def __call__(self, it):
         try:
             self._n = len(it)

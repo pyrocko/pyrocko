@@ -323,7 +323,6 @@ class Squirrel(Selection):
             persistent = env.persistent
 
         Selection.__init__(self, database=database, persistent=persistent)
-        c = self._conn
         self._content_caches = {
             'waveform': cache.ContentCache(),
             'default': cache.ContentCache()}
@@ -342,7 +341,12 @@ class Squirrel(Selection):
             'kind_codes_count': self.name + '_kind_codes_count',
             'coverage': self.name + '_coverage'})
 
-        c.execute(self._register_table(self._sql(
+        with self.transaction() as cursor:
+            self._create_tables_squirrel(cursor)
+
+    def _create_tables_squirrel(self, cursor):
+
+        cursor.execute(self._register_table(self._sql(
             '''
                 CREATE TABLE IF NOT EXISTS %(db)s.%(nuts)s (
                     nut_id integer PRIMARY KEY,
@@ -358,44 +362,44 @@ class Squirrel(Selection):
                     kscale integer)
             ''')))
 
-        c.execute(self._register_table(self._sql(
+        cursor.execute(self._register_table(self._sql(
             '''
                 CREATE TABLE IF NOT EXISTS %(db)s.%(kind_codes_count)s (
                     kind_codes_id integer PRIMARY KEY,
                     count integer)
             ''')))
 
-        c.execute(self._sql(
+        cursor.execute(self._sql(
             '''
                 CREATE UNIQUE INDEX IF NOT EXISTS %(db)s.%(nuts)s_file_element
                     ON %(nuts)s (file_id, file_segment, file_element)
             '''))
 
-        c.execute(self._sql(
+        cursor.execute(self._sql(
             '''
                 CREATE INDEX IF NOT EXISTS %(db)s.%(nuts)s_index_file_id
                 ON %(nuts)s (file_id)
             '''))
 
-        c.execute(self._sql(
+        cursor.execute(self._sql(
             '''
                 CREATE INDEX IF NOT EXISTS %(db)s.%(nuts)s_index_tmin_seconds
                 ON %(nuts)s (kind_id, tmin_seconds)
             '''))
 
-        c.execute(self._sql(
+        cursor.execute(self._sql(
             '''
                 CREATE INDEX IF NOT EXISTS %(db)s.%(nuts)s_index_tmax_seconds
                 ON %(nuts)s (kind_id, tmax_seconds)
             '''))
 
-        c.execute(self._sql(
+        cursor.execute(self._sql(
             '''
                 CREATE INDEX IF NOT EXISTS %(db)s.%(nuts)s_index_kscale
                 ON %(nuts)s (kind_id, kscale, tmin_seconds)
             '''))
 
-        c.execute(self._sql(
+        cursor.execute(self._sql(
             '''
                 CREATE TRIGGER IF NOT EXISTS %(db)s.%(nuts)s_delete_nuts
                 BEFORE DELETE ON main.files FOR EACH ROW
@@ -405,7 +409,7 @@ class Squirrel(Selection):
             '''))
 
         # trigger only on size to make silent update of mtime possible
-        c.execute(self._sql(
+        cursor.execute(self._sql(
             '''
                 CREATE TRIGGER IF NOT EXISTS %(db)s.%(nuts)s_delete_nuts2
                 BEFORE UPDATE OF size ON main.files FOR EACH ROW
@@ -414,7 +418,7 @@ class Squirrel(Selection):
                 END
             '''))
 
-        c.execute(self._sql(
+        cursor.execute(self._sql(
             '''
                 CREATE TRIGGER IF NOT EXISTS
                     %(db)s.%(file_states)s_delete_files
@@ -424,7 +428,7 @@ class Squirrel(Selection):
                 END
             '''))
 
-        c.execute(self._sql(
+        cursor.execute(self._sql(
             '''
                 CREATE TRIGGER IF NOT EXISTS %(db)s.%(nuts)s_inc_kind_codes
                 BEFORE INSERT ON %(nuts)s FOR EACH ROW
@@ -438,7 +442,7 @@ class Squirrel(Selection):
                 END
             '''))
 
-        c.execute(self._sql(
+        cursor.execute(self._sql(
             '''
                 CREATE TRIGGER IF NOT EXISTS %(db)s.%(nuts)s_dec_kind_codes
                 BEFORE DELETE ON %(nuts)s FOR EACH ROW
@@ -450,7 +454,7 @@ class Squirrel(Selection):
                 END
             '''))
 
-        c.execute(self._register_table(self._sql(
+        cursor.execute(self._register_table(self._sql(
             '''
                 CREATE TABLE IF NOT EXISTS %(db)s.%(coverage)s (
                     kind_codes_id integer,
@@ -459,13 +463,13 @@ class Squirrel(Selection):
                     step integer)
             ''')))
 
-        c.execute(self._sql(
+        cursor.execute(self._sql(
             '''
                 CREATE UNIQUE INDEX IF NOT EXISTS %(db)s.%(coverage)s_time
                     ON %(coverage)s (kind_codes_id, time_seconds, time_offset)
             '''))
 
-        c.execute(self._sql(
+        cursor.execute(self._sql(
             '''
                 CREATE TRIGGER IF NOT EXISTS %(db)s.%(nuts)s_add_coverage
                 AFTER INSERT ON %(nuts)s FOR EACH ROW
@@ -503,7 +507,7 @@ class Squirrel(Selection):
                 END
             '''))
 
-        c.execute(self._sql(
+        cursor.execute(self._sql(
             '''
                 CREATE TRIGGER IF NOT EXISTS %(db)s.%(nuts)s_remove_coverage
                 BEFORE DELETE ON %(nuts)s FOR EACH ROW
@@ -722,32 +726,34 @@ class Squirrel(Selection):
             pass
 
     def _update_nuts(self):
-        task = make_task('Aggregating selection')
-        self._conn.set_progress_handler(task.update, 100000)
-        nrows = self._conn.execute(self._sql(
-            '''
-                INSERT INTO %(db)s.%(nuts)s
-                SELECT NULL,
-                    nuts.file_id, nuts.file_segment, nuts.file_element,
-                    nuts.kind_id, nuts.kind_codes_id,
-                    nuts.tmin_seconds, nuts.tmin_offset,
-                    nuts.tmax_seconds, nuts.tmax_offset,
-                    nuts.kscale
-                FROM %(db)s.%(file_states)s
-                INNER JOIN nuts
-                    ON %(db)s.%(file_states)s.file_id == nuts.file_id
-                INNER JOIN kind_codes
-                    ON nuts.kind_codes_id ==
-                       kind_codes.kind_codes_id
-                WHERE %(db)s.%(file_states)s.file_state != 2
-                    AND (((1 << kind_codes.kind_id)
-                        & %(db)s.%(file_states)s.kind_mask) != 0)
-            ''')).rowcount
+        transaction = self.transaction()
+        with make_task('Aggregating selection') as task, \
+                transaction as cursor:
 
-        task.update(nrows)
-        self._set_file_states_known()
-        self._conn.set_progress_handler(None, 0)
-        task.done()
+            self._conn.set_progress_handler(task.update, 100000)
+            nrows = cursor.execute(self._sql(
+                '''
+                    INSERT INTO %(db)s.%(nuts)s
+                    SELECT NULL,
+                        nuts.file_id, nuts.file_segment, nuts.file_element,
+                        nuts.kind_id, nuts.kind_codes_id,
+                        nuts.tmin_seconds, nuts.tmin_offset,
+                        nuts.tmax_seconds, nuts.tmax_offset,
+                        nuts.kscale
+                    FROM %(db)s.%(file_states)s
+                    INNER JOIN nuts
+                        ON %(db)s.%(file_states)s.file_id == nuts.file_id
+                    INNER JOIN kind_codes
+                        ON nuts.kind_codes_id ==
+                           kind_codes.kind_codes_id
+                    WHERE %(db)s.%(file_states)s.file_state != 2
+                        AND (((1 << kind_codes.kind_id)
+                            & %(db)s.%(file_states)s.kind_mask) != 0)
+                ''')).rowcount
+
+            task.update(nrows)
+            self._set_file_states_known(transaction)
+            self._conn.set_progress_handler(None, 0)
 
     def add_source(self, source, check=True, progress_viewer='terminal'):
         '''
@@ -1051,87 +1057,90 @@ class Squirrel(Selection):
         def main_nuts(s):
             return s % names_main_nuts
 
-        # modify selection and main
-        for sql_subst in [
-                self._sql, main_nuts]:
+        with self.transaction() as cursor:
+            # modify selection and main
+            for sql_subst in [
+                    self._sql, main_nuts]:
 
-            cond = []
-            args = []
+                cond = []
+                args = []
 
-            self._timerange_sql(tmin, tmax, kind, cond, args, False)
+                self._timerange_sql(tmin, tmax, kind, cond, args, False)
 
-            if codes is not None:
-                pats = codes_patterns_for_kind(kind, codes)
-                if pats:
-                    cond.append(
-                        ' ( %s ) ' % ' OR '.join(
-                            ('kind_codes.codes GLOB ?',) * len(pats)))
-                    args.extend(separator.join(pat) for pat in pats)
+                if codes is not None:
+                    pats = codes_patterns_for_kind(kind, codes)
+                    if pats:
+                        cond.append(
+                            ' ( %s ) ' % ' OR '.join(
+                                ('kind_codes.codes GLOB ?',) * len(pats)))
+                        args.extend(separator.join(pat) for pat in pats)
 
-            if path is not None:
-                cond.append('files.path == ?')
-                args.append(path)
+                if path is not None:
+                    cond.append('files.path == ?')
+                    args.append(path)
 
-            sql = sql_subst('''
-                SELECT
-                    %(db)s.%(nuts)s.nut_id,
-                    %(db)s.%(nuts)s.tmin_seconds,
-                    %(db)s.%(nuts)s.tmin_offset,
-                    %(db)s.%(nuts)s.tmax_seconds,
-                    %(db)s.%(nuts)s.tmax_offset,
-                    kind_codes.deltat
-                FROM files
-                INNER JOIN %(db)s.%(nuts)s
-                    ON files.file_id == %(db)s.%(nuts)s.file_id
-                INNER JOIN kind_codes
-                    ON %(db)s.%(nuts)s.kind_codes_id == kind_codes.kind_codes_id
-                WHERE ''' + ' AND '.join(cond))  # noqa
-
-            insert = []
-            delete = []
-            for row in self._conn.execute(sql, args):
-                nut_id, nut_tmin_seconds, nut_tmin_offset, \
-                    nut_tmax_seconds, nut_tmax_offset, nut_deltat = row
-
-                nut_tmin = model.tjoin(
-                    nut_tmin_seconds, nut_tmin_offset, nut_deltat)
-                nut_tmax = model.tjoin(
-                    nut_tmax_seconds, nut_tmax_offset, nut_deltat)
-
-                if nut_tmin < tmax and tmin < nut_tmax:
-                    if nut_tmin < tmin:
-                        insert.append((
-                            nut_tmin_seconds, nut_tmin_offset,
-                            tmin_seconds, tmin_offset,
-                            model.tscale_to_kscale(
-                                tmin_seconds - nut_tmin_seconds),
-                            nut_id))
-
-                    if tmax < nut_tmax:
-                        insert.append((
-                            tmax_seconds, tmax_offset,
-                            nut_tmax_seconds, nut_tmax_offset,
-                            model.tscale_to_kscale(
-                                nut_tmax_seconds - tmax_seconds),
-                            nut_id))
-
-                    delete.append((nut_id,))
-
-            sql_add = '''
-                INSERT INTO %(db)s.%(nuts)s (
-                        file_id, file_segment, file_element, kind_id,
-                        kind_codes_id, tmin_seconds, tmin_offset,
-                        tmax_seconds, tmax_offset, kscale )
+                sql = sql_subst('''
                     SELECT
-                        file_id, file_segment, file_element,
-                        kind_id, kind_codes_id, ?, ?, ?, ?, ?
-                    FROM %(db)s.%(nuts)s
-                    WHERE nut_id == ?
-            '''
-            self._conn.executemany(sql_subst(sql_add), insert)
+                        %(db)s.%(nuts)s.nut_id,
+                        %(db)s.%(nuts)s.tmin_seconds,
+                        %(db)s.%(nuts)s.tmin_offset,
+                        %(db)s.%(nuts)s.tmax_seconds,
+                        %(db)s.%(nuts)s.tmax_offset,
+                        kind_codes.deltat
+                    FROM files
+                    INNER JOIN %(db)s.%(nuts)s
+                        ON files.file_id == %(db)s.%(nuts)s.file_id
+                    INNER JOIN kind_codes
+                        ON %(db)s.%(nuts)s.kind_codes_id == kind_codes.kind_codes_id
+                    WHERE ''' + ' AND '.join(cond))  # noqa
 
-            sql_delete = '''DELETE FROM %(db)s.%(nuts)s WHERE nut_id == ?'''
-            self._conn.executemany(sql_subst(sql_delete), delete)
+                insert = []
+                delete = []
+                for row in cursor.execute(sql, args):
+                    nut_id, nut_tmin_seconds, nut_tmin_offset, \
+                        nut_tmax_seconds, nut_tmax_offset, nut_deltat = row
+
+                    nut_tmin = model.tjoin(
+                        nut_tmin_seconds, nut_tmin_offset, nut_deltat)
+                    nut_tmax = model.tjoin(
+                        nut_tmax_seconds, nut_tmax_offset, nut_deltat)
+
+                    if nut_tmin < tmax and tmin < nut_tmax:
+                        if nut_tmin < tmin:
+                            insert.append((
+                                nut_tmin_seconds, nut_tmin_offset,
+                                tmin_seconds, tmin_offset,
+                                model.tscale_to_kscale(
+                                    tmin_seconds - nut_tmin_seconds),
+                                nut_id))
+
+                        if tmax < nut_tmax:
+                            insert.append((
+                                tmax_seconds, tmax_offset,
+                                nut_tmax_seconds, nut_tmax_offset,
+                                model.tscale_to_kscale(
+                                    nut_tmax_seconds - tmax_seconds),
+                                nut_id))
+
+                        delete.append((nut_id,))
+
+                sql_add = '''
+                    INSERT INTO %(db)s.%(nuts)s (
+                            file_id, file_segment, file_element, kind_id,
+                            kind_codes_id, tmin_seconds, tmin_offset,
+                            tmax_seconds, tmax_offset, kscale )
+                        SELECT
+                            file_id, file_segment, file_element,
+                            kind_id, kind_codes_id, ?, ?, ?, ?, ?
+                        FROM %(db)s.%(nuts)s
+                        WHERE nut_id == ?
+                '''
+                cursor.executemany(sql_subst(sql_add), insert)
+
+                sql_delete = '''
+                    DELETE FROM %(db)s.%(nuts)s WHERE nut_id == ?
+                '''
+                cursor.executemany(sql_subst(sql_delete), delete)
 
     def get_time_span(self, kinds=None):
         '''

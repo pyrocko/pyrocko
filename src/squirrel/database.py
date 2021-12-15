@@ -46,6 +46,56 @@ def get_database(path=None):
     return g_databases[path]
 
 
+class Transaction(object):
+    def __init__(self, conn, mode='immediate'):
+        self.cursor = conn.cursor()
+        assert mode in ('deferred', 'immediate', 'exclusive')
+        self.mode = mode
+        self.depth = 0
+        self.rollback_wanted = False
+
+    def begin(self):
+        if self.depth == 0:
+            self.cursor.execute('BEGIN %s' % self.mode.upper())
+
+        self.depth += 1
+
+    def commit(self):
+        self.depth -= 1
+        if self.depth == 0:
+            if not self.rollback_wanted:
+                self.cursor.execute('COMMIT')
+            else:
+                self.cursor.execute('ROLLBACK')
+                logger.debug('Deferred rollback executed.')
+                self.rollback_wanted = False
+
+    def rollback(self):
+        self.depth -= 1
+        if self.depth == 0:
+            self.cursor.execute('ROLLBACK')
+            self.rollback_wanted = False
+        else:
+            logger.debug('Deferred rollback scheduled.')
+            self.rollback_wanted = True
+
+    def close(self):
+        self.cursor.close()
+
+    def __enter__(self):
+        self.begin()
+        return self.cursor
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type is None:
+            self.commit()
+        else:
+            self.rollback()
+
+        if self.depth == 0:
+            self.close()
+
+
 class Database(object):
     '''
     Shared meta-information database used by Squirrel.
@@ -56,7 +106,7 @@ class Database(object):
         try:
             util.ensuredirs(database_path)
             logger.debug('Opening connection to database: %s' % database_path)
-            self._conn = sqlite3.connect(database_path)
+            self._conn = sqlite3.connect(database_path, isolation_level=None)
         except sqlite3.OperationalError:
             raise error.SquirrelError(
                 'Cannot connect to database: %s' % database_path)
@@ -64,16 +114,19 @@ class Database(object):
         self._conn.text_factory = str
         self._tables = {}
 
-        self._initialize_db()
-        self._need_commit = False
         if log_statements:
             self._conn.set_trace_callback(self._log_statement)
+
+        self._initialize_db()
 
     def _log_statement(self, statement):
         logger.debug(statement)
 
     def get_connection(self):
         return self._conn
+
+    def transaction(self, mode='immediate'):
+        return Transaction(self._conn, mode)
 
     def _register_table(self, s):
         m = re.search(r'(\S+)\s*\(([^)]+)\)', s)
@@ -88,22 +141,22 @@ class Database(object):
         return s
 
     def _initialize_db(self):
-        c = self._conn
-        with c:
+        with self.transaction() as cursor:
+            cursor.execute(
+                '''PRAGMA recursive_triggers = true''')
+
             if 2 == len(list(
-                    c.execute(
+                    cursor.execute(
                         '''
                             SELECT name FROM sqlite_master
                                 WHERE type = 'table' AND name IN (
                                     'files',
                                     'persistent')
                         '''))):
+
                 return
 
-            c.execute(
-                '''PRAGMA recursive_triggers = true''')
-
-            c.execute(self._register_table(
+            cursor.execute(self._register_table(
                 '''
                     CREATE TABLE IF NOT EXISTS files (
                         file_id integer PRIMARY KEY,
@@ -113,13 +166,13 @@ class Database(object):
                         size integer)
                 '''))
 
-            c.execute(
+            cursor.execute(
                 '''
                     CREATE UNIQUE INDEX IF NOT EXISTS index_files_path
                     ON files (path)
                 ''')
 
-            c.execute(self._register_table(
+            cursor.execute(self._register_table(
                 '''
                     CREATE TABLE IF NOT EXISTS nuts (
                         nut_id integer PRIMARY KEY AUTOINCREMENT,
@@ -135,13 +188,13 @@ class Database(object):
                         kscale integer)
                 '''))
 
-            c.execute(
+            cursor.execute(
                 '''
                     CREATE UNIQUE INDEX IF NOT EXISTS index_nuts_file_element
                     ON nuts (file_id, file_segment, file_element)
                 ''')
 
-            c.execute(self._register_table(
+            cursor.execute(self._register_table(
                 '''
                     CREATE TABLE IF NOT EXISTS kind_codes (
                         kind_codes_id integer PRIMARY KEY,
@@ -150,26 +203,26 @@ class Database(object):
                         deltat float)
                 '''))
 
-            c.execute(
+            cursor.execute(
                 '''
                     CREATE UNIQUE INDEX IF NOT EXISTS index_kind_codes
                     ON kind_codes (kind_id, codes, deltat)
                 ''')
 
-            c.execute(self._register_table(
+            cursor.execute(self._register_table(
                 '''
                     CREATE TABLE IF NOT EXISTS kind_codes_count (
                         kind_codes_id integer PRIMARY KEY,
                         count integer)
                 '''))
 
-            c.execute(
+            cursor.execute(
                 '''
                     CREATE INDEX IF NOT EXISTS index_nuts_file_id
                     ON nuts (file_id)
                 ''')
 
-            c.execute(
+            cursor.execute(
                 '''
                     CREATE TRIGGER IF NOT EXISTS delete_nuts_on_delete_file
                     BEFORE DELETE ON files FOR EACH ROW
@@ -179,7 +232,7 @@ class Database(object):
                 ''')
 
             # trigger only on size to make silent update of mtime possible
-            c.execute(
+            cursor.execute(
                 '''
                     CREATE TRIGGER IF NOT EXISTS delete_nuts_on_update_file
                     BEFORE UPDATE OF size ON files FOR EACH ROW
@@ -188,7 +241,7 @@ class Database(object):
                     END
                 ''')
 
-            c.execute(
+            cursor.execute(
                 '''
                     CREATE TRIGGER IF NOT EXISTS increment_kind_codes
                     BEFORE INSERT ON nuts FOR EACH ROW
@@ -201,7 +254,7 @@ class Database(object):
                     END
                 ''')
 
-            c.execute(
+            cursor.execute(
                 '''
                     CREATE TRIGGER IF NOT EXISTS decrement_kind_codes
                     BEFORE DELETE ON nuts FOR EACH ROW
@@ -212,13 +265,13 @@ class Database(object):
                     END
                 ''')
 
-            c.execute(self._register_table(
+            cursor.execute(self._register_table(
                 '''
                     CREATE TABLE IF NOT EXISTS persistent (
                         name text UNIQUE)
                 '''))
 
-    def dig(self, nuts):
+    def dig(self, nuts, transaction=None):
         '''
         Store or update content meta-information.
 
@@ -237,7 +290,6 @@ class Database(object):
         if not nuts:
             return
 
-        c = self._conn.cursor()
         files = set()
         kind_codes = set()
         for nut in nuts:
@@ -248,40 +300,40 @@ class Database(object):
                 nut.file_size))
             kind_codes.add((nut.kind_id, nut.codes, nut.deltat or 0.0))
 
-        c.executemany(
-            'INSERT OR IGNORE INTO files VALUES (NULL,?,?,?,?)', files)
+        with (transaction or self.transaction()) as c:
 
-        c.executemany(
-            '''UPDATE files SET
-                format = ?, mtime = ?, size = ?
-                WHERE path == ?
-            ''',
-            ((x[1], x[2], x[3], x[0]) for x in files))
+            c.executemany(
+                'INSERT OR IGNORE INTO files VALUES (NULL,?,?,?,?)', files)
 
-        c.executemany(
-            'INSERT OR IGNORE INTO kind_codes VALUES (NULL,?,?,?)', kind_codes)
+            c.executemany(
+                '''UPDATE files SET
+                    format = ?, mtime = ?, size = ?
+                    WHERE path == ?
+                ''',
+                ((x[1], x[2], x[3], x[0]) for x in files))
 
-        c.executemany(
-            '''
-                INSERT INTO nuts VALUES
-                    (NULL, (
-                        SELECT file_id FROM files
-                        WHERE path == ?
-                     ),?,?,?,
-                     (
-                        SELECT kind_codes_id FROM kind_codes
-                        WHERE kind_id == ? AND codes == ? AND deltat == ?
-                     ), ?,?,?,?,?)
-            ''',
-            ((nut.file_path, nut.file_segment, nut.file_element,
-              nut.kind_id,
-              nut.kind_id, nut.codes, nut.deltat or 0.0,
-              nut.tmin_seconds, nut.tmin_offset,
-              nut.tmax_seconds, nut.tmax_offset,
-              nut.kscale) for nut in nuts))
+            c.executemany(
+                'INSERT OR IGNORE INTO kind_codes VALUES (NULL,?,?,?)',
+                kind_codes)
 
-        self._need_commit = True
-        c.close()
+            c.executemany(
+                '''
+                    INSERT INTO nuts VALUES
+                        (NULL, (
+                            SELECT file_id FROM files
+                            WHERE path == ?
+                         ),?,?,?,
+                         (
+                            SELECT kind_codes_id FROM kind_codes
+                            WHERE kind_id == ? AND codes == ? AND deltat == ?
+                         ), ?,?,?,?,?)
+                ''',
+                ((nut.file_path, nut.file_segment, nut.file_element,
+                  nut.kind_id,
+                  nut.kind_id, nut.codes, nut.deltat or 0.0,
+                  nut.tmin_seconds, nut.tmin_offset,
+                  nut.tmax_seconds, nut.tmax_offset,
+                  nut.kscale) for nut in nuts))
 
     def undig(self, path):
         sql = '''
@@ -361,11 +413,6 @@ class Database(object):
             selection.add(paths, show_progress=show_progress)
         return selection
 
-    def commit(self):
-        if self._need_commit:
-            self._conn.commit()
-            self._need_commit = False
-
     def undig_content(self, nut):
         return None
 
@@ -377,8 +424,9 @@ class Database(object):
         main database and any attached live selections (via database triggers).
         '''
 
-        self._conn.execute(
-            'DELETE FROM files WHERE path = ?', (path,))
+        with self.transaction() as cursor:
+            cursor.execute(
+                'DELETE FROM files WHERE path = ?', (path,))
 
     def remove_glob(self, pattern):
         '''
@@ -389,8 +437,9 @@ class Database(object):
         selections (via database triggers).
         '''
 
-        return self._conn.execute(
-            'DELETE FROM files WHERE path GLOB ?', (pattern,)).rowcount
+        with self.transaction() as cursor:
+            return cursor.execute(
+                'DELETE FROM files WHERE path GLOB ?', (pattern,)).rowcount
 
     def _remove_volatile(self):
         '''
@@ -405,10 +454,14 @@ class Database(object):
         currently used by the apps.
         '''
 
-        return self._conn.execute(
-            'DELETE FROM files WHERE path LIKE "virtual:volatile:%"').rowcount
+        with self.transaction() as cursor:
+            return cursor.execute(
+                '''
+                    DELETE FROM files
+                    WHERE path LIKE "virtual:volatile:%"').rowcount
+                ''').rowcount
 
-    def reset(self, path):
+    def reset(self, path, transaction=None):
         '''
         Prune information associated with a given file, but keep the file path.
 
@@ -418,14 +471,15 @@ class Database(object):
         selections (via database triggers).
         '''
 
-        self._conn.execute(
-            '''
-                UPDATE files SET
-                    format = NULL,
-                    mtime = NULL,
-                    size = NULL
-                WHERE path = ?
-            ''', (path,))
+        with (transaction or self.transaction()) as cursor:
+            cursor.execute(
+                '''
+                    UPDATE files SET
+                        format = NULL,
+                        mtime = NULL,
+                        size = NULL
+                    WHERE path = ?
+                ''', (path,))
 
     def silent_touch(self, path):
         '''
@@ -434,11 +488,10 @@ class Database(object):
         Useful to prolong validity period of data with expiration date.
         '''
 
-        c = self._conn
-        with c:
+        with self.transaction() as cursor:
 
             sql = 'SELECT format, size FROM files WHERE path = ?'
-            fmt, size = execute_get1(c, sql, (path,))
+            fmt, size = execute_get1(cursor, sql, (path,))
 
             mod = io.get_backend(fmt)
             mod.touch(path)
@@ -454,7 +507,7 @@ class Database(object):
                 SET mtime = ?
                 WHERE path = ?
             '''
-            c.execute(sql, (file_stats[0], path))
+            cursor.execute(sql, (file_stats[0], path))
 
     def _iter_counts(self, kind=None, kind_codes_count='kind_codes_count'):
         args = []

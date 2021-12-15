@@ -10,15 +10,15 @@ class SquirrelError(Exception):
     pass
 
 
-class ToolError(Exception):
-    pass
-
-
 class NotAvailable(SquirrelError):
     pass
 
 
 class ConversionError(SquirrelError):
+    pass
+
+
+class ToolError(Exception):
     pass
 
 

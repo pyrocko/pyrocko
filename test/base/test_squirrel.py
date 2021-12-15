@@ -431,7 +431,6 @@ class SquirrelTestCase(unittest.TestCase):
         if filldb:
             with bench.run('init db'):
                 database.dig(all_nuts)
-                database.commit()
 
         with bench.run('undig all'):
             it = 0
@@ -995,10 +994,10 @@ class SquirrelTestCase(unittest.TestCase):
 
             s = 0
             sq_tmin, sq_tmax = sq.get_time_span('waveform')
-            for traces in sq.chopper_waveforms(
+            for batch in sq.chopper_waveforms(
                     tmin=None, tmax=sq_tmax+1., tinc=122., degap=False):
 
-                for tr in traces:
+                for tr in batch.traces:
                     s += num.sum(tr.ydata)
 
             assert int(round(s)) == nfiles*nsamples

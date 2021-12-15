@@ -150,46 +150,49 @@ class Selection(object):
         self._is_new = True
         self._volatile_paths = []
 
-        if persistent is not None:
-            self._is_new = 1 == self._conn.execute(
+        with self.transaction() as cursor:
+
+            if persistent is not None:
+                self._is_new = 1 == cursor.execute(
+                    '''
+                        INSERT OR IGNORE INTO persistent VALUES (?)
+                    ''', (persistent,)).rowcount
+
+            self._names = {
+                'db': 'main' if self._persistent else 'temp',
+                'file_states': self.name + '_file_states',
+                'bulkinsert': self.name + '_bulkinsert'}
+
+            cursor.execute(self._register_table(self._sql(
                 '''
-                    INSERT OR IGNORE INTO persistent VALUES (?)
-                ''', (persistent,)).rowcount
+                    CREATE TABLE IF NOT EXISTS %(db)s.%(file_states)s (
+                        file_id integer PRIMARY KEY,
+                        file_state integer,
+                        kind_mask integer,
+                        format text)
+                ''')))
 
-        self._names = {
-            'db': 'main' if self._persistent else 'temp',
-            'file_states': self.name + '_file_states',
-            'bulkinsert': self.name + '_bulkinsert'}
-
-        self._conn.execute(self._register_table(self._sql(
-            '''
-                CREATE TABLE IF NOT EXISTS %(db)s.%(file_states)s (
-                    file_id integer PRIMARY KEY,
-                    file_state integer,
-                    kind_mask integer,
-                    format text)
-            ''')))
-
-        self._conn.execute(self._sql(
-            '''
-                CREATE INDEX
-                IF NOT EXISTS %(db)s.%(file_states)s_index_file_state
-                ON %(file_states)s (file_state)
-            '''))
+            cursor.execute(self._sql(
+                '''
+                    CREATE INDEX
+                    IF NOT EXISTS %(db)s.%(file_states)s_index_file_state
+                    ON %(file_states)s (file_state)
+                '''))
 
     def __del__(self):
         if hasattr(self, '_conn') and self._conn:
             self._cleanup()
             if not self._persistent:
                 self._delete()
-            else:
-                self._conn.commit()
 
     def _register_table(self, s):
         return self._database._register_table(s)
 
     def _sql(self, s):
         return s % self._names
+
+    def transaction(self, mode='immediate'):
+        return self._database.transaction(mode)
 
     def is_new(self):
         '''
@@ -224,16 +227,16 @@ class Selection(object):
         '''
         Destroy the tables assoctiated with this selection.
         '''
-        self._conn.execute(self._sql(
-            'DROP TABLE %(db)s.%(file_states)s'))
+        with self.transaction() as cursor:
+            cursor.execute(self._sql(
+                'DROP TABLE %(db)s.%(file_states)s'))
 
-        if self._persistent:
-            self._conn.execute(
-                '''
-                    DELETE FROM persistent WHERE name == ?
-                ''', (self.name[5:],))
+            if self._persistent:
+                cursor.execute(
+                    '''
+                        DELETE FROM persistent WHERE name == ?
+                    ''', (self.name[5:],))
 
-        self._conn.commit()
         self._conn = None
 
     def delete(self):
@@ -276,133 +279,135 @@ class Selection(object):
 
         paths = util.short_to_list(200, paths)
 
-        if isinstance(paths, list) and len(paths) <= 200:
+        with self.transaction() as cursor:
 
-            # short non-iterator paths: can do without temp table
+            if isinstance(paths, list) and len(paths) <= 200:
 
-            self._conn.executemany(
-                '''
-                    INSERT OR IGNORE INTO files
-                    VALUES (NULL, ?, NULL, NULL, NULL)
-                ''', ((x,) for x in paths))
+                # short non-iterator paths: can do without temp table
 
-            if show_progress:
-                task = make_task('Preparing database', 3)
-                task.update(0, condition='pruning stale information')
+                cursor.executemany(
+                    '''
+                        INSERT OR IGNORE INTO files
+                        VALUES (NULL, ?, NULL, NULL, NULL)
+                    ''', ((x,) for x in paths))
 
-            self._conn.executemany(self._sql(
-                '''
-                    DELETE FROM %(db)s.%(file_states)s
-                    WHERE file_id IN (
-                        SELECT files.file_id
-                            FROM files
-                            WHERE files.path == ? )
-                        AND ( kind_mask != ? OR format != ? )
-                '''), (
-                    (path, kind_mask, format) for path in paths))
+                if show_progress:
+                    task = make_task('Preparing database', 3)
+                    task.update(0, condition='pruning stale information')
 
-            if show_progress:
-                task.update(1, condition='adding file names to selection')
+                cursor.executemany(self._sql(
+                    '''
+                        DELETE FROM %(db)s.%(file_states)s
+                        WHERE file_id IN (
+                            SELECT files.file_id
+                                FROM files
+                                WHERE files.path == ? )
+                            AND ( kind_mask != ? OR format != ? )
+                    '''), (
+                        (path, kind_mask, format) for path in paths))
 
-            self._conn.executemany(self._sql(
-                '''
-                    INSERT OR IGNORE INTO %(db)s.%(file_states)s
-                    SELECT files.file_id, 0, ?, ?
-                    FROM files
-                    WHERE files.path = ?
-                '''), ((kind_mask, format, path) for path in paths))
+                if show_progress:
+                    task.update(1, condition='adding file names to selection')
 
-            if show_progress:
-                task.update(2, condition='updating file states')
+                cursor.executemany(self._sql(
+                    '''
+                        INSERT OR IGNORE INTO %(db)s.%(file_states)s
+                        SELECT files.file_id, 0, ?, ?
+                        FROM files
+                        WHERE files.path = ?
+                    '''), ((kind_mask, format, path) for path in paths))
 
-            self._conn.executemany(self._sql(
-                '''
-                    UPDATE %(db)s.%(file_states)s
-                    SET file_state = 1
-                    WHERE file_id IN (
-                        SELECT files.file_id
-                            FROM files
-                            WHERE files.path == ? )
-                        AND file_state != 0
-                '''), ((path,) for path in paths))
+                if show_progress:
+                    task.update(2, condition='updating file states')
 
-            if show_progress:
-                task.update(3)
-                task.done()
+                cursor.executemany(self._sql(
+                    '''
+                        UPDATE %(db)s.%(file_states)s
+                        SET file_state = 1
+                        WHERE file_id IN (
+                            SELECT files.file_id
+                                FROM files
+                                WHERE files.path == ? )
+                            AND file_state != 0
+                    '''), ((path,) for path in paths))
 
-        else:
+                if show_progress:
+                    task.update(3)
+                    task.done()
 
-            self._conn.execute(self._sql(
-                '''
-                    CREATE TEMP TABLE temp.%(bulkinsert)s
-                    (path text)
-                '''))
+            else:
 
-            self._conn.executemany(self._sql(
-                'INSERT INTO temp.%(bulkinsert)s VALUES (?)'),
-                ((x,) for x in paths))
+                cursor.execute(self._sql(
+                    '''
+                        CREATE TEMP TABLE temp.%(bulkinsert)s
+                        (path text)
+                    '''))
 
-            if show_progress:
-                task = make_task('Preparing database', 5)
-                task.update(0, condition='adding file names to database')
+                cursor.executemany(self._sql(
+                    'INSERT INTO temp.%(bulkinsert)s VALUES (?)'),
+                    ((x,) for x in paths))
 
-            self._conn.execute(self._sql(
-                '''
-                    INSERT OR IGNORE INTO files
-                    SELECT NULL, path, NULL, NULL, NULL
-                    FROM temp.%(bulkinsert)s
-                '''))
+                if show_progress:
+                    task = make_task('Preparing database', 5)
+                    task.update(0, condition='adding file names to database')
 
-            if show_progress:
-                task.update(1, condition='pruning stale information')
+                cursor.execute(self._sql(
+                    '''
+                        INSERT OR IGNORE INTO files
+                        SELECT NULL, path, NULL, NULL, NULL
+                        FROM temp.%(bulkinsert)s
+                    '''))
 
-            self._conn.execute(self._sql(
-                '''
-                    DELETE FROM %(db)s.%(file_states)s
-                    WHERE file_id IN (
-                        SELECT files.file_id
-                            FROM temp.%(bulkinsert)s
-                            INNER JOIN files
-                            ON temp.%(bulkinsert)s.path == files.path)
-                        AND ( kind_mask != ? OR format != ? )
-                '''), (kind_mask, format))
+                if show_progress:
+                    task.update(1, condition='pruning stale information')
 
-            if show_progress:
-                task.update(2, condition='adding file names to selection')
+                cursor.execute(self._sql(
+                    '''
+                        DELETE FROM %(db)s.%(file_states)s
+                        WHERE file_id IN (
+                            SELECT files.file_id
+                                FROM temp.%(bulkinsert)s
+                                INNER JOIN files
+                                ON temp.%(bulkinsert)s.path == files.path)
+                            AND ( kind_mask != ? OR format != ? )
+                    '''), (kind_mask, format))
 
-            self._conn.execute(self._sql(
-                '''
-                    INSERT OR IGNORE INTO %(db)s.%(file_states)s
-                    SELECT files.file_id, 0, ?, ?
-                    FROM temp.%(bulkinsert)s
-                    INNER JOIN files
-                    ON temp.%(bulkinsert)s.path == files.path
-                '''), (kind_mask, format))
+                if show_progress:
+                    task.update(2, condition='adding file names to selection')
 
-            if show_progress:
-                task.update(3, condition='updating file states')
+                cursor.execute(self._sql(
+                    '''
+                        INSERT OR IGNORE INTO %(db)s.%(file_states)s
+                        SELECT files.file_id, 0, ?, ?
+                        FROM temp.%(bulkinsert)s
+                        INNER JOIN files
+                        ON temp.%(bulkinsert)s.path == files.path
+                    '''), (kind_mask, format))
 
-            self._conn.execute(self._sql(
-                '''
-                    UPDATE %(db)s.%(file_states)s
-                    SET file_state = 1
-                    WHERE file_id IN (
-                        SELECT files.file_id
-                            FROM temp.%(bulkinsert)s
-                            INNER JOIN files
-                            ON temp.%(bulkinsert)s.path == files.path)
-                        AND file_state != 0
-                '''))
+                if show_progress:
+                    task.update(3, condition='updating file states')
 
-            if show_progress:
-                task.update(4, condition='dropping temporary data')
+                cursor.execute(self._sql(
+                    '''
+                        UPDATE %(db)s.%(file_states)s
+                        SET file_state = 1
+                        WHERE file_id IN (
+                            SELECT files.file_id
+                                FROM temp.%(bulkinsert)s
+                                INNER JOIN files
+                                ON temp.%(bulkinsert)s.path == files.path)
+                            AND file_state != 0
+                    '''))
 
-            self._conn.execute(self._sql(
-                'DROP TABLE temp.%(bulkinsert)s'))
+                if show_progress:
+                    task.update(4, condition='dropping temporary data')
 
-            if show_progress:
-                task.update(5)
-                task.done()
+                cursor.execute(self._sql(
+                    'DROP TABLE temp.%(bulkinsert)s'))
+
+                if show_progress:
+                    task.update(5)
+                    task.done()
 
     def remove(self, paths):
         '''
@@ -416,14 +421,15 @@ class Selection(object):
         if isinstance(paths, str):
             paths = [paths]
 
-        self._conn.executemany(self._sql(
-            '''
-                DELETE FROM %(db)s.%(file_states)s
-                WHERE %(db)s.%(file_states)s.file_id IN
-                    (SELECT files.file_id
-                     FROM files
-                     WHERE files.path == ?)
-            '''), ((path,) for path in paths))
+        with self.transaction() as cursor:
+            cursor.executemany(self._sql(
+                '''
+                    DELETE FROM %(db)s.%(file_states)s
+                    WHERE %(db)s.%(file_states)s.file_id IN
+                        (SELECT files.file_id
+                         FROM files
+                         WHERE files.path == ?)
+                '''), ((path,) for path in paths))
 
     def iter_paths(self):
         '''
@@ -452,26 +458,29 @@ class Selection(object):
         '''
         return list(self.iter_paths())
 
-    def _set_file_states_known(self):
+    def _set_file_states_known(self, transaction=None):
         '''
         Set file states to "known" (2).
         '''
-        self._conn.execute(self._sql(
-            '''
-                UPDATE %(db)s.%(file_states)s
-                SET file_state = 2
-                WHERE file_state < 2
-            '''))
+        with (transaction or self.transaction()) as cursor:
+            cursor.execute(self._sql(
+                '''
+                    UPDATE %(db)s.%(file_states)s
+                    SET file_state = 2
+                    WHERE file_state < 2
+                '''))
 
-    def _set_file_states_force_check(self):
+    def _set_file_states_force_check(self, transaction=None):
         '''
         Set file states to "request force check" (1).
         '''
-        self._conn.execute(self._sql(
-            '''
-                UPDATE %(db)s.%(file_states)s
-                SET file_state = 1
-            '''))
+
+        with (transaction or self.transaction()) as cursor:
+            cursor.execute(self._sql(
+                '''
+                    UPDATE %(db)s.%(file_states)s
+                    SET file_state = 1
+                '''))
 
     def undig_grouped(self, skip_unchanged=False):
         '''
@@ -566,72 +575,74 @@ class Selection(object):
         modified files.
         '''
 
-        sql = self._sql('''
-            UPDATE %(db)s.%(file_states)s
-            SET file_state = 0
-            WHERE (
-                SELECT mtime
-                FROM files
-                WHERE files.file_id == %(db)s.%(file_states)s.file_id) IS NULL
-                AND file_state == 1
-        ''')
+        with self.transaction() as cursor:
+            sql = self._sql('''
+                UPDATE %(db)s.%(file_states)s
+                SET file_state = 0
+                WHERE (
+                    SELECT mtime
+                    FROM files
+                    WHERE
+                      files.file_id == %(db)s.%(file_states)s.file_id) IS NULL
+                    AND file_state == 1
+            ''')
 
-        self._conn.execute(sql)
+            cursor.execute(sql)
 
-        if not check:
+            if not check:
+
+                sql = self._sql('''
+                    UPDATE %(db)s.%(file_states)s
+                    SET file_state = 2
+                    WHERE file_state == 1
+                ''')
+
+                cursor.execute(sql)
+
+                return
+
+            def iter_file_states():
+                sql = self._sql('''
+                    SELECT
+                        files.file_id,
+                        files.path,
+                        files.format,
+                        files.mtime,
+                        files.size
+                    FROM %(db)s.%(file_states)s
+                    INNER JOIN files
+                        ON %(db)s.%(file_states)s.file_id == files.file_id
+                    WHERE %(db)s.%(file_states)s.file_state == 1
+                    ORDER BY %(db)s.%(file_states)s.file_id
+                ''')
+
+                for (file_id, path, fmt, mtime_db,
+                        size_db) in self._conn.execute(sql):
+
+                    try:
+                        mod = io.get_backend(fmt)
+                        file_stats = mod.get_stats(path)
+
+                    except FileLoadError:
+                        yield 0, file_id
+                        continue
+                    except io.UnknownFormat:
+                        continue
+
+                    if (mtime_db, size_db) != file_stats:
+                        yield 0, file_id
+                    else:
+                        yield 2, file_id
+
+            # could better use callback function here...
 
             sql = self._sql('''
                 UPDATE %(db)s.%(file_states)s
-                SET file_state = 2
-                WHERE file_state == 1
+                SET file_state = ?
+                WHERE file_id = ?
             ''')
 
-            self._conn.execute(sql)
-
-            return
-
-        def iter_file_states():
-            sql = self._sql('''
-                SELECT
-                    files.file_id,
-                    files.path,
-                    files.format,
-                    files.mtime,
-                    files.size
-                FROM %(db)s.%(file_states)s
-                INNER JOIN files
-                    ON %(db)s.%(file_states)s.file_id == files.file_id
-                WHERE %(db)s.%(file_states)s.file_state == 1
-                ORDER BY %(db)s.%(file_states)s.file_id
-            ''')
-
-            for (file_id, path, fmt, mtime_db,
-                    size_db) in self._conn.execute(sql):
-
-                try:
-                    mod = io.get_backend(fmt)
-                    file_stats = mod.get_stats(path)
-
-                except FileLoadError:
-                    yield 0, file_id
-                    continue
-                except io.UnknownFormat:
-                    continue
-
-                if (mtime_db, size_db) != file_stats:
-                    yield 0, file_id
-                else:
-                    yield 2, file_id
-
-        # could better use callback function here...
-
-        sql = self._sql('''
-            UPDATE %(db)s.%(file_states)s
-            SET file_state = ?
-            WHERE file_id = ?
-        ''')
-
-        self._conn.executemany(sql, iter_file_states())
+            cursor.executemany(sql, iter_file_states())
 
 
 __all__ = [
