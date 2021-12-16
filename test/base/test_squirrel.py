@@ -15,6 +15,7 @@ import numpy as num
 from .. import common
 from pyrocko import squirrel, util, pile, io, trace, model as pmodel
 from pyrocko import progress
+from pyrocko.parimap import parimap
 try:
     from StringIO import StringIO
 except ImportError:
@@ -950,6 +951,7 @@ class SquirrelTestCase(unittest.TestCase):
         datadir = tempfile.mkdtemp(dir=self.tempdir)
         fnt = os.path.join(
             datadir,
+            'data',
             '%(network)s-%(station)s-%(location)s-%(channel)s-%(tmin)s.mseed')
 
         io.save(traces, fnt, format='mseed')
@@ -972,35 +974,17 @@ class SquirrelTestCase(unittest.TestCase):
         datadir = self.make_many_files(
             nfiles, nsamples, networks, stations, channels, tmin)
 
+        squirrel.init_environment(datadir)
+
         try:
-            database = squirrel.Database()
-            sq = squirrel.Squirrel(database=database)
-            sq.add(datadir)
+            work = [
+                (ijob, datadir, nfiles, nsamples, tmin)
+                for ijob in range(12)]
 
-            ntr = 0
-            for tr in sq.get_waveforms(uncut=True):
-                ntr += 1
-                assert tr.data_len() == nsamples
-
-            assert ntr == nfiles
-
-            trs = sq.get_waveforms(tmin=tmin+10, tmax=tmin+200)
-            for tr in trs:
-                assert num.all(tr.get_ydata() == num.ones(190))
-
-            trs = sq.get_waveforms(tmin=tmin-100, tmax=tmin+100)
-            for tr in trs:
-                assert len(tr.get_ydata()) == 100
-
-            s = 0
-            sq_tmin, sq_tmax = sq.get_time_span('waveform')
-            for batch in sq.chopper_waveforms(
-                    tmin=None, tmax=sq_tmax+1., tinc=122., degap=False):
-
-                for tr in batch.traces:
-                    s += num.sum(tr.ydata)
-
-            assert int(round(s)) == nfiles*nsamples
+            tstart = time.time()
+            for ijob in parimap(do_chopper_test, work, nprocs=4):
+                logger.info('Done with job %i after %i s.' % (
+                    ijob, time.time() - tstart))
 
         finally:
             shutil.rmtree(datadir)
@@ -1031,6 +1015,40 @@ class SquirrelTestCase(unittest.TestCase):
 
         sq.remove(handle)
         assert len(sq.get_waveforms(tmin=tmin, tmax=tmax)) == 0
+
+
+def do_chopper_test(params):
+    ijob, datadir, nfiles, nsamples, tmin = params
+
+    sq = squirrel.Squirrel(datadir, persistent='bla')
+    sq.add(os.path.join(datadir, 'data'))
+
+    ntr = 0
+    for tr in sq.get_waveforms(uncut=True):
+        ntr += 1
+        assert tr.data_len() == nsamples
+
+    assert ntr == nfiles
+
+    trs = sq.get_waveforms(tmin=tmin+10, tmax=tmin+200)
+    for tr in trs:
+        assert num.all(tr.get_ydata() == num.ones(190))
+
+    trs = sq.get_waveforms(tmin=tmin-100, tmax=tmin+100)
+    for tr in trs:
+        assert len(tr.get_ydata()) == 100
+
+    s = 0
+    sq_tmin, sq_tmax = sq.get_time_span('waveform')
+    for batch in sq.chopper_waveforms(
+            tmin=None, tmax=sq_tmax+1., tinc=122., degap=False):
+
+        for tr in batch.traces:
+            s += num.sum(tr.ydata)
+
+    assert int(round(s)) == nfiles*nsamples
+
+    return ijob
 
 
 if __name__ == "__main__":

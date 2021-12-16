@@ -10,6 +10,7 @@ import os
 import logging
 import sqlite3
 import re
+import time
 
 from pyrocko.io.io_common import FileLoadError
 from pyrocko import util
@@ -47,16 +48,32 @@ def get_database(path=None):
 
 
 class Transaction(object):
-    def __init__(self, conn, mode='immediate'):
+    def __init__(self, conn, mode='immediate', retry_interval=0.1):
         self.cursor = conn.cursor()
         assert mode in ('deferred', 'immediate', 'exclusive')
         self.mode = mode
         self.depth = 0
         self.rollback_wanted = False
+        self.retry_interval = retry_interval
 
     def begin(self):
         if self.depth == 0:
-            self.cursor.execute('BEGIN %s' % self.mode.upper())
+            tries = 0
+            while True:
+                try:
+                    tries += 1
+                    self.cursor.execute('BEGIN %s' % self.mode.upper())
+                    break
+
+                except sqlite3.OperationalError as e:
+                    if not str(e) == 'database is locked':
+                        raise
+
+                    logger.info(
+                        'Database is locked retrying in %s s. Tries: %i'
+                        % (self.retry_interval, tries))
+
+                    time.sleep(self.retry_interval)
 
         self.depth += 1
 
@@ -67,7 +84,7 @@ class Transaction(object):
                 self.cursor.execute('COMMIT')
             else:
                 self.cursor.execute('ROLLBACK')
-                logger.debug('Deferred rollback executed.')
+                logger.warning('Deferred rollback executed.')
                 self.rollback_wanted = False
 
     def rollback(self):
@@ -76,7 +93,7 @@ class Transaction(object):
             self.cursor.execute('ROLLBACK')
             self.rollback_wanted = False
         else:
-            logger.debug('Deferred rollback scheduled.')
+            logger.warning('Deferred rollback scheduled.')
             self.rollback_wanted = True
 
     def close(self):
