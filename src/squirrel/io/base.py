@@ -259,106 +259,108 @@ def iload(
         transaction.begin()
 
     database_modified = False
+    clean = False
+    try:
+        for (format, path), old_nuts in it:
+            if task is not None:
+                condition = '(nuts: %i from file, %i from cache)\n  %s' % (
+                    n_load, n_db, path)
+                task.update(n_files, condition)
 
-    for (format, path), old_nuts in it:
-        if task is not None:
-            condition = '(nuts: %i from file, %i from cache)\n  %s' % (
-                n_load, n_db, path)
-            task.update(n_files, condition)
+            n_files += 1
+            if database and database_modified:
+                tnow = time.time()
+                if tnow - tcommit > 20. or n_files % 1000 == 0:
+                    transaction.commit()
+                    tcommit = tnow
+                    transaction.begin()
 
-        n_files += 1
-        if database and database_modified:
-            tnow = time.time()
-            if tnow - tcommit > 20. or n_files % 1000 == 0:
-                transaction.commit()
-                tcommit = tnow
-                transaction.begin()
+            try:
+                if check and old_nuts and old_nuts[0].file_modified():
+                    old_nuts = []
 
-        try:
-            if check and old_nuts and old_nuts[0].file_modified():
-                old_nuts = []
-
-            if segment is not None:
-                old_nuts = [
-                    nut for nut in old_nuts if nut.file_segment == segment]
-
-            if old_nuts:
-                db_only_operation = not kind_ids or all(
-                    nut.kind_id in kind_ids and nut.content_in_db
-                    for nut in old_nuts)
-
-                if db_only_operation:
-                    # logger.debug('using cached information for file %s, '
-                    #              % path)
-
-                    for nut in old_nuts:
-                        if nut.kind_id in kind_ids:
-                            database.undig_content(nut)
-
-                        n_db += 1
-                        yield nut
-
-                    continue
-
-            if format == 'detect':
-                if old_nuts and not old_nuts[0].file_modified():
-                    format_this = old_nuts[0].file_format
-                else:
-                    format_this = detect_format(path)
-            else:
-                format_this = format
-
-            mod = get_backend(format_this)
-            mtime, size = mod.get_stats(path)
-
-            logger.debug('reading file %s' % path)
-            nuts = []
-            for nut in mod.iload(format_this, path, segment, content):
-                nut.file_path = path
-                nut.file_format = format_this
-                nut.file_mtime = mtime
-                nut.file_size = size
-                if nut.content is not None:
-                    nut.content._squirrel_key = nut.key
-
-                nuts.append(nut)
-                n_load += 1
-                yield nut
-
-            if database and nuts != old_nuts:
                 if segment is not None:
-                    nuts = mod.iload(format_this, path, None, [])
-                    for nut in nuts:
-                        nut.file_path = path
-                        nut.file_format = format_this
-                        nut.file_mtime = mtime
-                        nut.file_size = size
+                    old_nuts = [
+                        nut for nut in old_nuts if nut.file_segment == segment]
 
-                database.dig(nuts, transaction=transaction)
-                database_modified = True
+                if old_nuts:
+                    db_only_operation = not kind_ids or all(
+                        nut.kind_id in kind_ids and nut.content_in_db
+                        for nut in old_nuts)
 
-        except FileLoadError:
-            logger.error('An error occured while reading file: %s' % path)
-            if database:
-                database.reset(path, transaction=transaction)
-                database_modified = True
+                    if db_only_operation:
+                        # logger.debug('using cached information for file %s, '
+                        #              % path)
 
-    if task is not None:
-        condition = '(nuts: %i from file, %i from cache)' % (n_load, n_db)
-        task.update(n_files, condition)
-        task.done(condition)
+                        for nut in old_nuts:
+                            if nut.kind_id in kind_ids:
+                                database.undig_content(nut)
 
-    if database:
-        transaction.commit()
-        transaction.close()
+                            n_db += 1
+                            yield nut
 
-        if temp_selection:
-            del temp_selection
+                        continue
 
-    logger.debug(
-        'Loading accomplished: from cache: %i, from files: %i, files: %i' % (
-            n_db, n_load, n_files))
+                if format == 'detect':
+                    if old_nuts and not old_nuts[0].file_modified():
+                        format_this = old_nuts[0].file_format
+                    else:
+                        format_this = detect_format(path)
+                else:
+                    format_this = format
 
+                mod = get_backend(format_this)
+                mtime, size = mod.get_stats(path)
+
+                logger.debug('reading file %s' % path)
+                nuts = []
+                for nut in mod.iload(format_this, path, segment, content):
+                    nut.file_path = path
+                    nut.file_format = format_this
+                    nut.file_mtime = mtime
+                    nut.file_size = size
+                    if nut.content is not None:
+                        nut.content._squirrel_key = nut.key
+
+                    nuts.append(nut)
+                    n_load += 1
+                    yield nut
+
+                if database and nuts != old_nuts:
+                    if segment is not None:
+                        nuts = mod.iload(format_this, path, None, [])
+                        for nut in nuts:
+                            nut.file_path = path
+                            nut.file_format = format_this
+                            nut.file_mtime = mtime
+                            nut.file_size = size
+
+                    database.dig(nuts, transaction=transaction)
+                    database_modified = True
+
+            except FileLoadError:
+                logger.error('An error occured while reading file: %s' % path)
+                if database:
+                    database.reset(path, transaction=transaction)
+                    database_modified = True
+
+        clean = True
+
+    finally:
+        if task is not None:
+            condition = '(nuts: %i from file, %i from cache)' % (n_load, n_db)
+            task.update(n_files, condition)
+            if clean:
+                task.done(condition)
+            else:
+                task.fail(condition + ' terminated')
+
+        if database:
+            transaction.commit()
+            transaction.close()
+
+            if temp_selection:
+                del temp_selection
 
 
 __all__ = [
