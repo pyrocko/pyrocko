@@ -20,8 +20,9 @@ from __future__ import absolute_import, print_function
 
 import os
 
-from pyrocko.guts import Object, String
+from pyrocko.guts import String, load
 from pyrocko import config
+from pyrocko.has_paths import HasPaths, Path
 
 from . import error
 
@@ -30,6 +31,11 @@ guts_prefix = 'squirrel'
 
 g_db_filename = 'nuts.sqlite'
 g_cache_dirname = 'cache'
+g_config_filename = 'config.yaml'
+
+
+def get_config_path(squirrel_path):
+    return os.path.join(squirrel_path, g_config_filename)
 
 
 def get_squirrel_path(path=None):
@@ -81,7 +87,10 @@ def get_environment(path=None):
 
     squirrel_path = get_squirrel_path(path)
 
-    return Environment.make(squirrel_path)
+    if os.path.exists(get_config_path(squirrel_path)):
+        return Environment.load(squirrel_path)
+    else:
+        return Environment.make(squirrel_path)
 
 
 def init_environment(path=None):
@@ -99,7 +108,7 @@ def init_environment(path=None):
     if path is None:
         path = os.curdir
 
-    squirrel_path = os.path.abspath(os.path.join(path, '.squirrel'))
+    squirrel_path = os.path.join(path, '.squirrel')
     try:
         os.mkdir(squirrel_path)
     except OSError:
@@ -108,24 +117,44 @@ def init_environment(path=None):
 
     from .base import Squirrel
     env = Environment.make(squirrel_path)
+    env.dump(filename=get_config_path(squirrel_path))
     sq = Squirrel(env)
     del sq
 
 
-class Environment(Object):
+class Environment(HasPaths):
     '''
     Configuration object providing paths to database and cache.
     '''
 
-    database_path = String.T(optional=True)
-    cache_path = String.T(optional=True)
+    database_path = Path.T(optional=True)
+    cache_path = Path.T(optional=True)
     persistent = String.T(optional=True)
 
     @classmethod
     def make(cls, squirrel_path):
-        return cls(
-            database_path=os.path.join(squirrel_path, g_db_filename),
-            cache_path=os.path.join(squirrel_path, g_cache_dirname))
+        env = cls(
+            database_path=g_db_filename,
+            cache_path=g_cache_dirname)
+
+        env.set_basepath(squirrel_path)
+        return env
+
+    @classmethod
+    def load(cls, squirrel_path):
+        path = get_config_path(squirrel_path)
+        try:
+            env = load(filename=path)
+        except OSError:
+            raise error.SquirrelError(
+                'Cannot read environment config file: %s' % path)
+
+        if not isinstance(env, Environment):
+            raise error.SquirrelError(
+                'Invalid environment config file "%s".' % path)
+
+        env.set_basepath(squirrel_path)
+        return env
 
 
 __all__ = [

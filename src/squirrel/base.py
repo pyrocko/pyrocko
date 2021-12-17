@@ -314,15 +314,17 @@ class Squirrel(Selection):
             env = environment.get_environment(env)
 
         if database is None:
-            database = env.database_path
+            database = env.expand_path(env.database_path)
 
         if cache_path is None:
-            cache_path = env.cache_path
+            cache_path = env.expand_path(env.cache_path)
 
         if persistent is None:
             persistent = env.persistent
 
-        Selection.__init__(self, database=database, persistent=persistent)
+        Selection.__init__(
+            self, database=database, persistent=persistent)
+
         self._content_caches = {
             'waveform': cache.ContentCache(),
             'default': cache.ContentCache()}
