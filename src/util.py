@@ -1817,6 +1817,8 @@ def iter_select_files(
 
         elif os.path.isdir(path):
             for (dirpath, dirnames, filenames) in os.walk(path):
+                dirnames.sort()
+                filenames.sort()
                 for filename in filenames:
                     path = op.join(dirpath, filename)
                     if check(path):
