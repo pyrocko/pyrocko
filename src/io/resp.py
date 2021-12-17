@@ -492,7 +492,7 @@ def iload_fh(f):
                 totalgain_frequency = gain_frequencies[0]
 
                 if not all(f == totalgain_frequency for f in gain_frequencies):
-                    logger.warn(
+                    logger.warning(
                         'no total gain reported and inconsistent gain '
                         'frequency values found in resp file for %s.%s.%s.%s: '
                         'omitting total gain and frequency from created '

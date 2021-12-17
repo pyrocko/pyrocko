@@ -820,7 +820,7 @@ class Squirrel(Selection):
         if warn_persistent and ds.persistent and (
                 not self._persistent or (self._persistent != ds.persistent)):
 
-            logger.warn(
+            logger.warning(
                 'Dataset `persistent` flag ignored. Can not be set on already '
                 'existing Squirrel instance.%s' % (
                     ' Dataset: %s' % path if path else ''))
@@ -1644,7 +1644,7 @@ class Squirrel(Selection):
 
         for codes, group in d.items():
             if len(group) > 1:
-                logger.warn(
+                logger.warning(
                     'Multiple entries matching codes: %s'
                     % '.'.join(codes.split(separator)))
 

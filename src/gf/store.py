@@ -1503,7 +1503,7 @@ class Store(BaseStore):
 
         if have_holes:
             for phase_id in have_holes:
-                logger.warn(
+                logger.warning(
                     'Travel time table of phase "{}" contains holes. You can '
                     ' use `fomosto tttlsd` to fix holes.'.format(
                         phase_id))
@@ -1518,15 +1518,15 @@ class Store(BaseStore):
             tr = self.get(args)
             if tr and not tr.is_zero:
                 if not tr.begin_value == tr.data[0]:
-                    logger.warn('wrong begin value for trace at %s '
+                    logger.warning('wrong begin value for trace at %s '
                                 '(data corruption?)' % str(args))
                     problems += 1
                 if not tr.end_value == tr.data[-1]:
-                    logger.warn('wrong end value for trace at %s '
+                    logger.warning('wrong end value for trace at %s '
                                 '(data corruption?)' % str(args))
                     problems += 1
                 if not num.all(num.isfinite(tr.data)):
-                    logger.warn('nans or infs in trace at %s' % str(args))
+                    logger.warning('nans or infs in trace at %s' % str(args))
                     problems += 1
 
             if show_progress:
@@ -1540,7 +1540,7 @@ class Store(BaseStore):
     def check_earthmodels(self, config):
         if config.earthmodel_receiver_1d.profile('z')[-1] not in\
                 config.earthmodel_1d.profile('z'):
-            logger.warn('deepest layer of earthmodel_receiver_1d not '
+            logger.warning('deepest layer of earthmodel_receiver_1d not '
                         'found in earthmodel_1d')
 
     def _decimated_store_dir(self, decimate):
@@ -1719,7 +1719,7 @@ class Store(BaseStore):
 definitions: %s.\n Travel time table contains holes in probed ranges. You can
 use `fomosto tttlsd` to fix holes.''' % w
             if force:
-                logger.warn(msg)
+                logger.warning(msg)
             else:
                 raise MakeTimingParamsFailed(msg)
 

@@ -866,7 +866,7 @@ if __name__ == '__main__':
             events = model.load_events(arg)
             for ev in events:
                 if not ev.moment_tensor:
-                    logger.warn('no moment tensor given for event')
+                    logger.warning('no moment tensor given for event')
                     continue
 
                 data.append((ev.name, ev.moment_tensor))

@@ -450,7 +450,7 @@ def command_redeploy(args):
             logger.debug('skipping %s, (%s)' % (sindex(args), e))
 
         except gf.store.StoreError as e:
-            logger.warn('cannot insert %s, (%s)' % (sindex(args), e))
+            logger.warning('cannot insert %s, (%s)' % (sindex(args), e))
 
         if show_progress:
             pbar.update(i+1)
@@ -719,7 +719,7 @@ def command_export(args):
     target_path = args.pop()
     if op.isdir(target_path):
         target_path = op.join(target_path, 'kiwi_gfdb')
-        logger.warn('exported gfdb will be named as "%s.*"' % target_path)
+        logger.warning('exported gfdb will be named as "%s.*"' % target_path)
 
     source_store_dir = get_store_dir(args)
 
@@ -763,7 +763,7 @@ def command_export(args):
                 data_out.append((tr.t, tr.data * config.factor))
 
             except gf.store.StoreError as e:
-                logger.warn('cannot get %s, (%s)' % (sindex((z, x, ig)), e))
+                logger.warning('cannot get %s, (%s)' % (sindex((z, x, ig)), e))
                 data_out.append(None)
 
         # put a zero valued sample to no-data zero-traces at a compatible time

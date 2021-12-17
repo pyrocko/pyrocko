@@ -633,7 +633,7 @@ def iload(fn, load_data=True, interpolation='sinc'):
         header_, (ipos, t, fix, nsvs), offset_, nsamples_)
 
     if icontrol is None:
-        logger.warn(
+        logger.warning(
             'No usable GPS timestamps found. Using datacube header '
             'information to guess time. (file: "%s")' % fn)
 
@@ -656,7 +656,7 @@ def iload(fn, load_data=True, interpolation='sinc'):
             num.logical_and(0 <= icontrol, icontrol < nsamples))
 
         if ncontrol_this <= 1:
-            logger.warn(
+            logger.warning(
                 'Extrapolating GPS time information from directory context '
                 '(insufficient number of GPS timestamps in file: "%s").' % fn)
 

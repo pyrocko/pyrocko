@@ -151,7 +151,7 @@ class CatalogSource(Source):
                 tmax = tmax_sq
 
             if tmin is None or tmax is None:
-                logger.warn(
+                logger.warning(
                     'Cannot query catalog source "%s" without time '
                     'constraint. Could not determine appropriate time '
                     'constraint from current data holdings (no data?).'

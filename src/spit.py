@@ -171,7 +171,7 @@ class Cell(object):
         fi_r[...] = self.interpolate_many(points)
 
         if num.any(num.isnan(fi)):
-            logger.warn('')
+            logger.warning('')
         if any_(num.isfinite(fi)):
             fi = num.ma.masked_invalid(fi)
             axes.imshow(

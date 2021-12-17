@@ -352,7 +352,7 @@ class Type(StringChoice):
     class __T(StringChoice.T):
         def validate_extra(self, val):
             if val not in self.choices:
-                logger.warn(
+                logger.warning(
                     'channel type: "%s" is not a valid choice out of %s' %
                     (val, repr(self.choices)))
 
@@ -1310,7 +1310,7 @@ class Response(Object):
                     if sample_rate is not None and not same_sample_rate(
                             sample_rate, input_sample_rate):
 
-                        logger.warn(
+                        logger.warning(
                             'Response stage %i has unexpected input sample '
                             'rate: %g Hz (expected: %g Hz)' % (
                                 stage.number,
@@ -1323,7 +1323,7 @@ class Response(Object):
                     and not same_sample_rate(
                         sample_rate, channel.sample_rate.value):
 
-                logger.warn(
+                logger.warning(
                     'Channel sample rate (%g Hz) does not match sample rate '
                     'deducted from response stages information (%g Hz).' % (
                         channel.sample_rate.value,
@@ -1341,7 +1341,7 @@ class Response(Object):
                 if units and stage.input_units \
                         and stage.input_units.name.upper() != units:
 
-                    logger.warn(
+                    logger.warning(
                         'Input units of stage %i (%s) do not match %s (%s).'
                         % (
                             stage.number,
@@ -1359,7 +1359,7 @@ class Response(Object):
             sout_units = self.instrument_sensitivity.output_units
             if self.instrument_sensitivity and sout_units:
                 if units is not None and units != sout_units.name.upper():
-                    logger.warn(
+                    logger.warning(
                         'Output units of stage %i (%s) do not match %s (%s).'
                         % (
                             stage.number,
@@ -1732,8 +1732,8 @@ def pyrocko_station_from_channels(nsl, channels, inconsistencies='warn'):
             raise InconsistentChannelLocations(mess)
 
         elif inconsistencies == 'warn':
-            logger.warn(mess)
-            logger.warn(' -> using mean values')
+            logger.warning(mess)
+            logger.warning(' -> using mean values')
 
     apos = num.array([x.position_values for x in channels], dtype=float)
     mlat, mlon, mele, mdep = num.nansum(apos, axis=0) \
@@ -1915,7 +1915,7 @@ class FDSNStationXML(Object):
             )
 
         if have_offsets:
-            logger.warn(
+            logger.warning(
                 'StationXML does not support Cartesian offsets in '
                 'coordinates. Storing effective lat/lon for stations: %s' %
                 ', '.join('.'.join(nsl) for nsl in sorted(have_offsets)))
@@ -2041,7 +2041,7 @@ class FDSNStationXML(Object):
                     err = 'ignoring channels with inconsistent sampling ' + \
                           'rates (%s.%s.%s.%s: %s)' % (nsl + (scs, srs))
 
-                    logger.warn(err)
+                    logger.warning(err)
                     bad_bics.append(bic)
 
             for bic in bad_bics:
@@ -2272,7 +2272,7 @@ def load_channel_table(stream):
         t = line.rstrip().split('|')
 
         if len(t) != 17:
-            logger.warn('Invalid channel record: %s' % line)
+            logger.warning('Invalid channel record: %s' % line)
             continue
 
         (net, sta, loc, cha, lat, lon, ele, dep, azi, dip, sens, scale,

@@ -637,7 +637,7 @@ class FDSNSource(Source):
             task.update(i)
 
         for agg in elog.iter_aggregates():
-            logger.warn(str(agg))
+            logger.warning(str(agg))
 
         task.done()
 

@@ -785,7 +785,7 @@ class Pick(Object):
 
     def get_pyrocko_phase_marker(self, event=None):
         if not self.phase_hint:
-            logger.warn('Pick %s: phase_hint undefined' % self.public_id)
+            logger.warning('Pick %s: phase_hint undefined' % self.public_id)
             phasename = 'undefined'
         else:
             phasename = self.phase_hint.value
@@ -863,7 +863,7 @@ class Origin(Object):
         lat = self.latitude.value
         lon = self.longitude.value
         if not self.depth:
-            logger.warn(
+            logger.warning(
                 'Origin %s: Depth is undefined. Set to depth=0.' %
                 self.public_id)
             depth = 0.
@@ -970,7 +970,7 @@ class Event(Object):
         if not origin and self.origin_list:
             origin = self.origin_list[0]
             if len(self.origin_list) > 1:
-                logger.warn(
+                logger.warning(
                     'Event %s: No preferred origin set, '
                     'more than one available, using first' % self.public_id)
 
@@ -984,7 +984,7 @@ class Event(Object):
         if not foc_mech and self.focal_mechanism_list:
             foc_mech = self.focal_mechanism_list[0]
             if len(self.focal_mechanism_list) > 1:
-                logger.warn(
+                logger.warning(
                     'Event %s: No preferred focal mechanism set, '
                     'more than one available, using first' % ev.name)
 
@@ -993,7 +993,7 @@ class Event(Object):
                 foc_mech.moment_tensor_list[0].pyrocko_moment_tensor()
 
             if len(foc_mech.moment_tensor_list) > 1:
-                logger.warn(
+                logger.warning(
                     'more than one moment tensor available, using first')
 
         mag = None
@@ -1003,7 +1003,7 @@ class Event(Object):
         elif self.magnitude_list:
             mag = self.magnitude_list[0]
             if len(self.magnitude_list) > 1:
-                logger.warn(
+                logger.warning(
                     'Event %s: No preferred magnitude set, '
                     'more than one available, using first' % ev.name)
 

@@ -323,7 +323,7 @@ def plot_directivity(
     try:
         ax.set_rlabel_position(strike_label % 180. - 180.)
     except AttributeError:
-        logger.warn('Old matplotlib version: cannot set label positions')
+        logger.warning('Old matplotlib version: cannot set label positions')
 
     def r_fmt(v, p):
         if v < tbegin or v > tend:

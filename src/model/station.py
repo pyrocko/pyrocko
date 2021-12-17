@@ -166,7 +166,7 @@ class Station(Location):
         surface_dist = self.distance_to(event)
         if distance_3d:
             if event.depth is None:
-                logger.warn('No event depth given: using 0 m.')
+                logger.warning('No event depth given: using 0 m.')
                 dd = 0.0 - self.depth
             else:
                 dd = event.depth - self.depth
@@ -368,7 +368,7 @@ class Station(Location):
 
     def cannot_handle_offsets(self):
         if self.north_shift != 0.0 or self.east_shift != 0.0:
-            logger.warn(
+            logger.warning(
                 'Station %s.%s.%s has a non-zero Cartesian offset. Such '
                 'offsets cannot be saved in the basic station file format. '
                 'Effective lat/lons are saved only. Please save the stations '

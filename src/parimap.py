@@ -66,7 +66,7 @@ def parimap(function, *iterables, **kwargs):
         eprintignore = None
 
     if platform.system() == 'Windows' and nprocs != 1:
-        logger.warn(
+        logger.warning(
             'The parimap module relies on fork() for parallelism. This does '
             'not work on Windows. Using serial code.')
         nprocs = 1

@@ -414,7 +414,7 @@ on
                 'psgrn had a non-zero exit state: %i' % proc.returncode)
 
         if error_str:
-            logger.warn(
+            logger.warning(
                 'psgrn emitted something via stderr: \n\n%s'
                 % error_str.decode())
             # errmess.append('psgrn emitted something via stderr')
@@ -1403,7 +1403,7 @@ in the directory {dir}'''.format(
                 shutil.rmtree(self.tempdir)
                 self.tempdir = None
             else:
-                logger.warn(
+                logger.warning(
                     'not removing temporary directory: %s' % self.tempdir)
 
 
@@ -1633,7 +1633,7 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
 
                 finally:
                     if duplicate_inserts:
-                        logger.warn(
+                        logger.warning(
                             '%i insertions skipped (duplicates)'
                             % duplicate_inserts)
 

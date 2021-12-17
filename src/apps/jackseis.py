@@ -286,16 +286,16 @@ def process(get_pile, options):
                         out_traces.append(rest_tr)
 
                     except stationxml.NoResponseInformation as e:
-                        logger.warn(
+                        logger.warning(
                             'Cannot restitute: %s (no response)' % str(e))
 
                     except stationxml.MultipleResponseInformation as e:
-                        logger.warn(
+                        logger.warning(
                             'Cannot restitute: %s (multiple responses found)'
                             % str(e))
 
                     except (trace.TraceTooShort, trace.NoData):
-                        logger.warn(
+                        logger.warning(
                             'Trace too short: %s' % '.'.join(tr.nslc_id))
 
                 traces = out_traces

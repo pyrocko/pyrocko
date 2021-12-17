@@ -2187,7 +2187,7 @@ class RectangularSource(SourceWithDerivedMagnitude):
                 interpolation = target.interpolation
             else:
                 interpolation = 'nearest_neighbor'
-                logger.warn(
+                logger.warning(
                     'no target information available, will use '
                     '"nearest_neighbor" interpolation when extracting shear '
                     'modulus from earth model')

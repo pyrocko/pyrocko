@@ -79,7 +79,7 @@ class ISC(EarthquakeCatalog):
         logger.debug('Received page (%i bytes)' % len(page))
 
         if 'The search could not be run due to problems' in page:
-            logger.warn('%s\nurl: %s' % (page, url))
+            logger.warning('%s\nurl: %s' % (page, url))
             return
         elif 'No events were found.' in page:
             logger.info('No events were found.')

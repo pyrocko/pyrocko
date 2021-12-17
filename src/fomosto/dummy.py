@@ -64,7 +64,7 @@ class DummyGFBuilder(gf.builder.Builder):
 
         finally:
             if duplicate_inserts:
-                logger.warn(
+                logger.warning(
                     '%i insertions skipped (duplicates)' % duplicate_inserts)
 
             self.store.unlock()

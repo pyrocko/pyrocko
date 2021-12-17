@@ -230,7 +230,7 @@ python $HOME/.snufflings/map/snuffling.py --stations=stations.pf
         try:
             from OpenGL import GL  # noqa
         except ImportError:
-            logger.warn(
+            logger.warning(
                 'Could not find package OpenGL, '
                 'if the map does not work try installing OpenGL\n'
                 'e.g. sudo pip install PyOpenGL')

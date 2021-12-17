@@ -672,7 +672,7 @@ on
                 'qseis had a non-zero exit state: %i' % proc.returncode)
 
         if error_str:
-            logger.warn(
+            logger.warning(
                 'qseis emitted something via stderr:\n\n%s'
                 % error_str.decode())
 
@@ -756,7 +756,7 @@ in the directory %s'''.lstrip() % (
                 shutil.rmtree(self.tempdir)
                 self.tempdir = None
             else:
-                logger.warn(
+                logger.warning(
                     'not removing temporary directory: %s' % self.tempdir)
 
 

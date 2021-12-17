@@ -641,7 +641,7 @@ in the directory %s'''.lstrip() % (
                 shutil.rmtree(self.tempdir)
                 self.tempdir = None
             else:
-                logger.warn(
+                logger.warning(
                     'not removing temporary directory: %s' % self.tempdir)
 
 
@@ -770,7 +770,7 @@ in the directory %s'''.lstrip() % (
                 shutil.rmtree(self.tempdir)
                 self.tempdir = None
             else:
-                logger.warn(
+                logger.warning(
                     'not removing temporary directory: %s' % self.tempdir)
 
 
@@ -1051,7 +1051,7 @@ class QSeis2dGFBuilder(gf.builder.Builder):
 
                 finally:
                     if duplicate_inserts:
-                        logger.warn('%i insertions skipped (duplicates)' %
+                        logger.warning('%i insertions skipped (duplicates)' %
                                     duplicate_inserts)
 
                     self.store.unlock()

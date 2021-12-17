@@ -384,7 +384,7 @@ def _download(url, fpath, username=None, password=None,
                 download_file(url, fpath)
 
     except req_HTTPError as e:
-        logging.warn("http error: %s" % e)
+        logging.warning("http error: %s" % e)
         raise DownloadError('could not download file(s) from: %s' % url)
 
     finally:
@@ -587,7 +587,7 @@ def check_time_class(t, error='raise'):
         if error == 'raise':
             raise TimestampTypeError(message)
         elif error == 'warn':
-            logger.warn(message)
+            logger.warning(message)
         else:
             assert False
 
@@ -2068,7 +2068,7 @@ def create_lockfile(fn, timeout=None, timewarn=10.):
                         'access to: %s' % (timeout, fn))
 
                 if timewarn is not None and tnow - t0 > timewarn:
-                    logger.warn(
+                    logger.warning(
                         'Waiting since %gs to get exclusive access to: %s' % (
                             timewarn, fn))
 
