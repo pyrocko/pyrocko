@@ -40,7 +40,7 @@ This command allows to list and delete persistent selections.
 
 def call(parser, args):
     env = environment.get_environment()
-    db = database.get_database(env.database_path)
+    db = database.get_database(env.expand_path(env.database_path))
 
     available = sorted(db.get_persistent_names())
     for name in args.names:

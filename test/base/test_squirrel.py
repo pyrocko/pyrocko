@@ -173,6 +173,7 @@ class SquirrelTestCase(unittest.TestCase):
     def test_dig_undig(self):
         nuts = []
         for path in 'abcde':
+            path = 'virtual:' + path
             for file_element in range(2):
                 nuts.append(squirrel.Nut(
                     file_path=path,
@@ -186,20 +187,24 @@ class SquirrelTestCase(unittest.TestCase):
 
         data = defaultdict(list)
         for path in 'abcde':
+            path = 'virtual:' + path
             nuts2 = database.undig(path)
             for nut in nuts2:
                 data[nut.file_path].append(nut.file_element)
 
         for path in 'abcde':
+            path = 'virtual:' + path
             self.assertEqual([0, 1], sorted(data[path]))
 
         data = defaultdict(list)
         for path in 'ac':
+            path = 'virtual:' + path
             nuts2 = database.undig(path)
             for nut in nuts2:
                 data[nut.file_path].append(nut.file_element)
 
         for path in 'ac':
+            path = 'virtual:' + path
             self.assertEqual([0, 1], sorted(data[path]))
 
         data = defaultdict(list)
@@ -208,6 +213,7 @@ class SquirrelTestCase(unittest.TestCase):
                 data[nut.file_path].append(nut.file_element)
 
         for path in 'abcde':
+            path = 'virtual:' + path
             self.assertEqual([0, 1], sorted(data[path]))
 
     def test_add_update(self):
@@ -982,7 +988,7 @@ class SquirrelTestCase(unittest.TestCase):
                 for ijob in range(12)]
 
             tstart = time.time()
-            for ijob in parimap(do_chopper_test, work, nprocs=4):
+            for ijob in parimap(do_chopper, work, nprocs=4):
                 logger.info('Done with job %i after %i s.' % (
                     ijob, time.time() - tstart))
 
@@ -1017,7 +1023,7 @@ class SquirrelTestCase(unittest.TestCase):
         assert len(sq.get_waveforms(tmin=tmin, tmax=tmax)) == 0
 
 
-def do_chopper_test(params):
+def do_chopper(params):
     ijob, datadir, nfiles, nsamples, tmin = params
 
     sq = squirrel.Squirrel(datadir, persistent='bla')

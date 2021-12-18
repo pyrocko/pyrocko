@@ -6,6 +6,8 @@
 from __future__ import absolute_import, print_function
 
 import sys
+import os
+
 import math
 import logging
 import threading
@@ -21,6 +23,7 @@ from . import model, io, cache, dataset
 from .model import to_kind_id, separator, WaveformOrder
 from .client import fdsn, catalog
 from .selection import Selection, filldocs
+from .database import abspath
 from . import client, environment, error
 
 logger = logging.getLogger('psq.base')
@@ -324,6 +327,8 @@ class Squirrel(Selection):
 
         Selection.__init__(
             self, database=database, persistent=persistent)
+
+        self.get_database().set_basepath(os.path.dirname(env.get_basepath()))
 
         self._content_caches = {
             'waveform': cache.ContentCache(),
@@ -986,9 +991,10 @@ class Squirrel(Selection):
 
             args.extend(kind_codes_ids)
 
+        db = self.get_database()
         if path is not None:
             cond.append('files.path == ?')
-            args.append(path)
+            args.append(db.relpath(abspath(path)))
 
         sql = ('''
             SELECT
@@ -1018,12 +1024,14 @@ class Squirrel(Selection):
         sql = self._sql(sql)
         if tmin is None and tmax is None:
             for row in self._conn.execute(sql, args):
+                row = (db.abspath(row[0]),) + row[1:]
                 nut = model.Nut(values_nocheck=row)
                 yield nut
         else:
             assert tmin is not None and tmax is not None
             if tmin == tmax:
                 for row in self._conn.execute(sql, args):
+                    row = (db.abspath(row[0]),) + row[1:]
                     nut = model.Nut(values_nocheck=row)
                     if (nut.tmin <= tmin < nut.tmax) \
                             or (nut.tmin == nut.tmax and tmin == nut.tmin):
@@ -1031,6 +1039,7 @@ class Squirrel(Selection):
                         yield nut
             else:
                 for row in self._conn.execute(sql, args):
+                    row = (db.abspath(row[0]),) + row[1:]
                     nut = model.Nut(values_nocheck=row)
                     if (tmin < nut.tmax and nut.tmin < tmax) \
                             or (nut.tmin == nut.tmax
@@ -1056,6 +1065,8 @@ class Squirrel(Selection):
         names_main_nuts = dict(self._names)
         names_main_nuts.update(db='main', nuts='nuts')
 
+        db = self.get_database()
+
         def main_nuts(s):
             return s % names_main_nuts
 
@@ -1079,7 +1090,7 @@ class Squirrel(Selection):
 
                 if path is not None:
                     cond.append('files.path == ?')
-                    args.append(path)
+                    args.append(db.relpath(abspath(path)))
 
                 sql = sql_subst('''
                     SELECT

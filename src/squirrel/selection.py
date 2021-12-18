@@ -14,7 +14,7 @@ from pyrocko.io.io_common import FileLoadError
 from pyrocko.progress import progress
 
 from . import error, io, model
-from .database import Database, get_database, execute_get1
+from .database import Database, get_database, execute_get1, abspath
 
 logger = logging.getLogger('psq.selection')
 
@@ -279,9 +279,12 @@ class Selection(object):
 
         paths = util.short_to_list(200, paths)
 
+        db = self.get_database()
         with self.transaction() as cursor:
 
             if isinstance(paths, list) and len(paths) <= 200:
+
+                paths = [db.relpath(path) for path in paths]
 
                 # short non-iterator paths: can do without temp table
 
@@ -345,7 +348,7 @@ class Selection(object):
 
                 cursor.executemany(self._sql(
                     'INSERT INTO temp.%(bulkinsert)s VALUES (?)'),
-                    ((x,) for x in paths))
+                    ((db.relpath(x),) for x in paths))
 
                 if show_progress:
                     task = make_task('Preparing database', 5)
@@ -421,6 +424,11 @@ class Selection(object):
         if isinstance(paths, str):
             paths = [paths]
 
+        db = self.get_database()
+
+        def normpath(path):
+            return db.relpath(abspath(path))
+
         with self.transaction() as cursor:
             cursor.executemany(self._sql(
                 '''
@@ -429,7 +437,7 @@ class Selection(object):
                         (SELECT files.file_id
                          FROM files
                          WHERE files.path == ?)
-                '''), ((path,) for path in paths))
+                '''), ((normpath(path),) for path in paths))
 
     def iter_paths(self):
         '''
@@ -447,8 +455,9 @@ class Selection(object):
             ORDER BY %(db)s.%(file_states)s.file_id
         ''')
 
+        db = self.get_database()
         for values in self._conn.execute(sql):
-            yield values[0]
+            yield db.abspath(values[0])
 
     def get_paths(self):
         '''
@@ -542,15 +551,17 @@ class Selection(object):
 
             nuts = []
             format_path = None
+            db = self.get_database()
             for values in self._conn.execute(sql):
                 if format_path is not None and values[1] != format_path[1]:
                     yield format_path, nuts
                     nuts = []
 
-                if values[2] is not None:
-                    nuts.append(model.Nut(values_nocheck=values[1:]))
+                format_path = values[0], db.abspath(values[1])
 
-                format_path = values[:2]
+                if values[2] is not None:
+                    nuts.append(model.Nut(
+                        values_nocheck=format_path[1:2] + values[2:]))
 
             if format_path is not None:
                 yield format_path, nuts
@@ -575,6 +586,7 @@ class Selection(object):
         modified files.
         '''
 
+        db = self.get_database()
         with self.transaction() as cursor:
             sql = self._sql('''
                 UPDATE %(db)s.%(file_states)s
@@ -619,6 +631,7 @@ class Selection(object):
                 for (file_id, path, fmt, mtime_db,
                         size_db) in self._conn.execute(sql):
 
+                    path = db.abspath(path)
                     try:
                         mod = io.get_backend(fmt)
                         file_stats = mod.get_stats(path)

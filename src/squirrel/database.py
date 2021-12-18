@@ -24,6 +24,13 @@ logger = logging.getLogger('psq.database')
 guts_prefix = 'squirrel'
 
 
+def abspath(path):
+    if not path.startswith('virtual:') and not path.startswith('client:'):
+        return os.path.abspath(path)
+    else:
+        return path
+
+
 class ExecuteGet1Error(SquirrelError):
     pass
 
@@ -120,8 +127,10 @@ class Database(object):
 
     def __init__(self, database_path=':memory:', log_statements=False):
         self._database_path = database_path
-        try:
+        if database_path != ':memory:':
             util.ensuredirs(database_path)
+
+        try:
             logger.debug('Opening connection to database: %s' % database_path)
             self._conn = sqlite3.connect(database_path, isolation_level=None)
         except sqlite3.OperationalError:
@@ -135,6 +144,28 @@ class Database(object):
             self._conn.set_trace_callback(self._log_statement)
 
         self._initialize_db()
+        self._basepath = None
+
+    def set_basepath(self, basepath):
+        if basepath is not None:
+            self._basepath = os.path.abspath(basepath)
+        else:
+            self._basepath = None
+
+    def relpath(self, path):
+        if self._basepath is not None and path.startswith(
+                self._basepath + os.path.sep):
+            return path[len(self._basepath) + 1:]
+        else:
+            return path
+
+    def abspath(self, path):
+        if self._basepath is not None and not path.startswith('virtual:') \
+                and not path.startswith('client:') \
+                and not os.path.isabs(path):
+            return os.path.join(self._basepath, path)
+        else:
+            return path
 
     def _log_statement(self, statement):
         logger.debug(statement)
@@ -311,7 +342,7 @@ class Database(object):
         kind_codes = set()
         for nut in nuts:
             files.add((
-                nut.file_path,
+                self.relpath(nut.file_path),
                 nut.file_format,
                 nut.file_mtime,
                 nut.file_size))
@@ -345,7 +376,8 @@ class Database(object):
                             WHERE kind_id == ? AND codes == ? AND deltat == ?
                          ), ?,?,?,?,?)
                 ''',
-                ((nut.file_path, nut.file_segment, nut.file_element,
+                ((self.relpath(nut.file_path),
+                  nut.file_segment, nut.file_element,
                   nut.kind_id,
                   nut.kind_id, nut.codes, nut.deltat or 0.0,
                   nut.tmin_seconds, nut.tmin_offset,
@@ -353,6 +385,9 @@ class Database(object):
                   nut.kscale) for nut in nuts))
 
     def undig(self, path):
+
+        path = self.relpath(abspath(path))
+
         sql = '''
             SELECT
                 files.path,
@@ -375,7 +410,7 @@ class Database(object):
             WHERE path == ?
         '''
 
-        return [Nut(values_nocheck=row)
+        return [Nut(values_nocheck=(self.abspath(row[0]),) + row[1:])
                 for row in self._conn.execute(sql, (path,))]
 
     def undig_all(self):
@@ -407,10 +442,10 @@ class Database(object):
                 yield path, nuts
                 nuts = []
 
-            if values[1] is not None:
-                nuts.append(Nut(values_nocheck=values))
+            path = self.abspath(values[0])
 
-            path = values[0]
+            if values[1] is not None:
+                nuts.append(Nut(values_nocheck=(path,) + values[1:]))
 
         if path is not None:
             yield path, nuts
@@ -440,6 +475,8 @@ class Database(object):
         All content pieces belonging to file ``path`` are removed from the
         main database and any attached live selections (via database triggers).
         '''
+
+        path = self.relpath(abspath(path))
 
         with self.transaction() as cursor:
             cursor.execute(
@@ -488,6 +525,8 @@ class Database(object):
         selections (via database triggers).
         '''
 
+        path = self.relpath(abspath(path))
+
         with (transaction or self.transaction()) as cursor:
             cursor.execute(
                 '''
@@ -505,19 +544,22 @@ class Database(object):
         Useful to prolong validity period of data with expiration date.
         '''
 
+        apath = abspath(path)
+        path = self.relpath(apath)
+
         with self.transaction() as cursor:
 
             sql = 'SELECT format, size FROM files WHERE path = ?'
             fmt, size = execute_get1(cursor, sql, (path,))
 
             mod = io.get_backend(fmt)
-            mod.touch(path)
-            file_stats = mod.get_stats(path)
+            mod.touch(apath)
+            file_stats = mod.get_stats(apath)
 
             if file_stats[1] != size:
                 raise FileLoadError(
                     'Silent update for file "%s" failed: size has changed.'
-                    % path)
+                    % apath)
 
             sql = '''
                 UPDATE files
@@ -618,7 +660,7 @@ class Database(object):
 
     def iter_paths(self):
         for row in self._conn.execute('''SELECT path FROM files'''):
-            yield row[0]
+            yield self.abspath(row[0])
 
     def iter_nnuts_by_file(self):
         sql = '''
@@ -628,7 +670,7 @@ class Database(object):
             FROM files
         '''
         for row in self._conn.execute(sql):
-            yield row
+            yield (self.abspath(row[0]),) + row[1:]
 
     def iter_kinds(self, codes=None):
         return self._iter_kinds(codes=codes)
