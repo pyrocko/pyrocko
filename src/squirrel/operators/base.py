@@ -292,7 +292,7 @@ class Restitution(Operator):
     def get_waveforms(
             self, squirrel, codes, params, tmin, tmax, **kwargs):
 
-        self_, in_codes, out_codes = squirrel.get_operator_group(codes)
+        self_, (_, in_codes, out_codes) = squirrel.get_operator_group(codes)
         assert self is self_
         assert len(in_codes) == 1 and len(out_codes) == 1
         in_codes_tup = tuple(in_codes[0].split(separator))

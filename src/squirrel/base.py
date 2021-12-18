@@ -2103,10 +2103,10 @@ class Squirrel(Selection):
         tmax = tmax if tmax is not None else self_tmax
 
         if codes is not None:
-            operator, (_, in_codes, out_codes) = self.get_operator_group(codes)
+            operator = self.get_operator(codes)
             if operator is not None:
                 return operator.get_waveforms(
-                    self, in_codes, out_codes,
+                    self, codes,
                     tmin=tmin, tmax=tmax,
                     uncut=uncut, want_incomplete=want_incomplete, degap=degap,
                     maxgap=maxgap, maxlap=maxlap, snap=snap,
