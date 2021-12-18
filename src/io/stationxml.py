@@ -414,7 +414,7 @@ class Site(Object):
     boundaries (country, city, etc.).
     '''
 
-    name = Unicode.T(xmltagname='Name')
+    name = Unicode.T(default='', xmltagname='Name')
     description = Unicode.T(optional=True, xmltagname='Description')
     town = Unicode.T(optional=True, xmltagname='Town')
     county = Unicode.T(optional=True, xmltagname='County')
