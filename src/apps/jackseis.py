@@ -343,12 +343,10 @@ def process(get_pile, options):
                 except io.FileSaveError as e:
                     die(str(e))
 
-
     for batch in it:
         process_traces(batch)
         if abort:
             break
-
 
     signal.signal(signal.SIGINT, old)
 

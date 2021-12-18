@@ -186,7 +186,8 @@ class Operator(Object):
         def register(group):
             for codes in group[2]:
                 if codes in registry:
-                    logger.warning('duplicate operator output codes: %s' % codes)
+                    logger.warning(
+                        'duplicate operator output codes: %s' % codes)
                 registry[codes] = (self, group)
 
         for codes in filt(removed):

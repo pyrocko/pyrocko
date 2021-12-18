@@ -210,7 +210,7 @@ class GNSSCampaign(Object):
             self._cov_mat = None
         except ValueError:
             logger.warning('Station {} does not exist in campaign, '
-                        'do nothing.'.format(station_code))
+                           'do nothing.'.format(station_code))
 
     def get_station(self, station_code):
         for sta in self.stations:

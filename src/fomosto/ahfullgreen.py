@@ -208,7 +208,7 @@ class AhfullGFBuilder(gf.builder.Builder):
             finally:
                 if duplicate_inserts:
                     logger.warning('%i insertions skipped (duplicates)' %
-                                duplicate_inserts)
+                                   duplicate_inserts)
 
                 self.store.unlock()
                 signal.signal(signal.SIGINT, original)

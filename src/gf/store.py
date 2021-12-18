@@ -1519,11 +1519,11 @@ class Store(BaseStore):
             if tr and not tr.is_zero:
                 if not tr.begin_value == tr.data[0]:
                     logger.warning('wrong begin value for trace at %s '
-                                '(data corruption?)' % str(args))
+                                   '(data corruption?)' % str(args))
                     problems += 1
                 if not tr.end_value == tr.data[-1]:
                     logger.warning('wrong end value for trace at %s '
-                                '(data corruption?)' % str(args))
+                                   '(data corruption?)' % str(args))
                     problems += 1
                 if not num.all(num.isfinite(tr.data)):
                     logger.warning('nans or infs in trace at %s' % str(args))
@@ -1541,7 +1541,7 @@ class Store(BaseStore):
         if config.earthmodel_receiver_1d.profile('z')[-1] not in\
                 config.earthmodel_1d.profile('z'):
             logger.warning('deepest layer of earthmodel_receiver_1d not '
-                        'found in earthmodel_1d')
+                           'found in earthmodel_1d')
 
     def _decimated_store_dir(self, decimate):
         return os.path.join(self.store_dir, 'decimated', str(decimate))
