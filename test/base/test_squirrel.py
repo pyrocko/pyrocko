@@ -912,8 +912,9 @@ class SquirrelTestCase(unittest.TestCase):
             sq.add_catalog(
                 'geofon', cache_path=tempdir, query_args={'magmin': 6.0})
             sq.update(tmin=tmin, tmax=tmax)
+            assert(len(sq.get_events()) == 1)
             sq.update(tmin=tmin, tmax=tmax2)
-            assert(len(sq.get_events()) == 2)
+            assert(len(sq.get_events()) == 3)
 
         finally:
             shutil.rmtree(tempdir)
