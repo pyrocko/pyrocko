@@ -153,20 +153,23 @@ def tsplit(t):
     if t is None:
         return None, 0.0
 
+    t = util.to_time_float(t)
+    if type(t) is float:
+        t = round(t, 5)
+    else:
+        t = round(t, 9)
+
     seconds = num.floor(t)
     offset = t - seconds
     return int(seconds), int(round(offset * g_offset_time_unit_inv))
 
 
-def tjoin(seconds, offset, deltat):
+def tjoin(seconds, offset):
     if seconds is None:
         return None
 
-    if deltat is not None and deltat < 1e-3:
-        return util.to_time_float(seconds) \
-            + util.to_time_float(offset*g_offset_time_unit)
-    else:
-        return seconds + offset*g_offset_time_unit
+    return util.to_time_float(seconds) \
+        + util.to_time_float(offset*g_offset_time_unit)
 
 
 tscale_min = 1
@@ -797,11 +800,11 @@ class Nut(Object):
 
     @property
     def tmin(self):
-        return tjoin(self.tmin_seconds, self.tmin_offset, self.deltat)
+        return tjoin(self.tmin_seconds, self.tmin_offset)
 
     @property
     def tmax(self):
-        return tjoin(self.tmax_seconds, self.tmax_offset, self.deltat)
+        return tjoin(self.tmax_seconds, self.tmax_offset)
 
     @property
     def kscale(self):
@@ -1029,6 +1032,7 @@ class DummyTrace(object):
     def __init__(self, nut):
         self.nut = nut
         self._codes = None
+        self.meta = {}
 
     @property
     def tmin(self):

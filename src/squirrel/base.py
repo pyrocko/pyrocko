@@ -1114,9 +1114,9 @@ class Squirrel(Selection):
                         nut_tmax_seconds, nut_tmax_offset, nut_deltat = row
 
                     nut_tmin = model.tjoin(
-                        nut_tmin_seconds, nut_tmin_offset, nut_deltat)
+                        nut_tmin_seconds, nut_tmin_offset)
                     nut_tmax = model.tjoin(
-                        nut_tmax_seconds, nut_tmax_offset, nut_deltat)
+                        nut_tmax_seconds, nut_tmax_offset)
 
                     if nut_tmin < tmax and tmin < nut_tmax:
                         if nut_tmin < tmin:
@@ -1199,13 +1199,13 @@ class Squirrel(Selection):
         for kind_id in kind_ids:
             for tmin_seconds, tmin_offset in self._conn.execute(
                     sql_min, (kind_id, kind_id)):
-                tmin = model.tjoin(tmin_seconds, tmin_offset, 0.0)
+                tmin = model.tjoin(tmin_seconds, tmin_offset)
                 if tmin is not None and (gtmin is None or tmin < gtmin):
                     gtmin = tmin
 
             for (tmax_seconds, tmax_offset) in self._conn.execute(
                     sql_max, (kind_id, kind_id)):
-                tmax = model.tjoin(tmax_seconds, tmax_offset, 0.0)
+                tmax = model.tjoin(tmax_seconds, tmax_offset)
                 if tmax is not None and (gtmax is None or tmax > gtmax):
                     gtmax = tmax
 
@@ -2523,7 +2523,7 @@ class Squirrel(Selection):
                 ''')
 
                 for row in self._conn.execute(sql, [kind_codes_id]):
-                    entry[3+i] = model.tjoin(row[0], row[1], deltat)
+                    entry[3+i] = model.tjoin(row[0], row[1])
 
             if None in entry[3:5]:
                 continue
@@ -2574,7 +2574,7 @@ class Squirrel(Selection):
                     tlast = tmin
 
                 for row in rows:
-                    t = model.tjoin(row[0], row[1], deltat)
+                    t = model.tjoin(row[0], row[1])
                     counts += row[2]
                     entry[-1].append((t, counts))
                     tlast = t

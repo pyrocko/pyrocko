@@ -428,8 +428,10 @@ class dummy_hpfloat(object):
 
 if hasattr(num, 'float128'):
     hpfloat = num.float128
+
 elif hasattr(num, 'float96'):
     hpfloat = num.float96
+
 else:
     hpfloat = dummy_hpfloat
 

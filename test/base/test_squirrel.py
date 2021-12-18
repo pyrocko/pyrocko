@@ -580,6 +580,34 @@ class SquirrelTestCase(unittest.TestCase):
         finally:
             shutil.rmtree(tempdir)
 
+    def test_long_cover(self):
+
+        tmin = util.str_to_time('2021-01-01 00:00:00')
+
+        d = 24*60*60.
+        deltat = 1./200.
+        n = int(round(d / deltat))
+        tempdir = os.path.join(self.tempdir, 'test_long_coverage')
+        tempdir = 'test_long_coverage'
+
+        for iday in range(3):
+            ydata = num.random.randint(-2**31, 2**31-1, n, dtype=num.int32)
+            tr = trace.Trace(
+                '', 'STA', '', 'HHZ',
+                tmin=tmin + iday * d,
+                deltat=deltat,
+                ydata=ydata)
+
+            io.save(tr, os.path.join(tempdir, 'data-%03i.mseed' % iday))
+
+        database = squirrel.Database()
+        sq = squirrel.Squirrel(database=database)
+        sq.add(tempdir)
+
+        assert 2 == len(
+            sq.get_coverage(
+                'waveform', tmin, tmin + 3*d, codes_list=['*'])[0][5])
+
     def test_loading(self, with_pile=False, hours=1):
         dir = op.join(tempfile.gettempdir(), 'testdataset_d_%i' % hours)
 
