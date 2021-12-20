@@ -705,7 +705,9 @@ class Squirrel(Selection):
         for itr, tr in enumerate(traces):
             assert tr.tmin <= tr.tmax
             tmin_seconds, tmin_offset = model.tsplit(tr.tmin)
-            tmax_seconds, tmax_offset = model.tsplit(tr.tmax)
+            tmax_seconds, tmax_offset = model.tsplit(
+                tr.tmin + tr.data_len()*tr.deltat)
+
             nuts.append(model.Nut(
                 file_path=path,
                 file_format='virtual',
