@@ -554,11 +554,12 @@ class Selection(object):
             format_path = None
             db = self.get_database()
             for values in self._conn.execute(sql):
-                if format_path is not None and values[1] != format_path[1]:
+                apath = db.abspath(values[1])
+                if format_path is not None and apath != format_path[1]:
                     yield format_path, nuts
                     nuts = []
 
-                format_path = values[0], db.abspath(values[1])
+                format_path = values[0], apath
 
                 if values[2] is not None:
                     nuts.append(model.Nut(
