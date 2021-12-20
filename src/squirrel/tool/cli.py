@@ -6,8 +6,6 @@
 import sys
 import logging
 
-from pyrocko import util
-
 from . import common
 from .commands import command_modules
 from pyrocko import squirrel as sq
@@ -64,16 +62,7 @@ Run with --help to get further help.''',
         add_help=False,
         description=description)
 
-    parser.add_argument(
-        '--help', '-h',
-        action='help',
-        help='Show this help message and exit.')
-
-    parser.add_argument(
-        '--loglevel', '-l',
-        choices=['critical', 'error', 'warning', 'info', 'debug'],
-        default='info',
-        help='Set logger level. Default: %(default)s')
+    common.add_standard_arguments(parser)
 
     if subcommands:
         subparsers = parser.add_subparsers(
@@ -88,8 +77,7 @@ Run with --help to get further help.''',
     args = parser.parse_args(args)
     subparser = args.__dict__.pop('subparser', None)
 
-    loglevel = args.__dict__.pop('loglevel')
-    util.setup_logging(g_program_name, loglevel)
+    common.process_standard_arguments(parser, args)
 
     target = args.__dict__.pop('target', None)
 

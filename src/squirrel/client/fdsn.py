@@ -327,7 +327,7 @@ class FDSNSource(Source):
                 'FDSNSource: auth_token and auth_token_path are mutually '
                 'exclusive.')
 
-    def setup(self, squirrel, check=True, progress_viewer='terminal'):
+    def setup(self, squirrel, check=True):
         self._cache_path = op.join(
             self.cache_path or squirrel._cache_path, 'fdsn')
 
@@ -340,8 +340,7 @@ class FDSNSource(Source):
 
         squirrel.add(
             self._get_waveforms_path(),
-            check=check,
-            progress_viewer=progress_viewer)
+            check=check)
 
         fn = self._get_channels_path()
         if os.path.exists(fn):

@@ -165,7 +165,7 @@ def order_key(order):
 
 class Batch(object):
     '''
-    Batch of waveforms from window wise data extraction.
+    Batch of waveforms from window-wise data extraction.
 
     Encapsulates state and results yielded for each window in window-wise
     waveform extraction with the :py:meth:`Squirrel.chopper_waveforms` method.
@@ -578,8 +578,7 @@ class Squirrel(Selection):
             kinds=None,
             format='detect',
             regex=None,
-            check=True,
-            progress_viewer='terminal'):
+            check=True):
 
         '''
         Add files to the selection.
@@ -631,7 +630,7 @@ class Squirrel(Selection):
 
         kind_mask = model.to_kind_mask(kinds)
 
-        with progress.view(progress_viewer):
+        with progress.view():
             Selection.add(
                 self, util.iter_select_files(
                     paths,
@@ -762,7 +761,7 @@ class Squirrel(Selection):
             self._set_file_states_known(transaction)
             self._conn.set_progress_handler(None, 0)
 
-    def add_source(self, source, check=True, progress_viewer='terminal'):
+    def add_source(self, source, check=True):
         '''
         Add remote resource.
 
@@ -773,7 +772,7 @@ class Squirrel(Selection):
         '''
 
         self._sources.append(source)
-        source.setup(self, check=check, progress_viewer=progress_viewer)
+        source.setup(self, check=check)
 
     def add_fdsn(self, *args, **kwargs):
         '''
@@ -795,10 +794,7 @@ class Squirrel(Selection):
 
         self.add_source(catalog.CatalogSource(*args, **kwargs))
 
-    def add_dataset(
-            self, ds, check=True, progress_viewer='terminal',
-            warn_persistent=True):
-
+    def add_dataset(self, ds, check=True, warn_persistent=True):
         '''
         Read dataset description from file and add its contents.
 
@@ -832,7 +828,7 @@ class Squirrel(Selection):
                 'existing Squirrel instance.%s' % (
                     ' Dataset: %s' % path if path else ''))
 
-        ds.setup(self, check=check, progress_viewer=progress_viewer)
+        ds.setup(self, check=check)
 
     def _get_selection_args(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None):

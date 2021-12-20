@@ -8,7 +8,7 @@ from __future__ import absolute_import, print_function
 import argparse
 import logging
 
-from pyrocko import util
+from pyrocko import util, progress
 from pyrocko.squirrel import error
 
 
@@ -53,18 +53,37 @@ def csvtype(choices):
 def add_parser(subparsers, *args, **kwargs):
     kwargs['add_help'] = False
     p = subparsers.add_parser(*args, **kwargs)
+    add_standard_arguments(p)
+    return p
+
+
+def add_standard_arguments(p):
     p.add_argument(
         '--help', '-h',
         action='help',
         help='Show this help message and exit.')
 
     p.add_argument(
-        '--loglevel', '-l',
+        '--loglevel',
         choices=['critical', 'error', 'warning', 'info', 'debug'],
         default='info',
-        help='Set logger level. Default: %(default)s')
+        help='Set logger level. Choices: critical, error, warning, '
+             'info [default], debug.')
 
-    return p
+    p.add_argument(
+        '--progress',
+        choices=['terminal', 'log', 'off'],
+        default='terminal',
+        help='Set how progress status is reported. Choices: terminal '
+             '[default], off.')
+
+
+def process_standard_arguments(parser, args):
+    loglevel = args.__dict__.pop('loglevel')
+    util.setup_logging(parser.prog, loglevel)
+
+    pmode = args.__dict__.pop('progress')
+    progress.set_default_viewer(pmode)
 
 
 def add_selection_arguments(p):

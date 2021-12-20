@@ -2,8 +2,11 @@ from __future__ import absolute_import, print_function
 
 import sys
 import time
+import logging
 
 from .get_terminal_size import get_terminal_size
+
+logger = logging.getLogger('pyrocko.progress')
 
 
 # spinner = u'\u25dc\u25dd\u25de\u25df'
@@ -42,12 +45,17 @@ ansi_reset = u'\033c'
 
 g_force_viewer_off = False
 
+g_viewer = 'terminal'
 
-class TerminalStatusWindow(object):
+
+def set_default_viewer(viewer):
+    global g_viewer
+    g_viewer = viewer
+
+
+class StatusViewer(object):
+
     def __init__(self, parent=None):
-        self._terminal_size = get_terminal_size()
-        self._height = 0
-        self._state = 0
         self._parent = parent
 
     def __enter__(self):
@@ -55,6 +63,21 @@ class TerminalStatusWindow(object):
 
     def __exit__(self, *_):
         self.stop()
+
+    def stop(self):
+        if self._parent:
+            self._parent.hide(self)
+
+    def draw(self, lines):
+        pass
+
+
+class TerminalStatusViewer(StatusViewer):
+    def __init__(self, parent=None):
+        self._terminal_size = get_terminal_size()
+        self._height = 0
+        self._state = 0
+        self._parent = parent
 
     def print(self, s):
         print(s, end='', file=sys.stderr)
@@ -123,23 +146,14 @@ class TerminalStatusWindow(object):
         self.flush()
 
 
-class DummyStatusWindow(object):
-
-    def __init__(self, parent=None):
-        self._parent = parent
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *_):
-        self.stop()
-
-    def stop(self):
-        if self._parent:
-            self._parent.hide(self)
+class LogStatusViewer(StatusViewer):
 
     def draw(self, lines):
-        pass
+        logger.info('Progress:\n%s' % '\n'.join('  '+line for line in lines))
+
+
+class DummyStatusViewer(StatusViewer):
+    pass
 
 
 class Task(object):
@@ -333,15 +347,15 @@ class Progress(object):
         self._last_update = 0.0
         self._terms = []
 
-    def view(self, viewer='terminal'):
+    def view(self, viewer=None):
         if g_force_viewer_off or self._terms:
             viewer = 'off'
+        elif viewer is None:
+            viewer = g_viewer
 
-        if viewer == 'terminal':
-            term = TerminalStatusWindow(self)
-        elif viewer == 'off':
-            term = DummyStatusWindow(self)
-        else:
+        try:
+            term = g_viewer_classes[viewer](self)
+        except KeyError:
             raise ValueError('Invalid viewer choice: %s' % viewer)
 
         self._terms.append(term)
@@ -383,6 +397,12 @@ class Progress(object):
             lines.extend(str(task).splitlines())
 
         return lines
+
+
+g_viewer_classes = {
+    'terminal': TerminalStatusViewer,
+    'log': LogStatusViewer,
+    'off': DummyStatusViewer}
 
 
 progress = Progress()

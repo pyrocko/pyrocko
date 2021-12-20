@@ -50,14 +50,13 @@ class LocalData(base.Source, has_paths.HasPaths):
     def describe(self):
         return 'localdata'
 
-    def setup(self, squirrel, check=True, progress_viewer='terminal'):
+    def setup(self, squirrel, check=True):
         squirrel.add(
             self.expand_path(self.paths),
             kinds=self.kinds,
             regex=self.regex,
             format=self.format,
-            check=check,
-            progress_viewer=progress_viewer)
+            check=check)
 
 
 __all__ = [

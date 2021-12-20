@@ -33,10 +33,10 @@ class Dataset(HasPaths):
     persistent = PersistentID.T(optional=True)
     operators = List.T(Operator.T())
 
-    def setup(self, squirrel, check=True, progress_viewer='terminal'):
+    def setup(self, squirrel, check=True):
         for source in self.sources:
             squirrel.add_source(
-                source, check=check, progress_viewer=progress_viewer)
+                source, check=check)
 
         for operator in self.operators:
             squirrel.add_operator(operator)
