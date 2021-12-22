@@ -5,224 +5,469 @@
 
 from __future__ import absolute_import, print_function
 
-from pyrocko import io
-from pyrocko.apps.jackseis import process, tfmt
+import re
+import logging
+import os.path as op
 
-from .. import common
+import numpy as num
+
+from pyrocko import io, trace, util
+from pyrocko.progress import progress
+from pyrocko.has_paths import Path, HasPaths
+from pyrocko.guts import Dict, String, Choice, Float, List, Timestamp, \
+    StringChoice, IntChoice, Defer, load_all, clone
+from pyrocko.squirrel.dataset import Dataset
+from pyrocko.squirrel.client.local import LocalData
+from pyrocko.squirrel.tool import common
+from pyrocko.squirrel.error import ToolError
+
+tts = util.time_to_str
+
+guts_prefix = 'jackseis'
+logger = logging.getLogger('psq.cli.jackseis')
 
 
-def setup(subparser):
+def make_task(*args):
+    return progress.task(*args, logger=logger)
+
+
+class JackseisError(ToolError):
+    pass
+
+
+class Chain(object):
+    def __init__(self, node, parent=None):
+        self.node = node
+        self.parent = parent
+
+    def mcall(self, name, *args, **kwargs):
+        ret = []
+        if self.parent is not None:
+            ret.append(self.parent.mcall(name, *args, **kwargs))
+
+        ret.append(getattr(self.node, name)(*args, **kwargs))
+        return ret
+
+    def fcall(self, name, *args, **kwargs):
+        v = getattr(self.node, name)(*args, **kwargs)
+        if v is None and self.parent is not None:
+            return self.parent.fcall(name, *args, **kwargs)
+        else:
+            return v
+
+    def get(self, name):
+        v = getattr(self.node, name)
+        if v is None and self.parent is not None:
+            return self.parent.get(name)
+        else:
+            return v
+
+    def dget(self, name, k):
+        v = getattr(self.node, name).get(k, None)
+        if v is None and self.parent is not None:
+            return self.parent.dget(name, k)
+        else:
+            return v
+
+
+class OutputFormatChoice(StringChoice):
+    choices = io.allowed_formats('save')
+
+
+class OutputDataTypeChoice(StringChoice):
+    choices = ['int32', 'int64', 'float32', 'float64']
+    name_to_dtype = {
+        'int32': num.int32,
+        'int64': num.int64,
+        'float32': num.float32,
+        'float64': num.float64}
+
+
+class Converter(HasPaths):
+
+    in_dataset = Dataset.T(optional=True)
+    in_path = String.T(optional=True)
+    in_paths = List.T(String.T(optional=True))
+
+    rename = Dict.T(
+        String.T(),
+        Choice.T([
+            String.T(),
+            Dict.T(String.T(), String.T())]))
+    tmin = Timestamp.T(optional=True)
+    tmax = Timestamp.T(optional=True)
+    tinc = Float.T(optional=True)
+
+    downsample = Float.T(optional=True)
+
+    out_path = Path.T(optional=True)
+    out_sds_path = Path.T(optional=True)
+    out_format = OutputFormatChoice.T(optional=True)
+    out_data_type = OutputDataTypeChoice.T(optional=True)
+    out_mseed_record_length = IntChoice.T(
+        optional=True,
+        choices=list(io.mseed.VALID_RECORD_LENGTHS))
+    out_mseed_steim = IntChoice.T(
+        optional=True,
+        choices=[1, 2])
+
+    parts = List.T(Defer('Converter.T'))
+
+    @classmethod
+    def add_arguments(cls, p):
+        p.add_argument(
+            '--downsample',
+            dest='downsample',
+            type=float,
+            metavar='RATE',
+            help='Downsample to RATE [Hz].')
+
+        p.add_argument(
+            '--out-path',
+            dest='out_path',
+            metavar='TEMPLATE',
+            help='Set output path to TEMPLATE. Available placeholders '
+                 'are %%n: network, %%s: station, %%l: location, %%c: '
+                 'channel, %%b: begin time, %%e: end time, %%j: julian day of '
+                 'year. The following additional placeholders use the window '
+                 'begin and end times rather than trace begin and end times '
+                 '(to suppress producing many small files for gappy traces), '
+                 '%%(wmin_year)s, %%(wmin_month)s, %%(wmin_day)s, %%(wmin)s, '
+                 '%%(wmin_jday)s, %%(wmax_year)s, %%(wmax_month)s, '
+                 '%%(wmax_day)s, %%(wmax)s, %%(wmax_jday)s. '
+                 'Example: --output=\'data/%%s/trace-%%s-%%c.mseed\'')
+
+        p.add_argument(
+            '--out-sds-path',
+            dest='out_sds_path',
+            metavar='PATH',
+            help='Set output path to create SDS (https://www.seiscomp.de'
+                 '/seiscomp3/doc/applications/slarchive/SDS.html), rooted at '
+                 'the given path. Implies --tinc=86400. '
+                 'Example: --output-sds-path=data/sds')
+
+        p.add_argument(
+            '--out-format',
+            dest='out_format',
+            choices=io.allowed_formats('save'),
+            metavar='FORMAT',
+            help='Set output file format. Choices: %s' % io.allowed_formats(
+                'save', 'cli_help', 'mseed'))
+
+        p.add_argument(
+            '--out-data-type',
+            dest='out_data_type',
+            choices=OutputDataTypeChoice.choices,
+            metavar='DTYPE',
+            help='Set numerical data type. Choices: %s. The output file '
+                 'format must support the given type. By default, the data '
+                 'type is kept unchanged.' % ', '.join(
+                    OutputDataTypeChoice.choices))
+
+        p.add_argument(
+            '--out-mseed-record-length',
+            dest='out_mseed_record_length',
+            type=int,
+            choices=io.mseed.VALID_RECORD_LENGTHS,
+            metavar='INT',
+            help='Set the mseed record length in bytes. Choices: %s. '
+                 'Default is 4096 bytes, which is commonly used for archiving.'
+                 % ', '.join(str(b) for b in io.mseed.VALID_RECORD_LENGTHS))
+
+        p.add_argument(
+            '--out-mseed-steim',
+            dest='out_mseed_steim',
+            type=int,
+            choices=(1, 2),
+            metavar='INT',
+            help='Set the mseed STEIM compression. Choices: 1 or 2. '
+                 'Default is STEIM-2, which can compress full range int32. '
+                 'Note: STEIM-2 is limited to 30 bit dynamic range.')
+
+    @classmethod
+    def from_arguments(cls, args):
+        obj = cls(
+            downsample=args.downsample,
+            out_format=args.out_format,
+            out_path=args.out_path,
+            out_sds_path=args.out_sds_path,
+            out_data_type=args.out_data_type,
+            out_mseed_record_length=args.out_mseed_record_length,
+            out_mseed_steim=args.out_mseed_steim)
+
+        obj.validate()
+        return obj
+
+    def add_dataset(self, sq):
+        if self.in_dataset is not None:
+            sq.add_dataset(self.in_dataset)
+
+        if self.in_path is not None:
+            ds = Dataset(sources=[LocalData(paths=[self.in_path])])
+            ds.set_basepath_from(self)
+            sq.add_dataset(ds)
+
+        if self.in_paths:
+            ds = Dataset(sources=[LocalData(paths=self.in_paths)])
+            ds.set_basepath_from(self)
+            sq.add_dataset(ds)
+
+    def get_effective_rename_rules(self, chain):
+        d = {}
+        for k in ['network', 'station', 'location', 'channel']:
+            v = chain.dget('rename', k)
+            if isinstance(v, str):
+                m = re.match(r'/([^/]+)/([^/]*)/', v)
+                if m:
+                    try:
+                        v = (re.compile(m.group(1)), m.group(2))
+                    except Exception:
+                        raise JackseisError(
+                            'Invalid replacement pattern: /%s/' % m.group(1))
+
+            d[k] = v
+
+        return d
+
+    def get_effective_out_path(self):
+        nset = sum(x is not None for x in (
+            self.out_path,
+            self.out_sds_path))
+
+        if nset > 1:
+            raise JackseisError(
+                'More than one out of [out_path, out_sds_path] set.')
+
+        is_sds = False
+        if self.out_path:
+            out_path = self.out_path
+
+        elif self.out_sds_path:
+            out_path = op.join(
+                self.out_sds_path,
+                '%(wmin_year)s/%(network)s/%(station)s/%(channel)s.D'
+                '/%(network)s.%(station)s.%(location)s.%(channel)s.D'
+                '.%(wmin_year)s.%(wmin_jday)s')
+            is_sds = True
+        else:
+            out_path = None
+
+        if out_path is not None:
+            return self.expand_path(out_path), is_sds
+        else:
+            return None
+
+    def do_rename(self, rules, tr):
+        rename = {}
+        for k in ['network', 'station', 'location', 'channel']:
+            v = rules.get(k, None)
+            if isinstance(v, str):
+                rename[k] = v
+            elif isinstance(v, dict):
+                try:
+                    oldval = getattr(tr, k)
+                    rename[k] = v[oldval]
+                except KeyError:
+                    raise ToolError(
+                        'No mapping defined for %s code "%s".' % (k, oldval))
+
+            elif isinstance(v, tuple):
+                pat, repl = v
+                oldval = getattr(tr, k)
+                newval, n = pat.subn(repl, oldval)
+                if n:
+                    rename[k] = newval
+
+        tr.set_codes(**rename)
+
+    def convert(self, args, chain=None):
+        if chain is None:
+            defaults = clone(g_defaults)
+            defaults.set_basepath_from(self)
+            chain = Chain(defaults)
+
+        chain = Chain(self, chain)
+
+        if self.parts:
+            task = make_task('Part')
+            for part in task(self.parts):
+                part.convert(args, chain)
+
+            del task
+
+        else:
+            sq = common.squirrel_from_selection_arguments(args)
+
+            cli_overrides = Converter.from_arguments(args)
+            cli_overrides.set_basepath('.')
+
+            chain = Chain(cli_overrides, chain)
+
+            chain.mcall('add_dataset', sq)
+
+            tmin = chain.get('tmin')
+            tmax = chain.get('tmax')
+            tinc = chain.get('tinc')
+            downsample = chain.get('downsample')
+            out_path, is_sds = chain.fcall('get_effective_out_path') \
+                or (None, False)
+
+            if is_sds and tinc != 86400.:
+                logger.warning('Setting time window to 1 day to generate SDS.')
+                tinc = 86400.0
+
+            out_format = chain.get('out_format')
+            out_data_type = chain.get('out_data_type')
+
+            target_deltat = None
+            if downsample is not None:
+                target_deltat = 1.0 / float(downsample)
+
+            save_kwargs = {}
+            if out_format == 'mseed':
+                save_kwargs['record_length'] = chain.get(
+                    'out_mseed_record_length')
+                save_kwargs['steim'] = chain.get(
+                    'out_mseed_steim')
+
+            tpad = 0.0
+            if target_deltat is not None:
+                tpad += target_deltat * 20.
+
+            task = None
+            rename_rules = self.get_effective_rename_rules(chain)
+            for batch in sq.chopper_waveforms(
+                    tmin=tmin, tmax=tmax, tpad=tpad, tinc=tinc,
+                    snap_window=True):
+
+                if task is None:
+                    task = make_task('Block', batch.n)
+
+                task.update(
+                    batch.i,
+                    '%s - %s' % (
+                        util.time_to_str(batch.tmin),
+                        util.time_to_str(batch.tmax)))
+
+                twmin = batch.tmin
+                twmax = batch.tmax
+
+                traces = batch.traces
+
+                if target_deltat is not None:
+                    out_traces = []
+                    for tr in traces:
+                        try:
+                            tr.downsample_to(
+                                target_deltat, snap=True, demean=False)
+
+                            out_traces.append(tr)
+
+                        except (trace.TraceTooShort, trace.NoData):
+                            pass
+
+                    traces = out_traces
+
+                for tr in traces:
+                    self.do_rename(rename_rules, tr)
+
+                if out_data_type:
+                    for tr in traces:
+                        tr.ydata = tr.ydata.astype(
+                            OutputDataTypeChoice.name_to_dtype[out_data_type])
+
+                chopped_traces = []
+                for tr in traces:
+                    try:
+                        otr = tr.chop(twmin, twmax, inplace=False)
+                        chopped_traces.append(otr)
+                    except trace.NoData:
+                        pass
+
+                traces = chopped_traces
+
+                if out_path is not None:
+                    try:
+                        io.save(
+                            traces, out_path,
+                            format=out_format,
+                            overwrite=args.force,
+                            additional=dict(
+                                wmin_year=tts(twmin, format='%Y'),
+                                wmin_month=tts(twmin, format='%m'),
+                                wmin_day=tts(twmin, format='%d'),
+                                wmin_jday=tts(twmin, format='%j'),
+                                wmin=tts(twmin, format='%Y-%m-%d_%H-%M-%S'),
+                                wmax_year=tts(twmax, format='%Y'),
+                                wmax_month=tts(twmax, format='%m'),
+                                wmax_day=tts(twmax, format='%d'),
+                                wmax_jday=tts(twmax, format='%j'),
+                                wmax=tts(twmax, format='%Y-%m-%d_%H-%M-%S')),
+                            **save_kwargs)
+
+                    except io.FileSaveError as e:
+                        raise JackseisError(str(e))
+
+                else:
+                    for tr in traces:
+                        print(tr.summary)
+
+            if task:
+                task.done()
+
+
+g_defaults = Converter(
+    out_mseed_record_length=4096,
+    out_format='mseed',
+    out_mseed_steim=2)
+
+
+def setup(subparsers):
     p = common.add_parser(
-        subparser, 'jackseis',
-        help='squirrel\'s adaption of jackseis')
+        subparsers, 'jackseis',
+        help='Convert waveform archive data.')
+
+    common.add_selection_arguments(p)
 
     p.add_argument(
-        '--pattern',
-        dest='regex',
-        metavar='REGEX',
-        help='only include files whose paths match REGEX')
-
-    p.add_argument(
-        '--quiet',
-        dest='quiet',
-        action='store_true',
-        default=False,
-        help='disable output of progress information')
-
-    p.add_argument(
-        '--debug',
-        dest='debug',
-        action='store_true',
-        default=False,
-        help='print debugging information to stderr')
-
-    p.add_argument(
-        '--tmin',
-        dest='tmin',
-        help='start time as "%s"' % tfmt)
-
-    p.add_argument(
-        '--tmax',
-        dest='tmax',
-        help='end time as "%s"' % tfmt)
-
-    p.add_argument(
-        '--tinc',
-        dest='tinc',
-        help='set time length of output files [s] or "auto" to automatically '
-             'choose an appropriate time increment or "huge" to allow to use '
-             'a lot of system memory to merge input traces into huge output '
-             'files.')
-
-    sample_snap_choices = ('shift', 'interpolate')
-    p.add_argument(
-        '--sample-snap',
-        dest='sample_snap',
-        choices=sample_snap_choices,
-        help='shift/interpolate traces so that samples are at even multiples '
-        'of sampling rate. Choices: %s' % ', '.join(sample_snap_choices))
-
-    p.add_argument(
-        '--downsample',
-        dest='downsample',
-        metavar='RATE',
-        help='downsample to RATE [Hz]')
-
-    p.add_argument(
-        '--output',
-        dest='output_path',
-        metavar='TEMPLATE',
-        help='set output path to TEMPLATE. Available placeholders '
-             'are %%n: network, %%s: station, %%l: location, %%c: channel, '
-             '%%b: begin time, %%e: end time, %%j: julian day of year. The '
-             'following additional placeholders use the window begin and end '
-             'times rather than trace begin and end times (to suppress '
-             'producing many small files for gappy traces), %%(wmin_year)s, '
-             '%%(wmin_month)s, %%(wmin_day)s, %%(wmin)s, %%(wmax_year)s, '
-             '%%(wmax_month)s, %%(wmax_day)s, %%(wmax)s. Example: '
-             '--output=\'data/%%s/trace-%%s-%%c.mseed\'')
-
-    p.add_argument(
-        '--output-dir',
-        metavar='TEMPLATE',
-        dest='output_dir',
-        help='set output directory to TEMPLATE (see --output for details) '
-             'and automatically choose filenames. '
-             'Produces files like TEMPLATE/NET-STA-LOC-CHA_BEGINTIME.FORMAT')
-
-    p.add_argument(
-        '--output-format',
-        dest='output_format',
-        default='mseed',
-        choices=io.allowed_formats('save'),
-        help='set output file format. Choices: %s' %
-             io.allowed_formats('save', 'cli_help', 'mseed'))
+        '--config',
+        dest='config_path',
+        metavar='NAME',
+        help='File containing `jackseis2.Converter` settings.')
 
     p.add_argument(
         '--force',
         dest='force',
         action='store_true',
         default=False,
-        help='force overwriting of existing files')
+        help='Force overwriting of existing files.')
 
-    p.add_argument(
-        '--no-snap',
-        dest='snap',
-        action='store_false',
-        default=True,
-        help='do not start output files at even multiples of file length')
+    Converter.add_arguments(p)
 
-    p.add_argument(
-        '--traversal',
-        dest='traversal',
-        choices=('station-by-station', 'channel-by-channel', 'chronological'),
-        default='station-by-station',
-        help='set traversal order for traces processing. '
-             'Choices are \'station-by-station\' [default], '
-             '\'channel-by-channel\', and \'chronological\'. Chronological '
-             'traversal uses more processing memory but makes it possible to '
-             'join multiple stations into single output files')
-
-    p.add_argument(
-        '--rename-network',
-        action='append',
-        default=[],
-        dest='rename_network',
-        metavar='/PATTERN/REPLACEMENT/',
-        help='update network code, can be given more than once')
-
-    p.add_argument(
-        '--rename-station',
-        action='append',
-        default=[],
-        dest='rename_station',
-        metavar='/PATTERN/REPLACEMENT/',
-        help='update station code, can be given more than once')
-
-    p.add_argument(
-        '--rename-location',
-        action='append',
-        default=[],
-        dest='rename_location',
-        metavar='/PATTERN/REPLACEMENT/',
-        help='update location code, can be given more than once')
-
-    p.add_argument(
-        '--rename-channel',
-        action='append',
-        default=[],
-        dest='rename_channel',
-        metavar='/PATTERN/REPLACEMENT/',
-        help='update channel code, can be given more than once')
-
-    p.add_argument(
-        '--output-data-type',
-        dest='output_data_type',
-        choices=('same', 'int32', 'int64', 'float32', 'float64'),
-        default='same',
-        metavar='DTYPE',
-        help='set data type. Choices: same [default], int32, '
-             'int64, float32, float64. The output file format must support '
-             'the given type.')
-
-    p.add_argument(
-        '--output-record-length',
-        dest='record_length',
-        default=4096,
-        choices=[b for b in io.mseed.VALID_RECORD_LENGTHS],
-        type=int,
-        metavar='RECORD_LENGTH',
-        help='set the mseed record length in bytes. Choices: %s. '
-             'Default is 4096 bytes, which is commonly used for archiving.'
-             % ', '.join(str(b) for b in io.mseed.VALID_RECORD_LENGTHS))
-
-    p.add_argument(
-        '--output-steim',
-        dest='steim',
-        choices=[1, 2],
-        default=2,
-        type=int,
-        metavar='STEIM_COMPRESSION',
-        help='set the mseed STEIM compression. Choices: 1 or 2. '
-             'Default is STEIM-2, which can compress full range int32. '
-             'NOTE: STEIM-2 is limited to 30 bit dynamic range.')
-
-    quantity_choices = ('acceleration', 'velocity', 'displacement')
-    p.add_argument(
-        '--output-quantity',
-        dest='output_quantity',
-        choices=quantity_choices,
-        help='deconvolve instrument transfer function. Choices: %s'
-        % ', '.join(quantity_choices))
-
-    p.add_argument(
-        '--restitution-frequency-band',
-        default='0.001,100.0',
-        dest='str_fmin_fmax',
-        metavar='FMIN,FMAX',
-        help='frequency band for instrument deconvolution as FMIN,FMAX in Hz. '
-             'Default: "%default"')
-
-    p.add_argument(
-        '--nthreads',
-        metavar='NTHREADS',
-        default=1,
-        help='number of threads for processing, '
-             'this can speed-up CPU bound tasks (Python 3.5+ only)')
-
-    common.add_selection_arguments(p)
     return p
 
 
 def call(parser, args):
+    if args.config_path:
+        try:
+            converters = load_all(filename=args.config_path)
+        except Exception as e:
+            raise ToolError(str(e))
 
-    def get_pile():
-        squirrel = common.squirrel_from_selection_arguments(args)
-        return squirrel.pile
+        for converter in converters:
+            if not isinstance(converter, Converter):
+                raise ToolError(
+                    'Config file should only contain '
+                    '`jackseis.Converter` objects.')
 
-    args.station_fns = []
-    args.event_fns = []
-    args.station_xml_fns = []
-    args.record_length = int(args.record_length)
+            converter.set_basepath(op.dirname(args.config_path))
 
-    return process(get_pile, args)
+    else:
+        converter = Converter()
+        converter.set_basepath('.')
+        converters = [converter]
+
+    with progress.view():
+        task = make_task('Jackseis job')
+        for converter in task(converters):
+            converter.convert(args)

@@ -12,7 +12,7 @@ from .. import common
 from pyrocko.squirrel.error import SquirrelError
 from pyrocko.progress import progress
 
-logger = logging.getLogger('psq.cli.update')
+logger = logging.getLogger('psq.cli.summon')
 
 
 def setup(subparsers):
