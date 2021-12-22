@@ -13,8 +13,16 @@ def setup(subparsers):
         subparsers, 'files',
         help='Lookup files providing given content selection.')
 
+    p.add_argument(
+        '--relative',
+        action='store_true',
+        default=False,
+        help='Reveal path as it is stored in the database. This is relative '
+             'for files inside a Squirrel environment.')
+
     common.add_selection_arguments(p)
     common.add_query_arguments(p)
+
     return p
 
 
@@ -27,8 +35,10 @@ def call(parser, args):
         for nut in squirrel.iter_nuts(**d):
             paths.add(nut.file_path)
 
+        db = squirrel.get_database()
         for path in sorted(paths):
-            print(path)
+            print(db.relpath(path) if args.relative else path)
+
     else:
-        for path in squirrel.iter_paths():
+        for path in squirrel.iter_paths(raw=args.relative):
             print(path)

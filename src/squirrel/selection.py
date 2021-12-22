@@ -440,7 +440,7 @@ class Selection(object):
                          WHERE files.path == ?)
                 '''), ((normpath(path),) for path in paths))
 
-    def iter_paths(self):
+    def iter_paths(self, raw=False):
         '''
         Iterate over all file paths currently belonging to the selection.
 
@@ -456,17 +456,23 @@ class Selection(object):
             ORDER BY %(db)s.%(file_states)s.file_id
         ''')
 
-        db = self.get_database()
-        for values in self._conn.execute(sql):
-            yield db.abspath(values[0])
+        if raw:
+            def trans(path):
+                return path
+        else:
+            db = self.get_database()
+            trans = db.abspath
 
-    def get_paths(self):
+        for values in self._conn.execute(sql):
+            yield trans(values[0])
+
+    def get_paths(self, raw=False):
         '''
         Get all file paths currently belonging to the selection.
 
         :returns: List of file paths.
         '''
-        return list(self.iter_paths())
+        return list(self.iter_paths(raw=raw))
 
     def _set_file_states_known(self, transaction=None):
         '''
