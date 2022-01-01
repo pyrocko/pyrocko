@@ -95,11 +95,18 @@ def add_selection_arguments(p):
         help='Files and directories with waveforms, metadata and events.')
 
     p.add_argument(
-        '--regex',
-        dest='regex',
+        '--include',
+        dest='include',
         metavar='REGEX',
         help='If given, files are only included if their paths match the '
              'regular expression PATTERN.')
+
+    p.add_argument(
+        '--exclude',
+        dest='exclude',
+        metavar='REGEX',
+        help='If given, files are only included if their paths do not match '
+             'the regular expression PATTERN.')
 
     p.add_argument(
         '--optimistic', '-o',
@@ -200,7 +207,8 @@ def squirrel_from_selection_arguments(args):
             check=args.check,
             format=args.format,
             kinds=kinds,
-            regex=args.regex)
+            include=args.include,
+            exclude=args.exclude)
 
     for ds in datasets:
         squirrel.add_dataset(ds, check=args.check)

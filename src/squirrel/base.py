@@ -577,7 +577,8 @@ class Squirrel(Selection):
             paths,
             kinds=None,
             format='detect',
-            regex=None,
+            include=None,
+            exclude=None,
             check=True):
 
         '''
@@ -602,9 +603,15 @@ class Squirrel(Selection):
         :type format:
             str
 
-        :param regex:
+        :param include:
             If not ``None``, files are only included if their paths match the
             given regular expression pattern.
+        :type format:
+            str
+
+        :param exclude:
+            If not ``None``, files are only included if their paths do not
+            match the given regular expression pattern.
         :type format:
             str
 
@@ -635,7 +642,8 @@ class Squirrel(Selection):
                 self, util.iter_select_files(
                     paths,
                     show_progress=False,
-                    regex=regex,
+                    include=include,
+                    exclude=exclude,
                     pass_through=lambda path: path.startswith('virtual:')
                 ), kind_mask, format)
 

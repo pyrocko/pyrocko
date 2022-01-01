@@ -89,7 +89,7 @@ class ScenarioCollectionItem(Object):
             path_insar = self.get_path('insar')
             util.ensuredir(path_insar)
 
-            fns = util.select_files([path_insar], regex='\\.(npz)$',
+            fns = util.select_files([path_insar], include='\\.(npz)$',
                                     show_progress=False)
             for f in fns:
                 self._scenes.append(Scene.load(f))

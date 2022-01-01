@@ -1510,7 +1510,7 @@ def MakePileViewerMainClass(base):
                 paths = [paths]
 
             fns = pyrocko.util.select_files(
-                paths, selector=None, regex=regex, show_progress=False)
+                paths, selector=None, include=regex, show_progress=False)
 
             if not fns:
                 return

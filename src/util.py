@@ -1766,8 +1766,9 @@ class Anon(object):
 
 def iter_select_files(
         paths,
+        include=None,
+        exclude=None,
         selector=None,
-        regex=None,
         show_progress=True,
         pass_through=None):
 
@@ -1779,42 +1780,50 @@ def iter_select_files(
 
     if show_progress:
         progress_beg('selecting files...')
-        if logger.isEnabledFor(logging.DEBUG):
-            sys.stderr.write('\n')
 
     ngood = 0
-    if regex:
-        rselector = re.compile(regex)
+    check_include = None
+    if include is not None:
+        rinclude = re.compile(include)
 
-    if regex:
-        def check(path):
-            logger.debug("looking at filename: '%s'" % path)
-            m = rselector.search(path)
+        def check_include(path):
+            m = rinclude.search(path)
             if not m:
-                logger.debug("   regex '%s' does not match." % regex)
                 return False
+
+            if selector is None:
+                return True
 
             infos = Anon(**m.groupdict())
-            logger.debug("   regex '%s' matches." % regex)
-            for k, v in m.groupdict().items():
-                logger.debug(
-                    "      attribute '%s' has value '%s'" % (k, v))
-            if selector is None or selector(infos):
-                return True
-            else:
-                logger.debug('   not selected.')
-                return False
+            return selector(infos)
+
+    check_exclude = None
+    if exclude is not None:
+        rexclude = re.compile(exclude)
+
+        def check_exclude(path):
+            return not bool(rexclude.search(path))
+
+    if check_include and check_exclude:
+
+        def check(path):
+            return check_include(path) and check_exclude(path)
+
+    elif check_include:
+        check = check_include
+
+    elif check_exclude:
+        check = check_exclude
 
     else:
-        def check(path):
-            return True
+        check = None
 
     if isinstance(paths, str):
         paths = [paths]
 
     for path in paths:
         if pass_through and pass_through(path):
-            if check(path):
+            if check is None or check(path):
                 yield path
 
         elif os.path.isdir(path):
@@ -1823,11 +1832,11 @@ def iter_select_files(
                 filenames.sort()
                 for filename in filenames:
                     path = op.join(dirpath, filename)
-                    if check(path):
+                    if check is None or check(path):
                         yield os.path.abspath(path)
                         ngood += 1
         else:
-            if check(path):
+            if check is None or check(path):
                 yield os.path.abspath(path)
                 ngood += 1
 
@@ -1835,39 +1844,43 @@ def iter_select_files(
         progress_end('%i file%s selected.' % (ngood, plural_s(ngood)))
 
 
-def select_files(paths, selector=None, regex=None, show_progress=True):
+def select_files(
+        paths, include=None, exclude=None, selector=None, show_progress=True):
+
     '''
     Recursively select files.
 
     :param paths: entry path names
+    :param include: pattern for conditional inclusion
+    :param exclude: pattern for conditional exclusion
     :param selector: callback for conditional inclusion
-    :param regex: pattern for conditional inclusion
     :param show_progress: if True, indicate start and stop of processing
     :returns: list of path names
 
     Recursively finds all files under given entry points ``paths``. If
-    parameter ``regex`` is a regular expression, only files with matching path
-    names are included. If additionally parameter ``selector`` is given a
+    parameter ``include`` is a regular expression, only files with matching
+    path names are included. If additionally parameter ``selector`` is given a
     callback function, only files for which the callback returns ``True`` are
     included. The callback should take a single argument. The callback is
     called with a single argument, an object, having as attributes, any named
-    groups given in ``regex``.
+    groups given in ``include``.
 
     Examples
 
     To find all files ending in ``'.mseed'`` or ``'.msd'``::
 
         select_files(paths,
-            regex=r'\\.(mseed|msd)$')
+            include=r'\\.(mseed|msd)$')
 
     To find all files ending with ``'$Year.$DayOfYear'``, having set 2009 for
     the year::
 
         select_files(paths,
-            regex=r'(?P<year>\\d\\d\\d\\d)\\.(?P<doy>\\d\\d\\d)$',
+            include=r'(?P<year>\\d\\d\\d\\d)\\.(?P<doy>\\d\\d\\d)$',
             selector=(lambda x: int(x.year) == 2009))
     '''
-    return list(iter_select_files(paths, selector, regex, show_progress))
+    return list(iter_select_files(
+        paths, include, exclude, selector, show_progress))
 
 
 def base36encode(number, alphabet='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'):

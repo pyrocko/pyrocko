@@ -265,7 +265,7 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
 
     def get_pile(self):
         if self._pile is None:
-            fns = util.select_files([self.tempdir], regex=r'\.SAC$')
+            fns = util.select_files([self.tempdir], include=r'\.SAC$')
             self._pile = pile.Pile()
             self._pile.load_files(fns, fileformat='sac')
 

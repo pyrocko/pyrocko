@@ -1544,7 +1544,7 @@ def make_pile(
         cachedirname = config.config().cache_dir
 
     fns = util.select_files(
-        paths, selector, regex, show_progress=show_progress)
+        paths, include=regex, selector=selector, show_progress=show_progress)
 
     cache = get_cache(cachedirname)
     p = Pile()

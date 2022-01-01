@@ -39,10 +39,14 @@ class LocalData(base.Source, has_paths.HasPaths):
         optional=True,
         help='Content kinds to be added to the Squirrel selection. By default '
              'all known content kinds are added.')
-    regex = String.T(
+    include = String.T(
         optional=True,
         help='If not ``None``, files are only included if their paths match '
              'the given regular expression pattern.')
+    exclude = String.T(
+        optional=True,
+        help='If not ``None``, files are only included if their paths do not '
+             'match the given regular expression pattern.')
     format = FileFormat.T(
         default='detect',
         help='Assume files are of given format.')
@@ -54,7 +58,8 @@ class LocalData(base.Source, has_paths.HasPaths):
         squirrel.add(
             self.expand_path(self.paths),
             kinds=self.kinds,
-            regex=self.regex,
+            include=self.include,
+            exclude=self.exclude,
             format=self.format,
             check=check)
 
