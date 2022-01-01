@@ -2680,9 +2680,40 @@ def mpl_show(plt):
 
 g_re_qsplit = re.compile(
     r'"([^"\\]*(?:\\.[^"\\]*)*)"|\'([^\'\\]*(?:\\.[^\'\\]*)*)\'|(\S+)')
+g_re_qsplit_sep = {}
+
+
+def get_re_qsplit(sep):
+    if sep is None:
+        return g_re_qsplit
+    else:
+        if sep not in g_re_qsplit_sep:
+            assert len(sep) == 1
+            assert sep not in '\'"'
+            esep = re.escape(sep)
+            g_re_qsplit_sep[sep] = re.compile(
+                r'"([^"\\]*(?:\\.[^"\\]*)*)"|\'([^\'\\]*(?:\\.[^\'\\]*)*)\'|'
+                + r'([^' + esep + r']+|(?<=' + esep + r')(?=' + esep + r')|^(?=' + esep + r')|(?<=' + esep + r')$)')  # noqa
+        return g_re_qsplit_sep[sep]
 
 
 g_re_trivial = re.compile(r'\A[^\'"\s]+\Z')
+g_re_trivial_sep = {}
+
+
+def get_re_trivial(sep):
+    if sep is None:
+        return g_re_trivial
+    else:
+        if sep not in g_re_qsplit_sep:
+            assert len(sep) == 1
+            assert sep not in '\'"'
+            esep = re.escape(sep)
+            g_re_trivial_sep[sep] = re.compile(r'\A[^\'"' + esep + r']+\Z')
+
+        return g_re_trivial_sep[sep]
+
+
 g_re_escape_s = re.compile(r'([\\\'])')
 g_re_unescape_s = re.compile(r'\\([\\\'])')
 g_re_escape_d = re.compile(r'([\\"])')
@@ -2726,28 +2757,37 @@ def unescape_d(s):
     return g_re_unescape_d.sub(r'\1', s)
 
 
-def qjoin_s(it):
+def qjoin_s(it, sep=None):
     '''
     Join sequence of strings into a line, single-quoting non-trivial strings.
 
     Example:  ``["55", "Sparrow's Island"]`` => ``"55 'Sparrow\\\\'s Island'"``
     '''
-    return ' '.join(
-        w if g_re_trivial.search(w) else "'%s'" % escape_s(w) for w in it)
+    re_trivial = get_re_trivial(sep)
+
+    if sep is None:
+        sep = ' '
+
+    return sep.join(
+        w if re_trivial.search(w) else "'%s'" % escape_s(w) for w in it)
 
 
-def qjoin_d(it):
+def qjoin_d(it, sep=None):
     '''
     Join sequence of strings into a line, double-quoting non-trivial strings.
 
     Example:  ``['55', 'Pete "The Robot" Smith']`` =>
     ``'55' "Pete \\\\"The Robot\\\\" Smith"'``
     '''
-    return ' '.join(
-        w if g_re_trivial.search(w) else '"%s"' % escape_d(w) for w in it)
+    re_trivial = get_re_trivial(sep)
+    if sep is None:
+        sep = ' '
+
+    return sep.join(
+        w if re_trivial.search(w) else '"%s"' % escape_d(w) for w in it)
 
 
-def qsplit(s):
+def qsplit(s, sep=None):
     '''
     Split line into list of strings, allowing for quoted strings.
 
@@ -2756,9 +2796,10 @@ def qsplit(s):
     ``'55' "Pete \\\\"The Robot\\\\" Smith"'`` =>
     ``['55', 'Pete "The Robot" Smith']``
     '''
+    re_qsplit = get_re_qsplit(sep)
     return [
         (unescape_d(x[0]) or unescape_s(x[1]) or x[2])
-        for x in g_re_qsplit.findall(s)]
+        for x in re_qsplit.findall(s)]
 
 
 g_have_warned_threadpoolctl = False

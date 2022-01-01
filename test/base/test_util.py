@@ -285,17 +285,29 @@ class UtilTestCase(unittest.TestCase):
     def test_qsplit(self):
         def random_word():
             return ''.join(
-                [choice(' abc\\"\'\t\n') for _ in range(randint(0, 10))])
+                [choice(' abc\\"\'\t\n,[].') for _ in range(randint(0, 10))])
 
         def random_line():
             return [random_word() for _ in range(randint(0, 10))]
 
-        for i in range(100):
-            line_in = random_line()
-            for qj in (util.qjoin_s, util.qjoin_d):
-                s = qj(line_in)
-                line_out = util.qsplit(s)
-                assert(line_in == line_out)
+        for sep in (None, ',', '.', '\n', '\t', '[', ']', ' '):
+            for i in range(100):
+                line_in = random_line()
+                for qj in (util.qjoin_s, util.qjoin_d):
+                    s = qj(line_in, sep)
+                    line_out = util.qsplit(s, sep)
+                    assert(line_in == line_out)
+
+    def test_qsplit_empty(self):
+        for sep in (',', '.', '\n', '\t', '[', ']', ' '):
+            for n in (0, 1, 2, 3):
+                for qj in (util.qjoin_s, util.qjoin_d):
+                    s = qj([''] * n, sep)
+                    line = util.qsplit(s, sep)
+                    assert line == [''] * n
+                    s = qj([' '] * n, sep)
+                    line = util.qsplit(s, sep)
+                    assert line == [' '] * n
 
     def test_lockfile(self):
         fn = self.fpath('my_lock')
