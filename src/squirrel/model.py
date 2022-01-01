@@ -13,7 +13,7 @@ from collections import defaultdict
 
 from pyrocko import util
 from pyrocko.guts import Object, String, Timestamp, Float, Int, Unicode, \
-    Tuple, List, StringChoice
+    Tuple, List, StringChoice, Any
 from pyrocko.model import Content
 from pyrocko.response import FrequencyResponse, MultiplyResponse, \
     IntegrationResponse, DifferentiationResponse, simplify_responses, \
@@ -1085,6 +1085,41 @@ class DummyTrace(object):
         return not (tmax < self.nut.tmin or self.nut.tmax < tmin)
 
 
+class Coverage(Object):
+    kind_id = Int.T()
+    pattern = String.T()
+    codes = String.T()
+    deltat = Float.T(optional=True)
+    tmin = Timestamp.T(optional=True)
+    tmax = Timestamp.T(optional=True)
+    changes = List.T(Tuple.T(2, Any.T()))
+
+    @classmethod
+    def from_values(cls, args):
+        pattern, codes, deltat, tmin, tmax, changes, kind_id = args
+        return cls(
+            kind_id=kind_id,
+            pattern=pattern,
+            codes=codes,
+            deltat=deltat,
+            tmin=tmin,
+            tmax=tmax,
+            changes=changes)
+
+    @property
+    def summary(self):
+        ts = '%s - %s' % (
+            util.time_to_str(self.tmin),
+            util.time_to_str(self.tmax))
+
+        return ' '.join((
+            ('%s,' % to_kind(self.kind_id)).ljust(9),
+            ('%s,' % '.'.join(self.codes.split(separator))).ljust(18),
+            ts,
+            '%10.3g' % self.deltat,
+            '%4i' % len(self.changes)))
+
+
 __all__ = [
     'separator',
     'to_kind',
@@ -1096,4 +1131,5 @@ __all__ = [
     'Station',
     'Channel',
     'Nut',
+    'Coverage',
 ]
