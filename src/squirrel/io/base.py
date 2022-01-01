@@ -339,7 +339,7 @@ def iload(
                     database_modified = True
 
             except FileLoadError:
-                logger.error('An error occured while reading file: %s' % path)
+                logger.error('Cannot read file: %s' % path)
                 if database:
                     database.reset(path, transaction=transaction)
                     database_modified = True
