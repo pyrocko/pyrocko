@@ -216,51 +216,55 @@ def squirrel_from_selection_arguments(args):
     return squirrel
 
 
-def add_query_arguments(p):
-    p.add_argument(
-        '--codes',
-        dest='codes',
-        metavar='CODES',
-        help='Code pattern to query (STA, NET.STA, NET.STA.LOC, '
-             'NET.STA.LOC.CHA, NET.STA.LOC.CHA.EXTRA, '
-             'AGENCY.NET.STA.LOC.CHA.EXTRA).')
+def add_query_arguments(p, without=[]):
+    if 'codes' not in without:
+        p.add_argument(
+            '--codes',
+            dest='codes',
+            metavar='CODES',
+            help='Code pattern to query (STA, NET.STA, NET.STA.LOC, '
+                 'NET.STA.LOC.CHA, NET.STA.LOC.CHA.EXTRA, '
+                 'AGENCY.NET.STA.LOC.CHA.EXTRA).')
 
-    p.add_argument(
-        '--tmin',
-        dest='tmin',
-        metavar='TIME',
-        help='Begin of time interval to query.')
+    if 'tmin' not in without:
+        p.add_argument(
+            '--tmin',
+            dest='tmin',
+            metavar='TIME',
+            help='Begin of time interval to query.')
 
-    p.add_argument(
-        '--tmax',
-        dest='tmax',
-        metavar='TIME',
-        help='End of time interval to query.')
+    if 'tmax' not in without:
+        p.add_argument(
+            '--tmax',
+            dest='tmax',
+            metavar='TIME',
+            help='End of time interval to query.')
 
-    p.add_argument(
-        '--time',
-        dest='time',
-        metavar='TIME',
-        help='Time instant to query.')
+    if 'time' not in without:
+        p.add_argument(
+            '--time',
+            dest='time',
+            metavar='TIME',
+            help='Time instant to query.')
 
 
 def squirrel_query_from_arguments(args):
     d = {}
-    if (args.tmin and args.time) or (args.tmax and args.time):
-        raise error.SquirrelError(
-            'Options --tmin/--tmax and --time are mutually exclusive.')
 
-    if args.kinds:
+    if 'kinds' in args and args.kinds:
         d['kind'] = args.kinds
-    if args.tmin:
+    if 'tmin' in args and args.tmin:
         d['tmin'] = util.str_to_time_fillup(args.tmin)
-    if args.tmax:
+    if 'tmax' in args and args.tmax:
         d['tmax'] = util.str_to_time_fillup(args.tmax)
-    if args.time:
+    if 'time' in args and args.time:
         d['tmin'] = d['tmax'] = util.str_to_time_fillup(args.time)
-    if args.codes:
+    if 'codes' in args and args.codes:
         d['codes'] = tuple(args.codes.split('.'))
 
+    if ('tmin' in d and 'time' in d) or ('tmax' in d and 'time' in d):
+        raise error.SquirrelError(
+            'Options --tmin/--tmax and --time are mutually exclusive.')
     return d
 
 
