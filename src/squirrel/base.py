@@ -2439,7 +2439,8 @@ class Squirrel(Selection):
         return str(self.get_stats())
 
     def get_coverage(
-            self, kind, tmin=None, tmax=None, codes_list=None, limit=None):
+            self, kind, tmin=None, tmax=None, codes_list=None, limit=None,
+            return_raw=True):
 
         '''
         Get coverage information.
@@ -2488,6 +2489,10 @@ class Squirrel(Selection):
 
         tmin_seconds, tmin_offset = model.tsplit(tmin)
         tmax_seconds, tmax_offset = model.tsplit(tmax)
+        kind_id = to_kind_id(kind)
+
+        if codes_list is None:
+            codes_list = self.get_codes(kind=kind)
 
         kdata_all = []
         for pattern in codes_list:
@@ -2590,7 +2595,11 @@ class Squirrel(Selection):
 
             coverage.append(entry)
 
-        return coverage
+        if return_raw:
+            return coverage
+        else:
+            return [model.Coverage.from_values(
+                entry + [kind_id]) for entry in coverage]
 
     def add_operator(self, op):
         self._operators.append(op)
