@@ -50,8 +50,14 @@ def iload(filename, load_data=True, offset=0, segment_size=0, nsegments=0):
                 ydata = tr_tuple[8]
 
                 tr = trace.Trace(
-                    network, station, location, channel, tmin, tmax,
-                    deltat, ydata)
+                    network.strip(),
+                    station.strip(),
+                    location.strip(),
+                    channel.strip(),
+                    tmin,
+                    tmax,
+                    deltat,
+                    ydata)
 
                 tr.meta = {
                     'offset_start': offset,
