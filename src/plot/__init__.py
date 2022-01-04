@@ -47,11 +47,15 @@ in the Pyrocko source directory)::
 
 '''
 from __future__ import absolute_import
-from pyrocko.util import parse_md
-from pyrocko.guts import StringChoice, Float, Int, Bool, Tuple, Object
 
 import math
 import random
+import time
+import calendar
+import numpy as num
+
+from pyrocko.util import parse_md, time_to_str, arange2, to_time_float
+from pyrocko.guts import StringChoice, Float, Int, Bool, Tuple, Object
 
 
 try:
@@ -682,3 +686,137 @@ def mpl_color(x):
                 pass
 
     raise InvalidColorDef('invalid color definition: %s' % x)
+
+
+def nice_time_tick_inc(tinc_approx):
+    hours = 3600.
+    days = hours*24
+    approx_months = days*30.5
+    approx_years = days*365
+
+    if tinc_approx >= approx_years:
+        return max(1.0, nice_value(tinc_approx / approx_years)), 'years'
+
+    elif tinc_approx >= approx_months:
+        nice = [1, 2, 3, 6]
+        for tinc in nice:
+            if tinc*approx_months >= tinc_approx or tinc == nice[-1]:
+                return tinc, 'months'
+
+    elif tinc_approx > days:
+        return nice_value(tinc_approx / days) * days, 'seconds'
+
+    elif tinc_approx >= 1.0:
+        nice = [
+            1., 2., 5., 10., 20, 30, 60., 120., 300., 600., 1200., 1800.,
+            1*hours, 2*hours, 3*hours, 6*hours, 12*hours, days, 2*days]
+
+        for tinc in nice:
+            if tinc >= tinc_approx or tinc == nice[-1]:
+                return tinc, 'seconds'
+
+    else:
+        return nice_value(tinc_approx), 'seconds'
+
+
+def time_tick_labels(tmin, tmax, tinc, tinc_unit):
+
+    if tinc_unit == 'years':
+        tt = time.gmtime(int(tmin))
+        tmin_year = tt[0]
+        if tt[1:6] != (1, 1, 0, 0, 0):
+            tmin_year += 1
+
+        tmax_year = time.gmtime(int(tmax))[0]
+
+        tick_times_year = arange2(
+            math.ceil(tmin_year/tinc)*tinc,
+            math.floor(tmax_year/tinc)*tinc,
+            tinc).astype(int)
+
+        times = [
+            to_time_float(calendar.timegm((year, 1, 1, 0, 0, 0)))
+            for year in tick_times_year]
+
+        labels = ['%04i' % year for year in tick_times_year]
+
+    elif tinc_unit == 'months':
+        tt = time.gmtime(int(tmin))
+        tmin_ym = tt[0] * 12 + (tt[1] - 1)
+        if tt[2:6] != (1, 0, 0, 0):
+            tmin_ym += 1
+
+        tt = time.gmtime(int(tmax))
+        tmax_ym = tt[0] * 12 + (tt[1] - 1)
+
+        tick_times_ym = arange2(
+            math.ceil(tmin_ym/tinc)*tinc,
+            math.floor(tmax_ym/tinc)*tinc, tinc).astype(int)
+
+        times = [
+            to_time_float(calendar.timegm((ym // 12, ym % 12 + 1, 1, 0, 0, 0)))
+            for ym in tick_times_ym]
+
+        labels = [
+            '%04i-%02i' % (ym // 12, ym % 12 + 1) for ym in tick_times_ym]
+
+    elif tinc_unit == 'seconds':
+        imin = int(num.ceil(tmin/tinc))
+        imax = int(num.floor(tmax/tinc))
+        nticks = imax - imin + 1
+        tmin_ticks = imin * tinc
+        times = tmin_ticks + num.arange(nticks) * tinc
+        times = times.tolist()
+
+        if tinc < 1e-6:
+            fmt = '%Y-%m-%d.%H:%M:%S.9FRAC'
+        elif tinc < 1e-3:
+            fmt = '%Y-%m-%d.%H:%M:%S.6FRAC'
+        elif tinc < 1.0:
+            fmt = '%Y-%m-%d.%H:%M:%S.3FRAC'
+        elif tinc < 60:
+            fmt = '%Y-%m-%d.%H:%M:%S'
+        elif tinc < 3600.*24:
+            fmt = '%Y-%m-%d.%H:%M'
+        else:
+            fmt = '%Y-%m-%d'
+
+        nwords = len(fmt.split('.'))
+
+        labels = [time_to_str(t, format=fmt) for t in times]
+        labels_weeded = []
+        have_ymd = have_hms = False
+        ymd = hms = ''
+        for ilab, lab in reversed(list(enumerate(labels))):
+            words = lab.split('.')
+            if nwords > 2:
+                words[2] = '.' + words[2]
+                if float(words[2]) == 0.0:  # or (ilab == 0 and not have_hms):
+                    have_hms = True
+                else:
+                    hms = words[1]
+                    words[1] = ''
+            else:
+                have_hms = True
+
+            if nwords > 1:
+                if words[1] in ('00:00', '00:00:00'):  # or (ilab == 0 and not have_ymd):  # noqa
+                    have_ymd = True
+                else:
+                    ymd = words[0]
+                    words[0] = ''
+            else:
+                have_ymd = True
+
+            labels_weeded.append('\n'.join(reversed(words)))
+
+        labels = list(reversed(labels_weeded))
+        if (not have_ymd or not have_hms) and (hms or ymd):
+            words = ([''] if nwords > 2 else []) + [
+                hms if not have_hms else '',
+                ymd if not have_ymd else '']
+
+            labels[0:0] = ['\n'.join(words)]
+            times[0:0] = [tmin]
+
+    return times, labels
