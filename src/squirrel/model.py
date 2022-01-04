@@ -1108,16 +1108,34 @@ class Coverage(Object):
 
     @property
     def summary(self):
-        ts = '%s - %s' % (
+        ts = '%s - %s,' % (
             util.time_to_str(self.tmin),
             util.time_to_str(self.tmax))
+
+        srate = self.sample_rate
 
         return ' '.join((
             ('%s,' % to_kind(self.kind_id)).ljust(9),
             ('%s,' % '.'.join(self.codes.split(separator))).ljust(18),
             ts,
-            '%10.3g' % self.deltat,
+            '%10.3g,' % srate if srate else '',
             '%4i' % len(self.changes)))
+
+    @property
+    def sample_rate(self):
+        if self.deltat is None:
+            return None
+        elif self.deltat == 0.0:
+            return 0.0
+        else:
+            return 1.0 / self.deltat
+
+    @property
+    def labels(self):
+        srate = self.sample_rate
+        return (
+            ('%s' % '.'.join(self.codes.split(separator))),
+            '%.3g' % srate if srate else '')
 
 
 __all__ = [
