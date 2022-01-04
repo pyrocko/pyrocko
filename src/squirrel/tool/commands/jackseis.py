@@ -332,7 +332,7 @@ class Converter(HasPaths):
 
             tpad = 0.0
             if target_deltat is not None:
-                tpad += target_deltat * 20.
+                tpad += target_deltat * 50.
 
             task = None
             rename_rules = self.get_effective_rename_rules(chain)
