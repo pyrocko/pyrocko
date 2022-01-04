@@ -115,6 +115,8 @@ class Converter(HasPaths):
 
     @classmethod
     def add_arguments(cls, p):
+        common.add_query_arguments(p, without=['time', 'codes'])
+
         p.add_argument(
             '--downsample',
             dest='downsample',
@@ -186,6 +188,8 @@ class Converter(HasPaths):
 
     @classmethod
     def from_arguments(cls, args):
+        kwargs = common.squirrel_query_from_arguments(args)
+
         obj = cls(
             downsample=args.downsample,
             out_format=args.out_format,
@@ -193,7 +197,8 @@ class Converter(HasPaths):
             out_sds_path=args.out_sds_path,
             out_data_type=args.out_data_type,
             out_mseed_record_length=args.out_mseed_record_length,
-            out_mseed_steim=args.out_mseed_steim)
+            out_mseed_steim=args.out_mseed_steim,
+            **kwargs)
 
         obj.validate()
         return obj
