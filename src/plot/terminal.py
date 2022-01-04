@@ -5,6 +5,8 @@
 
 from __future__ import absolute_import, print_function
 
+from pyrocko import plot
+
 
 ansi_reverse = u'\033[7m'
 ansi_reverse_reset = u'\033[27m'
@@ -14,10 +16,60 @@ ansi_dim_reset = u'\033[22m'
 blocks = u'\u2588\u2589\u258a\u258b\u258c\u258d\u258e\u258f '
 bar_right = '\u2595'
 bar_left = '\u258f'
+
 tri_left = '<'  # '\u25c0'
 tri_right = '>'  # '\u25b6'
 hmulti = 'X'
 vmulti = '%s%%s%s' % (ansi_reverse, ansi_reverse_reset)
+
+
+def time_axis(view_tmin, view_tmax, sx):
+
+    lines = []
+    for napprox in range(10, 0, -1):
+        tinc, tunit = plot.nice_time_tick_inc(
+            (view_tmax - view_tmin) / napprox)
+
+        times, labels = plot.time_tick_labels(
+            view_tmin, view_tmax, tinc, tunit)
+
+        if not labels:
+            # show only ticks?
+            continue
+
+        delta = (view_tmax - view_tmin) / (sx-2)
+
+        itimes = [int(round((t - view_tmin) / delta)) for t in times]
+        nlines = len(labels[0].split('\n'))
+        lines = ([bar_right] if itimes[0] != 0 else ['']) * nlines
+        overfull = False
+        for it, lab in zip(itimes, labels):
+            for iline, word in enumerate(lab.split('\n')):
+                if len(lines[iline]) > it and word:
+                    overfull = True
+                    break
+
+                if it > sx-1:
+                    break
+
+                lines[iline] += ' ' * (it - len(lines[iline]))
+                if len(lines[iline]) < sx-1 and (it - len(lines[iline])) >= 0:
+                    lines[iline] += bar_right
+                if len(word) > 0 and len(lines[iline]) + len(word) + 1 < sx-1:
+                    lines[iline] += word + ' '
+
+            if overfull:
+                break
+
+        for iline in range(nlines):
+            lines[iline] += ' ' * ((sx-1) - len(lines[iline])) + bar_left
+
+        if overfull:
+            continue
+
+        break
+
+    return lines
 
 
 def bar(view_tmin, view_tmax, changes, tmin, tmax, sx):
@@ -80,7 +132,6 @@ def bar(view_tmin, view_tmax, changes, tmin, tmax, sx):
             else:
                 out.apped('N')
 
-
             count = new_count
 
         elif nc_block > 1:
@@ -117,3 +168,27 @@ if __name__ == '__main__':
             view_tmin, view_tmax,
             [[tmin, 1], [tmin2, 2], [tmax2, 1], [tmax, 0]],
             view_tmin, view_tmax, sx))
+
+    import time
+    import numpy as num
+    t0 = time.time()
+    exps = num.linspace(-4., 11., 100)
+
+    for exp in exps:
+
+        for line in time_axis(t0, t0+10**exp, sx):
+            print(line)
+        print()
+
+    from pyrocko import util
+    tmin = util.stt('2011-04-15 10:05:14')
+    tmax = util.stt('2012-09-20 14:41:00')
+    for line in time_axis(tmin, tmax, sx):
+        print(line)
+    print()
+
+    tmin = util.stt('2011-11-27 00:00:00')
+    tmax = util.stt('2011-11-28 00:00:00')
+    for line in time_axis(tmin, tmax, sx):
+        print(line)
+    print()
