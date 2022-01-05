@@ -1165,10 +1165,16 @@ class Squirrel(Selection):
         '''
         Get time interval over all content in selection.
 
+        :param kinds:
+            If not ``None``, restrict query to given content kinds.
+        :type kind:
+            list of str
+
         :complexity:
             O(1), independent of the number of nuts.
 
-        :returns: (tmin, tmax)
+        :returns:
+            ``(tmin, tmax)``, combined time interval of queried content kinds.
         '''
 
         sql_min = self._sql('''
