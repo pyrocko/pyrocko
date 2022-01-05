@@ -193,6 +193,9 @@ class Database(object):
             cursor.execute(
                 '''PRAGMA recursive_triggers = true''')
 
+            cursor.execute(
+                '''PRAGMA busy_timeout = 30000''')
+
             if 2 == len(list(
                     cursor.execute(
                         '''
