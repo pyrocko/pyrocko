@@ -170,6 +170,9 @@ class SquirrelTestCase(unittest.TestCase):
                 else:
                     del sq
 
+        from pyrocko.squirrel import database as dbm
+        dbm.close_database(db)
+
     def test_dig_undig(self):
         nuts = []
         for path in 'abcde':
@@ -1082,6 +1085,12 @@ def do_chopper(params):
             s += num.sum(tr.ydata)
 
     assert int(round(s)) == nfiles*nsamples
+
+    database = sq.get_database()
+    del sq
+
+    from pyrocko.squirrel import database as dbm
+    dbm.close_database(database)
 
     return ijob
 

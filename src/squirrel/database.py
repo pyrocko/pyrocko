@@ -46,12 +46,19 @@ def execute_get1(connection, sql, args):
 g_databases = {}
 
 
-def get_database(path=None):
+def get_database(path):
     path = os.path.abspath(path)
     if path not in g_databases:
         g_databases[path] = Database(path)
 
     return g_databases[path]
+
+
+def close_database(database):
+    path = os.path.abspath(database._database_path)
+    database._conn.close()
+    if path in g_databases:
+        del g_databases[path]
 
 
 class Transaction(object):

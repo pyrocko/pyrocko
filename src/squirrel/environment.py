@@ -25,6 +25,7 @@ from pyrocko import config
 from pyrocko.has_paths import HasPaths, Path
 
 from . import error
+from .database import close_database
 
 guts_prefix = 'squirrel'
 
@@ -119,7 +120,9 @@ def init_environment(path=None):
     env = Environment.make(squirrel_path)
     env.dump(filename=get_config_path(squirrel_path))
     sq = Squirrel(env)
+    database = sq.get_database()
     del sq
+    close_database(database)
 
 
 class Environment(HasPaths):
