@@ -421,25 +421,25 @@ steps:
 
 - name: tests-base
   commands:
-  - python maintenance/run_tests_windows.py test.base
+  - pytest -v test/base
   depends_on:
   - install
 
 - name: tests-gf
   commands:
-  - python maintenance/run_tests_windows.py test.gf
+  - pytest -v test/gf
   depends_on:
   - install
 
 - name: tests-examples
   commands:
-  - python maintenance/run_tests_windows.py test.examples
+  - pytest -v test/examples
   depends_on:
   - install
 
 - name: tests-gui
   commands:
-  - python maintenance/run_tests_windows.py test.gui
+  - pytest -v test/gui
   depends_on:
   - install
 
