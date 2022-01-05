@@ -552,7 +552,7 @@ class FDSNSource(Source):
                 'downloading, %s' % order_summary(orders_now))
 
             all_paths = []
-            with tempfile.NamedTemporaryFile() as f:
+            with tempfile.TemporaryDirectory() as tmpdir:
                 try:
                     data = fdsn.dataselect(
                         site=self.site, selection=selection_now,
@@ -560,15 +560,15 @@ class FDSNSource(Source):
 
                     now = time.time()
 
-                    while True:
-                        buf = data.read(1024)
-                        if not buf:
-                            break
-                        f.write(buf)
+                    path = op.join(tmpdir, 'tmp.mseed')
+                    with open(path, 'wb') as f:
+                        while True:
+                            buf = data.read(1024)
+                            if not buf:
+                                break
+                            f.write(buf)
 
-                    f.flush()
-
-                    trs = io.load(f.name)
+                    trs = io.load(path)
 
                     by_nslc = defaultdict(list)
                     for tr in trs:
