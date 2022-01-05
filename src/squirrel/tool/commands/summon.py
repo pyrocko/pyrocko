@@ -34,7 +34,6 @@ def call(parser, args):
 
     tinc = 3600.
 
-
     with progress.view():
         nwindows = int(math.ceil((d['tmax'] - d['tmin']) / tinc))
         task = progress.task('Summoning', nwindows)
