@@ -1217,6 +1217,23 @@ class Squirrel(Selection):
 
         return gtmin, gtmax
 
+    def has(self, kinds):
+        '''
+        Check availability of given content kinds.
+
+        :param kinds:
+            Content kinds to query.
+        :type kind:
+            list of str
+
+        :returns:
+            ``True`` if any of the queried content kinds is available
+            in the selection.
+        '''
+        self_tmin, self_tmax = self.get_time_span(kinds)
+
+        return None not in (self_tmin, self_tmax)
+
     def get_deltat_span(self, kind):
         '''
         Get min and max sampling interval of all content of given kind.
