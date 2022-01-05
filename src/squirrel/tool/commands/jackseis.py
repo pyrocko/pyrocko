@@ -294,7 +294,7 @@ class Converter(HasPaths):
         chain = Chain(self, chain)
 
         if self.parts:
-            task = make_task('Part')
+            task = make_task('Jackseis parts')
             for part in task(self.parts):
                 part.convert(args, chain)
 
@@ -346,7 +346,7 @@ class Converter(HasPaths):
                     snap_window=True):
 
                 if task is None:
-                    task = make_task('Block', batch.n)
+                    task = make_task('Jackseis blocks', batch.n)
 
                 task.update(
                     batch.i,
@@ -473,6 +473,6 @@ def call(parser, args):
         converters = [converter]
 
     with progress.view():
-        task = make_task('Jackseis job')
+        task = make_task('Jackseis jobs')
         for converter in task(converters):
             converter.convert(args)
