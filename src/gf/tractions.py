@@ -178,7 +178,7 @@ class SelfSimilarTractions(TractionField):
 
     phases = Array.T(
         optional=True,
-        dtype=num.float,
+        dtype=num.float64,
         shape=(None,),
         help='Phase shift of the cosines in [rad].')
 

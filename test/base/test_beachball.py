@@ -176,8 +176,8 @@ class BeachballTestCase(unittest.TestCase):
 
         from matplotlib import pyplot as plt
 
-        def get_random_uniform(lower, upper, dimension=1):
-            return (upper - lower) * num.random.rand(dimension) + lower
+        def get_random_uniform(lower, upper):
+            return lower + (upper - lower) * random()
 
         fig = plt.figure(figsize=(4., 4.))
         fig.subplots_adjust(left=0., right=1., bottom=0., top=1.)

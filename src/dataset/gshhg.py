@@ -108,7 +108,7 @@ def points_in_bounding_box(points, wesn, tolerance=0.1):
     points_wrap = points.copy()
     points_wrap[:, 1] %= 360.
 
-    mask = num.zeros(points_wrap.shape[0], dtype=num.bool)
+    mask = num.zeros(points_wrap.shape[0], dtype=bool)
     for w, e, s, n in split_region_0_360(wesn):
         mask = num.logical_or(
             mask,
@@ -535,7 +535,7 @@ class GSHHG(object):
         relevant_polygons = self.get_polygons_within(west, east, south, north)
         relevant_polygons.sort()
 
-        mask = num.zeros(points.shape[0], dtype=num.bool)
+        mask = num.zeros(points.shape[0], dtype=bool)
         for p in relevant_polygons:
             if (p.is_land() or p.is_antarctic_grounding_line() or
                p.is_island_in_lake()):

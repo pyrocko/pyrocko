@@ -923,7 +923,7 @@ class Map(Object):
 
                 rects = [xs-0.5*dx, ys-0.5*dy, xs+0.5*dx, ys+0.5*dy]
 
-                locs_ok = num.ones(xs.size, dtype=num.bool)
+                locs_ok = num.ones(xs.size, dtype=bool)
 
                 for iloc in range(xs.size):
                     rcandi = [xxx[iloc] for xxx in rects]

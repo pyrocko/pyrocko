@@ -108,7 +108,7 @@ class TraceWaterfall:
         dtype = num.float64 if num.float64 in dtypes else num.float32
 
         data = num.zeros((img_rows, img_nsamples), dtype=dtype)
-        empty_data = num.ones_like(data, dtype=num.bool)
+        empty_data = num.ones_like(data, dtype=bool)
 
         deltats = num.zeros(img_rows) if self._integrate else None
 

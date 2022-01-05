@@ -28,7 +28,7 @@ def _weed(dists, badnesses, neighborhood=1, interaction_radius=3.,
     order[:order.size//del_frac+1] = \
         order[:order.size//del_frac+1][order_badness]
 
-    deleted = num.zeros(order.size, dtype=num.bool)
+    deleted = num.zeros(order.size, dtype=bool)
     ndeleted = 0
     for i, ind in enumerate(order):
         if (i < order.size // del_frac // 2 + 1

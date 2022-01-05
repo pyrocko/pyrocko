@@ -146,7 +146,7 @@ class GNSSStation(Location):
     def get_component_mask(self):
         return num.array(
             [False if self.__getattribute__(name) is None else True
-             for name in ('north', 'east', 'up')], dtype=num.bool)
+             for name in ('north', 'east', 'up')], dtype=bool)
 
     @property
     def components(self):

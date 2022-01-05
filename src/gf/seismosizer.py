@@ -225,7 +225,7 @@ def discretize_rect_source(deltas, deltat, time, north, east, depth,
     xl = num.linspace(-0.5 * (ln - dl), 0.5 * (ln - dl), nl)
     xw = num.linspace(-0.5 * (wd - dw), 0.5 * (wd - dw), nw)
 
-    points = num.zeros((n, 3), dtype=num.float)
+    points = num.zeros((n, 3))
     points[:, 0] = num.tile(xl, nw)
     points[:, 1] = num.repeat(xw, nl)
 
@@ -2419,14 +2419,14 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
 
     nucleation_x__ = Array.T(
         default=num.array([0.]),
-        dtype=num.float,
+        dtype=num.float64,
         serialize_as='list',
         help='Horizontal position of rupture nucleation in normalized fault '
              'plane coordinates (``-1.`` = left edge, ``+1.`` = right edge).')
 
     nucleation_y__ = Array.T(
         default=num.array([0.]),
-        dtype=num.float,
+        dtype=num.float64,
         serialize_as='list',
         help='Down-dip position of rupture nucleation in normalized fault '
              'plane coordinates (``-1.`` = upper edge, ``+1.`` = lower edge).')
@@ -2435,7 +2435,7 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
         optional=True,
         help='Time in [s] after origin, when nucleation points defined by '
              '``nucleation_x`` and ``nucleation_y`` rupture.',
-        dtype=num.float,
+        dtype=num.float64,
         serialize_as='list')
 
     gamma = Float.T(
@@ -2472,7 +2472,7 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
         help='List of all boundary elements/sub faults/fault patches.')
 
     patch_mask__ = Array.T(
-        dtype=num.bool,
+        dtype=bool,
         serialize_as='list',
         shape=(None,),
         optional=True,
@@ -2490,7 +2490,7 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
     coef_mat = Array.T(
         optional=True,
         help='Coefficient matrix linking traction and dislocation field.',
-        dtype=num.float,
+        dtype=num.float64,
         shape=(None, None))
 
     eikonal_decimation = Int.T(
@@ -3283,7 +3283,7 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
         xl = num.linspace(-0.5 * (pln - dl), 0.5 * (pln - dl), nl)
         xw = num.linspace(-0.5 * (pwd - dw), 0.5 * (pwd - dw), nw)
 
-        base_coords = num.zeros((nsrc_patch, 3), dtype=num.float)
+        base_coords = num.zeros((nsrc_patch, 3))
         base_coords[:, 0] = num.tile(xl, nw)
         base_coords[:, 1] = num.repeat(xw, nl)
         base_coords = num.tile(base_coords, (npatches, 1))
@@ -3340,8 +3340,8 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
         slip_rake = r2d * num.arctan2(slip_dip, slip_strike)
 
         m6s = okada_ext.patch2m6(
-            strikes=num.full(nbasesrcs, self.strike, dtype=num.float),
-            dips=num.full(nbasesrcs, self.dip, dtype=num.float),
+            strikes=num.full(nbasesrcs, self.strike, dtype=float),
+            dips=num.full(nbasesrcs, self.dip, dtype=float),
             rakes=slip_rake,
             disl_shear=slip_shear,
             disl_norm=slip_norm,
@@ -3456,7 +3456,7 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
                 'The traction vector is of invalid shape.'
                 ' Required shape is (npatches, 3)')
 
-        patch_mask = num.ones(npatches, dtype=num.bool)
+        patch_mask = num.ones(npatches, dtype=bool)
         if self.patch_mask is not None:
             patch_mask = self.patch_mask
 

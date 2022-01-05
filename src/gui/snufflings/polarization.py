@@ -758,7 +758,7 @@ Scale*.
                     rot = num.array(
                         [[cosa, -sina, 0.0],
                          [sina, cosa, 0.0],
-                         [0.0, 0.0, 1.0]], dtype=num.float)
+                         [0.0, 0.0, 1.0]], dtype=float)
 
                     evecs_rot = num.dot(rot, evecs)
 

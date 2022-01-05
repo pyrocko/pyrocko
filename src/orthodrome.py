@@ -35,7 +35,7 @@ if hasattr(_testpath, 'contains_points') and num.all(
 
     def path_contains_points(verts, points):
         p = Path(verts, closed=True)
-        return p.contains_points(points).astype(num.bool)
+        return p.contains_points(points).astype(bool)
 
 else:
     # work around missing contains_points and bug in matplotlib ~ v1.2.0
@@ -46,7 +46,7 @@ else:
             raise Slow()
 
         p = Path(verts, closed=True)
-        result = num.zeros(points.shape[0], dtype=num.bool)
+        result = num.zeros(points.shape[0], dtype=bool)
         for i in range(result.size):
             result[i] = p.contains_point(points[i, :])
 
@@ -1376,7 +1376,7 @@ def contains_points(polygon, points):
                         result[mask] -= path_contains_points(
                             poly_rot_group_pro, points_rot_pro)
 
-    return result.astype(num.bool)
+    return result.astype(bool)
 
 
 def contains_point(polygon, point):

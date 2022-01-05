@@ -69,7 +69,7 @@ class Cell(object):
             if all_(num.isfinite(self.f)):
                 ws = (x[:, num.newaxis] - self.a)/self.b
                 wn = num.multiply.reduce(
-                    num.array(num.ix_(*ws), dtype=num.object))
+                    num.array(num.ix_(*ws), dtype=object))
                 return num.sum(self.f * wn)
             else:
                 return None
@@ -400,7 +400,7 @@ class SPTree(object):
         if not all_(works) or some_undef or self.nothing_found_yet:
             deepen = self.ones_int.copy()
             if not some_undef:
-                works_full = num.ones([3]*self.ndim, dtype=num.bool)
+                works_full = num.ones([3]*self.ndim, dtype=bool)
                 works_full[self.pointmaker_mask] = works
                 for idim in range(self.ndim):
                     dimcorners = [slice(None, None, 2)] * self.ndim

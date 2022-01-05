@@ -663,7 +663,7 @@ class FIR(BaseFilter):
     def get_effective_coefficients(self):
         b = num.array(
             [v.value for v in self.numerator_coefficient_list],
-            dtype=num.float)
+            dtype=float)
 
         if self.symmetry == 'ODD':
             b = num.concatenate((b, b[-2::-1]))
@@ -790,11 +790,11 @@ class Coefficients(BaseFilter):
             return Delivery(payload=[])
 
         b = num.array(
-            [v.value*factor for v in self.numerator_list], dtype=num.float)
+            [v.value*factor for v in self.numerator_list], dtype=float)
 
         a = num.array(
             [1.0] + [v.value*factor for v in self.denominator_list],
-            dtype=num.float)
+            dtype=float)
 
         log = []
         resps = []

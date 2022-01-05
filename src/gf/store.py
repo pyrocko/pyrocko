@@ -834,7 +834,7 @@ class BaseStore(object):
         delays2 = delays2[iorder]
         weights2 = weights2[iorder]
 
-        ui = num.empty(irecords2.size, dtype=num.bool)
+        ui = num.empty(irecords2.size, dtype=bool)
         ui[1:] = num.logical_or(num.diff(irecords2) != 0,
                                 num.diff(delays2) != 0.)
 

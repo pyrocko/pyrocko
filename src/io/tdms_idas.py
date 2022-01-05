@@ -164,10 +164,11 @@ class TdmsReader(object):
         if self._properties is None:
             self.get_properties()
 
-        rdo = num.int(self.fileinfo["raw_data_offset"])
-        nch = num.int(self.n_channels)
+        rdo = num.int64(self.fileinfo["raw_data_offset"])
+        nch = num.int64(self.n_channels)
         nso = self.fileinfo["next_segment_offset"]
-        return num.int((nso - rdo) / nch / num.dtype(self._data_type).itemsize)
+        return num.int64(
+            (nso - rdo) / nch / num.dtype(self._data_type).itemsize)
 
     @property
     def n_channels(self):
@@ -273,8 +274,8 @@ class TdmsReader(object):
             last_s = self._channel_length
         else:
             last_s += 1
-        nch = num.int(max(last_ch - first_ch, 0))
-        ns = num.int(max(last_s - first_s, 0))
+        nch = num.int64(max(last_ch - first_ch, 0))
+        ns = num.int64(max(last_s - first_s, 0))
 
         # Allocate output container
         data = num.empty((ns, nch), dtype=num.dtype(self._data_type))
@@ -374,19 +375,19 @@ class TdmsReader(object):
             self._read_chunk_size()
 
         dmap = mmap.mmap(self._tdms_file.fileno(), 0, access=mmap.ACCESS_READ)
-        rdo = num.int(self.fileinfo["raw_data_offset"])
-        nch = num.int(self.n_channels)
+        rdo = num.int64(self.fileinfo["raw_data_offset"])
+        nch = num.int64(self.n_channels)
 
         # TODO: Support streaming file type?
         # TODO: Is this a valid calculation for ChannelLength?
         nso = self.fileinfo["next_segment_offset"]
-        self._seg1_length = num.int(
+        self._seg1_length = num.int64(
             (nso - rdo) / nch / num.dtype(self._data_type).itemsize
         )
         self._channel_length = self._seg1_length
 
         if self.fileinfo["decimated"]:
-            n_complete_blk = num.int(self._seg1_length / self._chunk_size)
+            n_complete_blk = num.int64(self._seg1_length / self._chunk_size)
             ax_ord = "C"
         else:
             n_complete_blk = 0
@@ -399,7 +400,7 @@ class TdmsReader(object):
         )
         # Rotate the axes to [chunk_size, nblk, nch]
         self._raw_data = num.rollaxis(self._raw_data, 2)
-        additional_samples = num.int(
+        additional_samples = num.int64(
             self._seg1_length - n_complete_blk * self._chunk_size
         )
         additional_samples_offset = (
@@ -432,9 +433,10 @@ class TdmsReader(object):
                 / num.dtype(self._data_type).itemsize
             )
             if self.fileinfo["decimated"]:
-                n_complete_blk2 = num.int(self._seg2_length / self._chunk_size)
+                n_complete_blk2 = num.int64(
+                    self._seg2_length / self._chunk_size)
             else:
-                n_complete_blk2 = num.int(0)
+                n_complete_blk2 = num.int64(0)
             self._raw_data2 = num.ndarray(
                 (n_complete_blk2, nch, self._chunk_size),
                 dtype=self._data_type,
@@ -442,7 +444,7 @@ class TdmsReader(object):
                 offset=(nso + LEAD_IN_LENGTH + seg2_rdo),
             )
             self._raw_data2 = num.rollaxis(self._raw_data2, 2)
-            additional_samples = num.int(
+            additional_samples = num.int64(
                 self._seg2_length - n_complete_blk2 * self._chunk_size
             )
             additional_samples_offset = (

@@ -1275,7 +1275,7 @@ class Snuffling(object):
                             self.switch_on_snuffling_panel)
 
                         self._param_controls[param.ident] = param_widget
-                        swlayout.addWidget(param_widget, isw/10, isw % 10)
+                        swlayout.addWidget(param_widget, isw//10, isw % 10)
                         isw += 1
 
                 swframe = qw.QFrame(sarea)

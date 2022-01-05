@@ -772,9 +772,9 @@ class DiscretizedSource(Object):
     lons = Array.T(shape=(None,), dtype=float, optional=True)
     lat = Float.T(optional=True)
     lon = Float.T(optional=True)
-    north_shifts = Array.T(shape=(None,), dtype=num.float, optional=True)
-    east_shifts = Array.T(shape=(None,), dtype=num.float, optional=True)
-    depths = Array.T(shape=(None,), dtype=num.float)
+    north_shifts = Array.T(shape=(None,), dtype=num.float64, optional=True)
+    east_shifts = Array.T(shape=(None,), dtype=num.float64, optional=True)
+    depths = Array.T(shape=(None,), dtype=num.float64)
     dl = Float.T(optional=True)
     dw = Float.T(optional=True)
     nl = Float.T(optional=True)
@@ -2988,11 +2988,11 @@ def parse_grid_spec(spec):
 def start_stop_num(start, stop, step, num, mi, ma, inc, eps=1e-5):
     swap = step is not None and step < 0.
     if start is None:
-        start = [mi, ma][swap]
+        start = ma if swap else mi
     if stop is None:
-        stop = [ma, mi][swap]
+        stop = mi if swap else ma
     if step is None:
-        step = [inc, -inc][ma < mi]
+        step = -inc if ma < mi else inc
     if num is None:
         if (step < 0) != (stop-start < 0):
             raise GridSpecError()

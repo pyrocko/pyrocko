@@ -154,7 +154,7 @@ class RootMeanSquareSnuffling(Snuffling):
                         meta={'tabu': True})
 
                 value = num.atleast_1d(
-                    num.sqrt(num.sum(num.array(values, dtype=num.float)**2)))
+                    num.sqrt(num.sum(num.array(values, dtype=float)**2)))
 
                 if self.log and value != 0.0:
                     value = num.log(value)

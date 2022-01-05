@@ -703,7 +703,7 @@ class RuptureMap(Map):
             strike=source.strike)
 
         t = self._get_topotile()
-        t.data = num.zeros_like(t.data, dtype=num.float)
+        t.data = num.zeros_like(t.data, dtype=float)
         t.data[:] = num.nan
 
         t.data = interpolator(points_out).reshape(t.data.shape)
