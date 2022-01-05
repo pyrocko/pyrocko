@@ -25,7 +25,7 @@ class ProgressTestCase(unittest.TestCase):
 
             frames.append(lines)
 
-        with progress.TerminalStatusWindow() as t:
+        with progress.TerminalStatusViewer() as t:
             for iframe, lines in enumerate(frames):
                 logger.info('frame %i' % iframe)
                 t.draw(lines)
