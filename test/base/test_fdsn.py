@@ -9,7 +9,6 @@ from pyrocko import util, trace, evalresp
 from pyrocko.io import stationxml
 from pyrocko.client import fdsn, iris
 from pyrocko.plot import response as plot_response
-from pyrocko.evalresp_ext import EvalrespExtError
 
 from .. import common
 
@@ -135,6 +134,8 @@ class FDSNTestCase(unittest.TestCase):
     @common.require_internet
     @common.skip_on_download_error
     def test_response(self, ntest=None):
+        from pyrocko.evalresp_ext import EvalrespExtError
+
         tmin = stt('2014-01-01 00:00:00')
         tmax = stt('2014-01-02 00:00:00')
         # LD.PAL
