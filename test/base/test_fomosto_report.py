@@ -97,8 +97,8 @@ mantle
             qseis.build(store_dir, nworkers=1)
         except qseis.QSeisError as e:
             if str(e).find('could not start qseis') != -1:
-                logger.warn('qseis not installed; '
-                            'skipping test_pyrocko_gf_vs_qseis')
+                logger.warning('qseis not installed; '
+                               'skipping test_pyrocko_gf_vs_qseis')
                 return
             else:
                 raise

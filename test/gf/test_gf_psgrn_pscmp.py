@@ -165,8 +165,8 @@ mantle
                 psgrn_pscmp.build(store_dir, nworkers=cpu_count())
             except psgrn_pscmp.PsCmpError as e:
                 if str(e).find('could not start psgrn/pscmp') != -1:
-                    logger.warn('psgrn/pscmp not installed; '
-                                'skipping test_pyrocko_gf_vs_pscmp')
+                    logger.warning('psgrn/pscmp not installed; '
+                                   'skipping test_pyrocko_gf_vs_pscmp')
                     return
                 else:
                     raise e

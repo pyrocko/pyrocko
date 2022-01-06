@@ -162,7 +162,8 @@ class GFScenariosTestCase(unittest.TestCase):
         try:
             store = engine.get_store(store_id)
         except gf.NoSuchStore:
-            logger.warn('GF Store %s not available - skipping test' % store_id)
+            logger.warning(
+                'GF Store %s not available - skipping test' % store_id)
             return
 
         base_source = gf.RectangularSource(

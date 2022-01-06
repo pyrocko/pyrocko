@@ -747,7 +747,7 @@ Scale*.
                         axes.my_stuff.extend([l1, l2])
 
                     except PCAError as e:
-                        logger.warn('PCA failed: %s' % e)
+                        logger.warning('PCA failed: %s' % e)
 
             if self.show_eigensystem_3d:
                 try:
@@ -809,7 +809,7 @@ Scale*.
                             ha='right'))
 
                 except PCAError as e:
-                    logger.warn('PCA failed: %s' % e)
+                    logger.warning('PCA failed: %s' % e)
 
     def get_bazis(self):
         event = self.get_viewer().get_active_event()
@@ -859,14 +859,14 @@ Scale*.
 
         if axes_height_avail < a_min * ny:
             axes_height_avail = a_min * ny
-            logger.warn('Not enough space vertically.')
+            logger.warning('Not enough space vertically.')
 
         axes_width_avail = width - (nx - 1) * spacing_width \
             - margin_left - margin_right
 
         if axes_width_avail < a_min * (nx + 2):
             axes_width_avail = a_min * (nx + 2)
-            logger.warn('Not enough space horizontally.')
+            logger.warning('Not enough space horizontally.')
 
         a_height = axes_height_avail / ny
         a_width = axes_width_avail / (nx + 2)

@@ -118,9 +118,9 @@ mantle
             qseis2d.build(q2_store_dir, nworkers=1)
         except qseis2d.QSeis2dError as e:
             if str(e).find('could not start qseis2d') != -1:
-                logger.warn('qseis2d not installed; '
-                            'skipping test_pyrocko_qseis_vs_qseis2d')
-                logger.warn(e)
+                logger.warning('qseis2d not installed; '
+                               'skipping test_pyrocko_qseis_vs_qseis2d')
+                logger.warning(e)
                 return
             else:
                 raise
@@ -158,9 +158,9 @@ mantle
             qseis.build(q_store_dir, nworkers=1)
         except qseis.QSeisError as e:
             if str(e).find('could not start qseis') != -1:
-                logger.warn('qseis not installed; '
-                            'skipping test_pyrocko_qseis_vs_qseis2d')
-                logger.warn(e)
+                logger.warning('qseis not installed; '
+                               'skipping test_pyrocko_qseis_vs_qseis2d')
+                logger.warning(e)
                 return
             else:
                 raise

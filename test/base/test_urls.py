@@ -42,8 +42,8 @@ class UrlsTestCase(unittest.TestCase):
                 f = urlopen(req)
                 f.close()
             except Exception as e:
-                logger.warn('%s - %s referenced in pyrocko.%s' %
-                            (e, url, label))
+                logger.warning('%s - %s referenced in pyrocko.%s' %
+                               (e, url, label))
 
 
 if __name__ == '__main__':
