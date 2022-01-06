@@ -250,8 +250,7 @@ def discretize_rect_source(deltas, deltat, time, north, east, depth,
     if plane_coords:
         return points, dl, dw, nl, nw
 
-    rotmat = num.asarray(
-        pmt.euler_to_matrix(dip * d2r, strike * d2r, 0.0))
+    rotmat = pmt.euler_to_matrix(dip * d2r, strike * d2r, 0.0)
     points = num.dot(rotmat.T, points.T).T
 
     points[:, 0] += north
@@ -311,8 +310,7 @@ def outline_rect_source(strike, dip, length, width, anchor):
     points[:, 0] -= anch_x * 0.5 * length
     points[:, 1] -= anch_y * 0.5 * width
 
-    rotmat = num.asarray(
-        pmt.euler_to_matrix(dip * d2r, strike * d2r, 0.0))
+    rotmat = pmt.euler_to_matrix(dip * d2r, strike * d2r, 0.0)
 
     return num.dot(rotmat.T, points.T).T
 
@@ -343,8 +341,7 @@ def from_plane_coords(
         points[:, 0] -= anch_x * 0.5 * length
         points[:, 1] -= anch_y * 0.5 * width
 
-        rotmat = num.asarray(
-            pmt.euler_to_matrix(dip * d2r, strike * d2r, 0.0))
+        rotmat = pmt.euler_to_matrix(dip * d2r, strike * d2r, 0.0)
 
         points = num.dot(rotmat.T, points.T).T
         points[:, 0] += north_shift
@@ -411,8 +408,7 @@ def points_on_rect_source(
     points[:, 0] -= anch_x * 0.5 * ln
     points[:, 1] -= anch_y * 0.5 * wd
 
-    rotmat = num.asarray(
-        pmt.euler_to_matrix(dip * d2r, strike * d2r, 0.0))
+    rotmat = pmt.euler_to_matrix(dip * d2r, strike * d2r, 0.0)
 
     return num.dot(rotmat.T, points.T).T
 
@@ -1774,7 +1770,7 @@ class CLVDSource(SourceWithMagnitude):
             d2r * (self.dip - 90.),
             d2r * (self.azimuth - 90.),
             0.)
-        m = rotmat1.T * m * rotmat1
+        m = num.dot(rotmat1.T, num.dot(m, rotmat1))
         return pmt.to6(m)
 
     @property
@@ -1880,7 +1876,7 @@ class VLVDSource(SourceWithDerivedMagnitude):
             d2r * (self.dip - 90.),
             d2r * (self.azimuth - 90.),
             0.)
-        m_clvd = rotmat1.T * m_clvd * rotmat1
+        m_clvd = num.dot(rotmat1.T, num.dot(m_clvd, rotmat1))
 
         m_iso = self.volume_change * \
             self.get_moment_to_volume_change_ratio(store, target)
@@ -2250,7 +2246,8 @@ class RectangularSource(SourceWithDerivedMagnitude):
             if amplitudes.shape[0] == 2:
                 # tensile MT components - moment/magnitude input
                 tensile = pmt.symmat6(1., 1., 3., 0., 0., 0.)
-                rot_tensile = pmt.to6(rotmat1.T * tensile * rotmat1)
+                rot_tensile = pmt.to6(
+                    num.dot(rotmat1.T, num.dot(tensile, rotmat1)))
 
                 m6s_tensile = rot_tensile[
                     num.newaxis, :] * amplitudes[1, :][:, num.newaxis]
@@ -2261,8 +2258,10 @@ class RectangularSource(SourceWithDerivedMagnitude):
                 iso = pmt.symmat6(1., 1., 1., 0., 0., 0.)
                 clvd = pmt.symmat6(-1., -1., 2., 0., 0., 0.)
 
-                rot_iso = pmt.to6(rotmat1.T * iso * rotmat1)
-                rot_clvd = pmt.to6(rotmat1.T * clvd * rotmat1)
+                rot_iso = pmt.to6(
+                    num.dot(rotmat1.T, num.dot(iso, rotmat1)))
+                rot_clvd = pmt.to6(
+                    num.dot(rotmat1.T, num.dot(clvd, rotmat1)))
 
                 m6s_iso = rot_iso[
                     num.newaxis, :] * amplitudes[1, :][:, num.newaxis]
@@ -2830,8 +2829,7 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
         points[:, 1] = num.linspace(-1., 1., npoints)
         points[:, 1] = (points[:, 1] - anch_y) * self.width/2
 
-        rotmat = num.asarray(
-            pmt.euler_to_matrix(self.dip*d2r, self.strike*d2r, 0.0))
+        rotmat = pmt.euler_to_matrix(self.dip*d2r, self.strike*d2r, 0.0)
         points = num.dot(rotmat.T, points.T).T
         points[:, 2] += self.depth
 
@@ -3325,8 +3323,7 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
                 pass
 
         base_interp[:, 2] = 0.
-        rotmat = num.asarray(
-            pmt.euler_to_matrix(self.dip * d2r, self.strike * d2r, 0.0))
+        rotmat = pmt.euler_to_matrix(self.dip * d2r, self.strike * d2r, 0.0)
         base_interp = num.dot(rotmat.T, base_interp.T).T
         base_interp[:, 0] += self.north_shift
         base_interp[:, 1] += self.east_shift
@@ -4089,8 +4086,7 @@ class RingfaultSource(SourceWithMagnitude):
         points[:, 0] = num.cos(phi) * 0.5 * self.diameter
         points[:, 1] = num.sin(phi) * 0.5 * self.diameter
 
-        rotmat = num.array(pmt.euler_to_matrix(
-            self.dip * d2r, self.strike * d2r, 0.0))
+        rotmat = pmt.euler_to_matrix(self.dip * d2r, self.strike * d2r, 0.0)
         points = num.dot(rotmat.T, points.T).T  # !!! ?
 
         points[:, 0] += self.north_shift

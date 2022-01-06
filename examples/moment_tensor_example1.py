@@ -26,7 +26,7 @@ print('strike2=%g, dip2=%g, rake2=%g' % (s2, d2, r2))
 
 
 # p-axis normal vector in north-east-down coordinates
-p_ned = m.p_axis().A[0]
+p_ned = m.p_axis()
 
 print('p_ned=(%g, %g, %g)' % tuple(p_ned))
 

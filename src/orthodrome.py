@@ -1233,8 +1233,8 @@ def xyz_to_latlon(xyz):
 
 
 def rot_to_00(lat, lon):
-    rot0 = euler_to_matrix(0., -90.*d2r, 0.).A
-    rot1 = euler_to_matrix(-d2r*lat, 0., -d2r*lon).A
+    rot0 = euler_to_matrix(0., -90.*d2r, 0.)
+    rot1 = euler_to_matrix(-d2r*lat, 0., -d2r*lon)
     return num.dot(rot0.T, num.dot(rot1, rot0)).T
 
 

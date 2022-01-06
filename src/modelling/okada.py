@@ -338,8 +338,7 @@ class OkadaSource(AnalyticalRectangularSource):
         source_points[:, 0] += self.al1
         source_points[:, 1] -= self.aw2
 
-        rotmat = num.asarray(
-            mt.euler_to_matrix(self.dip*d2r, self.strike*d2r, 0.))
+        rotmat = mt.euler_to_matrix(self.dip*d2r, self.strike*d2r, 0.)
 
         source_points_rot = num.dot(rotmat.T, source_points.T).T
         source_points_rot[:, 0] += self.northing
@@ -543,7 +542,7 @@ def _make_okada_coefficient_matrix_slow(
 
     def ned2sdn_rotmat(strike, dip):
         rotmat = mt.euler_to_matrix(
-            (dip + 180.) * d2r, strike * d2r, 0.).A
+            (dip + 180.) * d2r, strike * d2r, 0.)
         return rotmat
 
     lambda_mean = num.mean([src.lamb for src in source_patches_list])

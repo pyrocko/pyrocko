@@ -38,7 +38,7 @@ class MomentTensorTestCase(unittest.TestCase):
     def testNonPlainDoubleCouples(self):
         for i in range(100):
             ms = [random.random()*1.0e20-0.5e20 for j in range(6)]
-            m = num.matrix(
+            m = num.array(
                 [[ms[0], ms[3], ms[4]],
                  [ms[3], ms[1], ms[5]],
                  [ms[4], ms[5], ms[2]]], dtype=float)
@@ -74,7 +74,7 @@ class MomentTensorTestCase(unittest.TestCase):
         self.assertSame(sdr[1], (18., 18., 112.), 1., 'chile fail 2')
 
     def testENU(self):
-        m_enu = num.matrix(
+        m_enu = num.array(
             [[0.66, 0.53, -0.18],
              [0.53, -0.70, -0.35],
              [-0.18, -0.36, 0.04]], dtype=float)
@@ -140,7 +140,7 @@ class MomentTensorTestCase(unittest.TestCase):
 
             rot = rotation_from_angle_and_axis(angle, random_axis())
 
-            mrot = rot.T * mt1.m() * rot
+            mrot = num.dot(rot.T, num.dot(mt1.m(), rot))
             mt2 = MomentTensor(m=mrot)
             angle2 = kagan_angle(mt1, mt2)
 

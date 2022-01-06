@@ -77,7 +77,7 @@ class DCSourceGenerator(SourceGenerator):
             mt = event.moment_tensor.m_up_south_east()
 
             xx = num.trace(mt) / 3.
-            mc = num.matrix([[xx, 0., 0.], [0., xx, 0.], [0., 0., xx]])
+            mc = num.array([[xx, 0., 0.], [0., xx, 0.], [0., 0., xx]])
             mc = mt - mc
             mc = mc / event.moment_tensor.scalar_moment() * \
                 moment_tensor.magnitude_to_moment(5.0)

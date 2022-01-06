@@ -73,7 +73,7 @@ def rotation_from_angle_and_axis(angle, axis):
 
     ct = math.cos(d2r*angle)
     st = math.sin(d2r*angle)
-    return num.matrix([
+    return num.array([
         [ct + ux**2*(1.-ct), ux*uy*(1.-ct)-uz*st, ux*uz*(1.-ct)+uy*st],
         [uy*ux*(1.-ct)+uz*st, ct+uy**2*(1.-ct), uy*uz*(1.-ct)-ux*st],
         [uz*ux*(1.-ct)-uy*st, uz*uy*(1.-ct)+ux*st, ct+uz**2*(1.-ct)]
@@ -101,20 +101,20 @@ def random_rotation(x=None):
 
     phi = math.pi*2.0*x1
 
-    zrot = num.matrix([
+    zrot = num.array([
         [math.cos(phi), math.sin(phi), 0.],
         [-math.sin(phi), math.cos(phi), 0.],
         [0., 0., 1.]])
 
     lam = math.pi*2.0*x2
 
-    v = num.matrix([[
+    v = num.array([[
         math.cos(lam)*math.sqrt(x3),
         math.sin(lam)*math.sqrt(x3),
         math.sqrt(1.-x3)]]).T
 
-    house = num.identity(3) - 2.0 * v * v.T
-    return -house*zrot
+    house = num.identity(3) - 2.0 * num.dot(v, v.T)
+    return -num.dot(house, zrot)
 
 
 def rand(mi, ma):
@@ -165,17 +165,17 @@ def symmat6(a_xx, a_yy, a_zz, a_xy, a_xz, a_yz):
     Create symmetric 3x3 matrix from its 6 non-redundant values.
     '''
 
-    return num.matrix([[a_xx, a_xy, a_xz],
-                       [a_xy, a_yy, a_yz],
-                       [a_xz, a_yz, a_zz]], dtype=float)
+    return num.array([[a_xx, a_xy, a_xz],
+                      [a_xy, a_yy, a_yz],
+                      [a_xz, a_yz, a_zz]], dtype=float)
 
 
 def values_to_matrix(values):
     '''
-    Convert anything to moment tensor represented as a NumPy matrix.
+    Convert anything to moment tensor represented as a NumPy array.
 
     Transforms :py:class:`MomentTensor` objects, tuples, lists and NumPy arrays
-    with 3x3 or 3, 4, 6, or 7 elements into NumPy 3x3 matrix objects.
+    with 3x3 or 3, 4, 6, or 7 elements into NumPy 3x3 array objects.
 
     The ``values`` argument is interpreted depending on shape and type as
     follows:
@@ -198,13 +198,14 @@ def values_to_matrix(values):
         if values.shape == (3,):
             strike, dip, rake = values
             rotmat1 = euler_to_matrix(d2r*dip, d2r*strike, -d2r*rake)
-            return rotmat1.T * MomentTensor._m_unrot * rotmat1
+            return num.dot(rotmat1.T, num.dot(MomentTensor._m_unrot, rotmat1))
 
         elif values.shape == (4,):
             strike, dip, rake, magnitude = values
             moment = magnitude_to_moment(magnitude)
             rotmat1 = euler_to_matrix(d2r*dip, d2r*strike, -d2r*rake)
-            return rotmat1.T * MomentTensor._m_unrot * rotmat1 * moment
+            return moment * num.dot(
+                rotmat1.T, num.dot(MomentTensor._m_unrot, rotmat1))
 
         elif values.shape == (6,):
             return symmat6(*values)
@@ -217,7 +218,7 @@ def values_to_matrix(values):
             return mt
 
         elif values.shape == (3, 3):
-            return num.asmatrix(values, dtype=float)
+            return num.asarray(values, dtype=float)
 
     raise Exception('cannot convert object to 3x3 matrix')
 
@@ -277,9 +278,9 @@ def euler_to_matrix(alpha, beta, gamma):
 
     Usage for moment tensors::
 
-        m_unrot = numpy.matrix([[0,0,-1],[0,0,0],[-1,0,0]])
+        m_unrot = numpy.array([[0,0,-1],[0,0,0],[-1,0,0]])
         euler_to_matrix(dip,strike,-rake, rotmat)
-        m = rotmat.T * m_unrot * rotmat
+        m = num.dot(rotmat.T, num.dot(m_unrot, rotmat))
 
     '''
 
@@ -290,9 +291,9 @@ def euler_to_matrix(alpha, beta, gamma):
     sb = math.sin(beta)
     sg = math.sin(gamma)
 
-    mat = num.matrix([[cb*cg-ca*sb*sg,  sb*cg+ca*cb*sg,  sa*sg],
-                      [-cb*sg-ca*sb*cg, -sb*sg+ca*cb*cg, sa*cg],
-                      [sa*sb,           -sa*cb,          ca]], dtype=float)
+    mat = num.array([[cb*cg-ca*sb*sg,  sb*cg+ca*cb*sg,  sa*sg],
+                     [-cb*sg-ca*sb*cg, -sb*sg+ca*cb*cg, sa*cg],
+                     [sa*sb,           -sa*cb,          ca]], dtype=float)
     return mat
 
 
@@ -303,13 +304,13 @@ def matrix_to_euler(rotmat):
 
     ex = cvec(1., 0., 0.)
     ez = cvec(0., 0., 1.)
-    exs = rotmat.T * ex
-    ezs = rotmat.T * ez
+    exs = num.dot(rotmat.T, ex)
+    ezs = num.dot(rotmat.T, ez)
     enodes = num.cross(ez.T, ezs.T).T
     if num.linalg.norm(enodes) < 1e-10:
         enodes = exs
-    enodess = rotmat*enodes
-    cos_alpha = float((ez.T*ezs))
+    enodess = num.dot(rotmat, enodes)
+    cos_alpha = float((num.dot(ez.T, ezs)))
     if cos_alpha > 1.:
         cos_alpha = 1.
 
@@ -393,11 +394,11 @@ def unique_euler(alpha, beta, gamma):
 
 
 def cvec(x, y, z):
-    return num.matrix([[x, y, z]], dtype=float).T
+    return num.array([[x, y, z]], dtype=float).T
 
 
 def rvec(x, y, z):
-    return num.matrix([[x, y, z]], dtype=float)
+    return num.array([[x, y, z]], dtype=float)
 
 
 def eigh_check(a):
@@ -421,7 +422,8 @@ def random_mt(x=None, scalar_moment=1.0, magnitude=None):
     evals = x[:3] * 2. - 1.0
     evals /= num.sqrt(num.sum(evals**2)) / math.sqrt(2.0)
     rotmat = random_rotation(x[3:])
-    return scalar_moment * rotmat * num.matrix(num.diag(evals)) * rotmat.T
+    return scalar_moment * num.dot(
+        rotmat, num.dot(num.array(num.diag(evals)), rotmat.T))
 
 
 def random_m6(*args, **kwargs):
@@ -433,7 +435,8 @@ def random_dc(x=None, scalar_moment=1.0, magnitude=None):
         scalar_moment = magnitude_to_moment(magnitude)
 
     rotmat = random_rotation(x)
-    return scalar_moment * (rotmat * MomentTensor._m_unrot * rotmat.T)
+    return scalar_moment * num.dot(
+        rotmat, num.dot(MomentTensor._m_unrot, rotmat.T))
 
 
 def sm(m):
@@ -461,9 +464,9 @@ class MomentTensor(Object):
     '''
     Moment tensor object
 
-    :param m: NumPy matrix in north-east-down convention
-    :param m_up_south_east: NumPy matrix in up-south-east convention
-    :param m_east_north_up: NumPy matrix in east-north-up convention
+    :param m: NumPy array in north-east-down convention
+    :param m_up_south_east: NumPy array in up-south-east convention
+    :param m_east_north_up: NumPy array in east-north-up convention
     :param strike,dip,rake: fault plane angles in [degrees]
     :param scalar_moment: scalar moment in [Nm]
     :param magnitude: moment magnitude Mw
@@ -498,13 +501,13 @@ class MomentTensor(Object):
     moment__ = Float.T(default=None, optional=True)  # read-only
     magnitude__ = Float.T(default=None, optional=True)  # read-only
 
-    _flip_dc = num.matrix(
+    _flip_dc = num.array(
         [[0., 0., -1.], [0., -1., 0.], [-1., 0., 0.]], dtype=float)
-    _to_up_south_east = num.matrix(
+    _to_up_south_east = num.array(
         [[0., 0., -1.], [-1., 0., 0.], [0., 1., 0.]], dtype=float).T
-    _to_east_north_up = num.matrix(
+    _to_east_north_up = num.array(
         [[0., 1., 0.], [1., 0., 0.], [0., 0., -1.]], dtype=float)
-    _m_unrot = num.matrix(
+    _m_unrot = num.array(
         [[0., 0., -1.], [0., 0., 0.], [-1., 0., 0.]], dtype=float)
 
     _u_evals, _u_evecs = eigh_check(_m_unrot)
@@ -571,13 +574,24 @@ class MomentTensor(Object):
         dip = d2r*dip
         rake = d2r*rake
 
+        if isinstance(m, num.matrix):
+            m = m.A
+
+        if isinstance(m_up_south_east, num.matrix):
+            m_up_south_east = m_up_south_east.A
+
+        if isinstance(m_east_north_up, num.matrix):
+            m_east_north_up = m_east_north_up.A
+
         if m_up_south_east is not None:
-            m = self._to_up_south_east * m_up_south_east * \
-                self._to_up_south_east.T
+            m = num.dot(
+                self._to_up_south_east,
+                num.dot(m_up_south_east, self._to_up_south_east.T))
 
         if m_east_north_up is not None:
-            m = self._to_east_north_up * m_east_north_up * \
-                self._to_east_north_up.T
+            m = num.dot(
+                self._to_east_north_up,
+                num.dot(m_east_north_up, self._to_east_north_up.T))
 
         if m is None:
             if any(x is not None for x in (
@@ -593,7 +607,9 @@ class MomentTensor(Object):
                 scalar_moment = magnitude_to_moment(magnitude)
 
             rotmat1 = euler_to_matrix(dip, strike, -rake)
-            m = rotmat1.T * MomentTensor._m_unrot * rotmat1 * scalar_moment
+            m = scalar_moment * num.dot(
+                rotmat1.T,
+                num.dot(MomentTensor._m_unrot, rotmat1))
 
         self._m = m
         self._update()
@@ -603,7 +619,7 @@ class MomentTensor(Object):
         if num.linalg.det(m_evecs) < 0.:
             m_evecs *= -1.
 
-        rotmat1 = (m_evecs * MomentTensor._u_evecs.T).T
+        rotmat1 = num.dot(m_evecs, MomentTensor._u_evecs.T).T
         if num.linalg.det(rotmat1) < 0.:
             rotmat1 *= -1.
 
@@ -611,7 +627,7 @@ class MomentTensor(Object):
         self._m_eigenvecs = m_evecs
 
         self._rotmats = sorted(
-            [rotmat1, MomentTensor._flip_dc * rotmat1],
+            [rotmat1, num.dot(MomentTensor._flip_dc, rotmat1)],
             key=lambda m: num.abs(m.flat).tolist())
 
     @property
@@ -740,9 +756,9 @@ class MomentTensor(Object):
         :returns: ``(ep, en, et, vp, vn, vt)``
         '''
 
-        vp = self.p_axis().A.flatten()
-        vn = self.null_axis().A.flatten()
-        vt = self.t_axis().A.flatten()
+        vp = self.p_axis().flatten()
+        vn = self.null_axis().flatten()
+        vt = self.t_axis().flatten()
         ep, en, et = self._m_eigenvals
         return ep, en, et, vp, vn, vt
 
@@ -750,7 +766,7 @@ class MomentTensor(Object):
         '''
         Get both possible slip directions.
         '''
-        return [rotmat.T*cvec(1., 0., 0.) for rotmat in self._rotmats]
+        return [num.dot(rotmat.T, cvec(1., 0., 0.)) for rotmat in self._rotmats]
 
     def m(self):
         '''
@@ -780,14 +796,17 @@ class MomentTensor(Object):
             \\end{align*}
         '''
 
-        return self._to_up_south_east.T * self._m * self._to_up_south_east
+        return num.dot(
+            self._to_up_south_east.T,
+            num.dot(self._m, self._to_up_south_east))
 
     def m_east_north_up(self):
         '''
         Get moment tensor in east-north-up convention as 3x3 matrix.
         '''
 
-        return self._to_east_north_up.T * self._m * self._to_east_north_up
+        return num.dot(
+            self._to_east_north_up.T, num.dot(self._m, self._to_east_north_up))
 
     def m6_up_south_east(self):
         '''
@@ -810,7 +829,8 @@ class MomentTensor(Object):
         Get plain double couple with same scalar moment as moment tensor.
         '''
         rotmat1 = self._rotmats[0]
-        m = rotmat1.T * MomentTensor._m_unrot * rotmat1 * self.scalar_moment()
+        m = self.scalar_moment() * num.dot(
+            rotmat1.T, num.dot(MomentTensor._m_unrot, rotmat1))
         return m
 
     def moment_magnitude(self):
@@ -934,7 +954,7 @@ Moment Tensor [Nm]: Mnn = %6.3f,  Mee = %6.3f, Mdd = %6.3f,
                 min(0.0, evals_sorted[0] / evals_sorted[2])))
 
         moment_dc = abs(signed_moment_dc)
-        m_dc_es = signed_moment_dc * num.diag([0., -1.0, 1.0])
+        m_dc_es = num.dot(signed_moment_dc, num.diag([0., -1.0, 1.0]))
         m_dc = num.dot(evecs_sorted, num.dot(m_dc_es, evecs_sorted.T))
 
         m_clvd = m_devi - m_dc
@@ -961,8 +981,8 @@ Moment Tensor [Nm]: Mnn = %6.3f,  Mee = %6.3f, Mdd = %6.3f,
         :returns: new :py:class:`MomentTensor` object
         '''
 
-        rotmat = num.matrix(rot)
-        return MomentTensor(m=rotmat * self.m() * rotmat.T)
+        rotmat = num.array(rot)
+        return MomentTensor(m=num.dot(rotmat, num.dot(self.m(), rotmat.T)))
 
     def random_rotated(self, angle_std=None, angle=None, rstate=None):
         '''
@@ -1072,7 +1092,7 @@ def _tpb2q(t, p, b):
     return q
 
 
-_pbt2tpb = num.matrix(((0., 0., 1.), (1., 0., 0.), (0., 1., 0.)))
+_pbt2tpb = num.array(((0., 0., 1.), (1., 0., 0.), (0., 1., 0.)))
 
 
 def kagan_angle(mt1, mt2):
@@ -1082,12 +1102,12 @@ def kagan_angle(mt1, mt2):
     After Kagan (1991) and Tape & Tape (2012).
     '''
 
-    ai = _pbt2tpb * mt1._m_eigenvecs.T
-    aj = _pbt2tpb * mt2._m_eigenvecs.T
+    ai = num.dot(_pbt2tpb, mt1._m_eigenvecs.T)
+    aj = num.dot(_pbt2tpb, mt2._m_eigenvecs.T)
 
-    u = ai * aj.T
+    u = num.dot(ai, aj.T)
 
-    tk, pk, bk = u.A
+    tk, pk, bk = u
 
     qk = _tpb2q(tk, pk, bk)
 

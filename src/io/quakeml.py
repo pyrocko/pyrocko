@@ -644,7 +644,7 @@ class MomentTensor(Object):
         mrt = self.tensor.mrt.value
         mrp = self.tensor.mrp.value
         mtp = self.tensor.mtp.value
-        mt = moment_tensor.MomentTensor(m_up_south_east=num.matrix([
+        mt = moment_tensor.MomentTensor(m_up_south_east=num.array([
              [mrr, mrt, mrp], [mrt, mtt, mtp], [mrp, mtp, mpp]]))
 
         return mt

@@ -255,7 +255,7 @@ class OkadaTestCase(unittest.TestCase):
         coefmat_sdn = num.zeros((npoints * 3, npoints * 3))
 
         def ned2sdn_rotmat(strike, dip):
-            return pmt.euler_to_matrix((dip + 180.)*d2r, strike*d2r, 0.).A
+            return pmt.euler_to_matrix((dip + 180.)*d2r, strike*d2r, 0.)
 
         lambda_mean = num.mean([src.lamb for src in source_disc])
         mu_mean = num.mean([src.shearmod for src in source_disc])
@@ -886,7 +886,7 @@ class OkadaTestCase(unittest.TestCase):
                 [[lamb * du_n, 0.,          -mu * du_s],
                  [0.,          lamb * du_n, 0.],
                  [-mu * du_s,  0.,          (lamb + 2. * mu) * du_n]])
-            return pmt.to6(rotmat.T * momentmat * rotmat)
+            return pmt.to6(num.dot(rotmat.T, num.dot(momentmat, rotmat)))
 
         m6s_old = num.array([
             patch2m6(
