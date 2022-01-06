@@ -89,7 +89,7 @@ class KanFile:
             else:
                 dtype = '>i4'
 
-            self.data = num.fromstring(filedata[nbh:], dtype=dtype)
+            self.data = num.frombuffer(filedata[nbh:], dtype=dtype)
 
             assert self.data.size == self.npts
         else:

@@ -304,7 +304,7 @@ iqb1 iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
                 else:
                     dtype = num.dtype('<f4')
 
-                self.data.append(num.array(num.fromstring(
+                self.data.append(num.array(num.frombuffer(
                     filedata[nbh+iblock*nbb:nbh+(iblock+1)*nbb],
                     dtype=dtype),
                     dtype=float))
@@ -353,7 +353,7 @@ iqb1 iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
         with open(filename, 'wb') as f:
             f.write(header_data)
             for fdata in self.data:
-                f.write(fdata.astype(num.float32).tostring())
+                f.write(fdata.astype(num.float32).tobytes())
 
     def __str__(self):
         str = ''

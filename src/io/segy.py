@@ -27,7 +27,7 @@ def ibm2ieee(ibm):
 
 
 def unpack_ibm_f4(data):
-    ibm = num.fromstring(data, dtype='>u4').astype(num.int32)
+    ibm = num.frombuffer(data, dtype='>u4').astype(num.int32)
     sign = (ibm >> 31) & 0x01
     exponent = (ibm >> 24) & 0x7f
     mantissa = (ibm & 0x00ffffff) / float(pow(2, 24))
@@ -185,7 +185,7 @@ def iload(filename, load_data, endianness='>'):
                         raise SEGYError('incomplete trace data')
 
                     if isinstance(dtype, str):
-                        data = num.fromstring(datablock, dtype=dtype)
+                        data = num.frombuffer(datablock, dtype=dtype)
                     else:
                         data = dtype(datablock)
 

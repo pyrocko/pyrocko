@@ -164,7 +164,7 @@ def read_data(f, h, endianness='>'):
         raise GCFLoadError('Unsupported compression code: %i' % h.compression)
 
     nsamples = h.compression * h.nrecords
-    difs = num.fromstring(data[4:4+h.nrecords*4], dtype=dtype[h.compression],
+    difs = num.frombuffer(data[4:4+h.nrecords*4], dtype=dtype[h.compression],
                           count=nsamples)
     samples = difs.astype(num.int32)
     samples[0] += first

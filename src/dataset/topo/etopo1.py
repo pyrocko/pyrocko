@@ -60,7 +60,7 @@ class ETOPO1(dataset.TiledGlobalDataset):
         zipf = zipfile.ZipFile(fpath, 'r')
         rawdata = zipf.read('%s.bin' % self.base_fn)
         zipf.close()
-        data = num.fromstring(rawdata, dtype=self.dtype)
+        data = num.frombuffer(rawdata, dtype=self.dtype)
         assert data.size == self.nx * self.ny
         data = data.reshape((self.ny, self.nx))[::-1]
 

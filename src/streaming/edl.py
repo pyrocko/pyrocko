@@ -285,11 +285,11 @@ def unpack_block(data):
 
 def unpack_values(ncomps, bytes_per_sample, data):
     if bytes_per_sample == 4:
-        return num.fromstring(data, dtype=num.dtype('<i4'))
+        return num.frombuffer(data, dtype=num.dtype('<i4'))
 
     # 3-byte mode is broken:
     # elif bytes_per_sample == 3:
-    #     b1 = num.fromstring(data, dtype=num.dtype('<i1'))
+    #     b1 = num.frombuffer(data, dtype=num.dtype('<i1'))
     #     b4 = num.zeros(len(data)/4, dtype=num.dtype('<i4'))
     #     b4.view(dtype='<i2')[::2] = b1.view(dtype='<i2')
     #     b4.view(dtype='<i1')[2::4] = b1[i::3]

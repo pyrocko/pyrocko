@@ -138,7 +138,7 @@ class SRTMGL3(dataset.TiledGlobalDataset):
             zipf = zipfile.ZipFile(fpath, 'r')
             rawdata = zipf.read(tn + '.hgt')
             zipf.close()
-            data = num.fromstring(rawdata, dtype=self.dtype)
+            data = num.frombuffer(rawdata, dtype=self.dtype)
             assert data.size == self.ntx * self.nty
             data = data.reshape(self.nty, self.ntx)[::-1, ::]
             return tile.Tile(

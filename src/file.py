@@ -56,12 +56,12 @@ def packer(fmt):
 
 
 def unpack_array(fmt, data):
-    return num.fromstring(
+    return num.frombuffer(
         data, dtype=numtypes[fmt][1]).astype(numtypes[fmt][0])
 
 
 def pack_array(fmt, data):
-    return data.astype(numtypes[fmt][1]).tostring()
+    return data.astype(numtypes[fmt][1]).tobytes()
 
 
 def array_packer(fmt):

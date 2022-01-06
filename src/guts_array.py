@@ -79,13 +79,13 @@ class Array(Object):
 
                 elif self.serialize_as == 'base64':
                     data = b64decode(val)
-                    val = num.fromstring(
+                    val = num.frombuffer(
                         data, dtype=self.serialize_dtype).astype(self.dtype)
 
                 elif self.serialize_as == 'base64-compat':
                     try:
                         data = b64decode(val)
-                        val = num.fromstring(
+                        val = num.frombuffer(
                             data,
                             dtype=self.serialize_dtype).astype(self.dtype)
                     except binascii.Error:
@@ -136,7 +136,7 @@ class Array(Object):
                     dtype = self.dtype or \
                         restricted_dtype_map_rev[serialize_dtype]
 
-                    val = num.fromstring(
+                    val = num.frombuffer(
                         data, dtype=serialize_dtype).astype(dtype)
 
                     if val.size != num.product(shape):
@@ -180,7 +180,7 @@ class Array(Object):
                 return literal(out.getvalue().decode('utf-8'))
             elif self.serialize_as == 'base64' \
                     or self.serialize_as == 'base64-compat':
-                data = val.astype(self.serialize_dtype).tostring()
+                data = val.astype(self.serialize_dtype).tobytes()
                 return literal(b64encode(data).decode('utf-8'))
             elif self.serialize_as == 'list':
                 if self.dtype == complex:
@@ -201,7 +201,7 @@ class Array(Object):
                 serialize_dtype = self.serialize_dtype or \
                     restricted_dtype_map[val.dtype]
 
-                data = val.astype(serialize_dtype).tostring()
+                data = val.astype(serialize_dtype).tobytes()
 
                 return dict(
                     dtype=serialize_dtype,

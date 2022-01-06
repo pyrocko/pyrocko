@@ -123,13 +123,13 @@ class SudsDescriptrace(SudsStructBase, namedtuple(
         else:
             tmax = None
             if self.datatype == b'l':
-                arr = num.fromstring(data, dtype=num.int32)
+                arr = num.frombuffer(data, dtype=num.int32)
             elif self.datatype == b'i':
-                arr = num.fromstring(data, dtype=num.int16)
+                arr = num.frombuffer(data, dtype=num.int16)
             elif self.datatype == b'f':
-                arr = num.fromstring(data, dtype=num.float32)
+                arr = num.frombuffer(data, dtype=num.float32)
             elif self.datatype == b'd':
-                arr = num.fromstring(data, dtype=num.float64)
+                arr = num.frombuffer(data, dtype=num.float64)
             else:
                 raise SudsError(
                     'data type "%s" not implemented yet' % self.datatype)
