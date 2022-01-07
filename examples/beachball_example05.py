@@ -1,9 +1,8 @@
+import random
+
 from pyrocko.plot import beachball
 import pyrocko.moment_tensor as mtm
-
-import numpy as num
 from matplotlib import pyplot as plt
-
 
 fig = plt.figure(figsize=(4., 4.))
 fig.subplots_adjust(left=0., right=1., bottom=0., top=1.)
@@ -19,15 +18,10 @@ rake = 15.
 
 best_mt = mtm.MomentTensor.from_values((strike, dip, rake))
 
-
-def get_random_uniform(lower, upper, dimension=1):
-    ''' Help function to pertubate the best solution '''
-    return (upper - lower) * num.random.rand(dimension) + lower
-
-
 mts = []
 for i in range(n_balls):
-    strike_dev = get_random_uniform(-15., 15.)
+    # randomly change the strike by +- 15 deg
+    strike_dev = random.random() * 30.0 - 15.0
     mts.append(mtm.MomentTensor.from_values(
         (strike + strike_dev, dip, rake)))
 
