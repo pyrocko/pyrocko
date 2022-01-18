@@ -5,7 +5,7 @@
 
 from __future__ import absolute_import, print_function
 
-from pyrocko.guts import Object, Timestamp
+from pyrocko.guts import Object, Timestamp, String
 
 
 guts_prefix = 'squirrel'
@@ -28,6 +28,7 @@ class Constraint(Object):
 
     tmin = Timestamp.T(optional=True)
     tmax = Timestamp.T(optional=True)
+    codes = String.T(optional=True)
 
     def contains(self, constraint):
         '''

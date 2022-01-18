@@ -1519,7 +1519,7 @@ class Squirrel(Selection):
         print('contraint ignored atm')
 
         for source in self._sources:
-            source.update_waveform_promises(self)
+            source.update_waveform_promises(self, constraint)
 
     def update_responses(self, constraint=None, **kwargs):
         # TODO

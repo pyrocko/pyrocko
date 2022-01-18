@@ -89,6 +89,8 @@ class Converter(HasPaths):
     in_path = String.T(optional=True)
     in_paths = List.T(String.T(optional=True))
 
+    codes = String.T(optional=True)
+
     rename = Dict.T(
         String.T(),
         Choice.T([
@@ -313,6 +315,7 @@ class Converter(HasPaths):
             tmin = chain.get('tmin')
             tmax = chain.get('tmax')
             tinc = chain.get('tinc')
+            codes = chain.get('codes')
             downsample = chain.get('downsample')
             out_path, is_sds = chain.fcall('get_effective_out_path') \
                 or (None, False)
@@ -343,6 +346,7 @@ class Converter(HasPaths):
             rename_rules = self.get_effective_rename_rules(chain)
             for batch in sq.chopper_waveforms(
                     tmin=tmin, tmax=tmax, tpad=tpad, tinc=tinc,
+                    codes=codes,
                     snap_window=True):
 
                 if task is None:

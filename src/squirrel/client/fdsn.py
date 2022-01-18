@@ -510,9 +510,10 @@ class FDSNSource(Source):
     def _get_channels_expiration_time(self):
         return self._get_expiration_time(self._get_channels_path())
 
-    def update_waveform_promises(self, squirrel):
+    def update_waveform_promises(self, squirrel, constraint):
         cpath = os.path.abspath(self._get_channels_path())
-        nuts = squirrel.iter_nuts('channel', path=cpath)
+        nuts = squirrel.iter_nuts(
+            'channel', path=cpath, codes=constraint.codes)
 
         path = self._source_id
         squirrel.add_virtual(
