@@ -1085,6 +1085,17 @@ class DummyTrace(object):
         return not (tmax < self.nut.tmin or self.nut.tmax < tmin)
 
 
+def duration_to_str(t):
+    if t > 24*3600:
+        return '%gd' % (t / (24.*3600.))
+    elif t > 3600:
+        return '%gh' % (t / 3600.)
+    elif t > 60:
+        return '%gm' % (t / 60.)
+    else:
+        return '%gs' % t
+
+
 class Coverage(Object):
     kind_id = Int.T()
     pattern = String.T()
@@ -1119,7 +1130,8 @@ class Coverage(Object):
             ('%s,' % '.'.join(self.codes.split(separator))).ljust(18),
             ts,
             '%10.3g,' % srate if srate else '',
-            '%4i' % len(self.changes)))
+            '%4i' % len(self.changes),
+            '%s' % duration_to_str(self.total)))
 
     @property
     def sample_rate(self):
@@ -1136,6 +1148,20 @@ class Coverage(Object):
         return (
             ('%s' % '.'.join(self.codes.split(separator))),
             '%.3g' % srate if srate else '')
+
+    @property
+    def total(self):
+        last = None
+        total_t = None
+        for (t, count) in self.changes:
+            if last is not None:
+                last_t, last_count = last
+                if last_count > 0:
+                    total_t = (total_t or 0.0) + (t - last_t)
+
+            last = (t, count)
+
+        return total_t
 
 
 __all__ = [
