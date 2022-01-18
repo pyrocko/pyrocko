@@ -254,7 +254,7 @@ class FDSNSource(Source):
              'environment\'s cache directory is used.')
 
     shared_waveforms = Bool.T(
-        default=True,
+        default=False,
         help='If ``True``, waveforms are shared with other FDSN sources in '
              'the same Squirrel environment. If ``False``, they are kept '
              'separate.')
