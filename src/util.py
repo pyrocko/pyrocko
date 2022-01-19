@@ -96,6 +96,13 @@ except ImportError:
     from urllib2 import (Request, build_opener, HTTPDigestAuthHandler,   # noqa
                          HTTPError, URLError, urlopen as _urlopen)  # noqa
 
+try:
+    import certifi
+    import ssl
+    g_ssl_context = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    g_ssl_context = None
+
 
 class URLErrorSSL(URLError):
 
@@ -122,12 +129,9 @@ def urlopen_ssl_check(*args, **kwargs):
 
 
 def urlopen(*args, **kwargs):
-    if 'cafile' not in kwargs:
-        try:
-            import certifi
-            kwargs['cafile'] = certifi.where()
-        except ImportError:
-            pass
+
+    if 'context' not in kwargs and g_ssl_context is not None:
+        kwargs['context'] = g_ssl_context
 
     return _urlopen(*args, **kwargs)
 

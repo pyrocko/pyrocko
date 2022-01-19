@@ -29,13 +29,7 @@ from __future__ import absolute_import
 
 import re
 import logging
-import ssl
 import socket
-
-try:
-    import certifi
-except ImportError:
-    certifi = None
 
 
 from pyrocko import util
@@ -49,12 +43,6 @@ try:
     newstr = unicode
 except NameError:
     newstr = str
-
-
-if certifi:
-    g_cafile = certifi.where()
-else:
-    g_cafile = None
 
 
 logger = logging.getLogger('pyrocko.client.fdsn')
@@ -233,7 +221,6 @@ def _request(
         post=False,
         user=None,
         passwd=None,
-        allow_TLSv1=False,
         timeout=g_timeout,
         **kwargs):
 
@@ -246,10 +233,8 @@ def _request(
         'timeout': timeout
     }
 
-    if allow_TLSv1:
-        url_args['context'] = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
-
-    url_args['cafile'] = g_cafile
+    if util.g_ssl_context:
+        url_args['context'] = util.g_ssl_context
 
     opener = None
 
