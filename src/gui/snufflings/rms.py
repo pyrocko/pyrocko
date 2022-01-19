@@ -133,6 +133,7 @@ class RootMeanSquareSnuffling(Snuffling):
                 insert_now = True
                 tlast = tnow
 
+            to_add = []
             for key, values in rms.items():
                 target = targets.get(key, None)
 
@@ -141,7 +142,7 @@ class RootMeanSquareSnuffling(Snuffling):
                         or insert_now:
 
                     if target:
-                        self.add_trace(target)
+                        to_add.append(target)
 
                     target = targets[key] = Trace(
                         network=key[0],
@@ -160,6 +161,9 @@ class RootMeanSquareSnuffling(Snuffling):
                     value = num.log(value)
 
                 targets[key].append(value)
+
+            if to_add:
+                self.add_traces(to_add)
 
         # add the newly created traces to the viewer
         if targets.values():
