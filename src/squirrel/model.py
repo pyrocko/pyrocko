@@ -802,9 +802,17 @@ class Nut(Object):
     def tmin(self):
         return tjoin(self.tmin_seconds, self.tmin_offset)
 
+    @tmin.setter
+    def tmin(self, t):
+        self.tmin_seconds, self.tmin_offset = tsplit(t)
+
     @property
     def tmax(self):
         return tjoin(self.tmax_seconds, self.tmax_offset)
+
+    @tmax.setter
+    def tmax(self, t):
+        self.tmax_seconds, self.tmax_offset = tsplit(t)
 
     @property
     def kscale(self):
