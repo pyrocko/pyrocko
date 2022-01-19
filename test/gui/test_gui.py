@@ -170,7 +170,7 @@ class GUITest(unittest.TestCase):
         geom = pv.frameGeometry()
         QTest.mouseMove(pv.viewer, pos=position_tl)
         QTest.mouseMove(pv.viewer, pos=(qc.QPoint(
-            position_tl.x()+geom.x()/2., position_tl.y()+geom.y()/2.)))
+            position_tl.x()+geom.x() // 2, position_tl.y()+geom.y() // 2)))
 
         # This should be done also by mouseDClick().
         QTest.mouseRelease(pv.viewer, Qt.LeftButton)

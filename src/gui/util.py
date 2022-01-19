@@ -66,7 +66,7 @@ class Label(object):
         text.setDefaultStyleSheet('span { color: %s; }' % color.name())
         text.setHtml('<span>%s</span>' % label_str)
         s = text.size()
-        rect = qc.QRectF(0., 0., s.width(), s.height())
+        rect = qc.QRect(0, 0, int(s.width()), int(s.height()))
         tx, ty = x, y
 
         if 'B' in anchor:
@@ -74,11 +74,11 @@ class Label(object):
         if 'R' in anchor:
             tx -= rect.width()
         if 'M' in anchor:
-            ty -= rect.height()/2.
+            ty -= rect.height() // 2
         if 'C' in anchor:
-            tx -= rect.width()/2.
+            tx -= rect.width() // 2
 
-        rect.translate(tx, ty)
+        rect.translate(int(tx), int(ty))
         self.rect = rect
         self.text = text
         self.outline = outline
@@ -96,7 +96,7 @@ class Label(object):
             oldpen = p.pen()
             oldbrush = p.brush()
             p.setBrush(self.label_bg)
-            rect.adjust(-2., 0., 2., 0.)
+            rect.adjust(-2, 0, 2, 0)
             p.drawRect(rect)
             p.setPen(oldpen)
             p.setBrush(oldbrush)
@@ -105,9 +105,9 @@ class Label(object):
             if self.label_bg:
                 p.fillRect(rect, self.label_bg)
 
-        p.translate(tx, ty)
+        p.translate(int(tx), int(ty))
         self.text.drawContents(p)
-        p.translate(-tx, -ty)
+        p.translate(-int(tx), -int(ty))
 
 
 def draw_label(p, x, y, label_str, label_bg, anchor='BL', outline=False):
@@ -122,23 +122,24 @@ def draw_label(p, x, y, label_str, label_bg, anchor='BL', outline=False):
     if 'R' in anchor:
         tx -= rect.width()
     if 'M' in anchor:
-        ty += rect.height()/2.
+        ty += rect.height() // 2
     if 'C' in anchor:
-        tx -= rect.width()/2.
+        tx -= rect.width() // 2
 
-    rect.translate(tx, ty)
+    rect.translate(int(tx), int(ty))
     if outline:
         oldpen = p.pen()
         oldbrush = p.brush()
         p.setBrush(label_bg)
-        rect.adjust(-2., 0., 2., 0.)
+        rect.adjust(-2, 0, 2, 0)
         p.drawRect(rect)
         p.setPen(oldpen)
         p.setBrush(oldbrush)
 
     else:
         p.fillRect(rect, label_bg)
-    p.drawText(tx, ty, label)
+
+    p.drawText(int(tx), int(ty), label)
 
 
 def get_err_palette():

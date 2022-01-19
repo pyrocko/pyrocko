@@ -22,7 +22,7 @@ from .marker import g_color_b
 
 
 def faint(c):
-    return tuple(255 - (255 - x) * 0.2 for x in c)
+    return tuple(255 - (255 - x) // 5 for x in c)
 
 
 g_color_b_faint = [faint(c) for c in g_color_b]
