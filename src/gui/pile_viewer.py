@@ -4229,6 +4229,16 @@ def MakePileViewerMainClass(base):
                                 t = pyrocko.util.str_to_time(sdate + ' ' + arg)
                                 self.go_to_time(t)
 
+                            elif arg == 'today':
+                                self.go_to_time(
+                                    day_start(
+                                        time.time()), tlen=24*60*60)
+
+                            elif arg == 'yesterday':
+                                self.go_to_time(
+                                    day_start(
+                                        time.time()-24*60*60), tlen=24*60*60)
+
                             else:
                                 self.go_to_event_by_name(arg)
 
