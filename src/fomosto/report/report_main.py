@@ -1211,10 +1211,21 @@ class GreensFunctionTest(Object):
     @staticmethod
     def __drawGrid(ax, major=True, minor=True):
         if major:
-            ax.grid(b=True, which='major', c='grey', linestyle='-', alpha=.45)
+            ax.grid(
+                visible=True,
+                which='major',
+                c='grey',
+                linestyle='-',
+                alpha=.45)
+
         if minor:
             ax.minorticks_on()
-            ax.grid(b=True, which='minor', c='grey', linestyle=':', alpha=.8)
+            ax.grid(
+                visible=True,
+                which='minor',
+                c='grey',
+                linestyle=':',
+                alpha=.8)
 
     @staticmethod
     def __getFigureTitle(fig):
