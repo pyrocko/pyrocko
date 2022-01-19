@@ -1445,16 +1445,18 @@ class Squirrel(Selection):
         for codes in codes_list:
             pats.extend(codes_patterns_for_kind(kind, codes))
 
-        codes_cond = ' ( %s ) ' % ' OR '.join(
-                ('kind_codes.codes GLOB ?',) * len(pats))
+        if pats:
+            codes_cond = 'AND ( %s ) ' % ' OR '.join(
+                    ('kind_codes.codes GLOB ?',) * len(pats))
 
-        args.extend(separator.join(pat) for pat in pats)
+            args.extend(separator.join(pat) for pat in pats)
+        else:
+            codes_cond = ''
 
         sql = self._sql('''
             SELECT kind_codes_id, codes, deltat FROM kind_codes
             WHERE
-                kind_id == ?
-                AND ''' + codes_cond)
+                kind_id == ? ''' + codes_cond)
 
         return list(map(list, self._conn.execute(sql, args)))
 
