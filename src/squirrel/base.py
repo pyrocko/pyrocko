@@ -1860,7 +1860,7 @@ class Squirrel(Selection):
 
         codes_to_avail = defaultdict(list)
         for nut in waveforms:
-            codes_to_avail[nut.codes].append((nut.tmin, nut.tmax+nut.deltat))
+            codes_to_avail[nut.codes].append((nut.tmin, nut.tmax))
 
         def tts(x):
             if isinstance(x, tuple):

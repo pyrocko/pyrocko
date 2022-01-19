@@ -29,7 +29,7 @@ from pyrocko.io import stationxml
 from pyrocko.progress import progress
 
 from pyrocko.guts import Object, String, Timestamp, List, Tuple, Int, Dict, \
-    Duration, Bool
+    Duration, Bool, clone
 
 guts_prefix = 'squirrel'
 
@@ -511,15 +511,43 @@ class FDSNSource(Source):
         return self._get_expiration_time(self._get_channels_path())
 
     def update_waveform_promises(self, squirrel, constraint):
+        from ..base import gaps
+        now = time.time()
         cpath = os.path.abspath(self._get_channels_path())
         nuts = squirrel.iter_nuts(
             'channel', path=cpath, codes=constraint.codes)
+
+        coverages = squirrel.get_coverage(
+            'waveform', codes_list=[constraint.codes], return_raw=False)
+
+        codes_to_avail = defaultdict(list)
+        for coverage in coverages:
+            for tmin, tmax, _ in coverage.iter_spans():
+                codes_to_avail[coverage.codes].append((tmin, tmax))
+
+        def sgaps(nut):
+            for tmin, tmax in gaps(
+                    codes_to_avail[nut.codes], nut.tmin, nut.tmax):
+
+                subnut = clone(nut)
+                subnut.tmin = tmin
+                subnut.tmax = tmax
+                yield subnut
+
+        def wanted(nuts):
+            for nut in nuts:
+                if nut.tmin < now:
+                    if nut.tmax > now:
+                        nut.tmax = now
+
+                    for nut in sgaps(nut):
+                        yield nut
 
         path = self._source_id
         squirrel.add_virtual(
             (make_waveform_promise_nut(
                 file_path=path,
-                **nut.waveform_promise_kwargs) for nut in nuts),
+                **nut.waveform_promise_kwargs) for nut in wanted(nuts)),
             virtual_paths=[path])
 
     def _get_user_credentials(self):

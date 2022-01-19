@@ -1159,17 +1159,21 @@ class Coverage(Object):
 
     @property
     def total(self):
-        last = None
         total_t = None
+        for tmin, tmax, _ in self.iter_spans():
+            total_t = (total_t or 0.0) + (tmax - tmin)
+
+        return total_t
+
+    def iter_spans(self):
+        last = None
         for (t, count) in self.changes:
             if last is not None:
                 last_t, last_count = last
                 if last_count > 0:
-                    total_t = (total_t or 0.0) + (t - last_t)
+                    yield last_t, t, last_count
 
             last = (t, count)
-
-        return total_t
 
 
 __all__ = [
