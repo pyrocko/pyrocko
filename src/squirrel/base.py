@@ -721,6 +721,7 @@ class Squirrel(Selection):
                 file_format='virtual',
                 file_segment=itr,
                 file_element=0,
+                file_mtime=0,
                 codes=separator.join(tr.codes),
                 tmin_seconds=tmin_seconds,
                 tmin_offset=tmin_offset,

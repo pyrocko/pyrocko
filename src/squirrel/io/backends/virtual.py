@@ -57,8 +57,12 @@ def add_nuts(nuts):
 
             ks.add(k)
 
-        old_mtime = data_mtimes.get(file_path, 0)
-        data_mtimes[file_path] = old_mtime + 1
+        mtime = max(nut.file_mtime or 0 for nut in data[file_path])
+        old_mtime = data_mtimes.get(file_path, None)
+        if old_mtime is None:
+            data_mtimes[file_path] = mtime
+        else:
+            data_mtimes[file_path] = old_mtime + 1
 
 
 def remove(file_paths):
