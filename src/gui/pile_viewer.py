@@ -208,7 +208,9 @@ for color in 'orange skyblue butter chameleon chocolate plum ' \
             *(pyrocko.plot.tango_colors[color+'1'] + (box_alpha,)))),
     ))
 
-box_styles_coverage = [
+box_styles_coverage = {}
+
+box_styles_coverage['waveform'] = [
     ObjectStyle(
         qg.QPen(
             qg.QColor(*pyrocko.plot.tango_colors['aluminium3']),
@@ -225,6 +227,25 @@ box_styles_coverage = [
         qg.QPen(qg.QColor(*pyrocko.plot.tango_colors['plum3'])),
         qg.QBrush(qg.QColor(
             *(pyrocko.plot.tango_colors['plum1'] + (50,)))),
+    )]
+
+box_styles_coverage['waveform_promise'] = [
+    ObjectStyle(
+        qg.QPen(
+            qg.QColor(*pyrocko.plot.tango_colors['skyblue3']),
+            1, qc.Qt.DashLine),
+        qg.QBrush(qg.QColor(
+            *(pyrocko.plot.tango_colors['skyblue1'] + (50,)))),
+    ),
+    ObjectStyle(
+        qg.QPen(qg.QColor(*pyrocko.plot.tango_colors['skyblue3'])),
+        qg.QBrush(qg.QColor(
+            *(pyrocko.plot.tango_colors['skyblue1'] + (50,)))),
+    ),
+    ObjectStyle(
+        qg.QPen(qg.QColor(*pyrocko.plot.tango_colors['skyblue3'])),
+        qg.QBrush(qg.QColor(
+            *(pyrocko.plot.tango_colors['skyblue2'] + (50,)))),
     )]
 
 sday = 60*60*24.       # \
@@ -2988,27 +3009,31 @@ def MakePileViewerMainClass(base):
                 pattern_list.append(pattern)
 
             vmin, vmax = self.get_time_range()
-            for entry in sq.get_coverage(
-                    'waveform', vmin, vmax, pattern_list, limit=500):
-                pattern, codes, deltat, tmin, tmax, cover_data = entry
-                itrack = pattern_to_itrack[tuple(pattern)]
 
-                if cover_data is None:
-                    drawbox(itrack, tmin, tmax, box_styles_coverage[0])
-                else:
-                    t = None
-                    pcount = 0
-                    for tb, count in cover_data:
-                        if t is not None and tb > t:
-                            if pcount > 0:
-                                drawbox(
-                                    itrack, t, tb,
-                                    box_styles_coverage[
-                                        min(len(box_styles_coverage)-1,
-                                            pcount)])
+            for kind in ['waveform', 'waveform_promise']:
+                for entry in sq.get_coverage(
+                        kind, vmin, vmax, pattern_list, limit=500):
+                    pattern, codes, deltat, tmin, tmax, cover_data = entry
+                    itrack = pattern_to_itrack[tuple(pattern)]
 
-                        t = tb
-                        pcount = count
+                    if cover_data is None:
+                        drawbox(
+                            itrack, tmin, tmax,
+                            box_styles_coverage[kind][0])
+                    else:
+                        t = None
+                        pcount = 0
+                        for tb, count in cover_data:
+                            if t is not None and tb > t:
+                                if pcount > 0:
+                                    drawbox(
+                                        itrack, t, tb,
+                                        box_styles_coverage[kind][
+                                            min(len(box_styles_coverage)-1,
+                                                pcount)])
+
+                            t = tb
+                            pcount = count
 
         def drawit(self, p, printmode=False, w=None, h=None):
             '''
