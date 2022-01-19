@@ -717,9 +717,8 @@ def sort_actions(menu):
 
 fkey_map = dict(zip(
     (qc.Qt.Key_F1, qc.Qt.Key_F2, qc.Qt.Key_F3, qc.Qt.Key_F4, qc.Qt.Key_F5,
-     qc.Qt.Key_F6, qc.Qt.Key_F7, qc.Qt.Key_F8, qc.Qt.Key_F9, qc.Qt.Key_F10,
-     qc.Qt.Key_F11, qc.Qt.Key_F12),
-    range(12)))
+     qc.Qt.Key_F6, qc.Qt.Key_F7, qc.Qt.Key_F8, qc.Qt.Key_F9, qc.Qt.Key_F10),
+    range(10)))
 
 
 class PileViewerMainException(Exception):
@@ -2355,6 +2354,9 @@ def MakePileViewerMainClass(base):
 
             elif key == qc.Qt.Key_Colon:
                 self.want_input.emit()
+
+            elif keytext == 'f':
+                self.toggle_fullscreen()
 
             elif keytext == 'g':
                 self.go_to_selection()
