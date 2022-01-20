@@ -1250,7 +1250,7 @@ class Squirrel(Selection):
         :type kind:
             str
 
-        :returns: (deltat_min, deltat_max)
+        :returns: ``(deltat_min, deltat_max)``
         '''
 
         deltats = [
@@ -1362,14 +1362,14 @@ class Squirrel(Selection):
         Get sampling intervals available in selection.
 
         :param kind:
-            If given, get codes only for selected content type.
+            If given, get sampling intervals only for selected content type.
         :type kind:
             str
 
         :complexity:
             O(1), independent of number of nuts.
 
-        :returns: sorted list of available sampling intervals
+        :returns: Sorted list of available sampling intervals.
         '''
         return sorted(list(self.iter_deltats(kind=kind)))
 
@@ -1385,7 +1385,7 @@ class Squirrel(Selection):
         :complexity:
             O(1), independent of number of nuts.
 
-        :returns: sorted list of available codes as tuples of strings
+        :returns: Sorted list of available codes as tuples of strings.
         '''
         return sorted(list(self.iter_codes(kind=kind)))
 
@@ -1467,7 +1467,7 @@ class Squirrel(Selection):
         :param constraint:
             Selection of times or areas to be brought up to date.
         :type constraint:
-            :py:class:`~pyrocko.squirrel.client.Constraint`
+            :py:class:`~pyrocko.squirrel.client.base.Constraint`
 
         :param \\*\\*kwargs:
             Shortcut for setting ``constraint=Constraint(**kwargs)``.
@@ -1493,7 +1493,7 @@ class Squirrel(Selection):
             Remote waveforms compatible with the given constraint are enabled
             for download.
         :type constraint:
-            :py:class:`~pyrocko.squirrel.client.Constraint`
+            :py:class:`~pyrocko.squirrel.client.base.Constraint`
 
         :param \\*\\*kwargs:
             Shortcut for setting ``constraint=Constraint(**kwargs)``.
@@ -1663,9 +1663,9 @@ class Squirrel(Selection):
             str
 
         :param cache_id:
-            Name of cache to for which the accessor should be cleared. By
-            default the named accessor is cleared from all registered caches.
-            By default, two caches named ``'default'`` and ``'waveforms'`` are
+            Name of cache for which the accessor should be cleared. By default
+            the named accessor is cleared from all registered caches. By
+            default, two caches named ``'default'`` and ``'waveforms'`` are
             available.
         :type cache_id:
             str
@@ -2076,7 +2076,7 @@ class Squirrel(Selection):
 
         :param maxlap:
             Maximum overlap size in samples which is removed when ``degap`` is
-            ``True``
+            ``True``.
         :type maxlap:
             int
 
@@ -2197,7 +2197,7 @@ class Squirrel(Selection):
         %(query_args)s
 
         :param tinc:
-            Time increment (window shift time) (default uses ``tmax-tmin``)
+            Time increment (window shift time) (default uses ``tmax-tmin``).
         :type tinc:
             timestamp
 
@@ -2215,6 +2215,8 @@ class Squirrel(Selection):
         :param snap_window:
             If ``True``, start time windows at multiples of tinc with respect
             to system time zero.
+        :type snap_window:
+            bool
 
         :param degap:
             If ``True``, connect traces and remove gaps and overlaps.
@@ -2229,7 +2231,7 @@ class Squirrel(Selection):
 
         :param maxlap:
             Maximum overlap size in samples which is removed when ``degap`` is
-            ``True``
+            ``True``.
         :type maxlap:
             int
 
@@ -2267,6 +2269,8 @@ class Squirrel(Selection):
             If ``True`` (default), :py:meth:`clear_accessor` is called when the
             chopper finishes. Set to ``False`` to keep loaded waveforms in
             memory when the generator returns.
+        :type clear_accessor:
+            bool
 
         :yields:
             A list of :py:class:`~pyrocko.trace.Trace` objects for every

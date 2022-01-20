@@ -444,6 +444,14 @@ class Selection(object):
         '''
         Iterate over all file paths currently belonging to the selection.
 
+        :param raw:
+            By default absolute paths are yielded. Set to ``True`` to yield
+            the path as it is stored in the database, which can be relative or
+            absolute, depending on whether the file is within a Squirrel
+            environment or outside.
+        :type raw:
+            bool
+
         :yields: File paths.
         '''
 
@@ -469,6 +477,14 @@ class Selection(object):
     def get_paths(self, raw=False):
         '''
         Get all file paths currently belonging to the selection.
+
+        :param raw:
+            By default absolute paths are returned. Set to ``True`` to return
+            the path as it is stored in the database, which can be relative or
+            absolute, depending on whether the file is within a Squirrel
+            environment or outside.
+        :type raw:
+            bool
 
         :returns: List of file paths.
         '''

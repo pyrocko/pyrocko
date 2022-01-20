@@ -825,7 +825,7 @@ class DatabaseStats(Object):
         String.T(),
         help='Available content types in database.')
     total_size = Int.T(
-        help='Aggregated file size of files referenced in database.')
+        help='Aggregated file size [bytes] of files referenced in database.')
     counts = Dict.T(
         String.T(), Dict.T(Tuple.T(content_t=String.T()), Int.T()),
         help='Breakdown of how many nuts of any content type and code '
