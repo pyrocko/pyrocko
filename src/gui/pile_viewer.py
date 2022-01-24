@@ -1158,7 +1158,6 @@ def MakePileViewerMainClass(base):
 
             self.cached_vec = None
             self.cached_processed_traces = None
-            self.cached_chopped_traces = {}
 
             self.timer = qc.QTimer(self)
             self.timer.timeout.connect(self.periodical)
@@ -3474,7 +3473,6 @@ def MakePileViewerMainClass(base):
 
         def clean_update(self):
             self.cached_processed_traces = None
-            self.cached_chopped_traces = {}
             self.update()
 
         def get_adequate_tpad(self):
@@ -3537,9 +3535,6 @@ def MakePileViewerMainClass(base):
                 self.highpass, fft_filtering, lphp,
                 min_deltat_allow, self.rotate, self.shown_tracks_range,
                 ads, self.pile.get_update_count())
-
-            dtmin = 0. if not self.cached_vec else tmin_ - self.cached_vec[0]
-            dtmax = 0. if not self.cached_vec else tmax_ - self.cached_vec[1]
 
             if (self.cached_vec
                     and self.cached_vec[0] <= vec[0]
@@ -3709,26 +3704,18 @@ def MakePileViewerMainClass(base):
             for trace in processed_traces:
                 chop_tmin = tmin_ - trace.deltat*4
                 chop_tmax = tmax_ + trace.deltat*4
-                trace_hash = trace.hash(unsafe=True)
 
-                # Use cache if tmin and tmax have not changed
-                if dtmin == 0. and dtmax == 0. \
-                        and trace_hash in self.cached_chopped_traces:
-                    ctrace = self.cached_chopped_traces[trace_hash]
+                try:
+                    ctrace = trace.chop(
+                        chop_tmin, chop_tmax,
+                        inplace=False)
 
-                else:
-                    try:
-                        ctrace = trace.chop(
-                            chop_tmin, chop_tmax,
-                            inplace=False)
+                except pyrocko.trace.NoData:
+                    continue
 
-                    except pyrocko.trace.NoData:
-                        continue
+                if ctrace.data_len() < 2:
+                    continue
 
-                    if ctrace.data_len() < 2:
-                        continue
-
-                self.cached_chopped_traces[trace_hash] = ctrace
                 chopped_traces.append(ctrace)
 
             self.timer_cutout.stop()
