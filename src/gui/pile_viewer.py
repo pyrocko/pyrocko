@@ -958,13 +958,13 @@ def MakePileViewerMainClass(base):
             menudef = [
                 ('Sort by Names',
                     lambda tr: (),
-                    qg.QKeySequence(qc.Qt.Key_N)),
+                    qg.QKeySequence(qc.Qt.Key_S, qc.Qt.Key_N)),
                 ('Sort by Distance',
                     lambda tr: self.station_attrib(
                         tr,
                         lambda sta: (m_float_or_none(sta.dist_m),),
                         lambda tr: (None,)),
-                    qg.QKeySequence(qc.Qt.Key_D)),
+                    qg.QKeySequence(qc.Qt.Key_S, qc.Qt.Key_D)),
                 ('Sort by Azimuth',
                     lambda tr: self.station_attrib(
                         tr,
