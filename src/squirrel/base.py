@@ -1682,6 +1682,9 @@ class Squirrel(Selection):
 
             self._content_caches[cache_].clear_accessor(accessor_id)
 
+    def get_cache_stats(self, cache_id):
+        return self._content_caches[cache_id].get_stats()
+
     def _check_duplicates(self, nuts):
         d = defaultdict(list)
         for nut in nuts:

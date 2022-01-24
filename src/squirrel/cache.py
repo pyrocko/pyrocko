@@ -5,7 +5,20 @@
 
 import logging
 
+from pyrocko.guts import Object, Int
+
 logger = logging.getLogger('psq.cache')
+
+
+class ContentCacheStats(Object):
+    '''
+    Information about cache state.
+    '''
+    nentries = Int.T(
+        help='Number of items in the cache.')
+    naccessors = Int.T(
+        help='Number of accessors currently holding references to cache '
+             'items.')
 
 
 class ContentCache(object):
@@ -198,3 +211,13 @@ class ContentCache(object):
 
         self._entries = {}
         self._accessor_ticks = {}
+
+    def get_stats(self):
+        '''
+        Get information about cache state.
+
+        :returns: :py:class:`ContentCacheStats` object.
+        '''
+        return ContentCacheStats(
+            nentries=len(self._entries),
+            naccessors=len(self._accessor_ticks))
