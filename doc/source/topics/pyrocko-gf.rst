@@ -192,8 +192,7 @@ A moment tensor point source. This is the most complete form of describing an en
     mt_source = gf.MTSource(
        lat=20., lon=58., depth=8.3e3,
        mnn=.5, mee=.1, mdd=.7,
-       mne=.6, mnd=.2, med=.1,
-       magnitude=6.3)
+       mne=.6, mnd=.2, med=.1,)
 
     # Or use an event
     mt_source = MTSource.from_pyrocko_event(event)
