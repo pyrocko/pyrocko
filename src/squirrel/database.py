@@ -11,6 +11,8 @@ import logging
 import sqlite3
 import re
 import time
+import types
+import weakref
 
 from pyrocko.io.io_common import FileLoadError
 from pyrocko import util
@@ -62,13 +64,19 @@ def close_database(database):
 
 
 class Transaction(object):
-    def __init__(self, conn, mode='immediate', retry_interval=0.1):
+    def __init__(
+            self, conn,
+            mode='immediate',
+            retry_interval=0.1,
+            callback=None):
+
         self.cursor = conn.cursor()
         assert mode in ('deferred', 'immediate', 'exclusive')
         self.mode = mode
         self.depth = 0
         self.rollback_wanted = False
         self.retry_interval = retry_interval
+        self.callback = callback
 
     def begin(self):
         if self.depth == 0:
@@ -77,6 +85,10 @@ class Transaction(object):
                 try:
                     tries += 1
                     self.cursor.execute('BEGIN %s' % self.mode.upper())
+                    logger.debug(
+                        'Database transaction (%s) started.' % self.mode)
+                    self.total_changes_begin \
+                        = self.cursor.connection.total_changes
                     break
 
                 except sqlite3.OperationalError as e:
@@ -96,6 +108,19 @@ class Transaction(object):
         if self.depth == 0:
             if not self.rollback_wanted:
                 self.cursor.execute('COMMIT')
+                if self.total_changes_begin is not None:
+                    total_changes = self.cursor.connection.total_changes \
+                        - self.total_changes_begin
+                else:
+                    total_changes = None
+
+                if self.callback is not None and total_changes:
+                    self.callback('modified', total_changes)
+
+                logger.debug(
+                    'Database transaction completed (changes: %i).' % (
+                        total_changes or 0))
+
             else:
                 self.cursor.execute('ROLLBACK')
                 logger.warning('Deferred rollback executed.')
@@ -125,6 +150,7 @@ class Transaction(object):
 
         if self.depth == 0:
             self.close()
+            self.callback = None
 
 
 class Database(object):
@@ -152,6 +178,7 @@ class Database(object):
 
         self._initialize_db()
         self._basepath = None
+        self._listeners = []
 
     def set_basepath(self, basepath):
         if basepath is not None:
@@ -181,7 +208,32 @@ class Database(object):
         return self._conn
 
     def transaction(self, mode='immediate'):
-        return Transaction(self._conn, mode)
+        return Transaction(
+            self._conn, mode, callback=self._notify_listeners)
+
+    def add_listener(self, listener):
+        if isinstance(listener, types.MethodType):
+            listener_ref = weakref.WeakMethod(listener)
+        else:
+            listener_ref = weakref.ref(listener)
+
+        self._listeners.append(listener_ref)
+        return listener_ref
+
+    def remove_listener(self, listener_ref):
+        self._listeners.remove(listener_ref)
+
+    def _notify_listeners(self, event, *args):
+        dead = []
+        for listener_ref in self._listeners:
+            listener = listener_ref()
+            if listener is not None:
+                listener(event, *args)
+            else:
+                dead.append(listener_ref)
+
+            for listener_ref in dead:
+                self.remove_listener(listener_ref)
 
     def _register_table(self, s):
         m = re.search(r'(\S+)\s*\(([^)]+)\)', s)

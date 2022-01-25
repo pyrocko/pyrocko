@@ -62,6 +62,11 @@ class Pile(object):
 
         self._squirrel = squirrel
         self._listeners = []
+        self._squirrel.get_database().add_listener(
+            self._notify_squirrel_to_pile)
+
+    def _notify_squirrel_to_pile(self, event, *args):
+        self.notify_listeners(event)
 
     def add_listener(self, obj):
         self._listeners.append(weakref.ref(obj))
@@ -378,16 +383,12 @@ class Pile(object):
         else:
             assert False
 
-        self.notify_listeners('add')
-
     def remove_file(self, mtf):
         if isinstance(mtf, classic_pile.MemTracesFile) \
                 and getattr(mtf, '_squirrel_name', False):
 
             self._squirrel.remove(mtf._squirrel_name)
             mtf._squirrel_name = None
-
-        self.notify_listeners('remove')
 
     def is_empty(self):
         return 'waveform' not in self._squirrel.get_kinds()
