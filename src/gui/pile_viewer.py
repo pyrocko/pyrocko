@@ -1520,7 +1520,7 @@ def MakePileViewerMainClass(base):
         def remove_panel_toggler(self, item):
             self.toggle_panel_menu.removeAction(item)
 
-        def load(self, paths, regex=None, format='from_extension',
+        def load(self, paths, regex=None, format='detect',
                  cache_dir=None, force_cache=False):
 
             if cache_dir is None:
