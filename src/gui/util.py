@@ -25,8 +25,7 @@ from pyrocko import plot
 if use_pyqt5:
     try:
         from PyQt5.QtWebEngineWidgets import QWebEngineView as WebView
-    except (ImportError) as e:
-        print(e)
+    except ImportError:
         from PyQt5.QtWebKitWidgets import QWebView as WebView
 
 else:
@@ -524,7 +523,6 @@ class ColorbarControl(qw.QWidget):
             u'Integrate traces (e.g. strain rate → strain)')
         self.int_toggle.setSizePolicy(btn_size)
         self.int_toggle.setCheckable(True)
-        print(self.abs_toggle.width())
         self.int_toggle.setMaximumSize(
             24,
             self.int_toggle.maximumSize().height())
