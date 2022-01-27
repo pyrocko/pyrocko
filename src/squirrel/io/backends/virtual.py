@@ -74,4 +74,5 @@ def iload(format, file_path, segment, content):
     assert format == 'virtual'
 
     for nut in data[file_path]:
-        yield nut
+        if segment is None or segment == nut.file_segment:
+            yield nut
