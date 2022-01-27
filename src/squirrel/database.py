@@ -598,7 +598,7 @@ class Database(object):
             return cursor.execute(
                 '''
                     DELETE FROM files
-                    WHERE path LIKE "virtual:volatile:%"').rowcount
+                    WHERE path LIKE 'virtual:volatile:%'
                 ''').rowcount
 
     def reset(self, path, transaction=None):
