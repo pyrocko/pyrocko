@@ -555,20 +555,21 @@ class Squirrel(Selection):
     def _delete(self):
         '''Delete database tables associated with this Squirrel.'''
 
-        for s in '''
-                DROP TRIGGER %(db)s.%(nuts)s_delete_nuts;
-                DROP TRIGGER %(db)s.%(nuts)s_delete_nuts2;
-                DROP TRIGGER %(db)s.%(file_states)s_delete_files;
-                DROP TRIGGER %(db)s.%(nuts)s_inc_kind_codes;
-                DROP TRIGGER %(db)s.%(nuts)s_dec_kind_codes;
-                DROP TABLE %(db)s.%(nuts)s;
-                DROP TABLE %(db)s.%(kind_codes_count)s;
-                DROP TRIGGER IF EXISTS %(db)s.%(nuts)s_add_coverage;
-                DROP TRIGGER IF EXISTS %(db)s.%(nuts)s_remove_coverage;
-                DROP TABLE IF EXISTS %(db)s.%(coverage)s;
-                '''.strip().splitlines():
+        with self.transaction('delete tables') as cursor:
+            for s in '''
+                    DROP TRIGGER %(db)s.%(nuts)s_delete_nuts;
+                    DROP TRIGGER %(db)s.%(nuts)s_delete_nuts2;
+                    DROP TRIGGER %(db)s.%(file_states)s_delete_files;
+                    DROP TRIGGER %(db)s.%(nuts)s_inc_kind_codes;
+                    DROP TRIGGER %(db)s.%(nuts)s_dec_kind_codes;
+                    DROP TABLE %(db)s.%(nuts)s;
+                    DROP TABLE %(db)s.%(kind_codes_count)s;
+                    DROP TRIGGER IF EXISTS %(db)s.%(nuts)s_add_coverage;
+                    DROP TRIGGER IF EXISTS %(db)s.%(nuts)s_remove_coverage;
+                    DROP TABLE IF EXISTS %(db)s.%(coverage)s;
+                    '''.strip().splitlines():
 
-            self._conn.execute(self._sql(s))
+                cursor.execute(self._sql(s))
 
         Selection._delete(self)
 
