@@ -525,6 +525,14 @@ class Database(object):
         if path is not None:
             yield path, nuts
 
+    def undig_few(self, paths, format='detect'):
+        for path in paths:
+            nuts = self.undig(path)
+            if nuts:
+                yield (nuts[0].file_format, path), nuts
+            else:
+                yield (format, path), []
+
     def undig_many(self, paths, show_progress=True):
         selection = self.new_selection(paths, show_progress=show_progress)
 
@@ -533,11 +541,11 @@ class Database(object):
 
         del selection
 
-    def new_selection(self, paths=None, show_progress=True):
+    def new_selection(self, paths=None, format='detect', show_progress=True):
         from .selection import Selection
         selection = Selection(self)
         if paths:
-            selection.add(paths, show_progress=show_progress)
+            selection.add(paths, format=format, show_progress=show_progress)
         return selection
 
     def undig_content(self, nut):

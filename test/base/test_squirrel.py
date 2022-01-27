@@ -235,7 +235,7 @@ class SquirrelTestCase(unittest.TestCase):
             return io.save(trs, op.join(tempdir, 'traces_%(station)s.mseed'))
 
         try:
-            database = squirrel.Database()
+            database = squirrel.Database(log_statements=True)
 
             sq = squirrel.Squirrel(database=database)
 
@@ -317,6 +317,15 @@ class SquirrelTestCase(unittest.TestCase):
             assert len(sq.get_nuts('waveform', tmin=3., tmax=4.)) == 2
             assert len(sq.get_nuts('waveform', tmin=4., tmax=5.)) == 2
             assert len(sq.get_nuts('waveform', tmin=5., tmax=6.)) == 0
+
+            time.sleep(1.1)  # make sure modification time is different
+            fns = make_files(4)
+            # late detection
+            for tr in sq.get_waveforms():
+                assert abs(tr.tmin - 4.) < 1e-6
+
+            for nut in sq.get_nuts('waveform'):
+                assert abs(nut.tmin - 4.) < 1e-6
 
             sq.remove(fns)
             assert sq.get_nfiles() == 0

@@ -9,6 +9,7 @@ import time
 import logging
 from builtins import str as newstr
 
+from pyrocko import util
 from pyrocko.io.io_common import FileLoadError
 from pyrocko.progress import progress
 
@@ -135,7 +136,8 @@ def iload(
         check=True,
         skip_unchanged=False,
         content=g_content_kinds,
-        show_progress=True):
+        show_progress=True,
+        update_selection=None):
 
     '''
     Iteratively load content or index/reindex meta-information from files.
@@ -226,16 +228,22 @@ def iload(
     temp_selection = None
     if database:
         if not selection:
-            temp_selection = database.new_selection(
-                paths, show_progress=show_progress)
+            paths = util.short_to_list(10, paths)
+            if not (isinstance(paths, list) and len(paths) < 10
+                    and not skip_unchanged):
 
-            selection = temp_selection
+                temp_selection = database.new_selection(
+                    paths, show_progress=show_progress, format=format)
+
+                selection = temp_selection
 
         if skip_unchanged:
             selection.flag_modified(check)
             it = selection.undig_grouped(skip_unchanged=True)
-        else:
+        elif selection:
             it = selection.undig_grouped()
+        else:
+            it = database.undig_few(paths, format=format)
 
     else:
         it = (((format, path), []) for path in paths)
@@ -254,11 +262,8 @@ def iload(
 
     n_files = 0
     tcommit = time.time()
-    if database:
-        transaction = database.transaction()
-        transaction.begin()
 
-    database_modified = False
+    transaction = None
     clean = False
     try:
         for (format, path), old_nuts in it:
@@ -268,7 +273,7 @@ def iload(
                 task.update(n_files, condition)
 
             n_files += 1
-            if database and database_modified:
+            if database and transaction:
                 tnow = time.time()
                 if tnow - tcommit > 20. or n_files % 1000 == 0:
                     transaction.commit()
@@ -278,6 +283,9 @@ def iload(
             try:
                 if check and old_nuts and old_nuts[0].file_modified():
                     old_nuts = []
+                    modified = True
+                else:
+                    modified = False
 
                 if segment is not None:
                     old_nuts = [
@@ -312,7 +320,13 @@ def iload(
                 mod = get_backend(format_this)
                 mtime, size = mod.get_stats(path)
 
-                logger.debug('reading file %s' % path)
+                if segment is not None:
+                    logger.debug(
+                        'Reading file "%s", segment "%s".' % (path, segment))
+                else:
+                    logger.debug(
+                        'Reading file "%s".' % path)
+
                 nuts = []
                 for nut in mod.iload(format_this, path, segment, content):
                     nut.file_path = path
@@ -327,22 +341,38 @@ def iload(
                     yield nut
 
                 if database and nuts != old_nuts:
+                    if old_nuts or modified:
+                        logger.debug(
+                            'File has been modified since last access: %s'
+                            % path)
+
                     if segment is not None:
-                        nuts = mod.iload(format_this, path, None, [])
+                        nuts = list(mod.iload(format_this, path, None, []))
                         for nut in nuts:
                             nut.file_path = path
                             nut.file_format = format_this
                             nut.file_mtime = mtime
                             nut.file_size = size
 
+                    if not transaction:
+                        transaction = database.transaction(
+                            'update content index')
+                        transaction.begin()
+
                     database.dig(nuts, transaction=transaction)
-                    database_modified = True
+                    if update_selection is not None:
+                        update_selection._set_file_states_force_check(
+                            [path], transaction=transaction)
+                        update_selection._update_nuts(transaction=transaction)
 
             except FileLoadError:
                 logger.error('Cannot read file: %s' % path)
                 if database:
+                    if not transaction:
+                        transaction = database.transaction(
+                            'update content index')
+                        transaction.begin()
                     database.reset(path, transaction=transaction)
-                    database_modified = True
 
         clean = True
 
@@ -355,7 +385,7 @@ def iload(
             else:
                 task.fail(condition + ' terminated')
 
-        if database:
+        if database and transaction:
             transaction.commit()
             transaction.close()
 

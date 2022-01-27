@@ -503,17 +503,35 @@ class Selection(object):
                     WHERE file_state < 2
                 '''))
 
-    def _set_file_states_force_check(self, transaction=None):
+    def _set_file_states_force_check(self, paths=None, transaction=None):
         '''
         Set file states to "request force check" (1).
         '''
 
-        with (transaction or self.transaction()) as cursor:
-            cursor.execute(self._sql(
-                '''
-                    UPDATE %(db)s.%(file_states)s
-                    SET file_state = 1
-                '''))
+        with (transaction or self.transaction('set file states force check')) \
+                as cursor:
+
+            if paths is None:
+                cursor.execute(self._sql(
+                    '''
+                        UPDATE %(db)s.%(file_states)s
+                        SET file_state = 1
+                    '''))
+            else:
+                db = self.get_database()
+
+                def normpath(path):
+                    return db.relpath(abspath(path))
+
+                cursor.executemany(self._sql(
+                    '''
+                        UPDATE %(db)s.%(file_states)s
+                        SET file_state = 1
+                        WHERE %(db)s.%(file_states)s.file_id IN
+                            (SELECT files.file_id
+                             FROM files
+                             WHERE files.path == ?)
+                    '''), ((normpath(path),) for path in paths))
 
     def undig_grouped(self, skip_unchanged=False):
         '''

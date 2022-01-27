@@ -1611,6 +1611,7 @@ class Squirrel(Selection):
                     segment=nut.file_segment,
                     format=nut.file_format,
                     database=self._database,
+                    update_selection=self,
                     show_progress=show_progress):
 
                 content_cache.put(nut_loaded)
