@@ -88,8 +88,8 @@ class Transaction(object):
                     tries += 1
                     self.cursor.execute('BEGIN %s' % self.mode.upper())
                     logger.debug(
-                        'Database transaction (%s) started: %s  (pid=%s)' % (
-                            self.mode, self.label, os.getpid()))
+                        'Transaction started:   %-30s (pid: %s, mode: %s)'
+                        % (self.label, os.getpid(), self.mode))
 
                     self.total_changes_begin \
                         = self.cursor.connection.total_changes
@@ -100,9 +100,9 @@ class Transaction(object):
                         raise
 
                     logger.info(
-                        'Database is locked retrying in %s s. Tries: %i '
-                        '(pid=%s)' % (
-                            self.retry_interval, tries, os.getpid()))
+                        'Database is locked retrying in %s s. '
+                        '(pid: %s, tries: %i)' % (
+                            self.retry_interval, os.getpid(), tries))
 
                     time.sleep(self.retry_interval)
 
@@ -123,15 +123,15 @@ class Transaction(object):
                     self.callback('modified', total_changes)
 
                 logger.debug(
-                    'Database transaction completed: %s (changes: %i). '
-                    '(pid=%s)' % (
-                        self.label, total_changes or 0, os.getpid()))
+                        'Transaction completed: %-30s '
+                        '(pid: %s, changes: %i)' % (
+                            self.label, os.getpid(), total_changes or 0))
 
             else:
                 self.cursor.execute('ROLLBACK')
                 logger.warning('Deferred rollback executed.')
                 logger.debug(
-                    'Database transaction failed: %s (pid=%s)' % (
+                    'Transaction failed:   %-30s (pid: %s)' % (
                         self.label, os.getpid()))
                 self.rollback_wanted = False
 
@@ -140,7 +140,7 @@ class Transaction(object):
         if self.depth == 0:
             self.cursor.execute('ROLLBACK')
             logger.debug(
-                'Database transaction failed: %s (pid=%s)' % (
+                'Transaction failed:   %-30s (pid: %s)' % (
                     self.label, os.getpid()))
 
             self.rollback_wanted = False
