@@ -348,7 +348,7 @@ class Squirrel(Selection):
             'kind_codes_count': self.name + '_kind_codes_count',
             'coverage': self.name + '_coverage'})
 
-        with self.transaction() as cursor:
+        with self.transaction('create tables') as cursor:
             self._create_tables_squirrel(cursor)
 
     def _create_tables_squirrel(self, cursor):
@@ -742,8 +742,8 @@ class Squirrel(Selection):
                 check=check):
             pass
 
-    def _update_nuts(self):
-        transaction = self.transaction()
+    def _update_nuts(self, transaction=None):
+        transaction = transaction or self.transaction('update nuts')
         with make_task('Aggregating selection') as task, \
                 transaction as cursor:
 
@@ -1077,7 +1077,7 @@ class Squirrel(Selection):
         def main_nuts(s):
             return s % names_main_nuts
 
-        with self.transaction() as cursor:
+        with self.transaction('split nuts') as cursor:
             # modify selection and main
             for sql_subst in [
                     self._sql, main_nuts]:

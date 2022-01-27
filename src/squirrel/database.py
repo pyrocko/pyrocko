@@ -66,6 +66,7 @@ def close_database(database):
 class Transaction(object):
     def __init__(
             self, conn,
+            label='',
             mode='immediate',
             retry_interval=0.1,
             callback=None):
@@ -77,6 +78,7 @@ class Transaction(object):
         self.rollback_wanted = False
         self.retry_interval = retry_interval
         self.callback = callback
+        self.label = label
 
     def begin(self):
         if self.depth == 0:
@@ -86,7 +88,9 @@ class Transaction(object):
                     tries += 1
                     self.cursor.execute('BEGIN %s' % self.mode.upper())
                     logger.debug(
-                        'Database transaction (%s) started.' % self.mode)
+                        'Database transaction (%s) started: %s  (pid=%s)' % (
+                            self.mode, self.label, os.getpid()))
+
                     self.total_changes_begin \
                         = self.cursor.connection.total_changes
                     break
@@ -96,8 +100,9 @@ class Transaction(object):
                         raise
 
                     logger.info(
-                        'Database is locked retrying in %s s. Tries: %i'
-                        % (self.retry_interval, tries))
+                        'Database is locked retrying in %s s. Tries: %i '
+                        '(pid=%s)' % (
+                            self.retry_interval, tries, os.getpid()))
 
                     time.sleep(self.retry_interval)
 
@@ -118,18 +123,26 @@ class Transaction(object):
                     self.callback('modified', total_changes)
 
                 logger.debug(
-                    'Database transaction completed (changes: %i).' % (
-                        total_changes or 0))
+                    'Database transaction completed: %s (changes: %i). '
+                    '(pid=%s)' % (
+                        self.label, total_changes or 0, os.getpid()))
 
             else:
                 self.cursor.execute('ROLLBACK')
                 logger.warning('Deferred rollback executed.')
+                logger.debug(
+                    'Database transaction failed: %s (pid=%s)' % (
+                        self.label, os.getpid()))
                 self.rollback_wanted = False
 
     def rollback(self):
         self.depth -= 1
         if self.depth == 0:
             self.cursor.execute('ROLLBACK')
+            logger.debug(
+                'Database transaction failed: %s (pid=%s)' % (
+                    self.label, os.getpid()))
+
             self.rollback_wanted = False
         else:
             logger.warning('Deferred rollback scheduled.')
@@ -207,9 +220,9 @@ class Database(object):
     def get_connection(self):
         return self._conn
 
-    def transaction(self, mode='immediate'):
+    def transaction(self, label='', mode='immediate'):
         return Transaction(
-            self._conn, mode, callback=self._notify_listeners)
+            self._conn, mode, callback=self._notify_listeners, label=label)
 
     def add_listener(self, listener):
         if isinstance(listener, types.MethodType):
@@ -248,7 +261,7 @@ class Database(object):
         return s
 
     def _initialize_db(self):
-        with self.transaction() as cursor:
+        with self.transaction('initialize') as cursor:
             cursor.execute(
                 '''PRAGMA recursive_triggers = true''')
 
@@ -410,7 +423,7 @@ class Database(object):
                 nut.file_size))
             kind_codes.add((nut.kind_id, nut.codes, nut.deltat or 0.0))
 
-        with (transaction or self.transaction()) as c:
+        with (transaction or self.transaction('dig')) as c:
 
             c.executemany(
                 'INSERT OR IGNORE INTO files VALUES (NULL,?,?,?,?)', files)
@@ -540,7 +553,7 @@ class Database(object):
 
         path = self.relpath(abspath(path))
 
-        with self.transaction() as cursor:
+        with self.transaction('remove file') as cursor:
             cursor.execute(
                 'DELETE FROM files WHERE path = ?', (path,))
 
@@ -553,7 +566,7 @@ class Database(object):
         selections (via database triggers).
         '''
 
-        with self.transaction() as cursor:
+        with self.transaction('remove file glob') as cursor:
             return cursor.execute(
                 'DELETE FROM files WHERE path GLOB ?', (pattern,)).rowcount
 
@@ -570,7 +583,7 @@ class Database(object):
         currently used by the apps.
         '''
 
-        with self.transaction() as cursor:
+        with self.transaction('remove volatile') as cursor:
             return cursor.execute(
                 '''
                     DELETE FROM files
@@ -589,7 +602,7 @@ class Database(object):
 
         path = self.relpath(abspath(path))
 
-        with (transaction or self.transaction()) as cursor:
+        with (transaction or self.transaction('reset file')) as cursor:
             cursor.execute(
                 '''
                     UPDATE files SET
@@ -609,7 +622,7 @@ class Database(object):
         apath = abspath(path)
         path = self.relpath(apath)
 
-        with self.transaction() as cursor:
+        with self.transaction('silent touch') as cursor:
 
             sql = 'SELECT format, size FROM files WHERE path = ?'
             fmt, size = execute_get1(cursor, sql, (path,))

@@ -151,7 +151,7 @@ class Selection(object):
         self._is_new = True
         self._volatile_paths = []
 
-        with self.transaction() as cursor:
+        with self.transaction('init selection') as cursor:
 
             if persistent is not None:
                 self._is_new = 1 == cursor.execute(
@@ -192,8 +192,8 @@ class Selection(object):
     def _sql(self, s):
         return s % self._names
 
-    def transaction(self, mode='immediate'):
-        return self._database.transaction(mode)
+    def transaction(self, label='', mode='immediate'):
+        return self._database.transaction(label, mode)
 
     def is_new(self):
         '''
@@ -228,7 +228,7 @@ class Selection(object):
         '''
         Destroy the tables assoctiated with this selection.
         '''
-        with self.transaction() as cursor:
+        with self.transaction('delete selection') as cursor:
             cursor.execute(self._sql(
                 'DROP TABLE %(db)s.%(file_states)s'))
 
@@ -281,7 +281,7 @@ class Selection(object):
         paths = util.short_to_list(200, paths)
 
         db = self.get_database()
-        with self.transaction() as cursor:
+        with self.transaction('add files') as cursor:
 
             if isinstance(paths, list) and len(paths) <= 200:
 
@@ -430,7 +430,7 @@ class Selection(object):
         def normpath(path):
             return db.relpath(abspath(path))
 
-        with self.transaction() as cursor:
+        with self.transaction('remove files') as cursor:
             cursor.executemany(self._sql(
                 '''
                     DELETE FROM %(db)s.%(file_states)s
@@ -494,7 +494,8 @@ class Selection(object):
         '''
         Set file states to "known" (2).
         '''
-        with (transaction or self.transaction()) as cursor:
+        with (transaction or self.transaction('set file states known')) \
+                as cursor:
             cursor.execute(self._sql(
                 '''
                     UPDATE %(db)s.%(file_states)s
@@ -611,7 +612,7 @@ class Selection(object):
         '''
 
         db = self.get_database()
-        with self.transaction() as cursor:
+        with self.transaction('flag modified') as cursor:
             sql = self._sql('''
                 UPDATE %(db)s.%(file_states)s
                 SET file_state = 0
