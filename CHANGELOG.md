@@ -30,6 +30,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Fixed
 - Fix Snuffler crashes on reading invalid files and other IO related errors.
 - Fixed `Trace.envelope`.
+- Fixed `evalresp` platform detection.
 
 ### Changed
 - Improvements to directivity plot.
