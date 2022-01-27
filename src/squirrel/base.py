@@ -1597,7 +1597,7 @@ class Squirrel(Selection):
         Get and possibly load full content for a given index entry from file.
 
         Loads the actual content objects (channel, station, waveform, ...) from
-        file. For efficiency sibling content (all stuff in the same file
+        file. For efficiency, sibling content (all stuff in the same file
         segment) will also be loaded as a side effect. The loaded contents are
         cached in the Squirrel object.
         '''
