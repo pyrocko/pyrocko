@@ -222,7 +222,10 @@ class Database(object):
 
     def transaction(self, label='', mode='immediate'):
         return Transaction(
-            self._conn, mode, callback=self._notify_listeners, label=label)
+            self._conn,
+            label=label,
+            mode=mode,
+            callback=self._notify_listeners)
 
     def add_listener(self, listener):
         if isinstance(listener, types.MethodType):
