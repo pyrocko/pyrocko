@@ -79,6 +79,7 @@ class Transaction(object):
         self.retry_interval = retry_interval
         self.callback = callback
         self.label = label
+        self.started = False
 
     def begin(self):
         if self.depth == 0:
@@ -87,6 +88,7 @@ class Transaction(object):
                 try:
                     tries += 1
                     self.cursor.execute('BEGIN %s' % self.mode.upper())
+                    self.started = True
                     logger.debug(
                         'Transaction started:   %-30s (pid: %s, mode: %s)'
                         % (self.label, os.getpid(), self.mode))
@@ -100,19 +102,25 @@ class Transaction(object):
                         raise
 
                     logger.info(
-                        'Database is locked retrying in %s s. '
+                        'Database is locked retrying in %s s: %s '
                         '(pid: %s, tries: %i)' % (
-                            self.retry_interval, os.getpid(), tries))
+                            self.retry_interval, self.label,
+                            os.getpid(), tries))
 
                     time.sleep(self.retry_interval)
 
         self.depth += 1
 
     def commit(self):
+        if not self.started:
+            raise Exception(
+                'Trying to commit without having started a transaction.')
+
         self.depth -= 1
         if self.depth == 0:
             if not self.rollback_wanted:
                 self.cursor.execute('COMMIT')
+                self.started = False
                 if self.total_changes_begin is not None:
                     total_changes = self.cursor.connection.total_changes \
                         - self.total_changes_begin
@@ -129,6 +137,7 @@ class Transaction(object):
 
             else:
                 self.cursor.execute('ROLLBACK')
+                self.started = False
                 logger.warning('Deferred rollback executed.')
                 logger.debug(
                     'Transaction failed:   %-30s (pid: %s)' % (
@@ -136,9 +145,15 @@ class Transaction(object):
                 self.rollback_wanted = False
 
     def rollback(self):
+        if not self.started:
+            raise Exception(
+                'Trying to rollback without having started a transaction.')
+
         self.depth -= 1
         if self.depth == 0:
             self.cursor.execute('ROLLBACK')
+            self.started = False
+
             logger.debug(
                 'Transaction failed:   %-30s (pid: %s)' % (
                     self.label, os.getpid()))

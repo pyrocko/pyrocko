@@ -226,10 +226,15 @@ def iload(
                 'iload: need selection when called with "skip_unchanged=True"')
 
     temp_selection = None
+    transaction = None
     if database:
         if not selection:
-            paths = util.short_to_list(10, paths)
-            if not (isinstance(paths, list) and len(paths) < 10
+            # Avoid creating temporary selection for small batches.
+            # this is helpful because then, we can avoid locking the database,
+            # e.g. during loading of content, when the content has not been
+            # modified.
+            paths = util.short_to_list(100, paths)
+            if not (isinstance(paths, list) and len(paths) < 100
                     and not skip_unchanged):
 
                 temp_selection = database.new_selection(
@@ -239,11 +244,24 @@ def iload(
 
         if skip_unchanged:
             selection.flag_modified(check)
-            it = selection.undig_grouped(skip_unchanged=True)
-        elif selection:
-            it = selection.undig_grouped()
+
+        if selection:
+            # undig_grouped starts a long select which causes deadlocks
+            # when transaction is started after starting the select, therefore
+            # the transaction has to be started before in these cases.
+            # The db will be locked for a long time in this case. This could be
+            # solved either by breaking the indexing into smaller blocks in
+            # the caller or by modifying undig_grouped to allow limit and
+            # offset and add an outer loop below.
+            transaction = database.transaction(
+                'update content index')
+            transaction.begin()
+            it = selection.undig_grouped(skip_unchanged=skip_unchanged)
         else:
-            it = database.undig_few(paths, format=format)
+            # The list() causes the query to finish, so we don't have to lock,
+            # and can start a transaction only when encountering a modified/new
+            # file.
+            it = list(database.undig_few(paths, format=format))
 
     else:
         it = (((format, path), []) for path in paths)
@@ -263,7 +281,6 @@ def iload(
     n_files = 0
     tcommit = time.time()
 
-    transaction = None
     clean = False
     try:
         for (format, path), old_nuts in it:
