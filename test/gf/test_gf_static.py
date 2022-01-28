@@ -572,7 +572,9 @@ mantle
                 res2 = fwd_model_unified(interpolation)
 
             for r1, r2 in zip(res1.values(), res2.values()):
-                num.testing.assert_equal(r1, r2)
+                # This has a stochastic component which may lead to failure.
+                # Thus, we consider the test passed if both are almost_equal
+                num.testing.assert_almost_equal(r1, r2, decimal=15)
 
         for interpolation in interp:
             continue
