@@ -276,7 +276,7 @@ def process_signature(app, what, name, obj, options, signature,
                     obj.dummy_for_description
                     if obj.dummy_for_description is not None
                     else descr)
-            return ('(%s)' % (cls_name), 'dummy for %s' % (descr))
+            return ('(...)', 'dummy for %s' % (descr))
 
     return
 
