@@ -269,13 +269,15 @@ def process_signature(app, what, name, obj, options, signature,
 
     if what == 'class' and issubclass(obj, guts.Object):
         if obj.dummy_for is not None:
+            cls_name = obj.T.classname
             descr = obj.dummy_for.__name__
             if hasattr(obj, 'dummy_for_descripton'):
                 descr = (
                     obj.dummy_for_description
                     if obj.dummy_for_description is not None
                     else descr)
-            return ('(dummy)', '%s' % (descr))
+            return ('(%s)' % (cls_name), 'dummy for %s' % (descr))
+
     return
 
 
