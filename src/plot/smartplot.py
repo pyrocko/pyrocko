@@ -222,6 +222,9 @@ class PlotConfig(Object):
 
     colorbar_width_em = Float.T(default=2.0)
 
+    label_offset_em = Tuple.T(
+        2, Float.T(), default=(3., 3.))
+
     @property
     def size_inch(self):
         return self.size_cm[0]/inch, self.size_cm[1]/inch
@@ -609,10 +612,14 @@ class Plot(object):
                 self.rect_to_figure_coords(rect), which='both')
 
             self.set_label_coords(
-                axes, 'x', [wcenter(rect), 3*em + self._colorbar_height])
+                axes, 'x', [
+                    wcenter(rect),
+                    self.config.label_offset_em[0]*em + self._colorbar_height])
 
             self.set_label_coords(
-                axes, 'y', [3*em, hcenter(rect)])
+                axes, 'y', [
+                    self.config.label_offset_em[1]*em,
+                    hcenter(rect)])
 
             axes.get_xaxis().set_tick_params(
                 bottom=(iy == 0), top=(iy == ny-1),
