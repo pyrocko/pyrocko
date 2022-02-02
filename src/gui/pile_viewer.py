@@ -135,6 +135,16 @@ class deg_float(float):
     def __str__(self):
         return '%4.0f' % self
 
+    def __lt__(self, other):
+        if other is None:
+            return True
+        return float(self) < float(other)
+
+    def __gt__(self, other):
+        if other is None:
+            return False
+        return float(self) > float(other)
+
 
 def deg_float_or_none(x):
     if x is None:
@@ -147,6 +157,16 @@ class sector_int(int):
 
     def __str__(self):
         return '[%i]' % self
+
+    def __lt__(self, other):
+        if other is None:
+            return True
+        return int(self) < int(other)
+
+    def __gt__(self, other):
+        if other is None:
+            return False
+        return int(self) > int(other)
 
 
 def num_to_html(num):
