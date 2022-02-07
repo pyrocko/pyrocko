@@ -57,4 +57,4 @@ More resources:
 
 * `Green's Mill - Online resource for pre-calculated Green's functions <https://greens-mill.pyrocko.org>`_
 
-* `Kite - Software for static displacement and InSAR post-processing <https://pyrocko.org/docs/kite>`_
+* `Kite - Software for static displacement and InSAR post-processing <https://pyrocko.org/kite/docs/current/>`_
