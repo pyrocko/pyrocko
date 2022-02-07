@@ -2321,11 +2321,6 @@ class Squirrel(Selection):
 
             for iwin in range(nwin):
                 wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)
-                chopped = []
-                wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)
-                eps = tinc*1e-6
-                if wmin >= tmax-eps:
-                    break
 
                 chopped = self.get_waveforms(
                     tmin=wmin-tpad,
