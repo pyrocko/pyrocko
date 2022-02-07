@@ -514,11 +514,22 @@ class FDSNSource(Source):
         from ..base import gaps
         now = time.time()
         cpath = os.path.abspath(self._get_channels_path())
+
+        ctmin = constraint.tmin
+        ctmax = constraint.tmax
+
         nuts = squirrel.iter_nuts(
-            'channel', path=cpath, codes=constraint.codes)
+            'channel',
+            path=cpath,
+            codes=constraint.codes,
+            tmin=ctmin,
+            tmax=ctmax)
 
         coverages = squirrel.get_coverage(
-            'waveform', codes_list=[constraint.codes], return_raw=False)
+            'waveform', codes_list=[constraint.codes],
+            tmin=ctmin,
+            tmax=ctmax,
+            return_raw=False)
 
         codes_to_avail = defaultdict(list)
         for coverage in coverages:
@@ -527,7 +538,9 @@ class FDSNSource(Source):
 
         def sgaps(nut):
             for tmin, tmax in gaps(
-                    codes_to_avail[nut.codes], nut.tmin, nut.tmax):
+                    codes_to_avail[nut.codes],
+                    ctmin if ctmin is not None else nut.tmin,
+                    ctmax if ctmax is not None else nut.tmax):
 
                 subnut = clone(nut)
                 subnut.tmin = tmin
