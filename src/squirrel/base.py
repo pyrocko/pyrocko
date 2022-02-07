@@ -936,7 +936,7 @@ class Squirrel(Selection):
         :param kind_codes_ids:
             Kind-codes IDs of contents to be retrieved (internal use).
         :type kind_codes_ids:
-            :py:class:`list` of :py:class:`str`
+            :py:class:`list` of :py:class:`int`
 
         :yields:
             :py:class:`~pyrocko.squirrel.model.Nut` objects representing the
