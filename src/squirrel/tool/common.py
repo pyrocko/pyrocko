@@ -67,15 +67,16 @@ def add_standard_arguments(p):
         '--loglevel',
         choices=['critical', 'error', 'warning', 'info', 'debug'],
         default='info',
-        help='Set logger level. Choices: critical, error, warning, '
-             'info [default], debug.')
+        metavar='LEVEL',
+        help='Set logger level. Choices: %(choices)s. Default: %(default)s.')
 
     p.add_argument(
         '--progress',
         choices=['terminal', 'log', 'off'],
         default='terminal',
-        help='Set how progress status is reported. Choices: terminal '
-             '[default], off.')
+        metavar='DEST',
+        help='Set how progress status is reported. Choices: %(choices)s. '
+             'Default: %(default)s.')
 
 
 def process_standard_arguments(parser, args):
@@ -98,15 +99,18 @@ def add_selection_arguments(p):
         '--include',
         dest='include',
         metavar='REGEX',
-        help='If given, files are only included if their paths match the '
-             'regular expression PATTERN.')
+        help='Only include files whose paths match REGEX. Examples: '
+             '--include=\'\\.MSEED$\' would only match files ending with '
+             '".MSEED". --include=\'\\.BH[EN]\\.\' would match paths '
+             'containing ".BHE." or ".BHN.". --include=\'/2011/\' would match '
+             'paths with a subdirectory "2011" in their path hierarchy.')
 
     p.add_argument(
         '--exclude',
         dest='exclude',
         metavar='REGEX',
         help='If given, files are only included if their paths do not match '
-             'the regular expression PATTERN.')
+             'the regular expression pattern REGEX.')
 
     p.add_argument(
         '--optimistic', '-o',

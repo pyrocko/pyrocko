@@ -39,7 +39,7 @@ datasets, (3), pre-scanning/indexing of file collections. It can also be used
 to inspect various aspects of a data collection.
 
 This tool's functionality is available through several subcommands. Run
-`squirrel [subcommand] --help` to get further help.''')
+`squirrel [SUBCOMMAND] --help` to get further help.''')
 
 
 def from_command(
@@ -66,6 +66,7 @@ Run with --help to get further help.''',
 
     if subcommands:
         subparsers = parser.add_subparsers(
+            metavar='SUBCOMMAND',
             title='Subcommands')
 
         for mod in subcommands:

@@ -45,10 +45,11 @@ def call(parser, args):
 
     tmin = d.get('tmin', model.g_tmin)
     tmax = d.get('tmax', model.g_tmax)
+    codes = d.get('codes', None)
 
     squirrel.update(tmin=tmin, tmax=tmax)
     if args.promises:
-        squirrel.update_waveform_promises()
+        squirrel.update_waveform_promises(tmin=tmin, tmax=tmax, codes=codes)
 
     if args.responses:
         squirrel.update_responses()
