@@ -1519,9 +1519,6 @@ class Squirrel(Selection):
         if constraint is None:
             constraint = client.Constraint(**kwargs)
 
-        # TODO
-        print('contraint ignored atm')
-
         for source in self._sources:
             source.update_waveform_promises(self, constraint)
 
