@@ -9,8 +9,8 @@ from pyrocko.squirrel import error, environment, database, base
 from .. import common
 
 
-def setup(subparsers):
-    p = common.add_parser(
+def setup_subcommand(subparsers):
+    return common.add_parser(
         subparsers, 'persistent',
         help='Manage persistent selections.',
         description='''Manage persistent selections.
@@ -25,17 +25,17 @@ startup of Squirrel-based applications, persistent selections created with the
 This command allows to list and delete persistent selections.
 ''')
 
-    p.add_argument(
+
+def setup(parser):
+    parser.add_argument(
         'action',
         choices=['list', 'delete'],
         help='Select action to perform.')
 
-    p.add_argument(
+    parser.add_argument(
         'names',
         nargs='*',
         help='Persistent selection names.')
-
-    return p
 
 
 def call(parser, args):

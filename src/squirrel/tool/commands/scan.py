@@ -8,8 +8,8 @@ from __future__ import absolute_import, print_function
 from .. import common
 
 
-def setup(subparsers):
-    p = common.add_parser(
+def setup_subcommand(subparsers):
+    return common.add_parser(
         subparsers, 'scan',
         help='Scan and index files and directories.',
         description='''Scan and index given files and directories.
@@ -33,8 +33,9 @@ startup of Squirrel-based applications, persistent selections created with the
 After scanning, information about the current data selection is printed.
 ''')
 
-    common.add_selection_arguments(p)
-    return p
+
+def setup(parser):
+    common.add_selection_arguments(parser)
 
 
 def call(parser, args):

@@ -14,29 +14,29 @@ from pyrocko.squirrel import model
 logger = logging.getLogger('psq.cli.update')
 
 
-def setup(subparsers):
-    p = common.add_parser(
+def setup_subcommand(subparsers):
+    return common.add_parser(
         subparsers, 'update',
         help='Update remote sources inventories.')
 
-    common.add_selection_arguments(p)
-    common.add_query_arguments(p)
 
-    p.add_argument(
+def setup(parser):
+    common.add_selection_arguments(parser)
+    common.add_query_arguments(parser)
+
+    parser.add_argument(
         '--promises',
         action='store_true',
         dest='promises',
         default=False,
         help='Update waveform promises.')
 
-    p.add_argument(
+    parser.add_argument(
         '--responses',
         action='store_true',
         dest='responses',
         default=False,
         help='Update responses.')
-
-    return p
 
 
 def call(parser, args):

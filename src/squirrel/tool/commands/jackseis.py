@@ -431,29 +431,29 @@ g_defaults = Converter(
     out_mseed_steim=2)
 
 
-def setup(subparsers):
-    p = common.add_parser(
+def setup_subcommand(subparsers):
+    return common.add_parser(
         subparsers, 'jackseis',
         help='Convert waveform archive data.')
 
-    common.add_selection_arguments(p)
 
-    p.add_argument(
+def setup(parser):
+    common.add_selection_arguments(parser)
+
+    parser.add_argument(
         '--config',
         dest='config_path',
         metavar='NAME',
         help='File containing `jackseis2.Converter` settings.')
 
-    p.add_argument(
+    parser.add_argument(
         '--force',
         dest='force',
         action='store_true',
         default=False,
         help='Force overwriting of existing files.')
 
-    Converter.add_arguments(p)
-
-    return p
+    Converter.add_arguments(parser)
 
 
 def call(parser, args):

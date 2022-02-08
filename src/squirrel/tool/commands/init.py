@@ -10,12 +10,14 @@ from pyrocko import squirrel as sq
 from .. import common
 
 
-def setup(subparsers):
-    p = common.add_parser(
+def setup_subcommand(subparsers):
+    return common.add_parser(
         subparsers, 'init',
         help='Create local environment.')
 
-    return p
+
+def setup(parser):
+    pass
 
 
 def call(parser, args):

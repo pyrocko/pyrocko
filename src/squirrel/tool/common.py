@@ -52,6 +52,8 @@ def csvtype(choices):
 
 def add_parser(subparsers, *args, **kwargs):
     kwargs['add_help'] = False
+    if 'description' not in kwargs and 'help' in kwargs:
+        kwargs['description'] = kwargs['help']
     p = subparsers.add_parser(*args, **kwargs)
     add_standard_arguments(p)
     return p
@@ -291,6 +293,16 @@ class SquirrelCommand(object):
 
     def fail(self, message):
         raise error.ToolError(message)
+
+    def setup_subcommand(self, subparsers):
+        return self.add_parser(
+            subparsers, self.__class__.__name__, help='Undocumented.')
+
+    def setup(self, parser):
+        pass
+
+    def call(self, parser, args):
+        pass
 
 
 __all__ = ['SquirrelCommand']

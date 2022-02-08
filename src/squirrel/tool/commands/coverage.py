@@ -12,8 +12,8 @@ from pyrocko.get_terminal_size import get_terminal_size
 from pyrocko.squirrel.error import ToolError
 
 
-def setup(subparsers):
-    p = common.add_parser(
+def setup_subcommand(subparsers):
+    return common.add_parser(
         subparsers, 'coverage',
         help='Report time spans covered.',
         description='''Report time spans covered.
@@ -21,9 +21,10 @@ def setup(subparsers):
 Time spans covered by the given data selection are listed or plotted.
 ''')
 
-    common.add_selection_arguments(p)
-    common.add_query_arguments(p, without=['time'])
-    return p
+
+def setup(parser):
+    common.add_selection_arguments(parser)
+    common.add_query_arguments(parser, without=['time'])
 
 
 def call(parser, args):

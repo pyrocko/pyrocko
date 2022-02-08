@@ -12,13 +12,14 @@ from pyrocko.squirrel.model import separator
 guts_prefix = 'squirrel'
 
 
-def setup(subparsers):
-    p = common.add_parser(
+def setup_subcommand(subparsers):
+    return common.add_parser(
         subparsers, 'operators',
         help='Print available operator mappings.')
 
-    common.add_selection_arguments(p)
-    return p
+
+def setup(parser):
+    common.add_selection_arguments(parser)
 
 
 def call(parser, args):

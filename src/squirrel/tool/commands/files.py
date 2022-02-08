@@ -8,22 +8,22 @@ from __future__ import absolute_import, print_function
 from .. import common
 
 
-def setup(subparsers):
-    p = common.add_parser(
+def setup_subcommand(subparsers):
+    return common.add_parser(
         subparsers, 'files',
         help='Lookup files providing given content selection.')
 
-    p.add_argument(
+
+def setup(parser):
+    parser.add_argument(
         '--relative',
         action='store_true',
         default=False,
         help='Reveal path as it is stored in the database. This is relative '
              'for files inside a Squirrel environment.')
 
-    common.add_selection_arguments(p)
-    common.add_query_arguments(p)
-
-    return p
+    common.add_selection_arguments(parser)
+    common.add_query_arguments(parser)
 
 
 def call(parser, args):

@@ -8,14 +8,14 @@ from __future__ import absolute_import, print_function
 from .. import common
 
 
-def setup(subparsers):
-    p = common.add_parser(
+def setup_subcommand(subparsers):
+    return common.add_parser(
         subparsers, 'codes',
         help='Get summary of available data codes.')
 
-    common.add_selection_arguments(p)
 
-    return p
+def setup(parser):
+    common.add_selection_arguments(parser)
 
 
 def call(parser, args):

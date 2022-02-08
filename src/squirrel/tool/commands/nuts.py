@@ -8,22 +8,22 @@ from __future__ import absolute_import, print_function
 from .. import common
 
 
-def setup(subparsers):
-    p = common.add_parser(
+def setup_subcommand(subparsers):
+    return common.add_parser(
         subparsers, 'nuts',
         help='Search indexed contents.')
 
-    common.add_selection_arguments(p)
-    common.add_query_arguments(p)
 
-    p.add_argument(
+def setup(parser):
+    common.add_selection_arguments(parser)
+    common.add_query_arguments(parser)
+
+    parser.add_argument(
         '--contents',
         action='store_true',
         dest='print_contents',
         default=False,
         help='Print contents.')
-
-    return p
 
 
 def call(parser, args):

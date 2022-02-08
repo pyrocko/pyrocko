@@ -15,14 +15,15 @@ from pyrocko.progress import progress
 logger = logging.getLogger('psq.cli.summon')
 
 
-def setup(subparsers):
-    p = common.add_parser(
+def setup_subcommand(subparsers):
+    return common.add_parser(
         subparsers, 'summon',
         help='Fill local cache.')
 
-    common.add_selection_arguments(p)
-    common.add_query_arguments(p)
-    return p
+
+def setup(parser):
+    common.add_selection_arguments(parser)
+    common.add_query_arguments(parser)
 
 
 def call(parser, args):

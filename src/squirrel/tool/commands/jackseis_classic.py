@@ -11,42 +11,44 @@ from pyrocko.apps.jackseis import process, tfmt
 from .. import common
 
 
-def setup(subparser):
-    p = common.add_parser(
-        subparser, 'jackseis-classic',
+def setup_subcommand(subparsers):
+    return common.add_parser(
+        subparsers, 'jackseis-classic',
         help='Squirrel\'s adaption of classic Jackseis.')
 
-    p.add_argument(
+
+def setup(parser):
+    parser.add_argument(
         '--pattern',
         dest='regex',
         metavar='REGEX',
         help='only include files whose paths match REGEX')
 
-    p.add_argument(
+    parser.add_argument(
         '--quiet',
         dest='quiet',
         action='store_true',
         default=False,
         help='disable output of progress information')
 
-    p.add_argument(
+    parser.add_argument(
         '--debug',
         dest='debug',
         action='store_true',
         default=False,
         help='print debugging information to stderr')
 
-    p.add_argument(
+    parser.add_argument(
         '--tmin',
         dest='tmin',
         help='start time as "%s"' % tfmt)
 
-    p.add_argument(
+    parser.add_argument(
         '--tmax',
         dest='tmax',
         help='end time as "%s"' % tfmt)
 
-    p.add_argument(
+    parser.add_argument(
         '--tinc',
         dest='tinc',
         help='set time length of output files [s] or "auto" to automatically '
@@ -55,20 +57,20 @@ def setup(subparser):
              'files.')
 
     sample_snap_choices = ('shift', 'interpolate')
-    p.add_argument(
+    parser.add_argument(
         '--sample-snap',
         dest='sample_snap',
         choices=sample_snap_choices,
         help='shift/interpolate traces so that samples are at even multiples '
         'of sampling rate. Choices: %s' % ', '.join(sample_snap_choices))
 
-    p.add_argument(
+    parser.add_argument(
         '--downsample',
         dest='downsample',
         metavar='RATE',
         help='downsample to RATE [Hz]')
 
-    p.add_argument(
+    parser.add_argument(
         '--output',
         dest='output_path',
         metavar='TEMPLATE',
@@ -82,7 +84,7 @@ def setup(subparser):
              '%%(wmax_month)s, %%(wmax_day)s, %%(wmax)s. Example: '
              '--output=\'data/%%s/trace-%%s-%%c.mseed\'')
 
-    p.add_argument(
+    parser.add_argument(
         '--output-dir',
         metavar='TEMPLATE',
         dest='output_dir',
@@ -90,7 +92,7 @@ def setup(subparser):
              'and automatically choose filenames. '
              'Produces files like TEMPLATE/NET-STA-LOC-CHA_BEGINTIME.FORMAT')
 
-    p.add_argument(
+    parser.add_argument(
         '--output-format',
         dest='output_format',
         default='mseed',
@@ -98,21 +100,21 @@ def setup(subparser):
         help='set output file format. Choices: %s' %
              io.allowed_formats('save', 'cli_help', 'mseed'))
 
-    p.add_argument(
+    parser.add_argument(
         '--force',
         dest='force',
         action='store_true',
         default=False,
         help='force overwriting of existing files')
 
-    p.add_argument(
+    parser.add_argument(
         '--no-snap',
         dest='snap',
         action='store_false',
         default=True,
         help='do not start output files at even multiples of file length')
 
-    p.add_argument(
+    parser.add_argument(
         '--traversal',
         dest='traversal',
         choices=('station-by-station', 'channel-by-channel', 'chronological'),
@@ -123,7 +125,7 @@ def setup(subparser):
              'traversal uses more processing memory but makes it possible to '
              'join multiple stations into single output files')
 
-    p.add_argument(
+    parser.add_argument(
         '--rename-network',
         action='append',
         default=[],
@@ -131,7 +133,7 @@ def setup(subparser):
         metavar='/PATTERN/REPLACEMENT/',
         help='update network code, can be given more than once')
 
-    p.add_argument(
+    parser.add_argument(
         '--rename-station',
         action='append',
         default=[],
@@ -139,7 +141,7 @@ def setup(subparser):
         metavar='/PATTERN/REPLACEMENT/',
         help='update station code, can be given more than once')
 
-    p.add_argument(
+    parser.add_argument(
         '--rename-location',
         action='append',
         default=[],
@@ -147,7 +149,7 @@ def setup(subparser):
         metavar='/PATTERN/REPLACEMENT/',
         help='update location code, can be given more than once')
 
-    p.add_argument(
+    parser.add_argument(
         '--rename-channel',
         action='append',
         default=[],
@@ -155,7 +157,7 @@ def setup(subparser):
         metavar='/PATTERN/REPLACEMENT/',
         help='update channel code, can be given more than once')
 
-    p.add_argument(
+    parser.add_argument(
         '--output-data-type',
         dest='output_data_type',
         choices=('same', 'int32', 'int64', 'float32', 'float64'),
@@ -165,7 +167,7 @@ def setup(subparser):
              'int64, float32, float64. The output file format must support '
              'the given type.')
 
-    p.add_argument(
+    parser.add_argument(
         '--output-record-length',
         dest='record_length',
         default=4096,
@@ -176,7 +178,7 @@ def setup(subparser):
              'Default is 4096 bytes, which is commonly used for archiving.'
              % ', '.join(str(b) for b in io.mseed.VALID_RECORD_LENGTHS))
 
-    p.add_argument(
+    parser.add_argument(
         '--output-steim',
         dest='steim',
         choices=[1, 2],
@@ -188,30 +190,29 @@ def setup(subparser):
              'NOTE: STEIM-2 is limited to 30 bit dynamic range.')
 
     quantity_choices = ('acceleration', 'velocity', 'displacement')
-    p.add_argument(
+    parser.add_argument(
         '--output-quantity',
         dest='output_quantity',
         choices=quantity_choices,
         help='deconvolve instrument transfer function. Choices: %s'
         % ', '.join(quantity_choices))
 
-    p.add_argument(
+    parser.add_argument(
         '--restitution-frequency-band',
         default='0.001,100.0',
         dest='str_fmin_fmax',
         metavar='FMIN,FMAX',
         help='frequency band for instrument deconvolution as FMIN,FMAX in Hz. '
-             'Default: "%default"')
+             'Default: "%(default)s"')
 
-    p.add_argument(
+    parser.add_argument(
         '--nthreads',
         metavar='NTHREADS',
         default=1,
         help='number of threads for processing, '
              'this can speed-up CPU bound tasks (Python 3.5+ only)')
 
-    common.add_selection_arguments(p)
-    return p
+    common.add_selection_arguments(parser)
 
 
 def call(parser, args):

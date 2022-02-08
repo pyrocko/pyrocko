@@ -106,8 +106,8 @@ template_listing = '\n'.join(
         templates[name]['description']) for name in templates)
 
 
-def setup(subparsers):
-    p = common.add_parser(
+def setup_subcommand(subparsers):
+    return common.add_parser(
         subparsers, 'template',
         help='Print configuration snippets.',
         description='''
@@ -116,22 +116,22 @@ Available configuration SNIPPETs:
 {}
 '''.format(template_listing).strip())
 
-    p.add_argument(
+
+def setup(parser):
+    parser.add_argument(
         'name',
         choices=names,
         nargs='?',
         metavar='SNIPPET',
         help='Name of template snippet to print.')
 
-    p.add_argument(
+    parser.add_argument(
         '--format', '-f',
         choices=['commented', 'normal', 'brief'],
         default='commented',
         metavar='FMT',
         help='Set verbosity level of output YAML. Choices: %(choices)s. '
              'Default: %(default)s.')
-
-    return p
 
 
 def decomment(s):

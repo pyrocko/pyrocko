@@ -27,18 +27,19 @@ Actions:
 '''.strip()
 
 
-def setup(subparsers):
-    p = common.add_parser(
+def setup_subcommand(subparsers):
+    return common.add_parser(
         subparsers, 'database',
         help='Database inspection and maintenance.',
         description=description)
 
-    p.add_argument('action', nargs='?', default='env', choices=[
+
+def setup(parser):
+    parser.add_argument('action', nargs='?', default='env', choices=[
         'env', 'stats', 'stats-full', 'files', 'files-nnuts', 'nuts',
         'cleanup', 'remove'])
 
-    p.add_argument('path_patterns', nargs='*')
-    return p
+    parser.add_argument('path_patterns', nargs='*')
 
 
 def call(parser, args):
