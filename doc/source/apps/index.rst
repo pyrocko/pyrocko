@@ -13,3 +13,4 @@ practice.
    fomosto/index
    jackseis/index
    colosseo/index
+   squirrel/index
