@@ -50,12 +50,11 @@ def iload(format, file_path, segment, content):
 
     s = sac.SacFile(file_path, load_data=load_data)
 
-    codes = dict(
-        agency='',
-        network=nonetoempty(s.knetwk),
-        station=nonetoempty(s.kstnm),
-        location=nonetoempty(s.khole),
-        channel=nonetoempty(s.kcmpnm))
+    codes = model.CodesNSLCE(
+        nonetoempty(s.knetwk),
+        nonetoempty(s.kstnm),
+        nonetoempty(s.khole),
+        nonetoempty(s.kcmpnm))
 
     tmin = s.get_ref_time() + s.b
     tmax = tmin + s.delta * s.npts
@@ -69,7 +68,8 @@ def iload(format, file_path, segment, content):
     nut = model.make_waveform_nut(
         file_segment=0,
         file_element=inut,
-        **agg(codes, tspan))
+        codes=codes,
+        **tspan)
 
     if 'waveform' in content:
         nut.content = trace.Trace(
@@ -86,12 +86,11 @@ def iload(format, file_path, segment, content):
             elevation=s.stel,
             depth=s.stdp)
 
-        codes_without_channel = codes.copy()
-        del codes_without_channel['channel']
         nut = model.make_station_nut(
             file_segment=0,
             file_element=inut,
-            **agg(codes_without_channel, tspan))
+            codes=model.CodesNSL(*codes.nsl),
+            **tspan)
 
         if 'station' in content:
             nut.content = model.Station(
@@ -107,7 +106,8 @@ def iload(format, file_path, segment, content):
         nut = model.make_channel_nut(
             file_segment=0,
             file_element=inut,
-            **agg(codes, tspan))
+            codes=codes,
+            **tspan)
 
         if 'channel' in content:
             nut.content = model.Channel(
@@ -125,7 +125,8 @@ def iload(format, file_path, segment, content):
             depth = s.evdp  # * km  #  unclear specs
 
         nut = model.make_event_nut(
-            name=nonetoempty(s.kevnm),
+            codes=model.CodesX(''),
+            # name=nonetoempty(s.kevnm),
             file_segment=0,
             file_element=inut,
             tmin=etime,

@@ -44,7 +44,6 @@ def iload(format, file_path, segment, content):
         for station in network.station_list:
             net = network.code
             sta = station.code
-            agn = ''
 
             tmin = station.start_date
             tmax = station.end_date
@@ -54,10 +53,7 @@ def iload(format, file_path, segment, content):
             station_nut = model.make_station_nut(
                 file_segment=0,
                 file_element=inut,
-                agency=agn,
-                network=net,
-                station=sta,
-                location='*',
+                codes=model.CodesNSL(net, sta, '*'),
                 tmin=tmin,
                 tmax=tmax)
 
@@ -89,11 +85,7 @@ def iload(format, file_path, segment, content):
                 nut = model.make_channel_nut(
                     file_segment=0,
                     file_element=inut,
-                    agency=agn,
-                    network=net,
-                    station=sta,
-                    location=loc,
-                    channel=cha,
+                    codes=model.CodesNSLCE(net, sta, loc, cha, ''),
                     tmin=tmin,
                     tmax=tmax,
                     deltat=deltat)
@@ -118,11 +110,7 @@ def iload(format, file_path, segment, content):
                     nut = model.make_response_nut(
                         file_segment=0,
                         file_element=inut,
-                        agency=agn,
-                        network=net,
-                        station=sta,
-                        location=loc,
-                        channel=cha,
+                        codes=model.CodesNSLCE(net, sta, loc, cha, ''),
                         tmin=tmin,
                         tmax=tmax,
                         deltat=deltat)

@@ -3,12 +3,10 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
-import sys
 import logging
 
 from . import common
 from .commands import command_modules
-from pyrocko import squirrel as sq
 
 
 logger = logging.getLogger('psq.cli')
@@ -18,9 +16,8 @@ g_program_name = 'squirrel'
 
 
 def main(args=None):
-    from_command(
-        args=args,
-        program_name=g_program_name,
+    run(
+        prog=g_program_name,
         subcommands=command_modules,
         description='''
 Pyrocko Squirrel - Prompt seismological data access with a fluffy tail.
@@ -42,73 +39,68 @@ This tool's functionality is available through several subcommands. Run
 `squirrel SUBCOMMAND --help` to get further help.''')
 
 
-def from_command(
-        command=None,
+def run(
         args=None,
-        program_name=None,
+        command=None,
+        subcommands=[],
         description='''
 Pyrocko Squirrel based script.
 
 Run with --help to get further help.''',
-        subcommands=[],
-        setup=None):
+        **kwargs):
 
-    if program_name is None:
-        program_name = sys.argv[0]
+    '''
+    Setup and run Squirrel-based application.
 
-    if args is None:
-        args = sys.argv[1:]
+    The implementation of the tool can be provided by one or multiple
+    :py:class:`~pyrocko.squirrel.tool.SquirrelCommand` instances. This driver
+    function sets up a
+    :py:class:`~pyrocko.squirrel.tool.SquirrelArgumentParser`, and processes
+    command line arguments, and dispatches execution to the selected command or
+    subcommand. The program is set up to provide and automatically handle
+    ``--help``, ``--loglevel``, and ``--progress``. If an exception of type
+    :py:exc:`pyrocko.squirrel.error.SquirrelError` or
+    :py:exc:`pyrocko.squirrel.error.ToolError` is caught, the error is logged
+    and the program is terminated with exit code 1.
 
-    parser = common.PyrockoArgumentParser(
-        prog=program_name,
-        add_help=False,
-        description=description)
+    :param args:
+        Arguments passed to
+        :py:meth:`~pyrocko.squirrel.tool.SquirrelArgumentParser.parse_args.
+        By default uses py:attr:`sys.argv`.
+    :type args:
+        :py:class:`list` of :py:class:`str`
 
-    common.add_standard_arguments(parser)
+    :param command:
+        Implementation of the command. It must provide ``setup(parser)`` and
+        ``run(parser, args)``.
+    :type command:
+        :py:class:`~pyrocko.squirrel.tool.SquirrelCommand` or module
 
-    if subcommands:
-        subparsers = parser.add_subparsers(
-            metavar='SUBCOMMAND',
-            title='Subcommands')
+    :param subcommands:
+        Configures the program to offer multiple subcommands. The command to
+        execute is selected with the first argument passed to ``args``.
+        Implementations must provide ``make_subparser(subparsers)``,
+        ``setup(parser)``, and ``run(parser, args)``.
+    :type subcommands:
+        :py:class:`list` of
+        :py:class:`~pyrocko.squirrel.tool.SquirrelCommand` instances or
+        modules
 
-        for mod in subcommands:
-            subparser = mod.setup_subcommand(subparsers)
-            assert subparser is not None
-            mod.setup(subparser)
-            subparser.set_defaults(target=mod.call, subparser=subparser)
+    :param description:
+        Description of the program.
+    :type description:
+        str
+    '''
 
-    elif command:
-        command.setup(parser)
+    parser = common.SquirrelArgumentParser(
+        command=command,
+        subcommands=subcommands,
+        description=description, **kwargs)
 
-    else:
-        common.add_selection_arguments(parser)
-
-    args = parser.parse_args(args)
-    subparser = args.__dict__.pop('subparser', None)
-
-    common.process_standard_arguments(parser, args)
-
-    target = args.__dict__.pop('target', None)
-
-    if target:
-        try:
-            target(parser, args)
-        except (sq.SquirrelError, sq.ToolError) as e:
-            logger.fatal(str(e))
-            sys.exit(1)
-
-    elif command:
-        command.call(parser, args)
-
-    elif not subcommands:
-        return common.squirrel_from_selection_arguments(args)
-
-    else:
-        parser.print_help()
-        sys.exit(0)
+    return parser.run(args)
 
 
 __all__ = [
     'main',
-    'from_command',
+    'run',
 ]

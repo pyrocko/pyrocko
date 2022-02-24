@@ -6,10 +6,13 @@
 from __future__ import absolute_import, print_function
 
 import re
+import logging
 
 from pyrocko.guts import load_string, dump
 
-from .. import common
+from pyrocko.squirrel.error import ToolError
+
+logger = logging.getLogger('psq.cli.template')
 
 path_prefix = '''
 # All file paths given below are treated relative to the location of this
@@ -49,7 +52,7 @@ sources:
 
 
 templates = {
-    'dataset-local': {
+    'local.dataset': {
         'description':
             'A typical collection of local files.',
         'yaml': '''
@@ -71,30 +74,39 @@ sources:
   format: 'detect'
 '''.format(path_prefix=path_prefix).strip()},
 
-    'dataset-geofon': {
+    'geofon.dataset': {
         'description':
             'Everything available through GEOFON.',
-        'yaml': _template_online_dataset(site='geofon')
+        'yaml': _template_online_dataset(
+            site='geofon',
+        ),
     },
 
-    'dataset-iris-seis': {
+    'iris-seis.dataset': {
         'description':
             'All high- and low-gain seismometer channels at IRIS.',
         'yaml': _template_online_dataset(
-                site='iris', channel='?H?,?L?')
+            site='iris',
+            channel='?H?,?L?',
+        ),
     },
 
-    'dataset-iris-seis-bb': {
+    'iris-seis-bb.dataset': {
         'description':
             'All broad-band high-gain seismometer channels at IRIS.',
         'yaml': _template_online_dataset(
-                site='iris', channel='VH?,LH?,BH?,HH?')
+            site='iris',
+            channel='VH?,LH?,BH?,HH?',
+        ),
     },
 
-    'dataset-bgr-gr-bfo': {
-        'description': 'Station GR.BFO from BGR.',
+    'bgr-gr-lh.dataset': {
+        'description': 'All LH channels for network GR from BGR.',
         'yaml': _template_online_dataset(
-                site='iris', network='GR', station='BFO')
+            site='bgr',
+            network='GR',
+            channel='LH?',
+        ),
     },
 }
 
@@ -106,9 +118,9 @@ template_listing = '\n'.join(
         templates[name]['description']) for name in templates)
 
 
-def setup_subcommand(subparsers):
-    return common.add_parser(
-        subparsers, 'template',
+def make_subparser(subparsers):
+    return subparsers.add_parser(
+        'template',
         help='Print configuration snippets.',
         description='''
 Available configuration SNIPPETs:
@@ -133,6 +145,11 @@ def setup(parser):
         help='Set verbosity level of output YAML. Choices: %(choices)s. '
              'Default: %(default)s.')
 
+    parser.add_argument(
+        '--write', '-w',
+        action='store_true',
+        help='Write to file.')
+
 
 def decomment(s):
     out = []
@@ -148,7 +165,7 @@ def brief(s):
     return dump(load_string(s))
 
 
-def call(parser, args):
+def run(parser, args):
 
     if not args.name:
         print(template_listing)
@@ -159,4 +176,18 @@ def call(parser, args):
             'commented': lambda s: s,
             'normal': decomment}[args.format]
 
-        print(func(templates[args.name]['yaml']))
+        s = func(templates[args.name]['yaml'])
+
+        if args.write:
+            path = args.name + '.yaml'
+            try:
+                with open(path, 'x') as f:
+                    f.write(s)
+                    f.write('\n')
+
+                logger.info('File written: %s' % path)
+
+            except FileExistsError:
+                raise ToolError('File exists: %s' % path)
+        else:
+            print(s)

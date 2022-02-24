@@ -1674,10 +1674,10 @@ def gmtime_x(timestamp):
 
 
 def plural_s(n):
-    if n == 1:
-        return ''
-    else:
-        return 's'
+    if not isinstance(n, int):
+        n = len(n)
+
+    return 's' if n != 1 else ''
 
 
 def ensuredirs(dst):

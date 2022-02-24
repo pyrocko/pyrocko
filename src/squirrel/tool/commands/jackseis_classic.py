@@ -8,12 +8,10 @@ from __future__ import absolute_import, print_function
 from pyrocko import io
 from pyrocko.apps.jackseis import process, tfmt
 
-from .. import common
 
-
-def setup_subcommand(subparsers):
-    return common.add_parser(
-        subparsers, 'jackseis-classic',
+def make_subparser(subparsers):
+    return subparsers.add_parser(
+        'jackseis-classic',
         help='Squirrel\'s adaption of classic Jackseis.')
 
 
@@ -212,13 +210,13 @@ def setup(parser):
         help='number of threads for processing, '
              'this can speed-up CPU bound tasks (Python 3.5+ only)')
 
-    common.add_selection_arguments(parser)
+    parser.add_squirrel_selection_arguments()
 
 
-def call(parser, args):
+def run(parser, args):
 
     def get_pile():
-        squirrel = common.squirrel_from_selection_arguments(args)
+        squirrel = args.make_squirrel()
         return squirrel.pile
 
     args.station_fns = []

@@ -3025,24 +3025,23 @@ def MakePileViewerMainClass(base):
 
                 pattern = self.track_patterns[itrack]
                 pattern_to_itrack[tuple(pattern)] = itrack
-                pattern_list.append(pattern)
+                pattern_list.append(tuple(pattern))
 
             vmin, vmax = self.get_time_range()
 
             for kind in ['waveform', 'waveform_promise']:
-                for entry in sq.get_coverage(
+                for coverage in sq.get_coverage(
                         kind, vmin, vmax, pattern_list, limit=500):
-                    pattern, codes, deltat, tmin, tmax, cover_data = entry
-                    itrack = pattern_to_itrack[tuple(pattern)]
+                    itrack = pattern_to_itrack[coverage.pattern.nslc]
 
-                    if cover_data is None:
+                    if coverage.changes is None:
                         drawbox(
-                            itrack, tmin, tmax,
+                            itrack, coverage.tmin, coverage.tmax,
                             box_styles_coverage[kind][0])
                     else:
                         t = None
                         pcount = 0
-                        for tb, count in cover_data:
+                        for tb, count in coverage.changes:
                             if t is not None and tb > t:
                                 if pcount > 0:
                                     drawbox(

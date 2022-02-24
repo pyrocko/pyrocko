@@ -46,7 +46,7 @@ def iload(format, file_path, segment, content):
             nut = model.make_event_nut(
                 file_segment=0,
                 file_element=iobj,
-                name=obj.name or '',
+                codes=model.CodesX(obj.catalog or ''),
                 tmin=obj.time,
                 tmax=obj.time)
 

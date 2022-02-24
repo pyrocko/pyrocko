@@ -127,15 +127,10 @@ def iload_pyrocko_stations(file_path, segment, content):
                     else:
                         description = newstr(toks[5])
 
-                    agn = ''
-
                     nut = model.make_station_nut(
                         file_segment=0,
                         file_element=inut,
-                        agency=agn,
-                        network=net,
-                        station=sta,
-                        location=loc,
+                        codes=model.CodesNSL(net, sta, loc),
                         tmin=tmin,
                         tmax=tmax)
 
@@ -168,11 +163,7 @@ def iload_pyrocko_stations(file_path, segment, content):
                     nut = model.make_channel_nut(
                         file_segment=0,
                         file_element=inut,
-                        agency=agn,
-                        network=net,
-                        station=sta,
-                        location=loc,
-                        channel=cha,
+                        codes=model.CodesNSLCE(net, sta, loc, cha, ''),
                         tmin=tmin,
                         tmax=tmax)
 
@@ -205,7 +196,7 @@ def iload_pyrocko_events(file_path, segment, content):
         nut = model.make_event_nut(
             file_segment=0,
             file_element=iev,
-            name=ev.name or '',
+            codes=model.CodesX(ev.catalog or ''),
             tmin=ev.time,
             tmax=ev.time)
 

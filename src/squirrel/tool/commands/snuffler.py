@@ -5,19 +5,17 @@
 
 from __future__ import absolute_import, print_function
 
-from .. import common
 
-
-def setup_subcommand(subparsers):
-    return common.add_parser(
-        subparsers, 'snuffler',
+def make_subparser(subparsers):
+    return subparsers.add_parser(
+        'snuffler',
         help='View in Snuffler.')
 
 
 def setup(parser):
-    common.add_selection_arguments(parser)
+    parser.add_squirrel_selection_arguments()
 
 
-def call(parser, args):
-    squirrel = common.squirrel_from_selection_arguments(args)
+def run(parser, args):
+    squirrel = args.make_squirrel()
     squirrel.pile.snuffle()

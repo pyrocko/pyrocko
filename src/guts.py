@@ -2082,7 +2082,9 @@ def clone(x, pool=None):
         x_copy = pool[id(x)]
 
     else:
-        if isinstance(x, Object):
+        if isinstance(x, SObject):
+            x_copy = x.__class__(str(x))
+        elif isinstance(x, Object):
             d = {}
             for (prop, y) in x.T.ipropvals(x):
                 if y is not None:

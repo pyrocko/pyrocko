@@ -5,7 +5,9 @@
 
 from __future__ import absolute_import, print_function
 
-from pyrocko.guts import Object, Timestamp, String
+from pyrocko.guts import Object, Timestamp
+
+from ..model import CodesNSLCE
 
 
 guts_prefix = 'squirrel'
@@ -28,7 +30,13 @@ class Constraint(Object):
 
     tmin = Timestamp.T(optional=True)
     tmax = Timestamp.T(optional=True)
-    codes = String.T(optional=True)
+    codes = CodesNSLCE.T(optional=True)
+
+    def __init__(self, **kwargs):
+        if 'codes' in kwargs:
+            kwargs['codes'] = CodesNSLCE(kwargs['codes'])
+
+        Object.__init__(self, **kwargs)
 
     def contains(self, constraint):
         '''

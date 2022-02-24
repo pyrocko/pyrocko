@@ -18,7 +18,7 @@ from pyrocko.io.io_common import FileLoadError
 from pyrocko import util
 from pyrocko.guts import Object, Int, List, Dict, Tuple, String
 from . import error, io
-from .model import Nut, to_kind_id, to_kind, separator
+from .model import Nut, to_kind_id, to_kind, to_codes_simple
 from .error import SquirrelError
 
 logger = logging.getLogger('psq.database')
@@ -33,11 +33,18 @@ def abspath(path):
         return path
 
 
+def versiontuple(s):
+    fill = [0, 0, 0]
+    vals = [int(x) for x in s.split('.')]
+    fill[:len(vals)] = vals
+    return tuple(fill)
+
+
 class ExecuteGet1Error(SquirrelError):
     pass
 
 
-def execute_get1(connection, sql, args):
+def execute_get1(connection, sql, args=()):
     rows = list(connection.execute(sql, args))
     if len(rows) == 1:
         return rows[0]
@@ -204,9 +211,11 @@ class Database(object):
         if log_statements:
             self._conn.set_trace_callback(self._log_statement)
 
+        self._listeners = []
         self._initialize_db()
         self._basepath = None
-        self._listeners = []
+
+        self.version = None
 
     def set_basepath(self, basepath):
         if basepath is not None:
@@ -295,7 +304,41 @@ class Database(object):
                                     'persistent')
                         '''))):
 
+                try:
+                    self.version = versiontuple(execute_get1(
+                        cursor,
+                        '''
+                        SELECT value FROM settings
+                            WHERE key == "version"
+                        ''')[0])
+                except sqlite3.OperationalError:
+                    raise error.SquirrelError(
+                        'Squirrel database in pre-release format found: %s\n'
+                        'Please remove the database file and reindex.'
+                        % self._database_path)
+
+                if self.version >= (1, 1, 0):
+                    raise error.SquirrelError(
+                        'Squirrel database "%s" is of version %i.%i.%i which '
+                        'is not supported by this version of Pyrocko. Please '
+                        'upgrade the Pyrocko library.'
+                        % ((self._database_path, ) + self.version))
+
                 return
+
+            cursor.execute(self._register_table(
+                '''
+                    CREATE TABLE IF NOT EXISTS settings (
+                        key text PRIMARY KEY,
+                        value text)
+                '''))
+
+            cursor.execute(
+                'INSERT OR IGNORE INTO settings VALUES ("version", "1.0")')
+
+            self.version = execute_get1(
+                cursor,
+                'SELECT value FROM settings WHERE key == "version"')
 
             cursor.execute(self._register_table(
                 '''
@@ -439,7 +482,8 @@ class Database(object):
                 nut.file_format,
                 nut.file_mtime,
                 nut.file_size))
-            kind_codes.add((nut.kind_id, nut.codes, nut.deltat or 0.0))
+            kind_codes.add(
+                (nut.kind_id, nut.codes.safe_str, nut.deltat or 0.0))
 
         with (transaction or self.transaction('dig')) as c:
 
@@ -472,7 +516,7 @@ class Database(object):
                 ((self.relpath(nut.file_path),
                   nut.file_segment, nut.file_element,
                   nut.kind_id,
-                  nut.kind_id, nut.codes, nut.deltat or 0.0,
+                  nut.kind_id, nut.codes.safe_str, nut.deltat or 0.0,
                   nut.tmin_seconds, nut.tmin_offset,
                   nut.tmax_seconds, nut.tmax_offset,
                   nut.kscale) for nut in nuts))
@@ -669,7 +713,7 @@ class Database(object):
             '''
             cursor.execute(sql, (file_stats[0], path))
 
-    def _iter_counts(self, kind=None, kind_codes_count='kind_codes_count'):
+    def _iter_codes_info(self, kind=None, kind_codes_count='kind_codes_count'):
         args = []
         sel = ''
         if kind is not None:
@@ -681,6 +725,7 @@ class Database(object):
                 kind_codes.kind_id,
                 kind_codes.codes,
                 kind_codes.deltat,
+                kind_codes.kind_codes_id,
                 %(kind_codes_count)s.count
             FROM %(kind_codes_count)s
             INNER JOIN kind_codes
@@ -690,11 +735,11 @@ class Database(object):
                 ''' + sel + '''
         ''') % {'kind_codes_count': kind_codes_count}
 
-        for kind_id, codes, deltat, count in self._conn.execute(sql, args):
+        for kind_id, scodes, deltat, kcid, count in self._conn.execute(
+                sql, args):
+
             yield (
-                to_kind(kind_id),
-                tuple(codes.split(separator)),
-                deltat), count
+                kind_id, to_codes_simple(kind_id, scodes), deltat, kcid, count)
 
     def _iter_deltats(self, kind=None, kind_codes_count='kind_codes_count'):
         args = []
@@ -726,25 +771,25 @@ class Database(object):
             args.append(to_kind_id(kind))
 
         sql = ('''
-            SELECT DISTINCT kind_codes.codes FROM %(kind_codes_count)s
+            SELECT DISTINCT kind_codes.kind_id, kind_codes.codes
+            FROM %(kind_codes_count)s
             INNER JOIN kind_codes
                 ON %(kind_codes_count)s.kind_codes_id
                     == kind_codes.kind_codes_id
             WHERE %(kind_codes_count)s.count > 0
                 ''' + sel + '''
             ORDER BY kind_codes.codes
-        ''') % {'kind_codes_count': kind_codes_count}
+        ''') % dict(kind_codes_count=kind_codes_count)
 
         for row in self._conn.execute(sql, args):
-            yield tuple(row[0].split(separator))
+            yield to_codes_simple(*row)
 
     def _iter_kinds(self, codes=None, kind_codes_count='kind_codes_count'):
         args = []
         sel = ''
         if codes is not None:
-            assert isinstance(codes, tuple)
             sel = 'AND kind_codes.codes == ?'
-            args.append(separator.join(codes))
+            args.append(codes.safe_str)
 
         sql = ('''
             SELECT DISTINCT kind_codes.kind_id FROM %(kind_codes_count)s
@@ -779,9 +824,6 @@ class Database(object):
     def iter_codes(self, kind=None):
         return self._iter_codes(kind=kind)
 
-    def iter_counts(self, kind=None):
-        return self._iter_counts(kind=kind)
-
     def get_paths(self):
         return list(self.iter_paths())
 
@@ -793,11 +835,11 @@ class Database(object):
 
     def get_counts(self, kind=None):
         d = {}
-        for (k, codes, deltat), count in self.iter_counts():
-            if k not in d:
-                v = d[k] = {}
+        for kind_id, codes, _, _, count in self._iter_codes_info(kind=kind):
+            if kind_id not in d:
+                v = d[kind_id] = {}
             else:
-                v = d[k]
+                v = d[kind_id]
 
             if codes not in v:
                 v[codes] = 0
@@ -805,9 +847,9 @@ class Database(object):
             v[codes] += count
 
         if kind is not None:
-            return d[kind]
+            return d[to_kind_id(kind)]
         else:
-            return d
+            return dict((to_kind(kind_id), v) for (kind_id, v) in d.items())
 
     def get_nfiles(self):
         sql = '''SELECT COUNT(*) FROM files'''
@@ -929,7 +971,7 @@ class DatabaseStats(Object):
         kind_counts = dict(
             (kind, sum(self.counts[kind].values())) for kind in self.kinds)
 
-        codes = ['.'.join(x) for x in self.codes]
+        codes = [c.safe_str for c in self.codes]
 
         if len(codes) > 20:
             scodes = '\n' + util.ewrap(codes[:10], indent='  ') \

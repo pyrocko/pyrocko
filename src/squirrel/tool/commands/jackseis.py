@@ -18,7 +18,6 @@ from pyrocko.guts import Dict, String, Choice, Float, List, Timestamp, \
     StringChoice, IntChoice, Defer, load_all, clone
 from pyrocko.squirrel.dataset import Dataset
 from pyrocko.squirrel.client.local import LocalData
-from pyrocko.squirrel.tool import common
 from pyrocko.squirrel.error import ToolError
 
 tts = util.time_to_str
@@ -117,7 +116,7 @@ class Converter(HasPaths):
 
     @classmethod
     def add_arguments(cls, p):
-        common.add_query_arguments(p, without=['time', 'codes'])
+        p.add_squirrel_query_arguments(without=['time', 'codes'])
 
         p.add_argument(
             '--downsample',
@@ -190,7 +189,7 @@ class Converter(HasPaths):
 
     @classmethod
     def from_arguments(cls, args):
-        kwargs = common.squirrel_query_from_arguments(args)
+        kwargs = args.squirrel_query
 
         obj = cls(
             downsample=args.downsample,
@@ -303,7 +302,7 @@ class Converter(HasPaths):
             del task
 
         else:
-            sq = common.squirrel_from_selection_arguments(args)
+            sq = args.make_squirrel()
 
             cli_overrides = Converter.from_arguments(args)
             cli_overrides.set_basepath('.')
@@ -431,14 +430,14 @@ g_defaults = Converter(
     out_mseed_steim=2)
 
 
-def setup_subcommand(subparsers):
-    return common.add_parser(
-        subparsers, 'jackseis',
+def make_subparser(subparsers):
+    return subparsers.add_parser(
+        'jackseis',
         help='Convert waveform archive data.')
 
 
 def setup(parser):
-    common.add_selection_arguments(parser)
+    parser.add_squirrel_selection_arguments()
 
     parser.add_argument(
         '--config',
@@ -456,7 +455,7 @@ def setup(parser):
     Converter.add_arguments(parser)
 
 
-def call(parser, args):
+def run(parser, args):
     if args.config_path:
         try:
             converters = load_all(filename=args.config_path)

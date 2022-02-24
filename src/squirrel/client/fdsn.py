@@ -19,7 +19,7 @@ import os.path as op
 from .base import Source, Constraint
 from ..model import make_waveform_promise_nut, ehash, InvalidWaveform, \
     order_summary, WaveformOrder, g_tmin, g_tmax, g_tmin_queries, \
-    codes_to_str_abbreviated
+    codes_to_str_abbreviated, CodesNSLCE
 from ..database import ExecuteGet1Error
 from pyrocko.client import fdsn
 
@@ -44,13 +44,6 @@ sites_not_supporting = {
 
 def make_task(*args):
     return progress.task(*args, logger=logger)
-
-
-def plural_s(x):
-    if not isinstance(x, int):
-        x = len(x)
-
-    return 's' if x != 1 else ''
 
 
 def diff(fn_a, fn_b):
@@ -141,7 +134,7 @@ def orders_to_selection(orders):
     selection = []
     for order in sorted(orders, key=orders_sort_key):
         selection.append(
-            order.codes[1:5] + (order.tmin, order.tmax))
+            order.codes.nslc + (order.tmin, order.tmax))
 
     return combine_selections(selection)
 
@@ -158,11 +151,11 @@ class ErrorAggregate(Object):
     kind = String.T()
     details = String.T()
     entries = List.T(ErrorEntry.T())
-    codes_list = List.T(Tuple.T(None, String.T()))
+    codes_list = List.T(CodesNSLCE.T())
     time_spans = List.T(Tuple.T(2, Timestamp.T()))
 
     def __str__(self):
-        codes = ['.'.join(x) for x in self.codes_list]
+        codes = [str(x) for x in self.codes_list]
         scodes = '\n' + util.ewrap(codes, indent='    ') if codes else '<none>'
         tss = self.time_spans
         sspans = '\n' + util.ewrap(('%s - %s' % (
@@ -217,7 +210,7 @@ class ErrorLog(Object):
         kinds = sorted(set(entry.kind for entry in recent))
         if recent:
             return '%i error%s (%s)' % (
-                len(recent), plural_s(recent), '; '.join(kinds))
+                len(recent), util.plural_s(recent), '; '.join(kinds))
         else:
             return ''
 
@@ -526,10 +519,10 @@ class FDSNSource(Source):
             tmax=ctmax)
 
         coverages = squirrel.get_coverage(
-            'waveform', codes_list=[constraint.codes],
+            'waveform',
+            codes_list=[constraint.codes] if constraint.codes else None,
             tmin=ctmin,
-            tmax=ctmax,
-            return_raw=False)
+            tmax=ctmax)
 
         codes_to_avail = defaultdict(list)
         for coverage in coverages:
@@ -619,7 +612,7 @@ class FDSNSource(Source):
                     for order in orders_now:
                         trs_order = []
                         err_this = None
-                        for tr in by_nslc[order.codes[1:5]]:
+                        for tr in by_nslc[order.codes.nslc]:
                             try:
                                 order.validate(tr)
                                 trs_order.append(tr.chop(
@@ -668,7 +661,8 @@ class FDSNSource(Source):
 
             emessage = elog.summarize_recent()
             self._log_info_data(
-                '%i download%s successful' % (nsuccess, plural_s(nsuccess))
+                '%i download%s successful' % (
+                    nsuccess, util.plural_s(nsuccess))
                 + (', %s' % emessage if emessage else ''))
 
             if all_paths:
@@ -718,7 +712,7 @@ class FDSNSource(Source):
         have = set()
         status = defaultdict(list)
         for nut in nuts:
-            nslc = nut.codes_tuple[1:5]
+            nslc = nut.codes.nslc
             if nslc in have:
                 continue
             have.add(nslc)

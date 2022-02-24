@@ -9,8 +9,6 @@ import logging
 
 from pyrocko import squirrel as sq
 
-from .. import common
-
 logger = logging.getLogger('psq.cli.database')
 
 description = '''
@@ -27,9 +25,9 @@ Actions:
 '''.strip()
 
 
-def setup_subcommand(subparsers):
-    return common.add_parser(
-        subparsers, 'database',
+def make_subparser(subparsers):
+    return subparsers.add_parser(
+        'database',
         help='Database inspection and maintenance.',
         description=description)
 
@@ -42,7 +40,7 @@ def setup(parser):
     parser.add_argument('path_patterns', nargs='*')
 
 
-def call(parser, args):
+def run(parser, args):
     action = args.action
     if action == 'env':
         print(sq.get_environment())

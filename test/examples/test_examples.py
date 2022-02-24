@@ -33,6 +33,13 @@ skip_examples = [
     'gf_forward_viscoelastic.py'
 ]
 
+need_sys_argv_examples = {
+    'squirrel_rms3b.py': [
+        ['', 'rms', '--tmin=2022-01-14', '--tmax=2022-01-15',
+         '--codes=*.*.*.LHZ'],
+    ]
+}
+
 
 def tutorial_run_dir():
     return op.join(project_dir, 'test', 'example_run_dir')
@@ -95,37 +102,45 @@ def _make_function(test_name, fn):
         except ImportError:
             import importlib.machinery as imp2
 
-        try:
-            if imp:
-                imp.load_source(test_name, fn)
-            else:
-                imp2.SourceFileLoader(project_dir, fn)
+        for argv in need_sys_argv_examples.get(os.path.basename(fn), [['']]):
+            try:
+                sys_argv_original, sys.argv = sys.argv, argv
 
-        except example.util.DownloadError:
-            raise unittest.SkipTest('could not download required data file')
+                if imp:
+                    imp.load_source(test_name, fn)
+                else:
+                    imp2.SourceFileLoader(project_dir, fn)
 
-        except HTTPError as e:
-            raise unittest.SkipTest('skipped due to %s: "%s"' % (
-                e.__class__.__name__, str(e)))
+            except example.util.DownloadError:
+                raise unittest.SkipTest(
+                    'could not download required data file')
 
-        except ExternalProgramMissing as e:
-            raise unittest.SkipTest(str(e))
+            except HTTPError as e:
+                raise unittest.SkipTest('skipped due to %s: "%s"' % (
+                    e.__class__.__name__, str(e)))
 
-        except ImportError as e:
-            raise unittest.SkipTest(str(e))
+            except ExternalProgramMissing as e:
+                raise unittest.SkipTest(str(e))
 
-        except topo.AuthenticationRequired:
-            raise unittest.SkipTest(
-                'cannot download topo data (no auth credentials)')
+            except ImportError as e:
+                raise unittest.SkipTest(str(e))
 
-        except gmtpy.GMTInstallationProblem:
-            raise unittest.SkipTest('GMT not installed or not usable')
+            except topo.AuthenticationRequired:
+                raise unittest.SkipTest(
+                    'cannot download topo data (no auth credentials)')
 
-        except orthodrome.Slow:
-            raise unittest.SkipTest('skipping test using slow point-in-poly')
+            except gmtpy.GMTInstallationProblem:
+                raise unittest.SkipTest('GMT not installed or not usable')
 
-        except Exception as e:
-            raise e
+            except orthodrome.Slow:
+                raise unittest.SkipTest(
+                    'skipping test using slow point-in-poly')
+
+            except Exception as e:
+                raise e
+
+            finally:
+                sys.argv = sys_argv_original
 
     f.__name__ = 'test_example_' + test_name
 

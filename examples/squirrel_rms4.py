@@ -1,7 +1,7 @@
 import argparse
 import numpy as np
-from pyrocko.util import time_to_str as tts
-from pyrocko.squirrel.tool import common as squirrel_tool_common
+from pyrocko.util import time_to_str as tts, str_to_time_fillup as stt
+from pyrocko import squirrel
 
 
 def rms(data):
@@ -9,7 +9,7 @@ def rms(data):
 
 
 parser = argparse.ArgumentParser()
-squirrel_tool_common.add_selection_arguments(parser)
+squirrel.add_squirrel_selection_arguments(parser)
 
 parser.add_argument(
     '--fmin',
@@ -27,12 +27,18 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-sq = squirrel_tool_common.squirrel_from_selection_arguments(args)
+sq = squirrel.squirrel_from_selection_arguments(args)
 
 fmin = args.fmin
 fmax = args.fmax
 
+tmin = stt('2022-01-14')
+tmax = stt('2022-01-17')
+
+
 for batch in sq.chopper_waveforms(
+        tmin=tmin,
+        tmax=tmax,
         tinc=3600.,
         tpad=1.0/fmin if fmin is not None else 0.0,
         want_incomplete=False,

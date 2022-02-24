@@ -7,22 +7,21 @@ from __future__ import absolute_import, print_function
 
 import logging
 
-from .. import common
 # from pyrocko.squirrel.error import SquirrelError
 from pyrocko.squirrel import model
 
 logger = logging.getLogger('psq.cli.update')
 
 
-def setup_subcommand(subparsers):
-    return common.add_parser(
-        subparsers, 'update',
+def make_subparser(subparsers):
+    return subparsers.add_parser(
+        'update',
         help='Update remote sources inventories.')
 
 
 def setup(parser):
-    common.add_selection_arguments(parser)
-    common.add_query_arguments(parser)
+    parser.add_squirrel_selection_arguments()
+    parser.add_squirrel_query_arguments()
 
     parser.add_argument(
         '--promises',
@@ -39,9 +38,9 @@ def setup(parser):
         help='Update responses.')
 
 
-def call(parser, args):
-    d = common.squirrel_query_from_arguments(args)
-    squirrel = common.squirrel_from_selection_arguments(args)
+def run(parser, args):
+    d = args.squirrel_query
+    squirrel = args.make_squirrel()
 
     tmin = d.get('tmin', model.g_tmin)
     tmax = d.get('tmax', model.g_tmax)

@@ -36,11 +36,7 @@ def iload(format, file_path, segment, content):
         nut = model.make_waveform_nut(
             file_segment=0,
             file_element=itr,
-            agency='',
-            network=tr.network,
-            station=tr.station,
-            location=tr.location,
-            channel=tr.channel,
+            codes=tr.codes,
             tmin=tr.tmin,
             tmax=tr.tmin + tr.deltat * nsamples,
             deltat=tr.deltat)

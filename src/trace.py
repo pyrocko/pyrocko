@@ -22,7 +22,7 @@ from pyrocko.util import reuse
 from pyrocko.guts import Object, Float, Int, String, List, \
     StringChoice, Timestamp
 from pyrocko.guts_array import Array
-from pyrocko.model import Content
+from pyrocko.model import squirrel_content
 
 # backward compatibility
 from pyrocko.util import UnavailableDecimation  # noqa
@@ -37,7 +37,8 @@ guts_prefix = 'pf'
 logger = logging.getLogger('pyrocko.trace')
 
 
-class Trace(Content):
+@squirrel_content
+class Trace(Object):
 
     '''
     Create new trace object.
@@ -52,6 +53,7 @@ class Trace(Content):
     :param station: station code
     :param location: location code
     :param channel: channel code
+    :param extra: extra code
     :param tmin: system time of first sample in [s]
     :param tmax: system time of last sample in [s] (if set to ``None`` it is
         computed from length of ``ydata``)
@@ -69,7 +71,6 @@ class Trace(Content):
     silently truncated when the trace is stored
     '''
 
-    agency = String.T(default='', help='Agency code (2-5)')
     network = String.T(default='', help='Deployment/network code (1-8)')
     station = String.T(default='STA', help='Station code (1-5)')
     location = String.T(default='', help='Location code (0-2)')
@@ -88,9 +89,9 @@ class Trace(Content):
 
     def __init__(self, network='', station='STA', location='', channel='',
                  tmin=0., tmax=None, deltat=1., ydata=None, mtime=None,
-                 meta=None, agency='', extra=''):
+                 meta=None, extra=''):
 
-        Content.__init__(self, init_props=False)
+        Object.__init__(self, init_props=False)
 
         time_float = util.get_time_float()
 
@@ -112,10 +113,10 @@ class Trace(Content):
         if mtime is None:
             mtime = time_float(time.time())
 
-        self.agency, self.network, self.station, self.location, self.channel, \
+        self.network, self.station, self.location, self.channel, \
             self.extra = [
                 reuse(x) for x in (
-                    agency, network, station, location, channel, extra)]
+                    network, station, location, channel, extra)]
 
         self.tmin = tmin
         self.deltat = deltat
@@ -152,9 +153,10 @@ class Trace(Content):
 
     @property
     def codes(self):
-        return (
-            self.agency, self.network, self.station, self.location,
-            self.channel, self.extra)
+        from pyrocko.squirrel import model
+        return model.CodesNSLCE(
+            self.network, self.station, self.location, self.channel,
+            self.extra)
 
     @property
     def time_span(self):
@@ -169,13 +171,19 @@ class Trace(Content):
     def __getstate__(self):
         return (self.network, self.station, self.location, self.channel,
                 self.tmin, self.tmax, self.deltat, self.mtime,
-                self.ydata, self.meta, self.agency, self.extra)
+                self.ydata, self.meta, self.extra)
 
     def __setstate__(self, state):
-        if len(state) == 12:
+        if len(state) == 11:
             self.network, self.station, self.location, self.channel, \
                 self.tmin, self.tmax, self.deltat, self.mtime, \
-                self.ydata, self.meta, self.agency, self.extra = state
+                self.ydata, self.meta, self.extra = state
+
+        elif len(state) == 12:
+            # backward compatibility 0
+            self.network, self.station, self.location, self.channel, \
+                self.tmin, self.tmax, self.deltat, self.mtime, \
+                self.ydata, self.meta, _, self.extra = state
 
         elif len(state) == 10:
             # backward compatibility 1
@@ -183,7 +191,6 @@ class Trace(Content):
                 self.tmin, self.tmax, self.deltat, self.mtime, \
                 self.ydata, self.meta = state
 
-            self.angency = ''
             self.extra = ''
 
         else:
@@ -192,7 +199,6 @@ class Trace(Content):
                 self.tmin, self.tmax, self.deltat, self.mtime = state
             self.ydata = None
             self.meta = None
-            self.angency = ''
             self.extra = ''
 
         self._growbuffer = None
@@ -403,7 +409,7 @@ class Trace(Content):
 
     def set_codes(
             self, network=None, station=None, location=None, channel=None,
-            agency=None, extra=None):
+            extra=None):
 
         '''
         Set network, station, location, and channel codes.
@@ -417,8 +423,6 @@ class Trace(Content):
             self.location = location
         if channel is not None:
             self.channel = channel
-        if agency is not None:
-            self.agency = agency
         if extra is not None:
             self.extra = extra
 

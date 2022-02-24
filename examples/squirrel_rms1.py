@@ -1,7 +1,11 @@
 import numpy as np
-from pyrocko.progress import progress
-from pyrocko.util import time_to_str as tts, str_to_time_fillup as stt
+from pyrocko import progress
+from pyrocko.util import setup_logging, time_to_str, str_to_time_fillup as stt
 from pyrocko.squirrel import Squirrel
+
+# Enable logging and progress bars:
+setup_logging('squirrel_rms1.py', 'info')
+progress.set_default_viewer('terminal')   # or 'log' to just log progress
 
 
 def rms(data):
@@ -16,28 +20,26 @@ tmax = stt('2022-01-17')
 fmin = 0.01
 fmax = 0.05
 
-# Enable progress bars:
-progress.set_default_viewer('terminal')
-
 # All data access will happen through a single Squirrel instance:
 sq = Squirrel()
 
-# Add local data directories:
+# Uncomment to add local data directories. This will only index the waveform
+# headers and not load the actual waveform data at this point. If the files are
+# already known and unmodified, it will use cached information.
 # sq.add('data/2022')
 
-# Add online data source:
-# Enable access to BGR's FDSN web service and restrict to GR network and
-# LH channels only:
+# Add online data source. Enable access to BGR's FDSN web service and restrict
+# to GR network and LH channels only:
 sq.add_fdsn('bgr', query_args=dict(network='GR', channel='LH?'))
 
-# Ensure meta-data is up to date for the selected time span:
+# Ensure meta-data from online sources is up to date for the selected time
+# span:
 sq.update(tmin=tmin, tmax=tmax)
 
 # Allow waveform download for station BFO. This does not download anything
 # yet, it just enables downloads later, when needed. Omit `tmin`, `tmax`,
-# and `codes` to enable download of all everything.
+# and `codes` to enable download of everything selected in `add_fdsn(...)`.
 sq.update_waveform_promises(tmin=tmin, tmax=tmax, codes='*.BFO.*.*')
-print(sq)
 
 # Iterate window-wise, with some overlap over the data:
 for batch in sq.chopper_waveforms(
@@ -58,5 +60,5 @@ for batch in sq.chopper_waveforms(
         # Cut off the contaminated padding. Trim to the payload interval.
         tr.chop(batch.tmin, batch.tmax)
 
-        # Print channel codes, time-mark and RMS value of the hour.
-        print(tr.str_codes, tts(tr.tmin), rms(tr.ydata))
+        # Print channel codes, timestamp and RMS value of the hour.
+        print(tr.str_codes, time_to_str(batch.tmin), rms(tr.ydata))

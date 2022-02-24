@@ -7,12 +7,10 @@ from __future__ import absolute_import, print_function
 
 from pyrocko import squirrel as sq
 
-from .. import common
 
-
-def setup_subcommand(subparsers):
-    return common.add_parser(
-        subparsers, 'init',
+def make_subparser(subparsers):
+    return subparsers.add_parser(
+        'init',
         help='Create local environment.')
 
 
@@ -20,5 +18,5 @@ def setup(parser):
     pass
 
 
-def call(parser, args):
+def run(parser, args):
     sq.init_environment()

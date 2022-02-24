@@ -5,20 +5,21 @@
 
 from __future__ import absolute_import, print_function
 
-from .. import common
+from pyrocko.squirrel.model import to_kind
 
 
-def setup_subcommand(subparsers):
-    return common.add_parser(
-        subparsers, 'codes',
+def make_subparser(subparsers):
+    return subparsers.add_parser(
+        'codes',
         help='Get summary of available data codes.')
 
 
 def setup(parser):
-    common.add_selection_arguments(parser)
+    parser.add_squirrel_selection_arguments()
 
 
-def call(parser, args):
-    squirrel = common.squirrel_from_selection_arguments(args)
-    for (kind, codes, deltat), count in squirrel.iter_counts():
-        print(kind, '.'.join(codes), deltat, count)
+def run(parser, args):
+    squirrel = args.make_squirrel()
+    for kind_id, codes, deltat, _, count in sorted(
+            squirrel._iter_codes_info()):
+        print(to_kind(kind_id), codes, deltat, count)

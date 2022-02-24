@@ -69,3 +69,4 @@ older waveform archive access module is implemented in
    cache <cache>
    error <error>
    pile <pile>
+   tool <tool>

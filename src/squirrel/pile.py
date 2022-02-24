@@ -25,7 +25,7 @@ class CodesDummyTrace(object):
     def __init__(self, codes):
         self.network, self.station, self.location, self.channel \
             = self.nslc_id \
-            = codes[1:5]
+            = codes[0:4]
 
 
 def trace_callback_to_codes_callback(trace_callback):
@@ -107,19 +107,23 @@ class Pile(object):
 
     @property
     def networks(self):
-        return set(codes[1] for codes in self._squirrel.get_codes('waveform'))
+        return set(
+            codes.network for codes in self._squirrel.get_codes('waveform'))
 
     @property
     def stations(self):
-        return set(codes[2] for codes in self._squirrel.get_codes('waveform'))
+        return set(
+            codes.station for codes in self._squirrel.get_codes('waveform'))
 
     @property
     def locations(self):
-        return set(codes[3] for codes in self._squirrel.get_codes('waveform'))
+        return set(
+            codes.location for codes in self._squirrel.get_codes('waveform'))
 
     @property
     def channels(self):
-        return set(codes[4] for codes in self._squirrel.get_codes('waveform'))
+        return set(
+            codes.channel for codes in self._squirrel.get_codes('waveform'))
 
     def is_relevant(self, tmin, tmax):
         ptmin, ptmax = self._squirrel.get_time_span(

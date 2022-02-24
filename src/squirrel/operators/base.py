@@ -7,9 +7,8 @@ from __future__ import absolute_import, print_function
 
 import logging
 import re
-import fnmatch
 
-from ..model import QuantityType, separator
+from ..model import QuantityType
 from .. import error
 
 from pyrocko.guts import Object, String, Duration, Float, clone
@@ -47,30 +46,17 @@ def _cglob_translate(creg):
     dd = []
     for c in creg:
         if c == '*':
-            d = r'[^%s]*' % separator
+            d = r'[^.]*'
         elif c == '?':
-            d = r'[^%s]' % separator
+            d = r'[^.]'
         elif c == '.':
-            d = separator
+            d = r'\.'
         else:
             d = c
 
         dd.append(d)
     reg = ''.join(dd)
     return reg
-
-
-_compiled_patterns = {}
-
-
-def compiled(pattern):
-    if pattern not in _compiled_patterns:
-        rpattern = re.compile(fnmatch.translate(pattern), re.I)
-        _compiled_patterns[pattern] = rpattern
-    else:
-        rpattern = _compiled_patterns[pattern]
-
-    return rpattern
 
 
 class Filtering(Object):
@@ -105,47 +91,49 @@ class RegexGrouping(Grouping):
         self._compiled_pattern = re.compile(self.pattern)
 
     def key(self, codes):
-        return self._compiled_pattern.fullmatch(codes).groups()
+        return self._compiled_pattern.fullmatch(str(codes)).groups()
 
 
 class ComponentGrouping(RegexGrouping):
     pattern = String.T(default=_cglob_translate('(*.*.*.*.*)?(.*)'))
 
 
-class Naming(Object):
+class Translation(Object):
+
+    def translate(self, codes):
+        return codes
+
+
+class AddSuffixTranslation(Translation):
     suffix = String.T(default='')
 
-    def get_name(self, base):
-        return base + self.suffix
+    def translate(self, codes):
+        return codes.replace(extra=codes.extra + self.suffix)
 
 
-class RegexNaming(Naming):
+class RegexTranslation(AddSuffixTranslation):
     pattern = String.T(default=r'(.*)')
     replacement = String.T(default=r'\1')
 
     def __init__(self, **kwargs):
-        Naming.__init__(self, **kwargs)
+        AddSuffixTranslation.__init__(self, **kwargs)
         self._compiled_pattern = re.compile(self.pattern)
 
-    def get_name(self, base):
-        return self._compiled_pattern.sub(
-            self.replacement, base) + self.suffix
+    def translate(self, codes):
+        return codes.__class__(
+            self._compiled_pattern.sub(self.replacement, str(codes)))
 
 
-class ReplaceComponentNaming(RegexNaming):
+class ReplaceComponentTranslation(RegexTranslation):
     pattern = String.T(default=_cglob_translate('(*.*.*.*.*)?(.*)'))
     replacement = String.T(default=r'\1{component}\2')
-
-
-def lsplit_codes(lcodes):
-    return [tuple(codes.split(separator)) for codes in lcodes]
 
 
 class Operator(Object):
 
     filtering = Filtering.T(default=Filtering.D())
     grouping = Grouping.T(default=Grouping.D())
-    naming = Naming.T(default=Naming.D())
+    translation = Translation.T(default=Translation.D())
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
@@ -165,9 +153,7 @@ class Operator(Object):
             if group[1] is None:
                 group[1] = sorted(group[0])
 
-            yield (
-                lsplit_codes(group[1]),
-                lsplit_codes(group[2]))
+            yield (group[1], group[2])
 
     def update_mappings(self, available, registry):
         available = list(available)
@@ -216,24 +202,16 @@ class Operator(Object):
         self._available = available
 
     def _out_codes(self, in_codes):
-        return [self.naming.get_name(codes) for codes in in_codes]
+        return [self.translation.translate(codes) for codes in in_codes]
 
     def get_channels(self, squirrel, group, *args, **kwargs):
         _, in_codes, out_codes = group
         assert len(in_codes) == 1 and len(out_codes) == 1
-        in_codes_tup = in_codes[0].split(separator)
-        channels = squirrel.get_channels(codes=in_codes_tup, **kwargs)
-        agn, net, sta, loc, cha, ext = out_codes[0].split(separator)
+        channels = squirrel.get_channels(codes=in_codes[0], **kwargs)
         channels_out = []
         for channel in channels:
             channel_out = clone(channel)
-            channel_out.set_codes(
-                agency=agn,
-                network=net,
-                station=sta,
-                location=loc,
-                channel=cha,
-                extra=ext)
+            channel_out.codes = out_codes[0]
             channels_out.append(channel_out)
 
         return channels_out
@@ -242,17 +220,9 @@ class Operator(Object):
         _, in_codes, out_codes = group
         assert len(in_codes) == 1 and len(out_codes) == 1
 
-        in_codes_tup = in_codes[0].split(separator)
-        trs = squirrel.get_waveforms(codes=in_codes_tup, **kwargs)
-        agn, net, sta, loc, cha, ext = out_codes[0].split(separator)
+        trs = squirrel.get_waveforms(codes=in_codes[0], **kwargs)
         for tr in trs:
-            tr.set_codes(
-                agency=agn,
-                network=net,
-                station=sta,
-                location=loc,
-                channel=cha,
-                extra=ext)
+            tr.set_codes(*out_codes[0])
 
         return trs
 
@@ -274,7 +244,7 @@ class RestitutionParameters(Parameters):
 
 
 class Restitution(Operator):
-    naming = Naming(suffix='R{quantity}')
+    translation = AddSuffixTranslation(suffix='R{quantity}')
     quantity = QuantityType.T(default='displacement')
 
     @property
@@ -283,8 +253,8 @@ class Restitution(Operator):
 
     def _out_codes(self, group):
         return [
-            self.naming.get_name(codes).format(
-                quantity=self.quantity[0])
+            codes.__class__(str(self.translation.translate(codes)).format(
+                quantity=self.quantity[0]))
             for codes in group]
 
     def get_tpad(self, params):
@@ -296,7 +266,6 @@ class Restitution(Operator):
         self_, (_, in_codes, out_codes) = squirrel.get_operator_group(codes)
         assert self is self_
         assert len(in_codes) == 1 and len(out_codes) == 1
-        in_codes_tup = tuple(in_codes[0].split(separator))
 
         tpad = self.get_tpad(params)
 
@@ -304,11 +273,11 @@ class Restitution(Operator):
         tmax_raw = tmax + tpad
 
         trs = squirrel.get_waveforms(
-            codes=in_codes_tup, tmin=tmin_raw, tmax=tmax_raw, **kwargs)
+            codes=in_codes[0], tmin=tmin_raw, tmax=tmax_raw, **kwargs)
 
         try:
             resp = squirrel.get_response(
-                codes=in_codes_tup,
+                codes=in_codes[0],
                 tmin=tmin_raw,
                 tmax=tmax_raw).get_effective(self.quantity)
 
@@ -321,7 +290,6 @@ class Restitution(Operator):
             params.frequency_max,
             params.frequency_max * params.frequency_taper_factor)
 
-        agn, net, sta, loc, cha, ext = out_codes[0].split(separator)
         trs_rest = []
         for tr in trs:
             tr_rest = tr.transfer(
@@ -330,13 +298,7 @@ class Restitution(Operator):
                 transfer_function=resp,
                 invert=True)
 
-            tr_rest.set_codes(
-                agency=agn,
-                network=net,
-                station=sta,
-                location=loc,
-                channel=cha,
-                extra=ext)
+            tr_rest.set_codes(*out_codes[0])
 
             trs_rest.append(tr_rest)
 
@@ -344,17 +306,17 @@ class Restitution(Operator):
 
 
 class Shift(Operator):
-    naming = Naming(suffix='S')
+    translation = AddSuffixTranslation(suffix='S')
     delay = Duration.T()
 
 
 class Transform(Operator):
     grouping = Grouping.T(default=ComponentGrouping.D())
-    naming = ReplaceComponentNaming(suffix='T{system}')
+    translation = ReplaceComponentTranslation(suffix='T{system}')
 
     def _out_codes(self, group):
         return [
-            self.naming.get_name(group[0]).format(
+            self.translation.translate(group[0]).format(
                 component=c, system=self.components.lower())
             for c in self.components]
 
@@ -366,7 +328,7 @@ class ToENZ(Transform):
             self, squirrel, in_codes, out_codes, params, tmin, tmax, **kwargs):
 
         trs = squirrel.get_waveforms(
-            codes=lsplit_codes(in_codes), tmin=tmin, tmax=tmax, **kwargs)
+            codes=in_codes, tmin=tmin, tmax=tmax, **kwargs)
 
         for tr in trs:
             print(tr)

@@ -8,6 +8,10 @@ from .get_terminal_size import get_terminal_size
 
 logger = logging.getLogger('pyrocko.progress')
 
+# TODO: Refactor so that if multiple viewers are attached, they can do
+# their updates independently of each other (at independent time intervals).
+
+# TODO: Refactor so that different viewers can render task states differently.
 
 # spinner = u'\u25dc\u25dd\u25de\u25df'
 # spinner = '⣾⣽⣻⢿⡿⣟⣯⣷'
@@ -149,7 +153,9 @@ class TerminalStatusViewer(StatusViewer):
 class LogStatusViewer(StatusViewer):
 
     def draw(self, lines):
-        logger.info('Progress:\n%s' % '\n'.join('  '+line for line in lines))
+        if lines:
+            logger.info(
+                'Progress:\n%s' % '\n'.join('  '+line for line in lines))
 
 
 class DummyStatusViewer(StatusViewer):
@@ -403,6 +409,5 @@ g_viewer_classes = {
     'terminal': TerminalStatusViewer,
     'log': LogStatusViewer,
     'off': DummyStatusViewer}
-
 
 progress = Progress()

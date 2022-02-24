@@ -5,18 +5,16 @@
 
 from __future__ import absolute_import, print_function
 
-from .. import common
 
-
-def setup_subcommand(subparsers):
-    return common.add_parser(
-        subparsers, 'nuts',
+def make_subparser(subparsers):
+    return subparsers.add_parser(
+        'nuts',
         help='Search indexed contents.')
 
 
 def setup(parser):
-    common.add_selection_arguments(parser)
-    common.add_query_arguments(parser)
+    parser.add_squirrel_selection_arguments()
+    parser.add_squirrel_query_arguments()
 
     parser.add_argument(
         '--contents',
@@ -26,10 +24,9 @@ def setup(parser):
         help='Print contents.')
 
 
-def call(parser, args):
-    d = common.squirrel_query_from_arguments(args)
-    squirrel = common.squirrel_from_selection_arguments(args)
-    for nut in squirrel.iter_nuts(**d):
+def run(parser, args):
+    squirrel = args.make_squirrel()
+    for nut in squirrel.iter_nuts(**args.squirrel_query):
         if args.print_contents:
             print('# %s' % nut.summary)
             print(squirrel.get_content(nut).dump())
