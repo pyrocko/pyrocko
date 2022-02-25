@@ -9,6 +9,9 @@ import math
 import time
 import numpy as num
 import logging
+import enum
+
+from matplotlib.cm import get_cmap
 
 from .qt_compat import qc, qg, qw, use_pyqt5
 
@@ -49,6 +52,16 @@ def make_QPolygonF(xdata, ydata):
     aa[:, 0] = xdata
     aa[:, 1] = ydata
     return qpoints
+
+
+def get_colormap_qimage(cmap_name):
+    NCOLORS = 512
+
+    return qg.QImage(
+        get_cmap(cmap_name)(
+            num.linspace(0., 1., NCOLORS),
+            alpha=None, bytes=True),
+        NCOLORS, 1, qg.QImage.Format_RGBX8888)
 
 
 class Label(object):
@@ -422,6 +435,312 @@ class LinValControl(ValControl):
         if self.ma == self.mi:
             return 0
         return int(round((value-self.mi)/(self.ma-self.mi) * 10000.))
+
+
+class ColorbarControl(qc.QObject):
+
+    AVAILABLE_CMAPS = (
+        'viridis',
+        'plasma',
+        'magma',
+        'seismic',
+        'RdBu',
+        'Reds',
+        'YlGn',
+        'binary',
+        'copper'
+    )
+
+    DEFAULT_CMAP = 'viridis'
+
+    cmap_changed = qc.pyqtSignal(str)
+    show_absolute_toggled = qc.pyqtSignal(bool)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.cmap_name = self.DEFAULT_CMAP
+
+        self.lname = qw.QLabel("Colormap")
+        self.lname.setSizePolicy(
+            qw.QSizePolicy(qw.QSizePolicy.Minimum, qw.QSizePolicy.Minimum))
+
+        self.cmap_options = qw.QComboBox()
+        self.cmap_options.setIconSize(qc.QSize(50, 15))
+        for cmap in self.AVAILABLE_CMAPS:
+            pixmap = qg.QPixmap.fromImage(
+                get_colormap_qimage(cmap))
+            icon = qg.QIcon(pixmap.scaled(50, 15))
+
+            self.cmap_options.addItem(icon, '', cmap)
+
+        # self.cmap_options.setCurrentIndex(self.cmap_name)
+        self.cmap_options.currentIndexChanged.connect(self.set_cmap)
+        self.cmap_options.setSizePolicy(
+            qw.QSizePolicy(qw.QSizePolicy.Minimum, qw.QSizePolicy.Minimum))
+
+        self.colorslider = ColorbarSlider(self)
+        self.clip_changed = self.colorslider.clip_changed
+
+
+        self.symetry_toggle = qw.QPushButton()
+        self.symetry_toggle.setIcon(
+            qg.QIcon.fromTheme('object-flip-horizontal'))
+        self.symetry_toggle.setToolTip('Symetric clip values')
+        self.symetry_toggle.setSizePolicy(qw.QSizePolicy())
+        self.symetry_toggle.setCheckable(True)
+        self.symetry_toggle.toggled.connect(self.toggle_symetry)
+        self.symetry_toggle.setChecked(True)
+
+        self.reverse_toggle = qw.QPushButton()
+        self.reverse_toggle.setIcon(
+            qg.QIcon.fromTheme('object-rotate-right'))
+        self.reverse_toggle.setToolTip('Reverse the colormap')
+        self.reverse_toggle.setSizePolicy(qw.QSizePolicy())
+        self.reverse_toggle.setCheckable(True)
+        self.reverse_toggle.toggled.connect(self.toggle_reverse_cmap)
+
+        self.abs_toggle = qw.QPushButton()
+        self.abs_toggle.setIcon(
+            qg.QIcon.fromTheme('go-top'))
+        self.abs_toggle.setToolTip('Show absolute values')
+        self.abs_toggle.setSizePolicy(qw.QSizePolicy())
+        self.abs_toggle.setCheckable(True)
+        self.abs_toggle.toggled.connect(
+            self.show_absolute_toggled.emit)
+
+        self.controls = qw.QWidget()
+        layout = qw.QHBoxLayout()
+        layout.addWidget(self.colorslider)
+        layout.addWidget(self.symetry_toggle)
+        layout.addWidget(self.reverse_toggle)
+        layout.addWidget(self.abs_toggle)
+        self.controls.setLayout(layout)
+
+    def set_cmap(self, idx):
+        self.set_cmap_name(self.cmap_options.itemData(idx))
+    
+    def set_cmap_name(self, cmap_name):
+        self.cmap_name = cmap_name
+        self.colorslider.set_cmap_name(cmap_name)
+        self.cmap_changed.emit(cmap_name)
+
+    def get_cmap(self):
+        return self.cmap_name
+
+    def toggle_symetry(self, toggled):
+        self.colorslider.set_symetry(toggled)
+
+    def toggle_reverse_cmap(self):
+        cmap = self.get_cmap()
+        if cmap.endswith('_r'):
+            r_cmap = cmap.rstrip('_r')
+        else:
+            r_cmap = cmap + '_r'
+        self.set_cmap_name(r_cmap)
+
+    def widgets(self):
+        return (self.lname, self.cmap_options, self.controls)
+
+
+class ColorbarSlider(qw.QWidget):
+    DEFAULT_CMAP = 'viridis'
+    CORNER_THRESHOLD = 10
+    MIN_WIDTH = .05
+
+    clip_changed = qc.pyqtSignal(float, float)
+
+    class COMPONENTS(enum.Enum):
+        LeftLine = 1
+        RightLine = 2
+        Center = 3
+
+    def __init__(self, *args, cmap_name=None):
+        super().__init__()
+        self.cmap_name = cmap_name or self.DEFAULT_CMAP
+        self.clip_min = 0.
+        self.clip_max = 1.
+
+        self._sym_locked = True
+        self._mouse_inside = False
+        self._window = None
+        self._old_pos = None
+        self._component_grabbed = None
+
+        self.setMouseTracking(True)
+
+    def set_cmap_name(self, cmap_name):
+        self.cmap_name = cmap_name
+        self.repaint()
+
+    def get_cmap_name(self):
+        return self.cmap_name
+    
+    def set_symetry(self, symetry):
+        self._sym_locked = symetry
+        if self._sym_locked:
+            clip_max = 1. - min(self.clip_min, 1.-self.clip_max)
+            clip_min = 1. - clip_max
+            self.set_clip(clip_min, clip_max)
+
+    def _set_window(self, window):
+        self._window = window
+
+    def _get_left_line(self):
+        rect = self._get_active_rect()
+        if not rect:
+            return
+        return qc.QLineF(rect.left(), 0, rect.left(), rect.height())
+
+    def _get_right_line(self):
+        rect = self._get_active_rect()
+        if not rect:
+            return
+        return qc.QLineF(rect.right(), 0, rect.right(), rect.height())
+
+    def _get_active_rect(self):
+        if not self._window:
+            return
+        rect = qc.QRect(self._window)
+        width = rect.width()
+        rect.setLeft(width * self.clip_min)
+        rect.setRight(width * self.clip_max)
+        return rect
+
+    def set_clip(self, clip_min, clip_max):
+        if clip_min < 0. or clip_max > 1.:
+            return
+        if clip_max - clip_min < self.MIN_WIDTH:
+            return
+
+        self.clip_min = clip_min
+        self.clip_max = clip_max
+        self.repaint()
+        self.clip_changed.emit(self.clip_min, self.clip_max)
+
+    def mousePressEvent(self, event):
+        act_rect = self._get_active_rect()
+        if event.buttons() != qc.Qt.MouseButton.LeftButton:
+            self._component_grabbed = None
+            return
+
+        dist_left = abs(event.pos().x() - act_rect.left())
+        dist_right = abs(event.pos().x() - act_rect.right())
+
+        if 0 < dist_left < self.CORNER_THRESHOLD:
+            self._component_grabbed = self.COMPONENTS.LeftLine
+            self.setCursor(qg.QCursor(qc.Qt.CursorShape.SizeHorCursor))
+        elif 0 < dist_right < self.CORNER_THRESHOLD:
+            self._component_grabbed = self.COMPONENTS.RightLine
+            self.setCursor(qg.QCursor(qc.Qt.CursorShape.SizeHorCursor))
+        else:
+            self.setCursor(qg.QCursor())
+
+    def mouseReleaseEvent(self, event):
+        self._component_grabbed = None
+        self.repaint()
+
+    def mouseDoubleClickEvent(self, event):
+        self.set_clip(0., 1.)
+
+    def wheelEvent(self, event):
+        event.accept()
+        if not self._sym_locked:
+            return
+        delta = -event.angleDelta().y() / 5e3
+        clip_min_new = max(self.clip_min + delta, 0.)
+        clip_max_new = min(self.clip_max - delta, 1.)
+        self._mouse_inside = True
+        self.set_clip(clip_min_new, clip_max_new)
+
+    def mouseMoveEvent(self, event):
+        act_rect = self._get_active_rect()
+
+        if not self._component_grabbed:
+            dist_left = abs(event.pos().x() - act_rect.left())
+            dist_right = abs(event.pos().x() - act_rect.right())
+
+            if 0 <= dist_left < self.CORNER_THRESHOLD or \
+                    0 <= dist_right < self.CORNER_THRESHOLD:
+                self.setCursor(qg.QCursor(qc.Qt.CursorShape.SizeHorCursor))
+            else:
+                self.setCursor(qg.QCursor())
+
+        if self._old_pos and self._component_grabbed:
+            shift = (event.pos() - self._old_pos).x() / self._window.width()
+
+            if self._component_grabbed is self.COMPONENTS.LeftLine:
+                clip_min_new = max(self.clip_min + shift, 0.)
+                clip_max_new = \
+                    min(self.clip_max - shift, 1.) \
+                    if self._sym_locked else self.clip_max
+
+            elif self._component_grabbed is self.COMPONENTS.RightLine:
+                clip_max_new = min(self.clip_max + shift, 1.)
+                clip_min_new = \
+                    max(self.clip_min - shift, 0.) \
+                    if self._sym_locked else self.clip_min
+
+            self.set_clip(clip_min_new, clip_max_new)
+
+        self._old_pos = event.pos()
+
+    def enterEvent(self, e):
+        self._mouse_inside = True
+        self.repaint()
+
+    def leaveEvent(self, e):
+        self._mouse_inside = False
+        self.repaint()
+
+
+    def paintEvent(self, e):
+        p = qg.QPainter(self)
+        self._set_window(p.window())
+
+        p.drawImage(p.window(), get_colormap_qimage(self.cmap_name))
+
+        left_line = self._get_left_line()
+        right_line = self._get_right_line()
+
+        pen = qg.QPen()
+        pen.setWidth(2)
+        pen.setStyle(qc.Qt.DotLine)
+        pen.setBrush(qc.Qt.white)
+        p.setPen(pen)
+        p.setCompositionMode(
+            qg.QPainter.CompositionMode.CompositionMode_Difference)
+
+        p.drawLine(left_line)
+        p.drawLine(right_line)
+
+        label_rect = self._get_active_rect()
+        label_rect.setLeft(label_rect.left() + 5)
+        label_rect.setRight(label_rect.right() - 5)
+        label_left_rect = qc.QRectF(label_rect)
+        label_right_rect = qc.QRectF(label_rect)
+        label_left_align = qc.Qt.AlignLeft
+        label_right_align = qc.Qt.AlignRight
+
+        if label_rect.left() > 50:
+            label_left_rect.setRight(label_rect.left() - 10)
+            label_left_rect.setLeft(0)
+            label_left_align = qc.Qt.AlignRight
+
+        if self._window.right() - label_rect.right() > 50:
+            label_right_rect.setLeft(label_rect.right() + 10)
+            label_right_rect.setRight(self._window.right())
+            label_right_align = qc.Qt.AlignLeft
+
+        if self._mouse_inside or self._component_grabbed:
+            p.drawText(
+                label_left_rect,
+                label_left_align | qc.Qt.AlignVCenter,
+                '%d%%' % round(self.clip_min * 100))
+            p.drawText(
+                label_right_rect,
+                label_right_align | qc.Qt.AlignVCenter,
+                '%d%%' % round(self.clip_max * 100))
 
 
 class Progressbar(object):

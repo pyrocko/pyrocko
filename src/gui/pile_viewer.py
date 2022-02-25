@@ -33,12 +33,16 @@ from .marker import associate_phases_to_events, MarkerOneNSLCRequired
 
 from .util import (ValControl, LinValControl, Marker, EventMarker,
                    PhaseMarker, make_QPolygonF, draw_label, Label,
-                   Progressbars)
+                   Progressbars, ColorbarControl)
 
 from .qt_compat import qc, qg, qw, qgl, qsvg, use_pyqt5
 
+from .pile_viewer_waterfall import TraceWaterfall
+
 import scipy.stats as sstats
 import platform
+
+MIN_LABEL_SIZE_PT = 6
 
 try:
     newstr = unicode
@@ -1095,6 +1099,7 @@ def MakePileViewerMainClass(base):
 
             self.old_vec = None
             self.old_processed_traces = None
+            self.old_chopped_traces = None
 
             self.timer = qc.QTimer(self)
             self.timer.timeout.connect(self.periodical)
@@ -1135,6 +1140,12 @@ def MakePileViewerMainClass(base):
             self._paths_to_load = []
 
             self.tf_cache = {}
+
+            self.waterfall = TraceWaterfall()
+            self.waterfall_cmap = 'viridis'
+            self.waterfall_clip_min = 0.
+            self.waterfall_clip_max = 1.
+            self.waterfall_show_absolute = False
 
             self.automatic_updates = True
 
@@ -2952,313 +2963,346 @@ def MakePileViewerMainClass(base):
 
                 track_projections[i] = proj
 
-            if self.tmin < self.tmax:
-                self.time_projection.set_in_range(self.tmin, self.tmax)
-                vbottom_ax_projection.set_in_range(0, ax_h)
+            if self.tmin > self.tmax:
+                return
 
-                self.tax.drawit(p, self.time_projection, vbottom_ax_projection)
+            self.time_projection.set_in_range(self.tmin, self.tmax)
+            vbottom_ax_projection.set_in_range(0, ax_h)
 
-                yscaler = pyrocko.plot.AutoScaler()
-                if not printmode and self.menuitem_showboxes.isChecked():
-                    self.draw_trace_boxes(
-                        p, self.time_projection, track_projections)
+            self.tax.drawit(p, self.time_projection, vbottom_ax_projection)
 
-                if self.floating_marker:
-                    self.floating_marker.draw(
-                        p, self.time_projection, vcenter_projection)
+            yscaler = pyrocko.plot.AutoScaler()
+            if not printmode and self.menuitem_showboxes.isChecked():
+                self.draw_trace_boxes(
+                    p, self.time_projection, track_projections)
 
-                self.draw_visible_markers(
-                    p, vcenter_projection, primary_pen)
+            if self.floating_marker:
+                self.floating_marker.draw(
+                    p, self.time_projection, vcenter_projection)
 
-                p.setPen(primary_pen)
+            self.draw_visible_markers(
+                p, vcenter_projection, primary_pen)
 
-                font = qg.QFont()
-                font.setBold(True)
+            p.setPen(primary_pen)
 
-                axannotfont = qg.QFont()
-                axannotfont.setBold(True)
-                axannotfont.setPointSize(8)
+            font = qg.QFont()
+            font.setBold(True)
 
-                p.setFont(font)
-                label_bg = qg.QBrush(qg.QColor(255, 255, 255, 100))
+            axannotfont = qg.QFont()
+            axannotfont.setBold(True)
+            axannotfont.setPointSize(8)
 
-                processed_traces = self.prepare_cutout2(
-                    self.tmin, self.tmax,
-                    trace_selector=self.trace_selector,
-                    degap=self.menuitem_degap.isChecked(),
-                    demean=self.menuitem_demean.isChecked())
+            p.setFont(font)
+            label_bg = qg.QBrush(qg.QColor(255, 255, 255, 100))
 
-                color_lookup = dict(
-                    [(k, i) for (i, k) in enumerate(self.color_keys)])
+            processed_traces = self.prepare_cutout2(
+                self.tmin, self.tmax,
+                trace_selector=self.trace_selector,
+                degap=self.menuitem_degap.isChecked(),
+                demean=self.menuitem_demean.isChecked())
 
-                self.track_to_nslc_ids = {}
-                nticks = 0
-                annot_labels = []
-                if processed_traces:
-                    show_scales = self.menuitem_showscalerange.isChecked() \
-                        or self.menuitem_showscaleaxis.isChecked()
+            color_lookup = dict(
+                [(k, i) for (i, k) in enumerate(self.color_keys)])
 
-                    fm = qg.QFontMetrics(axannotfont, p.device())
-                    trackheight = self.track_to_screen(1.-0.05) \
-                        - self.track_to_screen(0.05)
+            self.track_to_nslc_ids = {}
+            nticks = 0
+            annot_labels = []
+            if processed_traces:
+                show_scales = self.menuitem_showscalerange.isChecked() \
+                    or self.menuitem_showscaleaxis.isChecked()
 
-                    nlinesavail = trackheight/float(fm.lineSpacing())
-                    if self.menuitem_showscaleaxis.isChecked():
-                        nticks = max(3, min(nlinesavail * 0.5, 15))
+                fm = qg.QFontMetrics(axannotfont, p.device())
+                trackheight = self.track_to_screen(1.-0.05) \
+                    - self.track_to_screen(0.05)
+
+                nlinesavail = trackheight/float(fm.lineSpacing())
+
+                nticks = max(3, min(nlinesavail * 0.5, 15)) \
+                    if self.menuitem_showscaleaxis.isChecked() \
+                    else 15
+
+                yscaler = pyrocko.plot.AutoScaler(
+                    no_exp_interval=(-3, 2), approx_ticks=nticks,
+                    snap=show_scales
+                    and not self.menuitem_showscaleaxis.isChecked())
+
+                data_ranges = pyrocko.trace.minmax(
+                    processed_traces,
+                    key=self.scaling_key,
+                    mode=self.scaling_base)
+
+                if not self.menuitem_fixscalerange.isChecked():
+                    self.old_data_ranges = data_ranges
+                else:
+                    data_ranges.update(self.old_data_ranges)
+
+                self.apply_scaling_hooks(data_ranges)
+
+                trace_to_itrack = {}
+                track_scaling_keys = {}
+                track_scaling_colors = {}
+                for trace in processed_traces:
+                    gt = self.gather(trace)
+                    if gt not in self.key_to_row:
+                        continue
+
+                    itrack = self.key_to_row[gt]
+                    if itrack not in track_projections:
+                        continue
+
+                    trace_to_itrack[trace] = itrack
+
+                    if itrack not in self.track_to_nslc_ids:
+                        self.track_to_nslc_ids[itrack] = set()
+
+                    self.track_to_nslc_ids[itrack].add(trace.nslc_id)
+
+                    if itrack not in track_scaling_keys:
+                        track_scaling_keys[itrack] = set()
+
+                    scaling_key = self.scaling_key(trace)
+                    track_scaling_keys[itrack].add(scaling_key)
+
+                    color = pyrocko.plot.color(
+                        color_lookup[self.color_gather(trace)])
+
+                    k = itrack, scaling_key
+                    if k not in track_scaling_colors \
+                            and self.menuitem_colortraces.isChecked():
+                        track_scaling_colors[k] = color
                     else:
-                        nticks = 15
+                        track_scaling_colors[k] = primary_color
 
-                    yscaler = pyrocko.plot.AutoScaler(
-                        no_exp_interval=(-3, 2), approx_ticks=nticks,
-                        snap=show_scales
-                        and not self.menuitem_showscaleaxis.isChecked())
-
-                    data_ranges = pyrocko.trace.minmax(
-                        processed_traces,
-                        key=self.scaling_key,
-                        mode=self.scaling_base)
-
-                    if not self.menuitem_fixscalerange.isChecked():
-                        self.old_data_ranges = data_ranges
-                    else:
-                        data_ranges.update(self.old_data_ranges)
-
-                    self.apply_scaling_hooks(data_ranges)
-
-                    trace_to_itrack = {}
-                    track_scaling_keys = {}
-                    track_scaling_colors = {}
-                    for trace in processed_traces:
-                        gt = self.gather(trace)
-                        if gt not in self.key_to_row:
-                            continue
-
-                        itrack = self.key_to_row[gt]
-                        if itrack not in track_projections:
-                            continue
-
-                        trace_to_itrack[trace] = itrack
-
-                        if itrack not in self.track_to_nslc_ids:
-                            self.track_to_nslc_ids[itrack] = set()
-
-                        self.track_to_nslc_ids[itrack].add(trace.nslc_id)
-
-                        if itrack not in track_scaling_keys:
-                            track_scaling_keys[itrack] = set()
-
-                        scaling_key = self.scaling_key(trace)
-                        track_scaling_keys[itrack].add(scaling_key)
-
-                        color = pyrocko.plot.color(
-                            color_lookup[self.color_gather(trace)])
-
-                        k = itrack, scaling_key
-                        if k not in track_scaling_colors \
-                                and self.menuitem_colortraces.isChecked():
-                            track_scaling_colors[k] = color
-                        else:
-                            track_scaling_colors[k] = primary_color
-
-                    # y axes, zero lines
-
-                    trace_projections = {}
-                    for itrack in list(track_projections.keys()):
-                        if itrack not in track_scaling_keys:
-                            continue
-                        uoff = 0
-                        for scaling_key in track_scaling_keys[itrack]:
-                            data_range = data_ranges[scaling_key]
-                            dymin, dymax = data_range
-                            ymin, ymax, yinc = yscaler.make_scale(
-                                (dymin/self.gain, dymax/self.gain))
-                            iexp = yscaler.make_exp(yinc)
-                            factor = 10**iexp
-                            trace_projection = track_projections[itrack].copy()
-                            trace_projection.set_in_range(ymax, ymin)
-                            trace_projections[itrack, scaling_key] = \
-                                trace_projection
-                            umin, umax = self.time_projection.get_out_range()
-                            vmin, vmax = trace_projection.get_out_range()
-                            umax_zeroline = umax
-                            uoffnext = uoff
-
-                            if show_scales:
-                                pen = qg.QPen(primary_pen)
-                                k = itrack, scaling_key
-                                if k in track_scaling_colors:
-                                    c = qg.QColor(*track_scaling_colors[
-                                        itrack, scaling_key])
-
-                                    pen.setColor(c)
-
-                                p.setPen(pen)
-                                if nlinesavail > 3:
-                                    if self.menuitem_showscaleaxis.isChecked():
-                                        ymin_annot = math.ceil(ymin/yinc)*yinc
-                                        ny_annot = int(
-                                            math.floor(ymax/yinc)
-                                            - math.ceil(ymin/yinc)) + 1
-
-                                        for iy_annot in range(ny_annot):
-                                            y = ymin_annot + iy_annot*yinc
-                                            v = trace_projection(y)
-                                            line = qc.QLineF(
-                                                umax-10-uoff, v, umax-uoff, v)
-
-                                            p.drawLine(line)
-                                            if iy_annot == ny_annot - 1 \
-                                                    and iexp != 0:
-
-                                                sexp = ' &times; ' \
-                                                    '10<sup>%i</sup>' % iexp
-                                            else:
-                                                sexp = ''
-
-                                            snum = num_to_html(y/factor)
-                                            lab = Label(
-                                                p,
-                                                umax-20-uoff,
-                                                v, '%s%s' % (snum, sexp),
-                                                label_bg=None,
-                                                anchor='MR',
-                                                font=axannotfont,
-                                                color=c)
-
-                                            uoffnext = max(
-                                                lab.rect.width()+30.,
-                                                uoffnext)
-
-                                            annot_labels.append(lab)
-                                            if y == 0.:
-                                                umax_zeroline = \
-                                                    umax - 20 \
-                                                    - lab.rect.width() - 10 \
-                                                    - uoff
-                                    else:
-                                        if not self.menuitem_showboxes\
-                                                .isChecked():
-                                            qpoints = make_QPolygonF(
-                                                [umax-20-uoff,
-                                                 umax-10-uoff,
-                                                 umax-10-uoff,
-                                                 umax-20-uoff],
-                                                [vmax, vmax, vmin, vmin])
-                                            p.drawPolyline(qpoints)
-
-                                        snum = num_to_html(ymin)
-                                        labmin = Label(
-                                            p, umax-15-uoff, vmax, snum,
-                                            label_bg=None,
-                                            anchor='BR',
-                                            font=axannotfont,
-                                            color=c)
-
-                                        annot_labels.append(labmin)
-                                        snum = num_to_html(ymax)
-                                        labmax = Label(
-                                            p, umax-15-uoff, vmin, snum,
-                                            label_bg=None,
-                                            anchor='TR',
-                                            font=axannotfont,
-                                            color=c)
-
-                                        annot_labels.append(labmax)
-
-                                        for lab in (labmin, labmax):
-                                            uoffnext = max(
-                                                lab.rect.width()+10., uoffnext)
-
-                            if self.menuitem_showzeroline.isChecked():
-                                v = trace_projection(0.)
-                                if vmin <= v <= vmax:
-                                    line = qc.QLineF(umin, v, umax_zeroline, v)
-                                    p.drawLine(line)
-
-                            uoff = uoffnext
-
-                    p.setFont(font)
-                    p.setPen(primary_pen)
-                    for trace in processed_traces:
-                        if trace not in trace_to_itrack:
-                            continue
-
-                        itrack = trace_to_itrack[trace]
-                        scaling_key = self.scaling_key(trace)
-                        trace_projection = trace_projections[
-                            itrack, scaling_key]
-
-                        vdata = trace_projection(trace.get_ydata())
-
-                        udata_min = float(self.time_projection(trace.tmin))
-                        udata_max = float(self.time_projection(
-                            trace.tmin+trace.deltat*(vdata.size-1)))
-                        udata = num.linspace(udata_min, udata_max, vdata.size)
-
-                        qpoints = make_QPolygonF(udata, vdata)
-
+                # y axes, zero lines
+                trace_projections = {}
+                for itrack in list(track_projections.keys()):
+                    if itrack not in track_scaling_keys:
+                        continue
+                    uoff = 0
+                    for scaling_key in track_scaling_keys[itrack]:
+                        data_range = data_ranges[scaling_key]
+                        dymin, dymax = data_range
+                        ymin, ymax, yinc = yscaler.make_scale(
+                            (dymin/self.gain, dymax/self.gain))
+                        iexp = yscaler.make_exp(yinc)
+                        factor = 10**iexp
+                        trace_projection = track_projections[itrack].copy()
+                        trace_projection.set_in_range(ymax, ymin)
+                        trace_projections[itrack, scaling_key] = \
+                            trace_projection
                         umin, umax = self.time_projection.get_out_range()
                         vmin, vmax = trace_projection.get_out_range()
+                        umax_zeroline = umax
+                        uoffnext = uoff
 
-                        trackrect = qc.QRectF(umin, vmin, umax-umin, vmax-vmin)
+                        if show_scales:
+                            pen = qg.QPen(primary_pen)
+                            k = itrack, scaling_key
+                            if k in track_scaling_colors:
+                                c = qg.QColor(*track_scaling_colors[
+                                    itrack, scaling_key])
 
-                        if self.menuitem_cliptraces.isChecked():
-                            p.setClipRect(trackrect)
+                                pen.setColor(c)
 
-                        if self.menuitem_colortraces.isChecked():
-                            color = pyrocko.plot.color(
-                                color_lookup[self.color_gather(trace)])
-                            pen = qg.QPen(qg.QColor(*color), 1)
                             p.setPen(pen)
+                            if nlinesavail > 3:
+                                if self.menuitem_showscaleaxis.isChecked():
+                                    ymin_annot = math.ceil(ymin/yinc)*yinc
+                                    ny_annot = int(
+                                        math.floor(ymax/yinc)
+                                        - math.ceil(ymin/yinc)) + 1
 
-                        p.drawPolyline(qpoints)
+                                    for iy_annot in range(ny_annot):
+                                        y = ymin_annot + iy_annot*yinc
+                                        v = trace_projection(y)
+                                        line = qc.QLineF(
+                                            umax-10-uoff, v, umax-uoff, v)
 
-                        if self.floating_marker:
-                            self.floating_marker.draw_trace(
-                                self, p, trace,
-                                self.time_projection, trace_projection, 1.0)
+                                        p.drawLine(line)
+                                        if iy_annot == ny_annot - 1 \
+                                                and iexp != 0:
+                                            sexp = ' &times; ' \
+                                                '10<sup>%i</sup>' % iexp
+                                        else:
+                                            sexp = ''
 
-                        for marker in self.markers.with_key_in(
-                                self.tmin - self.markers_deltat_max,
-                                self.tmax):
+                                        snum = num_to_html(y/factor)
+                                        lab = Label(
+                                            p,
+                                            umax-20-uoff,
+                                            v, '%s%s' % (snum, sexp),
+                                            label_bg=None,
+                                            anchor='MR',
+                                            font=axannotfont,
+                                            color=c)
 
-                            if marker.tmin < self.tmax \
-                                    and self.tmin < marker.tmax \
-                                    and marker.kind \
-                                    in self.visible_marker_kinds:
-                                marker.draw_trace(
-                                    self, p, trace, self.time_projection,
-                                    trace_projection, 1.0)
+                                        uoffnext = max(
+                                            lab.rect.width()+30., uoffnext)
 
-                        p.setPen(primary_pen)
+                                        annot_labels.append(lab)
+                                        if y == 0.:
+                                            umax_zeroline = \
+                                                umax - 20 \
+                                                - lab.rect.width() - 10 \
+                                                - uoff
+                                else:
+                                    if not self.menuitem_showboxes\
+                                            .isChecked():
+                                        qpoints = make_QPolygonF(
+                                            [umax-20-uoff,
+                                             umax-10-uoff,
+                                             umax-10-uoff,
+                                             umax-20-uoff],
+                                            [vmax, vmax, vmin, vmin])
+                                        p.drawPolyline(qpoints)
 
-                        if self.menuitem_cliptraces.isChecked():
-                            p.setClipRect(0, 0, int(w), int(h))
+                                    snum = num_to_html(ymin)
+                                    labmin = Label(
+                                        p, umax-15-uoff, vmax, snum,
+                                        label_bg=None,
+                                        anchor='BR',
+                                        font=axannotfont,
+                                        color=c)
 
-                p.setPen(primary_pen)
+                                    annot_labels.append(labmin)
+                                    snum = num_to_html(ymax)
+                                    labmax = Label(
+                                        p, umax-15-uoff, vmin, snum,
+                                        label_bg=None,
+                                        anchor='TR',
+                                        font=axannotfont,
+                                        color=c)
 
-                while font.pointSize() > 2:
-                    fm = qg.QFontMetrics(font, p.device())
-                    trackheight = self.track_to_screen(1.-0.05) \
-                        - self.track_to_screen(0.05)
-                    nlinesavail = trackheight/float(fm.lineSpacing())
-                    if nlinesavail > 1:
-                        break
+                                    annot_labels.append(labmax)
 
-                    font.setPointSize(font.pointSize()-1)
+                                    for lab in (labmin, labmax):
+                                        uoffnext = max(
+                                            lab.rect.width()+10., uoffnext)
+
+                        if self.menuitem_showzeroline.isChecked():
+                            v = trace_projection(0.)
+                            if vmin <= v <= vmax:
+                                line = qc.QLineF(umin, v, umax_zeroline, v)
+                                p.drawLine(line)
+
+                        uoff = uoffnext
 
                 p.setFont(font)
-                for key in self.track_keys:
-                    itrack = self.key_to_row[key]
-                    if itrack in track_projections:
-                        plabel = ' '.join(
-                            [str(x) for x in key if x is not None])
-                        lx = 10
-                        ly = self.track_to_screen(itrack+0.5)
-                        draw_label(p, lx, ly, plabel, label_bg, 'ML')
+                p.setPen(primary_pen)
+                for trace in processed_traces:
+                    continue
+                    if trace not in trace_to_itrack:
+                        continue
 
-                for lab in annot_labels:
-                    lab.draw()
+                    itrack = trace_to_itrack[trace]
+                    scaling_key = self.scaling_key(trace)
+                    trace_projection = trace_projections[
+                        itrack, scaling_key]
+
+                    vdata = trace_projection(trace.get_ydata())
+
+                    udata_min = float(self.time_projection(trace.tmin))
+                    udata_max = float(self.time_projection(
+                        trace.tmin+trace.deltat*(vdata.size-1)))
+                    udata = num.linspace(udata_min, udata_max, vdata.size)
+
+                    qpoints = make_QPolygonF(udata, vdata)
+
+                    umin, umax = self.time_projection.get_out_range()
+                    vmin, vmax = trace_projection.get_out_range()
+
+                    trackrect = qc.QRectF(umin, vmin, umax-umin, vmax-vmin)
+
+                    if self.menuitem_cliptraces.isChecked():
+                        p.setClipRect(trackrect)
+
+                    if self.menuitem_colortraces.isChecked():
+                        color = pyrocko.plot.color(
+                            color_lookup[self.color_gather(trace)])
+                        pen = qg.QPen(qg.QColor(*color), 1)
+                        p.setPen(pen)
+
+                    p.drawPolyline(qpoints)
+
+                    if self.floating_marker:
+                        self.floating_marker.draw_trace(
+                            self, p, trace,
+                            self.time_projection, trace_projection, 1.0)
+
+                    for marker in self.markers.with_key_in(
+                            self.tmin - self.markers_deltat_max,
+                            self.tmax):
+
+                        if marker.tmin < self.tmax \
+                                and self.tmin < marker.tmax \
+                                and marker.kind \
+                                in self.visible_marker_kinds:
+                            marker.draw_trace(
+                                self, p, trace, self.time_projection,
+                                trace_projection, 1.0)
+
+                    p.setPen(primary_pen)
+
+                    if self.menuitem_cliptraces.isChecked():
+                        p.setClipRect(0, 0, int(w), int(h))
+
+            if processed_traces:
+                waterfall = self.waterfall
+                waterfall.set_time_range(self.tmin, self.tmax)
+                waterfall.set_traces(processed_traces)
+                waterfall.set_cmap(self.waterfall_cmap)
+                waterfall.set_clip(
+                    self.waterfall_clip_min, self.waterfall_clip_max)
+                waterfall.show_absolute_values(self.waterfall_show_absolute)
+
+                rect = qc.QRectF(
+                    0, self.ax_height,
+                    self.width(), self.height() - self.ax_height*2
+                )
+                waterfall.draw_waterfall(p, rect=rect)
+
+            p.setPen(primary_pen)
+            while font.pointSize() > 2:
+                fm = qg.QFontMetrics(font, p.device())
+                trackheight = self.track_to_screen(1.-0.05) \
+                    - self.track_to_screen(0.05)
+                nlinesavail = trackheight/float(fm.lineSpacing())
+                if nlinesavail > 1:
+                    break
+
+                font.setPointSize(font.pointSize()-1)
+
+            p.setFont(font)
+            mouse_pos = self.mapFromGlobal(qg.QCursor.pos())
+
+            for key in self.track_keys:
+                itrack = self.key_to_row[key]
+                if itrack in track_projections:
+                    plabel = ' '.join(
+                        [str(x) for x in key if x is not None])
+                    lx = 10
+                    ly = self.track_to_screen(itrack+0.5)
+
+                    if p.font().pointSize() >= MIN_LABEL_SIZE_PT:
+                        draw_label(p, lx, ly, plabel, label_bg, 'ML')
+                        continue
+
+                    contains_cursor = \
+                        self.track_to_screen(itrack) \
+                        < mouse_pos.y() \
+                        < self.track_to_screen(itrack+1)
+
+                    if not contains_cursor:
+                        continue
+                    
+                    font_large = p.font()
+                    font_large.setPointSize(MIN_LABEL_SIZE_PT)
+                    p.setFont(font_large)
+                    draw_label(p, lx, ly, plabel, label_bg, 'ML')
+                    p.setFont(font)                
+
+            for lab in annot_labels:
+                lab.draw()
 
             self.timer_draw.stop()
 
@@ -3287,6 +3331,7 @@ def MakePileViewerMainClass(base):
 
         def clean_update(self):
             self.old_processed_traces = None
+            self.old_chopped_traces = None
             self.update()
 
         def get_adequate_tpad(self):
@@ -3350,6 +3395,9 @@ def MakePileViewerMainClass(base):
                 min_deltat_allow, self.rotate, self.shown_tracks_range,
                 ads, self.pile.get_update_count())
 
+            dtmin = 0. if not self.old_vec else tmin_ - self.old_vec[0]
+            dtmax = 0. if not self.old_vec else tmax_ - self.old_vec[1]
+
             if (self.old_vec
                     and self.old_vec[0] <= vec[0]
                     and vec[1] <= self.old_vec[1]
@@ -3359,12 +3407,10 @@ def MakePileViewerMainClass(base):
 
                 logger.debug('Using cached traces')
                 processed_traces = self.old_processed_traces
+                fresh_traces = False
 
             else:
-                self.old_vec = vec
-
                 processed_traces = []
-
                 if self.pile.deltatmax >= min_deltat_allow:
 
                     def group_selector(gr):
@@ -3515,21 +3561,27 @@ def MakePileViewerMainClass(base):
                 processed_traces = self.post_process_hooks(processed_traces)
 
                 self.old_processed_traces = processed_traces
+                self.old_vec = vec
+                fresh_traces = True
 
-            chopped_traces = []
-            for trace in processed_traces:
-                try:
-                    ctrace = trace.chop(
-                        tmin_-trace.deltat*4., tmax_+trace.deltat*4.,
-                        inplace=False)
+            if not self.old_chopped_traces or fresh_traces or dtmin or dtmax:
+                chopped_traces = []
+                for trace in processed_traces:
+                    try:
+                        ctrace = trace.chop(
+                            tmin_-trace.deltat*4., tmax_+trace.deltat*4.,
+                            inplace=False)
 
-                except pyrocko.trace.NoData:
-                    continue
+                    except pyrocko.trace.NoData:
+                        continue
 
-                if ctrace.data_len() < 2:
-                    continue
+                    if ctrace.data_len() < 2:
+                        continue
 
-                chopped_traces.append(ctrace)
+                    chopped_traces.append(ctrace)
+                    self.old_chopped_traces = chopped_traces
+            else:
+                chopped_traces = self.old_chopped_traces
 
             self.timer_cutout.stop()
             return chopped_traces
@@ -3624,6 +3676,19 @@ def MakePileViewerMainClass(base):
 
         def rot_change(self, value, ignore):
             self.rotate = value
+            self.update()
+        
+        def waterfall_cmap_change(self, cmap):
+            self.waterfall_cmap = cmap
+            self.update()
+        
+        def waterfall_clip_change(self, clip_min, clip_max):
+            self.waterfall_clip_min = clip_min
+            self.waterfall_clip_max = clip_max
+            self.update()
+        
+        def waterfall_show_absolute_change(self, toggle):
+            self.waterfall_show_absolute = toggle
             self.update()
 
         def set_selected_markers(self, markers):
@@ -4283,6 +4348,7 @@ class PileViewer(qw.QFrame):
         self.gain_control.setup('Gain:', 0.001, 1000., 1., 2)
         self.rot_control = LinValControl()
         self.rot_control.setup('Rotate [deg]:', -180., 180., 0., 3)
+        self.colorbar_control = ColorbarControl(self)
 
         self.lowpass_control.valchange.connect(
             self.viewer.lowpass_change)
@@ -4292,12 +4358,22 @@ class PileViewer(qw.QFrame):
             self.viewer.gain_change)
         self.rot_control.valchange.connect(
             self.viewer.rot_change)
+        self.colorbar_control.cmap_changed.connect(
+            self.viewer.waterfall_cmap_change
+        )
+        self.colorbar_control.clip_changed.connect(
+            self.viewer.waterfall_clip_change
+        )
+        self.colorbar_control.show_absolute_toggled.connect(
+            self.viewer.waterfall_show_absolute_change
+        )
 
         for icontrol, control in enumerate((
                 self.highpass_control,
                 self.lowpass_control,
                 self.gain_control,
-                self.rot_control)):
+                self.rot_control,
+                self.colorbar_control)):
 
             for iwidget, widget in enumerate(control.widgets()):
                 layout.addWidget(widget, icontrol, iwidget)
