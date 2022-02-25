@@ -42,6 +42,27 @@ class PyrockoArgumentParser(argparse.ArgumentParser):
 
 
 class SquirrelArgumentParser(PyrockoArgumentParser):
+    '''
+    Parser for CLI arguments with a some extras for Squirrel based apps.
+
+    :param command:
+        Implementation of the command.
+    :type command:
+        :py:class:`SquirrelCommand` (or module providing the same interface).
+
+    :param subcommands:
+        Implementations of subcommands.
+    :type subcommands:
+        :py:class:`list` of :py:class:`SquirrelCommand` (or modules providing
+        the same interface).
+
+    :param \\*args:
+        Handed through to base class's init.
+
+    :param \\*\\*kwargs:
+        Handed through to base class's init.
+    '''
+
     def __init__(self, *args, command=None, subcommands=[], **kwargs):
 
         self._command = command
@@ -80,6 +101,13 @@ class SquirrelArgumentParser(PyrockoArgumentParser):
             subparser.set_defaults(target=mod.run, subparser=subparser)
 
     def parse_args(self, args=None, namespace=None):
+        '''
+        Parse arguments given on command line.
+
+        Extends the functionality of
+        :py:meth:`argparse.ArgumentParser.parse_args` to process and handle the
+        standard options ``--loglevel``, ``--progress`` and ``--help``.
+        '''
 
         args = PyrockoArgumentParser.parse_args(
             self, args=args, namespace=namespace)
@@ -104,6 +132,20 @@ class SquirrelArgumentParser(PyrockoArgumentParser):
         return args
 
     def dispatch(self, args):
+        '''
+        Dispatch execution to selected command/subcommand.
+
+        :param args:
+            Parsed arguments obtained from :py:meth:`parse_args`.
+
+        :returns:
+            ``True`` if dispatching was successful, ``False`` othewise.
+
+        If an exception of type
+        :py:exc:`~pyrocko.squirrel.error.SquirrelError` or
+        :py:exc:`~pyrocko.squirrel.error.ToolError` is caught, the error is
+        logged and the program is terminated with exit code 1.
+        '''
         eff_parser = args.__dict__.get('subparser', self)
         target = args.__dict__.get('target', None)
 
@@ -119,15 +161,51 @@ class SquirrelArgumentParser(PyrockoArgumentParser):
         return False
 
     def run(self, args=None):
+        '''
+        Parse arguments and dispatch to selected command/subcommand.
+
+        This simply calls :py:meth:`parse_args` and then :py:meth:`dispatch`
+        with the obtained ``args``. A usage message is printed if no command is
+        selected.
+        '''
         args = self.parse_args(args)
         if not self.dispatch(args):
             self.print_help()
 
     def add_squirrel_selection_arguments(self):
+        '''
+        Set up command line options commonly used to configure a
+        :py:class:`~pyrocko.squirrel.base.Squirrel` instance.
+
+        This will  optional arguments ``--add``, ``--include``, ``--exclude``,
+        ``--optimistic``, ``--format``, ``--kind``, ``--persistent``,
+        ``--update``, and ``--kind`` to a given argument parser.
+
+        Call ``args.make_squirrel()`` on the arguments returned from
+        :py:meth:`parse_args` to finally instantiate and configure the
+        :py:class:`~pyrocko.squirrel.base.Squirrel` instance.
+        '''
         add_squirrel_selection_arguments(self)
         self._have_selection_arguments = True
 
     def add_squirrel_query_arguments(self, without=[]):
+        '''
+        Set up command line options commonly used in squirrel queries.
+
+        This will add options ``--codes``, ``--tmin``, ``--tmax``, and
+        ``--time``.
+
+        Once finished with parsing, the query arguments are available as
+        ``args.squirrel_query`` on the arguments returned from
+        :py:meth:`prase_args`.
+
+        :param without:
+            Suppress adding given options.
+        :type without:
+            :py:class:`list` of :py:class:`str`, choices: ``'tmin'``,
+            ``'tmax'``, ``'codes'``, and ``'time'``.
+        '''
+
         add_squirrel_query_arguments(self, without=without)
         self._have_query_arguments = True
 
