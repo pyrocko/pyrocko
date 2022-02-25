@@ -115,7 +115,7 @@ Excellent! It is downloading waveform data and calculating RMS values.
 
 The lines with the RMS values are printed to *stdout*, while log messages go to
 *stderr*. Like this, we could for example redirect only the RMS results to a
-file but still see the log messages in the terminal:
+file but still watch the log messages in the terminal:
 
 .. code-block:: shell-session
 
@@ -132,7 +132,7 @@ Variant 2: basic CLI app
 
 Instead of hard-coding the data sources in the script, we could set them with
 command line arguments. The :py:mod:`pyrocko.squirrel.tool` module offers
-functionality to set up our program so that it accepts the same options and
+functionality to set up a program so that it accepts the same options and
 arguments like for example ``squirrel scan``. Here's the complete program after
 changing it to use :py:class:`~pyrocko.squirrel.tool.SquirrelArgumentParser`:
 
@@ -303,3 +303,35 @@ Here's the final implementation of the RMS tool:
         squirrel.run(
             command=PlotRMSTool(),
             description='Report hourly RMS values.')
+
+Now we can easily change the time span, station, or channel with command line
+arguments.
+
+.. code-block:: shell-session
+
+    $ python squirrel_rms3.py rms \
+        --dataset bgr-gr-lh.dataset.yaml \
+        --tmin=2020-01-01 --tmax=2020-01-02 \
+        --codes='*.BFO.*.LH?'
+    GR.BFO..LHE. 2020-01-01 00:00:00.000 46429.75461920944
+    GR.BFO..LHN. 2020-01-01 00:00:00.000 33135.87662941785
+    GR.BFO..LHZ. 2020-01-01 00:00:00.000 34431.2620593553
+    GR.BFO..LHE. 2020-01-01 01:00:00.000 46297.0737952195
+    GR.BFO..LHN. 2020-01-01 01:00:00.000 34239.18093354454
+    GR.BFO..LHZ. 2020-01-01 01:00:00.000 32941.96682045564
+    [...]
+    $ python squirrel_rms3.py plot
+    squirrel_rms3.py:psq.tool.common - CRITICAL - Not implemented yet!
+
+And now you can start implementing the ``plot`` subcommand!
+
+Summary
+.......
+
+In this tutorial we have explored different ways of how to structure a Squirrel
+based continuous waveform processing program and how to make use of Squirrel's
+CLI tool helpers. These helpers offer a clean and easy way to configure data
+sources in a consistent fashion across multiple seismological applications.
+They provide standardized program options allowing users to familiarize with a
+new application more easily. Following the suggested structure also greatly
+simplifies reuse of existing functionality in new programs.
