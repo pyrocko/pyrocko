@@ -16,7 +16,7 @@ def rms(data):
 tmin = stt('2022-01-14')
 tmax = stt('2022-01-17')
 
-# Filter range:
+# Frequency band for restitution:
 fmin = 0.01
 fmax = 0.05
 
@@ -41,21 +41,34 @@ sq.update(tmin=tmin, tmax=tmax)
 # and `codes` to enable download of everything selected in `add_fdsn(...)`.
 sq.update_waveform_promises(tmin=tmin, tmax=tmax, codes='*.BFO.*.*')
 
+# Make sure instrument response information is available for the selected data.
+sq.update_responses(tmin=tmin, tmax=tmax, codes='*.BFO.*.*')
+
+# Time length for padding (half of overlap).
+tpad = 1.0 / fmin
+
 # Iterate window-wise, with some overlap over the data:
 for batch in sq.chopper_waveforms(
         tmin=tmin,
         tmax=tmax,
         codes='*.*.*.LHZ',
         tinc=3600.,              # One hour time windows (payload).
-        tpad=1.0/fmin,           # Add padding to absorb filter artifacts.
+        tpad=tpad,               # Add padding to absorb processing artifacts.
         want_incomplete=False,   # Skip incomplete windows.
         snap_window=True):       # Start all windows at full hours.
 
     for tr in batch.traces:
+        resp = sq.get_response(tr).get_effective()
 
-        # Filtering will introduce some artifacts in the padding interval.
-        tr.highpass(4, fmin)
-        tr.lowpass(4, fmax)
+        # Restitution via spectral division. This will introduce artifacts
+        # in the padding area in the beginning and end of the trace.
+        tr = tr.transfer(
+            tpad,                  # Fade in / fade out length.
+            (0.5*fmin, fmin,
+             fmax, 2.0*fmax),      # Frequency taper.
+            resp,                  # Complex frequency response of instrument.
+            invert=True,           # Use inverse of instrument response.
+            cut_off_fading=False)  # Disable internal trimming.
 
         # Cut off the contaminated padding. Trim to the payload interval.
         tr.chop(batch.tmin, batch.tmax)

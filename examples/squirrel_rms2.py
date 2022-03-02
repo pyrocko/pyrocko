@@ -28,18 +28,24 @@ sq = args.make_squirrel()
 
 sq.update(tmin=tmin, tmax=tmax)
 sq.update_waveform_promises(tmin=tmin, tmax=tmax, codes='*.BFO.*.*')
+sq.update_responses(tmin=tmin, tmax=tmax, codes='*.BFO.*.*')
+
+tpad = 1.0 / fmin
 
 for batch in sq.chopper_waveforms(
         tmin=tmin,
         tmax=tmax,
         codes='*.*.*.LHZ',
         tinc=3600.,
-        tpad=1.0/fmin,
+        tpad=tpad,
         want_incomplete=False,
         snap_window=True):
 
     for tr in batch.traces:
-        tr.highpass(4, fmin)
-        tr.lowpass(4, fmax)
+        resp = sq.get_response(tr).get_effective()
+        tr = tr.transfer(
+            tpad, (0.5*fmin, fmin, fmax, 2.0*fmax), resp, invert=True,
+            cut_off_fading=False)
+
         tr.chop(batch.tmin, batch.tmax)
         print(tr.str_codes, time_to_str(batch.tmin), rms(tr.ydata))

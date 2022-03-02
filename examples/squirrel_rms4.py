@@ -1,6 +1,6 @@
 import argparse
 import numpy as np
-from pyrocko.util import time_to_str as tts, str_to_time_fillup as stt
+from pyrocko.util import time_to_str, str_to_time_fillup as stt
 from pyrocko import squirrel
 
 
@@ -15,6 +15,7 @@ parser.add_argument(
     '--fmin',
     dest='fmin',
     metavar='FLOAT',
+    default=0.01,
     type=float,
     help='Corner of highpass [Hz].')
 
@@ -22,6 +23,7 @@ parser.add_argument(
     '--fmax',
     dest='fmax',
     metavar='FLOAT',
+    default=0.05,
     type=float,
     help='Corner of lowpass [Hz].')
 
@@ -35,22 +37,21 @@ fmax = args.fmax
 tmin = stt('2022-01-14')
 tmax = stt('2022-01-17')
 
+tpad = 1.0 / fmin
 
 for batch in sq.chopper_waveforms(
         tmin=tmin,
         tmax=tmax,
         tinc=3600.,
-        tpad=1.0/fmin if fmin is not None else 0.0,
+        tpad=tpad,
         want_incomplete=False,
         snap_window=True):
 
     for tr in batch.traces:
-
-        if fmin is not None:
-            tr.highpass(4, fmin)
-
-        if fmax is not None:
-            tr.lowpass(4, fmax)
+        resp = sq.get_response(tr).get_effective()
+        tr = tr.transfer(
+            tpad, (0.5*fmin, fmin, fmax, 2.0*fmax), resp, invert=True,
+            cut_off_fading=False)
 
         tr.chop(batch.tmin, batch.tmax)
-        print(tr.str_codes, tts(tr.tmin), rms(tr.ydata))
+        print(tr.str_codes, time_to_str(tr.tmin), rms(tr.ydata))
