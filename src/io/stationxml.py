@@ -2371,43 +2371,33 @@ def primitive_merge(sxs):
 
 
 def split_channels(sx):
+    for nslc in sx.nslc_code_list:
+        network_list = sx.network_list
+        network_list_filtered = [
+            network for network in network_list
+            if network.code == nslc[0]]
 
-    sx = copy.deepcopy(sx)
-
-    def lc(channel):
-        return channel.location_code, channel.code
-
-    nslc = None
-    network_list = sx.network_list
-    for network in sorted(network_list, key=lambda network: network.code):
-
-        if nslc is None or nslc[0] != network.code:
+        for network in network_list_filtered:
             sx.network_list = [network]
-        else:
-            sx.network_list.append(network)
+            station_list = network.station_list
+            station_list_filtered = [
+                station for station in station_list
+                if station.code == nslc[1]]
 
-        station_list = network.station_list
-        for station in sorted(station_list, key=lambda station: station.code):
-            if nslc is None or nslc[:2] != (network.code, station.code):
+            for station in station_list_filtered:
                 network.station_list = [station]
-            else:
-                network.station_list.append(station)
+                channel_list = station.channel_list
+                station.channel_list = [
+                    channel for channel in channel_list
+                    if (channel.location_code, channel.code) == nslc[2:4]]
 
-            channel_list = station.channel_list
-            for channel in sorted(channel_list, key=lc):
-                this_nslc = (network.code, station.code) + lc(channel)
-                if nslc is None or nslc != this_nslc:
-                    if nslc is not None:
-                        yield nslc, copy.deepcopy(sx)
+                yield nslc, copy.deepcopy(sx)
 
-                    station.channel_list = [channel]
-                else:
-                    station.channel_list.append(channel)
+                station.channel_list = channel_list
 
-                nslc = this_nslc
+            network.station_list = station_list
 
-    if nslc is not None:
-        yield nslc, copy.deepcopy(sx)
+        sx.network_list = network_list
 
 
 if __name__ == '__main__':
