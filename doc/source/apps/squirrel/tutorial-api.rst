@@ -28,8 +28,8 @@ it will be pleasure to maintain.
 - Station/channel selection.
 - Efficiently hop through the data in chunks of one hour
 - Always start chunks at full hour.
-- Bandpass filter data before calculating RMS.
-- Extinguish filter artifacts by use of overlapping time windows.
+- Deconvolve instrument response before calculating RMS.
+- Extinguish processing artifacts by use of overlapping time windows.
 
 .. _squirrel_quick_and_dirty:
 
@@ -266,7 +266,7 @@ In this next iteration of our example RMS app, we will:
   exceptions and reporting failure conditions in a consistent way.
 - Add options to select the channels and time spans to be processed
   (``--codes``, ``--tmin``, ``--tmax``)
-- Add options to select the filter range (``--fmin``, ``--fmax``).
+- Add options to select the frequency range (``--fmin``, ``--fmax``).
 - Support multiple subcommands: ``./squirrel_rms3.py rms`` will report the RMS
   values just like before and ``./squirrel_rms3.py plot`` is there to plot the
   RMS values as a function of time. The latter is left unimplemented as an
