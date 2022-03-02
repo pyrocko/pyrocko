@@ -794,6 +794,14 @@ class Squirrel(Selection):
 
         return tmin, tmax, codes
 
+    def _get_selection_args_str(self, *args, **kwargs):
+
+        tmin, tmax, codes = self._get_selection_args(*args, **kwargs)
+        return 'tmin: %s, tmax: %s, codes: %s' % (
+            util.time_to_str(tmin) if tmin is not None else 'none',
+            util.time_to_str(tmax) if tmin is not None else 'none',
+            str(codes))
+
     def _selection_args_to_kwargs(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None):
 
@@ -1461,11 +1469,9 @@ class Squirrel(Selection):
             source.update_waveform_promises(self, constraint)
 
     def update_responses(self, constraint=None, **kwargs):
-        # TODO
         if constraint is None:
             constraint = client.Constraint(**kwargs)
 
-        print('contraint ignored atm')
         for source in self._sources:
             source.update_response_inventory(self, constraint)
 
@@ -1768,10 +1774,18 @@ class Squirrel(Selection):
         responses = self.get_responses(obj, tmin, tmax, time, codes)
         if len(responses) == 0:
             raise error.NotAvailable(
-                'No instrument response available.')
+                'No instrument response available (%s).'
+                % self._get_selection_args_str(
+                    RESPONSE, obj, tmin, tmax, time, codes))
+
         elif len(responses) > 1:
             raise error.NotAvailable(
-                'Multiple instrument responses matching given constraints.')
+                'Multiple instrument responses matching given constraints '
+                '(%s):\n%s' % (
+                    self._get_selection_args_str(
+                        RESPONSE, obj, tmin, tmax, time, codes),
+                    '\n'.join(
+                        '  ' + resp.summary for resp in responses)))
 
         return responses[0]
 
