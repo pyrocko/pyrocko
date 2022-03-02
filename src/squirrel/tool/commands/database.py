@@ -43,7 +43,9 @@ def setup(parser):
 def run(parser, args):
     action = args.action
     if action == 'env':
-        print(sq.get_environment())
+        env = sq.get_environment()
+        env.path_prefix = env.get_basepath()
+        print(env)
 
     else:
         s = sq.Squirrel()
