@@ -702,7 +702,8 @@ class FDSNSource(Source):
 
     def update_response_inventory(self, squirrel, constraint):
         cpath = os.path.abspath(self._get_channels_path())
-        nuts = squirrel.iter_nuts('channel', path=cpath)
+        nuts = squirrel.iter_nuts(
+            'channel', path=cpath, codes=constraint.codes)
 
         tmin = g_tmin_queries
         tmax = g_tmax
