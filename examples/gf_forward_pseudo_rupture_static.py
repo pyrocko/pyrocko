@@ -133,7 +133,10 @@ axes[0].get_xaxis().set_tick_params(
 axes[1].get_yaxis().set_tick_params(
     left=True, right=False, labelleft=False, labelright=False)
 
-cbar = fig.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax)
+sm = cm.ScalarMappable(norm=norm, cmap=cmap)
+sm.set_array([])  # If not set, an error might be issued
+
+cbar = fig.colorbar(sm, cax=cax)
 cbar.ax.set_ylabel('$u$ [m]')
 
 fig.savefig('gf_forward_pseudo_rupture_static.png')
