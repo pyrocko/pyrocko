@@ -18,7 +18,7 @@ outfile_py3="/vagrant/test-$branch.py3.out"
 rm -f "$outfile_py3"
 
 cd $HOME
-sudo yum -y install git make gcc mesa-libGL
+sudo yum -y install git make gcc mesa-libGL patch
 
 if [ ! -f "miniconda3.sh" ] ; then
     curl 'https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh' -o miniconda3.sh
