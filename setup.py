@@ -722,7 +722,7 @@ setup(
     keywords=[
         'seismology, waveform analysis, earthquake modelling, geophysics,'
         ' geophysical inversion'],
-    python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, <4',
+    python_requires='>=3.5, <4',
     # Removed in favor of PEP 518 advocating `pyproject.toml`:
     # setup_requires=[
     #     'numpy>=1.8'
