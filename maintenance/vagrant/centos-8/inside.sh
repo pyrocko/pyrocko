@@ -18,7 +18,11 @@ outfile_py3="/vagrant/test-$branch.py3.out"
 rm -f "$outfile_py3"
 
 cd $HOME
-sudo yum -y install git make gcc mesa-libGL python3
+sudo sed -i 's/^mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+sudo sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+sudo yum -y update
+
+sudo yum -y install git make gcc mesa-libGL python3 patch
 
 if [ -e "$pyrockodir" ] ; then
     sudo rm -rf "$pyrockodir"
