@@ -1082,7 +1082,7 @@ def decimate_coeffs(q, n=None, ftype='iir'):
     if ftype == 'fir':
         coeffs = GlobalVars.decimate_fir_coeffs
         if (n, 1./q) not in coeffs:
-            coeffs[n, 1./q] = signal.firwin(n+1, .75/q, window='hamming', fs=2)
+            coeffs[n, 1./q] = signal.firwin(n+1, .75/q, window='hamming')
 
         b = coeffs[n, 1./q]
         return b, [1.], n
