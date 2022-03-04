@@ -256,8 +256,19 @@ class PoleZeroResponse(FrequencyResponse):
             **kwargs)
 
     def evaluate(self, freqs):
-        return signal.freqs_zpk(
-            self.zeros, self.poles, self.constant, freqs*2.*num.pi)[1]
+        if hasattr(signal, 'freqs_zpk'):  # added in scipy 0.19.0
+            return signal.freqs_zpk(
+                self.zeros, self.poles, self.constant, freqs*2.*num.pi)[1]
+        else:
+            jomeg = 1.0j * 2.*num.pi*freqs
+
+            a = num.ones(freqs.size, dtype=complex)*self.constant
+            for z in self.zeros:
+                a *= jomeg-z
+            for p in self.poles:
+                a /= jomeg-p
+
+            return a
 
     def is_scalar(self):
         return len(self.zeros) == 0 and len(self.poles) == 0

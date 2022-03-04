@@ -33,7 +33,7 @@ class ResponseTestCase(unittest.TestCase):
 
     @unittest.skipUnless(
         evalresp.have_evalresp(), 'evalresp not supported on this platform')
-    def test_evalresp(self, plot=False):
+    def test_evalresp(self, plot=show_plot):
 
         resp_fpath = common.test_data_file('test2.resp')
 
@@ -57,9 +57,17 @@ class ResponseTestCase(unittest.TestCase):
         resp = response.PoleZeroResponse(zeros, poles, constant)
 
         transfer2 = resp.evaluate(freqs)
+        from scipy import signal
+        freqs_zpk = signal.freqs_zpk
+        del signal.freqs_zpk
+
+        transfer3 = resp.evaluate(freqs)
+        signal.freqs_zpk = freqs_zpk
+
+        assert cnumeq(transfer3, transfer2, 1e-6)
 
         if plot:
-            plot_tfs(freqs, [transfer, transfer2])
+            plot_tfs(freqs, [transfer, transfer2, transfer3])
 
         assert numeq(transfer, transfer2, 1e-4)
 
