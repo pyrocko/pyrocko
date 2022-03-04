@@ -1092,7 +1092,7 @@ def decimate_coeffs(q, n=None, ftype='iir'):
         if (n, 1./q) not in coeffs:
             coeffs[n, 1./q] = signal.remez(
                 n+1, (0., .75/q, 1./q, 1.),
-                (1., 0.), fs=2, weight=(1, 50))
+                (1., 0.), Hz=2, weight=(1, 50))
         b = coeffs[n, 1./q]
         return b, [1.], n
 
