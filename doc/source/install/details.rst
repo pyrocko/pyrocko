@@ -21,7 +21,7 @@ installed from source:
    * `NumPy <http://numpy.scipy.org/>`_ (>= 1.6, with development headers)
 
 * Try to use normal system packages for these Python modules:
-   * `Python <http://www.python.org/>`_ (== 2.7 or >= 3.4, with development headers, Python 2 support will be dropped soon)
+   * `Python <http://www.python.org/>`_ (>= 3.5, with development headers)
    * `NumPy <http://numpy.scipy.org/>`_ (>= 1.6, with development headers)
    * `SciPy <http://scipy.org/>`_
    * `matplotlib <http://matplotlib.sourceforge.net/>`_ (with Qt4 or Qt5 backend)
