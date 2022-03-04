@@ -19,7 +19,7 @@ rm -f "$outfile_py3"
 
 cd $HOME
 sudo pacman -Syu --noconfirm --needed git python-setuptools \
-    python2-setuptools xorg-server-xvfb xorg-fonts-100dpi xorg-fonts-75dpi \
+    xorg-server-xvfb xorg-fonts-100dpi xorg-fonts-75dpi \
     xorg-fonts-misc patch
 
 if [ -e "$pyrockodir" ] ; then
