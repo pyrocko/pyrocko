@@ -58,11 +58,16 @@ class ResponseTestCase(unittest.TestCase):
 
         transfer2 = resp.evaluate(freqs)
         from scipy import signal
-        freqs_zpk = signal.freqs_zpk
-        del signal.freqs_zpk
+        if hasattr(signal, 'freqs_zpk'):
+            freqs_zpk = signal.freqs_zpk
+            del signal.freqs_zpk
+        else:
+            freqs_zpk = None
 
         transfer3 = resp.evaluate(freqs)
-        signal.freqs_zpk = freqs_zpk
+
+        if freqs_zpk is not None:
+            signal.freqs_zpk = freqs_zpk
 
         assert cnumeq(transfer3, transfer2, 1e-6)
 
