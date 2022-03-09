@@ -603,7 +603,8 @@ ext_modules = [
         include_dirs=[get_python_inc(), numpy.get_include(),
                       get_build_include('libmseed')],
         extra_compile_args=extra_compile_args + (
-            ['-D_CRT_SECURE_NO_WARNINGS', '-DWIN32'] if is_windows else []),
+            ['-D_CRT_SECURE_NO_WARNINGS', '-DWIN32'] if
+            is_windows else ['-fno-strict-aliasing']),
         sources=[
             op.join('src', 'io', 'ext', 'mseed_ext.c')] + libmseed_sources),
 
