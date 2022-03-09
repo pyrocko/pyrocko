@@ -56,25 +56,31 @@ def make_control_point(ipos_block, t_block, tref, deltat):
     ipos0 = x[0]
     x -= ipos0
     y = tred[iok].copy()
-    (slope, offset), cov = num.polyfit(x, y, 1, cov=True)
+    if x.size < 2:
+        raise ControlPointError('Insufficient number control points after QC.')
 
-    slope_err, offset_err = num.sqrt(num.diag(cov))
+    elif x.size < 5:  # needed for older numpy versions
+        (slope, offset) = num.polyfit(x, y, 1)
+    else:
+        (slope, offset), cov = num.polyfit(x, y, 1, cov=True)
 
-    slope_err_limit = 1.0e-10
-    if ipos_block.size < N_GPS_TAGS_WANTED // 2:
-        slope_err_limit *= (200. / ipos_block.size)
+        slope_err, offset_err = num.sqrt(num.diag(cov))
 
-    offset_err_limit = 5.0e-3
+        slope_err_limit = 1.0e-10
+        if ipos_block.size < N_GPS_TAGS_WANTED // 2:
+            slope_err_limit *= (200. / ipos_block.size)
 
-    if slope_err > slope_err_limit:
-        raise ControlPointError(
-            'Slope error too large: %g (limit: %g' % (
-                slope_err, slope_err_limit))
+        offset_err_limit = 5.0e-3
 
-    if offset_err > offset_err_limit:
-        raise ControlPointError(
-            'Offset error too large: %g (limit: %g' % (
-                offset_err, offset_err_limit))
+        if slope_err > slope_err_limit:
+            raise ControlPointError(
+                'Slope error too large: %g (limit: %g' % (
+                    slope_err, slope_err_limit))
+
+        if offset_err > offset_err_limit:
+            raise ControlPointError(
+                'Offset error too large: %g (limit: %g' % (
+                    offset_err, offset_err_limit))
 
     ic = ipos_block[ipos_block.size//2]
     tc = offset + slope * (ic - ipos0)
