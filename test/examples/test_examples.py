@@ -40,9 +40,17 @@ need_sys_argv_examples = {
     ]
 }
 
+# these tests fail to mmap on some systems (ubuntu 18.04) when example_run_dir
+# is in virtualbox shared folder
+need_run_dir_local = ['plot_radiation_pattern.py']
+
 
 def tutorial_run_dir():
     return op.join(project_dir, 'test', 'example_run_dir')
+
+
+def tutorial_run_dir_local():
+    return op.join(project_dir, 'test', 'example_run_dir_local')
 
 
 def noop(*args, **kwargs):
@@ -55,12 +63,8 @@ class ExamplesTestCase(unittest.TestCase):
     def setUpClass(cls):
         from matplotlib import pyplot as plt
 
-        cls.cwd = os.getcwd()
-        cls.run_dir = tutorial_run_dir()
-        util.ensuredir(cls.run_dir)
         cls.dn = open(os.devnull, 'w')
         sys.stdout = cls.dn
-        os.chdir(cls.run_dir)
 
         plt.show_orig_testex = plt.show
         plt.show = noop
@@ -79,7 +83,6 @@ class ExamplesTestCase(unittest.TestCase):
 
         cls.dn.close()
         sys.stdout = sys.__stdout__
-        os.chdir(cls.cwd)
 
         snuffler.snuffle = snuffler.snuffle_orig_testex
         plt.show = plt.show_orig_testex
@@ -102,9 +105,20 @@ def _make_function(test_name, fn):
         except ImportError:
             import importlib.machinery as imp2
 
-        for argv in need_sys_argv_examples.get(os.path.basename(fn), [['']]):
+        basename = os.path.basename(fn)
+
+        for argv in need_sys_argv_examples.get(basename, [['']]):
+            cwd = os.getcwd()
             try:
                 sys_argv_original, sys.argv = sys.argv, argv
+
+                if basename in need_run_dir_local:
+                    run_dir = tutorial_run_dir_local()
+                else:
+                    run_dir = tutorial_run_dir()
+
+                util.ensuredir(run_dir)
+                os.chdir(run_dir)
 
                 if imp:
                     imp.load_source(test_name, fn)
@@ -141,6 +155,7 @@ def _make_function(test_name, fn):
 
             finally:
                 sys.argv = sys_argv_original
+                os.chdir(cwd)
 
     f.__name__ = 'test_example_' + test_name
 
