@@ -177,6 +177,13 @@ def have_obspy():
 require_obspy = unittest.skipUnless(have_obspy(), 'obspy not installed')
 
 
+def on_vagrant():
+    return os.path.exists('/vagrant')
+
+
+skip_on_vagrant = unittest.skipIf(on_vagrant(), 'disabled on vagrant')
+
+
 class BenchmarkCM(object):
     def __init__(self, label, results):
         self._label = label

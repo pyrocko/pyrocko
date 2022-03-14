@@ -16,6 +16,10 @@ logger = logging.getLogger('pyrocko.client.isc')
 km = 1000.
 
 
+class ISCError(Exception):
+    pass
+
+
 class ISC(EarthquakeCatalog):
     '''
     Interfacing the catalog of the Internation Seismological Centre (ISC).
@@ -85,7 +89,13 @@ class ISC(EarthquakeCatalog):
             logger.info('No events were found.')
             events = []
         else:
-            data = quakeml.QuakeML.load_xml(string=page)
+            try:
+                data = quakeml.QuakeML.load_xml(string=page)
+            except Exception:
+                raise ISCError(
+                    'Couldn\'t parse XML results from ISC:\n'
+                    + '-' * 79 + '\n' + page + '\n' + '-' * 79)
+
             events = data.get_pyrocko_events()
 
         for ev in events:

@@ -87,6 +87,7 @@ class CatalogTestCase(unittest.TestCase):
         print(len(events))
 
     @common.require_internet
+    @common.skip_on_vagrant
     @common.skip_on(HTTPError)
     def testISC(self):
         cat = catalog.ISC()
