@@ -498,8 +498,8 @@ def make_okada_coefficient_matrix(
         else:
             for isrc, source in enumerate(source_patches):
                 results = okada_ext.okada(
-                    source[num.newaxis, :],
-                    source_disl[num.newaxis, :],
+                    source.reshape(1, -1),
+                    source_disl.reshape(1, -1),
                     receiver_coords,
                     lambda_mean,
                     mu_mean,

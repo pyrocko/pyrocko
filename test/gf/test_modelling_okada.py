@@ -278,8 +278,8 @@ class OkadaTestCase(unittest.TestCase):
         # Python rotation to sdn
         for isource, source in enumerate(source_patches):
             results = okada_ext.okada(
-                source[num.newaxis, :],
-                source_disl[num.newaxis, :],
+                source.reshape(1, -1),
+                source_disl.reshape(1, -1),
                 receiver_coords,
                 lambda_mean,
                 mu_mean,
@@ -298,10 +298,14 @@ class OkadaTestCase(unittest.TestCase):
                 source_disc[isource].strike,
                 source_disc[isource].dip)
 
+            kwargs = {}
+            if num.__version__ >= '1.12.0':
+                kwargs['optimize'] = True
+
             stress_sdn = num.einsum(
                 'ij,...jk,lk->...il',
                 rotmat, stress_ned.reshape(npoints, 3, 3), rotmat,
-                optimize=True)
+                **kwargs)
 
             stress_sdn = stress_sdn.reshape(npoints, 9)
 
@@ -312,8 +316,8 @@ class OkadaTestCase(unittest.TestCase):
         # c-ext rotation to sdn
         for isource, source in enumerate(source_patches):
             results = okada_ext.okada(
-                source[num.newaxis, :],
-                source_disl[num.newaxis, :],
+                source.reshape(1, -1),
+                source_disl.reshape(1, -1),
                 receiver_coords,
                 lambda_mean,
                 mu_mean,
