@@ -1915,7 +1915,7 @@ def render_gif(fn, output_path, loops=-1):
 
     try:
         check_call([
-            'ffmpeg', '-hide_banner', '-loglevel', 'panic', '-i',
+            'ffmpeg', '-hide_banner', '-loglevel', 'panic', '-y', '-i',
             fn,
             '-filter_complex', 'palettegen[v1];[0:v][v1]paletteuse',
             '-loop', '%d' % loops,
