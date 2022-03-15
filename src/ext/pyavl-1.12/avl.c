@@ -2340,7 +2340,7 @@ avl_error (avl_verify_code err)
   return avl_false;
 }
 
-static int bals[] = { 1, 0, 2 };
+static rbal_t bals[] = { 1, 0, 2 };
 
 /* 
    helper for recursive 'avl_verify' function

@@ -1627,11 +1627,9 @@ initavl(void)
 
 	/* Initialize the type of the new type object here; doing it here
 	 * is required for portability to Windows without requiring C++. */
-    if (PyType_Ready(&avl_tree_Type) < 0)
+    if (PyType_Ready(&avl_tree_Type) < 0) {
         INITERROR;
-
-    if (PyType_Ready(&avl_tree_Type) < 0)
-        INITERROR;
+    }
 
 	avl_iter_Type.tp_getattro = PyObject_GenericGetAttr;
 
