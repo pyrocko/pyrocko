@@ -164,7 +164,7 @@ mantle
             store_dir, config=config, extra={'qseis': qsconf})
 
         store = gf.store.Store(store_dir, 'r')
-        store.make_ttt()
+        store.make_travel_time_tables()
         store.close()
         qseis.build(store_dir, nworkers=1)
         return store_dir

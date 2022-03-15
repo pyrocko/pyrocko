@@ -261,7 +261,7 @@ class GFTestCase(unittest.TestCase):
 
         gf.Store.create(store_dir, config=conf)
         store = gf.Store(store_dir)
-        store.make_ttt()
+        store.make_travel_time_tables()
 
         store.close()
         return store_dir
@@ -993,7 +993,7 @@ class GFTestCase(unittest.TestCase):
                 (20.*km, 530.*km)]
 
             store = gf.Store(store_dir)
-            store.make_tat()
+            store.make_takeoff_angle_tables()
 
             for args in args_list:
                 t0 = time()
@@ -1441,7 +1441,7 @@ class GFTestCase(unittest.TestCase):
             store_dir, config=config, extra={'ahfullgreen': conf})
 
         store = gf.store.Store(store_dir, 'r')
-        store.make_ttt()
+        store.make_travel_time_tables()
         store.close()
 
         fomosto_ahfullgreen.build(store_dir, nworkers=1)

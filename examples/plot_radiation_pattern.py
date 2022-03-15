@@ -23,7 +23,7 @@ def make_homogeneous_gf_store(
         distance_max=distance))
 
     store = Store(path)
-    store.make_ttt()
+    store.make_travel_time_tables()
     ahfullgreen.build(path)
 
 

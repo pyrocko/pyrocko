@@ -1062,8 +1062,8 @@ class Store(BaseStore):
     can also be found there.
 
     A GF store can also contain tabulated phase arrivals. In basic cases, these
-    can be created with the :py:meth:`make_ttt` and evaluated with the
-    :py:func:`t` methods.
+    can be created with the :py:meth:`make_travel_time_tables` and evaluated
+    with the :py:func:`t` methods.
 
     .. attribute:: config
 
@@ -1922,7 +1922,7 @@ use `fomosto tttlsd` to fix holes.''' % w
             tlenmax_vred=tlenmax_vred,
             vred=vred)
 
-    def make_ttt(self, force=False):
+    def make_travel_time_tables(self, force=False):
         '''
         Compute travel time tables.
 
@@ -1933,7 +1933,10 @@ use `fomosto tttlsd` to fix holes.''' % w
         '''
         self.make_stored_table(attribute='phase', force=force)
 
-    def make_tat(self, force=False):
+    def make_ttt(self, force=False):
+        self.make_travel_time_tables(force=force)
+
+    def make_takeoff_angle_tables(self, force=False):
         '''
         Compute takeoff-angle tables.
 
@@ -1944,7 +1947,7 @@ use `fomosto tttlsd` to fix holes.''' % w
         '''
         self.make_stored_table(attribute='takeoff_angle', force=force)
 
-    def make_iat(self, force=False):
+    def make_incidence_angle_tables(self, force=False):
         '''
         Compute incidence-angle tables.
 

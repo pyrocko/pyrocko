@@ -59,7 +59,7 @@ class GFAhfullTestCase(unittest.TestCase):
         self.tempdirs.append(d)
         ahfullgreen.init(d, None)
         store = gf.Store(d)
-        store.make_ttt()
+        store.make_travel_time_tables()
         ahfullgreen.build(d)
 
 

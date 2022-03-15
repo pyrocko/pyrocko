@@ -24,7 +24,7 @@ class QSSPTestCase(unittest.TestCase):
             distance_min=500e3,
             distance_max=600e3))
         store = gf.store.Store(self.tmpdir, 'r')
-        store.make_ttt()
+        store.make_travel_time_tables()
         qssp.build(self.tmpdir)
 
         engine = gf.LocalEngine(store_dirs=[self.tmpdir])
@@ -55,7 +55,7 @@ class QSSPTestCase(unittest.TestCase):
             distance_max=600e3))
 
         store = gf.store.Store(self.tmpdir, 'r')
-        store.make_ttt()
+        store.make_travel_time_tables()
         qssp.build(self.tmpdir)
 
         del store
@@ -88,7 +88,7 @@ class QSSPTestCase(unittest.TestCase):
             distance_max=600e3))
 
         store = gf.store.Store(self.tmpdir, 'r')
-        store.make_ttt()
+        store.make_travel_time_tables()
         qssp.build(self.tmpdir)
 
         del store

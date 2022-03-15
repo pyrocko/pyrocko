@@ -25,7 +25,7 @@ class GFWSTestCase(unittest.TestCase):
 
         ahfullgreen.init(cls.serve_dir, None)
         cls.store = store.Store(cls.serve_dir, 'r')
-        cls.store.make_ttt()
+        cls.store.make_travel_time_tables()
         cls.store_id = cls.store.config.id
         ahfullgreen.build(cls.serve_dir)
 

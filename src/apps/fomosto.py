@@ -895,7 +895,7 @@ def command_ttt(args):
     store_dir = get_store_dir(args)
     try:
         store = gf.Store(store_dir)
-        store.make_ttt(force=options.force)
+        store.make_travel_time_tables(force=options.force)
 
     except gf.StoreError as e:
         die(e)

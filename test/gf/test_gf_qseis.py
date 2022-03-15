@@ -113,7 +113,7 @@ mantle
             store_dir, config=config, extra={'qseis': qsconf})
 
         store = gf.store.Store(store_dir, 'r')
-        store.make_ttt()
+        store.make_travel_time_tables()
         store.close()
 
         try:
@@ -300,7 +300,7 @@ mantle
             store_dir_qseis, config=config, extra={'qseis': qsconf})
 
         store = gf.store.Store(store_dir_qseis, 'r')
-        store.make_ttt()
+        store.make_travel_time_tables()
         store.close()
 
         try:
@@ -343,7 +343,7 @@ mantle
             store_dir_ahfull, config=config, extra={'ahfullgreen': ahconf})
 
         store = gf.store.Store(store_dir_ahfull, 'r')
-        store.make_ttt()
+        store.make_travel_time_tables()
         store.close()
 
         ahfullgreen.build(store_dir_ahfull, nworkers=1)

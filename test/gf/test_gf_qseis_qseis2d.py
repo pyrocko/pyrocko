@@ -110,7 +110,7 @@ mantle
             q2_store_dir, config=config_q2, extra={'qseis2d': q2conf})
 
         store = gf.store.Store(q2_store_dir, 'r')
-        store.make_ttt()
+        store.make_travel_time_tables()
         store.close()
 
         # build store
@@ -150,7 +150,7 @@ mantle
             q_store_dir, config=config_q, extra={'qseis': qconf})
 
         store = gf.store.Store(q_store_dir, 'r')
-        store.make_ttt()
+        store.make_travel_time_tables()
         store.close()
 
         # build store
