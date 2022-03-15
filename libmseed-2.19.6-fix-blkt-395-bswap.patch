@@ -1,0 +1,14 @@
+diff -ruN libmseed/parseutils.c libmseed_mod/parseutils.c
+--- libmseed/parseutils.c	2019-06-19 10:59:29.000000000 +0200
++++ libmseed_mod/parseutils.c	2022-03-15 09:08:10.735934106 +0100
+@@ -943,8 +943,9 @@
+       {
+         struct blkt_395_s *blkt_395 = (struct blkt_395_s *)(record + blkt_offset + 4);
+ 
+-        if (swapflag)
++        if (swapflag) {
+           MS_SWAPBTIME (&blkt_395->time);
++        }
+ 
+         if (details >= 1)
+         {

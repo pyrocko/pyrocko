@@ -1,0 +1,11 @@
+diff -ruN libmseed/selection.c libmseed_mod/selection.c
+--- libmseed/selection.c	2019-06-19 10:59:29.000000000 +0200
++++ libmseed_mod/selection.c	2022-03-15 08:54:29.178367090 +0100
+@@ -703,6 +703,7 @@
+     case '\\':
+       if (*pattern)
+         c = *pattern++;
++      /* FALLTHRU */
+     default:
+       if (c != *string)
+         return GLOBMATCH_FALSE;
