@@ -982,6 +982,7 @@ class GFTestCase(unittest.TestCase):
     def test_interpolated_attribute(self):
         from time import time
         attribute = 'takeoff_angle'
+        nruns = 100
         for typ in ['a']:
             store_dir = self.get_regional_ttt_store_dir(typ)
 
@@ -997,26 +998,28 @@ class GFTestCase(unittest.TestCase):
 
             for args in args_list:
                 t0 = time()
-                for _ in range(100):
+                for _ in range(nruns):
                     interpolated_attribute = store.get_stored_attribute(
                         phase_id, attribute, args)
                 t1 = time()
-                table_time = (t1 - t0) / 100
+                table_time = (t1 - t0) / nruns
                 print('\nTable time', table_time)
                 print('Table angle', interpolated_attribute)
                 receiver_depth, source_depth, distance = (
                     store.config.receiver_depth,) + args
                 t2 = time()
-                for i in range(100):
+                for _ in range(nruns):
                     rays = store.config.earthmodel_1d.arrivals(
                         phases=phase_id,
                         distances=[distance * cake.m2d],
                         zstart=source_depth,
                         zstop=receiver_depth)
-                cake_attribute = min(
-                    [getattr(ray, attribute)() for ray in rays])
+
+                earliest_idx = num.argmin([ray.t for ray in rays])
+                cake_attribute = getattr(rays[earliest_idx], attribute)()
+
                 t3 = time()
-                cake_time = (t3 - t2) / 100
+                cake_time = (t3 - t2) / nruns
                 print('Cake time', cake_time)
                 print('Cake angle', cake_attribute)
                 print('Speedup', cake_time / table_time)

@@ -1700,7 +1700,7 @@ class Store(BaseStore):
         '''
         Return interpolated store attribute
 
-        :param attribute: takeoff_angle / incidence_angle
+        :param attribute: takeoff_angle / incidence_angle [deg]
         :type attribute: str
         :param \\*args: :py:class:`~pyrocko.gf.meta.Config` index tuple, e.g.
             ``(source_depth, distance, component)`` as in
@@ -1720,7 +1720,7 @@ class Store(BaseStore):
         '''
         Return interpolated store attribute
 
-        :param attribute: takeoff_angle / incidence_angle
+        :param attribute: takeoff_angle / incidence_angle [deg]
         :type attribute: str
         :param \\coords: :py:class:`num.array.Array`, with columns being
             ``(source_depth, distance, component)`` as in
@@ -1741,7 +1741,7 @@ class Store(BaseStore):
         '''
         Compute tables for selected ray attributes.
 
-        :param attribute: phase / takeoff_angle / incidence_angle
+        :param attribute: phase / takeoff_angle [deg]/ incidence_angle [deg]
         :type attribute: str
 
         Tables are computed using the 1D earth model defined in
@@ -1812,7 +1812,7 @@ class Store(BaseStore):
                         arrival_times.append(ray.t)
                         if attribute != 'phase':
                             ray_attribute_values.append(
-                                getattr(ray, attribute)() * cake.d2r)
+                                getattr(ray, attribute)())
 
                 if attribute == 'phase':
                     for v in horvels:
@@ -1940,10 +1940,11 @@ use `fomosto tttlsd` to fix holes.''' % w
         '''
         Compute takeoff-angle tables.
 
-        Takeoff-angle tables are computed using the 1D earth model defined in
-        :py:attr:`~pyrocko.gf.meta.Config.earthmodel_1d` for each defined phase
-        in :py:attr:`~pyrocko.gf.meta.Config.tabulated_phases`. The accuracy of
-        the tablulated times is adjusted to TODO hard-coded 0.1 degree.
+        Takeoff-angle tables [deg] are computed using the 1D earth model
+        defined in :py:attr:`~pyrocko.gf.meta.Config.earthmodel_1d` for each
+        defined phase in :py:attr:`~pyrocko.gf.meta.Config.tabulated_phases`.
+        The accuracy of the tablulated times is adjusted to 0.01 times the
+        sampling rate of the store.
         '''
         self.make_stored_table(attribute='takeoff_angle', force=force)
 
@@ -1951,10 +1952,11 @@ use `fomosto tttlsd` to fix holes.''' % w
         '''
         Compute incidence-angle tables.
 
-        Incidence-angle tables are computed using the 1D earth model defined in
-        :py:attr:`~pyrocko.gf.meta.Config.earthmodel_1d` for each defined phase
-        in :py:attr:`~pyrocko.gf.meta.Config.tabulated_phases`. The accuracy of
-        the tablulated times is adjusted to TODO hard-coded 0.1 degree.
+        Incidence-angle tables [deg] are computed using the 1D earth model
+        defined in :py:attr:`~pyrocko.gf.meta.Config.earthmodel_1d` for each
+        defined phase in :py:attr:`~pyrocko.gf.meta.Config.tabulated_phases`.
+        The accuracy of the tablulated times is adjusted to 0.01 times the
+        sampling rate of the store.
         '''
         self.make_stored_table(attribute='incidence_angle', force=force)
 
