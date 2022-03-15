@@ -1534,7 +1534,7 @@ class RuptureView(Object):
 
         source = self.source
         default_kwargs = dict(
-            colors='#474747ff'
+            colors='#474747'
         )
         default_kwargs.update(kwargs)
 
@@ -1639,7 +1639,7 @@ class RuptureView(Object):
         length, width = self._patches_to_lw()
         length, width = length[1:-1], width[1:-1]
 
-        kwargs['colors'] = kwargs.get('colors', '#474747ff')
+        kwargs['colors'] = kwargs.get('colors', '#474747')
 
         self._setup(**kwargs)
         self._draw_contour(
