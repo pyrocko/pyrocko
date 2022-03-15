@@ -1256,12 +1256,12 @@ static PyObject* w_patch2m6(PyObject *m, PyObject *args, PyObject *kwds) {
 static PyMethodDef okada_ext_methods[] = {
     {
         "okada",
-        (PyCFunctionWithKeywords) w_dc3d_flexi, METH_VARARGS | METH_KEYWORDS,
+        (PyCFunction) (void(*)(void)) w_dc3d_flexi, METH_VARARGS | METH_KEYWORDS,
         PyDoc_STR("Calculates the static displacement and its derivatives from Okada Source")
     },
     {
         "patch2m6",
-        (PyCFunctionWithKeywords) w_patch2m6, METH_VARARGS | METH_KEYWORDS,
+        (PyCFunction) (void(*)(void)) w_patch2m6, METH_VARARGS | METH_KEYWORDS,
         PyDoc_STR("Converts shear and normal dislocation to rotated m6 moment tensor representations")
     },
     {NULL, NULL, 0, NULL}        /* Sentinel */

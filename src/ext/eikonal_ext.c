@@ -507,7 +507,7 @@ static PyObject* w_eikonal_solver_fmm_cartesian(
 static PyMethodDef eikonal_ext_methods[] = {
     {
         "eikonal_solver_fmm_cartesian",
-        (PyCFunctionWithKeywords) w_eikonal_solver_fmm_cartesian,
+        (PyCFunction)(void(*)(void))w_eikonal_solver_fmm_cartesian,
         METH_VARARGS | METH_KEYWORDS,
         "Solve eikonal equation using the fast marching method."
     },

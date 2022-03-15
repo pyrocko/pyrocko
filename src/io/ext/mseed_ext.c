@@ -527,7 +527,7 @@ mseed_bytes(PyObject *m, PyObject *args, PyObject *kwds)
 }
 
 static PyMethodDef mseed_ext_methods[] = {
-    {"get_traces", (PyCFunction)mseed_get_traces, METH_VARARGS | METH_KEYWORDS,
+    {"get_traces", (PyCFunction)(void(*)(void))mseed_get_traces, METH_VARARGS | METH_KEYWORDS,
      PyDoc_STR("get_traces(filename, dataflag)\n"
                "Get all traces stored in an mseed file.\n\n"
                "Returns a list of tuples, one tuple for each trace in the file. Each tuple\n"
@@ -538,10 +538,10 @@ static PyMethodDef mseed_ext_methods[] = {
                "in libmseed. If dataflag is True, `data` is a numpy array containing the\n"
                "data. If dataflag is False, the data is not unpacked and `data` is None.\n")},
 
-    {"store_traces", (PyCFunction)mseed_store_traces, METH_VARARGS | METH_KEYWORDS,
+    {"store_traces", (PyCFunction)(void(*)(void))mseed_store_traces, METH_VARARGS | METH_KEYWORDS,
      PyDoc_STR("store_traces(traces, filename, record_length=4096)\n")},
 
-    {"mseed_bytes", (PyCFunction)mseed_bytes, METH_VARARGS | METH_KEYWORDS,
+    {"mseed_bytes", (PyCFunction)(void(*)(void))mseed_bytes, METH_VARARGS | METH_KEYWORDS,
      PyDoc_STR("mseed_bytes(traces, nbytes, record_length=4096)\n")},
 
     {NULL, NULL, 0, NULL} /* Sentinel */
