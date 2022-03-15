@@ -2770,11 +2770,19 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
                     axis=1)
 
     def pyrocko_moment_tensor(self, store=None, target=None):
-        # TODO: Now this should be slip, then it depends on the store.
-        # TODO: default to tractions is store is not given?
-        tractions = self.get_tractions()
-        tractions = tractions.mean(axis=0)
-        rake = num.arctan2(tractions[1], tractions[0])  # arctan2(dip, slip)
+        if store is not None:
+            if not self.patches:
+                self.discretize_patches(store)
+
+            data = self.get_slip()
+        else:
+            data = self.get_tractions()
+
+        weights = num.linalg.norm(data, axis=1)
+        weights /= weights.sum()
+
+        rakes = num.arctan2(data[:, 1], data[:, 0]) * r2d
+        rake = num.average(rakes, weights=weights)
 
         return pmt.MomentTensor(
             strike=self.strike,
@@ -3824,6 +3832,59 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
             moment = pmt.magnitude_to_moment(magnitude)
 
         self.slip *= moment / moment_init
+
+    def get_centroid(self, store, *args, **kwargs):
+        '''
+        Centroid of the pseudo dynamic rupture model.
+
+        The centroid location and time are derived from the locations and times
+        of the individual patches weighted with their moment contribution.
+        Additional ``**kwargs`` are passed to :py:meth:`pyrocko_moment_tensor`.
+
+        :param store:
+            Green's function database (needs to cover whole region of of the
+            source). Its ``deltat`` [s] is used as time increment for slip
+            difference calculation. Either ``deltat`` or ``store`` should be
+            given.
+        :type store:
+            :py:class:`~pyrocko.gf.store.Store`
+
+        :returns:
+            The centroid location and associated moment tensor.
+        :rtype:
+            :py:class:`pyrocko.model.Event`
+        '''
+        _, _, _, _, time, _ = self.get_vr_time_interpolators(store)
+        t_max = time.values.max()
+
+        moment_rate, times = self.get_moment_rate_patches(deltat=t_max)
+
+        moment = num.sum(moment_rate * times, axis=1)
+        weights = moment / moment.sum()
+
+        norths = self.get_patch_attribute('north_shift')
+        easts = self.get_patch_attribute('east_shift')
+        depths = self.get_patch_attribute('depth')
+        times = self.get_patch_attribute('time') - self.time
+
+        centroid_n = num.sum(weights * norths)
+        centroid_e = num.sum(weights * easts)
+        centroid_d = num.sum(weights * depths)
+        centroid_t = num.sum(weights * times) + self.time
+
+        centroid_lat, centroid_lon = ne_to_latlon(
+            self.lat, self.lon, centroid_n, centroid_e)
+
+        mt = self.pyrocko_moment_tensor(store, *args, **kwargs)
+
+        return model.Event(
+            lat=centroid_lat,
+            lon=centroid_lon,
+            depth=centroid_d,
+            time=centroid_t,
+            moment_tensor=mt,
+            magnitude=mt.magnitude,
+            duration=t_max)
 
 
 class DoubleDCSource(SourceWithMagnitude):
