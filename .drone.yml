@@ -78,7 +78,7 @@ steps:
 
 kind: pipeline
 type: docker
-name: pip
+name: pip-sdist
 
 trigger:
   branch:
@@ -87,50 +87,17 @@ trigger:
   - pip
 
 steps:
-- name: build-manylinux1_x86_64
-  image: quay.io/pypa/manylinux1_x86_64
-  commands:
-  - maintenance/pip/build_wheels.sh
-  environment:
-    PLAT: manylinux1_x86_64
 
-- name: test-pure-pip-manylinux1_x86_64
-  image: pyrocko-util
-  pull: never
-  when:
-    branch:
-      exclude:
-      - release
-  commands:
-  - pip3 install -f wheels pyrocko --no-index --no-deps
-  - pip3 install -f wheels pyrocko
-  - pip3 install --only-binary=PyQt5 PyQt5 jinja2 nose
-  - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
-
-- name: test-mixed-pip-manylinux1_x86_64
-  image: pyrocko-fat-nest
-  pull: never
-  when:
-    branch:
-      exclude:
-      - release
-  commands:
-  - ln -sf /pyrocko-test-data test/data
-  - pip3 install -f wheels --no-index --no-deps pyrocko
-  - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
-
-- name: sdist-pip
+- name: build
   image: pyrocko-nest
   pull: never
   commands:
-  - pip3 install -f wheels --no-index --no-deps pyrocko
-  - python setup.py sdist
+  - python3 setup.py sdist
 
-- name: stage-manylinux1_x86_64
+- name: stage
   image: pyrocko-util
   pull: never
   commands:
-  - maintenance/drone-rsync.sh wheels/ ${DRONE_COMMIT}/wheels/
   - maintenance/drone-rsync.sh dist/ ${DRONE_COMMIT}/dist/
   environment:
     RSYNC_HOST:
@@ -140,7 +107,7 @@ steps:
     RSYNC_KEY:
       from_secret: rsync-key
 
-- name: upload-testing-manylinux1_x86_64
+- name: upload-testing
   image: pyrocko-nest
   pull: never
   when:
@@ -155,7 +122,181 @@ steps:
     PYPI_PASSWORD:
       from_secret: pypi-password
 
-- name: upload-manylinux1_x86_64
+- name: upload
+  image: pyrocko-nest
+  pull: never
+  when:
+    branch:
+    - release
+  commands:
+  - maintenance/pip/upload_wheels.sh live
+  environment:
+    PYPI_USERNAME:
+      from_secret: pypi-username
+    PYPI_PASSWORD:
+      from_secret: pypi-password
+
+---
+
+kind: pipeline
+type: docker
+name: pip-manylinux1
+
+trigger:
+  branch:
+  - release
+  - candidate
+  - pip
+
+steps:
+- name: build
+  image: quay.io/pypa/manylinux1_x86_64
+  commands:
+  - maintenance/pip/build_wheels.sh
+  environment:
+    PLAT: manylinux1_x86_64
+
+- name: test-pure
+  image: pyrocko-util
+  pull: never
+  when:
+    branch:
+      exclude:
+      - release
+  commands:
+  - pip3 install -f wheels pyrocko --no-index --no-deps
+  - pip3 install -f wheels pyrocko
+  - pip3 install --only-binary=PyQt5 PyQt5 jinja2 nose
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
+
+- name: test-mixed
+  image: pyrocko-fat-nest
+  pull: never
+  when:
+    branch:
+      exclude:
+      - release
+  commands:
+  - ln -sf /pyrocko-test-data test/data
+  - pip3 install -f wheels --no-index --no-deps pyrocko
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
+
+- name: stage
+  image: pyrocko-util
+  pull: never
+  commands:
+  - maintenance/drone-rsync.sh wheels/ ${DRONE_COMMIT}/wheels/
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
+
+- name: upload-testing
+  image: pyrocko-nest
+  pull: never
+  when:
+    branch:
+    - candidate
+    - pip
+  commands:
+  - maintenance/pip/upload_wheels.sh testing
+  environment:
+    PYPI_USERNAME:
+      from_secret: pypi-username
+    PYPI_PASSWORD:
+      from_secret: pypi-password
+
+- name: upload
+  image: pyrocko-nest
+  pull: never
+  when:
+    branch:
+    - release
+  commands:
+  - maintenance/pip/upload_wheels.sh live
+  environment:
+    PYPI_USERNAME:
+      from_secret: pypi-username
+    PYPI_PASSWORD:
+      from_secret: pypi-password
+
+---
+
+kind: pipeline
+type: docker
+name: pip-manylinux2014
+
+trigger:
+  branch:
+  - release
+  - candidate
+  - pip
+
+steps:
+- name: build
+  image: quay.io/pypa/manylinux2014_x86_64
+  commands:
+  - maintenance/pip/build_wheels.sh
+  environment:
+    PLAT: manylinux2014_x86_64
+
+- name: test-pure
+  image: pyrocko-util
+  pull: never
+  when:
+    branch:
+      exclude:
+      - release
+  commands:
+  - pip3 install -f wheels pyrocko --no-index --no-deps
+  - pip3 install -f wheels pyrocko
+  - pip3 install --only-binary=PyQt5 PyQt5 jinja2 nose
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
+
+- name: test-mixed
+  image: pyrocko-fat-nest
+  pull: never
+  when:
+    branch:
+      exclude:
+      - release
+  commands:
+  - ln -sf /pyrocko-test-data test/data
+  - pip3 install -f wheels --no-index --no-deps pyrocko
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
+
+- name: stage
+  image: pyrocko-util
+  pull: never
+  commands:
+  - maintenance/drone-rsync.sh wheels/ ${DRONE_COMMIT}/wheels/
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
+
+- name: upload-testing
+  image: pyrocko-nest
+  pull: never
+  when:
+    branch:
+    - candidate
+    - pip
+  commands:
+  - maintenance/pip/upload_wheels.sh testing
+  environment:
+    PYPI_USERNAME:
+      from_secret: pypi-username
+    PYPI_PASSWORD:
+      from_secret: pypi-password
+
+- name: upload
   image: pyrocko-nest
   pull: never
   when:
@@ -700,7 +841,9 @@ depends_on:
 - flake8
 - docs
 - tests-windows
-- pip
+- pip-sdist
+- pip-manylinux1
+- pip-manylinux2014
 - pip-windows
 - conda-packages-linux
 - conda-packages-osx

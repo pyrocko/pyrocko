@@ -8,7 +8,6 @@ import tempfile
 import numpy
 import glob
 
-from distutils.sysconfig import get_python_inc
 from setuptools import setup, Extension, Command
 from setuptools.command.build_py import build_py
 from setuptools.command.build_ext import build_ext
@@ -588,19 +587,19 @@ else:
 ext_modules = [
     Extension(
         'datacube_ext',
-        include_dirs=[get_python_inc(), numpy.get_include()],
+        include_dirs=[numpy.get_include()],
         extra_compile_args=extra_compile_args,
         sources=[op.join('src', 'io', 'ext', 'datacube_ext.c')]),
 
     Extension(
         'signal_ext',
-        include_dirs=[get_python_inc(), numpy.get_include()],
+        include_dirs=[numpy.get_include()],
         extra_compile_args=extra_compile_args,
         sources=[op.join('src', 'ext', 'signal_ext.c')]),
 
     Extension(
         'mseed_ext',
-        include_dirs=[get_python_inc(), numpy.get_include(),
+        include_dirs=[numpy.get_include(),
                       get_build_include('libmseed')],
         extra_compile_args=extra_compile_args + (
             ['-D_CRT_SECURE_NO_WARNINGS', '-DWIN32'] if
@@ -610,7 +609,7 @@ ext_modules = [
 
     Extension(
         'ims_ext',
-        include_dirs=[get_python_inc(), numpy.get_include()],
+        include_dirs=[numpy.get_include()],
         extra_compile_args=extra_compile_args,
         sources=[op.join('src', 'io', 'ext', 'ims_ext.c')]),
 
@@ -620,40 +619,39 @@ ext_modules = [
                  op.join('src', 'ext', 'pyavl-1.12', 'avlmodule.c')],
         define_macros=[('HAVE_AVL_VERIFY', None),
                        ('AVL_FOR_PYTHON', None)],
-        include_dirs=[get_python_inc()],
         extra_compile_args=['-Wno-parentheses', '-Wno-uninitialized']
         if not is_windows else [],
         extra_link_args=[] if sys.platform != 'sunos5' else ['-Wl,-x']),
 
     Extension(
         'eikonal_ext',
-        include_dirs=[get_python_inc(), numpy.get_include()],
+        include_dirs=[numpy.get_include()],
         extra_compile_args=extra_compile_args + omp_arg,
         extra_link_args=[] + omp_lib,
         sources=[op.join('src', 'ext', 'eikonal_ext.c')]),
 
     Extension(
         'orthodrome_ext',
-        include_dirs=[get_python_inc(), numpy.get_include()],
+        include_dirs=[numpy.get_include()],
         extra_compile_args=extra_compile_args,
         sources=[op.join('src', 'ext', 'orthodrome_ext.c')]),
 
     Extension(
         'parstack_ext',
-        include_dirs=[get_python_inc(), numpy.get_include()],
+        include_dirs=[numpy.get_include()],
         extra_compile_args=extra_compile_args + omp_arg,
         extra_link_args=[] + omp_lib,
         sources=[op.join('src', 'ext', 'parstack_ext.c')]),
 
     Extension(
         'autopick_ext',
-        include_dirs=[get_python_inc(), numpy.get_include()],
+        include_dirs=[numpy.get_include()],
         extra_compile_args=extra_compile_args,
         sources=[op.join('src', 'ext', 'autopick_ext.c')]),
 
     Extension(
         'gf.store_ext',
-        include_dirs=[get_python_inc(), numpy.get_include()],
+        include_dirs=[numpy.get_include()],
         extra_compile_args=extra_compile_args
         + ['-D_FILE_OFFSET_BITS=64'] + omp_arg,
         extra_link_args=[] + omp_lib,
@@ -661,13 +659,13 @@ ext_modules = [
 
     Extension(
         'ahfullgreen_ext',
-        include_dirs=[get_python_inc(), numpy.get_include()],
+        include_dirs=[numpy.get_include()],
         extra_compile_args=extra_compile_args,
         sources=[op.join('src', 'ext', 'ahfullgreen_ext.c')]),
 
     Extension(
         'modelling.okada_ext',
-        include_dirs=[get_python_inc(), numpy.get_include()],
+        include_dirs=[numpy.get_include()],
         extra_compile_args=extra_compile_args + omp_arg,
         extra_link_args=[] + omp_lib,
         sources=[op.join('src', 'modelling', 'ext', 'okada_ext.c')])]
@@ -681,7 +679,7 @@ ext_modules_non_windows = [
 
     Extension(
         'evalresp_ext',
-        include_dirs=[get_python_inc(), numpy.get_include(),
+        include_dirs=[numpy.get_include(),
                       get_build_include('evalresp-3.3.0/include/')],
         library_dirs=[get_build_include('evalresp-3.3.0/lib/')],
         libraries=['evresp'],

@@ -48,8 +48,8 @@ Variant 2: use your system's package manager to install dependencies
 ....................................................................
 
 Install Pyrocko's requirements through your system's package manager (see
-`System specific installation instructions
-<https://pyrocko.org/docs/current/install/system/>`), then use pip with the
+`System specific installation instructions <https://pyrocko.org/docs/current/install/system/>`_),
+then use pip with the
 ``--no-deps`` option to install Pyrocko:
 
 .. code-block:: bash

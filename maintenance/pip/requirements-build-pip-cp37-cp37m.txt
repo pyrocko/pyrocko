@@ -1,0 +1,8 @@
+numpy<1.17
+scipy
+pyyaml
+matplotlib
+progressbar2
+requests
+nose
+PyOpenGL
