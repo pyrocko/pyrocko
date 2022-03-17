@@ -553,6 +553,8 @@ class SPLookupTable:
 
         indices = []
         for dim in range(self.ndim):
+            # res = num.abs(self.coords[dim] - index_args[:, dim, num.newaxis]) \
+            #     .argmin(axis=1)
             res = spit_ext.spit_lookup(self.coords[dim], index_args[:, dim])
             indices.append(res)
 

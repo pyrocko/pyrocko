@@ -95,7 +95,6 @@ static PyObject* w_spit_lookup(
     //         temp[icoord] = fabs(data_coords[icoord] - data_req_coords[ireq]);
     //     }
     //     min_val = temp[0];
-    //     idx_close[ireq] = 0;
 
     //     // Avoid branching insinde simd loops. Think about ways to get rid of it.
     //     // If we are lucky temp_idx is stored fix in a multipurpose register and no load-store has to be done inside if clause.
@@ -112,7 +111,7 @@ static PyObject* w_spit_lookup(
     #endif
     {
     #if defined(_OPENMP)
-        #pragma omp for schedule(static, 248) nowait
+        #pragma omp for schedule(static) nowait
     #endif
     for (ireq = 0; ireq < nreq; ireq++) {
         dist = fabs(data_coords[0] - data_req_coords[ireq]);
@@ -123,6 +122,10 @@ static PyObject* w_spit_lookup(
             if (dist_prop < dist) {
                 dist = dist_prop;
                 idx_close[ireq] = icoord;
+            } else {
+                // The coord vector is monotonic.
+                // we can break the loop once the distance starts to increase again.
+                icoord = ncoords;
             }
         }
     }
