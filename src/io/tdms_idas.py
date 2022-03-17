@@ -540,7 +540,6 @@ def iload(filename, load_data=True):
     deltat, tmin, meta = get_meta(tdms.get_properties())
 
     data = tdms.get_data().T.copy() if load_data else None
-    nsamples = tdms.channel_length
 
     for icha in range(tdms.n_channels):
         meta_cha = meta.copy()
@@ -555,7 +554,6 @@ def iload(filename, load_data=True):
             ydata=None,
             deltat=deltat,
             tmin=tmin,
-            tmax=tmin + nsamples*deltat,
             meta=meta_cha)
 
         if data is not None:
