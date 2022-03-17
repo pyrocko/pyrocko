@@ -4,8 +4,8 @@
 # ---|P------/S----------~Lg----------
 from __future__ import division
 import struct
-import logging
 import time
+import logging
 import numpy as num
 
 try:
@@ -75,16 +75,19 @@ class Cell(object):
             else:
                 return None
 
+    def _get_indices(self, x):
+        return num.where(
+            self.tree.ndim == num.sum(and_(
+                self.xbounds[:, 0] <= x,
+                x <= self.xbounds[:, 1]), axis=-1))[0]
+
     def interpolate_many(self, x):
         x = num.asarray(x, dtype=float)
         if self.children:
             result = num.empty(x.shape[0], dtype=float)
             result[:] = None
             for cell in self.children:
-                indices = num.where(
-                    self.tree.ndim == num.sum(and_(
-                        cell.xbounds[:, 0] <= x,
-                        x <= cell.xbounds[:, 1]), axis=-1))[0]
+                indices = cell._get_indices(x)
 
                 if indices.size != 0:
                     result[indices] = cell.interpolate_many(x[indices])
@@ -93,7 +96,7 @@ class Cell(object):
 
         else:
             if all_(num.isfinite(self.f)):
-                ws = (x[..., num.newaxis] - self.a)/self.b
+                ws = (x[..., num.newaxis] - self.a) / self.b
                 npoints = ws.shape[0]
                 ndim = self.tree.ndim
                 ws_pimped = [ws[:, i, :] for i in range(ndim)]
@@ -504,16 +507,22 @@ class SPTree(object):
 
 class SPLookupTable:
 
-    def __init__(self, sp_tree, nodes, coords):
-        """Calculate a static lookup table.
+    def __init__(self, sp_tree, nodes, coords, dtype=num.float32):
+        """Calculate a fast static lookup table from SPTree.
 
-        :param ranges: Ranges in [(min, max, delta), ...]
-                       for each dimension.
-        :type ranges: list[tuple[float, float, float]]
+        :param sp_tree: The parent SPTree instance.
+        :type sp_tree: SPTree
+        :param nodes: Nodes to interpolate at with dimensions dim x N
+        :type nodes: numpy.ndarray
+        :param coords: Coordinates for the interpolation.
+        :type coords: tuple[numpy.ndarray]
+        :param dtype: data type for the table. (Default :class:`numpy.float32`)
+        :type dtype: numpy.dtype
         """
+        self.dtype = dtype
         self.sp_tree = sp_tree
         self.nodes = nodes
-        self.coords = coords
+        self.coords = tuple(c.astype(self.dtype) for c in coords)
         self.ndim = nodes.shape[1]
         self.shape = tuple(coord.size for coord in coords)
 
@@ -526,12 +535,12 @@ class SPLookupTable:
 
         t = time.time()
         self.lookup_table = self.sp_tree.interpolate_many(self.nodes)\
-            .reshape(*self.shape)
+            .reshape(*self.shape).astype(self.dtype)
 
         logger.debug('Created lookup table in %.2f s' % (time.time() - t))
 
     def lookup(self, index_args):
-        index_args = num.asarray(index_args)
+        index_args = num.asarray(index_args, dtype=self.dtype)
         if index_args.ndim == 1:
             return self.lookup(index_args[num.newaxis, :])
 
@@ -543,10 +552,10 @@ class SPLookupTable:
         indices = []
         for dim in range(self.ndim):
             indices.append(num.argmin(
-                num.abs(self.coords[dim] - index_args[:, dim][:, num.newaxis]),
-                axis=1))
+                num.abs(self.coords[dim] - index_args[dim, :, num.newaxis]).T,
+                axis=0))
 
-        return self.lookup_table[indices]
+        return self.lookup_table[tuple(indices)]
 
 
 def getset(d, k, f, addargs):
