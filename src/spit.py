@@ -8,6 +8,8 @@ import time
 import logging
 import numpy as num
 
+from pyrocko import spit_ext
+
 try:
     range = xrange
 except NameError:
@@ -522,7 +524,7 @@ class SPLookupTable:
         self.dtype = dtype
         self.sp_tree = sp_tree
         self.nodes = nodes
-        self.coords = tuple(c.astype(self.dtype) for c in coords)
+        self.coords = tuple(c.astype(dtype) for c in coords)
         self.ndim = nodes.shape[1]
         self.shape = tuple(coord.size for coord in coords)
 
@@ -537,7 +539,7 @@ class SPLookupTable:
         self.lookup_table = self.sp_tree.interpolate_many(self.nodes)\
             .reshape(*self.shape).astype(self.dtype)
 
-        logger.debug('Created lookup table in %.2f s' % (time.time() - t))
+        logger.info('Created lookup table in %.2f s' % (time.time() - t))
 
     def lookup(self, index_args):
         index_args = num.asarray(index_args, dtype=self.dtype)
@@ -551,9 +553,8 @@ class SPLookupTable:
 
         indices = []
         for dim in range(self.ndim):
-            indices.append(num.argmin(
-                num.abs(self.coords[dim] - index_args[dim, :, num.newaxis]).T,
-                axis=0))
+            res = spit_ext.spit_lookup(self.coords[dim], index_args[:, dim])
+            indices.append(res)
 
         return self.lookup_table[tuple(indices)]
 

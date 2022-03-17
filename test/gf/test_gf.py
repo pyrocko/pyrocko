@@ -1050,6 +1050,14 @@ class GFTestCase(unittest.TestCase):
 
                 num.testing.assert_array_equal(times_lookup, times_tree)
 
+    def test_ttt_lookup_table_ext(self):
+        from pyrocko import spit_ext
+        arr1 = num.random.random(200).astype(num.float32)
+        arr2 = num.random.random(200).astype(num.float32)
+        res = spit_ext.spit_lookup(arr1, arr2)
+        print(arr1, arr2)
+        print(res)
+
     def dummy_store(self):
 
         conf = gf.ConfigTypeA(
