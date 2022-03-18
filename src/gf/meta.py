@@ -561,7 +561,11 @@ class Timing(SObject):
                     times += offset
 
                 times = times.squeeze()
-                if times.ndim == 1:
+                if times.ndim == 0:
+                    # when times.ndim == 0 we need to expand a dimension
+                    return times
+
+                elif times.ndim == 1:
                     if self.select == 'first':
                         return num.nanmin(times)
                     if self.select == 'last':
@@ -576,9 +580,6 @@ class Timing(SObject):
                     if self.select == 'last':
                         return num.nanmax(times, axis=0)
                     return first_finite(times, axis=0)
-                else:
-                    # when times.ndim == 0 we need to expand a dimension
-                    return times.ravel()
             else:
                 return offset
 

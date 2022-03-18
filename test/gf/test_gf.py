@@ -949,14 +949,14 @@ class GFTestCase(unittest.TestCase):
 
     def test_timing_multi(self):
         for typ, args in [
-                ('a', [[10*km, 10*km], [1800*km, 2000*km]]),
-                ('b', [[5*km]*2, [10*km]*2, [1800.*km, 2000*km]])]:
+                ('a', [[10*km, 12*km], [1200*km, 1300*km]]),
+                ('b', [[5*km]*2, [10*km]*2, [1200.*km, 1300*km]])]:
 
             store_dir = self.get_regional_ttt_store_dir(typ)
             store = gf.Store(store_dir)
 
             times = store.t('P', args)
-            for t1, args2 in zip(times, num.transpose(args)):
+            for t1, args2 in zip([times], num.transpose(args)):
                 t2 = store.t('P', args2)
                 num.testing.assert_almost_equal(t1, t2)
 
@@ -984,7 +984,7 @@ class GFTestCase(unittest.TestCase):
 
                 times = store.t(phase_def, dsource, target)
 
-                for t1, ssource in zip(times, dsource.split()):
+                for t1, ssource in zip([times], dsource.split()):
                     t2 = store.t(phase_def, ssource, target)
                     num.testing.assert_almost_equal(t1, t2)
 
@@ -1056,14 +1056,6 @@ class GFTestCase(unittest.TestCase):
 
                 num.testing.assert_allclose(
                     times_lookup, times_tree, rtol=0.25)
-
-    def test_ttt_lookup_table_ext(self):
-        from pyrocko import spit_ext
-        arr1 = num.random.random(200).astype(num.float32)
-        arr2 = num.random.random(200).astype(num.float32)
-        res = spit_ext.spit_lookup(arr1, arr2)
-        print(arr1, arr2)
-        print(res)
 
     def dummy_store(self):
 
