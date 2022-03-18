@@ -83,11 +83,12 @@ static PyObject* w_spit_lookup(
 
     Py_BEGIN_ALLOW_THREADS
 
+    float temp_distances[ncoords];
+
     if (simd) {
-        #pragma omp parallel for schedule(static) shared(idx_close) num_threads(nthreads) private(icoord)
+        #pragma omp parallel for schedule(static) shared(idx_close) num_threads(nthreads) private(icoord, temp_distances)
         for(ireq = 0; ireq < nreq; ireq++) {
             // private in each core. No NUMA share
-            float temp_distances[ncoords];
             float min_val = 0.0;
             npy_intp temp_idx = 0;
 
@@ -95,7 +96,7 @@ static PyObject* w_spit_lookup(
             //  But care if idx and temp are fitting into chache if not change loops.
             #pragma omp simd
             for (icoord = 0; icoord < ncoords; icoord++) {
-                temp_distances[icoord] = fabs(data_coords[icoord] - data_req_coords[ireq]);
+                temp_distances[icoord] = fabsf(data_coords[icoord] - data_req_coords[ireq]);
             }
 
             min_val = temp_distances[0];
@@ -123,12 +124,12 @@ static PyObject* w_spit_lookup(
             #pragma omp for schedule(static) nowait
         #endif
         for (ireq = 0; ireq < nreq; ireq++) {
-            dist = fabs(data_coords[0] - data_req_coords[ireq]);
+            dist = fabsf(data_coords[0] - data_req_coords[ireq]);
             npy_intp temp_idx = 0;
 
             #pragma omp simd
             for (icoord = 1; icoord < ncoords; icoord++) {
-                dist_prop = fabs(data_coords[icoord] - data_req_coords[ireq]);
+                dist_prop = fabsf(data_coords[icoord] - data_req_coords[ireq]);
                 if (dist_prop < dist) {
                     dist = dist_prop;
                     temp_idx = icoord;
