@@ -577,8 +577,8 @@ class Timing(SObject):
                         return num.nanmax(times, axis=0)
                     return first_finite(times, axis=0)
                 else:
-                    # when times.ndim == 0
-                    return times
+                    # when times.ndim == 0 we need to expand a dimension
+                    return times.ravel()
             else:
                 return offset
 
