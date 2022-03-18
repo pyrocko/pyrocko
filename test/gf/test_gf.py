@@ -1047,10 +1047,7 @@ class GFTestCase(unittest.TestCase):
 
                 times_lookup = sp_lookup.lookup(args, implementation='python')
                 times_lookup_c = sp_lookup.lookup(args, implementation='c')
-                times_lookup_c_simd = sp_lookup.lookup(
-                    args, implementation='c', simd=True)
                 num.testing.assert_equal(times_lookup_c, times_lookup)
-                num.testing.assert_equal(times_lookup_c_simd, times_lookup)
 
                 times_tree = sp_tree.interpolate_many(args)
 

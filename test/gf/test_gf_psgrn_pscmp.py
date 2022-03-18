@@ -173,7 +173,7 @@ mantle
 
         return store_dir, c
 
-    def fomosto_vs_psgrn_pscmp(self, pscmp_sources, gf_sources, atol=2*mm):
+    def fomosto_vs_psgrn_pscmp(self, pscmp_sources, gf_sources, atol=3*mm):
 
         def plot_components_compare(fomosto_comps, psgrn_comps):
             import matplotlib.pyplot as plt

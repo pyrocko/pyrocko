@@ -54,10 +54,9 @@ static PyObject* w_spit_lookup(
     (void) m;
 
     int nthreads = 4;
-    int simd = 0;
 
-    static char *kwlist[] = {"coords", "req_coords", "threads", "simd", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO|ip", kwlist, &coords, &req_coords, &nthreads, &simd)) {
+    static char *kwlist[] = {"coords", "req_coords", "threads", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO|i", kwlist, &coords, &req_coords, &nthreads)) {
         return NULL;
     }
 
@@ -83,65 +82,31 @@ static PyObject* w_spit_lookup(
 
     Py_BEGIN_ALLOW_THREADS
 
-    float temp_distances[ncoords];
+    #if defined(_OPENMP)
+        #pragma omp parallel private(dist, dist_prop, icoord) num_threads(nthreads)
+    #endif
+    {
+    #if defined(_OPENMP)
+        #pragma omp for schedule(static) nowait
+    #endif
+    for (ireq = 0; ireq < nreq; ireq++) {
+        dist = fabsf(data_coords[0] - data_req_coords[ireq]);
+        npy_intp temp_idx = 0;
 
-    if (simd) {
-        #pragma omp parallel for schedule(static) shared(idx_close) num_threads(nthreads) private(icoord, temp_distances)
-        for(ireq = 0; ireq < nreq; ireq++) {
-            // private in each core. No NUMA share
-            float min_val = 0.0;
-            npy_intp temp_idx = 0;
-
-            //  Interchange loops, bigger loop must be inside for better pipelining.
-            //  But care if idx and temp are fitting into chache if not change loops.
-            #pragma omp simd
-            for (icoord = 0; icoord < ncoords; icoord++) {
-                temp_distances[icoord] = fabsf(data_coords[icoord] - data_req_coords[ireq]);
+        #pragma omp simd
+        for (icoord = 1; icoord < ncoords; icoord++) {
+            dist_prop = fabsf(data_coords[icoord] - data_req_coords[ireq]);
+            if (dist_prop < dist) {
+                dist = dist_prop;
+                temp_idx = icoord;
+            } else {
+                // The coord vector is monotonic.
+                // we can break the loop once the distance starts to increase again.
+                icoord = ncoords;
             }
-
-            min_val = temp_distances[0];
-            //  Avoid branching insinde simd loops. Think about ways to get rid of it.
-            //  If we are lucky temp_idx is stored fix in a multipurpose register and no load-store has to be done inside if clause.
-            #pragma omp simd
-            for (icoord = 1; icoord < ncoords; icoord++) {
-                if (temp_distances[icoord] < min_val) {
-                    min_val = temp_distances[icoord];
-                    temp_idx = icoord;
-                } else {
-                    // The coord vector is monotonic.
-                    // we can break the loop once the distance starts to increase again.
-                    icoord = ncoords;
-                }
-            }
-            idx_close[ireq] = temp_idx;
         }
-    } else {
-        #if defined(_OPENMP)
-            #pragma omp parallel private(dist, dist_prop, icoord) num_threads(nthreads)
-        #endif
-        {
-        #if defined(_OPENMP)
-            #pragma omp for schedule(static) nowait
-        #endif
-        for (ireq = 0; ireq < nreq; ireq++) {
-            dist = fabsf(data_coords[0] - data_req_coords[ireq]);
-            npy_intp temp_idx = 0;
-
-            #pragma omp simd
-            for (icoord = 1; icoord < ncoords; icoord++) {
-                dist_prop = fabsf(data_coords[icoord] - data_req_coords[ireq]);
-                if (dist_prop < dist) {
-                    dist = dist_prop;
-                    temp_idx = icoord;
-                } else {
-                    // The coord vector is monotonic.
-                    // we can break the loop once the distance starts to increase again.
-                    icoord = ncoords;
-                }
-            }
-            idx_close[ireq] = temp_idx;
-        }
-        }
+        idx_close[ireq] = temp_idx;
+    }
     }
 
     Py_END_ALLOW_THREADS

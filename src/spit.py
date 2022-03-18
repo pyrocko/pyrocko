@@ -541,7 +541,7 @@ class SPLookupTable:
 
         logger.info('Created lookup table in %.2f s' % (time.time() - t))
 
-    def lookup(self, index_args, implementation='c', threads=4, simd=False):
+    def lookup(self, index_args, implementation='c', threads=4):
         index_args = num.asarray(index_args, dtype=self.dtype)
         if index_args.ndim == 1:
             return self.lookup(index_args[num.newaxis, :])
@@ -556,7 +556,7 @@ class SPLookupTable:
             if implementation == 'c':
                 res = spit_ext.spit_lookup(
                     self.coords[dim], index_args[:, dim],
-                    threads=threads, simd=simd)
+                    threads=threads)
             else:
                 res = num.abs(
                     self.coords[dim] - index_args[:, dim, num.newaxis]) \
