@@ -548,12 +548,15 @@ def iload(filename, load_data=True):
         station = '%05i' % icha
         meta_cha['channel'] = icha
 
+        nsamples = tdms.channel_length
+
         tr = trace.Trace(
             network='DA',
             station=station,
             ydata=None,
             deltat=deltat,
             tmin=tmin,
+            tmax=tmin + (nsamples - 1) * deltat,
             meta=meta_cha)
 
         if data is not None:
