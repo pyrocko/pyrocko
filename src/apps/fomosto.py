@@ -13,7 +13,7 @@ import copy
 import shutil
 from optparse import OptionParser
 
-from pyrocko import util, trace, gf, cake, io, config, fomosto
+from pyrocko import util, trace, gf, cake, io, fomosto
 from pyrocko.gui import marker
 from pyrocko.util import mpl_show
 
@@ -467,42 +467,34 @@ def command_redeploy(args):
 
 def command_view(args):
     def setup(parser):
-        parser.add_option('--extract',
-                          dest='extract',
-                          metavar='start:stop[:step|@num],...',
-                          help='specify which traces to show')
+        parser.add_option(
+            '--extract',
+            dest='extract',
+            metavar='start:stop[:step|@num],...',
+            help='specify which traces to show')
 
-        parser.add_option('--show-phases',
-                          dest='showphases',
-                          default=None,
-                          metavar='[phase_id1,phase_id2,...|all]',
-                          help='add phase markers from ttt')
+        parser.add_option(
+            '--show-phases',
+            dest='showphases',
+            default=None,
+            metavar='[phase_id1,phase_id2,...|all]',
+            help='add phase markers from ttt')
 
-        parser.add_option('--qt5',
-                          dest='gui_toolkit_qt5',
-                          action='store_true',
-                          default=False,
-                          help='use Qt5 for the GUI')
+        parser.add_option(
+            '--opengl',
+            dest='opengl',
+            action='store_true',
+            default=None,
+            help='use OpenGL for drawing')
 
-        parser.add_option('--qt4',
-                          dest='gui_toolkit_qt4',
-                          action='store_true',
-                          default=False,
-                          help='use Qt4 for the GUI')
-
-        parser.add_option('--opengl',
-                          dest='opengl',
-                          action='store_true',
-                          default=False,
-                          help='use OpenGL for drawing')
+        parser.add_option(
+            '--no-opengl',
+            dest='opengl',
+            action='store_false',
+            default=None,
+            help='do not use OpenGL for drawing')
 
     parser, options, args = cl_parse('view', args, setup=setup)
-
-    if options.gui_toolkit_qt4:
-        config.override_gui_toolkit = 'qt4'
-
-    if options.gui_toolkit_qt5:
-        config.override_gui_toolkit = 'qt5'
 
     gdef = None
     if options.extract:

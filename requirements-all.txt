@@ -5,6 +5,5 @@ matplotlib
 progressbar2
 requests
 nose
-PyOpenGL
 jinja2
 pybtex

@@ -4,10 +4,7 @@
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
 
-import sys
-
-from .qt_compat import qc, qg, qw, QSortFilterProxyModel, \
-    QItemSelectionModel, QItemSelection, QPixmapCache, use_pyqt5
+from .qt_compat import qc, qg, qw, QPixmapCache
 
 from .util import EventMarker, PhaseMarker, make_QPolygonF
 from pyrocko.plot.beachball import mt2beachball, BeachballError
@@ -32,19 +29,15 @@ def noop(x=None):
     return x
 
 
-if sys.version_info[0] >= 3 or use_pyqt5:
-    qc.QString = str
-    qc.QVariant = noop
+qc.QString = str
+qc.QVariant = noop
 
-    def toFloat(val):
-        try:
-            return float(val), True
-        except (ValueError, TypeError):
-            return 9e99, False
 
-else:
-    def toFloat(val):
-        return val.toFloat()
+def toFloat(val):
+    try:
+        return float(val), True
+    except (ValueError, TypeError):
+        return 9e99, False
 
 
 logger = logging.getLogger('pyrocko.gui.marker_editor')
@@ -170,7 +163,7 @@ class MarkerItemDelegate(qw.QStyledItemDelegate):
         tv = self.parent()
         pv = tv.pile_viewer
         tvm = tv.model()
-        if isinstance(tvm, QSortFilterProxyModel):
+        if isinstance(tvm, qc.QSortFilterProxyModel):
             return pv.markers[tvm.mapToSource(index).row()]
         else:
             return pv.markers[index.row()]
@@ -187,12 +180,12 @@ class MarkerItemDelegate(qw.QStyledItemDelegate):
         return qg.QColor(*marker.select_color(g_color_b))
 
 
-class MarkerSortFilterProxyModel(QSortFilterProxyModel):
+class MarkerSortFilterProxyModel(qc.QSortFilterProxyModel):
 
     # Proxy object between view and model to handle sorting
 
     def __init__(self, *args, **kwargs):
-        QSortFilterProxyModel.__init__(self, *args, **kwargs)
+        qc.QSortFilterProxyModel.__init__(self, *args, **kwargs)
         self.setSortRole(qc.Qt.UserRole)
         self.sort(1, qc.Qt.AscendingOrder)
 
@@ -269,10 +262,7 @@ class MarkerTableView(qw.QTableView):
                 qc.QPoint(self.viewport().rect().x(), height))
             v = self.verticalHeader()
 
-            if use_pyqt5:
-                wheel_delta = wheel_event.angleDelta().y()
-            else:
-                wheel_delta = wheel_event.delta()
+            wheel_delta = wheel_event.angleDelta().y()
 
             v.setDefaultSectionSize(
                 max(12, v.defaultSectionSize()+wheel_delta//60))
@@ -671,19 +661,15 @@ class MarkerEditor(qw.QFrame):
 
         header = self.marker_table_view.horizontalHeader()
         for i_s, s in enumerate(_header_sizes):
-            if use_pyqt5:
-                header.setSectionResizeMode(i_s, qw.QHeaderView.Interactive)
-            else:
-                header.setResizeMode(i_s, qw.QHeaderView.Interactive)
-
+            header.setSectionResizeMode(i_s, qw.QHeaderView.Interactive)
             header.resizeSection(i_s, s)
 
         header.setStretchLastSection(True)
 
         if self.proxy_filter:
-            self.selection_model = QItemSelectionModel(self.proxy_filter)
+            self.selection_model = qc.QItemSelectionModel(self.proxy_filter)
         else:
-            self.selection_model = QItemSelectionModel(self.marker_model)
+            self.selection_model = qc.QItemSelectionModel(self.marker_model)
 
         self.marker_table_view.setSelectionModel(self.selection_model)
         self.selection_model.selectionChanged.connect(
@@ -761,20 +747,20 @@ class MarkerEditor(qw.QFrame):
         :type indices: list of tuples
         '''
         self.selection_model.clearSelection()
-        selections = QItemSelection()
-        selection_flags = QItemSelectionModel.SelectionFlags(
-            (QItemSelectionModel.Select |
-             QItemSelectionModel.Rows |
-             QItemSelectionModel.Current))
+        selections = qc.QItemSelection()
+        selection_flags = qc.QItemSelectionModel.SelectionFlags(
+            int(qc.QItemSelectionModel.Select |
+             qc.QItemSelectionModel.Rows |
+             qc.QItemSelectionModel.Current))
 
         for chunk in indices:
             mi_start = self.marker_model.index(chunk[0], 0)
             mi_stop = self.marker_model.index(chunk[1]-1, 0)
             if self.proxy_filter:
                 row_selection = self.proxy_filter.mapSelectionFromSource(
-                    QItemSelection(mi_start, mi_stop))
+                    qc.QItemSelection(mi_start, mi_stop))
             else:
-                row_selection = QItemSelection(mi_start, mi_stop)
+                row_selection = qc.QItemSelection(mi_start, mi_stop)
             selections.merge(row_selection, selection_flags)
 
         if len(indices) != 0:

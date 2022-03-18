@@ -573,7 +573,7 @@ class SnufflerWindow(qw.QMainWindow):
     def __init__(
             self, pile, stations=None, events=None, markers=None, ntracks=12,
             marker_editor_sortable=True, follow=None, controls=True,
-            opengl=False, instant_close=False):
+            opengl=None, instant_close=False):
 
         qw.QMainWindow.__init__(self)
 

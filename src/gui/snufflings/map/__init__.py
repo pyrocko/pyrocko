@@ -227,13 +227,6 @@ python $HOME/.snufflings/map/snuffling.py --stations=stations.pf
             self.get_viewer().about_to_close.connect(
                 self.file_serving_worker.stop)
             self.viewer_connected = True
-        try:
-            from OpenGL import GL  # noqa
-        except ImportError:
-            logger.warning(
-                'Could not find package OpenGL, '
-                'if the map does not work try installing OpenGL\n'
-                'e.g. sudo pip install PyOpenGL')
 
         self.cleanup()
 

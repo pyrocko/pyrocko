@@ -4,7 +4,6 @@
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import, print_function
 
-import sys
 import math
 import time
 import numpy as num
@@ -14,7 +13,7 @@ import enum
 from matplotlib.cm import get_cmap
 from matplotlib.colors import Normalize
 
-from .qt_compat import qc, qg, qw, use_pyqt5
+from .qt_compat import qc, qg, qw
 
 from .marker import Marker, PhaseMarker, EventMarker  # noqa
 from .marker import MarkerParseError, MarkerOneNSLCRequired  # noqa
@@ -22,18 +21,10 @@ from .marker import load_markers, save_markers  # noqa
 from pyrocko import plot
 
 
-if use_pyqt5:
-    try:
-        from PyQt5.QtWebEngineWidgets import QWebEngineView as WebView
-    except ImportError:
-        from PyQt5.QtWebKitWidgets import QWebView as WebView
-
-else:
-    from PyQt4.QtWebKit import QWebView as WebView
-
-
-if sys.version_info > (3,):
-    buffer = memoryview
+try:
+    from PyQt5.QtWebEngineWidgets import QWebEngineView as WebView
+except ImportError:
+    from PyQt5.QtWebKitWidgets import QWebView as WebView
 
 
 logger = logging.getLogger('pyrocko.gui.util')
@@ -47,7 +38,7 @@ def make_QPolygonF(xdata, ydata):
     aa = num.ndarray(
         shape=(len(ydata), 2),
         dtype=num.float64,
-        buffer=buffer(vptr))
+        buffer=memoryview(vptr))
     aa.setflags(write=True)
     aa[:, 0] = xdata
     aa[:, 1] = ydata
@@ -679,10 +670,7 @@ class ColorbarSlider(qw.QWidget):
         if not self._sym_locked:
             return
 
-        if use_pyqt5:
-            delta = event.angleDelta().y()
-        else:
-            delta = event.delta()
+        delta = event.angleDelta().y()
         delta = -delta / 5e3
         clip_min_new = max(self.clip_min + delta, 0.)
         clip_max_new = min(self.clip_max - delta, 1.)
@@ -907,13 +895,7 @@ class FigureFrame(qw.QFrame):
 
         import matplotlib
         matplotlib.rcdefaults()
-        if use_pyqt5:
-            try:
-                matplotlib.rcParams['backend'] = 'Qt5Agg'
-            except ValueError:
-                matplotlib.rcParams['backend'] = 'Qt4Agg'
-        else:
-            matplotlib.rcParams['backend'] = 'Qt4Agg'
+        matplotlib.rcParams['backend'] = 'Qt5Agg'
 
         matplotlib.rc('xtick', direction='out', labelsize=fontsize)
         matplotlib.rc('ytick', direction='out', labelsize=fontsize)
@@ -973,22 +955,11 @@ class FigureFrame(qw.QFrame):
 
         from matplotlib.figure import Figure
 
-        if use_pyqt5:
-            from matplotlib.backends.backend_qt5agg import \
-                NavigationToolbar2QT as NavigationToolbar
+        from matplotlib.backends.backend_qt5agg import \
+            NavigationToolbar2QT as NavigationToolbar
 
-            from matplotlib.backends.backend_qt5agg \
-                import FigureCanvasQTAgg as FigureCanvas
-        else:
-            try:
-                from matplotlib.backends.backend_qt4agg import \
-                    NavigationToolbar2QTAgg as NavigationToolbar
-            except ImportError:
-                from matplotlib.backends.backend_qt4agg import \
-                    NavigationToolbar2QT as NavigationToolbar
-
-            from matplotlib.backends.backend_qt4agg \
-                import FigureCanvasQTAgg as FigureCanvas
+        from matplotlib.backends.backend_qt5agg \
+            import FigureCanvasQTAgg as FigureCanvas
 
         layout = qw.QGridLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -1039,7 +1010,7 @@ class VTKFrame(qw.QFrame):
 
     def __init__(self, actors=None, parent=None):
         import vtk
-        from vtk.qt4.QVTKRenderWindowInteractor import \
+        from vtk.qt.QVTKRenderWindowInteractor import \
             QVTKRenderWindowInteractor
 
         qw.QFrame.__init__(self, parent)

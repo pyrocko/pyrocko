@@ -35,10 +35,12 @@ app = None
 
 def get_snuffler_instance():
     from .snuffler_app import Snuffler
+    from .qt_compat import qg
     import locale
     locale.setlocale(locale.LC_ALL, 'C')
     global app
     if app is None:
+        qg.QSurfaceFormat.setDefaultFormat(qg.QSurfaceFormat())
         app = Snuffler()
     return app
 
@@ -66,7 +68,8 @@ def snuffle(pile=None, **kwargs):
         ``None``
     :param controls: bool, whether to show the main controls (default:
         ``True``)
-    :param opengl: bool, whether to use opengl (default: ``False``)
+    :param opengl: bool, whether to use opengl (default: ``None`` - automatic
+        choice).
     :param paths: list of files and directories to search for trace files
     :param pattern: regex which filenames must match
     :param format: format of input files
@@ -285,22 +288,15 @@ def snuffler_from_commandline(args=None):
         '--opengl',
         dest='opengl',
         action='store_true',
-        default=False,
+        default=None,
         help='use OpenGL for drawing')
 
     parser.add_option(
-        '--qt5',
-        dest='gui_toolkit_qt5',
-        action='store_true',
-        default=False,
-        help='use Qt5 for the GUI')
-
-    parser.add_option(
-        '--qt4',
-        dest='gui_toolkit_qt4',
-        action='store_true',
-        default=False,
-        help='use Qt4 for the GUI')
+        '--no-opengl',
+        dest='opengl',
+        action='store_false',
+        default=None,
+        help='do not use OpenGL for drawing')
 
     parser.add_option(
         '--debug',
@@ -318,12 +314,6 @@ def snuffler_from_commandline(args=None):
 
     if options.hp_time in ('on', 'off'):
         util.use_high_precision_time(options.hp_time == 'on')
-
-    if options.gui_toolkit_qt4:
-        config.override_gui_toolkit = 'qt4'
-
-    if options.gui_toolkit_qt5:
-        config.override_gui_toolkit = 'qt5'
 
     this_pile = pile_mod.Pile()
     stations = []

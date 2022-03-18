@@ -17,7 +17,7 @@ import logging
 import traceback
 import tempfile
 
-from .qt_compat import qc, qw, getSaveFileName, use_pyqt5
+from .qt_compat import qc, qw, getSaveFileName
 
 from pyrocko import pile, config
 from pyrocko.util import quote
@@ -27,20 +27,11 @@ from .util import (ValControl, LinValControl, FigureFrame, WebKitFrame,
                    load_markers, save_markers)
 
 
-if sys.version_info >= (3, 0):
-    from importlib import reload
-
+from importlib import reload
 
 Marker, load_markers, save_markers  # noqa
 
 logger = logging.getLogger('pyrocko.gui.snuffling')
-
-
-def fnpatch(x):
-    if use_pyqt5:
-        return x
-    else:
-        return x, None
 
 
 class MyFrame(qw.QFrame):
@@ -1438,11 +1429,11 @@ class Snuffling(object):
         if not dir and self._previous_input_filename:
             dir = self._previous_input_filename
 
-        fn, _ = fnpatch(qw.QFileDialog.getOpenFileName(
+        fn, _ = qw.QFileDialog.getOpenFileName(
             self.get_viewer(),
             caption,
             dir,
-            filter))  # selected_filter)
+            filter)
 
         if not fn:
             raise UserCancelled()

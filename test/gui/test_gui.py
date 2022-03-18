@@ -12,13 +12,9 @@ from pyrocko.pile import make_pile
 from pyrocko import config, trace
 
 if common.have_gui():  # noqa
-    from pyrocko.gui.qt_compat import qc, qw, use_pyqt5
-    if use_pyqt5:
-        from PyQt5.QtTest import QTest
-        Qt = qc.Qt
-    else:
-        from PyQt4.QtTest import QTest
-        Qt = qc.Qt
+    from pyrocko.gui.qt_compat import qc, qw
+    from PyQt5.QtTest import QTest
+    Qt = qc.Qt
 
     from pyrocko.gui.snuffler_app import SnufflerWindow
     from pyrocko.gui import pile_viewer as pyrocko_pile_viewer
