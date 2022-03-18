@@ -1054,7 +1054,8 @@ class GFTestCase(unittest.TestCase):
 
                 times_tree = sp_tree.interpolate_many(args)
 
-                num.testing.assert_allclose(times_lookup, times_tree, rtol=0.25)
+                num.testing.assert_allclose(
+                    times_lookup, times_tree, rtol=0.25)
 
     def test_ttt_lookup_table_ext(self):
         from pyrocko import spit_ext

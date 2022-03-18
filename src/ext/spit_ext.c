@@ -45,9 +45,9 @@ int good_array(PyObject* o, int typenum) {
 
 
 static PyObject* w_spit_lookup(
-        PyObject *m,
-        PyObject *args,
-        PyObject *kwds) {
+        PyObject* m,
+        PyObject* args,
+        PyObject* kwds) {
 
     PyObject *coords;
     PyObject *req_coords;
@@ -74,7 +74,7 @@ static PyObject* w_spit_lookup(
     npy_intp ncoords = PyArray_SIZE(arr_coords);
     npy_intp nreq = PyArray_SIZE(arr_req_coords);
 
-    PyArrayObject* arr_result_idx = PyArray_ZEROS(1, &nreq, NPY_INTP, 0);
+    PyArrayObject* arr_result_idx = (PyArrayObject*) PyArray_ZEROS(1, &nreq, NPY_INTP, 0);
 
     npy_intp *idx_close = PyArray_DATA(arr_result_idx);
 
@@ -88,7 +88,7 @@ static PyObject* w_spit_lookup(
         for(ireq = 0; ireq < nreq; ireq++) {
             // private in each core. No NUMA share
             float temp_distances[ncoords];
-            float min_val = 0.f;
+            float min_val = 0.0;
             npy_intp temp_idx = 0;
 
             //  Interchange loops, bigger loop must be inside for better pipelining.
@@ -103,7 +103,7 @@ static PyObject* w_spit_lookup(
             //  If we are lucky temp_idx is stored fix in a multipurpose register and no load-store has to be done inside if clause.
             #pragma omp simd
             for (icoord = 1; icoord < ncoords; icoord++) {
-                if (temp_distances[icoord] < min_val){
+                if (temp_distances[icoord] < min_val) {
                     min_val = temp_distances[icoord];
                     temp_idx = icoord;
                 } else {
@@ -152,9 +152,9 @@ static PyObject* w_spit_lookup(
 static PyMethodDef spit_ext_methods[] = {
     {
         "spit_lookup",
-        (PyCFunction) w_spit_lookup,
+        (PyCFunctionWithKeywords) w_spit_lookup,
         METH_VARARGS | METH_KEYWORDS,
-        "Retrieve lookup indices."
+        "Retrieve indices for lookup table."
     },
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };

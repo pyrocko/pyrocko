@@ -1482,11 +1482,11 @@ class ExplosionLineSource(SourceWithMagnitude):
         return Location(
             lat=self.lat, lon=self.lon,
             north_shift=self.north_shift if self.end_north_shift is None
-                        else self.end_north_shift,
+            else self.end_north_shift,
             east_shift=self.east_shift if self.end_east_shift is None
-                        else self.end_east_shift,
+            else self.end_east_shift,
             depth=self.depth if self.end_depth is None
-                        else self.end_depth
+            else self.end_depth
         )
 
     @property
@@ -1501,7 +1501,7 @@ class ExplosionLineSource(SourceWithMagnitude):
 
     @property
     def strike(self):
-                return self.azibazi_to(self._get_end_location())[0]
+        return self.azibazi_to(self._get_end_location())[0]
 
     @property
     def velocity(self):
@@ -2269,7 +2269,7 @@ class RectangularSource(SourceWithDerivedMagnitude):
         return self.slip * self.opening_fraction
 
     def get_slip_shear(self):
-        return self.slip - abs(self.get_slip_tensile)
+        return self.slip - abs(self.get_slip_tensile())
 
     def _discretize(self, store, target):
         if self.nucleation_x is not None:

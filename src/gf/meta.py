@@ -570,13 +570,15 @@ class Timing(SObject):
                     times_finite = times[num.isfinite(times)]
                     return times_finite[0] if times_finite.size != 0 else None
 
-                else:
+                elif times.ndim > 1:
                     if self.select == 'first':
                         return num.nanmin(times, axis=0)
                     if self.select == 'last':
                         return num.nanmax(times, axis=0)
-
                     return first_finite(times, axis=0)
+                else:
+                    # when times.ndim == 0
+                    return times
             else:
                 return offset
 

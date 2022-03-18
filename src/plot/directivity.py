@@ -12,8 +12,7 @@ from matplotlib.ticker import FuncFormatter
 
 from pyrocko.plot import beachball
 from pyrocko.gf.meta import Timing
-from pyrocko.gf import LocalEngine, Target, RectangularSource, map_anchor
-from pyrocko.util import num_full_like
+from pyrocko.gf import LocalEngine, Target, RectangularSource
 
 
 km = 1e3

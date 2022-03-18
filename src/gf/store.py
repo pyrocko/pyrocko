@@ -1704,10 +1704,11 @@ class Store(BaseStore):
 
         :param timing: Timing string as described above
         :type timing: str or :py:class:`~pyrocko.gf.meta.Timing`
-        :param \\*indexing_args: :py:class:`~pyrocko.gf.meta.Config` index tuple, e.g.
+        :param *indexing_args:
+            :py:class:`~pyrocko.gf.meta.Config` index tuple, e.g.
             ``(source_depth, distance)`` as in
             :py:class:`~pyrocko.gf.meta.ConfigTypeA`.
-    :type \\*indexing_args: tuple
+        :type *indexing_args: tuple
         :returns: Phase arrival according to ``timing``
         :rtype: float or None
         '''
