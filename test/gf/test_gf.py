@@ -1045,10 +1045,16 @@ class GFTestCase(unittest.TestCase):
                     args.append(num.random.uniform(*bounds, size=nargs))
                 args = num.asarray(args).T
 
-                times_lookup = sp_lookup.lookup(args)
+                times_lookup = sp_lookup.lookup(args, implementation='python')
+                times_lookup_c = sp_lookup.lookup(args, implementation='c')
+                times_lookup_c_simd = sp_lookup.lookup(
+                    args, implementation='c', simd=True)
+                num.testing.assert_equal(times_lookup_c, times_lookup)
+                num.testing.assert_equal(times_lookup_c_simd, times_lookup)
+
                 times_tree = sp_tree.interpolate_many(args)
 
-                num.testing.assert_array_equal(times_lookup, times_tree)
+                num.testing.assert_allclose(times_lookup, times_tree, rtol=0.25)
 
     def test_ttt_lookup_table_ext(self):
         from pyrocko import spit_ext
