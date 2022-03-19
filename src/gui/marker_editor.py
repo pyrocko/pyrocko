@@ -748,10 +748,10 @@ class MarkerEditor(qw.QFrame):
         '''
         self.selection_model.clearSelection()
         selections = qc.QItemSelection()
-        selection_flags = qc.QItemSelectionModel.SelectionFlags(
-            int(qc.QItemSelectionModel.Select |
-             qc.QItemSelectionModel.Rows |
-             qc.QItemSelectionModel.Current))
+        selection_flags = qc.QItemSelectionModel.SelectionFlags(int(
+            qc.QItemSelectionModel.Select |
+            qc.QItemSelectionModel.Rows |
+            qc.QItemSelectionModel.Current))
 
         for chunk in indices:
             mi_start = self.marker_model.index(chunk[0], 0)
