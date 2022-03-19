@@ -9,4 +9,4 @@ from .globalcmt import GlobalCMT  # noqa
 from .geofon import Geofon  # noqa
 from .usgs import USGS  # noqa
 from .saxony import Saxony  # noqa
-from .isc import ISC  # noqa
+from .isc import ISC, ISCError, ISCBlocked  # noqa

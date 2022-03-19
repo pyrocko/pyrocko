@@ -20,6 +20,10 @@ class ISCError(Exception):
     pass
 
 
+class ISCBlocked(ISCError):
+    pass
+
+
 class ISC(EarthquakeCatalog):
     '''
     Interfacing the catalog of the Internation Seismological Centre (ISC).
@@ -92,9 +96,16 @@ class ISC(EarthquakeCatalog):
             try:
                 data = quakeml.QuakeML.load_xml(string=page)
             except Exception:
-                raise ISCError(
-                    'Couldn\'t parse XML results from ISC:\n'
-                    + '-' * 79 + '\n' + page + '\n' + '-' * 79)
+                if page[:500].contains(
+                        'Please try again in a few minutes') != -1:
+
+                    raise ISCBlocked(
+                        'Apparently, we have queried ISC too eagerly:\n'
+                        + '-' * 79 + '\n' + page + '\n' + '-' * 79)
+                else:
+                    raise ISCError(
+                        'Couldn\'t parse XML results from ISC:\n'
+                        + '-' * 79 + '\n' + page + '\n' + '-' * 79)
 
             events = data.get_pyrocko_events()
 

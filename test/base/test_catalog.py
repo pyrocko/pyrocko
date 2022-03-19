@@ -89,6 +89,7 @@ class CatalogTestCase(unittest.TestCase):
     @common.require_internet
     @common.skip_on_vagrant
     @common.skip_on(HTTPError)
+    @common.skip_on(catalog.ISCBlocked)
     def testISC(self):
         cat = catalog.ISC()
         tmin = util.stt('2009-02-22 05:00:00')
