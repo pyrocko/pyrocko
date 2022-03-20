@@ -3,7 +3,7 @@
 
 # You can set these variables from the command line.
 SPHINXOPTS    =
-SPHINXBUILD   = python -m sphinx
+SPHINXBUILD   = python3 -m sphinx
 SPHINXPROJ    = Pyrocko
 SOURCEDIR     = source
 BUILDDIR      = build
