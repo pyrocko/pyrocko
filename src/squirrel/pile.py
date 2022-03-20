@@ -265,8 +265,9 @@ class Pile(object):
             ``False``, traces with no data samples, but with correct
             meta-information are returned
         :param style: set to ``'batch'`` to yield waveforms and information
-        about the chopper state as :py:class:`pyrocko.pile.Batch` objects. By
-        default lists of :py:class:`pyrocko.trace.Trace` objects are yielded.
+            about the chopper state as :py:class:`pyrocko.pile.Batch` objects.
+            By default lists of :py:class:`pyrocko.trace.Trace` objects are
+            yielded.
         :returns: iterator providing extracted waveforms for each extracted
             window. See ``style`` argument for details.
         '''

@@ -605,23 +605,24 @@ class TBase(object):
         return []
 
     def classname_for_help(self, strip_module=''):
+
+        if self.dummy_cls is not self.cls:
+            if self.dummy_cls.__module__ == strip_module:
+                sadd = ' (:py:class:`%s`)' % (
+                    self.dummy_cls.__name__)
+            else:
+                sadd = ' (:py:class:`%s.%s`)' % (
+                    self.dummy_cls.__module__, self.dummy_cls.__name__)
+        else:
+            sadd = ''
+
         if self.dummy_cls in guts_plain_dummy_types:
             return '``%s``' % self.cls.__name__
 
         elif self.dummy_cls.dummy_for_description:
-            return self.dummy_cls.dummy_for_description
+            return '%s%s' % (self.dummy_cls.dummy_for_description, sadd)
 
         else:
-            if self.dummy_cls is not self.cls:
-                if self.dummy_cls.__module__ == strip_module:
-                    sadd = ' (:py:class:`%s`)' % (
-                        self.dummy_cls.__name__)
-                else:
-                    sadd = ' (:py:class:`%s.%s`)' % (
-                        self.dummy_cls.__module__, self.dummy_cls.__name__)
-            else:
-                sadd = ''
-
             def sclass(cls):
                 mod = cls.__module__
                 clsn = cls.__name__

@@ -12,8 +12,6 @@
 # All configuration values have a default; values that are commented out serve
 # to show the default.
 
-import sys
-import os
 from datetime import datetime as dt
 from pyrocko import version as pyrocko_version
 import sphinx_sleekcat_theme
@@ -270,8 +268,8 @@ def process_signature(app, what, name, obj, options, signature,
     if what == 'class' and issubclass(obj, guts.Object):
         if obj.dummy_for is not None:
             cls_name = obj.T.classname
-            descr = obj.dummy_for.__name__
-            if hasattr(obj, 'dummy_for_descripton'):
+            descr = guts.classnames(obj.dummy_for)
+            if hasattr(obj, 'dummy_for_description'):
                 descr = (
                     obj.dummy_for_description
                     if obj.dummy_for_description is not None

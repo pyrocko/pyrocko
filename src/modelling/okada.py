@@ -116,28 +116,34 @@ class OkadaSource(AnalyticalRectangularSource):
 
     poisson__ = Float.T(
         default=0.25,
-        help='Poisson\'s ratio :math:`\\nu`.',
+        help='Poisson ratio :math:`\\nu`. '
+             'The Poisson ratio :math:`\\nu`. If set to ``None``, calculated '
+             'from the Lame\' parameters :math:`\\lambda` and :math:`\\mu` '
+             'using :math:`\\nu = \\frac{\\lambda}{2(\\lambda + \\mu)}` (e.g. '
+             'Mueller 2007).',
         optional=True)
 
     lamb__ = Float.T(
-        help='First Lame\' s parameter :math:`\\lambda` [Pa].',
+        help='First Lame parameter :math:`\\lambda` [Pa]. '
+             'If set to ``None``, it is computed from Poisson ratio '
+             ':math:`\\nu` and shear modulus :math:`\\mu`. **Important:** We '
+             'assume a perfect elastic solid with :math:`K=\\frac{5}{3}\\mu`. '
+             'Through :math:`\\nu = \\frac{\\lambda}{2(\\lambda + \\mu)}` '
+             'this leads to :math:`\\lambda = \\frac{2 \\mu \\nu}{1-2\\nu}`.',
         optional=True)
 
     shearmod__ = Float.T(
         default=32.0e9,
-        help='Shear modulus along the plane :math:`\\mu` [Pa].',
+        help='Shear modulus :math:`\\mu` [Pa]. '
+             'If set to ``None``, it is computed from poisson ratio. '
+             '**Important:** We assume a perfect elastic solid with '
+             ':math:`K=\\frac{5}{3}\\mu`. Through '
+             ':math:`\\mu = \\frac{3K(1-2\\nu)}{2(1+\\nu)}` this leads to '
+             ':math:`\\mu = \\frac{8(1+\\nu)}{1-2\\nu}`.',
         optional=True)
 
     @property
     def poisson(self):
-        '''
-        Poisson\' s ratio :math:`\\nu` (if not given).
-
-        The Poisson\' s ratio :math:`\\nu` can be calculated from the Lame\'
-        parameters :math:`\\lambda` and :math:`\\mu` using :math:`\\nu =
-        \\frac{\\lambda}{2(\\lambda + \\mu)}` (e.g. Mueller 2007).
-        '''
-
         if self.poisson__ is not None:
             return self.poisson__
 
@@ -152,20 +158,6 @@ class OkadaSource(AnalyticalRectangularSource):
 
     @property
     def lamb(self):
-        '''
-        First Lame\' s parameter :math:`\\lambda` (if not given).
-
-        Poisson\' s ratio :math:`\\nu` and shear modulus :math:`\\mu` must be
-        available to calculate the first Lame\' s parameter :math:`\\lambda`.
-
-        .. important ::
-
-            We assume a perfect elastic solid with :math:`K=\\frac{5}{3}\\mu`.
-
-            Through :math:`\\nu = \\frac{\\lambda}{2(\\lambda + \\mu)}` this
-            leads to :math:`\\lambda = \\frac{2 \\mu \\nu}{1-2\\nu}`.
-
-        '''
 
         if self.lamb__ is not None:
             return self.lamb__
@@ -182,19 +174,6 @@ class OkadaSource(AnalyticalRectangularSource):
 
     @property
     def shearmod(self):
-        '''
-        Shear modulus :math:`\\mu` (if not given).
-
-        Poisson ratio\' s :math:`\\nu` must be available.
-
-        .. important ::
-
-            We assume a perfect elastic solid with :math:`K=\\frac{5}{3}\\mu`.
-
-            Through :math:`\\mu = \\frac{3K(1-2\\nu)}{2(1+\\nu)}` this leads to
-            :math:`\\mu = \\frac{8(1+\\nu)}{1-2\\nu}`.
-
-        '''
 
         if self.shearmod__ is not None:
             return self.shearmod__

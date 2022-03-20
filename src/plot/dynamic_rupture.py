@@ -1656,7 +1656,7 @@ class RuptureView(Object):
         far field perpendicular to the source strike), so the cumulative moment
         rate function.
 
-        :param variable:#
+        :param variable:
             Dynamic parameter, which shall be plotted. Choose
             between 'moment_rate' ('stf') or 'cumulative_moment' ('moment')
         :type variable:

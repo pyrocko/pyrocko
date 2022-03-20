@@ -38,7 +38,7 @@ class BeachballError(Exception):
     pass
 
 
-class FixedPointOffsetTransform(Transform):
+class _FixedPointOffsetTransform(Transform):
     def __init__(self, trans, dpi_scale_trans, fixed_point):
         Transform.__init__(self)
         self.input_dims = self.output_dims = 2
@@ -444,7 +444,7 @@ def deco_part(mt, mt_type='full', view='top'):
 def choose_transform(axes, size_units, position, size):
 
     if size_units == 'points':
-        transform = FixedPointOffsetTransform(
+        transform = _FixedPointOffsetTransform(
             axes.transData,
             axes.figure.dpi_scale_trans,
             position)

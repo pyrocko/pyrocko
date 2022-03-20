@@ -248,6 +248,14 @@ this_year = time.gmtime()[0]
 
 
 class DummyAwareOptionalTimestamp(Object):
+    '''
+    Optional timestamp with support for some common placeholder values.
+
+    Some StationXML files contain arbitrary placeholder values for open end
+    intervals, like "2100-01-01". Depending on the time range supported by the
+    system, these dates are translated into ``None`` to prevent crashes with
+    this type.
+    '''
     dummy_for = (hpfloat, float)
     dummy_for_description = 'time_float'
 
