@@ -1,11 +1,8 @@
 
-Squirrel API usage
-==================
+.. _squirrel_api_cli_example:
 
-.. _squirrel_cli_example:
-
-A complete example: calculate hourly RMS values
------------------------------------------------
+Tutorial: writing a Squirrel based tool to calculate hourly RMS values
+----------------------------------------------------------------------
 
 In this tutorial we will write a user-friendly command line interface (CLI)
 program to calculate hourly root-mean-square (RMS) values for continuous

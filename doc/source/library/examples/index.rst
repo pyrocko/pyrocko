@@ -20,6 +20,7 @@ Annotated scripts and real-world use cases using Pyrocko.
     :maxdepth: 2
 
     trace_handling
+    squirrel/index
     dataset_management
     obspy_compat
     metadata
