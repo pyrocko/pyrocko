@@ -181,10 +181,11 @@ def plot_directivity(
         interpolation='multilinear',
         target_depth=0.0,
         quantity='displacement', envelope=False,
-        component='R', fmin=0.01, fmax=0.1,
+        component='R', fmin=0.01, fmax=0.1, show_trace=None,
         hillshade=True, cmap=None,
         plot_mt='full', show_phases=True, show_description=True,
-        reverse_time=False, show_nucleations=True, axes=None, nthreads=0):
+        show_colorbar=True, reverse_time=False, show_nucleations=True,
+        axes=None, nthreads=0):
     '''
     Plot the directivity and radiation characteristics of source models.
 
@@ -246,9 +247,15 @@ def plot_directivity(
     :type nthreads: int
     '''
 
+    ax_tr = None
     if axes is None:
-        fig = plt.figure()
-        ax = fig.add_subplot(111, polar=True)
+        fig = plt.figure(figsize=(10, 8))
+
+        if show_trace is not None:
+            ax = fig.add_axes((0.05, 0.3, 0.9, 0.65), polar=True)
+            ax_tr = fig.add_axes((0.1, 0.05, 0.85, 0.2))
+        else:
+            ax = fig.add_axes((0.05, 0.05, 0.9, 0.9), polar=True)
     else:
         fig = axes.figure
         ax = axes
@@ -271,6 +278,7 @@ def plot_directivity(
     data, times = get_seismogram_array(
         resp, fmin, fmax,
         component=component, envelope=envelope)
+    times -= source.time
 
     timings = {label: Timing(phase) for label, phase in phases.items()}
     discretized_source = source.discretize_basesource(store)
@@ -282,7 +290,8 @@ def plot_directivity(
              for target in targets),
             float)
 
-    all_times = num.array(tuple(times for times in target_timings.values()))
+    all_times = num.array(tuple(t for t in target_timings.values()))
+
     tbegin = all_times.min()
     tend = all_times.max()
 
@@ -319,9 +328,10 @@ def plot_directivity(
 
     ax.yaxis.set_major_formatter(FuncFormatter(r_fmt))
     if reverse_time:
-        ax.set_rlim(times[0] - .3*duration, times[-1])
+        r_lim = (times[0] - 0.3*duration, times[-1])
     else:
-        ax.set_rlim(times[-1] + .3*duration, times[0])
+        r_lim = (times[-1] + 0.3*duration, times[0])
+    ax.set_rlim(r_lim)
 
     ax.grid(zorder=20)
 
@@ -377,14 +387,14 @@ def plot_directivity(
             timing.offset_is_slowness = False
             timing.offset_is_percent = False
 
-            times = num.fromiter(
+            label_times = num.fromiter(
                 (store.t(timing, discretized_source, target)
                  for target in targets),
                 float)
 
-            ax.plot(theta, times, color='k', alpha=.3, lw=1., ls='--')
+            ax.plot(theta, label_times, color='k', alpha=.3, lw=1., ls='--')
             ax.text(
-                theta[0], times[0], label,
+                theta[0], label_times[0], label,
                 ha='left', color='k', fontsize='small')
             label_theta += 30.
 
@@ -406,18 +416,53 @@ def plot_directivity(
             fontsize='small',
             ha='left', va='bottom', transform=ax.transAxes)
 
-    cbar_label = QUANTITY_LABEL[quantity]
-    if envelope:
-        cbar_label = 'Envelope ' + cbar_label
+    data_label = QUANTITY_LABEL[quantity]
+    if show_colorbar:
+        if envelope:
+            data_label = 'Envelope ' + data_label
 
-    cb = fig.colorbar(
-        cmw, ax=ax,
-        orientation='vertical', shrink=.8, pad=0.11)
+        cb = fig.colorbar(
+            cmw, ax=ax,
+            orientation='vertical', shrink=.8, pad=0.11)
 
-    cb.set_label(cbar_label)
+        cb.set_label(data_label)
+
+    if show_trace is not None and ax_tr is not None:
+        itr = (num.abs(azimuths - show_trace)).argmin()
+        tr_data = data[:, itr]
+        tr_time = times
+
+        ax.plot(
+            num.array([show_trace, show_trace]) * d2r, [times[0], times[-1]],
+            ls="--", c="k", alpha=0.5)
+
+        ax_tr.plot(tr_time, tr_data, c='k', alpha=.5)
+        ax_tr.grid(alpha=0.3)
+        ax_tr.spines.top.set_visible(False)
+        ax_tr.spines.right.set_visible(False)
+
+        ax_tr.set_xlabel("Time [s]")
+        ax_tr.set_ylabel(data_label)
+        ax_tr.set_xlim([times[0], times[-1]])
+
+        for label, phase_str in phases.items():
+            timing = Timing(phase_str)
+            timing.offset = 0.
+            timing.offset_is_slowness = False
+            timing.offset_is_percent = False
+
+            label_time = store.t(timing, discretized_source, targets[itr])
+
+            ax_tr.axvline(label_time, c='k', alpha=.5, ls='--')
+            ax_tr.annotate(
+                label,
+                xy=(label_time, ax_tr.get_ylim()[-1]), xycoords='data',
+                xytext=(5, -5), textcoords='offset points',
+                fontsize='small', color='k')
 
     if axes is None:
         plt.show()
+
     return resp
 
 
