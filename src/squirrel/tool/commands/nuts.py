@@ -5,11 +5,14 @@
 
 from __future__ import absolute_import, print_function
 
+headline = 'Search indexed contents.'
+
 
 def make_subparser(subparsers):
     return subparsers.add_parser(
         'nuts',
-        help='Search indexed contents.')
+        help=headline,
+        description=headline)
 
 
 def setup(parser):

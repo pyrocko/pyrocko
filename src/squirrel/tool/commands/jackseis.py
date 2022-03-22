@@ -430,10 +430,14 @@ g_defaults = Converter(
     out_mseed_steim=2)
 
 
+headline = 'Convert waveform archive data.'
+
+
 def make_subparser(subparsers):
     return subparsers.add_parser(
         'jackseis',
-        help='Convert waveform archive data.')
+        help=headline,
+        description=headline)
 
 
 def setup(parser):

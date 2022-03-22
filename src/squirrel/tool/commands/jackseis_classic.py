@@ -8,11 +8,14 @@ from __future__ import absolute_import, print_function
 from pyrocko import io
 from pyrocko.apps.jackseis import process, tfmt
 
+headline = 'Squirrel\'s adaption of classic Jackseis.'
+
 
 def make_subparser(subparsers):
     return subparsers.add_parser(
         'jackseis-classic',
-        help='Squirrel\'s adaption of classic Jackseis.')
+        help=headline,
+        description=headline)
 
 
 def setup(parser):

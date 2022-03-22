@@ -8,10 +8,14 @@ from __future__ import absolute_import, print_function
 from pyrocko import squirrel as sq
 
 
+headline = 'Create local environment.'
+
+
 def make_subparser(subparsers):
     return subparsers.add_parser(
         'init',
-        help='Create local environment.')
+        help=headline,
+        description=headline)
 
 
 def setup(parser):

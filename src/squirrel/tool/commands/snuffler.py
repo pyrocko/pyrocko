@@ -6,10 +6,14 @@
 from __future__ import absolute_import, print_function
 
 
+headline = 'Experimental Squirrel-powered Snuffler.'
+
+
 def make_subparser(subparsers):
     return subparsers.add_parser(
         'snuffler',
-        help='View in Snuffler.')
+        help=headline,
+        description=headline)
 
 
 def setup(parser):

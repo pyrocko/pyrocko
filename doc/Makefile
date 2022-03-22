@@ -12,9 +12,15 @@ BUILDDIR      = build
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
-.PHONY: help Makefile
+
+squirrel_cli:
+	python ../maintenance/argparse_help_to_rst.py \
+		pyrocko.squirrel.main \
+		source/apps/squirrel/manual/
+
+.PHONY: help Makefile squirrel_cli
 
 # Catch-all target: route all unknown targets to Sphinx using the new
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
-%: Makefile
+%: Makefile squirrel_cli
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)

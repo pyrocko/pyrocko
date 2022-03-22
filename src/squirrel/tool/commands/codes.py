@@ -8,10 +8,14 @@ from __future__ import absolute_import, print_function
 from pyrocko.squirrel.model import to_kind
 
 
+headline = 'Get summary of available data codes.'
+
+
 def make_subparser(subparsers):
     return subparsers.add_parser(
         'codes',
-        help='Get summary of available data codes.')
+        help=headline,
+        description=headline)
 
 
 def setup(parser):

@@ -8,78 +8,165 @@ from __future__ import absolute_import, print_function
 import logging
 
 from pyrocko import squirrel as sq
+from ..common import SquirrelCommand
 
 logger = logging.getLogger('psq.cli.database')
 
-description = '''
-Actions:
+headline = 'Database inspection and maintenance.'
 
-    env           Show current Squirrel environment.
-    stats         Show brief information about cached meta-data.
-    stats-full    Show detailed information about cached meta-data.
-    files         Show paths of files for which cached meta-data is available.
-    files-nnuts   Show number of index entries for each known file.
-    nuts          Dump index entry summaries.
-    cleanup       Remove leftover volatile data entries.
-    remove paths  Remove cached meta-data of files matching given patterns.
-'''.strip()
+description = '''%s
+
+Get information about Squirrel's meta-data cache and database. Where it is,
+what files it knows about and what index entries are available. It also allows
+to do some basic cleanup actions.
+''' % headline
+
+
+class Env(SquirrelCommand):
+
+    def make_subparser(self, subparsers):
+        return subparsers.add_parser(
+            'env',
+            help='Show current Squirrel environment.',
+            description='Show current Squirrel environment.')
+
+    def run(self, parser, args):
+        env = sq.get_environment()
+        env.path_prefix = env.get_basepath()
+        print(env)
+
+
+class Stats(SquirrelCommand):
+
+    def make_subparser(self, subparsers):
+        return subparsers.add_parser(
+            'stats',
+            help='Show information about cached meta-data.',
+            description='Show information about cached meta-data.')
+
+    def setup(self, parser):
+        parser.add_argument(
+            '--full',
+            help='Show details.',
+            action='store_true')
+
+    def run(self, parser, args):
+        s = sq.Squirrel()
+        db = s.get_database()
+        if args.full:
+            print(db.get_stats().dump())
+        else:
+            print(db.get_stats())
+
+
+class Files(SquirrelCommand):
+
+    def make_subparser(self, subparsers):
+        headline = \
+            'Show paths of files for which cached meta-data is available.'
+
+        return subparsers.add_parser(
+            'files',
+            help=headline,
+            description=headline)
+
+    def setup(self, parser):
+        parser.add_argument(
+            '--nnuts',
+            help='Show nut count for each file.',
+            action='store_true')
+
+    def run(self, parser, args):
+        s = sq.Squirrel()
+        db = s.get_database()
+
+        if args.nnuts:
+            for path, nnuts in db.iter_nnuts_by_file():
+                print(path, nnuts)
+        else:
+            for path in db.iter_paths():
+                print(path)
+
+
+class Nuts(SquirrelCommand):
+
+    def make_subparser(self, subparsers):
+        headline = \
+            'Dump index entry summaries.'
+
+        return subparsers.add_parser(
+            'nuts',
+            help=headline,
+            description=headline)
+
+    def run(self, parser, args):
+        s = sq.Squirrel()
+        db = s.get_database()
+        for path, nuts in db.undig_all():
+            print(path)
+            for nut in nuts:
+                print('  ' + nut.summary)
+
+
+class Cleanup(SquirrelCommand):
+
+    def make_subparser(self, subparsers):
+        headline = \
+            'Remove leftover volatile data entries.'
+
+        return subparsers.add_parser(
+            'cleanup',
+            help=headline,
+            description=headline)
+
+    def run(self, parser, args):
+        s = sq.Squirrel()
+        db = s.get_database()
+        n_removed = db._remove_volatile()
+        logger.info('Number of entries removed: %i' % n_removed)
+
+
+class Remove(SquirrelCommand):
+
+    def make_subparser(self, subparsers):
+        headline = \
+            'Remove cached meta-data of files matching given patterns.'
+
+        return subparsers.add_parser(
+            'remove',
+            help=headline,
+            description=headline)
+
+    def setup(self, parser):
+        parser.add_argument(
+            'paths',
+            nargs='+',
+            metavar='PATHS',
+            help='Glob patterns of paths to be removed (should be quoted to '
+                 'prevent the shell from expanding them).')
+
+    def run(self, parser, args):
+        s = sq.Squirrel()
+        db = s.get_database()
+
+        n_removed = 0
+        for path in args.paths:
+            n_removed += db.remove_glob(path)
+
+        logger.info('Number of entries removed: %i' % n_removed)
 
 
 def make_subparser(subparsers):
     return subparsers.add_parser(
         'database',
-        help='Database inspection and maintenance.',
+        help=headline,
+        subcommands=[Env(), Stats(), Files(), Nuts(), Cleanup(), Remove()],
         description=description)
 
 
 def setup(parser):
-    parser.add_argument('action', nargs='?', default='env', choices=[
-        'env', 'stats', 'stats-full', 'files', 'files-nnuts', 'nuts',
-        'cleanup', 'remove'])
-
-    parser.add_argument('path_patterns', nargs='*')
+    pass
 
 
 def run(parser, args):
-    action = args.action
-    if action == 'env':
-        env = sq.get_environment()
-        env.path_prefix = env.get_basepath()
-        print(env)
-
-    else:
-        s = sq.Squirrel()
-        db = s.get_database()
-        if action == 'stats':
-            print(db.get_stats())
-        elif action == 'stats-full':
-            print(db.get_stats().dump())
-
-        elif action == 'files':
-            for path in db.iter_paths():
-                print(path)
-
-        elif action == 'files-nnuts':
-            for path, nnuts in db.iter_nnuts_by_file():
-                print(path, nnuts)
-
-        elif action == 'nuts':
-            for path, nuts in db.undig_all():
-                print(path)
-                for nut in nuts:
-                    print('  ' + nut.summary)
-
-        elif action == 'cleanup':
-            n_removed = db._remove_volatile()
-            logger.info('Number of entries removed: %i' % n_removed)
-
-        elif action == 'remove':
-            if not args.path_patterns:
-                raise sq.SquirrelError(
-                    'No path patterns to remove have been specified.')
-
-            n_removed = 0
-            for path in args.path_patterns:
-                n_removed += db.remove_glob(path)
-
-            logger.info('Number of entries removed: %i' % n_removed)
+    parser.print_help()

@@ -1,6 +1,7 @@
 /build/
 /dist/
 /doc/build/
+/doc/source/apps/squirrel/manual/
 /pyrocko.egg-info/
 /src/info.py
 

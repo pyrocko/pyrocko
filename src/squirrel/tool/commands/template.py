@@ -14,6 +14,8 @@ from pyrocko.squirrel.error import ToolError
 
 logger = logging.getLogger('psq.cli.template')
 
+headline = 'Print configuration snippets.'
+
 path_prefix = '''
 # All file paths given below are treated relative to the location of this
 # configuration file. Here we may give a common prefix. For example, if the
@@ -121,8 +123,9 @@ template_listing = '\n'.join(
 def make_subparser(subparsers):
     return subparsers.add_parser(
         'template',
-        help='Print configuration snippets.',
-        description='''
+        help=headline,
+        description=headline + '''
+
 Available configuration SNIPPETs:
 
 {}

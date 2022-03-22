@@ -5,9 +5,12 @@
 
 from __future__ import absolute_import, print_function
 
+import os
 import sys
+import re
 import argparse
 import logging
+import textwrap
 
 from pyrocko import util, progress
 from pyrocko.squirrel import error
@@ -15,22 +18,102 @@ from pyrocko.squirrel import error
 
 logger = logging.getLogger('psq.tool.common')
 
-help_time_format = 'Format: "YYYY-MM-DD HH:MM:SS.FFF", truncation allowed.'
+help_time_format = 'Format: ```YYYY-MM-DD HH:MM:SS.FFF```, truncation allowed.'
 
 
-class PyrockoHelpFormatter(argparse.RawDescriptionHelpFormatter):
-    def __init__(self, *args, **kwargs):
-        kwargs['width'] = 79
-        argparse.RawDescriptionHelpFormatter.__init__(self, *args, **kwargs)
+def unwrap(s):
+    if s is None:
+        return None
+    s = s.strip()
+    parts = re.split(r'\n{2,}', s)
+    lines = []
+    for part in parts:
+        plines = part.splitlines()
+        if not any(line.startswith('  ') for line in plines):
+            lines.append(' '.join(plines))
+        else:
+            lines.extend(plines)
+
+        lines.append('')
+
+    return '\n'.join(lines)
+
+
+def wrap(s):
+    lines = []
+    parts = re.split(r'\n{2,}', s)
+    for part in parts:
+        if part.startswith('usage:'):
+            lines.extend(part.splitlines())
+        else:
+            for line in part.splitlines():
+                if not line:
+                    lines.append(line)
+                if not line.startswith(' '):
+                    lines.extend(
+                        textwrap.wrap(line, 79,))
+                else:
+                    lines.extend(
+                        textwrap.wrap(line, 79, subsequent_indent=' '*24))
+
+        lines.append('')
+
+    return '\n'.join(lines)
+
+
+def wrap_usage(s):
+    lines = []
+    for line in s.splitlines():
+        if not line.startswith('usage:'):
+            lines.append(line)
+        else:
+            lines.extend(textwrap.wrap(line, 79, subsequent_indent=' '*24))
+
+    return '\n'.join(lines)
+
+
+def formatter_with_width(n):
+    class PyrockoHelpFormatter(argparse.RawDescriptionHelpFormatter):
+        def __init__(self, *args, **kwargs):
+            kwargs['width'] = n
+            kwargs['max_help_position'] = 24
+            argparse.RawDescriptionHelpFormatter.__init__(
+                self, *args, **kwargs)
+
+            # fix alignment problems, with the post-processing wrapping
+            self._action_max_length = 24
+
+    return PyrockoHelpFormatter
 
 
 class PyrockoArgumentParser(argparse.ArgumentParser):
 
-    def __init__(self, *args, **kwargs):
+    # We want to convert the --help outputs to rst for the html docs. Problem
+    # is that argparse's HelpFormatters to date have no public interface which
+    # we could use to achieve this. The solution here is a bit clunky but works
+    # ok for Squirrel. We allow markup like ``code`` which is kept when
+    # producing rst (by parsing the final --help output) but stripped out when
+    # doing normal --help. This leads to a problem with the internal wrapping
+    # of argparse does this before the stripping. To solve, we render with
+    # argparse to a very wide width and do the wrapping in postprocessing.
+    # ``code`` is replaced with just code in normal output. ```code``` is
+    # replaced with 'code' in normal output and with ``code`` rst output. rst
+    # output is selected with environment variable PYROCKO_RST_HELP=1.
+    # The script maintenance/argparse_help_to_rst.py extracts the rst help
+    # and generates the rst files for the docs.
 
-        kwargs['formatter_class'] = PyrockoHelpFormatter
+    def __init__(
+            self, prog=None, usage=None, description=None, epilog=None,
+            **kwargs):
 
-        argparse.ArgumentParser.__init__(self, *args, **kwargs)
+        kwargs['formatter_class'] = formatter_with_width(1000000)
+
+        description = unwrap(description)
+        epilog = unwrap(epilog)
+
+        argparse.ArgumentParser.__init__(
+            self, prog=prog, usage=usage, description=description,
+            epilog=epilog, **kwargs)
 
         if hasattr(self, '_action_groups'):
             for group in self._action_groups:
@@ -39,6 +122,40 @@ class PyrockoArgumentParser(argparse.ArgumentParser):
 
                 elif group.title == 'optional arguments':
                     group.title = 'Optional arguments'
+
+                elif group.title == 'options':
+                    group.title = 'Options'
+
+        self.raw_help = False
+
+    def format_help(self, *args, **kwargs):
+        s = argparse.ArgumentParser.format_help(self, *args, **kwargs)
+
+        # replace usage with wrapped one from argparse because naive wrapping
+        # does not look good.
+        formatter_class = self.formatter_class
+        self.formatter_class = formatter_with_width(79)
+        usage = self.format_usage()
+        self.formatter_class = formatter_class
+
+        lines = []
+        for line in s.splitlines():
+            if line.startswith('usage:'):
+                lines.append(usage)
+            else:
+                lines.append(line)
+
+        s = '\n'.join(lines)
+
+        if os.environ.get('PYROCKO_RST_HELP', '0') == '0':
+            s = s.replace('```', '\'')
+            s = s.replace('``', '')
+            s = wrap(s)
+        else:
+            s = s.replace('```', '``')
+            s = wrap_usage(s)
+
+        return s
 
 
 class SquirrelArgumentParser(PyrockoArgumentParser):
@@ -114,7 +231,7 @@ class SquirrelArgumentParser(PyrockoArgumentParser):
 
         eff_parser = args.__dict__.get('subparser', self)
 
-        process_standard_arguments(self, args)
+        process_standard_arguments(eff_parser, args)
 
         if eff_parser._have_selection_arguments:
             def make_squirrel():
@@ -222,6 +339,14 @@ def csvtype(choices):
     return splitarg
 
 
+def dq(x):
+    return '``%s``' % x
+
+
+def ldq(xs):
+    return ', '.join(dq(x) for x in xs)
+
+
 def add_standard_arguments(parser):
     group = parser.add_argument_group('General options')
     group.add_argument(
@@ -229,20 +354,28 @@ def add_standard_arguments(parser):
         action='help',
         help='Show this help message and exit.')
 
+    loglevel_choices = ['critical', 'error', 'warning', 'info', 'debug']
+    loglevel_default = 'info'
+
     group.add_argument(
         '--loglevel',
-        choices=['critical', 'error', 'warning', 'info', 'debug'],
-        default='info',
+        choices=loglevel_choices,
+        default=loglevel_default,
         metavar='LEVEL',
-        help='Set logger level. Choices: %(choices)s. Default: %(default)s.')
+        help='Set logger level. Choices: %s. Default: %s.' % (
+            ldq(loglevel_choices), dq(loglevel_default)))
+
+    progress_choices = ['terminal', 'log', 'off']
+    progress_default = 'terminal'
 
     group.add_argument(
         '--progress',
-        choices=['terminal', 'log', 'off'],
-        default='terminal',
+        choices=progress_choices,
+        default=progress_default,
         metavar='DEST',
-        help='Set how progress status is reported. Choices: %(choices)s. '
-             'Default: %(default)s.')
+        help='Set how progress status is reported. Choices: %s. '
+             'Default: %s.' % (
+                ldq(progress_choices), dq(progress_default)))
 
 
 def process_standard_arguments(parser, args):
@@ -282,25 +415,27 @@ def add_squirrel_selection_arguments(parser):
         nargs='+',
         help='Add files and directories with waveforms, metadata and events. '
              'Content is indexed and added to the temporary (default) or '
-             'persistent (see --persistent) data selection.')
+             'persistent (see ``--persistent``) data selection.')
 
     group.add_argument(
         '--include',
         dest='include',
         metavar='REGEX',
         help='Only include files whose paths match the regular expression '
-             'REGEX. Examples: --include=\'\\.MSEED$\' would only match files '
-             'ending with ".MSEED". --include=\'\\.BH[EN]\\.\' would match '
-             'paths containing ".BHE." or ".BHN.". --include=\'/2011/\' would '
-             'match paths with a subdirectory "2011" in their path hierarchy.')
+             '``REGEX``. Examples: ``--include=\'\\.MSEED$\'`` would only '
+             'match files ending with ```.MSEED```. '
+             '``--include=\'\\.BH[EN]\\.\'`` would match paths containing '
+             '```.BHE.``` or ```.BHN.```. ``--include=\'/2011/\'`` would '
+             'match paths with a subdirectory ```2011``` in their path '
+             'hierarchy.')
 
     group.add_argument(
         '--exclude',
         dest='exclude',
         metavar='REGEX',
         help='Only include files whose paths do not match the regular '
-             'expression REGEX. Examples: --exclude=\'/\\.DS_Store/\' would '
-             'exclude anything inside any ".DS_Store" subdirectory.')
+             'expression ``REGEX``. Examples: ``--exclude=\'/\\.DS_Store/\'`` '
+             'would exclude anything inside any ```.DS_Store``` subdirectory.')
 
     group.add_argument(
         '--optimistic', '-o',
@@ -315,8 +450,10 @@ def add_squirrel_selection_arguments(parser):
         metavar='FORMAT',
         default='detect',
         choices=sq.supported_formats(),
-        help='Assume input files are of given FORMAT. Choices: %(choices)s. '
-             'Default: %(default)s.')
+        help='Assume input files are of given ``FORMAT``. Choices: %s. '
+             'Default: %s.' % (
+                 ldq(sq.supported_formats()),
+                 dq('detect')))
 
     group.add_argument(
         '--add-only',
@@ -324,15 +461,15 @@ def add_squirrel_selection_arguments(parser):
         dest='kinds_add',
         metavar='KINDS',
         help='Restrict meta-data scanning to given content kinds. '
-             'KINDS is a comma-separated list of content kinds, choices: %s. '
-             'By default, all content kinds are indexed.'
-             % ', '.join(sq.supported_content_kinds()))
+             '``KINDS`` is a comma-separated list of content kinds. '
+             'Choices: %s. By default, all content kinds are indexed.'
+             % ldq(sq.supported_content_kinds()))
 
     group.add_argument(
         '--persistent', '-p',
         dest='persistent',
         metavar='NAME',
-        help='Create/use persistent selection with given NAME. Persistent '
+        help='Create/use persistent selection with given ``NAME``. Persistent '
              'selections can be used to speed up startup of Squirrel-based '
              'applications.')
 
@@ -352,8 +489,8 @@ def add_squirrel_selection_arguments(parser):
         metavar='FILE',
         help='Add files, directories and remote sources from dataset '
              'description file. This option can be repeated to add multiple '
-             'datasets. Run `squirrel template` to obtain examples of dataset '
-             'description files.')
+             'datasets. Run ```squirrel template``` to obtain examples of '
+             'dataset description files.')
 
 
 def squirrel_from_selection_arguments(args):
@@ -458,17 +595,18 @@ def add_squirrel_query_arguments(parser, without=[]):
             type=csvtype(sq.supported_content_kinds()),
             dest='kinds',
             metavar='KINDS',
-            help='Content kinds to query. KINDS is a comma-separated list of '
-                 'content kinds, choices: %s. By default, all content kinds '
-                 'are queried.' % ', '.join(sq.supported_content_kinds()))
+            help='Content kinds to query. ``KINDS`` is a comma-separated list '
+                 'of content kinds. Choices: %s. By default, all content '
+                 'kinds are queried.' % ldq(sq.supported_content_kinds()))
 
     if 'codes' not in without:
         group.add_argument(
             '--codes',
             dest='codes',
             metavar='CODES',
-            help='Code pattern to query (STA, NET.STA, NET.STA.LOC, '
-                 'NET.STA.LOC.CHA, or NET.STA.LOC.CHA.EXTRA).')
+            help='Code pattern to query (``STA``, ``NET.STA``, '
+                 '``NET.STA.LOC``, ``NET.STA.LOC.CHA``, or '
+                 '``NET.STA.LOC.CHA.EXTRA``).')
 
     if 'tmin' not in without:
         group.add_argument(

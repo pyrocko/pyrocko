@@ -13,11 +13,14 @@ from pyrocko.progress import progress
 
 logger = logging.getLogger('psq.cli.summon')
 
+headline = 'Fill local cache.'
+
 
 def make_subparser(subparsers):
     return subparsers.add_parser(
         'summon',
-        help='Fill local cache.')
+        help=headline,
+        description=headline)
 
 
 def setup(parser):

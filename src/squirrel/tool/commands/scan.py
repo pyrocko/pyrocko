@@ -5,12 +5,14 @@
 
 from __future__ import absolute_import, print_function
 
+headline = 'Scan and index files and directories.'
+
 
 def make_subparser(subparsers):
     return subparsers.add_parser(
         'scan',
-        help='Scan and index files and directories.',
-        description='''Scan and index given files and directories.
+        help=headline,
+        description=headline + '''
 
 Read and cache meta-data of all files in formats understood by Squirrel under
 selected paths. Subdirectories are recursively traversed and file formats are

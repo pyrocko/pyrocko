@@ -5,19 +5,28 @@ Squirrel Tool - *dataset inspection and management*
 The :program:`squirrel` command line tool is a front-end to the :ref:`Squirrel
 data access infrastructure <squirrel>`. It offers functionality to
 
-* manage separate (isolated, local) environments for different projects.
-* pre-scan / index file collections.
 * inspect various aspects of a data collection.
+* pre-scan / index file collections.
 * download data from online sources (FDSN web services, earthquake catalogs).
+* manage separate (isolated, local) environments for different projects.
 * manage persistent selections to speed up access to very large datasets.
 
-Basics
-------
+Command reference
+-----------------
 
-The :program:`squirrel` tool and its subcommands are self-documenting with the
+.. toctree::
+   :maxdepth: 3
+
+   manual/squirrel
+
+Help
+----
+
+The :app:`squirrel` tool and its subcommands are self-documenting with the
 ``--help`` option. Run ``squirrel`` without any options to get the list of
 available subcommands.  Run ``squirrel SUBCOMMAND --help`` to get details about
 a specific subcommand.
+
 
 Common options
 --------------

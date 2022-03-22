@@ -34,8 +34,9 @@ extensions = [
   'sphinx.ext.imgmath',  # 'sphinx.ext.jsmath',
   'sphinx.ext.viewcode',
   'sphinx.ext.intersphinx',
-  'sphinx.ext.autosummary'
+  'sphinx.ext.autosummary',
 ]
+
 
 intersphinx_mapping = {'numpy': ('https://docs.scipy.org/doc/numpy/',
                                  None),
@@ -289,5 +290,6 @@ def skip_member(app, what, name, obj, skip, options):
 
 
 def setup(app):
+    app.add_object_type('application', 'app', 'pair: %s; application')
     app.connect('autodoc-process-signature', process_signature)
     app.connect('autodoc-skip-member', skip_member)

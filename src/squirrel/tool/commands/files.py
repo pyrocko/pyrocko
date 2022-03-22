@@ -5,11 +5,14 @@
 
 from __future__ import absolute_import, print_function
 
+headline = 'Lookup files providing given content selection.'
+
 
 def make_subparser(subparsers):
     return subparsers.add_parser(
         'files',
-        help='Lookup files providing given content selection.')
+        help=headline,
+        description=headline)
 
 
 def setup(parser):

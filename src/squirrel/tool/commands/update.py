@@ -12,11 +12,14 @@ from pyrocko.squirrel import model
 
 logger = logging.getLogger('psq.cli.update')
 
+headline = 'Update remote sources inventories.'
+
 
 def make_subparser(subparsers):
     return subparsers.add_parser(
         'update',
-        help='Update remote sources inventories.')
+        help=headline,
+        description=headline)
 
 
 def setup(parser):

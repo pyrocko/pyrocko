@@ -17,12 +17,13 @@ g_program_name = 'squirrel'
 
 def main(args=None):
     run(
+        args=args,
         prog=g_program_name,
         subcommands=command_modules,
         description='''
 Pyrocko Squirrel - Prompt seismological data access with a fluffy tail.
 
-This is `squirrel`, a command-line front-end to the Squirrel data access
+This is ```squirrel```, a command-line front-end to the Squirrel data access
 infrastructure. The Squirrel infrastructure offers meta-data caching, blazingly
 fast data lookup for large datasets and transparent online data download to
 applications building on it.
@@ -36,7 +37,7 @@ datasets, (3), pre-scanning/indexing of file collections. It can also be used
 to inspect various aspects of a data collection.
 
 This tool's functionality is available through several subcommands. Run
-`squirrel SUBCOMMAND --help` to get further help.''')
+```squirrel SUBCOMMAND --help``` to get further help.''')
 
 
 def run(

@@ -11,11 +11,14 @@ from pyrocko.get_terminal_size import get_terminal_size
 from pyrocko.squirrel.error import ToolError
 
 
+headline = 'Report time spans covered.'
+
+
 def make_subparser(subparsers):
     return subparsers.add_parser(
         'coverage',
-        help='Report time spans covered.',
-        description='''Report time spans covered.
+        help=headline,
+        description=headline + '''
 
 Time spans covered by the given data selection are listed or plotted.
 ''')

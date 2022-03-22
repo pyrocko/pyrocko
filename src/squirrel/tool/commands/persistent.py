@@ -7,19 +7,21 @@ from __future__ import absolute_import, print_function
 
 from pyrocko.squirrel import error, environment, database, base
 
+headline = 'Manage persistent selections.'
+
 
 def make_subparser(subparsers):
     return subparsers.add_parser(
         'persistent',
-        help='Manage persistent selections.',
-        description='''Manage persistent selections.
+        help=headline,
+        description=headline + '''
 
 Usually, the contents of files given to Squirrel are made available within the
 application through a runtime selection which is discarded again when the
 application quits. Getting the cached meta-data into the runtime selection can
 be a bottleneck for application startup with large datasets. To speed up
 startup of Squirrel-based applications, persistent selections created with the
---persistent option can be used.
+``--persistent`` option can be used.
 
 This command allows to list and delete persistent selections.
 ''')
