@@ -416,7 +416,7 @@ def plot_directivity(
             fontsize='small',
             ha='left', va='bottom', transform=ax.transAxes)
 
-    data_label = QUANTITY_LABEL[quantity]
+    data_label = "Part. " + QUANTITY_LABEL[quantity]
     if show_colorbar:
         if envelope:
             data_label = 'Envelope ' + data_label
