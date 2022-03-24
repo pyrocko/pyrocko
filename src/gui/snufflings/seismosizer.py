@@ -439,8 +439,10 @@ class PseudoDynamicRuptureSource(Seismosizer):
             Param('East shift', 'east_km', 0.0, -50., 50.))
         self.add_parameter(
             Param('Depth', 'depth_km', 10.0, 0.0, 600.0))
+        # self.add_parameter(
+        #     Param('Magnitude', 'magnitude', 6.0, 0.0, 10.0))
         self.add_parameter(
-            Param('Magnitude', 'magnitude', 6.0, 0.0, 10.0))
+            Param('Slip', 'slip', 1.0, 0.0, 20.0))
         self.add_parameter(
             Param('Strike', 'strike', 0., -180., 180.))
         self.add_parameter(
@@ -448,7 +450,7 @@ class PseudoDynamicRuptureSource(Seismosizer):
         self.add_parameter(
             Param('Rake', 'rake', 0., -180., 180.))
         self.add_parameter(
-            Param('Length', 'length', 10.*km, .1*km, 100*km))
+            Param('Length', 'length', 10.*km, .1*km, 300*km))
         self.add_parameter(
             Param('Width', 'width', 5.*km, .1*km, 50*km))
         self.add_parameter(
@@ -456,7 +458,7 @@ class PseudoDynamicRuptureSource(Seismosizer):
         self.add_parameter(
             Param('Nucleation Y', 'nucleation_y', 0., -1., 1.))
         self.add_parameter(
-            Param('Gamma', 'gamma', 0.8, 0.5, 1.5))
+            Param('Gamma', 'gamma', 0.8, 0.1, 1.5))
         self.add_parameter(
             Param('nx', 'nx', 5, 1, 20))
         self.add_parameter(
@@ -481,7 +483,8 @@ class PseudoDynamicRuptureSource(Seismosizer):
             north_shift=self.north_km*km,
             east_shift=self.east_km*km,
             depth=self.depth_km*km,
-            magnitude=self.magnitude,
+            slip=self.slip,
+            # magnitude=self.magnitude,
             strike=self.strike,
             dip=self.dip,
             rake=self.rake,
@@ -490,11 +493,10 @@ class PseudoDynamicRuptureSource(Seismosizer):
             nucleation_x=self.nucleation_x,
             nucleation_y=self.nucleation_y,
             gamma=self.gamma,
-            stf=self.get_stf(),
-
+            # stf=self.get_stf(),
             nthreads=5,
             pure_shear=True,
-            smooth_rupture=False)
+            smooth_rupture=True)
 
         return source
 
