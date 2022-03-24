@@ -560,11 +560,26 @@ class DigitalFilterResponse(FrequencyResponse):
             raise InvalidResponseError(
                 'Invalid digital response: sampling rate undefined')
 
+    def is_scalar(self):
+        return len(self.a) == 1 and len(self.b) == 1
+
+    def get_scalar(self):
+        if self.is_scalar():
+            return self.b[0] / self.a[0]
+        else:
+            raise IsNotScalar()
+
     def get_fmax(self):
-        self.check_sampling_rate()
-        return 0.5 / self.deltat
+        if not self.is_scalar():
+            self.check_sampling_rate()
+            return 0.5 / self.deltat
+        else:
+            return None
 
     def evaluate(self, freqs):
+        if self.is_scalar():
+            return util.num_full_like(freqs, self.get_scalar(), dtype=complex)
+
         self.check_sampling_rate()
 
         ok = freqs <= 0.5/self.deltat
