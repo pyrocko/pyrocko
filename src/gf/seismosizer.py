@@ -3865,15 +3865,22 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
         norths = self.get_patch_attribute('north_shift')
         easts = self.get_patch_attribute('east_shift')
         depths = self.get_patch_attribute('depth')
-        times = self.get_patch_attribute('time') - self.time
 
         centroid_n = num.sum(weights * norths)
         centroid_e = num.sum(weights * easts)
         centroid_d = num.sum(weights * depths)
-        centroid_t = num.sum(weights * times) + self.time
 
         centroid_lat, centroid_lon = ne_to_latlon(
             self.lat, self.lon, centroid_n, centroid_e)
+
+        moment_rate_, times = self.get_moment_rate(store)
+        delta_times = num.concatenate((
+            [times[1] - times[0]],
+            num.diff(times)))
+        moment_src = delta_times * moment_rate
+
+        centroid_t = num.sum(
+            moment_src / num.sum(moment_src) * times) + self.time
 
         mt = self.pyrocko_moment_tensor(store, *args, **kwargs)
 
