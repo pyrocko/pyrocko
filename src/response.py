@@ -39,6 +39,22 @@ def asarray_1d(x, dtype):
         return a
 
 
+def finalize_construction(breakpoints):
+    breakpoints.sort()
+    breakpoints_out = []
+    f_last = None
+    for f, c in breakpoints:
+        if f_last is not None and f == f_last:
+            breakpoints_out[-1][1] += c
+        else:
+            breakpoints_out.append([f, c])
+
+        f_last = f
+
+    breakpoints_out = [(f, c) for (f, c) in breakpoints_out if c != 0]
+    return breakpoints_out
+
+
 class FrequencyResponseCheckpoint(Object):
     frequency = Float.T()
     value = Float.T()
@@ -57,6 +73,9 @@ class FrequencyResponse(Object):
 
     def evaluate(self, freqs):
         return num.ones(freqs.size, dtype=complex)
+
+    def evaluate1(self, freq):
+        return self.evaluate(num.atleast_1d(freq))[0]
 
     def is_scalar(self):
         '''
@@ -79,6 +98,9 @@ class FrequencyResponse(Object):
 
     def get_fmax(self):
         return None
+
+    def construction(self):
+        return []
 
 
 class Gain(FrequencyResponse):
@@ -311,6 +333,18 @@ class PoleZeroResponse(FrequencyResponse):
             deltat, method=method)
 
         return DigitalPoleZeroResponse(z, p, k, deltat)
+
+    def construction(self):
+        breakpoints = []
+        for zero in self.zeros:
+            f = abs(zero) / (2.*math.pi)
+            breakpoints.append((f, 1))
+
+        for pole in self.poles:
+            f = abs(pole) / (2.*math.pi)
+            breakpoints.append((f, -1))
+
+        return finalize_construction(breakpoints)
 
 
 class DigitalPoleZeroResponse(FrequencyResponse):
@@ -686,6 +720,13 @@ class MultiplyResponse(FrequencyResponse):
                 PoleZeroResponse(poles=poles, zeros=zeros, constant=constant)]
 
         self.responses = responses
+
+    def construction(self):
+        breakpoints = []
+        for resp in self.responses:
+            breakpoints.extend(resp.construction())
+
+        return finalize_construction(breakpoints)
 
 
 class DelayResponse(FrequencyResponse):

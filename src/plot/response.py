@@ -56,7 +56,8 @@ def draw(
         fmin=0.01, fmax=100., nf=100,
         normalize=False,
         style={},
-        label=None):
+        label=None,
+        show_breakpoints=False):
 
     '''
     Draw instrument response in Bode plot style to given Matplotlib axes
@@ -111,6 +112,36 @@ def draw(
                 checkpoint.frequency, checkpoint.value, 'o',
                 color=style.get('color', 'black'))
 
+            axes_amplitude.annotate(
+                '%.3g s' % (1.0/checkpoint.frequency)
+                if checkpoint.frequency < 1.0 else
+                '%.3g Hz' % checkpoint.frequency,
+                xy=(checkpoint.frequency, checkpoint.value),
+                xytext=(10, 10),
+                textcoords='offset points',
+                color=style.get('color', 'black'))
+
+        if show_breakpoints:
+            for br_frequency, br_change in response.construction():
+                if not (fmin <= br_frequency <= fmax):
+                    continue
+
+                br_value = abs(response.evaluate1(br_frequency))
+                axes_amplitude.plot(
+                    br_frequency, br_value, 'v' if br_change < 0 else '^',
+                    mec=style.get('color', 'black'),
+                    color='none',
+                    ms=10)
+
+                axes_amplitude.annotate(
+                    '%.3g s (%i)' % (1.0/br_frequency, br_change)
+                    if br_frequency < 1.0 else
+                    '%.3g Hz' % br_frequency,
+                    xy=(br_frequency, br_value),
+                    xytext=(10, 10),
+                    textcoords='offset points',
+                    color=style.get('color', 'black'))
+
     if axes_phase:
         dta = num.diff(num.log(ta))
         iflat = num.nanargmin(num.abs(num.diff(dta)) + num.abs(dta[:-1]))
@@ -158,7 +189,8 @@ def plot(
         fontsize=10.,
         figsize=None,
         styles=None,
-        labels=None):
+        labels=None,
+        show_breakpoints=False):
 
     '''
     Draw instrument responses in Bode plot style.
@@ -179,6 +211,7 @@ def plot(
     :param figsize: :py:class:`tuple`, ``(width, height)`` in inches
     :param labels: :py:class:`list` of names to show in legend. Length must
         correspond to number of responses.
+    :param show_breakpoints: show breakpoints of pole-zero responses.
     '''
 
     from matplotlib import pyplot as plt
@@ -222,7 +255,8 @@ def plot(
             fmin=fmin, fmax=fmax, nf=nf,
             normalize=normalize,
             style=style,
-            label=label)
+            label=label,
+            show_breakpoints=show_breakpoints)
 
         if label is not None:
             have_labels = True
@@ -464,6 +498,13 @@ if __name__ == '__main__':
         help='show converted response for given input units, choices: '
              '["M", "M/S", "M/S**2"]')
 
+    parser.add_option(
+        '--show-breakpoints',
+        dest='show_breakpoints',
+        action='store_true',
+        default=False,
+        help='show breakpoints of pole-zero responses')
+
     (options, args) = parser.parse_args(sys.argv[1:])
 
     if len(args) == 0:
@@ -499,4 +540,5 @@ if __name__ == '__main__':
         resps,
         fmin=options.fmin, fmax=options.fmax, nf=200,
         normalize=options.normalize,
-        labels=labels, filename=options.filename, dpi=options.dpi)
+        labels=labels, filename=options.filename, dpi=options.dpi,
+        show_breakpoints=options.show_breakpoints)
