@@ -1,4 +1,4 @@
-``pyrocko.io.stationxml``
+``stationxml``
 ===================================
 
 .. automodule:: pyrocko.io.stationxml

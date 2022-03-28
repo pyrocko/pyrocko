@@ -1,4 +1,4 @@
-``pyrocko.io.gse2``
+``gse2``
 ===================================
 
 .. automodule:: pyrocko.io.gse2

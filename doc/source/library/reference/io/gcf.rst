@@ -1,4 +1,4 @@
-``pyrocko.io.gcf``
+``gcf``
 ===================================
 
 .. automodule:: pyrocko.io.gcf

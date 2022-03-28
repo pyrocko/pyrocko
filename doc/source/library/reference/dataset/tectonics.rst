@@ -1,7 +1,7 @@
 Tectonic Datasets (``dataset.tectonics``)
 =========================================
 
-``dataset.tectonics.PeterBird2003``
+``PeterBird2003``
 -----------------------------------
 
 .. autoclass:: pyrocko.dataset.tectonics.PeterBird2003
@@ -10,7 +10,7 @@ Tectonic Datasets (``dataset.tectonics``)
 .. autoclass:: pyrocko.dataset.tectonics.Plate
     :members:
 
-``dataset.tectonics.GSRM1``
+``GSRM1``
 ---------------------------
 
 .. autoclass:: pyrocko.dataset.tectonics.GSRM1

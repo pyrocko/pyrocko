@@ -1,4 +1,4 @@
-``gui.snuffling``
+``snuffling``
 =================
 
 .. automodule:: pyrocko.gui.snuffling

@@ -5,28 +5,28 @@ Online earthquake catalogs (``client.catalog``)
     :members:
 
 
-``client.catalog.Geofon``
+``Geofon``
 -------------------------
 
 .. autoclass :: pyrocko.client.catalog.Geofon
     :show-inheritance:
     :members:
 
-``client.catalog.GlobalCMT``
+``GlobalCMT``
 ----------------------------
 
 .. autoclass :: pyrocko.client.catalog.GlobalCMT
     :show-inheritance:
     :members:
 
-``client.catalog.USGS``
+``USGS``
 -----------------------
 
 .. autoclass :: pyrocko.client.catalog.USGS
     :show-inheritance:
     :members:
 
-``client.catalog.Saxony``
+``Saxony``
 -------------------------
 
 .. autoclass :: pyrocko.client.catalog.Saxony

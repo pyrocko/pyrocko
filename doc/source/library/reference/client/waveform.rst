@@ -1,7 +1,7 @@
 Online waveform and station metadata archives (``client``)
 ==========================================================
 
-``client.fdsn``
+``fdsn``
 ---------------
 
 .. automodule :: pyrocko.client.fdsn
@@ -9,7 +9,7 @@ Online waveform and station metadata archives (``client``)
     :show-inheritance:
 
 
-``client.iris``
+``iris``
 ---------------
 
 .. automodule:: pyrocko.client.iris

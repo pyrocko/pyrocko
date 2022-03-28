@@ -1,4 +1,4 @@
-``gui.util``
+``util``
 ============
 
 .. automodule:: pyrocko.gui.util

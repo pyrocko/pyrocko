@@ -1,4 +1,4 @@
-``pyrocko.io.sac``
+``sac``
 ===================================
 
 .. automodule:: pyrocko.io.sac

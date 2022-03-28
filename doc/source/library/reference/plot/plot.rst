@@ -1,37 +1,37 @@
-``plot.beachball``
+``beachball``
 ------------------
 
 .. automodule:: pyrocko.plot.beachball
     :members:
 
 
-``plot.cake_plot``
+``cake_plot``
 ------------------
 
 .. automodule:: pyrocko.plot.cake_plot
     :members:
 
 
-``plot.hudson``
+``hudson``
 ---------------
 
 .. automodule:: pyrocko.plot.hudson
     :members:
 
-``plot.response``
+``response``
 -----------------
 
 .. automodule:: pyrocko.plot.response
     :members:
 
-``plot.directivity``
+``directivity``
 --------------------
 
 .. automodule:: pyrocko.plot.directivity
     :members:
 
 
-``plot.dynamic_rupture``
+``dynamic_rupture``
 ------------------------
 
 .. automodule:: pyrocko.plot.dynamic_rupture

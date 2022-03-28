@@ -1,14 +1,14 @@
 Geographic Datasets (``dataset``)
 =================================
 
-``dataset.geonames``
+``geonames``
 --------------------
 
 .. automodule :: pyrocko.dataset.geonames
     :members:
 
 
-``dataset.gshhg``
+``gshhg``
 -----------------
 
 .. automodule :: pyrocko.dataset.gshhg

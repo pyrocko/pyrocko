@@ -1,4 +1,4 @@
-``pyrocko.io.datacube``
+``datacube``
 ===================================
 
 .. automodule:: pyrocko.io.datacube

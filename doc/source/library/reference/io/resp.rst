@@ -1,4 +1,4 @@
-``pyrocko.io.resp``
+``resp``
 ===================================
 
 .. automodule:: pyrocko.io.resp

@@ -1,4 +1,4 @@
-``pyrocko.io.kan``
+``kan``
 ===================================
 
 .. automodule:: pyrocko.io.kan

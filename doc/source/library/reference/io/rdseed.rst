@@ -1,4 +1,4 @@
-``pyrocko.io.rdseed``
+``rdseed``
 ===================================
 
 .. automodule:: pyrocko.io.rdseed

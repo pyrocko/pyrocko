@@ -1,4 +1,4 @@
-``pyrocko.io.seisan_response``
+``seisan_response``
 ===================================
 
 .. automodule:: pyrocko.io.seisan_response

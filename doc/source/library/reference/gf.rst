@@ -4,42 +4,42 @@
 .. automodule:: pyrocko.gf
     :members:
 
-``gf.store``
+``store``
 ------------
 
 .. automodule:: pyrocko.gf.store
     :members:
     :show-inheritance:
 
-``gf.builder``
+``builder``
 --------------
 
 .. automodule:: pyrocko.gf.builder
     :members:
     :show-inheritance:
 
-``gf.seismosizer``
+``seismosizer``
 ------------------
 
 .. automodule:: pyrocko.gf.seismosizer
     :members:
     :show-inheritance:
 
-``gf.targets``
+``targets``
 --------------
 
 .. automodule:: pyrocko.gf.targets
     :members:
     :show-inheritance:
 
-``gf.tractions``
+``tractions``
 ----------------
 
 .. automodule:: pyrocko.gf.tractions
     :members:
     :show-inheritance:
 
-``gf.meta``
+``meta``
 -----------
 
 .. automodule:: pyrocko.gf.meta

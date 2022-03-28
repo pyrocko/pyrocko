@@ -1,4 +1,4 @@
-``gui.pile_viewer``
+``pile_viewer``
 ===================
 
 .. automodule:: pyrocko.gui.pile_viewer

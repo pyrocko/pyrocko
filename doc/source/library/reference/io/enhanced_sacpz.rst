@@ -1,4 +1,4 @@
-``pyrocko.io.enhanced_sacpz``
+``enhanced_sacpz``
 =============================
 
 .. automodule:: pyrocko.io.enhanced_sacpz

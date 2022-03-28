@@ -1,4 +1,4 @@
-``pyrocko.io.mseed``
+``mseed``
 ===================================
 
 .. automodule:: pyrocko.io.mseed

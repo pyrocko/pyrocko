@@ -1,4 +1,4 @@
-``pyrocko.io.segy``
+``segy``
 ===================================
 
 .. automodule:: pyrocko.io.segy

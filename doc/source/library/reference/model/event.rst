@@ -1,4 +1,4 @@
-``model.event``
+``event``
 ===============
 
 .. automodule :: pyrocko.model.event

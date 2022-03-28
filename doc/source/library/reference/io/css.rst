@@ -1,4 +1,4 @@
-``pyrocko.io.css``
+``css``
 ===================================
 
 .. automodule:: pyrocko.io.css

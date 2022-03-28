@@ -1,4 +1,4 @@
-``model.location``
+``location``
 ==================
 
 .. automodule :: pyrocko.model.location

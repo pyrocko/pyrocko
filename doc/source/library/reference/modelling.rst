@@ -1,15 +1,22 @@
 ``modelling``
 =============
 
-``pyrocko.modelling.okada``
+``okada``
 ---------------------------
 
 .. automodule:: pyrocko.modelling.okada
     :members:
 
 
-``pyrocko.modelling.cracksol``
+``cracksol``
 ------------------------------
 
 .. automodule:: pyrocko.modelling.cracksol
+    :members:
+
+
+``eikonal``
+---------------------
+
+.. automodule:: pyrocko.modelling.eikonal
     :members:

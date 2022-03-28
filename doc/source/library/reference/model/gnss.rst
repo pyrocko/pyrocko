@@ -1,4 +1,4 @@
-``model.gnss``
+``gnss``
 ==============
 
 .. automodule :: pyrocko.model.gnss

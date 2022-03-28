@@ -1,4 +1,4 @@
-``streaming.slink``
+``slink``
 ===================
 
 .. automodule:: pyrocko.streaming.slink

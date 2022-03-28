@@ -1,4 +1,4 @@
-``pyrocko.io.yaff``
+``yaff``
 ===================================
 
 .. automodule:: pyrocko.io.yaff

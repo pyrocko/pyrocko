@@ -1,7 +1,7 @@
 GMT4/5 Python wrapper
 =====================
 
-``plot.gmtpy``
+``gmtpy``
 --------------
 
 .. automodule:: pyrocko.plot.gmtpy

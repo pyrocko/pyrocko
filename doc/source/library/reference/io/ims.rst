@@ -1,4 +1,4 @@
-``pyrocko.io.ims``
+``ims``
 ===================================
 
 .. automodule:: pyrocko.io.ims

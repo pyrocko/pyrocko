@@ -1,4 +1,4 @@
-``pyrocko.io.suds``
+``suds``
 ===================================
 
 .. automodule:: pyrocko.io.suds

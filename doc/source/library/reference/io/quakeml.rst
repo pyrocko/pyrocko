@@ -1,4 +1,4 @@
-``pyrocko.io.quakeml``
+``quakeml``
 ===================================
 
 .. automodule:: pyrocko.io.quakeml
