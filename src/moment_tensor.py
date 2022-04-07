@@ -750,7 +750,7 @@ class MomentTensor(Object):
         '''
         Get both possible slip directions.
         '''
-        return [rotmat*cvec(1., 0., 0.) for rotmat in self._rotmats]
+        return [rotmat.T*cvec(1., 0., 0.) for rotmat in self._rotmats]
 
     def m(self):
         '''
