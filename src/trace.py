@@ -13,6 +13,7 @@ import math
 import copy
 import logging
 import hashlib
+from collections import defaultdict
 
 import numpy as num
 from scipy import signal
@@ -2018,7 +2019,7 @@ class ResamplingFailed(Exception):
     pass
 
 
-def minmax(traces, key=None, mode='minmax'):
+def minmax(traces, key=None, mode='minmax', outer_mode='minmax'):
 
     '''
     Get data range given traces grouped by selected pattern.
@@ -2027,9 +2028,13 @@ def minmax(traces, key=None, mode='minmax'):
         key for the grouping of the results. If this is ``None``, the default,
         ``lambda tr: (tr.network, tr.station, tr.location, tr.channel)`` is
         used.
-    :param mode: 'minmax' or floating point number. If this is 'minmax',
-        minimum and maximum of the traces are used, if it is a number, mean +-
-        standard deviation times ``mode`` is used.
+    :param mode: ``'minmax'`` or floating point number. If this is
+        ``'minmax'``, minimum and maximum of the traces are used, if it is a
+        number, mean +- standard deviation times ``mode`` is used.
+
+    param outer_mode: ``'minmax'`` to use mininum and maximum of the
+        single-trace ranges, or ``'robust'`` to use the interval to discard 10%
+        extreme values on either end.
 
     :returns: a dict with the combined data ranges.
 
@@ -2050,21 +2055,24 @@ def minmax(traces, key=None, mode='minmax'):
     if key is None:
         key = _default_key
 
-    ranges = {}
+    ranges = defaultdict(list)
     for trace in traces:
         if isinstance(mode, str) and mode == 'minmax':
-            mi, ma = trace.ydata.min(), trace.ydata.max()
+            mi, ma = num.nanmin(trace.ydata), num.nanmax(trace.ydata)
         else:
             mean = trace.ydata.mean()
             std = trace.ydata.std()
             mi, ma = mean-std*mode, mean+std*mode
 
         k = key(trace)
-        if k not in ranges:
-            ranges[k] = mi, ma
-        else:
-            tmi, tma = ranges[k]
-            ranges[k] = min(tmi, mi), max(tma, ma)
+        ranges[k].append((mi, ma))
+
+    for k in ranges:
+        mins, maxs = num.array(ranges[k]).T
+        if outer_mode == 'minmax':
+            ranges[k] = num.nanmin(mins), num.nanmax(maxs)
+        elif outer_mode == 'robust':
+            ranges[k] = num.percentile(mins, 10.), num.percentile(maxs, 90.)
 
     return ranges
 

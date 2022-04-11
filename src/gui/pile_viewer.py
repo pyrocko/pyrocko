@@ -928,9 +928,12 @@ def MakePileViewerMainClass(base):
             self.scalingmode_change()
 
             menudef = [
-                ('Scaling based on Minimum and Maximum', 'minmax'),
-                ('Scaling based on Mean ± 2x Std. Deviation', 2),
-                ('Scaling based on Mean ± 4x Std. Deviation', 4),
+                ('Scaling based on Minimum and Maximum',
+                 ('minmax', 'minmax')),
+                ('Scaling based on Minimum and Maximum (Robust)',
+                 ('minmax', 'robust')),
+                ('Scaling based on Mean ± 2x Std. Deviation', (2, 'minmax')),
+                ('Scaling based on Mean ± 4x Std. Deviation', (4, 'minmax')),
             ]
 
             self.menuitems_scaling_base = add_radiobuttongroup(
@@ -3166,7 +3169,8 @@ def MakePileViewerMainClass(base):
                 data_ranges = pyrocko.trace.minmax(
                     processed_traces,
                     key=self.scaling_key,
-                    mode=self.scaling_base)
+                    mode=self.scaling_base[0],
+                    outer_mode=self.scaling_base[1])
 
                 if not self.menuitem_fixscalerange.isChecked():
                     self.old_data_ranges = data_ranges
