@@ -703,23 +703,7 @@ class MultiplyResponse(FrequencyResponse):
             raise IsNotScalar()
 
     def simplify(self):
-        poles = []
-        zeros = []
-        constant = 1.0
-        responses = []
-        for resp in self.responses:
-            if isinstance(resp, PoleZeroResponse):
-                poles.extend(resp.poles)
-                zeros.extend(resp.zeros)
-                constant *= resp.constant
-            else:
-                responses.append(resp)
-
-        if poles or zeros or constant != 1.0:
-            responses[0:0] = [
-                PoleZeroResponse(poles=poles, zeros=zeros, constant=constant)]
-
-        self.responses = responses
+        self.responses = simplify_responses(self.responses)
 
     def construction(self):
         breakpoints = []
