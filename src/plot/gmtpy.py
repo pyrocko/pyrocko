@@ -1537,9 +1537,13 @@ def loadgrd(filename):
     if 'lat' in vkeys:
         ky = 'lat'
 
+    kz = 'z'
+    if 'altitude' in vkeys:
+        kz = 'altitude'
+
     x = to_array(nc.variables[kx])
     y = to_array(nc.variables[ky])
-    z = to_array(nc.variables['z'])
+    z = to_array(nc.variables[kz])
 
     nc.close()
     return x, y, z
