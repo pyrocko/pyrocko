@@ -10,6 +10,7 @@ import os
 import copy
 import logging
 import tempfile
+import importlib.util
 from collections import defaultdict
 try:
     import cPickle as pickle
@@ -27,6 +28,7 @@ from pyrocko import util, trace, io
 from pyrocko.io.io_common import FileLoadError
 from pyrocko.io import stationxml
 from pyrocko.progress import progress
+from pyrocko import has_paths
 
 from pyrocko.guts import Object, String, Timestamp, List, Tuple, Int, Dict, \
     Duration, Bool, clone
@@ -215,7 +217,7 @@ class ErrorLog(Object):
             return ''
 
 
-class FDSNSource(Source):
+class FDSNSource(Source, has_paths.HasPaths):
 
     '''
     Squirrel data-source to transparently get data from FDSN web services.
@@ -266,6 +268,10 @@ class FDSNSource(Source):
         optional=True,
         help='Path to file containing the authentication token to be '
              'presented to the FDSN server.')
+
+    hotfix_module_path = has_paths.Path.T(
+        optional=True,
+        help='Path to Python module to locally patch metadata errors.')
 
     def __init__(self, site, query_args=None, **kwargs):
         Source.__init__(self, site=site, query_args=query_args, **kwargs)
@@ -345,6 +351,24 @@ class FDSNSource(Source):
         responses_path = self._get_responses_path()
         if os.path.exists(responses_path):
             squirrel.add(responses_path, kinds=['response'])
+
+        self._hotfix_module = None
+
+    def _hotfix(self, query_type, sx):
+        if self.hotfix_module_path is None:
+            return
+
+        if self._hotfix_module is None:
+            module_path = self.expand_path(self.hotfix_module_path)
+            spec = importlib.util.spec_from_file_location(
+                'hotfix_' + self._hash, module_path)
+            self._hotfix_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(self._hotfix_module)
+
+        hook = getattr(
+            self._hotfix_module, 'stationxml_' + query_type + '_hook')
+
+        return hook(sx)
 
     def _get_constraint_path(self):
         return op.join(self._cache_path, self._hash, 'constraint.pickle')
@@ -472,6 +496,9 @@ class FDSNSource(Source):
                 format='text',
                 level='channel',
                 **extra_args)
+
+            self._hotfix('channel', channel_sx)
+
             return channel_sx
 
         except fdsn.EmptyResult:
@@ -695,6 +722,7 @@ class FDSNSource(Source):
                 selection=selection,
                 **extra_args)
 
+            self._hotfix('response', response_sx)
             return response_sx
 
         except fdsn.EmptyResult:
