@@ -1022,7 +1022,6 @@ class GFTestCase(unittest.TestCase):
                 cake_time = (t3 - t2) / nruns
                 print('Cake time', cake_time)
                 print('Cake angle', cake_attribute)
-                print('Speedup', cake_time / table_time)
                 self.assertTrue(
                     numeq(interpolated_attribute, cake_attribute, 0.005))
 
