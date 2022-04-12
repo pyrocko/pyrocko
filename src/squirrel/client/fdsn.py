@@ -583,6 +583,24 @@ class FDSNSource(Source, has_paths.HasPaths):
                 **nut.waveform_promise_kwargs) for nut in wanted(nuts)),
             virtual_paths=[path])
 
+    def remove_waveform_promises(self, squirrel, from_database='selection'):
+        '''
+        Remove waveform promises from live selection or global database.
+
+        :param from_database:
+            Remove from live selection ``'selection'`` or global database
+            ``'global'``.
+        '''
+
+        path = self._source_id
+        if from_database == 'selection':
+            squirrel.remove(path)
+        elif from_database == 'global':
+            squirrel.get_database().remove(path)
+        else:
+            raise ValueError(
+                'Values allowed for from_database: ("selection", "global")')
+
     def _get_user_credentials(self):
         d = {}
         if self.user_credentials is not None:

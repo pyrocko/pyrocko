@@ -943,6 +943,56 @@ class SquirrelTestCase(unittest.TestCase):
         finally:
             shutil.rmtree(tempdir)
 
+    @common.require_internet
+    def test_promises(self):
+        # 1994 Bolivia earthquake
+        tmin = util.str_to_time('1994-06-09 00:00:00')
+        tmax = util.str_to_time('1994-06-09 03:00:00')
+        database = squirrel.Database()
+        tempdir = os.path.join(self.tempdir, 'test_promises')
+        try:
+            def make_squirrel():
+                sq = squirrel.Squirrel(database=database)
+                sq.add_fdsn(
+                    'bgr',
+                    dict(
+                        network='GR',
+                        station='BFO',
+                        channel='LH?'),
+                    cache_path=tempdir)
+                return sq
+
+            sq = make_squirrel()
+            sq.update(tmin=tmin, tmax=tmax)
+            sq.update_waveform_promises(tmin=tmin, tmax=tmax)
+            nuts = sq.get_nuts(kind='waveform_promise')
+            assert len(nuts) == 3
+            del sq
+
+            sq = make_squirrel()
+            nuts = sq.get_nuts(kind='waveform_promise')
+            assert len(nuts) == 3
+            sq.remove_waveform_promises(from_database='selection')
+            nuts = sq.get_nuts(kind='waveform_promise')
+            assert len(nuts) == 0
+            del sq
+
+            sq = make_squirrel()
+            nuts = sq.get_nuts(kind='waveform_promise')
+            assert len(nuts) == 3
+            sq.remove_waveform_promises(from_database='global')
+            nuts = sq.get_nuts(kind='waveform_promise')
+            assert len(nuts) == 0
+            del sq
+
+            sq = make_squirrel()
+            nuts = sq.get_nuts(kind='waveform_promise')
+            assert len(nuts) == 0
+            del sq
+
+        finally:
+            shutil.rmtree(tempdir)
+
     def test_stations(self):
         fpath = common.test_data_file('test1.stationxml')
         database = squirrel.Database()

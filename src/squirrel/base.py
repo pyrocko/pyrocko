@@ -1468,6 +1468,20 @@ class Squirrel(Selection):
         for source in self._sources:
             source.update_waveform_promises(self, constraint)
 
+    def remove_waveform_promises(self, from_database='selection'):
+        '''
+        Remove waveform promises from live selection or global database.
+
+        Calling this function removes all waveform promises provided by the
+        attached sources.
+
+        :param from_database:
+            Remove from live selection ``'selection'`` or global database
+            ``'global'``.
+        '''
+        for source in self._sources:
+            source.remove_waveform_promises(self, from_database=from_database)
+
     def update_responses(self, constraint=None, **kwargs):
         if constraint is None:
             constraint = client.Constraint(**kwargs)

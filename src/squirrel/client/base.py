@@ -122,6 +122,17 @@ class Source(Object):
 
         pass
 
+    def remove_waveform_promises(self, squirrel, from_database='selection'):
+        '''
+        Remove waveform promises from live selection or global database.
+
+        :param from_database:
+            Remove from live selection ``'selection'`` or global database
+            ``'global'``.
+        '''
+
+        pass
+
 
 __all__ = [
     'Source',
