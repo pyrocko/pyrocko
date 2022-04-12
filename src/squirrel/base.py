@@ -1563,7 +1563,7 @@ class Squirrel(Selection):
             raise error.NotAvailable(
                 'Unable to retrieve content: %s, %s, %s, %s' % nut.key)
 
-    def advance_accessor(self, accessor_id, cache_id=None):
+    def advance_accessor(self, accessor_id='default', cache_id=None):
         '''
         Notify memory caches about consumer moving to a new data batch.
 
@@ -1575,7 +1575,7 @@ class Squirrel(Selection):
         :param cache_id:
             Name of cache to for which the accessor should be advanced. By
             default the named accessor is advanced in all registered caches.
-            By default, two caches named ``'default'`` and ``'waveforms'`` are
+            By default, two caches named ``'default'`` and ``'waveform'`` are
             available.
         :type cache_id:
             str
@@ -1608,7 +1608,7 @@ class Squirrel(Selection):
         :param cache_id:
             Name of cache for which the accessor should be cleared. By default
             the named accessor is cleared from all registered caches. By
-            default, two caches named ``'default'`` and ``'waveforms'`` are
+            default, two caches named ``'default'`` and ``'waveform'`` are
             available.
         :type cache_id:
             str
