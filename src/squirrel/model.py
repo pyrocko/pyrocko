@@ -604,11 +604,12 @@ class Sensor(Location):
     def _get_sensor_args(self):
         def getattr_rep(k):
             if k == 'codes':
-                return self.codes.replace(self.codes[:-1])
+                return self.codes.replace(
+                    channel=self.codes.channel[:-1] + '?')
             else:
                 return getattr(self, k)
 
-        return [getattr_rep(k) for k in self.T.propnames]
+        return tuple(getattr_rep(k) for k in Sensor.T.propnames)
 
     @classmethod
     def from_channels(cls, channels):

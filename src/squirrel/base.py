@@ -1720,7 +1720,7 @@ class Squirrel(Selection):
 
         if codes is not None:
             if codes.channel != '*':
-                codes = codes.replace(codes.channel[:-1] + '?')
+                codes = codes.replace(channel=codes.channel[:-1] + '?')
 
         nuts = sorted(
             self.iter_nuts(
