@@ -65,7 +65,9 @@ doc_snippets = dict(
         :param codes:
             Pattern of content codes to query.
         :type codes:
-            :py:class:`tuple` of :py:class:`str`
+            :class:`list` of :py:class:`~pyrocko.squirrel.model.Codes`
+            objects appropriate for the queried content type, or anything which
+            can be converted to such objects.
 ''',
     file_formats=', '.join(
         "``'%s'``" % fmt for fmt in io.supported_formats()))

@@ -2435,9 +2435,9 @@ class Squirrel(Selection):
         :param codes_list:
             If given, restrict query to given content codes patterns.
         :type codes_list:
-            :py:class:`list` of :py:class:`Codes` objects appropriate for the
-            queried content type, or anything which can be converted to
-            such objects.
+            :py:class:`list` of :py:class:`~pyrocko.squirrel.model.Codes`
+            objects appropriate for the queried content type, or anything which
+            can be converted to such objects.
 
         :param limit:
             Limit query to return only up to a given maximum number of entries
