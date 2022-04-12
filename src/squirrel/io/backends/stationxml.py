@@ -7,6 +7,7 @@ from __future__ import absolute_import, print_function
 
 import logging
 import time
+import copy
 from pyrocko.io.io_common import get_stats, touch  # noqa
 from ... import model
 
@@ -64,6 +65,11 @@ def iload(format, file_path, segment, content):
                     elevation=value_or_none(station.elevation),
                     **station_nut.station_kwargs)
 
+                station_copy = copy.copy(station)
+                station_copy.channel_list = []
+
+                station_nut.raw_content['stationxml'] = station_copy
+
             yield station_nut
             inut += 1
 
@@ -100,6 +106,10 @@ def iload(format, file_path, segment, content):
                         dip=value_or_none(channel.dip),
                         **nut.channel_kwargs)
 
+                    channel_copy = copy.copy(channel)
+                    channel_copy.response = None
+                    nut.raw_content['stationxml'] = channel_copy
+
                 yield nut
                 inut += 1
 
@@ -121,6 +131,7 @@ def iload(format, file_path, segment, content):
 
                         if 'response' in content:
                             nut.content = resp
+                            nut.raw_content['stationxml'] = channel.response
 
                         yield nut
                         inut += 1

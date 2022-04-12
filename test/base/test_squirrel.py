@@ -998,8 +998,23 @@ class SquirrelTestCase(unittest.TestCase):
         database = squirrel.Database()
         sq = squirrel.Squirrel(database=database)
         sq.add(fpath)
+        stations = sq.get_stations()
+        assert len(stations) == 3
         stations = sq.get_stations(model='pyrocko')
         assert len(stations) == 2
+        stations = sq.get_stations(model='stationxml')
+        assert len(stations) == 3
+
+    def test_responses(self):
+        fpath = common.test_data_file('test1.stationxml')
+        database = squirrel.Database()
+        sq = squirrel.Squirrel(database=database)
+        sq.add(fpath)
+        responses = sq.get_responses()
+        assert len(responses) == 12
+
+        responses = sq.get_responses(model='stationxml')
+        assert len(responses) == 12
 
     def test_events(self):
         fpath = common.test_data_file('events2.txt')

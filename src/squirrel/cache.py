@@ -98,9 +98,9 @@ class ContentCache(object):
         if (path, segment) not in self._entries:
             self._entries[path, segment] = nut.file_mtime, {}, {}
 
-        self._entries[path, segment][1][element] = nut.content
+        self._entries[path, segment][1][element] = nut
 
-    def get(self, nut, accessor='default'):
+    def get(self, nut, accessor='default', model='squirrel'):
         '''
         Get a content item and track its access.
 
@@ -126,7 +126,10 @@ class ContentCache(object):
 
         entry[2][accessor] = self._accessor_ticks[accessor]
 
-        return entry[1][element]
+        if model == 'squirrel':
+            return entry[1][element].content
+        else:
+            return entry[1][element].raw_content[model]
 
     def has(self, nut):
         '''

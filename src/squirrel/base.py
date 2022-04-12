@@ -1547,7 +1547,8 @@ class Squirrel(Selection):
             nut,
             cache_id='default',
             accessor_id='default',
-            show_progress=False):
+            show_progress=False,
+            model='squirrel'):
 
         '''
         Get and possibly load full content for a given index entry from file.
@@ -1572,7 +1573,7 @@ class Squirrel(Selection):
                 content_cache.put(nut_loaded)
 
         try:
-            return content_cache.get(nut, accessor_id)
+            return content_cache.get(nut, accessor_id, model)
         except KeyError:
             raise error.NotAvailable(
                 'Unable to retrieve content: %s, %s, %s, %s' % nut.key)
@@ -1680,20 +1681,21 @@ class Squirrel(Selection):
 
         if model == 'pyrocko':
             return self._get_pyrocko_stations(obj, tmin, tmax, time, codes)
-        elif model == 'squirrel':
+        elif model in ('squirrel', 'stationxml'):
             args = self._get_selection_args(
                 STATION, obj, tmin, tmax, time, codes)
 
             nuts = sorted(
                 self.iter_nuts('station', *args), key=lambda nut: nut.dkey)
             self._check_duplicates(nuts)
-            return [self.get_content(nut) for nut in nuts]
+            return [self.get_content(nut, model=model) for nut in nuts]
         else:
             raise ValueError('Invalid station model: %s' % model)
 
     @filldocs
     def get_channels(
-            self, obj=None, tmin=None, tmax=None, time=None, codes=None):
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None,
+            model='squirrel'):
 
         '''
         Get channels matching given constraints.
@@ -1712,7 +1714,7 @@ class Squirrel(Selection):
         nuts = sorted(
             self.iter_nuts('channel', *args), key=lambda nut: nut.dkey)
         self._check_duplicates(nuts)
-        return [self.get_content(nut) for nut in nuts]
+        return [self.get_content(nut, model=model) for nut in nuts]
 
     @filldocs
     def get_sensors(
@@ -1745,7 +1747,8 @@ class Squirrel(Selection):
 
     @filldocs
     def get_responses(
-            self, obj=None, tmin=None, tmax=None, time=None, codes=None):
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None,
+            model='squirrel'):
 
         '''
         Get instrument responses matching given constraints.
@@ -1764,11 +1767,12 @@ class Squirrel(Selection):
         nuts = sorted(
             self.iter_nuts('response', *args), key=lambda nut: nut.dkey)
         self._check_duplicates(nuts)
-        return [self.get_content(nut) for nut in nuts]
+        return [self.get_content(nut, model=model) for nut in nuts]
 
     @filldocs
     def get_response(
-            self, obj=None, tmin=None, tmax=None, time=None, codes=None):
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None,
+            model='squirrel'):
 
         '''
         Get instrument response matching given constraints.
@@ -1785,7 +1789,8 @@ class Squirrel(Selection):
         See :py:meth:`iter_nuts` for details on time span matching.
         '''
 
-        responses = self.get_responses(obj, tmin, tmax, time, codes)
+        responses = self.get_responses(
+            obj, tmin, tmax, time, codes, model=model)
         if len(responses) == 0:
             raise error.NotAvailable(
                 'No instrument response available (%s).'
@@ -1793,13 +1798,17 @@ class Squirrel(Selection):
                     RESPONSE, obj, tmin, tmax, time, codes))
 
         elif len(responses) > 1:
+            if model == 'squirrel':
+                rinfo = ':\n' + '\n'.join(
+                    '  ' + resp.summary for resp in responses)
+            else:
+                rinfo = '.'
+
             raise error.NotAvailable(
                 'Multiple instrument responses matching given constraints '
-                '(%s):\n%s' % (
+                '(%s)%s' % (
                     self._get_selection_args_str(
-                        RESPONSE, obj, tmin, tmax, time, codes),
-                    '\n'.join(
-                        '  ' + resp.summary for resp in responses)))
+                        RESPONSE, obj, tmin, tmax, time, codes), rinfo))
 
         return responses[0]
 

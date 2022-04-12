@@ -28,7 +28,7 @@ from collections import defaultdict, namedtuple
 
 from pyrocko import util
 from pyrocko.guts import Object, SObject, String, Timestamp, Float, Int, \
-    Unicode, Tuple, List, StringChoice, Any
+    Unicode, Tuple, List, StringChoice, Any, Dict
 from pyrocko.model import squirrel_content, Location
 from pyrocko.response import FrequencyResponse, MultiplyResponse, \
     IntegrationResponse, DifferentiationResponse, simplify_responses, \
@@ -1008,6 +1008,7 @@ class Nut(Object):
     deltat = Float.T(default=0.0)
 
     content = Any.T(optional=True)
+    raw_content = Dict.T(String.T(), Any.T())
 
     content_in_db = False
 
@@ -1027,6 +1028,7 @@ class Nut(Object):
             tmax_offset=0,
             deltat=None,
             content=None,
+            raw_content=None,
             tmin=None,
             tmax=None,
             values_nocheck=None):
@@ -1041,6 +1043,7 @@ class Nut(Object):
              self.deltat) = values_nocheck
 
             self.codes = to_codes_simple(self.kind_id, codes_safe_str)
+            self.raw_content = {}
             self.content = None
         else:
             if tmin is not None:
@@ -1063,6 +1066,10 @@ class Nut(Object):
             self.file_mtime = float_or_none(file_mtime)
             self.file_size = int_or_none(file_size)
             self.content = content
+            if raw_content is None:
+                self.raw_content = {}
+            else:
+                self.raw_content = raw_content
 
         Object.__init__(self, init_props=False)
 
