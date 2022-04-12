@@ -162,6 +162,15 @@ class MomentTensorTestCase(unittest.TestCase):
 
         assert abs(kagan_angle(mt1, mt2) - 10.0) < 0.0001
 
+    def test_pt_to_sdr(self):
+        for _ in range(100):
+            mt1 = MomentTensor.random_dc(scalar_moment=1.0)
+            sdr1, sdr2 = mt1.both_strike_dip_rake()
+            p_axis = mt1.p_axis()
+            t_axis = mt1.t_axis()
+            mt2 = MomentTensor(p_axis=p_axis, t_axis=t_axis)
+            assert num.all((mt1.m() - mt2.m()) < 1e-6)
+
 
 if __name__ == "__main__":
     util.setup_logging('test_moment_tensor', 'warning')

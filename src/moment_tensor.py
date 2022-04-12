@@ -459,6 +459,18 @@ def as_mt(mt):
         return MomentTensor.from_values(mt)
 
 
+def pt_axes_to_strike_dip_rake(p_axis, t_axis):
+    n_axis = num.cross(p_axis, t_axis)
+    m_evecs = num.vstack([p_axis, n_axis, t_axis]).T
+    if num.linalg.det(m_evecs) < 0.:
+        m_evecs *= -1.
+    rotmat = num.dot(m_evecs, MomentTensor._u_evecs.T).T
+    if num.linalg.det(rotmat) < 0.:
+        rotmat *= -1.
+    alpha, beta, gamma = [r2d*x for x in matrix_to_euler(rotmat)]
+    return (beta, alpha, -gamma)
+
+
 class MomentTensor(Object):
 
     '''
@@ -468,6 +480,7 @@ class MomentTensor(Object):
     :param m_up_south_east: NumPy array in up-south-east convention
     :param m_east_north_up: NumPy array in east-north-up convention
     :param strike,dip,rake: fault plane angles in [degrees]
+    :param p_axis,t_axis: initialize double-couple from p and t axes
     :param scalar_moment: scalar moment in [Nm]
     :param magnitude: moment magnitude Mw
 
@@ -563,12 +576,16 @@ class MomentTensor(Object):
             mnn=None, mee=None, mdd=None, mne=None, mnd=None, med=None,
             strike1=None, dip1=None, rake1=None,
             strike2=None, dip2=None, rake2=None,
+            p_axis=None, t_axis=None,
             magnitude=None, moment=None):
 
         Object.__init__(self, init_props=False)
 
         if any(mxx is not None for mxx in (mnn, mee, mdd, mne, mnd, med)):
             m = symmat6(mnn, mee, mdd, mne, mnd, med)
+
+        if p_axis is not None and t_axis is not None:
+            strike, dip, rake = pt_axes_to_strike_dip_rake(p_axis, t_axis)
 
         strike = d2r*strike
         dip = d2r*dip
