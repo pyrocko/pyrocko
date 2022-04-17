@@ -802,7 +802,7 @@ def MakePileViewerMainClass(base):
             self.markers = pyrocko.pile.Sorted([], 'tmin')
             self.markers_deltat_max = 0.
             self.n_selected_markers = 0
-            self.all_marker_kinds = (0, 1, 2, 3, 4, 5)
+            self.all_marker_kinds = (0, 1, 2, 3, 4, 5, 6, 7)
             self.visible_marker_kinds = self.all_marker_kinds
             self.active_event_marker = None
             self.ignore_releases = 0
@@ -2329,7 +2329,7 @@ def MakePileViewerMainClass(base):
                     for marker in event_markers_in_spe:
                         marker.convert_to_event_marker()
 
-            elif keytext in ('0', '1', '2', '3', '4', '5'):
+            elif keytext in ('0', '1', '2', '3', '4', '5', '6', '7'):
                 for marker in self.selected_markers():
                     marker.set_kind(int(keytext))
                 self.emit_selected_markers()

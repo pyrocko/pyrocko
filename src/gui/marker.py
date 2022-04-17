@@ -57,7 +57,9 @@ g_color_b = [plot.color(x) for x in (
     'skyblue1', 'skyblue2', 'skyblue3',
     'orange1', 'orange2', 'orange3',
     'plum1', 'plum2', 'plum3',
-    'chocolate1', 'chocolate2', 'chocolate3')]
+    'chocolate1', 'chocolate2', 'chocolate3',
+    'butter1', 'butter2', 'butter3',
+    'aluminium3', 'aluminium4', 'aluminium5')]
 
 
 class MarkerParseError(Exception):
