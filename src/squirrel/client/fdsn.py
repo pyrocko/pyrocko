@@ -153,11 +153,11 @@ class ErrorAggregate(Object):
     kind = String.T()
     details = String.T()
     entries = List.T(ErrorEntry.T())
-    codes_list = List.T(CodesNSLCE.T())
+    codes = List.T(CodesNSLCE.T())
     time_spans = List.T(Tuple.T(2, Timestamp.T()))
 
     def __str__(self):
-        codes = [str(x) for x in self.codes_list]
+        codes = [str(x) for x in self.codes]
         scodes = '\n' + util.ewrap(codes, indent='    ') if codes else '<none>'
         tss = self.time_spans
         sspans = '\n' + util.ewrap(('%s - %s' % (
@@ -195,7 +195,7 @@ class ErrorLog(Object):
 
         for kind, details in kind_details:
             entries = by_kind_details[kind, details]
-            codes_list = sorted(set(entry.order.codes for entry in entries))
+            codes = sorted(set(entry.order.codes for entry in entries))
             selection = orders_to_selection(entry.order for entry in entries)
             time_spans = sorted(set(row[-2:] for row in selection))
             yield ErrorAggregate(
@@ -203,7 +203,7 @@ class ErrorLog(Object):
                 kind=kind,
                 details=details,
                 entries=entries,
-                codes_list=codes_list,
+                codes=codes,
                 time_spans=time_spans)
 
     def summarize_recent(self):
@@ -547,7 +547,7 @@ class FDSNSource(Source, has_paths.HasPaths):
 
         coverages = squirrel.get_coverage(
             'waveform',
-            codes_list=[constraint.codes] if constraint.codes else None,
+            codes=constraint.codes if constraint.codes else None,
             tmin=ctmin,
             tmax=ctmax)
 

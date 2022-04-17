@@ -5,7 +5,7 @@
 
 from __future__ import absolute_import, print_function
 
-from pyrocko.guts import Object, Timestamp
+from pyrocko.guts import Object, Timestamp, List
 
 from ..model import CodesNSLCE
 
@@ -30,11 +30,11 @@ class Constraint(Object):
 
     tmin = Timestamp.T(optional=True)
     tmax = Timestamp.T(optional=True)
-    codes = CodesNSLCE.T(optional=True)
+    codes = List.T(CodesNSLCE.T(optional=True))
 
     def __init__(self, **kwargs):
         if 'codes' in kwargs:
-            kwargs['codes'] = CodesNSLCE(kwargs['codes'])
+            kwargs['codes'] = [CodesNSLCE(x) for x in kwargs['codes']]
 
         Object.__init__(self, **kwargs)
 

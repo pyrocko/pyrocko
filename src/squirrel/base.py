@@ -44,9 +44,17 @@ def lpick(condition, seq):
     return ft
 
 
+# derived list class to enable detection of already preprocessed codes patterns
+class codes_patterns_list(list):
+    pass
+
+
 def codes_patterns_for_kind(kind_id, codes):
+    if isinstance(codes, codes_patterns_list):
+        return codes
+
     if isinstance(codes, list):
-        lcodes = []
+        lcodes = codes_patterns_list()
         for sc in codes:
             lcodes.extend(codes_patterns_for_kind(kind_id, sc))
 
@@ -54,10 +62,12 @@ def codes_patterns_for_kind(kind_id, codes):
 
     codes = to_codes(kind_id, codes)
 
+    lcodes = codes_patterns_list()
+    lcodes.append(codes)
     if kind_id == model.STATION:
-        return [codes, codes.replace(location='[*]')]
-    else:
-        return [codes]
+        return lcodes.append(codes.replace(location='[*]'))
+
+    return lcodes
 
 
 def blocks(tmin, tmax, deltat, nsamples_block=100000):
@@ -781,7 +791,7 @@ class Squirrel(Selection):
             obj=None, tmin=None, tmax=None, time=None, codes=None):
 
         if codes is not None:
-            codes = to_codes(kind_id, codes)
+            codes = codes_patterns_for_kind(kind_id, codes)
 
         if time is not None:
             tmin = time
@@ -790,7 +800,8 @@ class Squirrel(Selection):
         if obj is not None:
             tmin = tmin if tmin is not None else obj.tmin
             tmax = tmax if tmax is not None else obj.tmax
-            codes = codes if codes is not None else obj.codes
+            codes = codes if codes is not None else codes_patterns_for_kind(
+                obj.codes)
 
         return tmin, tmax, codes
 
@@ -800,7 +811,7 @@ class Squirrel(Selection):
         return 'tmin: %s, tmax: %s, codes: %s' % (
             util.time_to_str(tmin) if tmin is not None else 'none',
             util.time_to_str(tmax) if tmin is not None else 'none',
-            str(codes))
+            ','.join(str(entry) for entry in codes))
 
     def _selection_args_to_kwargs(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None):
@@ -867,9 +878,11 @@ class Squirrel(Selection):
             timestamp
 
         :param codes:
-            Pattern of content codes to query.
+            List of code patterns to query.
         :type codes:
-            :py:class:`tuple` of :py:class:`str`
+            :py:class:`list` of :py:class:`~pyrocko.squirrel.model.Codes`
+            objects appropriate for the queried content type, or anything which
+            can be converted to such objects.
 
         :param naiv:
             Bypass time span lookup through indices (slow, for testing).
@@ -930,7 +943,9 @@ class Squirrel(Selection):
 
         if codes is not None:
             pats = codes_patterns_for_kind(kind_id, codes)
+
             if pats:
+                # could optimize this by using IN for non-patterns
                 cond.append(
                     ' ( %s ) ' % ' OR '.join(
                         ('kind_codes.codes GLOB ?',) * len(pats)))
@@ -1214,8 +1229,10 @@ class Squirrel(Selection):
 
         :param codes:
             If given, get kinds only for selected codes identifier.
+            Only a single identifier may be given here and no pattern matching
+            is done, currently.
         :type codes:
-            :py:class:`tuple` of :py:class:`str`
+            :py:class:`~pyrocko.squirrel.model.Codes`
 
         :yields:
             Available content kinds as :py:class:`str`.
@@ -1291,11 +1308,15 @@ class Squirrel(Selection):
 
         :param codes:
             If given, get kinds only for selected codes identifier.
+            Only a single identifier may be given here and no pattern matching
+            is done, currently.
         :type codes:
-            :py:class:`tuple` of :py:class:`str`
+            :py:class:`~pyrocko.squirrel.model.Codes`
 
         :returns:
             Sorted list of available content types.
+        :rtype:
+            py:class:`list` of :py:class:`str`
 
         :complexity:
             O(1), independent of number of nuts.
@@ -1367,7 +1388,7 @@ class Squirrel(Selection):
         else:
             return dict((to_kind(kind_id), v) for (kind_id, v) in d.items())
 
-    def glob_codes(self, kind, codes_list):
+    def glob_codes(self, kind, codes):
         '''
         Find codes matching given patterns.
 
@@ -1376,11 +1397,12 @@ class Squirrel(Selection):
         :type kind:
             str
 
-        :param codes_list:
-            List of code patterns to query. If not given or empty, an empty
-            list is returned.
-        :type codes_list:
-            :py:class:`list` of :py:class:`tuple` of :py:class:`str`
+        :param codes:
+            List of code patterns to query.
+        :type codes:
+            :py:class:`list` of :py:class:`~pyrocko.squirrel.model.Codes`
+            objects appropriate for the queried content type, or anything which
+            can be converted to such objects.
 
         :returns:
             List of matches of the form ``[kind_codes_id, codes, deltat]``.
@@ -1388,9 +1410,7 @@ class Squirrel(Selection):
 
         kind_id = to_kind_id(kind)
         args = [kind_id]
-        pats = []
-        for codes in codes_list:
-            pats.extend(codes_patterns_for_kind(kind_id, codes))
+        pats = codes_patterns_for_kind(kind_id, codes)
 
         if pats:
             codes_cond = 'AND ( %s ) ' % ' OR '.join(
@@ -1735,8 +1755,10 @@ class Squirrel(Selection):
             CHANNEL, obj, tmin, tmax, time, codes)
 
         if codes is not None:
-            if codes.channel != '*':
-                codes = codes.replace(channel=codes.channel[:-1] + '?')
+            codes = codes_patterns_list(
+                (entry.replace(channel=entry.channel[:-1] + '?')
+                 if entry != '*' else entry)
+                for entry in codes)
 
         nuts = sorted(
             self.iter_nuts(
@@ -2113,11 +2135,12 @@ class Squirrel(Selection):
         tmin = tmin if tmin is not None else self_tmin
         tmax = tmax if tmax is not None else self_tmax
 
-        if codes is not None:
-            operator = self.get_operator(codes)
+        if codes is not None and len(codes) == 1:
+            # TODO: fix for multiple / mixed codes
+            operator = self.get_operator(codes[0])
             if operator is not None:
                 return operator.get_waveforms(
-                    self, codes,
+                    self, codes[0],
                     tmin=tmin, tmax=tmax,
                     uncut=uncut, want_incomplete=want_incomplete, degap=degap,
                     maxgap=maxgap, maxlap=maxlap, snap=snap,
@@ -2433,7 +2456,7 @@ class Squirrel(Selection):
         return str(self.get_stats())
 
     def get_coverage(
-            self, kind, tmin=None, tmax=None, codes_list=None, limit=None):
+            self, kind, tmin=None, tmax=None, codes=None, limit=None):
 
         '''
         Get coverage information.
@@ -2455,9 +2478,9 @@ class Squirrel(Selection):
         :type tmax:
             timestamp
 
-        :param codes_list:
+        :param codes:
             If given, restrict query to given content codes patterns.
-        :type codes_list:
+        :type codes:
             :py:class:`list` of :py:class:`~pyrocko.squirrel.model.Codes`
             objects appropriate for the queried content type, or anything which
             can be converted to such objects.
@@ -2483,17 +2506,18 @@ class Squirrel(Selection):
         codes_info = list(self._iter_codes_info(kind=kind))
 
         kdata_all = []
-        if codes_list is None:
-            for _, codes, deltat, kind_codes_id, _ in codes_info:
-                kdata_all.append((codes, kind_codes_id, codes, deltat))
+        if codes is None:
+            for _, codes_entry, deltat, kind_codes_id, _ in codes_info:
+                kdata_all.append(
+                    (codes_entry, kind_codes_id, codes_entry, deltat))
 
         else:
-            for pattern in codes_list:
-                pattern = to_codes(kind_id, pattern)
-                for _, codes, deltat, kind_codes_id, _ in codes_info:
-                    if model.match_codes(pattern, codes):
+            for codes_entry in codes:
+                pattern = to_codes(kind_id, codes_entry)
+                for _, codes_entry, deltat, kind_codes_id, _ in codes_info:
+                    if model.match_codes(pattern, codes_entry):
                         kdata_all.append(
-                            (pattern, kind_codes_id, codes, deltat))
+                            (pattern, kind_codes_id, codes_entry, deltat))
 
         kind_codes_ids = [x[1] for x in kdata_all]
 
@@ -2509,8 +2533,8 @@ class Squirrel(Selection):
                 counts_at_tmin[k] += 1
 
         coverages = []
-        for pattern, kind_codes_id, codes, deltat in kdata_all:
-            entry = [pattern, codes, deltat, None, None, []]
+        for pattern, kind_codes_id, codes_entry, deltat in kdata_all:
+            entry = [pattern, codes_entry, deltat, None, None, []]
             for i, order in [(0, 'ASC'), (1, 'DESC')]:
                 sql = self._sql('''
                     SELECT
@@ -2571,7 +2595,7 @@ class Squirrel(Selection):
             if limit is not None and len(rows) == limit:
                 entry[-1] = None
             else:
-                counts = counts_at_tmin.get((codes, deltat), 0)
+                counts = counts_at_tmin.get((codes_entry, deltat), 0)
                 tlast = None
                 if tmin is not None:
                     entry[-1].append((tmin, counts))

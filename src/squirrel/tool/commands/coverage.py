@@ -50,7 +50,7 @@ def run(parser, args):
     for kind in kinds:
         coverage = squirrel.get_coverage(
             kind,
-            codes_list=[codes] if codes else None,
+            codes=codes if (codes is not None) else None,
             tmin=tmin,
             tmax=tmax,
             **kwargs)

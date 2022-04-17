@@ -604,9 +604,13 @@ def add_squirrel_query_arguments(parser, without=[]):
             '--codes',
             dest='codes',
             metavar='CODES',
-            help='Code pattern to query (``STA``, ``NET.STA``, '
+            help='Code patterns to query (``STA``, ``NET.STA``, '
                  '``NET.STA.LOC``, ``NET.STA.LOC.CHA``, or '
-                 '``NET.STA.LOC.CHA.EXTRA``).')
+                 '``NET.STA.LOC.CHA.EXTRA``). The pattern may contain '
+                 'wildcards ``*`` (zero or more arbitrary characters), ``?`` '
+                 '(single arbitrary character), and ``[CHARS]`` (any '
+                 'character out of ``CHARS``). Multiple patterns can be '
+                 'given by separating them with commas.')
 
     if 'tmin' not in without:
         group.add_argument(
@@ -658,7 +662,8 @@ def squirrel_query_from_arguments(args):
     if 'time' in args and args.time:
         d['tmin'] = d['tmax'] = util.str_to_time_fillup(args.time)
     if 'codes' in args and args.codes:
-        d['codes'] = sq.to_codes_guess(args.codes)
+        d['codes'] = [
+            sq.to_codes_guess(s.strip()) for s in args.codes.split(',')]
 
     if ('tmin' in d and 'time' in d) or ('tmax' in d and 'time' in d):
         raise error.SquirrelError(
