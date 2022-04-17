@@ -447,7 +447,7 @@ def setup(parser):
         '--config',
         dest='config_path',
         metavar='NAME',
-        help='File containing `jackseis2.Converter` settings.')
+        help='File containing `jackseis.Converter` settings.')
 
     parser.add_argument(
         '--force',
