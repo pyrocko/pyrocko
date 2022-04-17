@@ -34,7 +34,10 @@ class Constraint(Object):
 
     def __init__(self, **kwargs):
         if 'codes' in kwargs:
-            kwargs['codes'] = [CodesNSLCE(x) for x in kwargs['codes']]
+            if not isinstance(kwargs['codes'], list):
+                kwargs['codes'] = [CodesNSLCE(kwargs['codes'])]
+            else:
+                kwargs['codes'] = [CodesNSLCE(x) for x in kwargs['codes']]
 
         Object.__init__(self, **kwargs)
 

@@ -801,7 +801,7 @@ class Squirrel(Selection):
             tmin = tmin if tmin is not None else obj.tmin
             tmax = tmax if tmax is not None else obj.tmax
             codes = codes if codes is not None else codes_patterns_for_kind(
-                obj.codes)
+                kind_id, obj.codes)
 
         return tmin, tmax, codes
 
