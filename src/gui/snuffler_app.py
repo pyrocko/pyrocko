@@ -21,6 +21,7 @@ import pickle
 from pyrocko.streaming import serial_hamster
 from pyrocko.streaming import slink
 from pyrocko.streaming import edl
+from pyrocko.streaming import datacube
 
 from pyrocko import pile            # noqa
 from pyrocko import util            # noqa
@@ -145,6 +146,17 @@ class EDLAcquisition(
         AcquisitionThread.got_trace(self, tr)
 
 
+class CubeAcquisition(
+        datacube.SerialCube, AcquisitionThread):
+
+    def __init__(self, *args, **kwargs):
+        datacube.SerialCube.__init__(self, *args, **kwargs)
+        AcquisitionThread.__init__(self)
+
+    def got_trace(self, tr):
+        AcquisitionThread.got_trace(self, tr)
+
+
 def setup_acquisition_sources(args):
 
     sources = []
@@ -157,6 +169,8 @@ def setup_acquisition_sources(args):
         mus = re.match(r'hb628://([^:?]+)(\?([^?]+))?', arg)
         msc = re.match(r'school://([^:]+)', arg)
         med = re.match(r'edl://([^:]+)', arg)
+        mcu = re.match(r'cube://([^:]+)', arg)
+
         if msl:
             host = msl.group(1)
             port = msl.group(3)
@@ -217,8 +231,12 @@ def setup_acquisition_sources(args):
             port = med.group(1)
             edl = EDLAcquisition(port=port)
             sources.append(edl)
+        elif mcu:
+            device = mcu.group(1)
+            cube = CubeAcquisition(device=device)
+            sources.append(cube)
 
-        if msl or mca or mus or msc or med:
+        if msl or mca or mus or msc or med or mcu:
             args.pop(iarg)
         else:
             iarg += 1
@@ -232,7 +250,7 @@ class PollInjector(qc.QObject):
         qc.QObject.__init__(self)
         self._injector = pile.Injector(*args, **kwargs)
         self._sources = []
-        self.startTimer(1000.)
+        self.startTimer(1000)
 
     def add_source(self, source):
         self._sources.append(source)
