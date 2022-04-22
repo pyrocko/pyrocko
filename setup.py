@@ -8,25 +8,12 @@ import tempfile
 import numpy
 import glob
 
-from setuptools import setup, Extension, Command
+from setuptools import setup, Extension
 from setuptools.command.build_py import build_py
 from setuptools.command.build_ext import build_ext
-from setuptools.command.install import install
 
 is_windows = sys.platform.startswith('win')
 
-running_bdist_wheel = False
-try:
-    from wheel.bdist_wheel import bdist_wheel
-
-    class CustomBDistWheelCommand(bdist_wheel):
-        def run(self):
-            global running_bdist_wheel
-            running_bdist_wheel = True
-            bdist_wheel.run(self)
-
-except ImportError:
-    CustomBDistWheelCommand = None
 
 packname = 'pyrocko'
 version = '2021.09.14'
@@ -55,19 +42,6 @@ def git_infos():
     sstatus = q(['git', 'status', '--porcelain', '-uno'])
     local_modifications = bool(sstatus.strip())
     return sha1, local_modifications
-
-
-def bash_completions_dir():
-    from subprocess import Popen, PIPE
-
-    def q(c):
-        return Popen(c, stdout=PIPE).communicate()[0]
-
-    try:
-        d = q(['pkg-config', 'bash-completion', '--variable=completionsdir'])
-        return d.strip().decode('utf-8')
-    except Exception:
-        return None
 
 
 def make_info_module(packname, version):
@@ -215,118 +189,6 @@ WARNING: Multiple installations of Pyrocko are present on this system.''',
             file=e)
         if found[0][0] != dates[-1]:
             print('WARNING: Not using newest installed version.', file=e)
-
-
-def check_pyrocko_install_compat():
-    found = find_pyrocko_installs()
-    if len(found) == 0:
-        return
-
-    expected_submodules = ['gui', 'dataset', 'client',
-                           'streaming', 'io', 'model']
-
-    installed_date, p, install_path, long_version = found[0]
-
-    installed_submodules = [d for d in os.listdir(install_path)
-                            if op.isdir(op.join(install_path, d))]
-
-    if not all([ed in installed_submodules for ed in expected_submodules]):
-
-        print_installs(found, sys.stdout)
-
-        print('''\n
-###############################################################################
-
-WARNING: Found an old, incompatible, Pyrocko installation!
-
-Please purge the old installation and the 'build' directory before installing
-this new version:
-
-    sudo rm -rf '%s' build
-
-###############################################################################
-''' % install_path)
-
-        sys.exit(1)
-
-
-class CheckInstalls(Command):
-    description = '''check for multiple installations of Pyrocko'''
-    user_options = []
-
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-        check_multiple_install()
-
-
-class Uninstall(Command):
-    description = 'delete installations of Pyrocko known to the invoked ' \
-                  'Python interpreter'''
-
-    user_options = []
-
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-        found = find_pyrocko_installs()
-        print_installs(found, sys.stdout)
-
-        if found:
-            print('''
-Use the following commands to remove the Pyrocko installation(s) known to the
-currently running Python interpreter:
-
-  sudo rm -rf build''')
-
-            for _, _, install_path, _ in found:
-                print('  sudo rm -rf "%s"' % install_path)
-
-            print()
-
-        else:
-            print('''
-No Pyrocko installations found with the currently running Python interpreter.
-''')
-
-
-class CustomInstallCommand(install):
-
-    def symlink_interpreter(self):
-        if not running_bdist_wheel \
-                and hasattr(self, 'install_scripts') \
-                and sys.executable \
-                and not is_windows:
-
-            target = os.path.join(self.install_scripts, 'pyrocko-python')
-            if os.path.exists(target):
-                os.unlink(target)
-
-            os.symlink(sys.executable, target)
-
-    def run(self):
-        check_pyrocko_install_compat()
-        install.run(self)
-        self.symlink_interpreter()
-        check_multiple_install()
-        bd_dir = bash_completions_dir()
-        if bd_dir:
-            try:
-                shutil.copy('extras/pyrocko', bd_dir)
-                print('Installing pyrocko bash_completion to "%s"' % bd_dir)
-            except Exception:
-                print(
-                    'Could not install pyrocko bash_completion to "%s" '
-                    '(continuing without)'
-                    % bd_dir)
 
 
 class CustomBuildPyCommand(build_py):
@@ -568,15 +430,9 @@ subpacknames = [
 ]
 
 cmdclass = {
-    'install': CustomInstallCommand,
     'build_py': CustomBuildPyCommand,
     # 'py2app': CustomBuildAppCommand,
-    'build_ext': CustomBuildExtCommand,
-    'check_multiple_install': CheckInstalls,
-    'uninstall': Uninstall}
-
-if CustomBDistWheelCommand:
-    cmdclass['bdist_wheel'] = CustomBDistWheelCommand
+    'build_ext': CustomBuildExtCommand}
 
 
 if is_windows:
