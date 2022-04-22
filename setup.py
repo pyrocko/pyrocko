@@ -27,11 +27,11 @@ def git_infos():
     '''Query git about sha1 of last commit and check if there are local \
        modifications.'''
 
-    from subprocess import run
+    from subprocess import run, PIPE
     import re
 
     def q(c):
-        return run(c, capture_output=True, check=True).stdout
+        return run(c, stdout=PIPE, stderr=PIPE, check=True).stdout
 
     if not op.exists('.git'):
         raise NotInAGitRepos()
