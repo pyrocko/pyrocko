@@ -27,11 +27,11 @@ def git_infos():
     '''Query git about sha1 of last commit and check if there are local \
        modifications.'''
 
-    from subprocess import Popen, PIPE
+    from subprocess import run
     import re
 
     def q(c):
-        return Popen(c, stdout=PIPE).communicate()[0]
+        return run(c, capture_output=True, check=True).stdout
 
     if not op.exists('.git'):
         raise NotInAGitRepos()
@@ -47,6 +47,8 @@ def git_infos():
 def make_info_module(packname, version):
     '''Put version and revision information into file src/info.py.'''
 
+    from subprocess import CalledProcessError
+
     sha1, local_modifications = None, None
     combi = '%s-%s' % (packname, version)
     try:
@@ -55,8 +57,10 @@ def make_info_module(packname, version):
         if local_modifications:
             combi += '-modified'
 
-    except (OSError, NotInAGitRepos):
-        pass
+    except (OSError, CalledProcessError, NotInAGitRepos):
+        print(
+            'Failed to include git commit ID into installation.',
+            file=sys.stderr)
 
     datestr = time.strftime('%Y-%m-%d_%H:%M:%S')
     combi += '-%s' % datestr
