@@ -63,7 +63,8 @@ conda install -y \
     jinja2 \
     nose
 
-sudo pip3 install --no-deps --force-reinstall --no-build-isolation . && \
+python3 install.py deps conda --yes && \
+    python3 install.py user --yes && \
     python3 -m pyrocko.print_version deps >> "$outfile" && \
     python3 -m nose "$thetest" > >(tee -a "$outfile") 2> >(tee -a "$outfile" >&2) || \
     /usr/bin/true

@@ -34,8 +34,8 @@ cd "$pyrockodir"
 ln -s "/vagrant/pyrocko-test-data" "test/data"
 ln -s "/vagrant/example_run_dir" "test/example_run_dir"
 
-sudo python3 install_prerequisites.py --yes && \
-    sudo pip3 install --no-deps --force-reinstall --no-build-isolation . && \
+python3 install.py deps system --yes && \
+    python3 install.py system --yes && \
     python3 -m pyrocko.print_version deps >> "$outfile_py3" && \
     xvfb-run -s '-screen 0 640x480x24' python3 -m nose "$thetest" > >(tee -a "$outfile_py3") 2> >(tee -a "$outfile_py3" >&2) || \
     /bin/true

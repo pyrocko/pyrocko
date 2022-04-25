@@ -1,7 +1,7 @@
 Python package manager installations
 ------------------------------------
 
-We provide pre-compiled Anaconda and pip packages for use with Python 3,
+We provide pre-compiled conda and pip packages for use with Python 3,
 running on X86_64 Linux, Mac OS X and Windows. As a fallback for other systems
 and platforms we provide pip source packages which are compiled during
 installation with pip.
@@ -9,7 +9,7 @@ installation with pip.
 .. toctree ::
     :maxdepth: 1
 
-    Anaconda <anaconda>
+    conda <anaconda>
     pip <pip>
 
 .. raw:: html

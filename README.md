@@ -16,8 +16,16 @@ installation styles. Please consult the [Pyrocko Installation Manual](https://py
 ```
 git clone https://git.pyrocko.org/pyrocko/pyrocko.git
 cd pyrocko
-sudo python install_prerequisites.py
-sudo python setup.py install
+python install.py deps system
+python install.py system
+```
+
+### User installation from source
+
+```
+git clone https://git.pyrocko.org/pyrocko/pyrocko.git
+cd pyrocko
+pip install .  # only install into isolated environments like this!
 ```
 
 ### Installation with Anaconda

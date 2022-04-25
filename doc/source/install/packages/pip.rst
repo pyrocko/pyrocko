@@ -48,7 +48,6 @@ install Pyrocko:
 .. code-block:: bash
 
     # first use apt-get/yum/pacman to install prerequisites (see above), then:
-
     pip install --no-deps pyrocko
 
 **Advantages:**

@@ -8,4 +8,4 @@ progressbar2
 requests
 nose
 jinja2
-pybtex
+pyqt

@@ -1,5 +1,5 @@
-Installation under Anaconda
-===========================
+Installation with conda
+=======================
 
 `Anaconda <https://www.anaconda.com/>`_, is a cross-platform Python
 distribution with its own package manager ``conda``. For a more lightweight
@@ -31,15 +31,16 @@ Anaconda on Linux or MacOS. For Windows source installs, please refer to
 :ref:`Installation on Windows: From source <windows-install-from-source>`.
 
 .. code-block:: bash
-    :caption: Compile from source
+    :caption: Build and install from source
 
-    conda install setuptools numpy scipy matplotlib pyqt pyyaml progressbar2 requests jinja2 nose
-    cd `conda info --root`
-    mkdir src
-    cd src
+    cd ~/src/   # or wherever you keep your source packages
     git clone https://git.pyrocko.org/pyrocko/pyrocko.git pyrocko
-    cd pyrocko
-    python setup.py install
+    # make sure the correct conda environment is activated
+    python3 install.py deps conda  # install prerequisites with conda
+    python3 install.py user        # build and install Pyrocko with pip
+
+**Note:** The native ``conda`` and ``pip`` commands to be run are printed
+before execution and must be confirmed.
 
 For instructions on how to install Pyrocko on other systems or if the
 installation with the above procedure fails, see :doc:`index` or

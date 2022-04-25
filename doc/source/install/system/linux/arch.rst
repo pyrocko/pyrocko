@@ -1,24 +1,15 @@
 Installation on Arch Linux systems
 ==================================
 
-These example instructions are for a system-wide installation of Pyrocko under
-Arch Linux with default Python 3.
+Use the general Linux installation instructions: :doc:`index`
 
-.. code-block:: bash
-    :caption: **Arch Linux** (e.g. 2021.06.01)
+Prerequisites
+-------------
 
-    sudo pacman -Syu git make gcc patch python python-setuptools \
-        python-numpy python-scipy python-matplotlib \
-        python-pyqt5 qt5-webengine qt5-svg qt5-webkit \
-        python-cairo python-progressbar \
-        python-requests python-yaml python-jinja \
-        python-nose python-coverage
+The following packages are installed on Arch when running
+``python install.py deps system`` in Pyrocko's project directory:
 
-    cd ~/src/   # or wherever you keep your source packages
-    git clone https://git.pyrocko.org/pyrocko/pyrocko.git pyrocko
-    cd pyrocko
-    sudo python setup.py install
-
-For instructions on how to install Pyrocko on other systems or if the
-installation with the above procedure fails, see :doc:`../index` or
-:doc:`/install/details`.
+.. literalinclude :: /../../prerequisites/prerequisites_arch_python3.sh
+    :caption: Arch system packages satisfying Pyrocko's requirements. 
+        Executed by ``python install.py deps system``
+    :lines: 3-

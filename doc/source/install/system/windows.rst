@@ -42,10 +42,8 @@ command line and you have a C compiler installed.
 
     git clone https://git.pyrocko.org/pyrocko/pyrocko.git
     cd pyrocko
-    conda install git setuptools m2-tar m2-gzip m2-patch
-    conda install numpy scipy matplotlib pyqt pyyaml progressbar2 requests jinja2 nose
-    python setup.py install
-
+    python install.py deps conda
+    python install.py user
 
 For instructions on how to install Pyrocko on other systems or if the
 installation with the above procedure fails, see :doc:`index` or
