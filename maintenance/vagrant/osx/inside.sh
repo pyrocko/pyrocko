@@ -16,16 +16,14 @@ sudo chown -R vagrant:staff /vagrant
 
 ORIGPATH="$PATH"
 
-VERSION=3
-
 cd "$HOME"
 
 CONDA_URL="https://repo.anaconda.com/miniconda"
-CONDA_PREFIX="$HOME/miniconda${VERSION}"
-CONDA_INSTALLER="miniconda${VERSION}.sh"
+CONDA_PREFIX="$HOME/miniconda3"
+CONDA_INSTALLER="miniconda3.sh"
 export PATH="$CONDA_PREFIX/bin:$ORIGPATH"
 
-CONDA_FILE="Miniconda${VERSION}-latest-MacOSX-x86_64.sh"
+CONDA_FILE="Miniconda3-latest-MacOSX-x86_64.sh"
 
 # Install Miniconda
 
@@ -40,7 +38,7 @@ if [ ! -d "$CONDA_PREFIX" ] ; then
 fi
 
 pyrockodir="pyrocko-$branch"
-outfile="/vagrant/test-$branch.py${VERSION}.out"
+outfile="/vagrant/test-$branch.py3.out"
 
 rm -f "$outfile"
 
@@ -65,7 +63,7 @@ conda install -y \
     jinja2 \
     nose
 
-python${VERSION} setup.py install -f && \
-    python${VERSION} -m pyrocko.print_version deps >> "$outfile" && \
-    python${VERSION} -m nose "$thetest" > >(tee -a "$outfile") 2> >(tee -a "$outfile" >&2) || \
+sudo pip3 install --no-deps --force-reinstall --no-build-isolation . && \
+    python3 -m pyrocko.print_version deps >> "$outfile" && \
+    python3 -m nose "$thetest" > >(tee -a "$outfile") 2> >(tee -a "$outfile" >&2) || \
     /usr/bin/true

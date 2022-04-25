@@ -39,7 +39,7 @@ ln -s "/vagrant/pyrocko-test-data" "test/data"
 ln -s "/vagrant/example_run_dir" "test/example_run_dir"
 
 pip install -r requirements-all.txt
-python setup.py install -f && \
+pip install --no-deps --force-reinstall --no-build-isolation . && \
     python -m pyrocko.print_version deps >> "$outfile_py3" && \
     python -m nose "$thetest" > >(tee -a "$outfile_py3") 2> >(tee -a "$outfile_py3" >&2) || \
     /bin/true
