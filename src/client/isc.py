@@ -96,7 +96,7 @@ class ISC(EarthquakeCatalog):
             try:
                 data = quakeml.QuakeML.load_xml(string=page)
             except Exception:
-                if page[:500].contains(
+                if page[:500].find(
                         'Please try again in a few minutes') != -1:
 
                     raise ISCBlocked(
