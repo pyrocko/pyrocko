@@ -6,6 +6,5 @@ pyyaml
 matplotlib
 progressbar2
 requests
-nose
 jinja2
 pyqt

@@ -35,7 +35,7 @@ else
     conda config --set anaconda_upload no
 fi
 
-conda-build --python 3.6 build
+# conda-build --python 3.6 build
 conda-build --python 3.7 build
 conda-build --python 3.8 build
 conda-build --python 3.9 build

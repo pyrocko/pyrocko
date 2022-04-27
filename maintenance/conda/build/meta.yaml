@@ -30,20 +30,19 @@ requirements:
     - progressbar2
     - requests
     - jinja2
-    - nose
 
 build:
-  script: {{PYTHON}} setup.py install
+  script: {{PYTHON}} -m pip install --no-deps --no-build-isolation .
 
 test:
   source_files:
     - test
   requires:
-    - nose
+    - pytest
   imports:
     - pyrocko
   commands:
-    - python -m nose --verbosity=2 --detailed-errors test.base.test_util
+    - python -m pytest test/base/test_util.py test/base/test_guts.py test/base/test_eikonal.py
 
 about:
   home: https://pyrocko.org
