@@ -6,18 +6,12 @@ if [ -z "$destination" ] ; then
     echo "usage: upload_wheels.sh (testing|live)"
 fi
 
-[ -d wheels ] || mkdir wheels
-[ -d dist ] || mkdir dist
-
-payload=`find wheels dist -name 'pyrocko-*'`
-
 if [ "$destination" == 'live' ] ; then
-    twine upload "$payload" \
+    twine upload dist/pyrocko-* \
         --username="$PYPI_USERNAME" --password="$PYPI_PASSWORD" \
-        --skip-existing --disable-progress-bar --comment='*grunz-grunz*'
+        --skip-existing --disable-progress-bar
 else
-    twine upload --repository-url https://test.pypi.org/legacy/ \
-        "$payload" \
+    twine upload --repository-url https://test.pypi.org/legacy/ dist/pyrocko-* \
         --username="$PYPI_USERNAME" --password="$PYPI_PASSWORD" \
-        --skip-existing --disable-progress-bar --comment='*grunz-grunz*'
+        --skip-existing --disable-progress-bar
 fi

@@ -115,7 +115,7 @@ steps:
     - candidate
     - pip
   commands:
-  - maintenance/pip/upload_wheels.sh testing
+  - bash maintenance/pip/upload_wheels.sh testing
   environment:
     PYPI_USERNAME:
       from_secret: pypi-username
@@ -129,7 +129,7 @@ steps:
     branch:
     - release
   commands:
-  - maintenance/pip/upload_wheels.sh live
+  - bash maintenance/pip/upload_wheels.sh live
   environment:
     PYPI_USERNAME:
       from_secret: pypi-username
@@ -164,8 +164,8 @@ steps:
       exclude:
       - release
   commands:
-  - pip3 install -f wheels pyrocko --no-index --no-deps
-  - pip3 install -f wheels pyrocko
+  - pip3 install -f dist pyrocko --no-index --no-deps
+  - pip3 install -f dist pyrocko
   - pip3 install --only-binary=PyQt5 PyQt5 jinja2 nose
   - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
 
@@ -178,14 +178,14 @@ steps:
       - release
   commands:
   - ln -sf /pyrocko-test-data test/data
-  - pip3 install -f wheels --no-index --no-deps pyrocko
+  - pip3 install -f dist --no-index --no-deps pyrocko
   - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
 
 - name: stage
   image: pyrocko-util
   pull: never
   commands:
-  - maintenance/drone-rsync.sh wheels/ ${DRONE_COMMIT}/wheels/
+  - maintenance/drone-rsync.sh dist/ ${DRONE_COMMIT}/wheels/
   environment:
     RSYNC_HOST:
       from_secret: rsync-host
@@ -202,7 +202,7 @@ steps:
     - candidate
     - pip
   commands:
-  - maintenance/pip/upload_wheels.sh testing
+  - bash maintenance/pip/upload_wheels.sh testing
   environment:
     PYPI_USERNAME:
       from_secret: pypi-username
@@ -216,7 +216,7 @@ steps:
     branch:
     - release
   commands:
-  - maintenance/pip/upload_wheels.sh live
+  - bash maintenance/pip/upload_wheels.sh live
   environment:
     PYPI_USERNAME:
       from_secret: pypi-username
@@ -251,8 +251,8 @@ steps:
       exclude:
       - release
   commands:
-  - pip3 install -f wheels pyrocko --no-index --no-deps
-  - pip3 install -f wheels pyrocko
+  - pip3 install -f dist pyrocko --no-index --no-deps
+  - pip3 install -f dist pyrocko
   - pip3 install --only-binary=PyQt5 PyQt5 jinja2 nose
   - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
 
@@ -265,14 +265,14 @@ steps:
       - release
   commands:
   - ln -sf /pyrocko-test-data test/data
-  - pip3 install -f wheels --no-index --no-deps pyrocko
+  - pip3 install -f dist --no-index --no-deps pyrocko
   - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
 
 - name: stage
   image: pyrocko-util
   pull: never
   commands:
-  - maintenance/drone-rsync.sh wheels/ ${DRONE_COMMIT}/wheels/
+  - maintenance/drone-rsync.sh dist/ ${DRONE_COMMIT}/wheels/
   environment:
     RSYNC_HOST:
       from_secret: rsync-host
@@ -289,7 +289,7 @@ steps:
     - candidate
     - pip
   commands:
-  - maintenance/pip/upload_wheels.sh testing
+  - bash maintenance/pip/upload_wheels.sh testing
   environment:
     PYPI_USERNAME:
       from_secret: pypi-username
@@ -303,7 +303,7 @@ steps:
     branch:
     - release
   commands:
-  - maintenance/pip/upload_wheels.sh live
+  - bash maintenance/pip/upload_wheels.sh live
   environment:
     PYPI_USERNAME:
       from_secret: pypi-username
@@ -617,21 +617,17 @@ steps:
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py38
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py39
 
-  - conda create -y -n py36 python=3.6 m2-tar m2-gzip m2-patch setuptools numpy=1.14
-  - conda run -n py36 python setup.py install
-  - conda run -n py36 python setup.py bdist_wheel
+  - conda create -y -n py36 python=3.6 m2-tar m2-gzip m2-patch setuptools pip numpy=1.14
+  - conda run -n py36 python -m pip wheel -v -w dist "--only-binary=:all:" .
 
-  - conda create -y -n py37 python=3.7 m2-tar m2-gzip m2-patch setuptools numpy=1.14
-  - conda run -n py37 python setup.py install
-  - conda run -n py37 python setup.py bdist_wheel
+  - conda create -y -n py37 python=3.7 m2-tar m2-gzip m2-patch setuptools pip numpy=1.14
+  - conda run -n py37 python -m pip wheel -v -w dist "--only-binary=:all:" .
 
-  - conda create -y -n py38 python=3.8 m2-tar m2-gzip m2-patch setuptools numpy=1.14
-  - conda run -n py38 python setup.py install
-  - conda run -n py38 python setup.py bdist_wheel
+  - conda create -y -n py38 python=3.8 m2-tar m2-gzip m2-patch setuptools pip numpy=1.14
+  - conda run -n py38 python -m pip wheel -v -w dist "--only-binary=:all:" .
 
-  - conda create -y -n py39 python=3.9 m2-tar m2-gzip m2-patch setuptools numpy=1.16
-  - conda run -n py39 python setup.py install
-  - conda run -n py39 python setup.py bdist_wheel
+  - conda create -y -n py39 python=3.9 m2-tar m2-gzip m2-patch setuptools pip numpy=1.16
+  - conda run -n py39 python -m pip wheel -v -w dist "--only-binary=:all:" .
 
 - name: upload-testing
   when:
@@ -640,7 +636,7 @@ steps:
     - pip
   commands:
   - pip install twine
-  - bash maintenance/pip/upload_wheels_windows.sh testing
+  - bash maintenance/pip/upload_wheels.sh testing
   environment:
     PYPI_USERNAME:
       from_secret: pypi-username
@@ -654,7 +650,7 @@ steps:
     - pip-windows-release
   commands:
   - pip install twine
-  - bash maintenance/pip/upload_wheels_windows.sh live
+  - bash maintenance/pip/upload_wheels.sh live
   environment:
     PYPI_USERNAME:
       from_secret: pypi-username
