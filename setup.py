@@ -16,7 +16,7 @@ is_windows = sys.platform.startswith('win')
 
 
 packname = 'pyrocko'
-version = '2021.09.14'
+version = '2022.04.28'
 
 
 class NotInAGitRepos(Exception):

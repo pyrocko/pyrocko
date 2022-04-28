@@ -4,8 +4,11 @@ All notable changes to Pyrocko are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-
 ## Unreleased
+
+*empty*
+
+## v2022.04.28
 
 ### Added
 - New framework for seismological data access: `pyrocko.squirrel`
