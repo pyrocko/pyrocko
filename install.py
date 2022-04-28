@@ -216,8 +216,9 @@ def cmd_deps_conda(parser, args):
 
 
 def cmd_deps_pip(parser, args):
+    python = sys.executable or 'python3'
     do_command(
-        ['pip', 'install', '-r', 'requirements-all.txt'],
+        [python, '-m', 'pip', 'install', '-r', 'requirements-all.txt'],
         force=args.yes, quiet=args.quiet)
 
 
@@ -256,16 +257,24 @@ def cmd_deps_system(parser, args):
 
 
 def cmd_user(parser, args):
+    python = sys.executable or 'python3'
     do_command([
-        'pip', 'install', '--no-deps', '--no-build-isolation',
-        '--force-reinstall', '.'],
+        python, '-m', 'pip', 'install',
+        '--no-deps',
+        '--no-build-isolation',
+        '--force-reinstall',
+        '.'],
         force=args.yes, quiet=args.quiet)
 
 
 def cmd_system(parser, args):
+    python = sys.executable or 'python3'
     do_command([
-        'sudo', 'pip', 'install', '--no-deps', '--no-build-isolation',
-        '--force-reinstall', '.'],
+        'sudo', python, '-m', 'pip', 'install',
+        '--no-deps',
+        '--no-build-isolation',
+        '--force-reinstall',
+        '.'],
         force=args.yes, quiet=args.quiet)
 
 
