@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## Unreleased
 
 ### Added
+- New framework for seismological data access: `pyrocko.squirrel`
 - New module `modelling.cracksol` containing different analytical crack
   solutions for displacement and dislocation modelling.
 - New extension `modelling.ext.okada_ext` following `Okada, 1992` to calculate
@@ -26,18 +27,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - RMS Snuffling: Option to show log RMS.
 - New example on how to create QuakeML files from scratch.
 - automap: add flags to customize plate plotting and axes ticks
+- Snuffler: live seismograms from DataCube.
+- Improved responses module, more supported transfer functions, converters.
+- Improved error handling and diagnostics when extracting responses from
+  StationXML.
+- Functions to instantiate moment tensor from P and T axes.
+- Examples for eikonal solver.
+- Support for take-off angle and other precomputed tables in GF stores.
+- Snuffler: add waterfall style for dense recordings like DAS.
+- Snuffler: `goto today`, `goto yesterday` commands.
+- Support reading of TDMS IDAS files.
 
 ### Fixed
 - Fix Snuffler crashes on reading invalid files and other IO related errors.
 - Fixed `Trace.envelope`.
 - Fixed `evalresp` platform detection.
+- Fixed `MomentTensor.both_slip_vectors`, this function was broken completely.
 
 ### Changed
+- Drop support for Python < 3.5.
+- Drop support for Qt4.
 - Improvements to directivity plot.
 - Renamed Snuffling "Block RMS" to "RMS".
 - Fomosto QSEIS backend can now handle non-zero (negative) top layer depth,
   e.g. for models including the atmosphere.
 - Removed support for initial marker file format from before August 2011.
+- New installation recommendations.
+- Snuffler: two more marker kinds/colors (6, 7).
+- Snuffler: migrated from right-click menu to regular menubar.
 
 ## v2021.09.14
 
