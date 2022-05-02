@@ -4,8 +4,11 @@
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
 
-from .info import *  # noqa
-__version__ = version  # noqa
+try:
+    from .info import *  # noqa
+    __version__ = version  # noqa
+except ImportError:
+    pass  # not available in dev mode
 
 grumpy = 0  # noqa
 
