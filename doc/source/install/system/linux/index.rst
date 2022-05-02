@@ -15,7 +15,7 @@ System-wide installation from source
     git clone https://git.pyrocko.org/pyrocko/pyrocko.git pyrocko
     cd pyrocko
     python install.py deps system  # installs prerequisites using apt/yum/pacman
-    python install.py system       # installs with pip, but uses system deps
+    python install.py system       # installs Pyrocko with pip, but uses system deps
 
 User installation from source into isolated environment
 -------------------------------------------------------
@@ -44,7 +44,7 @@ User installation from source using system packages for the prerequisites
     python -m venv --use-system-packages myenv
     source myenv/bin/activate
     python install.py deps system  # installs prerequisites using apt/yum/pacman
-    python install.py user         # installs with pip, but uses system deps
+    python install.py user         # installs Pyrocko with pip, but uses system deps
 
 Distribution specific details and prerequisite package lists
 ------------------------------------------------------------
