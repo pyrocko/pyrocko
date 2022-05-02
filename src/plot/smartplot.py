@@ -223,7 +223,7 @@ class PlotConfig(Object):
     colorbar_width_em = Float.T(default=2.0)
 
     label_offset_em = Tuple.T(
-        2, Float.T(), default=(3., 3.))
+        2, Float.T(), default=(2., 2.))
 
     @property
     def size_inch(self):
