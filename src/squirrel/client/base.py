@@ -30,7 +30,7 @@ class Constraint(Object):
 
     tmin = Timestamp.T(optional=True)
     tmax = Timestamp.T(optional=True)
-    codes = List.T(CodesNSLCE.T(optional=True))
+    codes = List.T(CodesNSLCE.T())
 
     def __init__(self, **kwargs):
         if 'codes' in kwargs:

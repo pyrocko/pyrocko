@@ -19,6 +19,7 @@ from pyrocko.guts import Dict, String, Choice, Float, List, Timestamp, \
 from pyrocko.squirrel.dataset import Dataset
 from pyrocko.squirrel.client.local import LocalData
 from pyrocko.squirrel.error import ToolError
+from pyrocko.squirrel.model import CodesNSLCE
 
 tts = util.time_to_str
 
@@ -88,7 +89,7 @@ class Converter(HasPaths):
     in_path = String.T(optional=True)
     in_paths = List.T(String.T(optional=True))
 
-    codes = String.T(optional=True)
+    codes = List.T(CodesNSLCE.T(), optional=True)
 
     rename = Dict.T(
         String.T(),
@@ -116,7 +117,7 @@ class Converter(HasPaths):
 
     @classmethod
     def add_arguments(cls, p):
-        p.add_squirrel_query_arguments(without=['time', 'codes'])
+        p.add_squirrel_query_arguments(without=['time'])
 
         p.add_argument(
             '--downsample',
