@@ -430,3 +430,7 @@ def check_have_rdseed():
     if not Programs.check():
         raise ExternalProgramMissing(
             'rdseed is not installed or cannot be found')
+
+
+if __name__ == '__main__':
+    print(SeedVolumeAccess(sys.argv[1]).get_stationxml().dump_xml())
