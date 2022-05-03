@@ -3542,8 +3542,13 @@ def MakePileViewerMainClass(base):
                 processed_traces = []
                 if self.pile.deltatmax >= min_deltat_allow:
 
-                    def group_selector(gr):
-                        return gr.deltatmax >= min_deltat_allow
+                    if isinstance(self.pile, pyrocko.pile.Pile):
+                        def group_selector(gr):
+                            return gr.deltatmax >= min_deltat_allow
+
+                        kwargs = dict(group_selector=group_selector)
+                    else:
+                        kwargs = {}
 
                     if trace_selector is not None:
                         def trace_selectorx(tr):
@@ -3560,11 +3565,10 @@ def MakePileViewerMainClass(base):
                             maxgap=gap_lap_tolerance,
                             maxlap=gap_lap_tolerance,
                             keep_current_files_open=True,
-                            group_selector=group_selector,
                             trace_selector=trace_selectorx,
                             accessor_id=id(self),
                             snap=(math.floor, math.ceil),
-                            include_last=True):
+                            include_last=True, **kwargs):
 
                         if demean:
                             for tr in traces:
