@@ -295,8 +295,8 @@ class SquirrelArgumentParser(PyrockoArgumentParser):
         :py:class:`~pyrocko.squirrel.base.Squirrel` instance.
 
         This will  optional arguments ``--add``, ``--include``, ``--exclude``,
-        ``--optimistic``, ``--format``, ``--kind``, ``--persistent``,
-        ``--update``, and ``--kind`` to a given argument parser.
+        ``--optimistic``, ``--format``, ``--add-only``, ``--persistent``,
+        and ``--update``, and ``--dataset``.
 
         Call ``args.make_squirrel()`` on the arguments returned from
         :py:meth:`parse_args` to finally instantiate and configure the
@@ -309,8 +309,8 @@ class SquirrelArgumentParser(PyrockoArgumentParser):
         '''
         Set up command line options commonly used in squirrel queries.
 
-        This will add options ``--codes``, ``--tmin``, ``--tmax``, and
-        ``--time``.
+        This will add optional arguments ``--kinds``, ``--codes``, ``--tmin``,
+        ``--tmax``, and ``--time``.
 
         Once finished with parsing, the query arguments are available as
         ``args.squirrel_query`` on the arguments returned from
@@ -392,8 +392,8 @@ def add_squirrel_selection_arguments(parser):
     :py:class:`~pyrocko.squirrel.base.Squirrel` instance.
 
     This will  optional arguments ``--add``, ``--include``, ``--exclude``,
-    ``--optimistic``, ``--format``, ``--kind``, ``--persistent``, ``--update``,
-    and ``--kind`` to a given argument parser.
+    ``--optimistic``, ``--format``, ``--add-only``, ``--persistent``,
+    and ``--update``, and ``--dataset`` to a given argument parser.
 
     Once finished with parsing, call
     :py:func:`squirrel_from_selection_arguments` to finally instantiate and
@@ -569,7 +569,8 @@ def add_squirrel_query_arguments(parser, without=[]):
     '''
     Set up command line options commonly used in squirrel queries.
 
-    This will add options ``--codes``, ``--tmin``, ``--tmax``, and ``--time``.
+    This will add optional arguments ``--kinds``, ``--codes``, ``--tmin``,
+    ``--tmax``, and ``--time``.
 
     Once finished with parsing, call
     :py:func:`squirrel_query_from_arguments` to get the parsed values.
