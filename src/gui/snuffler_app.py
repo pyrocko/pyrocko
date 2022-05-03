@@ -645,7 +645,6 @@ class SnufflerWindow(qw.QMainWindow):
         qw.QMainWindow.__init__(self)
 
         self.instant_close = instant_close
-        self.sigint_quit_request = 0
 
         self.dockwidget_to_toggler = {}
         self.dockwidgets = []
@@ -804,19 +803,14 @@ class SnufflerWindow(qw.QMainWindow):
         return self.get_view().return_tag
 
     def confirm_close(self):
-        if self.sigint_quit_request > 1:
-            self.sigint_quit_request = 0
-            return True
+        ret = qw.QMessageBox.question(
+            self,
+            'Snuffler',
+            'Close Snuffler window?',
+            qw.QMessageBox.Cancel | qw.QMessageBox.Ok,
+            qw.QMessageBox.Ok)
 
-        else:
-            ret = qw.QMessageBox.question(
-                self,
-                'Snuffler',
-                'Close Snuffler window?',
-                qw.QMessageBox.Cancel | qw.QMessageBox.Ok,
-                qw.QMessageBox.Ok)
-
-            return ret == qw.QMessageBox.Ok
+        return ret == qw.QMessageBox.Ok
 
     def closeEvent(self, event):
         if self.instant_close or self.confirm_close():
