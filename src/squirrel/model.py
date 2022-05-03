@@ -382,6 +382,32 @@ def to_codes_guess(s):
         raise CodesError('Cannot guess codes type: %s' % s)
 
 
+# derived list class to enable detection of already preprocessed codes patterns
+class codes_patterns_list(list):
+    pass
+
+
+def codes_patterns_for_kind(kind_id, codes):
+    if isinstance(codes, codes_patterns_list):
+        return codes
+
+    if isinstance(codes, list):
+        lcodes = codes_patterns_list()
+        for sc in codes:
+            lcodes.extend(codes_patterns_for_kind(kind_id, sc))
+
+        return lcodes
+
+    codes = to_codes(kind_id, codes)
+
+    lcodes = codes_patterns_list()
+    lcodes.append(codes)
+    if kind_id == STATION:
+        lcodes.append(codes.replace(location='[*]'))
+
+    return lcodes
+
+
 g_content_kind_ids = (
     UNDEFINED, WAVEFORM, STATION, CHANNEL, RESPONSE, EVENT,
     WAVEFORM_PROMISE) = range(len(g_content_kinds))

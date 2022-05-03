@@ -21,7 +21,8 @@ from pyrocko.progress import progress
 from . import model, io, cache, dataset
 
 from .model import to_kind_id, WaveformOrder, to_kind, to_codes, \
-    STATION, CHANNEL, RESPONSE, EVENT, WAVEFORM
+    STATION, CHANNEL, RESPONSE, EVENT, WAVEFORM, codes_patterns_list, \
+    codes_patterns_for_kind
 from .client import fdsn, catalog
 from .selection import Selection, filldocs
 from .database import abspath
@@ -42,32 +43,6 @@ def lpick(condition, seq):
         ft[int(bool(condition(ele)))].append(ele)
 
     return ft
-
-
-# derived list class to enable detection of already preprocessed codes patterns
-class codes_patterns_list(list):
-    pass
-
-
-def codes_patterns_for_kind(kind_id, codes):
-    if isinstance(codes, codes_patterns_list):
-        return codes
-
-    if isinstance(codes, list):
-        lcodes = codes_patterns_list()
-        for sc in codes:
-            lcodes.extend(codes_patterns_for_kind(kind_id, sc))
-
-        return lcodes
-
-    codes = to_codes(kind_id, codes)
-
-    lcodes = codes_patterns_list()
-    lcodes.append(codes)
-    if kind_id == model.STATION:
-        return lcodes.append(codes.replace(location='[*]'))
-
-    return lcodes
 
 
 def blocks(tmin, tmax, deltat, nsamples_block=100000):
@@ -1283,7 +1258,7 @@ class Squirrel(Selection):
             kind=kind,
             kind_codes_count='%(db)s.%(kind_codes_count)s' % self._names)
 
-    def _iter_codes_info(self, kind=None):
+    def _iter_codes_info(self, kind=None, codes=None):
         '''
         Iterate over number of occurrences of any (kind, codes) combination.
 
@@ -1300,6 +1275,7 @@ class Squirrel(Selection):
         '''
         return self._database._iter_codes_info(
             kind=kind,
+            codes=codes,
             kind_codes_count='%(db)s.%(kind_codes_count)s' % self._names)
 
     def get_kinds(self, codes=None):

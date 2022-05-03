@@ -18,7 +18,8 @@ from pyrocko.io.io_common import FileLoadError
 from pyrocko import util
 from pyrocko.guts import Object, Int, List, Dict, Tuple, String
 from . import error, io
-from .model import Nut, to_kind_id, to_kind, to_codes_simple
+from .model import Nut, to_kind_id, to_kind, to_codes_simple, \
+    codes_patterns_for_kind
 from .error import SquirrelError
 
 logger = logging.getLogger('psq.database')
@@ -713,12 +714,28 @@ class Database(object):
             '''
             cursor.execute(sql, (file_stats[0], path))
 
-    def _iter_codes_info(self, kind=None, kind_codes_count='kind_codes_count'):
+    def _iter_codes_info(
+            self, kind=None, codes=None, kind_codes_count='kind_codes_count'):
+
         args = []
         sel = ''
         if kind is not None:
+            kind_id = to_kind_id(kind)
+
             sel = 'AND kind_codes.kind_id == ?'
             args.append(to_kind_id(kind))
+
+        if codes is not None:
+            assert kind is not None   # TODO supp by recursing possible kinds
+            kind_id = to_kind_id(kind)
+            pats = codes_patterns_for_kind(kind_id, codes)
+
+            if pats:
+                # could optimize this by using IN for non-patterns
+                sel += ' AND ( %s ) ' % ' OR '.join(
+                    ('kind_codes.codes GLOB ?',) * len(pats))
+
+                args.extend(pat.safe_str for pat in pats)
 
         sql = ('''
             SELECT

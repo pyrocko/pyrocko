@@ -20,10 +20,19 @@ def make_subparser(subparsers):
 
 def setup(parser):
     parser.add_squirrel_selection_arguments()
+    parser.add_squirrel_query_arguments(without=['time', 'tmin', 'tmax'])
 
 
 def run(parser, args):
+    from pyrocko import squirrel as sq
+
     squirrel = args.make_squirrel()
-    for kind_id, codes, deltat, _, count in sorted(
-            squirrel._iter_codes_info()):
-        print(to_kind(kind_id), codes, deltat, count)
+
+    kwargs = args.squirrel_query
+    kinds = kwargs.pop('kind', sq.supported_content_kinds())
+    codes = kwargs.pop('codes', None)
+
+    for kind in kinds:
+        for kind_id, codes, deltat, _, count in sorted(
+                squirrel._iter_codes_info(kind=kind, codes=codes)):
+            print(to_kind(kind_id), codes, deltat, count)
