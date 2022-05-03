@@ -36,6 +36,55 @@ from .qt_compat import qc, qg, qw, qn
 logger = logging.getLogger('pyrocko.gui.snuffler_app')
 
 
+class _Getch:
+    '''
+    Gets a single character from standard input.
+
+    Does not echo to the screen.
+
+    https://stackoverflow.com/questions/510357/how-to-read-a-single-character-from-the-user
+    '''
+    def __init__(self):
+        try:
+            self.impl = _GetchWindows()
+        except ImportError:
+            self.impl = _GetchUnix()
+
+    def __call__(self): return self.impl()
+
+
+class _GetchUnix:
+    def __init__(self):
+        import tty, sys  # noqa
+
+    def __call__(self):
+        import sys
+        import tty
+        import termios
+
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(fd)
+            ch = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+        return ch
+
+
+class _GetchWindows:
+    def __init__(self):
+        import msvcrt  # noqa
+
+    def __call__(self):
+        import msvcrt
+        return msvcrt.getch()
+
+
+getch = _Getch()
+
+
 class AcquisitionThread(qc.QThread):
     def __init__(self, post_process_sleep=0.0):
         qc.QThread.__init__(self)
@@ -596,6 +645,7 @@ class SnufflerWindow(qw.QMainWindow):
         qw.QMainWindow.__init__(self)
 
         self.instant_close = instant_close
+        self.sigint_quit_request = 0
 
         self.dockwidget_to_toggler = {}
         self.dockwidgets = []
@@ -754,14 +804,19 @@ class SnufflerWindow(qw.QMainWindow):
         return self.get_view().return_tag
 
     def confirm_close(self):
-        ret = qw.QMessageBox.question(
-            self,
-            'Snuffler',
-            'Close Snuffler window?',
-            qw.QMessageBox.Cancel | qw.QMessageBox.Ok,
-            qw.QMessageBox.Ok)
+        if self.sigint_quit_request > 1:
+            self.sigint_quit_request = 0
+            return True
 
-        return ret == qw.QMessageBox.Ok
+        else:
+            ret = qw.QMessageBox.question(
+                self,
+                'Snuffler',
+                'Close Snuffler window?',
+                qw.QMessageBox.Cancel | qw.QMessageBox.Ok,
+                qw.QMessageBox.Ok)
+
+            return ret == qw.QMessageBox.Ok
 
     def closeEvent(self, event):
         if self.instant_close or self.confirm_close():
@@ -869,7 +924,26 @@ class Snuffler(qw.QApplication):
         self.pile_viewer.progressbars.set_status(task, percent)
 
     def myCloseAllWindows(self, *args):
-        self.closeAllWindows()
+
+        def confirm():
+            try:
+                print('\nQuit Snuffler? [y/n]', file=sys.stderr)
+                confirmed = getch() == 'y'
+                if not confirmed:
+                    print('Continuing.', file=sys.stderr)
+                else:
+                    print('Quitting Snuffler.', file=sys.stderr)
+
+                return confirmed
+
+            except Exception:
+                return False
+
+        if confirm():
+            for win in self.snuffler_windows():
+                win.instant_close = True
+
+            self.closeAllWindows()
 
     def myQuit(self, *args):
         self.quit()

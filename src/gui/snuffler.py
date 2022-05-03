@@ -144,8 +144,11 @@ def snuffle(pile=None, **kwargs):
 
     if not win.is_closing():
         app.install_sigint_handler()
-        app.exec_()
-        app.uninstall_sigint_handler()
+        try:
+            app.exec_()
+
+        finally:
+            app.uninstall_sigint_handler()
 
     for source in sources:
         source.stop()
