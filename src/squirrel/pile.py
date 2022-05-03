@@ -5,7 +5,7 @@
 
 import logging
 import weakref
-from pyrocko import squirrel as psq, trace
+from pyrocko import squirrel as psq, trace, util
 from pyrocko import pile as classic_pile
 
 logger = logging.getLogger('psq.pile')
@@ -225,7 +225,7 @@ class Pile(object):
     def chopper(
             self,
             tmin=None, tmax=None, tinc=None, tpad=0.,
-            group_selector=None, trace_selector=None,
+            trace_selector=None,
             want_incomplete=True, degap=True, maxgap=5, maxlap=None,
             keep_current_files_open=False, accessor_id='default',
             snap=(round, round), include_last=False, load_data=True,
@@ -241,7 +241,6 @@ class Pile(object):
             ``tmax-tmin``)
         :param tpad: padding time appended on either side of the data windows
             (window overlap is ``2*tpad``)
-        :param group_selector: *ignored in squirrel-based pile*
         :param trace_selector: filter callback taking
             :py:class:`pyrocko.trace.Trace` objects
         :param want_incomplete: if set to ``False``, gappy/incomplete traces
@@ -324,7 +323,35 @@ class Pile(object):
             self._squirrel.clear_accessor(accessor_id, 'waveform')
 
     def chopper_grouped(self, gather, progress=None, *args, **kwargs):
-        raise NotImplementedError
+        keys = self.gather_keys(gather)
+        if len(keys) == 0:
+            return
+
+        outer_trace_selector = None
+        if 'trace_selector' in kwargs:
+            outer_trace_selector = kwargs['trace_selector']
+
+        # the use of this gather-cache makes it impossible to modify the pile
+        # during chopping
+        pbar = None
+        if progress is not None:
+            pbar = util.progressbar(progress, len(keys))
+
+        for ikey, key in enumerate(keys):
+            def tsel(tr):
+                return gather(tr) == key and (outer_trace_selector is None or
+                                              outer_trace_selector(tr))
+
+            kwargs['trace_selector'] = tsel
+
+            for traces in self.chopper(*args, **kwargs):
+                yield traces
+
+            if pbar:
+                pbar.update(ikey+1)
+
+        if pbar:
+            pbar.finish()
 
     def reload_modified(self):
         self._squirrel.reload()
@@ -333,7 +360,6 @@ class Pile(object):
             self,
             load_data=False,
             return_abspath=False,
-            group_selector=None,
             trace_selector=None):
 
         '''
@@ -343,7 +369,6 @@ class Pile(object):
             traces are yielded
         :param return_abspath: if ``True`` yield tuples containing absolute
             file path and :py:class:`pyrocko.trace.Trace` objects
-        :param group_selector: *ignored in squirre-based pile*
         :param trace_selector: filter callback taking
             :py:class:`pyrocko.trace.Trace` objects
 

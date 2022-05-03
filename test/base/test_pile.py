@@ -98,8 +98,19 @@ class PileTestCase(unittest.TestCase):
             toff += nsamples
 
         s = 0
-        for traces in p.chopper(tmin=None, tmax=p.tmax+1., tinc=122.,
-                                degap=False):
+        for traces in p.chopper(
+                tmin=None, tmax=p.tmax+1., tinc=122., degap=False):
+
+            for tr in traces:
+                s += num.sum(tr.ydata)
+
+        assert int(round(s)) == nfiles*nsamples
+
+        s = 0
+        for traces in p.chopper_grouped(
+                gather=lambda tr: (tr.network, tr.station),
+                tmin=None, tmax=p.tmax+1., tinc=122., degap=False):
+
             for tr in traces:
                 s += num.sum(tr.ydata)
 
