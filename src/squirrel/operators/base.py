@@ -95,7 +95,15 @@ class RegexGrouping(Grouping):
 
 
 class ComponentGrouping(RegexGrouping):
-    pattern = String.T(default=_cglob_translate('(*.*.*.*.*)?(.*)'))
+    pattern = String.T(default=_cglob_translate('(*.*.*.*)?(.*)'))
+
+
+class NetworkStationGrouping(RegexGrouping):
+    pattern = String.T(default=_cglob_translate('(*.*).*.*.*'))
+
+
+class NetworkStationLocationGrouping(RegexGrouping):
+    pattern = String.T(default=_cglob_translate('(*.*.*).*.*'))
 
 
 class Translation(Object):
@@ -125,7 +133,7 @@ class RegexTranslation(AddSuffixTranslation):
 
 
 class ReplaceComponentTranslation(RegexTranslation):
-    pattern = String.T(default=_cglob_translate('(*.*.*.*.*)?(.*)'))
+    pattern = String.T(default=_cglob_translate('(*.*.*.*)?(.*)'))
     replacement = String.T(default=r'\1{component}\2')
 
 
@@ -356,6 +364,11 @@ class Composition(Operator):
 
 
 __all__ = [
+    'Grouping',
+    'RegexGrouping',
+    'ComponentGrouping',
+    'NetworkStationGrouping',
+    'NetworkStationLocationGrouping',
     'Operator',
     'RestitutionParameters',
     'Restitution',
