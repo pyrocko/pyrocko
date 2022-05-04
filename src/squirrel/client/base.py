@@ -30,16 +30,19 @@ class Constraint(Object):
 
     tmin = Timestamp.T(optional=True)
     tmax = Timestamp.T(optional=True)
-    codes = List.T(CodesNSLCE.T())
+    codes = List.T(CodesNSLCE.T(), optional=True)
 
     def __init__(self, **kwargs):
-        if 'codes' in kwargs:
-            if not isinstance(kwargs['codes'], list):
-                kwargs['codes'] = [CodesNSLCE(kwargs['codes'])]
-            else:
-                kwargs['codes'] = [CodesNSLCE(x) for x in kwargs['codes']]
+        codes = kwargs.pop('codes', None)
 
-        Object.__init__(self, **kwargs)
+        if codes is None:
+            pass
+        elif not isinstance(codes, list):
+            codes = [CodesNSLCE(codes)]
+        else:
+            codes = [CodesNSLCE(sc) for sc in codes]
+
+        Object.__init__(self, codes=codes, **kwargs)
 
     def contains(self, constraint):
         '''
