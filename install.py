@@ -263,6 +263,7 @@ def cmd_user(parser, args):
         '--no-deps',
         '--no-build-isolation',
         '--force-reinstall',
+        '--upgrade',
         '.'],
         force=args.yes, quiet=args.quiet)
 
@@ -274,6 +275,7 @@ def cmd_system(parser, args):
         '--no-deps',
         '--no-build-isolation',
         '--force-reinstall',
+        '--upgrade',
         '.'],
         force=args.yes, quiet=args.quiet)
 
