@@ -1849,7 +1849,8 @@ def iter_select_files(
 
 
 def select_files(
-        paths, include=None, exclude=None, selector=None, show_progress=True):
+        paths, include=None, exclude=None, selector=None, show_progress=True,
+        regex=None):
 
     '''
     Recursively select files.
@@ -1859,6 +1860,7 @@ def select_files(
     :param exclude: pattern for conditional exclusion
     :param selector: callback for conditional inclusion
     :param show_progress: if True, indicate start and stop of processing
+    :param regex: alias for ``include`` (backwards compatibility)
     :returns: list of path names
 
     Recursively finds all files under given entry points ``paths``. If
@@ -1883,6 +1885,10 @@ def select_files(
             include=r'(?P<year>\\d\\d\\d\\d)\\.(?P<doy>\\d\\d\\d)$',
             selector=(lambda x: int(x.year) == 2009))
     '''
+    if regex is not None:
+        assert include is None
+        include = regex
+
     return list(iter_select_files(
         paths, include, exclude, selector, show_progress))
 
