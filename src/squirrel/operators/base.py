@@ -8,10 +8,10 @@ from __future__ import absolute_import, print_function
 import logging
 import re
 
-from ..model import QuantityType
+from ..model import QuantityType, match_codes, CodesNSLCE
 from .. import error
 
-from pyrocko.guts import Object, String, Duration, Float, clone
+from pyrocko.guts import Object, String, Duration, Float, clone, List
 
 guts_prefix = 'squirrel.ops'
 
@@ -77,6 +77,18 @@ class RegexFiltering(Object):
             x for x in it if self._compiled_pattern.fullmatch(x)]
 
 
+class CodesPatternFiltering(Object):
+    codes = List.T(CodesNSLCE.T(), optional=True)
+
+    def filter(self, it):
+        if self.codes is None:
+            return list(it)
+        else:
+            return [
+                x for x in it
+                if any(match_codes(sc, x) for sc in self.codes)]
+
+
 class Grouping(Object):
 
     def key(self, codes):
@@ -91,19 +103,49 @@ class RegexGrouping(Grouping):
         self._compiled_pattern = re.compile(self.pattern)
 
     def key(self, codes):
-        return self._compiled_pattern.fullmatch(str(codes)).groups()
+        return self._compiled_pattern.fullmatch(codes.safe_str).groups()
 
 
-class ComponentGrouping(RegexGrouping):
-    pattern = String.T(default=_cglob_translate('(*.*.*.*)?(.*)'))
+class NetworkGrouping(RegexGrouping):
+    '''
+    Group by *network* code.
+    '''
+    pattern = String.T(default=_cglob_translate('(*).*.*.*.*'))
 
 
-class NetworkStationGrouping(RegexGrouping):
+class StationGrouping(RegexGrouping):
+    '''
+    Group by *network.station* codes.
+    '''
     pattern = String.T(default=_cglob_translate('(*.*).*.*.*'))
 
 
-class NetworkStationLocationGrouping(RegexGrouping):
+class LocationGrouping(RegexGrouping):
+    '''
+    Group by *network.station.location* codes.
+    '''
     pattern = String.T(default=_cglob_translate('(*.*.*).*.*'))
+
+
+class ChannelGrouping(RegexGrouping):
+    '''
+    Group by *network.station.location.channel* codes.
+
+    This effectively groups all processings of a channel, which may differ in
+    the *extra* codes attribute.
+    '''
+    pattern = String.T(default=_cglob_translate('(*.*.*.*).*'))
+
+
+class SensorGrouping(RegexGrouping):
+    '''
+    Group by *network.station.location.sensor* and *extra* codes.
+
+    For *sensor* all but the last character of the channel code (indicating the
+    component) are used. This effectively groups all components of a sensor,
+    or processings of a sensor.
+    '''
+    pattern = String.T(default=_cglob_translate('(*.*.*.*)?(.*)'))
 
 
 class Translation(Object):
@@ -129,12 +171,25 @@ class RegexTranslation(AddSuffixTranslation):
 
     def translate(self, codes):
         return codes.__class__(
-            self._compiled_pattern.sub(self.replacement, str(codes)))
+            self._compiled_pattern.sub(self.replacement, codes.safe_str))
 
 
 class ReplaceComponentTranslation(RegexTranslation):
     pattern = String.T(default=_cglob_translate('(*.*.*.*)?(.*)'))
     replacement = String.T(default=r'\1{component}\2')
+
+
+def deregister(registry, group):
+    for codes in group[2]:
+        del registry[codes]
+
+
+def register(registry, operator, group):
+    for codes in group[2]:
+        if codes in registry:
+            logger.warning(
+                'duplicate operator output codes: %s' % codes)
+        registry[codes] = (operator, group)
 
 
 class Operator(Object):
@@ -158,12 +213,17 @@ class Operator(Object):
 
     def iter_mappings(self):
         for k, group in self._groups.items():
-            if group[1] is None:
-                group[1] = sorted(group[0])
-
             yield (group[1], group[2])
 
-    def update_mappings(self, available, registry):
+    def iter_in_codes(self):
+        for k, group in self._groups.items():
+            yield group[1]
+
+    def iter_out_codes(self):
+        for k, group in self._groups.items():
+            yield group[2]
+
+    def update_mappings(self, available, registry=None):
         available = list(available)
         removed, added = odiff(self._available, available)
 
@@ -172,17 +232,6 @@ class Operator(Object):
         groups = self._groups
 
         need_update = set()
-
-        def deregister(group):
-            for codes in group[2]:
-                del registry[codes]
-
-        def register(group):
-            for codes in group[2]:
-                if codes in registry:
-                    logger.warning(
-                        'duplicate operator output codes: %s' % codes)
-                registry[codes] = (self, group)
 
         for codes in filt(removed):
             k = gkey(codes)
@@ -199,13 +248,16 @@ class Operator(Object):
 
         for k in need_update:
             group = groups[k]
-            deregister(group)
+            if registry is not None:
+                deregister(registry, group)
+
             group[1] = tuple(sorted(group[0]))
             if not group[1]:
                 del groups[k]
             else:
                 group[2] = self._out_codes(group[1])
-                register(group)
+                if registry is not None:
+                    register(registry, self, group)
 
         self._available = available
 
@@ -261,7 +313,7 @@ class Restitution(Operator):
 
     def _out_codes(self, group):
         return [
-            codes.__class__(str(self.translation.translate(codes)).format(
+            codes.__class__(self.translation.translate(codes).safe_str.format(
                 quantity=self.quantity[0]))
             for codes in group]
 
@@ -319,7 +371,7 @@ class Shift(Operator):
 
 
 class Transform(Operator):
-    grouping = Grouping.T(default=ComponentGrouping.D())
+    grouping = Grouping.T(default=SensorGrouping.D())
     translation = ReplaceComponentTranslation(suffix='T{system}')
 
     def _out_codes(self, group):
@@ -366,9 +418,11 @@ class Composition(Operator):
 __all__ = [
     'Grouping',
     'RegexGrouping',
-    'ComponentGrouping',
-    'NetworkStationGrouping',
-    'NetworkStationLocationGrouping',
+    'NetworkGrouping',
+    'StationGrouping',
+    'LocationGrouping',
+    'SensorGrouping',
+    'ChannelGrouping',
     'Operator',
     'RestitutionParameters',
     'Restitution',

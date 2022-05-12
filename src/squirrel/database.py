@@ -796,6 +796,7 @@ class Database(object):
             WHERE %(kind_codes_count)s.count > 0
                 ''' + sel + '''
             ORDER BY kind_codes.codes
+
         ''') % dict(kind_codes_count=kind_codes_count)
 
         for row in self._conn.execute(sql, args):

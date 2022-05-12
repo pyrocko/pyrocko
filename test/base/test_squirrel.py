@@ -1,7 +1,7 @@
 from __future__ import print_function, absolute_import
 
 import time
-import random
+import math
 import os
 import copy
 import pickle
@@ -1095,7 +1095,8 @@ class SquirrelTestCase(unittest.TestCase):
     def make_many_files(
             self, nfiles, nsamples, networks, stations, channels, tmin):
 
-        rc = random.choice
+        def rc(ll, i):
+            return ll[(i // 3) % len(ll)]
 
         traces = []
         deltat = 1.0
@@ -1105,7 +1106,7 @@ class SquirrelTestCase(unittest.TestCase):
             data = num.ones(nsamples)
             traces.append(
                 trace.Trace(
-                    rc(networks), rc(stations), '', rc(channels),
+                    rc(networks, i), rc(stations, i), '', rc(channels, i),
                     ctmin, None, deltat, data))
 
         datadir = tempfile.mkdtemp(dir=self.tempdir)
@@ -1121,13 +1122,9 @@ class SquirrelTestCase(unittest.TestCase):
 
         nfiles = 200
         nsamples = 1000
-        abc = 'abcdefghijklmnopqrstuvwxyz'
 
-        def rn(n):
-            return ''.join([random.choice(abc) for i in range(n)])
-
-        stations = [rn(4) for i in range(10)]
-        channels = [rn(3) for i in range(3)]
+        stations = ['S%02i' % i for i in range(10)]
+        channels = ['C%01i' % i for i in range(3)]
         networks = ['xx']
 
         tmin = 1234567890
@@ -1138,13 +1135,42 @@ class SquirrelTestCase(unittest.TestCase):
 
         try:
             work = [
-                (ijob, datadir, nfiles, nsamples, tmin)
+                (ijob, datadir, nfiles, nsamples, tmin, (None, 1))
                 for ijob in range(12)]
 
             tstart = time.time()
             for ijob in parimap(do_chopper, work, nprocs=4):
                 logger.info('Done with job %i after %i s.' % (
                     ijob, time.time() - tstart))
+
+        finally:
+            shutil.rmtree(datadir)
+
+    def test_chopper_single(self):
+
+        nfiles = 100
+        nsamples = 100
+
+        stations = ['S%02i' % i for i in range(10)]
+        channels = ['C%01i' % i for i in range(3)]
+        networks = ['xx']
+
+        tmin = 1234567890.
+        datadir = self.make_many_files(
+            nfiles, nsamples, networks, stations, channels, tmin)
+
+        squirrel.init_environment(datadir)
+
+        try:
+            for (grouping, mult) in [
+                    (None, 1),
+                    (squirrel.NetworkGrouping(), 1),
+                    (squirrel.StationGrouping(), 10),
+                    (squirrel.ChannelGrouping(), 30),
+                    (squirrel.SensorGrouping(), 10)]:
+
+                do_chopper(
+                    (0, datadir, nfiles, nsamples, tmin, (grouping, mult)))
 
         finally:
             shutil.rmtree(datadir)
@@ -1177,7 +1203,7 @@ class SquirrelTestCase(unittest.TestCase):
 
 
 def do_chopper(params):
-    ijob, datadir, nfiles, nsamples, tmin = params
+    ijob, datadir, nfiles, nsamples, tmin, (grouping, mult) = params
 
     sq = squirrel.Squirrel(datadir, persistent='bla')
     sq.add(os.path.join(datadir, 'data'))
@@ -1197,13 +1223,26 @@ def do_chopper(params):
     for tr in trs:
         assert len(tr.get_ydata()) == 100
 
+    codes = sq.get_codes(kind='waveform')
+
     s = 0
+    tinc = 122.
     sq_tmin, sq_tmax = sq.get_time_span('waveform')
+    nbatches = 0
     for batch in sq.chopper_waveforms(
-            tmin=None, tmax=sq_tmax+1., tinc=122., degap=False):
+            tmin=None,
+            tmax=sq_tmax+1.,
+            tinc=tinc,
+            degap=False,
+            codes=codes,
+            grouping=grouping):
 
         for tr in batch.traces:
             s += num.sum(tr.ydata)
+
+        nbatches += 1
+
+    assert nbatches == int(math.ceil(nsamples * nfiles / tinc)) * mult
 
     assert int(round(s)) == nfiles*nsamples
 

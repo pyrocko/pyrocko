@@ -26,6 +26,7 @@ from .model import to_kind_id, WaveformOrder, to_kind, to_codes, \
 from .client import fdsn, catalog
 from .selection import Selection, filldocs
 from .database import abspath
+from .operators.base import Operator, CodesPatternFiltering
 from . import client, environment, error
 
 logger = logging.getLogger('psq.base')
@@ -81,6 +82,10 @@ def gaps(avail, tmin, tmax):
 
 def order_key(order):
     return (order.codes, order.tmin, order.tmax)
+
+
+def _is_exact(pat):
+    return not ('*' in pat or '?' in pat or ']' in pat or '[' in pat)
 
 
 class Batch(object):
@@ -830,6 +835,40 @@ class Squirrel(Selection):
         cond.append('%(db)s.%(nuts)s.tmax_seconds >= ?')
         args.append(tmin_seconds)
 
+    def _codes_match_sql(self, kind_id, codes, cond, args):
+        pats = codes_patterns_for_kind(kind_id, codes)
+        if pats is None:
+            return
+
+        pats_exact = []
+        pats_nonexact = []
+        for pat in pats:
+            spat = pat.safe_str
+            (pats_exact if _is_exact(spat) else pats_nonexact).append(spat)
+
+        cond_exact = None
+        if pats_exact:
+            cond_exact = ' ( kind_codes.codes IN ( %s ) ) ' % ', '.join(
+                '?'*len(pats_exact))
+
+            args.extend(pats_exact)
+
+        cond_nonexact = None
+        if pats_nonexact:
+            cond_nonexact = ' ( %s ) ' % ' OR '.join(
+                    ('kind_codes.codes GLOB ?',) * len(pats_nonexact))
+
+            args.extend(pats_nonexact)
+
+        if cond_exact and cond_nonexact:
+            cond.append(' ( %s OR %s ) ' % (cond_exact, cond_nonexact))
+
+        elif cond_exact:
+            cond.append(cond_exact)
+
+        elif cond_nonexact:
+            cond.append(cond_nonexact)
+
     def iter_nuts(
             self, kind=None, tmin=None, tmax=None, codes=None, naiv=False,
             kind_codes_ids=None, path=None):
@@ -917,14 +956,7 @@ class Squirrel(Selection):
         args.append(kind_id)
 
         if codes is not None:
-            pats = codes_patterns_for_kind(kind_id, codes)
-
-            if pats:
-                # could optimize this by using IN for non-patterns
-                cond.append(
-                    ' ( %s ) ' % ' OR '.join(
-                        ('kind_codes.codes GLOB ?',) * len(pats)))
-                args.extend(pat.safe_str for pat in pats)
+            self._codes_match_sql(kind_id, codes, cond, args)
 
         if kind_codes_ids is not None:
             cond.append(
@@ -1024,12 +1056,7 @@ class Squirrel(Selection):
                 self._timerange_sql(tmin, tmax, kind, cond, args, False)
 
                 if codes is not None:
-                    pats = codes_patterns_for_kind(kind_id, codes)
-                    if pats:
-                        cond.append(
-                            ' ( %s ) ' % ' OR '.join(
-                                ('kind_codes.codes GLOB ?',) * len(pats)))
-                        args.extend(pat.safe_str for pat in pats)
+                    self._codes_match_sql(kind_id, codes, cond, args)
 
                 if path is not None:
                     cond.append('files.path == ?')
@@ -2167,7 +2194,8 @@ class Squirrel(Selection):
             want_incomplete=True, snap_window=False,
             degap=True, maxgap=5, maxlap=None,
             snap=None, include_last=False, load_data=True,
-            accessor_id=None, clear_accessor=True, operator_params=None):
+            accessor_id=None, clear_accessor=True, operator_params=None,
+            grouping=None):
 
         '''
         Iterate window-wise over waveform archive.
@@ -2250,6 +2278,15 @@ class Squirrel(Selection):
         :type clear_accessor:
             bool
 
+        :param grouping:
+            By default, traversal over the data is over time and all matching
+            traces of a time window are yielded. Using this option, it is
+            possible to traverse the data first by group (e.g. station or
+            network) and second by time. This can reduce the number of traces
+            in each batch and thus reduce the memory footprint of the process.
+        :type grouping:
+            :py:class:`~pyrocko.squirrel.operator.Grouping`
+
         :yields:
             A list of :py:class:`~pyrocko.trace.Trace` objects for every
             extracted time window.
@@ -2292,33 +2329,49 @@ class Squirrel(Selection):
             else:
                 nwin = 1
 
-            for iwin in range(nwin):
-                wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)
+            if grouping is None:
+                codes_list = [codes]
+            else:
+                operator = Operator(
+                    filtering=CodesPatternFiltering(codes=codes),
+                    grouping=grouping)
 
-                chopped = self.get_waveforms(
-                    tmin=wmin-tpad,
-                    tmax=wmax+tpad,
-                    codes=codes,
-                    snap=snap,
-                    include_last=include_last,
-                    load_data=load_data,
-                    want_incomplete=want_incomplete,
-                    degap=degap,
-                    maxgap=maxgap,
-                    maxlap=maxlap,
-                    accessor_id=accessor_id,
-                    operator_params=operator_params)
+                available = set(self.get_codes(kind='waveform'))
+                available.update(self.get_codes(kind='waveform_promise'))
+                operator.update_mappings(sorted(available))
 
-                self.advance_accessor(accessor_id)
+                def iter_codes_list():
+                    for scl in operator.iter_in_codes():
+                        yield codes_patterns_list(scl)
 
-                yield Batch(
-                    tmin=wmin,
-                    tmax=wmax,
-                    i=iwin,
-                    n=nwin,
-                    traces=chopped)
+                codes_list = iter_codes_list()
 
-                iwin += 1
+            for scl in codes_list:
+                for iwin in range(nwin):
+                    wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)
+
+                    chopped = self.get_waveforms(
+                        tmin=wmin-tpad,
+                        tmax=wmax+tpad,
+                        codes=scl,
+                        snap=snap,
+                        include_last=include_last,
+                        load_data=load_data,
+                        want_incomplete=want_incomplete,
+                        degap=degap,
+                        maxgap=maxgap,
+                        maxlap=maxlap,
+                        accessor_id=accessor_id,
+                        operator_params=operator_params)
+
+                    self.advance_accessor(accessor_id)
+
+                    yield Batch(
+                        tmin=wmin,
+                        tmax=wmax,
+                        i=iwin,
+                        n=nwin,
+                        traces=chopped)
 
         finally:
             self._n_choppers_active -= 1
