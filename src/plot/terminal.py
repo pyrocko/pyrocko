@@ -130,7 +130,7 @@ def bar(view_tmin, view_tmax, changes, tmin, tmax, sx):
             elif count == 1 and count == new_count:
                 out.append(blocks[0])
             else:
-                out.apped('N')
+                out.append('N')
 
             count = new_count
 
