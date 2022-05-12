@@ -46,6 +46,15 @@ sources:
   # URL or alias of FDSN site.
   site: {site}
 
+  # Uncomment to let metadata expire in 10 days:
+  #expires: 10d
+
+  # Waveforms can be optionally shared with other FDSN client configurations,
+  # so that data is not downloaded multiple times. The downside may be that in
+  # some cases more data than expected is available (if data was previously
+  # downloaded for a different application).
+  #shared_waveforms: true
+
   # FDSN query arguments to make metadata queries.
   # See http://www.fdsn.org/webservices/fdsnws-station-1.1.pdf
   # Time span arguments should not be added here, because they are handled

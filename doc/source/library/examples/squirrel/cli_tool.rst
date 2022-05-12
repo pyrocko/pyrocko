@@ -14,7 +14,7 @@ writing such a script/app, each useful in slightly different situations. If you
 use the provided building blocks and follow the conventions laid out below,
 your app will immediately feel familiar to other Squirrel users. And it will
 ship with a bunch of nice features, like support for extra large datasets. And
-it will be pleasure to maintain.
+it will be a pleasure to maintain.
 
 **Specs for the tutorial app:**
 

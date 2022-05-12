@@ -164,7 +164,7 @@ def format_rst(dhelp):
 
     a('Command reference')
     a('')
-    e(format_title('-', dhelp['program']))
+    e(format_title('-', '``%s``' % dhelp['program']))
     a('')
     a('.. program:: %s' % dhelp['program'])
     a('')

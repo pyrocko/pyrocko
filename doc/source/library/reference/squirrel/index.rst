@@ -1,4 +1,7 @@
 
+.. image:: /static/squirrel.svg
+   :align: left
+
 .. _squirrel:
 
 ``squirrel``
@@ -6,15 +9,17 @@
 
 Prompt seismological data access with a fluffy tail.
 
+The :program:`squirrel` command line tool is a front-end to the :doc:`Squirrel
+data access infrastructure </library/reference/squirrel/index>`.
+
 The Squirrel framework provides a unified interface to query and access seismic
 waveforms, station meta-data and event information from local file collections
-and remote data sources. For prompt responses, a profound database setup is
-used under the hood. To speed up assemblage of ad-hoc data selections, files
-are indexed on first use and the extracted meta-data is remembered for
-subsequent accesses. Bulk data is lazily loaded from disk and remote sources,
-just when requested. Once loaded, data is cached in memory to expedite typical
-access patterns. Files and data sources can be dynamically added and removed at
-runtime.
+and remote data sources. For prompt responses, a database setup is used under
+the hood. To speed up assemblage of ad-hoc data selections, files are indexed
+on first use and the extracted meta-data is remembered for subsequent accesses.
+Bulk data is lazily loaded from disk and remote sources, just when requested.
+Once loaded, data is cached in memory to expedite typical access patterns.
+Files and data sources can be dynamically added and removed at runtime.
 
 **Features**
 

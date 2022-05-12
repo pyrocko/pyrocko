@@ -16,7 +16,7 @@ help:
 squirrel_cli:
 	python3 ../maintenance/argparse_help_to_rst.py \
 		pyrocko.squirrel.main \
-		source/apps/squirrel/manual/
+		source/apps/squirrel/reference/
 
 .PHONY: help Makefile squirrel_cli
 
