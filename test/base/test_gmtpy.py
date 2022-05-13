@@ -103,7 +103,7 @@ class GmtPyTestCase(unittest.TestCase):
 
     def test_basic2(self):
         for version in gmtpy.all_installed_gmt_versions():
-            if version.startswith('5'):
+            if version.startswith('5') or version.startswith('6'):
                 gmt = gmtpy.GMT(
                     version=version,
                     config={'MAP_FRAME_TYPE': 'fancy'},
