@@ -323,8 +323,8 @@ _gmt_installations = {}
 #                                'bin':  '/sw/etch-ia32/gmt-4.2.1/bin'}
 # _gmt_installations['4.3.0'] = {'home': '/sw/etch-ia32/gmt-4.3.0',
 #                                'bin':  '/sw/etch-ia32/gmt-4.3.0/bin'}
-# _gmt_installations['4.3.1'] = {'home': '/sw/share/gmt',
-#                                'bin':  '/sw/bin' }
+# _gmt_installations['6.0.0'] = {'home': '/usr/share/gmt',
+#                                'bin':  '/usr/bin' }
 
 # ... or let GmtPy autodetect GMT via $PATH and $GMTHOME
 
@@ -1298,11 +1298,8 @@ def check_gmt_installation(installation):
                               'Check your GMT installation.') % d)
 
     major_version = version.split('.')[0]
-    if major_version == '6':
-        raise GMTInstallationProblem(
-            'GMT version 6 not supported by pyrocko.gmtpy.')
 
-    if major_version != '5':
+    if major_version not in ['5', '6']:
         gmtdefaults = pjoin(bin_dir, 'gmtdefaults')
 
         versionfound = get_gmt_version(gmtdefaults, home_dir)
@@ -3136,7 +3133,7 @@ class GridLayout(Widget):
 
 
 def is_gmt5(version='newest'):
-    return get_gmt_installation(version)['version'][0] == '5'
+    return get_gmt_installation(version)['version'][0] in ['5', '6']
 
 
 def aspect_for_projection(gmtversion, *args, **kwargs):
@@ -3364,7 +3361,7 @@ class GMT(object):
         self.keep_temp_dir = False
 
     def is_gmt5(self):
-        return self.installation['version'][0] == '5'
+        return self.installation['version'][0] in ['5', '6']
 
     def get_version(self):
         return self.installation['version']
