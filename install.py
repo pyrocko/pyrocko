@@ -236,6 +236,8 @@ def cmd_deps_system(parser, args):
                 distribution = 'arch'
             elif uname[3].lower().find('ubuntu') != -1:
                 distribution = 'ubuntu'
+            elif uname[3].lower().find('debian') != -1:
+                distribution = 'debian'
         except Exception:
             pass
 
