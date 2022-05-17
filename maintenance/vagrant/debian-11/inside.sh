@@ -18,6 +18,7 @@ outfile_py3="/vagrant/test-$branch.py3.out"
 rm -f "$outfile_py3"
 
 cd $HOME
+export LC_ALL="C"
 
 /vagrant/wait_dpkg_locks.sh
 
