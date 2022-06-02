@@ -47,8 +47,8 @@ class GmtPyTestCase(unittest.TestCase):
 
         img = image.imread(fpath)
         img_ref = image.imread(fpath_ref)
-        self.assertEqual(img.shape, img_ref.shape)
-        d = num.abs(img - img_ref)
+        self.assertEqual(img.shape[:2], img_ref.shape[:2])
+        d = num.abs(img[:, :, :3] - img_ref[:, :, :3])
         merr = num.mean(d)
         if (merr > tolerance or show) and plot:
             fig = plt.figure()
@@ -290,7 +290,7 @@ class GmtPyTestCase(unittest.TestCase):
             s = gmtpy.text_box(
                 'Abc def ghi jkl mno pqr stu vwx yz',
                 gmtversion=version)
-            assert_allclose(s, (179.9, 12.3), rtol=0.01)
+            assert_allclose(s, (179.9, 12.3), atol=1.0)
 
     def test_override_args(self):
         x = num.array([0, 0.5, 1, 0])
