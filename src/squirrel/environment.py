@@ -19,6 +19,7 @@ environment in the hierarchy of a user's project directory.
 from __future__ import absolute_import, print_function
 
 import os
+import logging
 
 from pyrocko.guts import String, load
 from pyrocko import config
@@ -26,6 +27,8 @@ from pyrocko.has_paths import HasPaths, Path
 
 from . import error
 from .database import close_database
+
+logger = logging.getLogger('psq.environment')
 
 guts_prefix = 'squirrel'
 
@@ -111,6 +114,9 @@ def init_environment(path=None):
 
     squirrel_path = os.path.join(path, '.squirrel')
     try:
+        logger.info(
+            'Creating squirrel environment directory: %s'
+            % os.path.abspath(squirrel_path))
         os.mkdir(squirrel_path)
     except OSError:
         raise error.SquirrelError(
