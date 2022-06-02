@@ -686,10 +686,12 @@ class Projection(object):
         xmin, xmax = self.xr
         return umin + (x-xmin)*((umax-umin)/(xmax-xmin))
 
-    def clipped(self, x):
+    def clipped(self, x, umax_pad):
         umin, umax = self.ur
         xmin, xmax = self.xr
-        return min(umax, max(umin, umin + (x-xmin)*((umax-umin)/(xmax-xmin))))
+        return min(
+            umax-umax_pad,
+            max(umin, umin + (x-xmin)*((umax-umin)/(xmax-xmin))))
 
     def rev(self, u):
         umin, umax = self.ur
@@ -2883,8 +2885,8 @@ def MakePileViewerMainClass(base):
                 v_projection = track_projections[itrack]
                 dvmin = v_projection(0.)
                 dvmax = v_projection(1.)
-                dtmin = time_projection.clipped(traces[0].tmin)
-                dtmax = time_projection.clipped(traces[-1].tmax)
+                dtmin = time_projection.clipped(traces[0].tmin, 0)
+                dtmax = time_projection.clipped(traces[-1].tmax, 1)
 
                 style = box_styles[istyle % len(box_styles)]
                 rect = qc.QRectF(dtmin, dvmin, float(dtmax-dtmin), dvmax-dvmin)
@@ -2980,8 +2982,8 @@ def MakePileViewerMainClass(base):
                 v_projection = track_projections[itrack]
                 dvmin = v_projection(0.)
                 dvmax = v_projection(1.)
-                dtmin = time_projection.clipped(tmin)
-                dtmax = time_projection.clipped(tmax)
+                dtmin = time_projection.clipped(tmin, 0)
+                dtmax = time_projection.clipped(tmax, 1)
 
                 rect = qc.QRectF(dtmin, dvmin, float(dtmax-dtmin), dvmax-dvmin)
                 p.fillRect(rect, style.fill_brush)
