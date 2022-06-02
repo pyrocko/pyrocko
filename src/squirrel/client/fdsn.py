@@ -823,7 +823,8 @@ class FDSNSource(Source, has_paths.HasPaths):
 
             self._log_responses(
                 '%s: %s' % (
-                    k, codes_to_str_abbreviated(status[k])),
+                    k, codes_to_str_abbreviated(
+                        CodesNSLCE(tup) for tup in status[k])),
                 target=log_target)
 
         squirrel.add(fns, kinds=['response'])
