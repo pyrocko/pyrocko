@@ -119,6 +119,10 @@ class CatalogSource(Source):
 
         util.ensuredir(self._cache_path)
 
+        with LockDir(self._cache_path):
+            self._load_chain()
+            self._add_events_to_squirrel(squirrel)
+
     def make_hash(self):
         s = self.catalog
         if self.query_args is not None:
@@ -209,6 +213,9 @@ class CatalogSource(Source):
                 self._dump_chain()
                 squirrel.remove(remove)
 
+            self._add_events_to_squirrel(squirrel)
+
+    def _add_events_to_squirrel(self, squirrel):
             add = []
             for link in self._chain:
                 if link.content_id:
@@ -280,13 +287,29 @@ class CatalogSource(Source):
 
         return Link(tmin, tmax, tmodified, len(events), content_id)
 
+    def query_args_typed(self):
+        if self.query_args is None:
+            return {}
+        else:
+            type_map = {
+                'magmin': float,
+                'magmax': float,
+                'latmin': float,
+                'latmax': float,
+                'lonmin': float,
+                'lonmax': float,
+                'depthmin': float,
+                'depthmax': float}
+
+            return dict((k, type_map.get(k, str)(v)) for (k, v) in self.query_args.items())
+
     def _query(self, tmin, tmax):
         logger.info('Querying catalog "%s" for time span %s - %s.' % (
             self.catalog, util.tts(tmin), util.tts(tmax)))
 
         return self._catalog.get_events(
             (tmin, tmax),
-            **(self.query_args or {}))
+            **self.query_args_typed())
 
     def _outdated(self, link, tnow):
         if link.nevents == -1:
