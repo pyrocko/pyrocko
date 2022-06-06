@@ -86,7 +86,7 @@ sources:
 
     'iris-seis.dataset': {
         'description':
-            'All high- and low-gain seismometer channels at IRIS.',
+            'High- and low-gain seismometer channels from IRIS.',
         'yaml': _template_online_dataset(
             site='iris',
             channel='?H?,?L?',
@@ -95,7 +95,7 @@ sources:
 
     'iris-seis-bb.dataset': {
         'description':
-            'All broad-band high-gain seismometer channels at IRIS.',
+            'Broad-band high-gain seismometer channels from IRIS.',
         'yaml': _template_online_dataset(
             site='iris',
             channel='VH?,LH?,BH?,HH?',
@@ -103,19 +103,35 @@ sources:
     },
 
     'bgr-gr-lh.dataset': {
-        'description': 'All LH channels for network GR from BGR.',
+        'description': 'LH channels for network GR from BGR.',
         'yaml': _template_online_dataset(
             site='bgr',
             network='GR',
             channel='LH?',
         ),
     },
+
+    'gcmt-m7.dataset': {
+        'description': 'Global-CMT events with Mw >= 7.0.',
+        'yaml': '''
+--- !squirrel.Dataset
+
+{path_prefix}
+
+# Data sources to be added (LocalData, FDSNSource, CatalogSource, ...)
+sources:
+- !squirrel.CatalogSource
+  catalog: gcmt
+  query_args:
+    magmin: '7.0'
+'''.format(path_prefix=path_prefix).strip()
+    },
 }
 
 names = sorted(templates.keys())
 
 template_listing = '\n'.join(
-    '%-30s %s' % (
+    '  %-21s %s' % (
         '%s:' % name,
         templates[name]['description']) for name in templates)
 
@@ -129,7 +145,7 @@ def make_subparser(subparsers):
 Available configuration SNIPPETs:
 
 {}
-'''.format(template_listing).strip())
+'''.format(template_listing))
 
 
 def setup(parser):
