@@ -11,6 +11,7 @@ import logging
 from pyrocko.guts import load_string, dump
 
 from pyrocko.squirrel.error import ToolError
+from ..common import dq, ldq
 
 logger = logging.getLogger('psq.cli.template')
 
@@ -131,7 +132,7 @@ sources:
 names = sorted(templates.keys())
 
 template_listing = '\n'.join(
-    '  %-21s %s' % (
+    '%-30s %s' % (
         '%s:' % name,
         templates[name]['description']) for name in templates)
 
@@ -142,10 +143,10 @@ def make_subparser(subparsers):
         help=headline,
         description=headline + '''
 
-Available configuration SNIPPETs:
+Available SNIPPETs
 
 {}
-'''.format(template_listing))
+'''.format('\n'.join('    ' + line for line in template_listing.splitlines())))
 
 
 def setup(parser):
@@ -156,13 +157,16 @@ def setup(parser):
         metavar='SNIPPET',
         help='Name of template snippet to print.')
 
+    format_default = 'commented'
+    format_choices = ['commented', 'normal', 'brief']
+
     parser.add_argument(
         '--format', '-f',
-        choices=['commented', 'normal', 'brief'],
-        default='commented',
+        choices=format_choices,
+        default=format_default,
         metavar='FMT',
-        help='Set verbosity level of output YAML. Choices: %(choices)s. '
-             'Default: %(default)s.')
+        help='Set verbosity level of output YAML. Choices: %s. '
+             'Default: %s.' % (ldq(format_choices), dq(format_default)))
 
     parser.add_argument(
         '--write', '-w',
