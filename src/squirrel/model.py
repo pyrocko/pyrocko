@@ -866,7 +866,11 @@ class Response(Object):
             ))
 
     def get_effective(self, input_quantity=None):
-        elements = response_converters(input_quantity, self.input_quantity)
+        try:
+            elements = response_converters(input_quantity, self.input_quantity)
+        except ConversionError as e:
+            raise ConversionError(str(e) + ' (%s)' % self.summary)
+
 
         elements.extend(
             stage.get_effective() for stage in self.stages)

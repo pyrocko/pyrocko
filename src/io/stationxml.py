@@ -46,6 +46,37 @@ conversion = {
     ('M/S**2', 'M/S**2'): None}
 
 
+unit_to_quantity = {
+    'M/S': 'velocity',
+    'M': 'displacement',
+    'M/S**2': 'acceleration',
+    'V': 'voltage',
+    'COUNTS': 'counts',
+    'COUNT': 'counts',
+    'PA': 'pressure',
+    'RAD/S': 'rotation'}
+
+
+def to_quantity(unit, context, delivery):
+
+    if unit is None:
+        return None
+
+    name = unit.name.upper()
+    if name in unit_to_quantity:
+        return unit_to_quantity[name]
+    else:
+        delivery.log.append((
+            'warning',
+            'Units not supported by Squirrel framework: %s' % (
+                unit.name.upper() + (
+                    ' (%s)' % unit.description
+                    if unit.description else '')),
+            context))
+
+        return 'unsupported_quantity(%s)' % unit
+
+
 class StationXMLError(Exception):
     pass
 
@@ -1113,37 +1144,9 @@ class ResponseStage(Object):
         delivery_pr.log = []
         elements = delivery.extend_without_payload(delivery_pr)
 
-        def to_quantity(unit):
-            trans = {
-                'M/S': 'velocity',
-                'M': 'displacement',
-                'M/S**2': 'acceleration',
-                'V': 'voltage',
-                'COUNTS': 'counts',
-                'COUNT': 'counts',
-                'PA': 'pressure',
-                'RAD/S': 'rotation'}
-
-            if unit is None:
-                return None
-
-            name = unit.name.upper()
-            if name in trans:
-                return trans[name]
-            else:
-                delivery.log.append((
-                    'warning',
-                    'Units not supported by Squirrel framework: %s' % (
-                        unit.name.upper() + (
-                            ' (%s)' % unit.description
-                            if unit.description else '')),
-                    context))
-
-                return 'unsupported_quantity(%s)' % unit
-
         delivery.payload = [ResponseStage(
-            input_quantity=to_quantity(self.input_units),
-            output_quantity=to_quantity(self.output_units),
+            input_quantity=to_quantity(self.input_units, context, delivery),
+            output_quantity=to_quantity(self.output_units, context, delivery),
             input_sample_rate=self.input_sample_rate,
             output_sample_rate=self.output_sample_rate,
             elements=elements,
@@ -1430,6 +1433,18 @@ class Response(Object):
 
                 checkpoints.extend(delivery.extend_without_payload(
                     self._sensitivity_checkpoints(all_responses, context)))
+
+            sq_stages = delivery.payload
+            if sq_stages:
+                if sq_stages[0].input_quantity is None \
+                        and self.instrument_sensitivity is not None:
+
+                    sq_stages[0].input_quantity = to_quantity(
+                        self.instrument_sensitivity.input_units,
+                        context, delivery)
+                    sq_stages[-1].output_quantity = to_quantity(
+                        self.instrument_sensitivity.output_units,
+                        context, delivery)
 
             sq_stages = delivery.expect()
 
