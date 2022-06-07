@@ -43,10 +43,12 @@ def wrap(s):
     lines = []
     parts = re.split(r'\n{2,}', s)
     for part in parts:
-        if part.startswith('usage:'):
-            lines.extend(part.splitlines())
+        plines = part.splitlines()
+        if part.startswith('usage:') \
+                or all(line.startswith('    ') for line in plines):
+            lines.extend(plines)
         else:
-            for line in part.splitlines():
+            for line in plines:
                 if not line:
                     lines.append(line)
                 if not line.startswith(' '):
