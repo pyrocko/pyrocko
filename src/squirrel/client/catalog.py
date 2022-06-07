@@ -216,12 +216,12 @@ class CatalogSource(Source):
             self._add_events_to_squirrel(squirrel)
 
     def _add_events_to_squirrel(self, squirrel):
-            add = []
-            for link in self._chain:
-                if link.content_id:
-                    add.append(self._get_events_file_path(link.content_id))
+        add = []
+        for link in self._chain:
+            if link.content_id:
+                add.append(self._get_events_file_path(link.content_id))
 
-            squirrel.add(add, kinds=['event'], format='yaml')
+        squirrel.add(add, kinds=['event'], format='yaml')
 
     def _iquery(self, tmin, tmax, tmodified):
 
@@ -301,7 +301,9 @@ class CatalogSource(Source):
                 'depthmin': float,
                 'depthmax': float}
 
-            return dict((k, type_map.get(k, str)(v)) for (k, v) in self.query_args.items())
+            return dict(
+                (k, type_map.get(k, str)(v))
+                for (k, v) in self.query_args.items())
 
     def _query(self, tmin, tmax):
         logger.info('Querying catalog "%s" for time span %s - %s.' % (

@@ -871,7 +871,6 @@ class Response(Object):
         except ConversionError as e:
             raise ConversionError(str(e) + ' (%s)' % self.summary)
 
-
         elements.extend(
             stage.get_effective() for stage in self.stages)
 
