@@ -297,8 +297,8 @@ class SquirrelArgumentParser(PyrockoArgumentParser):
         :py:class:`~pyrocko.squirrel.base.Squirrel` instance.
 
         This will  optional arguments ``--add``, ``--include``, ``--exclude``,
-        ``--optimistic``, ``--format``, ``--add-only``, ``--persistent``,
-        and ``--update``, and ``--dataset``.
+        ``--optimistic``, ``--format``, ``--add-only``, ``--persistent``, and
+        ``--dataset``.
 
         Call ``args.make_squirrel()`` on the arguments returned from
         :py:meth:`parse_args` to finally instantiate and configure the
@@ -395,7 +395,7 @@ def add_squirrel_selection_arguments(parser):
 
     This will  optional arguments ``--add``, ``--include``, ``--exclude``,
     ``--optimistic``, ``--format``, ``--add-only``, ``--persistent``,
-    and ``--update``, and ``--dataset`` to a given argument parser.
+    and ``--dataset`` to a given argument parser.
 
     Once finished with parsing, call
     :py:func:`squirrel_from_selection_arguments` to finally instantiate and
@@ -476,14 +476,6 @@ def add_squirrel_selection_arguments(parser):
              'applications.')
 
     group.add_argument(
-        '--update', '-u',
-        dest='update',
-        action='store_true',
-        default=False,
-        help='Allow adding paths and datasets to existing persistent '
-             'selection.')
-
-    group.add_argument(
         '--dataset', '-d',
         dest='datasets',
         default=[],
@@ -512,45 +504,9 @@ def squirrel_from_selection_arguments(args):
         datasets and remote sources added.
 
     '''
-    from pyrocko.squirrel import base, dataset
+    from pyrocko.squirrel import base
 
-    datasets = [
-        dataset.read_dataset(dataset_path) for dataset_path in args.datasets]
-
-    persistents = [ds.persistent or '' for ds in datasets if ds.persistent]
-    if args.persistent:
-        persistent = args.persistent
-    elif persistents:
-        persistent = persistents[0]
-        if not all(p == persistents for p in persistents[1:]):
-            raise error.SquirrelError(
-                'Given datasets specify different `persistent` settings.')
-
-        if persistent:
-            logger.info(
-                'Persistent selection requested by dataset: %s' % persistent)
-        else:
-            persistent = None
-
-    else:
-        persistent = None
-
-    squirrel = base.Squirrel(persistent=persistent)
-
-    if persistent and not squirrel.is_new():
-        if not args.update:
-            logger.info(
-                'Using existing persistent selection: %s' % persistent)
-            if args.paths or datasets:
-                logger.info(
-                    'Avoiding dataset rescan. Use --update/-u to '
-                    'rescan or add items to existing persistent selection.')
-
-            return squirrel
-
-        else:
-            logger.info(
-                'Updating existing persistent selection: %s' % persistent)
+    squirrel = base.Squirrel(persistent=args.persistent)
 
     if args.paths:
         squirrel.add(
@@ -561,8 +517,8 @@ def squirrel_from_selection_arguments(args):
             include=args.include,
             exclude=args.exclude)
 
-    for ds in datasets:
-        squirrel.add_dataset(ds, check=args.check)
+    for dataset_path in args.datasets:
+        squirrel.add_dataset(dataset_path, check=args.check)
 
     return squirrel
 

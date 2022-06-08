@@ -30,7 +30,6 @@ class Dataset(HasPaths):
     Dataset description.
     '''
     sources = List.T(Source.T())
-    persistent = PersistentID.T(optional=True)
     operators = List.T(Operator.T())
 
     def setup(self, squirrel, check=True):
@@ -42,34 +41,6 @@ class Dataset(HasPaths):
             squirrel.add_operator(operator)
 
         squirrel.update_operator_mappings()
-
-    def get_squirrel(
-            self,
-            update=False,
-            check=True,
-            how_to_update='Avoiding dataset rescan. '
-                          'Enable updating to force refresh or delete the '
-                          'persistent selection for a clean start.'):
-
-        from pyrocko.squirrel import base
-        squirrel = base.Squirrel(persistent=self.persistent)
-
-        if self.persistent and not squirrel.is_new():
-            if not update:
-                logger.info(
-                    'Using existing persistent selection: %s'
-                    % self.persistent)
-                logger.info(how_to_update)
-                return squirrel
-
-            else:
-                logger.info(
-                    'Updating existing persistent selection: %s'
-                    % self.persistent)
-
-        squirrel.add_dataset(self, check=check)
-
-        return squirrel
 
 
 def read_dataset(path):
@@ -89,14 +60,8 @@ def read_dataset(path):
     return dataset
 
 
-def from_dataset(path, update=False, check=True):
-    ds = read_dataset(path)
-    return ds.get_squirrel(update=update, check=check)
-
-
 __all__ = [
     'PersistentID',
     'Dataset',
     'read_dataset',
-    'from_dataset'
 ]
