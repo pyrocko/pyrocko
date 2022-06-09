@@ -17,8 +17,9 @@ access infrastructure </library/reference/squirrel/index>`. In this tutorial,
 we will download seismic waveforms organize them into a local file structure
 and investigate various properties of the assembled dataset.
 
-For an introduction on how to use the Squirrel framework in your own code,
-head on over to :ref:`squirrel_api_cli_example`.
+For an introduction on how to use the Squirrel framework in your own code, head
+on over to :doc:`Examples: Squirrel powered data access
+</library/examples/squirrel/index>`.
 
 .. contents :: Content
   :depth: 4

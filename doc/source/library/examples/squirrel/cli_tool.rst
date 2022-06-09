@@ -1,4 +1,7 @@
 
+.. image:: /static/squirrel.svg
+   :align: left
+
 .. _squirrel_api_cli_example:
 
 Tutorial: writing a Squirrel based tool to calculate hourly RMS values
@@ -6,7 +9,14 @@ Tutorial: writing a Squirrel based tool to calculate hourly RMS values
 
 In this tutorial we will write a user-friendly command line interface (CLI)
 program to calculate hourly root-mean-square (RMS) values for continuous
-seismic waveform recordings. Many methods in seismology process waveform
+seismic waveform recordings.
+
+.. raw:: html
+
+   <div style="clear:both"></div>
+
+
+Many methods in seismology process waveform
 recordings in similar ways and so this example can serve as a design pattern
 for tools creating daily spectrograms, PSD plots or drum plots, earthquake
 detectors, automatic pickers, and so on. We will show different styles of

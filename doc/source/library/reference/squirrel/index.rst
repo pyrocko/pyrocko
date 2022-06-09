@@ -9,8 +9,9 @@
 
 Prompt seismological data access with a fluffy tail.
 
-The :program:`squirrel` command line tool is a front-end to the :doc:`Squirrel
-data access infrastructure </library/reference/squirrel/index>`.
+.. raw:: html
+
+   <div style="clear:both"></div>
 
 The Squirrel framework provides a unified interface to query and access seismic
 waveforms, station meta-data and event information from local file collections

@@ -1,6 +1,16 @@
 
+.. image:: /static/squirrel.svg
+   :align: left
+
 Squirrel-powered data access
 ----------------------------
+
+Code examples on how to use the :doc:`Squirrel framework
+</library/reference/squirrel/index>` for seismological data handling.
+
+.. raw:: html
+
+   <div style="clear:both"></div>
 
 .. toctree::
    :maxdepth: 2
