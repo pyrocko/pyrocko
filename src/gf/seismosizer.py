@@ -397,7 +397,7 @@ def points_on_rect_source(
                     points_ln[il] * ln * 0.5,
                     points_wd[iw] * wd * 0.5, 0.0])
 
-    elif points_x.any() and points_y.any():
+    elif points_x.shape[0] > 0 and points_y.shape[0] > 0:
         points = num.zeros(shape=((len(points_x), 3)))
         for i, (x, y) in enumerate(zip(points_x, points_y)):
             points[i, :] = num.array(

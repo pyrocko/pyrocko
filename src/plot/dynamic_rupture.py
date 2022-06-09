@@ -945,7 +945,7 @@ class RuptureMap(Map):
         kwargs['S'] = kwargs.get('S', 'il1.')
         kwargs['I'] = kwargs.get('I', 'x20')
         kwargs['W'] = kwargs.get('W', '0.3p,%s' % 'black')
-        kwargs['Q'] = kwargs.get('Q', '4c+e+n5c+h1')
+        kwargs['Q'] = kwargs.get('Q', '4c+e+n5km+h1')
 
         self.gmt.grdvector(
             x_gridfile, y_gridfile,
