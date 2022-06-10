@@ -125,11 +125,14 @@ class ContentCache(object):
             self._accessor_ticks[accessor] = 0
 
         entry[2][accessor] = self._accessor_ticks[accessor]
+        el = entry[1][element]
 
         if model == 'squirrel':
-            return entry[1][element].content
+            return el.content
+        elif model.endswith('+'):
+            return el.content, el.raw_content[model[:-1]]
         else:
-            return entry[1][element].raw_content[model]
+            return el.raw_content[model]
 
     def has(self, nut):
         '''

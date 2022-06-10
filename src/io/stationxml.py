@@ -272,7 +272,33 @@ def tts(t):
     if t is None:
         return '?'
     else:
-        return util.tts(t, format='%Y-%m-%d')
+        return util.tts(t, format='%Y-%m-%d %H:%M:%S')
+
+
+def le_open_left(a, b):
+    return a is None or (b is not None and a <= b)
+
+
+def le_open_right(a, b):
+    return b is None or (a is not None and a <= b)
+
+
+def eq_open(a, b):
+    return (a is None and b is None) \
+        or (a is not None and b is not None and a == b)
+
+
+def contains(a, b):
+    return le_open_left(a.start_date, b.start_date) \
+        and le_open_right(b.end_date, a.end_date)
+
+
+def find_containing(candidates, node):
+    for candidate in candidates:
+        if contains(candidate, node):
+            return candidate
+
+    return None
 
 
 this_year = time.gmtime()[0]
@@ -1615,6 +1641,22 @@ def overlaps(a, b):
     )
 
 
+def check_overlaps(node_type_name, codes, nodes):
+    errors = []
+    for ia, a in enumerate(nodes):
+        for b in nodes[ia+1:]:
+            if overlaps(a, b):
+                errors.append(
+                    '%s epochs overlap for %s:\n'
+                    '    %s - %s\n    %s - %s' % (
+                        node_type_name,
+                        '.'.join(codes),
+                        tts(a.start_date), tts(a.end_date),
+                        tts(b.start_date), tts(b.end_date)))
+
+    return errors
+
+
 class Channel(BaseNode):
     '''
     Equivalent to SEED blockette 52 and parent element for the related the
@@ -2260,15 +2302,8 @@ class FDSNStationXML(Object):
 
         errors = []
         for nslc, channels in by_nslc.items():
-            for ia, a in enumerate(channels):
-                for b in channels[ia+1:]:
-                    if overlaps(a, b):
-                        errors.append(
-                            'Channel epochs overlap for %s:\n'
-                            '    %s - %s\n    %s - %s' % (
-                                '.'.join(nslc),
-                                tts(a.start_date), tts(a.end_date),
-                                tts(b.start_date), tts(b.end_date)))
+            errors.extend(check_overlaps('Channel', nslc, channels))
+
         return errors
 
     def check(self):

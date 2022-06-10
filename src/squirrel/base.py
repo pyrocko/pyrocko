@@ -88,6 +88,24 @@ def _is_exact(pat):
     return not ('*' in pat or '?' in pat or ']' in pat or '[' in pat)
 
 
+def prefix_tree(tups):
+    if not tups:
+        return []
+
+    if len(tups[0]) == 1:
+        return sorted((tup[0], []) for tup in tups)
+
+    d = defaultdict(list)
+    for tup in tups:
+        d[tup[0]].append(tup[1:])
+
+    sub = []
+    for k in sorted(d.keys()):
+        sub.append((k, prefix_tree(d[k])))
+
+    return sub
+
+
 class Batch(object):
     '''
     Batch of waveforms from window-wise data extraction.
@@ -730,7 +748,7 @@ class Squirrel(Selection):
 
         self.add_source(catalog.CatalogSource(*args, **kwargs))
 
-    def add_dataset(self, ds, check=True, warn_persistent=True):
+    def add_dataset(self, ds, check=True):
         '''
         Read dataset description from file and add its contents.
 
@@ -752,17 +770,6 @@ class Squirrel(Selection):
         '''
         if isinstance(ds, str):
             ds = dataset.read_dataset(ds)
-            path = ds
-        else:
-            path = None
-
-        if warn_persistent and ds.persistent and (
-                not self._persistent or (self._persistent != ds.persistent)):
-
-            logger.warning(
-                'Dataset `persistent` flag ignored. Can not be set on already '
-                'existing Squirrel instance.%s' % (
-                    ' Dataset: %s' % path if path else ''))
 
         ds.setup(self, check=check)
 
@@ -1597,6 +1604,7 @@ class Squirrel(Selection):
 
         try:
             return content_cache.get(nut, accessor_id, model)
+
         except KeyError:
             raise error.NotAvailable(
                 'Unable to retrieve content: %s, %s, %s, %s' % nut.key)
@@ -1666,16 +1674,6 @@ class Squirrel(Selection):
     def get_cache_stats(self, cache_id):
         return self._content_caches[cache_id].get_stats()
 
-    def _check_duplicates(self, nuts):
-        d = defaultdict(list)
-        for nut in nuts:
-            d[nut.codes].append(nut)
-
-        for codes, group in d.items():
-            if len(group) > 1:
-                logger.warning(
-                    'Multiple entries matching codes: %s' % str(codes))
-
     @filldocs
     def get_stations(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None,
@@ -1704,13 +1702,13 @@ class Squirrel(Selection):
 
         if model == 'pyrocko':
             return self._get_pyrocko_stations(obj, tmin, tmax, time, codes)
-        elif model in ('squirrel', 'stationxml'):
+        elif model in ('squirrel', 'stationxml', 'stationxml+'):
             args = self._get_selection_args(
                 STATION, obj, tmin, tmax, time, codes)
 
             nuts = sorted(
                 self.iter_nuts('station', *args), key=lambda nut: nut.dkey)
-            self._check_duplicates(nuts)
+
             return [self.get_content(nut, model=model) for nut in nuts]
         else:
             raise ValueError('Invalid station model: %s' % model)
@@ -1736,7 +1734,7 @@ class Squirrel(Selection):
 
         nuts = sorted(
             self.iter_nuts('channel', *args), key=lambda nut: nut.dkey)
-        self._check_duplicates(nuts)
+
         return [self.get_content(nut, model=model) for nut in nuts]
 
     @filldocs
@@ -1766,7 +1764,7 @@ class Squirrel(Selection):
         nuts = sorted(
             self.iter_nuts(
                 'channel', tmin, tmax, codes), key=lambda nut: nut.dkey)
-        self._check_duplicates(nuts)
+
         return model.Sensor.from_channels(
             self.get_content(nut) for nut in nuts)
 
@@ -1791,7 +1789,7 @@ class Squirrel(Selection):
 
         nuts = sorted(
             self.iter_nuts('response', *args), key=lambda nut: nut.dkey)
-        self._check_duplicates(nuts)
+
         return [self.get_content(nut, model=model) for nut in nuts]
 
     @filldocs
@@ -1814,8 +1812,13 @@ class Squirrel(Selection):
         See :py:meth:`iter_nuts` for details on time span matching.
         '''
 
+        if model == 'stationxml':
+            model_ = 'stationxml+'
+        else:
+            model_ = model
+
         responses = self.get_responses(
-            obj, tmin, tmax, time, codes, model=model)
+            obj, tmin, tmax, time, codes, model=model_)
         if len(responses) == 0:
             raise error.NotAvailable(
                 'No instrument response available (%s).'
@@ -1823,11 +1826,15 @@ class Squirrel(Selection):
                     RESPONSE, obj, tmin, tmax, time, codes))
 
         elif len(responses) > 1:
-            if model == 'squirrel':
-                rinfo = ':\n' + '\n'.join(
-                    '  ' + resp.summary for resp in responses)
+            if model_ == 'squirrel':
+                resps_sq = responses
+            elif model_ == 'stationxml+':
+                resps_sq = [resp[0] for resp in responses]
             else:
-                rinfo = '.'
+                raise ValueError('Invalid response model: %s' % model)
+
+            rinfo = ':\n' + '\n'.join(
+                '  ' + resp.summary for resp in resps_sq)
 
             raise error.NotAvailable(
                 'Multiple instrument responses matching given constraints '
@@ -1835,7 +1842,10 @@ class Squirrel(Selection):
                     self._get_selection_args_str(
                         RESPONSE, obj, tmin, tmax, time, codes), rinfo))
 
-        return responses[0]
+        if model == 'stationxml':
+            return responses[0][1]
+        else:
+            return responses[0]
 
     @filldocs
     def get_events(
@@ -1855,7 +1865,7 @@ class Squirrel(Selection):
         args = self._get_selection_args(EVENT, obj, tmin, tmax, time, codes)
         nuts = sorted(
             self.iter_nuts('event', *args), key=lambda nut: nut.dkey)
-        self._check_duplicates(nuts)
+
         return [self.get_content(nut) for nut in nuts]
 
     def _redeem_promises(self, *args):
@@ -2642,6 +2652,113 @@ class Squirrel(Selection):
             coverages.append(model.Coverage.from_values(entry + [kind_id]))
 
         return coverages
+
+    def get_stationxml(
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None,
+            level='response'):
+
+        '''
+        Get station/channel/response metadata in StationXML representation.
+
+        %(query_args)s
+
+        :returns:
+            :py:class:`~pyrocko.io.stationxml.FDSNStationXML` object.
+        '''
+
+        if level not in ('network', 'station', 'channel', 'response'):
+            raise ValueError('Invalid level: %s' % level)
+
+        tmin, tmax, codes = self._get_selection_args(
+            CHANNEL, obj, tmin, tmax, time, codes)
+
+        filtering = CodesPatternFiltering(codes=codes)
+
+        nslcs = list(set(
+            codes.nslc for codes in
+            filtering.filter(self.get_codes(kind='channel'))))
+
+        from pyrocko.io import stationxml as sx
+
+        networks = []
+        for net, stas in prefix_tree(nslcs):
+            network = sx.Network(code=net)
+            networks.append(network)
+
+            if level not in ('station', 'channel', 'response'):
+                continue
+
+            for sta, locs in stas:
+                stations = self.get_stations(
+                    tmin=tmin,
+                    tmax=tmax,
+                    codes=(net, sta, '*'),
+                    model='stationxml')
+
+                errors = sx.check_overlaps(
+                    'Station', (net, sta), stations)
+
+                if errors:
+                    raise sx.Inconsistencies(
+                        'Inconsistencies found:\n  %s'
+                        % '\n  '.join(errors))
+
+                network.station_list.extend(stations)
+
+                if level not in ('channel', 'response'):
+                    continue
+
+                for loc, chas in locs:
+                    for cha, _ in chas:
+                        channels = self.get_channels(
+                            tmin=tmin,
+                            tmax=tmax,
+                            codes=(net, sta, loc, cha),
+                            model='stationxml')
+
+                        errors = sx.check_overlaps(
+                            'Channel', (net, sta, loc, cha), channels)
+
+                        if errors:
+                            raise sx.Inconsistencies(
+                                'Inconsistencies found:\n  %s'
+                                % '\n  '.join(errors))
+
+                        for channel in channels:
+                            station = sx.find_containing(stations, channel)
+                            if station is not None:
+                                station.channel_list.append(channel)
+                            else:
+                                raise sx.Inconsistencies(
+                                    'No station or station epoch found for '
+                                    'channel: %s' % '.'.join(
+                                        (net, sta, loc, cha)))
+
+                            if level != 'response':
+                                continue
+
+                            response_sq, response_sx = self.get_response(
+                                codes=(net, sta, loc, cha),
+                                tmin=channel.start_date,
+                                tmax=channel.end_date,
+                                model='stationxml+')
+
+                            if not (
+                                    sx.eq_open(
+                                        channel.start_date, response_sq.tmin)
+                                    and sx.eq_open(
+                                        channel.end_date, response_sq.tmax)):
+
+                                raise sx.Inconsistencies(
+                                    'Response time span does not match '
+                                    'channel time span: %s' % '.'.join(
+                                        (net, sta, loc, cha)))
+
+                            channel.response = response_sx
+
+        return sx.FDSNStationXML(
+            source='Generated by Pyrocko Squirrel.',
+            network_list=networks)
 
     def add_operator(self, op):
         self._operators.append(op)

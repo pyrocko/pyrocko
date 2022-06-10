@@ -112,6 +112,7 @@ class Converter(HasPaths):
     out_mseed_steim = IntChoice.T(
         optional=True,
         choices=[1, 2])
+    out_meta_path = Path.T(optional=True)
 
     parts = List.T(Defer('Converter.T'))
 
@@ -188,6 +189,12 @@ class Converter(HasPaths):
                  'Default is STEIM-2, which can compress full range int32. '
                  'Note: STEIM-2 is limited to 30 bit dynamic range.')
 
+        p.add_argument(
+            '--out-meta-path',
+            dest='out_meta_path',
+            metavar='PATH',
+            help='Set output path for station metadata (StationXML) export.')
+
     @classmethod
     def from_arguments(cls, args):
         kwargs = args.squirrel_query
@@ -200,6 +207,7 @@ class Converter(HasPaths):
             out_data_type=args.out_data_type,
             out_mseed_record_length=args.out_mseed_record_length,
             out_mseed_steim=args.out_mseed_steim,
+            out_meta_path=args.out_meta_path,
             **kwargs)
 
         obj.validate()
@@ -261,6 +269,12 @@ class Converter(HasPaths):
 
         if out_path is not None:
             return self.expand_path(out_path), is_sds
+        else:
+            return None
+
+    def get_effective_out_meta_path(self):
+        if self.out_meta_path is not None:
+            return self.expand_path(self.out_meta_path)
         else:
             return None
 
@@ -326,6 +340,15 @@ class Converter(HasPaths):
 
             out_format = chain.get('out_format')
             out_data_type = chain.get('out_data_type')
+
+            out_meta_path = chain.fcall('get_effective_out_meta_path')
+
+            if out_meta_path is not None:
+                sx = sq.get_stationxml(codes=codes, tmin=tmin, tmax=tmax)
+                util.ensuredirs(out_meta_path)
+                sx.dump_xml(filename=out_meta_path)
+                if out_path is None:
+                    return
 
             target_deltat = None
             if downsample is not None:

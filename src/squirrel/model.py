@@ -524,7 +524,7 @@ g_offset_time_unit = 1.0 / g_offset_time_unit_inv
 
 def tsplit(t):
     if t is None:
-        return None, 0.0
+        return None, 0
 
     t = util.to_time_float(t)
     if type(t) is float:
@@ -1072,6 +1072,7 @@ class Nut(Object):
              self.deltat) = values_nocheck
 
             self.codes = to_codes_simple(self.kind_id, codes_safe_str)
+            self.deltat = self.deltat or None
             self.raw_content = {}
             self.content = None
         else:
@@ -1139,6 +1140,21 @@ class Nut(Object):
             self.kind_id, self.codes,
             self.tmin_seconds, self.tmin_offset,
             self.tmax_seconds, self.tmax_offset, self.deltat)
+
+    def diff(self, other):
+        names = [
+            'file_segment', 'file_element', 'kind_id', 'codes',
+            'tmin_seconds', 'tmin_offset', 'tmax_seconds', 'tmax_offset',
+            'deltat']
+
+        d = []
+        for name, a, b in zip(
+                names, self.equality_values, other.equality_values):
+
+            if a != b:
+                d.append((name, a, b))
+
+        return d
 
     @property
     def tmin(self):

@@ -5,6 +5,8 @@
 
 from __future__ import absolute_import, print_function
 
+import time
+
 from pyrocko import util
 from pyrocko.plot import terminal
 from pyrocko.get_terminal_size import get_terminal_size
@@ -35,6 +37,10 @@ def run(parser, args):
     squirrel = args.make_squirrel()
     tmin_g, tmax_g = squirrel.get_time_span()
     sx, _ = get_terminal_size()
+
+    now = time.time()
+    if tmax_g is None or tmax_g > now:
+        tmax_g = now
 
     kwargs = args.squirrel_query
     kinds = kwargs.pop('kind', sq.supported_content_kinds())
