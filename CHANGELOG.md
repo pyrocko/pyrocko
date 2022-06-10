@@ -6,7 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
-*empty*
+### Added
+- `squirrel jackseis`: new option: `--codes`
+- `squirrel codes`: new options: `--codes`, `--kind`
+- Squirrel pile emulation: support `chopper_grouped` method.
+- Squirrel: support grouping in `chopper_waveforms` method.
+- Running `python -m rdseed` now converts dataless to stationxml.
+- Squirrel: new subcommands `remove promises`, `stationxml`.
+- New Squirrel CLI tutorial.
+- Support GMT6 in gmtpy and automap.
+
+### Fixed
+- Fixed installation issues
+  - `install.py` called incorrect pip version,
+  - Improved platform detection.
+  - `install.py` now works on some older linuxes.
+- Squirrel: various bugfixes and docs improvements
+- Improved robustness of StationXML response handling.
+
+### Changed
+- Snuffler: allow confirmation of ctrl-c on command line.
+- Drop support for auto-persistent datasets (had confusing consequences).
 
 ## v2022.04.28
 
