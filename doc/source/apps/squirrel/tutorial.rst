@@ -152,7 +152,7 @@ intersecting with the given time interval will be downloaded (Fig. 1):
     ``--tmax`` is downloaded or updated.
 
 
-After fetching the meta information from the FDSN web service, it prints a
+After fetching the channel information from the FDSN web service, it prints a
 brief overview of the contents currently available in our data collection.
 
 If we run the update command a second time, Squirrel informs us that cached
@@ -170,8 +170,9 @@ new queries. It is also possible to set an expiration date for metadata from
 this data-source in the dataset configuration
 (:py:class:`~pyrocko.squirrel.client.fdsn.FDSNSource.expires`).
 
-If we later need the instrument response information of the seismic stations of
-the data selection, we can add the ``--responses`` option to
+By default, only channel information is made available with :app:`squirrel
+update`. If we later need the instrument response information of the seismic
+stations of the data selection, we can add the ``--responses`` option to
 :app:`squirrel update` (Fig. 2):
 
 .. code-block:: shell-session
