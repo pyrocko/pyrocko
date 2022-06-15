@@ -1112,9 +1112,16 @@ class Map(Object):
 
         lats, lons = zip(*[s.effective_latlon for s in stations])
 
+        if self.gmt.is_gmt6():
+            sign_factor = 1.
+            arrow_head_placement = 'e'
+        else:
+            sign_factor = -1.
+            arrow_head_placement = 'b'
+
         if vertical:
             rows = [[lons[ista], lats[ista],
-                    0., -s.up.shift,
+                    0., sign_factor * s.up.shift,
                     (s.east.sigma + s.north.sigma) if s.east.sigma else 0.,
                     s.up.sigma, 0.,
                     s.code if labels else None]
@@ -1123,7 +1130,7 @@ class Map(Object):
 
         else:
             rows = [[lons[ista], lats[ista],
-                     -s.east.shift, -s.north.shift,
+                     sign_factor * s.east.shift, sign_factor * s.north.shift,
                      s.east.sigma, s.north.sigma, s.correlation_ne,
                      s.code if labels else None]
                     for ista, s in enumerate(stations)
@@ -1132,7 +1139,7 @@ class Map(Object):
         default_psxy_style = {
             'h': 0,
             'W': '2p,black',
-            'A': '+p2p,black+b+a40',
+            'A': '+p2p,black+{}+a40'.format(arrow_head_placement),
             'G': 'black',
             'L': True,
             'S': 'e%dc/0.95/%d' % (scale, fontsize),

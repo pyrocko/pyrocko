@@ -3136,6 +3136,10 @@ def is_gmt5(version='newest'):
     return get_gmt_installation(version)['version'][0] in ['5', '6']
 
 
+def is_gmt6(version='newest'):
+    return get_gmt_installation(version)['version'][0] in ['6']
+
+
 def aspect_for_projection(gmtversion, *args, **kwargs):
 
     gmt = GMT(version=gmtversion, eps_mode=True)
@@ -3361,7 +3365,10 @@ class GMT(object):
         self.keep_temp_dir = False
 
     def is_gmt5(self):
-        return self.installation['version'][0] in ['5', '6']
+        return self.get_version()[0] in ['5', '6']
+
+    def is_gmt6(self):
+        return self.get_version()[0] in ['6']
 
     def get_version(self):
         return self.installation['version']
