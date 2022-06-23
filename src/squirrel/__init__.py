@@ -21,7 +21,7 @@ from .environment import *  # noqa
 from .dataset import *  # noqa
 from .operators import *  # noqa
 
-__all__ = base.__all__ + selection.__all__, database.__all__ \
+__all__ = base.__all__ + selection.__all__ + database.__all__ \
     + model.__all__ + io.__all__ + client.__all__ + tool.__all__ \
     + error.__all__ + environment.__all__ + dataset.__all__ \
     + operators.__all__
