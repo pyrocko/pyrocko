@@ -13,7 +13,7 @@ This tutorial introduces seismological data handling with the
    <div style="clear:both"></div>
 
 The :app:`squirrel` command line tool is a front-end to the :doc:`Squirrel data
-access infrastructure </library/reference/squirrel/index>`. In this tutorial,
+access infrastructure </topics/squirrel>`. In this tutorial,
 we will download seismic waveforms organize them into a local file structure
 and investigate various properties of the assembled dataset.
 

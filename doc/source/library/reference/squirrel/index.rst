@@ -2,7 +2,7 @@
 .. image:: /static/squirrel.svg
    :align: left
 
-.. _squirrel:
+.. module :: pyrocko.squirrel
 
 ``squirrel``
 ============
@@ -13,28 +13,10 @@ Prompt seismological data access with a fluffy tail.
 
    <div style="clear:both"></div>
 
-The Squirrel framework provides a unified interface to query and access seismic
-waveforms, station meta-data and event information from local file collections
-and remote data sources. For prompt responses, a database setup is used under
-the hood. To speed up assemblage of ad-hoc data selections, files are indexed
-on first use and the extracted meta-data is remembered for subsequent accesses.
-Bulk data is lazily loaded from disk and remote sources, just when requested.
-Once loaded, data is cached in memory to expedite typical access patterns.
-Files and data sources can be dynamically added and removed at runtime.
-
-**Features**
-
-- Efficient (O log N) lookup of data relevant to a time window of interest.
-- Metadata caching and indexing.
-- Modified files are re-indexed as needed.
-- SQL database (sqlite) is used behind the scenes.
-- Can handle selections with millions of files.
-- Data can be added and removed at run-time, efficiently (O log N).
-- Just-in-time download of missing data.
-- Disk-cache of meta-data query results with expiration time.
-- Efficient event catalog synchronization.
-- Always-up-to-date data coverage indices.
-- Always-up-to-date indices of available station/channel codes.
+This is the reference manual for the Squirrel framework. It describes the API
+of the :py:mod:`pyrocko.squirrel` subpackage. For a conceptual overview see
+:doc:`/topics/squirrel`. A tutorial describing the API usage is provided at
+:doc:`Examples: Squirrel powered data access </library/examples/squirrel/index>`.
 
 **Usage**
 
@@ -61,6 +43,7 @@ is available in :py:mod:`~pyrocko.squirrel.io`. Memory cache management is
 implemented in :py:mod:`~pyrocko.squirrel.cache`. Compatibility with Pyrocko's
 older waveform archive access module is implemented in
 :py:mod:`~pyrocko.squirrel.pile`.
+
 
 **Submodules**
 

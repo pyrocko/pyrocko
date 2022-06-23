@@ -8,3 +8,4 @@ Here we explain the use of the pyrocko software toolbox for particular problems.
 
    pyrocko-gf
    pseudo-dynamic-rupture
+   squirrel

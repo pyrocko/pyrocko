@@ -5,8 +5,8 @@
 Squirrel - *dataset inspection and management*
 ==============================================
 
-The :program:`squirrel` command line tool is a front-end to the :ref:`Squirrel
-data access infrastructure <squirrel>`.
+The :program:`squirrel` command line tool is a front-end to the :doc:`Squirrel
+data access infrastructure </topics/squirrel>`.
 
 .. raw:: html
 
