@@ -16,7 +16,7 @@ the hood. To speed up assemblage of ad-hoc data selections, files are indexed
 on first use and the extracted meta-data is remembered for subsequent accesses.
 Bulk data is lazily loaded from disk and remote sources, just when requested.
 Once loaded, data is cached in memory to expedite typical access patterns.
-Files and data sources can be dynamically added and removed at runtime.
+Files and data sources can be dynamically added and removed at run-time.
 
 **Features**
 
@@ -80,9 +80,9 @@ created on disk (Fig. 1).
 
 The Squirrel environment sits between the application and the data holdings. It
 consists of an SQLite database and caches. The environment is automatically
-created when the first Squirrel instance is created. By default it is created
-in the home directory but it is also possible to create project specific
-environments with the command line tool :app:`squirrel init`.
+created when the first Squirrel instance is initialized. By default it is
+stored in the home directory but it is also possible to generate project
+specific environments with the command line tool :app:`squirrel init`.
 
 Content indexing
 ................
@@ -100,19 +100,19 @@ made available to the app through a so-called "live selection" (Fig. 2).
 .. figure :: /static/squirrel/squirrel-intro-2.png
     :align: center
 
-    Figure 2: Adding files.
+    Figure 2: Adding local files.
 
 Only a minimal excerpt from the file headers is included in the inventory
 database. This information includes time span, FDSN
 network/station/location/channel codes, and sampling rate of each entity. These
-entities can are referred to as "nuts" in the Squirrel framework. A nut may
+entities are referred to as "nuts" in the Squirrel framework. A nut may
 represent a station or channel epoch, a snippet of waveform, or an instrument
 response epoch, among a few others. Also earthquake catalog events can be
 included. Nuts representing earthquake events only have the time span attribute
 set and their codes attribute is set to a catalog identifier. Bulk data
 associated with the Nut stays in the file until it is requested.
 
-Content can be added (and removed) efficiently at runtime. For example to
+Content can be added (and removed) efficiently at run-time. For example to
 additionally add some hypocenters from an event catalog, we may use:
 
 .. code-block:: python
@@ -124,7 +124,7 @@ Inventory information is updated as needed (Fig. 3).
 .. figure :: /static/squirrel/squirrel-intro-3.png
     :align: center
 
-    Figure 3: Adding another file.
+    Figure 3: Adding another file - here an event catalog.
 
 
 Content queries
@@ -146,7 +146,8 @@ a reference is returned to the application (Fig 4).
 .. figure :: /static/squirrel/squirrel-intro-4.png
     :align: center
 
-    Figure 4: Querying for content.
+    Figure 4: First query for content. Content is loaded into the memory cache
+    and a reference is returned to the app.
 
 It is possible to efficiently query by station/channel codes and time spans.
 
@@ -160,7 +161,8 @@ In this case we have a cache hit and no data has to be loaded from file (Fig.
 .. figure :: /static/squirrel/squirrel-intro-5.png
     :align: center
 
-    Figure 5: Querying for content, again.
+    Figure 5: Subsequent query for content. As it is already loaded only a
+    reference to the cached object is returned.
 
 The getters provide an easy way to access associated data. For example, to get
 all channels of a given station, use:
@@ -219,7 +221,7 @@ selection (Fig 8).
 
     Figure 8: Application has been restarted.
 
-But now, adding already known content is fast (Fig 9a).
+But now, adding already known content is fast (Fig 9 a).
 
 .. code-block:: python
 
@@ -228,17 +230,18 @@ But now, adding already known content is fast (Fig 9a).
 .. figure :: /static/squirrel/squirrel-intro-9.png
     :align: center
 
-    Figure 9a: Adding unmodified files.
+    Figure 9 a: Adding unmodified files.
 
 By default, the modification times of the files are checked to decide if
-re-indexing is needed (Fig 9b).
+re-indexing is needed (Fig 9 b).
 
 .. figure :: /static/squirrel/squirrel-intro-9b.png
     :align: center
 
-    Figure 9b: Adding modified files.
+    Figure 9 b: Adding modified files.
 
-For an additional speedup, the modification time checks can be disabled (Fig 9c):
+For an additional speedup, the modification time checks can be disabled (Fig 9
+c):
 
 .. code-block:: python
 
@@ -247,8 +250,10 @@ For an additional speedup, the modification time checks can be disabled (Fig 9c)
 .. figure :: /static/squirrel/squirrel-intro-9c.png
     :align: center
 
-    Figure 9b: Adding files with ``check=False``.
+    Figure 9 c: Adding files with ``check=False``.
 
+Modified files will still be recognized and handled appropriately, but only
+later, during content access queries.
 
 Persistent selections
 .....................
@@ -269,8 +274,8 @@ indexed content but each application has its own live selection (Fig 10).
 
     Figure 10: Multiple applications using the same Squirrel environment.
 
-Selections can be made persistent and shared among multiple application using
-the same Squirrel environment (Fig 11):
+Selections can be made persistent and are shared among multiple applications
+using the same Squirrel environment (Fig 11):
 
 .. code-block:: python
 
@@ -338,13 +343,14 @@ To enable downloads of selected waveforms it is required to set up so-called
 
     sq.update_waveform_promises(tmin=tmin, tmax=tmax, codes='GE.*.*.LHZ')
 
-With :py:meth:`~pyrocko.squirrel.base.Squirrel.update_waveform_promises` 
+With :py:meth:`~pyrocko.squirrel.base.Squirrel.update_waveform_promises`
 promises are created, based on matching channels and time spans (Fig. 14).
 
 .. figure :: /static/squirrel/squirrel-intro-15.png
     :align: center
 
-    Figure 14: Waveform promises have been created with :py:meth:`~pyrocko.squirrel.base.Squirrel.update_waveform_promises`.
+    Figure 14: Waveform promises have been created with
+    :py:meth:`~pyrocko.squirrel.base.Squirrel.update_waveform_promises`.
 
 Promises are resolved during queries like
 :py:meth:`~pyrocko.squirrel.base.Squirrel.get_waveforms`:
