@@ -15,6 +15,7 @@ from collections import defaultdict
 from pyrocko.guts import Object, Int, List, Tuple, String, Timestamp, Dict
 from pyrocko import util, trace
 from pyrocko.progress import progress
+from pyrocko.plot import nice_time_tick_inc_approx_secs
 
 from . import model, io, cache, dataset
 
@@ -49,7 +50,8 @@ def len_plural(obj):
 
 
 def blocks(tmin, tmax, deltat, nsamples_block=100000):
-    tblock = util.to_time_float(deltat * nsamples_block)
+    tblock = nice_time_tick_inc_approx_secs(
+        util.to_time_float(deltat * nsamples_block))
     iblock_min = int(math.floor(tmin / tblock))
     iblock_max = int(math.ceil(tmax / tblock))
     for iblock in range(iblock_min, iblock_max):

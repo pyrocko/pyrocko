@@ -681,11 +681,19 @@ def mpl_color(x):
     raise InvalidColorDef('invalid color definition: %s' % x)
 
 
+hours = 3600.
+days = hours*24
+approx_months = days*30.5
+approx_years = days*365
+
+
+nice_time_tinc_inc_approx_units = {
+    'seconds': 1,
+    'months': approx_months,
+    'years': approx_years}
+
+
 def nice_time_tick_inc(tinc_approx):
-    hours = 3600.
-    days = hours*24
-    approx_months = days*30.5
-    approx_years = days*365
 
     if tinc_approx >= approx_years:
         return max(1.0, nice_value(tinc_approx / approx_years)), 'years'
@@ -710,6 +718,11 @@ def nice_time_tick_inc(tinc_approx):
 
     else:
         return nice_value(tinc_approx), 'seconds'
+
+
+def nice_time_tick_inc_approx_secs(tinc_approx):
+    v, unit = nice_time_tick_inc(tinc_approx)
+    return v * nice_time_tinc_inc_approx_units[unit]
 
 
 def time_tick_labels(tmin, tmax, tinc, tinc_unit):

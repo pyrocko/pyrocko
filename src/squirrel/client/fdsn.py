@@ -94,7 +94,7 @@ class MSeedArchive(Archive):
         '%(tmin_month)s',
         '%(tmin_day)s',
         'trace_%(network)s_%(station)s_%(location)s_%(channel)s'
-        + '_%(tmin_us)s_%(tmax_us)s.mseed'))
+        + '_%(block_tmin_us)s_%(block_tmax_us)s.mseed'))
 
     def __init__(self, **kwargs):
         Archive.__init__(self, **kwargs)
@@ -103,9 +103,12 @@ class MSeedArchive(Archive):
     def set_base_path(self, path):
         self._base_path = path
 
-    def add(self, trs):
+    def add(self, order, trs):
         path = op.join(self._base_path, self.template)
-        return io.save(trs, path, overwrite=True)
+        fmt = '%Y-%m-%d_%H-%M-%S.6FRAC'
+        return io.save(trs, path, overwrite=True, additional=dict(
+            block_tmin_us=util.time_to_str(order.tmin, format=fmt),
+            block_tmax_us=util.time_to_str(order.tmax, format=fmt)))
 
 
 def combine_selections(selection):
@@ -134,7 +137,9 @@ def orders_to_selection(orders):
     selection = []
     for order in sorted(orders, key=orders_sort_key):
         selection.append(
-            order.codes.nslc + (order.tmin, order.tmax))
+            order.codes.nslc + (
+                order.tmin-1.0*order.deltat,
+                order.tmax+1.0*order.deltat))
 
     return combine_selections(selection)
 
@@ -563,6 +568,11 @@ class FDSNSource(Source, has_paths.HasPaths):
                 subnut = clone(nut)
                 subnut.tmin = tmin
                 subnut.tmax = tmax
+
+                # ignore 1-sample gaps produced by rounding errors
+                if subnut.tmax - subnut.tmin < 2*subnut.deltat:
+                    continue
+
                 yield subnut
 
         def wanted(nuts):
@@ -675,7 +685,15 @@ class FDSNSource(Source, has_paths.HasPaths):
                             elog.append(now, order, *err_this)
                             error_permanent(order)
                         else:
-                            if len(trs_order) != 1:
+                            def tsame(ta, tb):
+                                return abs(tb - ta) < 2 * order.deltat
+
+                            if len(trs_order) != 1 \
+                                    or not tsame(
+                                        trs_order[0].tmin, order.tmin) \
+                                    or not tsame(
+                                        trs_order[0].tmax, order.tmax):
+
                                 if err_this:
                                     elog.append(
                                         now, order,
@@ -684,7 +702,7 @@ class FDSNSource(Source, has_paths.HasPaths):
                                 else:
                                     elog.append(now, order, 'partial result')
 
-                            paths = self._archive.add(trs_order)
+                            paths = self._archive.add(order, trs_order)
                             all_paths.extend(paths)
 
                             nsuccess += 1
@@ -703,9 +721,12 @@ class FDSNSource(Source, has_paths.HasPaths):
                         error_temporary(order)
 
             emessage = elog.summarize_recent()
+
             self._log_info_data(
-                '%i download%s successful' % (
-                    nsuccess, util.plural_s(nsuccess))
+                '%i download%s %ssuccessful' % (
+                    nsuccess,
+                    util.plural_s(nsuccess),
+                    '(partially) ' if emessage else '')
                 + (', %s' % emessage if emessage else ''))
 
             if all_paths:
