@@ -1,7 +1,8 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
+
 '''
 Effective seismological trace viewer.
 '''
@@ -31,7 +32,7 @@ from . import pile_viewer     # noqa
 
 from .qt_compat import qc, qg, qw
 
-logger = logging.getLogger('pyrocko.gui.snuffler_app')
+logger = logging.getLogger('pyrocko.gui.snuffler.snuffler_app')
 
 
 class _Getch:

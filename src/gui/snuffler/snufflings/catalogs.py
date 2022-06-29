@@ -1,10 +1,10 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
 from ..snuffling import Snuffling, Param, Choice
-from ..util import EventMarker
+from ..marker import EventMarker
 
 from pyrocko.client import catalog, fdsn
 from pyrocko.io import quakeml

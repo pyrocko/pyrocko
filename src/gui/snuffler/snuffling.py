@@ -1,7 +1,8 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
+
 '''
 Snuffling infrastructure
 
@@ -30,7 +31,7 @@ from importlib import reload
 
 Marker, load_markers, save_markers  # noqa
 
-logger = logging.getLogger('pyrocko.gui.snuffling')
+logger = logging.getLogger('pyrocko.gui.snuffler.snuffling')
 
 
 class MyFrame(qw.QFrame):
@@ -1639,8 +1640,9 @@ class Snuffling(object):
         '''
         Add some markers to the display.
 
-        Takes a list of objects of type :py:class:`pyrocko.gui.util.Marker` and
-        adds these to the viewer.
+        Takes a list of objects of type
+        :py:class:`pyrocko.gui.snuffler.marker.Marker` and adds these to the
+        viewer.
         '''
 
         self.get_viewer().add_markers(markers)
