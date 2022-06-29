@@ -169,11 +169,15 @@ class CustomBuildPyCommand(build_py):
             ('pyrocko', 'gmtpy', ['pyrocko.plot.gmtpy']),
             ('pyrocko', 'hudson', ['pyrocko.plot.hudson']),
             ('pyrocko', 'response_plot', ['pyrocko.plot.response']),
-            ('pyrocko', 'snuffling', ['pyrocko.gui.snuffling']),
-            ('pyrocko', 'pile_viewer', ['pyrocko.gui.pile_viewer']),
-            ('pyrocko', 'marker', ['pyrocko.gui.marker']),
-            ('pyrocko', 'snuffler', ['pyrocko.gui.snuffler']),
+            ('pyrocko', 'snuffling', ['pyrocko.gui.snuffler.snuffling']),
+            ('pyrocko', 'pile_viewer', ['pyrocko.gui.snuffler.pile_viewer']),
+            ('pyrocko', 'marker', ['pyrocko.gui.snuffler.marker']),
+            ('pyrocko', 'snuffler', ['pyrocko.gui.snuffler.snuffler']),
             ('pyrocko', 'gui_util', ['pyrocko.gui.util']),
+            ('pyrocko.gui', 'snuffling', ['pyrocko.gui.snuffler.snuffling']),
+            ('pyrocko.gui', 'pile_viewer', [
+                'pyrocko.gui.snuffler.pile_viewer']),
+            ('pyrocko.gui', 'marker', ['pyrocko.gui.snuffler.marker']),
         ]
 
         for (package, compat_module, import_modules) in mapping:
@@ -328,8 +332,12 @@ subpacknames = [
     'pyrocko.modelling',
     'pyrocko.plot',
     'pyrocko.gui',
-    'pyrocko.gui.snufflings',
-    'pyrocko.gui.snufflings.map',
+    'pyrocko.gui.snuffler',
+    'pyrocko.gui.snuffler',
+    'pyrocko.gui.snuffler.snufflings',
+    'pyrocko.gui.snuffler.snufflings.map',
+    'pyrocko.gui.sparrow',
+    'pyrocko.gui.sparrow.elements',
     'pyrocko.dataset',
     'pyrocko.dataset.topo',
     'pyrocko.streaming',
@@ -516,7 +524,8 @@ if not have_pep621_support:
                  'colosseo = pyrocko.apps.colosseo:main',
                  'squirrel = pyrocko.apps.squirrel:main'],
             'gui_scripts':
-                ['snuffler = pyrocko.apps.snuffler:main'],
+                ['snuffler = pyrocko.apps.snuffler:main',
+                 'sparrow = pyrocko.apps.sparrow:main'],
         },
     )
 
