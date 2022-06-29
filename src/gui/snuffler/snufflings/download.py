@@ -1,4 +1,4 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
@@ -6,14 +6,14 @@
 import os
 import logging
 
-from pyrocko.gui.util import EventMarker
+from pyrocko.gui.snuffler.marker import EventMarker
 
-from pyrocko.gui.snuffling import Param, Snuffling, Switch, Choice
+from pyrocko.gui.snuffler.snuffling import Param, Snuffling, Switch, Choice
 from pyrocko import util, io, model
 from pyrocko.client import fdsn
 pjoin = os.path.join
 
-logger = logging.getLogger('pyrocko.gui.snufflings.download')
+logger = logging.getLogger('pyrocko.gui.snuffler.snufflings.download')
 logger.setLevel(logging.INFO)
 
 

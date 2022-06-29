@@ -1,4 +1,4 @@
-# http://pyrocko.org - GPLv3
+# https://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
@@ -1506,9 +1506,12 @@ class Pile(TracesGroup):
         '''
         Visualize it.
 
-        :param stations: list of `pyrocko.model.Station` objects or ``None``
-        :param events: list of `pyrocko.model.Event` objects or ``None``
-        :param markers: list of `pyrocko.gui_util.Marker` objects or ``None``
+        :param stations: list of :py:class:`pyrocko.model.Station` objects or
+            ``None``
+        :param events: list of :py:class:`pyrocko.model.Event` objects or
+            ``None``
+        :param markers: list of :py:class:`pyrocko.gui.snuffler.marker.Marker`
+            objects or ``None``
         :param ntracks: float, number of tracks to be shown initially
             (default: 12)
         :param follow: time interval (in seconds) for real time follow mode or
@@ -1518,7 +1521,7 @@ class Pile(TracesGroup):
         :param opengl: bool, whether to use opengl (default: ``False``)
         '''
 
-        from pyrocko.gui.snuffler import snuffle
+        from pyrocko.gui.snuffler.snuffler import snuffle
         snuffle(self, **kwargs)
 
 
