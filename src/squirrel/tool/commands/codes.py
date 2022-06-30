@@ -30,9 +30,9 @@ def run(parser, args):
 
     kwargs = args.squirrel_query
     kinds = kwargs.pop('kind', sq.supported_content_kinds())
-    codes = kwargs.pop('codes', None)
+    codes_query = kwargs.pop('codes', None)
 
     for kind in kinds:
         for kind_id, codes, deltat, _, count in sorted(
-                squirrel._iter_codes_info(kind=kind, codes=codes)):
+                squirrel._iter_codes_info(kind=kind, codes=codes_query)):
             print(to_kind(kind_id), codes, deltat, count)
