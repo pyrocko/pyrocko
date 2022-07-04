@@ -797,7 +797,7 @@ class Squirrel(Selection):
         tmin, tmax, codes = self._get_selection_args(*args, **kwargs)
         return 'tmin: %s, tmax: %s, codes: %s' % (
             util.time_to_str(tmin) if tmin is not None else 'none',
-            util.time_to_str(tmax) if tmin is not None else 'none',
+            util.time_to_str(tmax) if tmax is not None else 'none',
             ','.join(str(entry) for entry in codes))
 
     def _selection_args_to_kwargs(
