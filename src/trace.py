@@ -2274,6 +2274,42 @@ def rotate(traces, azimuth, in_channels, out_channels):
 
 
 def rotate_to_rt(n, e, source, receiver, out_channels=('R', 'T')):
+    '''
+    Rotate traces from NE to RT system.
+
+    :param n:
+        North trace.
+    :type n:
+        :py:class:`~pyrocko.trace.Trace`
+
+    :param e:
+        East trace.
+    :type e:
+        :py:class:`~pyrocko.trace.Trace`
+
+    :param source:
+        Source of the recorded signal.
+    :type source:
+        :py:class:`pyrocko.gf.seismosizer.Source`
+
+    :param receiver:
+        Receiver of the recorded signal.
+    :type receiver:
+        :py:class:`pyrocko.model.location.Location`
+
+    :param out_channels:
+        Channel codes of the output names. Default is ('R', 'T').
+        Do NOT change this setting.
+    :type out_channels
+        optional, tuple[str, str]
+
+    :returns:
+        Rotated traces (radial, transversal).
+    :rtype:
+        tuple[
+            :py:class:`~pyrocko.trace.Trace`,
+            :py:class:`~pyrocko.trace.Trace`]
+    '''
     azimuth = orthodrome.azimuth(receiver, source) + 180.
     in_channels = n.channel, e.channel
     out = rotate(
