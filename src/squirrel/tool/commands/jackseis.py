@@ -20,6 +20,8 @@ from pyrocko.squirrel.dataset import Dataset
 from pyrocko.squirrel.client.local import LocalData
 from pyrocko.squirrel.error import ToolError
 from pyrocko.squirrel.model import CodesNSLCE
+from pyrocko.squirrel.operators.base import NetworkGrouping, StationGrouping, \
+    ChannelGrouping, SensorGrouping
 
 tts = util.time_to_str
 
@@ -83,6 +85,15 @@ class OutputDataTypeChoice(StringChoice):
         'float64': num.float64}
 
 
+class TraversalChoice(StringChoice):
+    choices = ['network', 'station', 'channel', 'sensor']
+    name_to_grouping = {
+        'network': NetworkGrouping(),
+        'station': StationGrouping(),
+        'sensor': SensorGrouping(),
+        'channel': ChannelGrouping()}
+
+
 class Converter(HasPaths):
 
     in_dataset = Dataset.T(optional=True)
@@ -113,6 +124,8 @@ class Converter(HasPaths):
         optional=True,
         choices=[1, 2])
     out_meta_path = Path.T(optional=True)
+
+    traversal = TraversalChoice.T(optional=True)
 
     parts = List.T(Defer('Converter.T'))
 
@@ -195,6 +208,15 @@ class Converter(HasPaths):
             metavar='PATH',
             help='Set output path for station metadata (StationXML) export.')
 
+        p.add_argument(
+            '--traversal',
+            dest='traversal',
+            metavar='GROUPING',
+            choices=TraversalChoice.choices,
+            help='By default the outermost processing loop is over time. '
+                 'Add outer loop with given GROUPING. Choices: %s'
+                 % ', '.join(TraversalChoice.choices))
+
     @classmethod
     def from_arguments(cls, args):
         kwargs = args.squirrel_query
@@ -208,6 +230,7 @@ class Converter(HasPaths):
             out_mseed_record_length=args.out_mseed_record_length,
             out_mseed_steim=args.out_mseed_steim,
             out_meta_path=args.out_meta_path,
+            traversal=args.traversal,
             **kwargs)
 
         obj.validate()
@@ -361,6 +384,12 @@ class Converter(HasPaths):
                 save_kwargs['steim'] = chain.get(
                     'out_mseed_steim')
 
+            traversal = chain.get('traversal')
+            if traversal is not None:
+                grouping = TraversalChoice.name_to_grouping[traversal]
+            else:
+                grouping = None
+
             tpad = 0.0
             if target_deltat is not None:
                 tpad += target_deltat * 50.
@@ -370,16 +399,20 @@ class Converter(HasPaths):
             for batch in sq.chopper_waveforms(
                     tmin=tmin, tmax=tmax, tpad=tpad, tinc=tinc,
                     codes=codes,
-                    snap_window=True):
+                    snap_window=True,
+                    grouping=grouping):
 
                 if task is None:
-                    task = make_task('Jackseis blocks', batch.n)
+                    task = make_task(
+                        'Jackseis blocks', batch.n * batch.ngroups)
 
-                task.update(
-                    batch.i,
-                    '%s - %s' % (
-                        util.time_to_str(batch.tmin),
-                        util.time_to_str(batch.tmax)))
+                tlabel = '%s%s - %s' % (
+                    'groups %i / %i: ' % (batch.igroup, batch.ngroups)
+                    if batch.ngroups > 1 else '',
+                    util.time_to_str(batch.tmin),
+                    util.time_to_str(batch.tmax))
+
+                task.update(batch.i + batch.igroup * batch.n, tlabel)
 
                 twmin = batch.tmin
                 twmax = batch.tmax

@@ -131,16 +131,26 @@ class Batch(object):
 
         Total number of time windows in sequence.
 
+    .. py:attribute:: igroup
+
+        Index of this time window's sequence group.
+
+    .. py:attribute:: ngroups
+
+        Total number of sequence groups.
+
     .. py:attribute:: traces
 
         Extracted waveforms for this time window.
     '''
 
-    def __init__(self, tmin, tmax, i, n, traces):
+    def __init__(self, tmin, tmax, i, n, igroup, ngroups, traces):
         self.tmin = tmin
         self.tmax = tmax
         self.i = i
         self.n = n
+        self.igroup = igroup
+        self.ngroups = ngroups
         self.traces = traces
 
 
@@ -2350,13 +2360,12 @@ class Squirrel(Selection):
                 available.update(self.get_codes(kind='waveform_promise'))
                 operator.update_mappings(sorted(available))
 
-                def iter_codes_list():
-                    for scl in operator.iter_in_codes():
-                        yield codes_patterns_list(scl)
+                codes_list = [
+                    codes_patterns_list(scl)
+                    for scl in operator.iter_in_codes()]
 
-                codes_list = iter_codes_list()
-
-            for scl in codes_list:
+            ngroups = len(codes_list)
+            for igroup, scl in enumerate(codes_list):
                 for iwin in range(nwin):
                     wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)
 
@@ -2381,6 +2390,8 @@ class Squirrel(Selection):
                         tmax=wmax,
                         i=iwin,
                         n=nwin,
+                        igroup=igroup,
+                        ngroups=ngroups,
                         traces=chopped)
 
         finally:
