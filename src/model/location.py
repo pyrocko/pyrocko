@@ -53,14 +53,14 @@ class Location(Object):
         optional=True,
         help='eastward cartesian offset from reference point [m]')
 
+    depth = Float.T(
+        default=0.0,
+        help='depth, below surface [m]')
+
     elevation = Float.T(
         default=0.0,
         optional=True,
         help='surface elevation, above sea level [m]')
-
-    depth = Float.T(
-        default=0.0,
-        help='depth, below surface [m]')
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
@@ -71,6 +71,34 @@ class Location(Object):
             self.__dict__['_latlon'] = None
 
         Object.__setattr__(self, name, value)
+
+    def copy_location(self):
+        return Location(
+            lat=self.lat,
+            lon=self.lon,
+            north_shift=self.north_shift,
+            east_shift=self.east_shift,
+            depth=self.depth,
+            elevation=self.elevation)
+
+    @property
+    def location_attribute_tuple(self):
+        return (
+            self.lat,
+            self.lon,
+            self.north_shift,
+            self.east_shift,
+            self.depth,
+            self.elevation)
+
+    def same_location(self, other):
+        '''
+        Check if locations are equal.
+
+        Locations are treated as equal when all attributes are equal.
+        '''
+
+        return self.location_attribute_tuple == other.location_attribute_tuple
 
     @property
     def effective_latlon(self):

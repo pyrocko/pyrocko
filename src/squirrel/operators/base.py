@@ -12,6 +12,7 @@ from ..model import QuantityType, match_codes, CodesNSLCE
 from .. import error
 
 from pyrocko.guts import Object, String, Duration, Float, clone, List
+from pyrocko import model
 
 guts_prefix = 'squirrel.ops'
 
@@ -59,34 +60,57 @@ def _cglob_translate(creg):
     return reg
 
 
-class Filtering(Object):
+class Filter(Object):
 
-    def filter(self, it):
+    def filter(self, it, squirrel=None, tmin=None, tmax=None):
         return list(it)
 
 
-class RegexFiltering(Object):
+class RegexFilter(Filter):
     pattern = String.T(default=r'(.*)')
 
     def __init__(self, **kwargs):
-        Filtering.__init__(self, **kwargs)
+        Filter.__init__(self, **kwargs)
         self._compiled_pattern = re.compile(self.pattern)
 
-    def filter(self, it):
+    def filter(self, it, squirrel=None, tmin=None, tmax=None):
         return [
             x for x in it if self._compiled_pattern.fullmatch(x)]
 
 
-class CodesPatternFiltering(Object):
+class CodesPatternFilter(Filter):
     codes = List.T(CodesNSLCE.T(), optional=True)
 
-    def filter(self, it):
+    def filter(self, it, squirrel=None, tmin=None, tmax=None):
         if self.codes is None:
             return list(it)
         else:
             return [
                 x for x in it
                 if any(match_codes(sc, x) for sc in self.codes)]
+
+
+class DistanceFilter(Filter):
+    location = model.Location.T()
+    distance_min = Float.T(optional=True)
+    distance_max = Float.T(optional=True)
+
+    def filter(self, it, squirrel=None, tmin=None, tmax=None):
+        locations = squirrel.get_location_pool(tmin=tmin, tmax=tmax)
+
+        dist_min = self.distance_min
+        dist_max = self.distance_max
+        filtered = []
+        for codes in it:
+            loc = locations.get(codes)
+            if loc is not None:
+                dist = self.location.distance_to(loc)
+                if (dist_min is None or dist_min <= dist) \
+                        and (dist_max is None or dist <= dist_max):
+
+                    filtered.append(codes)
+
+        return filtered
 
 
 class Grouping(Object):
@@ -194,7 +218,7 @@ def register(registry, operator, group):
 
 class Operator(Object):
 
-    filtering = Filtering.T(default=Filtering.D())
+    filter = Filter.T(default=Filter.D())
     grouping = Grouping.T(default=Grouping.D())
     translation = Translation.T(default=Translation.D())
 
@@ -223,22 +247,22 @@ class Operator(Object):
         for k, group in self._groups.items():
             yield group[2]
 
-    def update_mappings(self, available, registry=None):
+    def update_mappings(self, available, squirrel, tmin, tmax, registry=None):
         available = list(available)
         removed, added = odiff(self._available, available)
 
-        filt = self.filtering.filter
+        filt = self.filter.filter
         gkey = self.grouping.key
         groups = self._groups
 
         need_update = set()
 
-        for codes in filt(removed):
+        for codes in filt(removed, squirrel, tmin, tmax):
             k = gkey(codes)
             groups[k][0].remove(codes)
             need_update.add(k)
 
-        for codes in filt(added):
+        for codes in filt(added, squirrel, tmin, tmax):
             k = gkey(codes)
             if k not in groups:
                 groups[k] = [set(), None, ()]
@@ -416,6 +440,10 @@ class Composition(Operator):
 
 
 __all__ = [
+    'Filter',
+    'RegexFilter',
+    'CodesPatternFilter',
+    'DistanceFilter',
     'Grouping',
     'RegexGrouping',
     'NetworkGrouping',
