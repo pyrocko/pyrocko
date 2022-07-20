@@ -69,7 +69,7 @@ Import the framework and create a Squirrel instance:
    sq = squirrel.Squirrel()
 
 On the very first instantiation of a
-:py:class:`~pyrocko.squirrel.base.Squirrel` object, an new and initially empty
+:py:class:`~pyrocko.squirrel.base.Squirrel` object, a new and initially empty
 :doc:`Squirrel environment </library/reference/squirrel/environment>` is
 created on disk (Fig. 1).
 
