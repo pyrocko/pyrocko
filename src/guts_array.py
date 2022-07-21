@@ -145,7 +145,11 @@ class Array(Object):
                     val = val.reshape(shape)
 
             else:
-                val = num.asarray(val, dtype=self.dtype)
+                try:
+                    val = num.asarray(val, dtype=self.dtype)
+
+                except TypeError:
+                    val = num.array([self.dtype(vv) for vv in val])
 
             return val
 
