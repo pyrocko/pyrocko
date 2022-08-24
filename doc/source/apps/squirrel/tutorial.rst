@@ -571,7 +571,7 @@ To remove again the persistent selection ``alaska``:
 
 .. code-block:: shell-session
 
-    $ squirrel persistent remove alaska
+    $ squirrel persistent delete alaska
 
 Persistent selections trade flexibility against program startup time.
 
