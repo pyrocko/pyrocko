@@ -33,6 +33,7 @@ logger = logging.getLogger('pyrocko.fomosto.qseis')
 program_bins = {
     'qseis.2006': 'fomosto_qseis2006',
     'qseis.2006a': 'fomosto_qseis2006a',
+    'qseis.2006b': 'fomosto_qseis2006b',
 }
 
 
@@ -138,7 +139,7 @@ class QSeisPoleZeroFilter(Object):
     zeros = List.T(Complex.T())
 
     def string_for_config(self, version=None):
-        if version == '2006a':
+        if version in ('2006a', '2006b'):
             return '(%e,%e)\n%i%s\n%i%s' % (
                 self.constant.real, self.constant.imag,
                 len(self.zeros), scl(self.zeros),
@@ -164,6 +165,7 @@ class QSeisConfig(Object):
     slowness_window = Tuple.T(4, Float.T(default=0.0))
     wavenumber_sampling = Float.T(default=2.5)
     aliasing_suppression_factor = Float.T(default=0.1)
+    source_disk_radius = Float.T(optional=True)
 
     filter_surface_effects = Int.T(default=0)
     filter_shallow_paths = Int.T(default=0)
@@ -269,6 +271,20 @@ class QSeisConfigFull(QSeisConfig):
         d['model_receiver_lines'] = model_str
 
         d['str_slowness_window'] = str_float_vals(self.slowness_window)
+
+        if self.qseis_version == '2006b':
+            sdr = self.source_disk_radius
+            d['str_source_disk_radius'] \
+                = '\n %e |dble: source_radius;' % (
+                    sdr if sdr is not None else -1.0)
+        else:
+            if self.source_disk_radius is not None:
+                raise QSeisError(
+                    'This version of QSEIS does not support the '
+                    '`source_disk_radius` parameter.')
+
+            d['str_source_disk_radius'] = ''
+
         if self.propagation_filters and ref_depth != 0.0:
             raise QSeisError(
                 'Earth model must start with zero depth if '
@@ -288,7 +304,7 @@ class QSeisConfigFull(QSeisConfig):
             d['str_receiver_filter'] = self.receiver_filter.string_for_config(
                 self.qseis_version)
         else:
-            if self.qseis_version == '2006a':
+            if self.qseis_version in ('2006a', '2006b'):
                 d['str_receiver_filter'] = '(1.0,0.0)\n0\n#\n0'
             else:
                 d['str_receiver_filter'] = '1.0\n0\n#\n0'
@@ -377,7 +393,7 @@ class QSeisConfigFull(QSeisConfig):
  %(sw_algorithm)i                    |int: sw_algorithm;
  %(str_slowness_window)s             |dble: slw(1-4);
  %(wavenumber_sampling)e             |dble: sample_rate;
- %(aliasing_suppression_factor)e     |dble: supp_factor;
+ %(aliasing_suppression_factor)e     |dble: supp_factor;%(str_source_disk_radius)s
 #------------------------------------------------------------------------------
 #
 #	        OPTIONS FOR PARTIAL SOLUTIONS
@@ -1015,7 +1031,7 @@ def init(store_dir, variant, config_params=None):
     if variant is None:
         variant = '2006'
 
-    if variant not in ('2006', '2006a'):
+    if variant not in ('2006', '2006a', '2006b'):
         raise gf.store.StoreError('unsupported variant: %s' % variant)
 
     modelling_code_id = 'qseis.%s' % variant

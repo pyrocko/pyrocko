@@ -74,7 +74,7 @@ mantle
         self.tempdirs.append(store_dir)
 
         qsconf = qseis.QSeisConfig()
-        qsconf.qseis_version = '2006a'
+        qsconf.qseis_version = '2006b'
 
         qsconf.time_region = (
             gf.meta.Timing('0'),
@@ -97,7 +97,7 @@ mantle
             distance_min=550*km,
             distance_max=560*km,
             distance_delta=1*km,
-            modelling_code_id='qseis.2006a',
+            modelling_code_id='qseis.2006b',
             earthmodel_1d=mod,
             tabulated_phases=[
                 gf.meta.TPDef(
@@ -166,7 +166,7 @@ mantle
 
         runner = qseis.QSeisRunner()
         conf = qseis.QSeisConfigFull()
-        conf.qseis_version = '2006a'
+        conf.qseis_version = '2006b'
         conf.receiver_distances = [dist/km]
         conf.receiver_azimuths = [azi]
         conf.source_depth = source.depth/km
@@ -242,7 +242,7 @@ mantle
         ahconf = ahfullgreen.AhfullgreenConfig()
 
         qsconf = qseis.QSeisConfig()
-        qsconf.qseis_version = '2006a'
+        qsconf.qseis_version = '2006b'
 
         textra = 5.0
 
@@ -267,6 +267,7 @@ mantle
         qsconf.filter_surface_effects = 1
         qsconf.wavenumber_sampling = 5.
         qsconf.aliasing_suppression_factor = 0.01
+        qsconf.source_disk_radius = 0.0
 
         sample_rate = 10.
 
@@ -280,7 +281,7 @@ mantle
             distance_min=2.*km,
             distance_max=20*km,
             distance_delta=2*km,
-            modelling_code_id='qseis.2006a',
+            modelling_code_id='qseis.2006b',
             earthmodel_1d=mod,
             tabulated_phases=[
                 gf.meta.TPDef(
@@ -396,7 +397,7 @@ mantle
 
             runner = qseis.QSeisRunner()
             conf = qseis.QSeisConfigFull()
-            conf.qseis_version = '2006a'
+            conf.qseis_version = '2006b'
             conf.receiver_distances = [dist/km]
             conf.receiver_azimuths = [azi]
             conf.receiver_depth = config.receiver_depth / km
