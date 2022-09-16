@@ -1596,6 +1596,34 @@ class Squirrel(Selection):
             sources=[s.describe() for s in self._sources],
             operators=[op.describe() for op in self._operators])
 
+    @filldocs
+    def check(
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None,
+            ignore=[]):
+        '''
+        Check for common data/metadata problems.
+
+        %(query_args)s
+
+        :param ignore:
+            Problem types to be ignored.
+        :type ignore:
+            :class:`list` of :class:`str`
+            (:py:class:`~pyrocko.squirrel.check.SquirrelCheckProblemType`)
+
+        :returns:
+            :py:class:`~pyrocko.squirrel.check.SquirrelCheck` object
+            containing the results of the check.
+
+        See :py:func:`~pyrocko.squirrel.check.do_check`.
+        '''
+
+        from .check import do_check
+        tmin, tmax, codes = self._get_selection_args(
+            CHANNEL, obj, tmin, tmax, time, codes)
+
+        return do_check(self, tmin=tmin, tmax=tmax, codes=codes, ignore=ignore)
+
     def get_content(
             self,
             nut,

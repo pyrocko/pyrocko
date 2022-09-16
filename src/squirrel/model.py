@@ -1569,13 +1569,15 @@ class Coverage(Object):
 
         srate = self.sample_rate
 
+        total = self.total
+
         return ' '.join((
             ('%s,' % to_kind(self.kind_id)).ljust(9),
             ('%s,' % str(self.codes)).ljust(18),
             ts,
             '%10.3g,' % srate if srate else '',
             '%4i' % len(self.changes),
-            '%s' % duration_to_str(self.total)))
+            '%s' % duration_to_str(total) if total else 'none'))
 
     @property
     def sample_rate(self):
@@ -1610,6 +1612,49 @@ class Coverage(Object):
                     yield last_t, t, last_count
 
             last = (t, count)
+
+    def iter_uncovered_by(self, other):
+        a = self
+        b = other
+        ia = ib = -1
+        ca = cb = 0
+        last = None
+        while not (ib + 1 == len(b.changes) and ia + 1 == len(a.changes)):
+            if ib + 1 == len(b.changes):
+                ia += 1
+                t, ca = a.changes[ia]
+            elif ia + 1 == len(a.changes):
+                ib += 1
+                t, cb = b.changes[ib]
+            elif a.changes[ia+1][0] < b.changes[ib+1][0]:
+                ia += 1
+                t, ca = a.changes[ia]
+            else:
+                ib += 1
+                t, cb = b.changes[ib]
+
+            if last is not None:
+                tl, cal, cbl = last
+                if tl < t and cal > 0 and cbl == 0:
+                    yield tl, t, ia, ib
+
+            last = (t, ca, cb)
+
+    def iter_uncovered_by_combined(self, other):
+        ib_last = None
+        group = None
+        for tmin, tmax, _, ib in self.iter_uncovered_by(other):
+            if ib_last is None or ib != ib_last:
+                if group:
+                    yield (group[0][0], group[-1][1])
+
+                group = []
+
+            group.append((tmin, tmax))
+            ib_last = ib
+
+        if group:
+            yield (group[0][0], group[-1][1])
 
 
 __all__ = [
