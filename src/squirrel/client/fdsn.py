@@ -559,8 +559,8 @@ class FDSNSource(Source, has_paths.HasPaths):
         def sgaps(nut):
             for tmin, tmax in gaps(
                     codes_to_avail[nut.codes],
-                    ctmin if ctmin is not None else nut.tmin,
-                    ctmax if ctmax is not None else nut.tmax):
+                    max(ctmin, nut.tmin) if ctmin is not None else nut.tmin,
+                    min(ctmax, nut.tmax) if ctmax is not None else nut.tmax):
 
                 subnut = clone(nut)
                 subnut.tmin = tmin
