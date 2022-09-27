@@ -139,6 +139,13 @@ class Source(Object):
 
         pass
 
+    def update_response_inventory(self, squirrel, constraint):
+        '''
+        Let local inventory be up-to-date with remote for a given constraint.
+        '''
+
+        pass
+
 
 __all__ = [
     'Source',
