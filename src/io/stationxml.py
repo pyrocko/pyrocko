@@ -54,7 +54,12 @@ unit_to_quantity = {
     'COUNTS': 'counts',
     'COUNT': 'counts',
     'PA': 'pressure',
-    'RAD/S': 'rotation'}
+    'RAD': 'rotation-displacement',
+    'R': 'rotation-displacement',
+    'RAD/S': 'rotation-velocity',
+    'R/S': 'rotation-velocity',
+    'RAD/S**2': 'rotation-acceleration',
+    'R/S**2': 'rotation-acceleration'}
 
 
 def to_quantity(unit, context, delivery):

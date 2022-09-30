@@ -685,7 +685,8 @@ class Channel(Sensor):
 
 
 observational_quantities = [
-    'acceleration', 'velocity', 'displacement', 'pressure', 'rotation',
+    'acceleration', 'velocity', 'displacement', 'pressure',
+    'rotation-displacement', 'rotation-velocity', 'rotation-acceleration',
     'temperature']
 
 
