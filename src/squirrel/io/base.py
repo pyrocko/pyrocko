@@ -125,7 +125,7 @@ def supported_content_kinds():
     '''
     Get list of supported content kinds offered through Squirrel.
     '''
-    return g_content_kinds
+    return g_content_kinds + ['waveform_promise']
 
 
 def iload(
