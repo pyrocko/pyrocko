@@ -827,7 +827,9 @@ class SnufflerWindow(qw.QMainWindow):
 class Snuffler(qw.QApplication):
 
     def __init__(self):
-        qw.QApplication.__init__(self, sys.argv)
+        qw.QApplication.__init__(self, [])
+        self.setApplicationName('Snuffler')
+        self.setApplicationDisplayName('Snuffler')
         self.lastWindowClosed.connect(self.myQuit)
         self.server = None
         self.loader = None
