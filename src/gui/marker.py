@@ -13,6 +13,7 @@ import numpy as num
 
 from pyrocko import util, plot, model, trace
 from pyrocko.util import TableWriter, TableReader, gmtime_x, mystrftime
+import pyrocko.plot.colors
 
 
 logger = logging.getLogger('pyrocko.gui.marker')
@@ -51,15 +52,20 @@ def myctime(timestamp):
     return mystrftime(None, tt, ms)
 
 
-g_color_b = [plot.color(x) for x in (
-    'scarletred1', 'scarletred2', 'scarletred3',
-    'chameleon1', 'chameleon2', 'chameleon3',
-    'skyblue1', 'skyblue2', 'skyblue3',
-    'orange1', 'orange2', 'orange3',
-    'plum1', 'plum2', 'plum3',
-    'chocolate1', 'chocolate2', 'chocolate3',
-    'butter1', 'butter2', 'butter3',
-    'aluminium3', 'aluminium4', 'aluminium5')]
+g_color_b = [
+    pyrocko.plot.colors.g_nat_colors[x]
+    if x in pyrocko.plot.colors.g_nat_colors
+    else plot.color(x) for x in (
+        'nat_acc_gray', 'nat_acc_gray', 'nat_acc_gray',
+        'nat_acc_purple', 'nat_acc_purple', 'nat_acc_purple',
+        'nat_acc_blue', 'nat_acc_blue', 'nat_acc_blue',
+        'nat_acc_orange', 'nat_acc_orange', 'nat_acc_orange',
+        'skyblue1', 'skyblue2', 'skyblue3',
+        'orange1', 'orange2', 'orange3',
+        'plum1', 'plum2', 'plum3',
+        'chocolate1', 'chocolate2', 'chocolate3',
+        'butter1', 'butter2', 'butter3',
+        'aluminium3', 'aluminium4', 'aluminium5')]
 
 
 class MarkerParseError(Exception):

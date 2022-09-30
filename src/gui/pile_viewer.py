@@ -23,6 +23,7 @@ import pyrocko.trace
 import pyrocko.response
 import pyrocko.util
 import pyrocko.plot
+import pyrocko.plot.colors
 import pyrocko.gui.snuffling
 import pyrocko.gui.snufflings
 import pyrocko.gui.marker_editor
@@ -216,20 +217,20 @@ box_styles_coverage = {}
 box_styles_coverage['waveform'] = [
     ObjectStyle(
         qg.QPen(
-            qg.QColor(*pyrocko.plot.tango_colors['aluminium3']),
+            qg.QColor(*pyrocko.plot.colors.g_nat_colors['nat_green1']),
             1, qc.Qt.DashLine),
         qg.QBrush(qg.QColor(
-            *(pyrocko.plot.tango_colors['aluminium1'] + (50,)))),
+            *(pyrocko.plot.colors.g_nat_colors['nat_green1'] + (50,)))),
     ),
     ObjectStyle(
-        qg.QPen(qg.QColor(*pyrocko.plot.tango_colors['aluminium4'])),
+        qg.QPen(qg.QColor(*pyrocko.plot.colors.g_nat_colors['nat_brown'])),
         qg.QBrush(qg.QColor(
-            *(pyrocko.plot.tango_colors['aluminium2'] + (50,)))),
+            *(pyrocko.plot.colors.g_nat_colors['nat_brown'] + (50,)))),
     ),
     ObjectStyle(
-        qg.QPen(qg.QColor(*pyrocko.plot.tango_colors['plum3'])),
+        qg.QPen(qg.QColor(*pyrocko.plot.colors.g_nat_colors['nat_yellow'])),
         qg.QBrush(qg.QColor(
-            *(pyrocko.plot.tango_colors['plum1'] + (50,)))),
+            *(pyrocko.plot.colors.g_nat_colors['nat_yellow'] + (50,)))),
     )]
 
 box_styles_coverage['waveform_promise'] = [
@@ -542,7 +543,8 @@ class TimeAx(TimeScaler):
         TimeScaler.__init__(self, *args)
 
     def drawit(self, p, xprojection, yprojection):
-        pen = qg.QPen(qg.QColor(*pyrocko.plot.tango_colors['aluminium5']), 1)
+        pen = qg.QPen(
+            qg.QColor(*pyrocko.plot.colors.g_nat_colors['nat_gray']), 1)
         p.setPen(pen)
         font = qg.QFont()
         font.setBold(True)
@@ -3073,7 +3075,7 @@ def MakePileViewerMainClass(base):
             if printmode:
                 primary_color = (0, 0, 0)
             else:
-                primary_color = pyrocko.plot.tango_colors['aluminium5']
+                primary_color = pyrocko.plot.colors.g_nat_colors['nat_gray']
 
             primary_pen = qg.QPen(qg.QColor(*primary_color))
 
@@ -4324,6 +4326,7 @@ class PileViewer(qw.QFrame):
         layout.setSpacing(0)
 
         self.menu = PileViewerMenuBar(self)
+        # self.menu.setNativeMenuBar(False)  # put menubar into window on mac
 
         if use_opengl is None:
             use_opengl = is_macos
