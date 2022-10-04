@@ -1768,7 +1768,7 @@ class Squirrel(Selection):
         if codes is not None:
             codes = codes_patterns_list(
                 (entry.replace(channel=entry.channel[:-1] + '?')
-                 if entry != '*' else entry)
+                 if entry.channel != '*' else entry)
                 for entry in codes)
 
         nuts = sorted(
