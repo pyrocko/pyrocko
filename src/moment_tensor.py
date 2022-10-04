@@ -449,7 +449,7 @@ def as_mt(mt):
     '''
     Convenience function to convert various objects to moment tensor object.
 
-    Like :py:meth:``MomentTensor.from_values``, but does not create a new
+    Like :py:meth:`MomentTensor.from_values`, but does not create a new
     :py:class:`MomentTensor` object when ``mt`` already is one.
     '''
 
