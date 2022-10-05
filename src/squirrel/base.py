@@ -888,7 +888,7 @@ class Squirrel(Selection):
 
     def iter_nuts(
             self, kind=None, tmin=None, tmax=None, codes=None, naiv=False,
-            kind_codes_ids=None, path=None):
+            kind_codes_ids=None, path=None, limit=None):
 
         '''
         Iterate over content entities matching given constraints.
@@ -1011,6 +1011,9 @@ class Squirrel(Selection):
 
         if cond:
             sql += ''' WHERE ''' + ' AND '.join(cond)
+
+        if limit is not None:
+            sql += ''' LIMIT %i''' % limit
 
         sql = self._sql(sql)
         if tmin is None and tmax is None:
@@ -2061,6 +2064,23 @@ class Squirrel(Selection):
         self._redeem_promises(*args)
         return sorted(
             self.iter_nuts('waveform', *args), key=lambda nut: nut.dkey)
+
+    @filldocs
+    def have_waveforms(
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None):
+
+        '''
+        Check if any waveforms or waveform promises are available for given
+        constraints.
+
+        %(query_args)s
+        '''
+
+        args = self._get_selection_args(WAVEFORM, obj, tmin, tmax, time, codes)
+        return bool(list(
+                self.iter_nuts('waveform', *args, limit=1))) \
+            or bool(list(
+                self.iter_nuts('waveform_promise', *args, limit=1)))
 
     @filldocs
     def get_waveforms(
