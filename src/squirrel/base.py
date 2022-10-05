@@ -110,6 +110,11 @@ def prefix_tree(tups):
     return sub
 
 
+def match_time_span(tmin, tmax, obj):
+    return (obj.tmin is None or tmax is None or obj.tmin <= tmax) \
+        and (tmin is None or obj.tmax is None or tmin < obj.tmax)
+
+
 class Batch(object):
     '''
     Batch of waveforms from window-wise data extraction.
@@ -1784,8 +1789,10 @@ class Squirrel(Selection):
             self.iter_nuts(
                 'channel', tmin, tmax, codes), key=lambda nut: nut.dkey)
 
-        return model.Sensor.from_channels(
-            self.get_content(nut) for nut in nuts)
+        return [
+            sensor for sensor in model.Sensor.from_channels(
+                self.get_content(nut) for nut in nuts)
+            if match_time_span(tmin, tmax, sensor)]
 
     @filldocs
     def get_responses(

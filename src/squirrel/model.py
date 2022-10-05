@@ -20,15 +20,17 @@ from __future__ import absolute_import, print_function
 
 import re
 import fnmatch
+import math
 import hashlib
-import numpy as num
 from os import urandom
 from base64 import urlsafe_b64encode
 from collections import defaultdict, namedtuple
 
+import numpy as num
+
 from pyrocko import util
 from pyrocko.guts import Object, SObject, String, Timestamp, Float, Int, \
-    Unicode, Tuple, List, StringChoice, Any, Dict
+    Unicode, Tuple, List, StringChoice, Any, Dict, clone
 from pyrocko.model import squirrel_content, Location
 from pyrocko.response import FrequencyResponse, MultiplyResponse, \
     IntegrationResponse, DifferentiationResponse, simplify_responses, \
@@ -36,8 +38,21 @@ from pyrocko.response import FrequencyResponse, MultiplyResponse, \
 
 from .error import ConversionError, SquirrelError
 
+d2r = num.pi / 180.
+r2d = 1.0 / d2r
+
 
 guts_prefix = 'squirrel'
+
+
+def mkvec(x, y, z):
+    return num.array([x, y, z], dtype=float)
+
+
+def are_orthogonal(vecs, eps=0.01):
+    return all(abs(
+        num.dot(vecs[i], vecs[j]) < eps
+        for (i, j) in [(0, 1), (1, 2), (2, 0)]))
 
 
 g_codes_pool = {}
@@ -619,11 +634,8 @@ class Station(Location):
             self.east_shift)
 
 
-class Sensor(Location):
-    '''
-    Representation of a channel group.
-    '''
-
+@squirrel_content
+class ChannelBase(Location):
     codes = CodesNSLCE.T()
 
     tmin = Timestamp.T(optional=True)
@@ -631,13 +643,13 @@ class Sensor(Location):
 
     deltat = Float.T(optional=True)
 
-    @property
-    def time_span(self):
-        return (self.tmin, self.tmax)
-
     def __init__(self, **kwargs):
         kwargs['codes'] = CodesNSLCE(kwargs['codes'])
         Location.__init__(self, **kwargs)
+
+    @property
+    def time_span(self):
+        return (self.tmin, self.tmax)
 
     def _get_sensor_args(self):
         def getattr_rep(k):
@@ -647,17 +659,17 @@ class Sensor(Location):
             else:
                 return getattr(self, k)
 
-        return tuple(getattr_rep(k) for k in Sensor.T.propnames)
+        return tuple(getattr_rep(k) for k in ChannelBase.T.propnames)
 
-    @classmethod
-    def from_channels(cls, channels):
-        groups = defaultdict(list)
-        for channel in channels:
-            groups[channel._get_sensor_args()].append(channel)
+    def _get_channel_args(self, component):
+        def getattr_rep(k):
+            if k == 'codes':
+                return self.codes.replace(
+                    channel=self.codes.channel[:-1] + component)
+            else:
+                return getattr(self, k)
 
-        return [
-            cls(**dict((k, v) for (k, v) in zip(cls.T.propnames, args)))
-            for args, _ in groups.items()]
+        return tuple(getattr_rep(k) for k in ChannelBase.T.propnames)
 
     def _get_pyrocko_station_args(self):
         return (
@@ -672,18 +684,13 @@ class Sensor(Location):
             self.east_shift)
 
 
-@squirrel_content
-class Channel(Sensor):
+class Channel(ChannelBase):
     '''
     A channel of a seismic station.
     '''
 
     dip = Float.T(optional=True)
     azimuth = Float.T(optional=True)
-
-    @classmethod
-    def from_channels(cls, channels):
-        raise NotImplementedError()
 
     def get_pyrocko_channel(self):
         from pyrocko import model
@@ -694,6 +701,126 @@ class Channel(Sensor):
             self.codes.channel,
             self.azimuth,
             self.dip)
+
+    @property
+    def orientation_enz(self):
+        if None in (self.azimuth, self.dip):
+            return None
+
+        n = math.cos(self.azimuth*d2r)*math.cos(self.dip*d2r)
+        e = math.sin(self.azimuth*d2r)*math.cos(self.dip*d2r)
+        d = math.sin(self.dip*d2r)
+        return mkvec(e, n, -d)
+
+
+def cut_intervals(channels):
+    channels = list(channels)
+    times = set()
+    for channel in channels:
+        if channel.tmin is not None:
+            times.add(channel.tmin)
+        if channel.tmax is not None:
+            times.add(channel.tmax)
+
+    times = sorted(times)
+
+    if len(times) < 2:
+        return channels
+
+    channels_out = []
+    for channel in channels:
+        tstart = channel.tmin
+        for t in times:
+            if (channel.tmin is None or channel.tmin < t) \
+                    and (channel.tmax is None or t < channel.tmax):
+
+                channel_out = clone(channel)
+                channel_out.tmin = tstart
+                channel_out.tmax = t
+                channels_out.append(channel_out)
+                tstart = t
+
+        if channel.tmax is None:
+            channel_out = clone(channel)
+            channel_out.tmin = tstart
+            channels_out.append(channel_out)
+
+    return channels_out
+
+
+class Sensor(ChannelBase):
+    '''
+    Representation of a channel group.
+    '''
+
+    channels = List.T(Channel.T())
+
+    @classmethod
+    def from_channels(cls, channels):
+        channels = cut_intervals(channels)
+
+        groups = defaultdict(list)
+        for channel in channels:
+            groups[channel._get_sensor_args()].append(channel)
+
+        return [
+            cls(channels=channels,
+                **dict(zip(ChannelBase.T.propnames, args)))
+            for args, channels in groups.items()]
+
+    def channel_vectors(self):
+        return num.vstack(
+            [channel.orientation_enz for channel in self.channels])
+
+    def projected_channels(self, system, component_names):
+        return [
+            Channel(
+                azimuth=math.atan2(e, n) * r2d,
+                dip=-math.asin(z) * r2d,
+                **dict(zip(
+                    ChannelBase.T.propnames,
+                    self._get_channel_args(comp))))
+            for comp, (e, n, z) in zip(component_names, system)]
+
+    def matrix_to(self, system, epsilon=1e-7):
+        m = num.dot(system, self.channel_vectors().T)
+        m[num.abs(m) < epsilon] = 0.0
+        return m
+
+    def projection_to(self, system, component_names):
+        return (
+            self.matrix_to(system),
+            self.channels,
+            self.projected_channels(system, component_names))
+
+    def projection_to_enz(self):
+        return self.projection_to(num.identity(3), 'ENZ')
+
+    def projection_to_trz(self, source, azimuth=None):
+        if azimuth is not None:
+            assert source is None
+        else:
+            azimuth = source.azibazi_to(self)[1] + 180.
+
+        return self.projection_to(num.array([
+            [math.cos(azimuth*d2r), -math.sin(azimuth*d2r), 0.],
+            [math.sin(azimuth*d2r), math.cos(azimuth*d2r), 0.],
+            [0., 0., 1.]], dtype=float), 'TRZ')
+
+    def project_to_enz(self, traces):
+        from pyrocko import trace
+
+        matrix, in_channels, out_channels = self.projection_to_enz()
+
+        return trace.project(traces, matrix, in_channels, out_channels)
+
+    def project_to_trz(self, source, traces, azimuth=None):
+        from pyrocko import trace
+
+        matrix, in_channels, out_channels = self.projection_to_trz(
+            source, azimuth=azimuth)
+
+        return trace.project(traces, matrix, in_channels, out_channels)
 
 
 observational_quantities = [

@@ -2403,12 +2403,16 @@ def _decompose(a):
 
 
 def _channels_to_names(channels):
+    from pyrocko import squirrel
     names = []
     for ch in channels:
         if isinstance(ch, model.Channel):
             names.append(ch.name)
+        elif isinstance(ch, squirrel.Channel):
+            names.append(ch.codes.channel)
         else:
             names.append(ch)
+
     return names
 
 
@@ -2439,7 +2443,10 @@ def project(traces, matrix, in_channels, out_channels):
     # fallback to full matrix if some are not quadratic
     for iins, iouts, submatrix in systems:
         if submatrix.shape[0] != submatrix.shape[1]:
-            return _project3(traces, matrix, in_channels, out_channels)
+            if len(in_channels) != 3 or len(out_channels) != 3:
+                return []
+            else:
+                return _project3(traces, matrix, in_channels, out_channels)
 
     projected = []
     for iins, iouts, submatrix in systems:
