@@ -143,6 +143,12 @@ class CodesNSLCE(CodesNSLCEBase, Codes):
 
         return CodesNSLCEBase.__eq__(self, other)
 
+    def matches(self, pattern):
+        if not isinstance(pattern, CodesNSLCE):
+            pattern = CodesNSLCE(pattern)
+
+        return match_codes(pattern, self)
+
     @property
     def safe_str(self):
         return '.'.join(self)
@@ -254,6 +260,12 @@ class CodesNSL(CodesNSLBase, Codes):
             other = CodesNSL(other)
 
         return CodesNSLBase.__eq__(self, other)
+
+    def matches(self, pattern):
+        if not isinstance(pattern, CodesNSL):
+            pattern = CodesNSL(pattern)
+
+        return match_codes(pattern, self)
 
     @property
     def safe_str(self):
