@@ -2298,8 +2298,9 @@ def rotate_to_rt(n, e, source, receiver, out_channels=('R', 'T')):
         :py:class:`pyrocko.model.location.Location`
 
     :param out_channels:
-        Channel codes of the output names. Default is ('R', 'T').
-        Do NOT change this setting.
+        Channel codes of the output channels (radial, transversal).
+        Default is ('R', 'T').
+        .
     :type out_channels
         optional, tuple[str, str]
 
