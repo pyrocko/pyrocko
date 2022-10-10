@@ -2320,10 +2320,12 @@ def rotate_to_rt(n, e, source, receiver, out_channels=('R', 'T')):
 
     assert len(out) == 2
     for tr in out:
-        if tr.channel == 'R':
+        if tr.channel == out_channels[0]:
             r = tr
-        elif tr.channel == 'T':
+        elif tr.channel == out_channels[1]:
             t = tr
+        else:
+            assert False
 
     return r, t
 
