@@ -66,6 +66,27 @@ class Seismosizer(Snuffling):
 
         return stf
 
+    def setup(self):
+        self.add_parameter(
+            Choice('GF Store', 'store_id',
+                   '<not loaded yet>', ['<not loaded yet>']))
+        self.add_parameter(
+            Choice('Waveform type', 'waveform_type', 'Displacement [m]',
+                   ['Displacement [m]',
+                    'Displacement [nm]',
+                    'Velocity [m/s]',
+                    'Velocity [nm/s]',
+                    'Acceleration [m/s^2]',
+                    'Acceleration [nm/s^2]']))
+
+        self.add_trigger('Set Engine', self.set_engine)
+        self.add_trigger('Set Params from Event', self.mechanism_from_event)
+        self.add_trigger('Add Stores', self.add_store)
+
+        self.store_ids = None
+        self.offline_config = None
+        self._engine = None
+
     def call(self):
         '''
         Main work routine of the snuffling.
@@ -275,25 +296,8 @@ class DCSource(Seismosizer):
             Param('STF duration', 'stf_duration', 0., 0., 20.))
         self.add_parameter(
             Choice('STF type', 'stf_type', self.stf_types[0], self.stf_types))
-        self.add_parameter(
-            Choice('GF Store', 'store_id',
-                   '<not loaded yet>', ['<not loaded yet>']))
-        self.add_parameter(
-            Choice('Waveform type', 'waveform_type', 'Displacement [m]',
-                   ['Displacement [m]',
-                    'Displacement [nm]',
-                    'Velocity [m/s]',
-                    'Velocity [nm/s]',
-                    'Acceleration [m/s^2]',
-                    'Acceleration [nm/s^2]']))
 
-        self.add_trigger('Set Engine', self.set_engine)
-        self.add_trigger('Set Params from Event', self.mechanism_from_event)
-        self.add_trigger('Add Stores', self.add_store)
-
-        self.store_ids = None
-        self.offline_config = None
-        self._engine = None
+        Seismosizer.setup(self)
 
     def get_source(self, event):
         return gf.DCSource(
@@ -337,25 +341,8 @@ class SFSource(Seismosizer):
             Param('STF duration', 'stf_duration', 0., 0., 100.))
         self.add_parameter(
             Choice('STF type', 'stf_type', self.stf_types[0], self.stf_types))
-        self.add_parameter(
-            Choice('GF Store', 'store_id',
-                   '<not loaded yet>', ['<not loaded yet>']))
-        self.add_parameter(
-            Choice('Waveform type', 'waveform_type', 'Displacement [m]',
-                   ['Displacement [m]',
-                    'Displacement [nm]',
-                    'Velocity [m/s]',
-                    'Velocity [nm/s]',
-                    'Acceleration [m/s^2]',
-                    'Acceleration [nm/s^2]']))
 
-        self.add_trigger('Set Engine', self.set_engine)
-        self.add_trigger('Set Params from Event', self.mechanism_from_event)
-        self.add_trigger('Add Stores', self.add_store)
-
-        self.store_ids = None
-        self.offline_config = None
-        self._engine = None
+        Seismosizer.setup(self)
 
     def get_source(self, event):
         return gf.SFSource(
@@ -411,25 +398,8 @@ class RectangularSource(Seismosizer):
             Param('STF duration', 'stf_duration', 0., 0., 20.))
         self.add_parameter(
             Choice('STF type', 'stf_type', self.stf_types[0], self.stf_types))
-        self.add_parameter(
-            Choice('GF Store', 'store_id',
-                   '<not loaded yet>', ['<not loaded yet>']))
-        self.add_parameter(
-            Choice('Waveform type', 'waveform_type', 'Displacement [m]',
-                   ['Displacement [m]',
-                    'Displacement [nm]',
-                    'Velocity [m/s]',
-                    'Velocity [nm/s]',
-                    'Acceleration [m/s^2]',
-                    'Acceleration [nm/s^2]']))
 
-        self.add_trigger('Set Engine', self.set_engine)
-        self.add_trigger('Set Params from Event', self.mechanism_from_event)
-        self.add_trigger('Add Stores', self.add_store)
-
-        self.store_ids = None
-        self.offline_config = None
-        self._engine = None
+        Seismosizer.setup(self)
 
     def get_source(self, event):
         return gf.RectangularSource(
@@ -499,25 +469,7 @@ class PseudoDynamicRuptureSource(Seismosizer):
         self.add_parameter(Switch(
             'Tapered tractions', 'tapered', True))
 
-        self.add_parameter(
-            Choice('GF Store', 'store_id',
-                   '<not loaded yet>', ['<not loaded yet>']))
-        self.add_parameter(
-            Choice('Waveform type', 'waveform_type', 'Displacement [m]',
-                   ['Displacement [m]',
-                    'Displacement [nm]',
-                    'Velocity [m/s]',
-                    'Velocity [nm/s]',
-                    'Acceleration [m/s^2]',
-                    'Acceleration [nm/s^2]']))
-
-        self.add_trigger('Set Engine', self.set_engine)
-        self.add_trigger('Set Params from Event', self.mechanism_from_event)
-        self.add_trigger('Add Stores', self.add_store)
-
-        self.store_ids = None
-        self.offline_config = None
-        self._engine = None
+        Seismosizer.setup(self)
 
     def get_source(self, event):
         source = gf.PseudoDynamicRupture(
