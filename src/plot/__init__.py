@@ -79,7 +79,7 @@ units_dict = {
     'cm': cm,
 }
 
-_doc_units = "``'points'``, ``'inch'``, or ``'cm'``"
+_doc_units = "``'point'``, ``'inch'``, or ``'cm'``"
 
 
 def apply_units(x, units):
