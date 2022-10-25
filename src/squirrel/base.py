@@ -46,6 +46,10 @@ def lpick(condition, seq):
     return ft
 
 
+def len_plural(obj):
+    return len(obj), '' if len(obj) == 1 else 's'
+
+
 def blocks(tmin, tmax, deltat, nsamples_block=100000):
     tblock = util.to_time_float(deltat * nsamples_block)
     iblock_min = int(math.floor(tmin / tblock))
@@ -291,6 +295,8 @@ class Squirrel(Selection):
         self._sources = []
         self._operators = []
         self._operator_registry = {}
+
+        self._pending_orders = []
 
         self._pile = None
         self._n_choppers_active = 0
@@ -1881,7 +1887,14 @@ class Squirrel(Selection):
 
         return [self.get_content(nut) for nut in nuts]
 
-    def _redeem_promises(self, *args):
+    def _redeem_promises(self, *args, order_only=False):
+
+        def split_promise(order):
+            self._split_nuts(
+                'waveform_promise',
+                order.tmin, order.tmax,
+                codes=order.codes,
+                path=order.source_id)
 
         tmin, tmax, _ = args
 
@@ -1925,6 +1938,25 @@ class Squirrel(Selection):
                 'Waveform orders already satisified with cached/local data: '
                 '%i (%i)' % (len(order_keys_noop), len(orders_noop)))
 
+        for order in orders_noop:
+            split_promise(order)
+
+        if order_only:
+            if orders:
+                self._pending_orders.extend(orders)
+                logger.info(
+                    'Enqueuing %i waveform order%s.'
+                    % len_plural(orders))
+            return
+        else:
+            if self._pending_orders:
+                orders.extend(self._pending_orders)
+                logger.info(
+                    'Adding %i previously enqueued order%s.'
+                    % len_plural(self._pending_orders))
+
+            self._pending_orders = []
+
         source_ids = []
         sources = {}
         for source in self._sources:
@@ -1954,13 +1986,6 @@ class Squirrel(Selection):
         else:
             task = None
 
-        def split_promise(order):
-            self._split_nuts(
-                'waveform_promise',
-                order.tmin, order.tmax,
-                codes=order.codes,
-                path=order.source_id)
-
         def release_order_group(order):
             okey = order_key(order)
             for followup in order_groups[okey]:
@@ -1988,9 +2013,6 @@ class Squirrel(Selection):
                 calls.put((f, args))
 
             return wrapper
-
-        for order in orders_noop:
-            split_promise(order)
 
         while order_groups:
 
@@ -2046,7 +2068,8 @@ class Squirrel(Selection):
 
     @filldocs
     def get_waveform_nuts(
-            self, obj=None, tmin=None, tmax=None, time=None, codes=None):
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None,
+            order_only=False):
 
         '''
         Get waveform content entities matching given constraints.
@@ -2061,7 +2084,7 @@ class Squirrel(Selection):
         '''
 
         args = self._get_selection_args(WAVEFORM, obj, tmin, tmax, time, codes)
-        self._redeem_promises(*args)
+        self._redeem_promises(*args, order_only=order_only)
         return sorted(
             self.iter_nuts('waveform', *args), key=lambda nut: nut.dkey)
 
@@ -2087,7 +2110,7 @@ class Squirrel(Selection):
             self, obj=None, tmin=None, tmax=None, time=None, codes=None,
             uncut=False, want_incomplete=True, degap=True, maxgap=5,
             maxlap=None, snap=None, include_last=False, load_data=True,
-            accessor_id='default', operator_params=None):
+            accessor_id='default', operator_params=None, order_only=False):
 
         '''
         Get waveforms matching given constraints.
@@ -2190,7 +2213,11 @@ class Squirrel(Selection):
                     include_last=include_last, load_data=load_data,
                     accessor_id=accessor_id, params=operator_params)
 
-        nuts = self.get_waveform_nuts(obj, tmin, tmax, time, codes)
+        nuts = self.get_waveform_nuts(
+            obj, tmin, tmax, time, codes, order_only=order_only)
+
+        if order_only:
+            return []
 
         if load_data:
             traces = [
