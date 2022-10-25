@@ -827,7 +827,8 @@ class FDSNSource(Source, has_paths.HasPaths):
                         CodesNSLCE(tup) for tup in status[k])),
                 target=log_target)
 
-        squirrel.add(fns, kinds=['response'])
+        if fns:
+            squirrel.add(fns, kinds=['response'])
 
 
 __all__ = [
