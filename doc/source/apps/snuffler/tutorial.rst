@@ -145,6 +145,43 @@ off, to see some filter artifacts at the boundary! Then turn it on again.
     Occasionally, the downsampling process may be disturbing. It can be turned
     off in the right-click menu under :guilabel:`Allow Downsampling`.
 
+
+VNC-long datasets
+-----------------
+
+For very long time frames which are stored remotely you might run into quite some delay with every mouseclick when using snuffler because X forwarding doesn't work as good anymore. A bit better it works with VNC. Here we will use the tightvncserver remotely.
+
+To install on Ubuntu::
+
+    sudo apt install tightvncserver tightvncpasswd'
+
+Set your password and start your virtuell X server on your remote host::
+
+    tightvncpasswd                  # asks for new password and sets it
+    tightvncserver -localhost       # is running on localhost now, port 5902
+
+Now start an ssh tunel from your local maschine to the VNC port on the remote::
+
+    ssh -L 5902:localhost:5902 user@maschine
+
+Now you can start an VNC client on the lokal machine and connect to the local port 5092. On linux you can use vinagre for example.
+
+It might be necessary to configure the Desktop environment on yor remote machine. Gnome doesn't work good here so it's better to use lxde, xfce, mate, openbox or notion. To configure open the file ~/.vnc/xstartup and write::
+
+    #/bin/sh
+    unset SESSION_MANAGER
+    unset DBUS_SESSION_BUS_ADDRESS
+    startxfce4
+
+And make the file executable::
+
+    chmod a+x ~/.vnc/xstartup
+
+In this case you must have installed xfce before::
+
+    sudo apt install xfce4
+
+
 Scaling
 -------
 
