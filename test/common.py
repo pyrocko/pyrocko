@@ -60,6 +60,10 @@ def matplotlib_use_agg():
         g_matplotlib_inited = True
 
 
+def matplotlib_show():
+    return bool(int(os.environ.get('MPL_SHOW', False)))
+
+
 def test_data_file_no_download(fn):
     return os.path.join(os.path.split(__file__)[0], 'data', fn)
 

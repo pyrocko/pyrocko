@@ -10,9 +10,10 @@ import math
 import logging
 
 import numpy as num
+import matplotlib
 from matplotlib.axes import Axes
 # from matplotlib.ticker import MultipleLocator
-from matplotlib import cm, colors, colorbar
+from matplotlib import cm, colors, colorbar, figure
 
 from pyrocko.guts import Tuple, Float, Object
 from pyrocko import plot
@@ -24,6 +25,46 @@ logger = logging.getLogger('pyrocko.plot.smartplot')
 guts_prefix = 'pf'
 
 inch = 2.54
+
+
+class SmartplotAxes(Axes):
+
+    if matplotlib.__version__.split('.') < '3.6'.split('.'):
+        # Subclassing cla is deprecated on newer mpl but need this fallback for
+        # older versions. Code is duplicated because mpl behaviour depends
+        # on the existence of cla in the subclass...
+        def cla(self):
+            if hasattr(self, 'callbacks'):
+                callbacks = self.callbacks
+                Axes.cla(self)
+                self.callbacks = callbacks
+            else:
+                Axes.cla(self)
+
+    else:
+        def clear(self):
+            if hasattr(self, 'callbacks'):
+                callbacks = self.callbacks
+                Axes.clear(self)
+                self.callbacks = callbacks
+            else:
+                Axes.clear(self)
+
+
+class SmartplotFigure(figure.Figure):
+
+    def set_smartplot(self, plot):
+        self._smartplot = plot
+
+    def draw(self, *args, **kwargs):
+        if hasattr(self, '_smartplot'):
+            try:
+                self._smartplot._update_layout()
+            except NotEnoughSpace:
+                logger.error('Figure is too small to show the plot.')
+                return
+
+        return figure.Figure.draw(self, *args, **kwargs)
 
 
 def limits(points):
@@ -204,7 +245,11 @@ def solve_layout_iterative(size, shape, limits, aspects, niterations=3):
     return (vlimits_x, vlimits_y), (wxs, wys)
 
 
-class NotEnoughSpace(Exception):
+class PlotError(Exception):
+    pass
+
+
+class NotEnoughSpace(PlotError):
     pass
 
 
@@ -216,7 +261,7 @@ class PlotConfig(Object):
         2, Float.T(), default=(20., 20.))
 
     margins_em = Tuple.T(
-        4, Float.T(), default=(7., 5., 7., 5.))
+        4, Float.T(), default=(8., 6., 8., 6.))
 
     separator_em = Float.T(default=1.5)
 
@@ -224,6 +269,9 @@ class PlotConfig(Object):
 
     label_offset_em = Tuple.T(
         2, Float.T(), default=(2., 2.))
+
+    tick_label_offset_em = Tuple.T(
+        2, Float.T(), default=(0.5, 0.5))
 
     @property
     def size_inch(self):
@@ -234,7 +282,7 @@ class Plot(object):
 
     def __init__(
             self, x_dims=['x'], y_dims=['y'], z_dims=[], config=None,
-            fig=None):
+            fig=None, call_mpl_init=True):
 
         if config is None:
             config = PlotConfig()
@@ -250,10 +298,16 @@ class Plot(object):
         self.config = config
         self._disconnect_data = []
         self._width = self._height = self._pixels = None
-        self._plt = plot.mpl_init(self.config.font_size)
+        if call_mpl_init:
+            self._plt = plot.mpl_init(self.config.font_size)
 
         if fig is None:
-            fig = self._plt.figure(figsize=self.config.size_inch)
+            fig = self._plt.figure(
+                figsize=self.config.size_inch, FigureClass=SmartplotFigure)
+        else:
+            assert isinstance(fig, SmartplotFigure)
+
+        fig.set_smartplot(self)
 
         self._fig = fig
         self._colorbar_width = 0.0
@@ -285,6 +339,7 @@ class Plot(object):
         self._mappables = {}
         self._updating_layout = False
 
+        self._need_update_layout = True
         self._update_geometry()
 
         for axes in self.axes_list:
@@ -298,6 +353,9 @@ class Plot(object):
         self._connect(fig, 'dpi_changed', self.dpi_changed_handler)
 
         self._lim_changed_depth = 0
+
+    def reset_size(self):
+        self._fig.set_size_inches(self.config.size_inch)
 
     def axes(self, ix, iy):
         if not (isinstance(ix, int) and isinstance(iy, int)):
@@ -343,9 +401,12 @@ class Plot(object):
         for iy in range(ny):
             axes.append([])
             for ix in range(nx):
-                axes[-1].append(Axes(self.fig, rect))
+                axes[-1].append(SmartplotAxes(self.fig, rect))
 
         self._axes = axes
+
+        for _, _, axes_ in self.iaxes():
+            axes_.set_autoscale_on(False)
 
     def _connect(self, obj, sig, handler):
         cid = obj.callbacks.connect(sig, handler)
@@ -393,17 +454,24 @@ class Plot(object):
                     '(%i, %i)' % (ix, iy))
                 self.set_lim(ydim, *sorted(acurrent[1]))
 
-        self._update_layout()
+        self.need_update_layout()
 
     def _update_geometry(self):
         w, h = self._fig.canvas.get_width_height()
-        p = self.get_pixels_factor()
+        dp = self.get_device_pixel_ratio()
+        p = self.get_pixels_factor() * dp
 
-        if (self._width, self._height, self._pixels) != (w, h, p):
-            self._width = w
-            self._height = h
-            self._pixels = p
-            self._update_layout()
+        if (self._width, self._height, self._pixels) != (w, h, p, dp):
+            logger.debug(
+                'New figure size: %g x %g, '
+                'logical-pixel/point: %g, physical-pixel/logical-pixel: %g' % (
+                    w, h, p, dp))
+
+            self._width = w                # logical pixel
+            self._height = h               # logical pixel
+            self._pixels = p               # logical pixel / point
+            self._device_pixel_ratio = dp  # physical / logical
+            self.need_update_layout()
 
     @property
     def margins(self):
@@ -441,6 +509,9 @@ class Plot(object):
             return 1.0 / r.points_to_pixels(1.0)
         except AttributeError:
             return 1.0
+
+    def get_device_pixel_ratio(self):
+        return self._fig.canvas.device_pixel_ratio
 
     def make_limits(self, lims):
         a = plot.AutoScaler(space=0.05)
@@ -523,167 +594,185 @@ class Plot(object):
             self.margins[3] + self._colorbar_height, self.margins[1],
             self.separator, y)
 
+    def need_update_layout(self):
+        self._need_update_layout = True
+
     def _update_layout(self):
         assert not self._updating_layout
+
+        if not self._need_update_layout:
+            return
+
         self._updating_layout = True
-        data_limits = self.get_data_limits()
+        try:
+            data_limits = self.get_data_limits()
 
-        limits = num.zeros((self._ndims, 2))
-        for idim in range(self._ndims):
-            limits[idim, :] = self.make_limits(data_limits[idim, :])
+            limits = num.zeros((self._ndims, 2))
+            for idim in range(self._ndims):
+                limits[idim, :] = self.make_limits(data_limits[idim, :])
 
-        mask = num.isfinite(self._view_limits)
-        limits[mask] = self._view_limits[mask]
+            mask = num.isfinite(self._view_limits)
+            limits[mask] = self._view_limits[mask]
 
-        # deltas = limits[:, 1] - limits[:, 0]
+            # deltas = limits[:, 1] - limits[:, 0]
 
-        # data_w = deltas[0]
-        # data_h = deltas[1]
+            # data_w = deltas[0]
+            # data_h = deltas[1]
 
-        ml, mt, mr, mb = self.margins
-        mr += self._colorbar_width
-        mb += self._colorbar_height
-        sw = sh = self.separator
+            ml, mt, mr, mb = self.margins
+            mr += self._colorbar_width
+            mb += self._colorbar_height
+            sw = sh = self.separator
 
-        nx, ny = self._shape
+            nx, ny = self._shape
 
-        # data_r = data_h / data_w
-        em = self.config.font_size
-        w = self._width
-        h = self._height
-        fig_w_avail = w - mr - ml - (nx-1) * sw
-        fig_h_avail = h - mt - mb - (ny-1) * sh
+            # data_r = data_h / data_w
+            em = self.config.font_size / self._pixels
+            w = self._width
+            h = self._height
+            fig_w_avail = w - mr - ml - (nx-1) * sw
+            fig_h_avail = h - mt - mb - (ny-1) * sh
 
-        if fig_w_avail <= 0.0 or fig_h_avail <= 0.0:
-            raise NotEnoughSpace()
+            if fig_w_avail <= 0.0 or fig_h_avail <= 0.0:
+                raise NotEnoughSpace()
 
-        x_limits = num.zeros((nx, 2))
-        for ix, xdim in enumerate(self._x_dims):
-            x_limits[ix, :] = limits[self._dim_index(xdim)]
+            x_limits = num.zeros((nx, 2))
+            for ix, xdim in enumerate(self._x_dims):
+                x_limits[ix, :] = limits[self._dim_index(xdim)]
 
-        y_limits = num.zeros((ny, 2))
-        for iy, ydim in enumerate(self._y_dims):
-            y_limits[iy, :] = limits[self._dim_index(ydim)]
+            y_limits = num.zeros((ny, 2))
+            for iy, ydim in enumerate(self._y_dims):
+                y_limits[iy, :] = limits[self._dim_index(ydim)]
 
-        def get_aspect(dim1, dim2):
-            if (dim2, dim1) in self._aspects:
-                return 1.0/self._aspects[dim2, dim1]
+            def get_aspect(dim1, dim2):
+                if (dim2, dim1) in self._aspects:
+                    return 1.0/self._aspects[dim2, dim1]
 
-            return self._aspects.get((dim1, dim2), None)
+                return self._aspects.get((dim1, dim2), None)
 
-        aspects_xx = []
-        for ix1, xdim1 in enumerate(self._x_dims):
-            for ix2, xdim2 in enumerate(self._x_dims):
-                aspect = get_aspect(xdim2, xdim1)
+            aspects_xx = []
+            for ix1, xdim1 in enumerate(self._x_dims):
+                for ix2, xdim2 in enumerate(self._x_dims):
+                    aspect = get_aspect(xdim2, xdim1)
+                    if aspect:
+                        aspects_xx.append((ix1, ix2, aspect))
+
+            aspects_yy = []
+            for iy1, ydim1 in enumerate(self._y_dims):
+                for iy2, ydim2 in enumerate(self._y_dims):
+                    aspect = get_aspect(ydim2, ydim1)
+                    if aspect:
+                        aspects_yy.append((iy1, iy2, aspect))
+
+            aspects_xy = []
+            for iy, ix, axes in self.iaxes():
+                xdim = self._x_dims[ix]
+                ydim = self._y_dims[iy]
+                aspect = get_aspect(ydim, xdim)
                 if aspect:
-                    aspects_xx.append((ix1, ix2, aspect))
+                    aspects_xy.append((ix, iy, aspect))
 
-        aspects_yy = []
-        for iy1, ydim1 in enumerate(self._y_dims):
-            for iy2, ydim2 in enumerate(self._y_dims):
-                aspect = get_aspect(ydim2, ydim1)
-                if aspect:
-                    aspects_yy.append((iy1, iy2, aspect))
+            (x_limits, y_limits), (aws, ahs) = solve_layout_iterative(
+                size=(fig_w_avail, fig_h_avail),
+                shape=(nx, ny),
+                limits=(x_limits, y_limits),
+                aspects=(
+                    aspects_xx,
+                    aspects_yy,
+                    aspects_xy))
 
-        aspects_xy = []
-        for iy, ix, axes in self.iaxes():
-            xdim = self._x_dims[ix]
-            ydim = self._y_dims[iy]
-            aspect = get_aspect(ydim, xdim)
-            if aspect:
-                aspects_xy.append((ix, iy, aspect))
+            for iy, ix, axes in self.iaxes():
+                rect = [
+                    ml + num.sum(aws[:ix])+(ix*sw),
+                    mb + num.sum(ahs[:iy])+(iy*sh),
+                    aws[ix], ahs[iy]]
 
-        (x_limits, y_limits), (aws, ahs) = solve_layout_iterative(
-            size=(fig_w_avail, fig_h_avail),
-            shape=(nx, ny),
-            limits=(x_limits, y_limits),
-            aspects=(
-                aspects_xx,
-                aspects_yy,
-                aspects_xy))
+                axes.set_position(
+                    self.rect_to_figure_coords(rect), which='both')
 
-        for iy, ix, axes in self.iaxes():
-            rect = [
-                ml + num.sum(aws[:ix])+(ix*sw),
-                mb + num.sum(ahs[:iy])+(iy*sh),
-                aws[ix], ahs[iy]]
+                self.set_label_coords(
+                    axes, 'x', [
+                        wcenter(rect),
+                        self.config.label_offset_em[0]*em
+                        + self._colorbar_height])
 
-            axes.set_position(
-                self.rect_to_figure_coords(rect), which='both')
+                self.set_label_coords(
+                    axes, 'y', [
+                        self.config.label_offset_em[1]*em,
+                        hcenter(rect)])
 
-            self.set_label_coords(
-                axes, 'x', [
-                    wcenter(rect),
-                    self.config.label_offset_em[0]*em + self._colorbar_height])
+                axes.get_xaxis().set_tick_params(
+                    bottom=(iy == 0), top=(iy == ny-1),
+                    labelbottom=(iy == 0), labeltop=False)
 
-            self.set_label_coords(
-                axes, 'y', [
-                    self.config.label_offset_em[1]*em,
-                    hcenter(rect)])
+                axes.get_yaxis().set_tick_params(
+                    left=(ix == 0), right=(ix == nx-1),
+                    labelleft=(ix == 0), labelright=False)
 
-            axes.get_xaxis().set_tick_params(
-                bottom=(iy == 0), top=(iy == ny-1),
-                labelbottom=(iy == 0), labeltop=False)
+                istride = -1 if self._x_dims_invert[ix] else 1
+                axes.set_xlim(*x_limits[ix, ::istride])
+                istride = -1 if self._y_dims_invert[iy] else 1
+                axes.set_ylim(*y_limits[iy, ::istride])
 
-            axes.get_yaxis().set_tick_params(
-                left=(ix == 0), right=(ix == nx-1),
-                labelleft=(ix == 0), labelright=False)
+                axes.tick_params(
+                    axis='x',
+                    pad=self.config.tick_label_offset_em[0]*em)
 
-            istride = -1 if self._x_dims_invert[ix] else 1
-            axes.set_xlim(*x_limits[ix, ::istride])
-            istride = -1 if self._y_dims_invert[iy] else 1
-            axes.set_ylim(*y_limits[iy, ::istride])
+                axes.tick_params(
+                    axis='y',
+                    pad=self.config.tick_label_offset_em[0]*em)
 
-        self._remember_mpl_view_limits()
+            self._remember_mpl_view_limits()
 
-        for mappable, dim in self._mappables.items():
-            mappable.set_clim(*limits[self._dim_index(dim)])
+            for mappable, dim in self._mappables.items():
+                mappable.set_clim(*limits[self._dim_index(dim)])
 
-        # scaler = plot.AutoScaler()
+            # scaler = plot.AutoScaler()
 
-        # aspect tick incs same
-        #
-        # inc = scaler.make_scale(
-        #     [0, min(data_expanded_w, data_expanded_h)],
-        #     override_mode='off')[2]
-        #
-        # for axes in self.axes_list:
-        #     axes.set_xlim(*limits[0, :])
-        #     axes.set_ylim(*limits[1, :])
-        #
-        #     tl = MultipleLocator(inc)
-        #     axes.get_xaxis().set_major_locator(tl)
-        #     tl = MultipleLocator(inc)
-        #     axes.get_yaxis().set_major_locator(tl)
+            # aspect tick incs same
+            #
+            # inc = scaler.make_scale(
+            #     [0, min(data_expanded_w, data_expanded_h)],
+            #     override_mode='off')[2]
+            #
+            # for axes in self.axes_list:
+            #     axes.set_xlim(*limits[0, :])
+            #     axes.set_ylim(*limits[1, :])
+            #
+            #     tl = MultipleLocator(inc)
+            #     axes.get_xaxis().set_major_locator(tl)
+            #     tl = MultipleLocator(inc)
+            #     axes.get_yaxis().set_major_locator(tl)
 
-        for axes, orientation, position in self._colorbar_axes:
-            if orientation == 'horizontal':
-                xmin = self.window_xmin(position[0])
-                xmax = self.window_xmax(position[1])
-                ymin = mb - self._colorbar_height
-                ymax = mb - self._colorbar_height \
-                    + self.config.colorbar_width_em * em
-            else:
-                ymin = self.window_ymin(position[0])
-                ymax = self.window_ymax(position[1])
-                xmin = w - mr + 2 * sw
-                xmax = w - mr + 2 * sw + self.config.colorbar_width_em * em
+            for axes, orientation, position in self._colorbar_axes:
+                if orientation == 'horizontal':
+                    xmin = self.window_xmin(position[0])
+                    xmax = self.window_xmax(position[1])
+                    ymin = mb - self._colorbar_height
+                    ymax = mb - self._colorbar_height \
+                        + self.config.colorbar_width_em * em
+                else:
+                    ymin = self.window_ymin(position[0])
+                    ymax = self.window_ymax(position[1])
+                    xmin = w - mr + 2 * sw
+                    xmax = w - mr + 2 * sw + self.config.colorbar_width_em * em
 
-            rect = [xmin, ymin, xmax-xmin, ymax-ymin]
-            axes.set_position(
-                self.rect_to_figure_coords(rect), which='both')
+                rect = [xmin, ymin, xmax-xmin, ymax-ymin]
+                axes.set_position(
+                    self.rect_to_figure_coords(rect), which='both')
 
-        for ix, axes in enumerate(self.axes_bottom_list):
-            dim = self._x_dims[ix]
-            s = self._labels.get(dim, dim)
-            axes.set_xlabel(s)
+            for ix, axes in enumerate(self.axes_bottom_list):
+                dim = self._x_dims[ix]
+                s = self._labels.get(dim, dim)
+                axes.set_xlabel(s)
 
-        for iy, axes in enumerate(self.axes_left_list):
-            dim = self._y_dims[iy]
-            s = self._labels.get(dim, dim)
-            axes.set_ylabel(s)
+            for iy, axes in enumerate(self.axes_left_list):
+                dim = self._y_dims[iy]
+                s = self._labels.get(dim, dim)
+                axes.set_ylabel(s)
 
-        self._updating_layout = False
+        finally:
+            self._updating_layout = False
 
     def set_label_coords(self, axes, which, point):
         axis = axes.get_xaxis() if which == 'x' else axes.get_yaxis()
@@ -702,9 +791,10 @@ class Plot(object):
 
     def show(self):
         self._plt.show()
+        self.reset_size()
 
     def set_label(self, dim, s):
-        # just set attrbitute handle in update_layout
+        # just set attribute, handle in update_layout
         self._labels[dim] = s
 
     def colorbar(
@@ -713,11 +803,11 @@ class Plot(object):
             position=None):
 
         if dim not in self._dims:
-            raise Exception(
+            raise PlotError(
                 'dimension "%s" is not defined')
 
         if orientation not in ('vertical', 'horizontal'):
-            raise Exception(
+            raise PlotError(
                 'orientation must be "vertical" or "horizontal"')
 
         mappable = None
@@ -729,7 +819,7 @@ class Plot(object):
                     mappable_.set_cmap(mappable.get_cmap())
 
         if mappable is None:
-            raise Exception(
+            raise PlotError(
                 'no mappable registered for dimension "%s"' % dim)
 
         if position is None:
@@ -738,7 +828,7 @@ class Plot(object):
             else:
                 position = (0, self._shape[0])
 
-        em = self.config.font_size
+        em = self.config.font_size / self._pixels
 
         if orientation == 'vertical':
             self._colorbar_width = self.config.colorbar_width_em*em + \
@@ -747,13 +837,13 @@ class Plot(object):
             self._colorbar_height = self.config.colorbar_width_em*em + \
                 self.separator + self.margins[3]
 
-        axes = Axes(self.fig, [0., 0., 1., 1.])
+        axes = SmartplotAxes(self.fig, [0., 0., 1., 1.])
         self.fig.add_axes(axes)
 
         self._colorbar_axes.append(
             (axes, orientation, position))
 
-        self._update_layout()
+        self.need_update_layout()
         # axes.plot([1], [1])
         label = self._labels.get(dim, dim)
         return colorbar.Colorbar(
