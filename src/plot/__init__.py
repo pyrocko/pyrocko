@@ -822,13 +822,16 @@ def time_tick_labels(tmin, tmax, tinc, tinc_unit):
     return times, labels
 
 
-def mpl_time_axis(axes):
+def mpl_time_axis(axes, approx_ticks=5.):
 
     '''
     Configure x axis of a matplotlib axes object for interactive time display.
 
-    :param axes: matplotlib axes object
+    :param axes: Axes to be configured.
     :type axes: :py:class:`matplotlib.axes.Axes`
+
+    :param approx_ticks: Approximate number of ticks to create.
+    :type approx_ticks: float
 
     This function tries to use nice tick increments and tick labels for time
     ranges from microseconds to years, similar to how this is handled in
@@ -842,6 +845,10 @@ def mpl_time_axis(axes):
 
     class TimeLocator(Locator):
 
+        def __init__(self, approx_ticks=5.):
+            self._approx_ticks = approx_ticks
+            Locator.__init__(self)
+
         def __call__(self):
             vmin, vmax = self.axis.get_view_interval()
             return self.tick_values(vmin, vmax)
@@ -853,7 +860,7 @@ def mpl_time_axis(axes):
             if vmin == vmax:
                 return []
 
-            tinc_approx = (vmax - vmin) / 5.
+            tinc_approx = (vmax - vmin) / self._approx_ticks
             tinc, tinc_unit = nice_time_tick_inc(tinc_approx)
             times, labels = time_tick_labels(vmin, vmax, tinc, tinc_unit)
             ftimes = []
@@ -872,5 +879,5 @@ def mpl_time_axis(axes):
             else:
                 return time_to_str(x, format='%Y-%m-%d %H:%M:%S.6FRAC')
 
-    axes.xaxis.set_major_locator(TimeLocator())
+    axes.xaxis.set_major_locator(TimeLocator(approx_ticks=approx_ticks))
     axes.xaxis.set_major_formatter(TimeFormatter())
