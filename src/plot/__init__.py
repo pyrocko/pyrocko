@@ -820,3 +820,57 @@ def time_tick_labels(tmin, tmax, tinc, tinc_unit):
             times[0:0] = [tmin]
 
     return times, labels
+
+
+def mpl_time_axis(axes):
+
+    '''
+    Configure x axis of a matplotlib axes object for interactive time display.
+
+    :param axes: matplotlib axes object
+    :type axes: :py:class:`matplotlib.axes.Axes`
+
+    This function tries to use nice tick increments and tick labels for time
+    ranges from microseconds to years, similar to how this is handled in
+    Snuffler.
+    '''
+
+    from matplotlib.ticker import Locator, Formatter
+
+    class labeled_float(float):
+        pass
+
+    class TimeLocator(Locator):
+
+        def __call__(self):
+            vmin, vmax = self.axis.get_view_interval()
+            return self.tick_values(vmin, vmax)
+
+        def tick_values(self, vmin, vmax):
+            if vmax < vmin:
+                vmin, vmax = vmax, vmin
+
+            if vmin == vmax:
+                return []
+
+            tinc_approx = (vmax - vmin) / 5.
+            tinc, tinc_unit = nice_time_tick_inc(tinc_approx)
+            times, labels = time_tick_labels(vmin, vmax, tinc, tinc_unit)
+            ftimes = []
+            for t, label in zip(times, labels):
+                ftime = labeled_float(t)
+                ftime._mpl_label = label
+                ftimes.append(ftime)
+
+            return self.raise_if_exceeds(ftimes)
+
+    class TimeFormatter(Formatter):
+
+        def __call__(self, x, pos=None):
+            if isinstance(x, labeled_float):
+                return x._mpl_label
+            else:
+                return time_to_str(x, format='%Y-%m-%d %H:%M:%S.6FRAC')
+
+    axes.xaxis.set_major_locator(TimeLocator())
+    axes.xaxis.set_major_formatter(TimeFormatter())
