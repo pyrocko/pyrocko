@@ -134,6 +134,13 @@ class Converter(HasPaths):
         p.add_squirrel_query_arguments(without=['time'])
 
         p.add_argument(
+            '--tinc',
+            dest='tinc',
+            type=float,
+            metavar='SECONDS',
+            help='Set time length of output files [s].')
+
+        p.add_argument(
             '--downsample',
             dest='downsample',
             type=float,
@@ -225,6 +232,7 @@ class Converter(HasPaths):
             downsample=args.downsample,
             out_format=args.out_format,
             out_path=args.out_path,
+            tinc=args.tinc,
             out_sds_path=args.out_sds_path,
             out_data_type=args.out_data_type,
             out_mseed_record_length=args.out_mseed_record_length,
