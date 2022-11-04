@@ -201,7 +201,6 @@ escidoc:4098/IS_8.1_rev1.pdf">Understanding
             self.add_markers(markers)
             markers = []
 
-
             if show_level_traces:
                 update_sample_count(batch.traces)
                 self.add_traces(batch.traces)
