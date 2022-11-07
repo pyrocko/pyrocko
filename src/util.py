@@ -1650,15 +1650,21 @@ def time_to_str(t, format='%Y-%m-%d %H:%M:%S.3FRAC'):
 
 
 tts = time_to_str
+_abbr_weekday = 'Mon Tue Wed Thu Fri Sat Sun'.split()
+_abbr_month = 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split()
 
 
 def mystrftime(fmt=None, tt=None, milliseconds=0):
+    # Needed by Snuffler for the time axis. In other cases `time_to_str`
+    # should be used.
 
     if fmt is None:
         fmt = '%Y-%m-%d %H:%M:%S .%r'
 
-    if tt is None:
-        tt = time.time()
+    # Get these two locale independent, needed by Snuffler.
+    # Setting the locale seems to have no effect.
+    fmt = fmt.replace('%a', _abbr_weekday[tt.tm_wday])
+    fmt = fmt.replace('%b', _abbr_month[tt.tm_mon-1])
 
     fmt = fmt.replace('%r', '%03i' % int(round(milliseconds)))
     fmt = fmt.replace('%u', '%06i' % int(round(milliseconds*1000)))
