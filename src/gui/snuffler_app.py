@@ -853,10 +853,11 @@ class Snuffler(qw.QApplication):
 
     def event(self, e):
         if isinstance(e, qg.QFileOpenEvent):
-            paths = [str(e.file())]
-            wins = self.snuffler_windows()
-            if wins:
-                wins[0].get_view().load_soon(paths)
+            path = str(e.file())
+            if path != sys.argv[0]:
+                wins = self.snuffler_windows()
+                if wins:
+                    wins[0].get_view().load_soon([path])
 
             return True
         else:
