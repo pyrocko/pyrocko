@@ -4343,8 +4343,8 @@ class PileViewer(qw.QFrame):
 
         self.marker_editor_sortable = marker_editor_sortable
 
-        self.setFrameShape(qw.QFrame.StyledPanel)
-        self.setFrameShadow(qw.QFrame.Sunken)
+        # self.setFrameShape(qw.QFrame.StyledPanel)
+        # self.setFrameShadow(qw.QFrame.Sunken)
 
         self.input_area = qw.QFrame(self)
         ia_layout = qw.QGridLayout()
