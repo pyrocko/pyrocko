@@ -766,6 +766,12 @@ class SnufflerWindow(qw.QMainWindow):
         self.get_view().add_panel_toggler(mitem)
         self.dockwidget_to_toggler[dockwidget] = mitem
 
+        if pile_viewer.is_macos:
+            tabbars = self.findChildren(qw.QTabBar)
+            for tabbar in tabbars:
+                tabbar.setShape(qw.QTabBar.TriangularNorth)
+                tabbar.setDocumentMode(True)
+
     def toggle_panel(self, dockwidget, visible):
         if visible is None:
             visible = not dockwidget.isVisible()
