@@ -558,6 +558,8 @@ class TimeAx(TimeScaler):
         vmin, vmax = yprojection(0), yprojection(ticklen)
         uumin, uumax = xprojection.get_out_range()
         first_tick_with_label = None
+
+        data = []
         for tick in ticks:
             umin = xprojection(tick)
 
@@ -570,7 +572,8 @@ class TimeAx(TimeScaler):
             l0, l0_brief, l0_center, l1, l2 = tick_to_labels(tick, inc)
 
             if tick == 0.0 and tmax - tmin < 3600*24:
-                # hide year at epoch (we assume that synthetic data is shown)
+                # hide year at epoch
+                # (we assume that synthetic data is shown)
                 if l2:
                     l2 = None
                 elif l1:
@@ -581,11 +584,24 @@ class TimeAx(TimeScaler):
             else:
                 ushift = 0.
 
+            abbr_level = 0
             for l0x in (l0, l0_brief, ''):
                 label0 = l0x
                 rect0 = fm.boundingRect(label0)
                 if rect0.width() <= pinc_approx*0.9:
                     break
+
+                abbr_level += 1
+
+            data.append((
+                l0, l0_brief, l0_center, l1, l2, tick, ushift, umin,
+                pinc_approx))
+
+        for (l0, l0_brief, l0_center, l1, l2, tick, ushift, umin,
+                pinc_approx) in data:
+
+            label0 = (l0, l0_brief, '')[abbr_level]
+            rect0 = fm.boundingRect(label0)
 
             if uumin+pad < umin-rect0.width()/2.+ushift and \
                     umin+rect0.width()/2.+ushift < uumax-pad:
