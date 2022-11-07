@@ -176,7 +176,7 @@ class Snuffling(object):
         self._cli_params = {}
         self._filename = None
         self._force_panel = False
-        self._call_in_progress = False
+        self._call_in_progress = {}
 
     def setup(self):
         '''
@@ -1310,15 +1310,7 @@ class Snuffling(object):
 
                 def call_and_update(method):
                     def f():
-                        try:
-                            method()
-                        except SnufflingError as e:
-                            if not isinstance(e, SnufflingCallFailed):
-                                # those have logged within error()
-                                logger.error('%s: %s' % (self._name, e))
-                            logger.error(
-                                '%s: Snuffling action failed' % self._name)
-
+                        self.check_call(method)
                         self.get_viewer().update()
                     return f
 
@@ -1469,7 +1461,7 @@ class Snuffling(object):
         param = self.get_parameters()[iparam]
         self._set_parameter_value(param.ident, value)
         if self._live_update:
-            self.check_call()
+            self.check_call(self.call)
             self.get_viewer().update()
 
     def switch_on_snuffling_panel(self, ident, state):
@@ -1479,7 +1471,7 @@ class Snuffling(object):
 
         self._set_parameter_value(ident, state)
         if self._live_update:
-            self.check_call()
+            self.check_call(self.call)
             self.get_viewer().update()
 
     def choose_on_snuffling_panel(self, ident, state):
@@ -1489,7 +1481,7 @@ class Snuffling(object):
 
         self._set_parameter_value(ident, state)
         if self._live_update:
-            self.check_call()
+            self.check_call(self.call)
             self.get_viewer().update()
 
     def menuitem_triggered(self, arg):
@@ -1500,7 +1492,7 @@ class Snuffling(object):
         and triggers an update on the viewer widget.
         '''
 
-        self.check_call()
+        self.check_call(self.call)
 
         if self._have_pre_process_hook:
             self._pre_process_hook_enabled = arg
@@ -1521,7 +1513,7 @@ class Snuffling(object):
         and triggers an update on the viewer widget.
         '''
 
-        self.check_call()
+        self.check_call(self.call)
         self.get_viewer().update()
 
     def clear_button_triggered(self):
@@ -1662,15 +1654,15 @@ class Snuffling(object):
         self._tickets = []
         self._markers = []
 
-    def check_call(self):
+    def check_call(self, method):
 
-        if self._call_in_progress:
+        if method in self._call_in_progress:
             self.show_message('error', 'Previous action still in progress.')
             return
 
         try:
-            self._call_in_progress = True
-            self.call()
+            self._call_in_progress[method] = True
+            method()
             return 0
 
         except SnufflingError as e:
@@ -1688,7 +1680,7 @@ class Snuffling(object):
             self.show_message('error', message)
 
         finally:
-            self._call_in_progress = False
+            del self._call_in_progress[method]
 
     def call(self):
         '''
