@@ -7,7 +7,6 @@ Effective seismological trace viewer.
 '''
 from __future__ import absolute_import
 
-import os
 import sys
 import signal
 import logging
@@ -31,7 +30,7 @@ from pyrocko import io              # noqa
 
 from . import pile_viewer     # noqa
 
-from .qt_compat import qc, qg, qw, qn
+from .qt_compat import qc, qg, qw
 
 logger = logging.getLogger('pyrocko.gui.snuffler_app')
 
@@ -848,53 +847,6 @@ class Snuffler(qw.QApplication):
     def uninstall_sigint_handler(self):
         signal.signal(signal.SIGINT, self._old_signal_handler)
 
-    def start_server(self):
-        self.connections = []
-        s = qn.QTcpServer(self)
-        s.listen(qn.QHostAddress.LocalHost)
-        s.newConnection.connect(
-            self.handle_accept)
-        self.server = s
-
-    def start_loader(self):
-        self.loader = SimpleConnectionHandler(
-            self,
-            add_files=self.add_files,
-            update_progress=self.update_progress)
-        ticket = os.urandom(32)
-        self.forker.spawn('loader', self.server.serverPort(), ticket)
-        self.connection_handlers[ticket] = self.loader
-
-    def handle_accept(self):
-        sock = self.server.nextPendingConnection()
-        con = Connection(self, sock)
-        self.connections.append(con)
-
-        con.disconnected.connect(
-            self.handle_disconnected)
-
-        con.received.connect(
-            self.handle_received_ticket)
-
-    def handle_disconnected(self, connection):
-        self.connections.remove(connection)
-        connection.close()
-        del connection
-
-    def handle_received_ticket(self, connection, object):
-        if not isinstance(object, str):
-            self.handle_disconnected(connection)
-
-        ticket = object
-        if ticket in self.connection_handlers:
-            h = self.connection_handlers[ticket]
-            connection.received.disconnect(
-                self.handle_received_ticket)
-
-            h.set_connection(connection)
-        else:
-            self.handle_disconnected(connection)
-
     def snuffler_windows(self):
         return [w for w in self.topLevelWidgets()
                 if isinstance(w, SnufflerWindow) and not w.is_closing()]
@@ -916,11 +868,6 @@ class Snuffler(qw.QApplication):
 
         self.loader.ship(
             ('load', pathes, cachedirname, pattern, format))
-
-    def add_files(self, files):
-        p = self.pile_viewer.get_pile()
-        p.add_files(files)
-        self.pile_viewer.update_contents()
 
     def update_progress(self, task, percent):
         self.pile_viewer.progressbars.set_status(task, percent)
