@@ -12,4 +12,4 @@ start /w vs_buildtools.exe --quiet --wait --norestart --nocache ^
     --includeRecommended
 
 echo Install VisualStudio build tools (done)
-cd "%UserProfile%"
+echo If the compiler cannot be found by setup.py, restart Windows.
