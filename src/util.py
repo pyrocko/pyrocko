@@ -2619,7 +2619,7 @@ def consistency_check(list_of_tuples, message='values differ:'):
     if len(list_of_tuples) >= 2:
         if any(t[1:] != list_of_tuples[0][1:] for t in list_of_tuples[1:]):
             raise Inconsistency('%s\n' % message + '\n'.join(
-                '  %s: %s' % (t[0], ', '.join('%g' % x for x in t[1:]))
+                '  %s: %s' % (t[0], ', '.join(str(x) for x in t[1:]))
                 for t in list_of_tuples))
 
 
