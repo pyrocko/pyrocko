@@ -969,9 +969,19 @@ class FigureFrame(qw.QFrame):
         self.figure = Figure(dpi=dpi)
         self.canvas = FigureCanvas(self.figure)
         self.canvas.setParent(self)
+        self.canvas.setSizePolicy(
+            qw.QSizePolicy(
+                qw.QSizePolicy.Expanding,
+                qw.QSizePolicy.Expanding))
+        toolbar_frame = qw.QFrame()
+        toolbar_frame.setFrameShape(qw.QFrame.StyledPanel)
+        toolbar_frame_layout = qw.QHBoxLayout()
+        toolbar_frame_layout.setContentsMargins(0, 0, 0, 0)
+        toolbar_frame.setLayout(toolbar_frame_layout)
         self.toolbar = NavigationToolbar(self.canvas, self)
-        layout.addWidget(self.toolbar, 0, 0)
-        layout.addWidget(self.canvas, 1, 0)
+        layout.addWidget(self.canvas, 0, 0)
+        toolbar_frame_layout.addWidget(self.toolbar)
+        layout.addWidget(toolbar_frame, 1, 0)
         self.closed = False
 
     def gca(self):
