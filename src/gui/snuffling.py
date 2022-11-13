@@ -22,9 +22,9 @@ from .qt_compat import qc, qw, getSaveFileName
 from pyrocko import pile, config
 from pyrocko.util import quote
 
-from .util import (ValControl, LinValControl, FigureFrame, WebKitFrame,
-                   VTKFrame, PixmapFrame, Marker, EventMarker, PhaseMarker,
-                   load_markers, save_markers)
+from .util import (ValControl, LinValControl, FigureFrame, SmartplotFrame,
+                   WebKitFrame, VTKFrame, PixmapFrame, Marker, EventMarker,
+                   PhaseMarker, load_markers, save_markers)
 
 
 from importlib import reload
@@ -452,7 +452,7 @@ class Snuffling(object):
         self.error(message)
         raise SnufflingCallFailed(message)
 
-    def pylab(self, name=None, get='axes'):
+    def pylab(self, name=None, get='axes', figure_cls=None):
         '''
         Create a :py:class:`FigureFrame` and return either the frame,
         a :py:class:`matplotlib.figure.Figure` instance or a
@@ -466,7 +466,7 @@ class Snuffling(object):
             self._iplot += 1
             name = 'Plot %i (%s)' % (self._iplot, self.get_name())
 
-        fframe = FigureFrame()
+        fframe = FigureFrame(figure_cls=figure_cls)
         self._panel_parent.add_tab(name, fframe)
         if get == 'axes':
             return fframe.gca()
@@ -495,14 +495,33 @@ class Snuffling(object):
 
         return self.pylab(name=name, get='axes')
 
-    def figure_frame(self, name=None):
+    def figure_frame(self, name=None, figure_cls=None):
         '''
         Create a :py:class:`pyrocko.gui.util.FigureFrame`.
 
         :param name: labels the tab figure frame
         '''
 
-        return self.pylab(name=name, get='figure_frame')
+        return self.pylab(name=name, get='figure_frame', figure_cls=figure_cls)
+
+    def smartplot_frame(self, name, *args, plot_cls=None, **kwargs):
+        '''
+        Create a :py:class:`pyrocko.gui.util.SmartplotFrame`.
+
+        :param name: labels the tab
+        :param *args, **kwargs:
+            passed to :py:class:`pyrocko.plot.smartplot.Plot`
+        :param plot_cls:
+            if given, subclass to be used instead of
+            :py:class:`pyrocko.plot.smartplot.Plot`
+        '''
+        frame = SmartplotFrame(
+            plot_args=args,
+            plot_cls=plot_cls,
+            plot_kwargs=kwargs)
+
+        self._panel_parent.add_tab(name, frame)
+        return frame
 
     def pixmap_frame(self, filename=None, name=None):
         '''

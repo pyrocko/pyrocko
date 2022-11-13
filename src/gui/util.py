@@ -882,10 +882,8 @@ def beautify_axes(axes):
 
 class FigureFrame(qw.QFrame):
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, figure_cls=None):
         qw.QFrame.__init__(self, parent)
-
-        # bgrgb = self.palette().color(qw.QPalette.Window).getRgb()[:3]
         fgcolor = plot.tango_colors['aluminium5']
         dpi = 0.5*(self.logicalDpiX() + self.logicalDpiY())
 
@@ -953,7 +951,9 @@ class FigureFrame(qw.QFrame):
         except KeyError:
             pass
 
-        from matplotlib.figure import Figure
+        if figure_cls is None:
+            from matplotlib.figure import Figure
+            figure_cls = Figure
 
         from matplotlib.backends.backend_qt5agg import \
             NavigationToolbar2QT as NavigationToolbar
@@ -966,7 +966,7 @@ class FigureFrame(qw.QFrame):
         layout.setSpacing(0)
 
         self.setLayout(layout)
-        self.figure = Figure(dpi=dpi)
+        self.figure = figure_cls(dpi=dpi)
         self.canvas = FigureCanvas(self.figure)
         self.canvas.setParent(self)
         self.canvas.setSizePolicy(
@@ -1000,6 +1000,27 @@ class FigureFrame(qw.QFrame):
 
     def closeEvent(self, ev):
         self.closed = True
+
+
+class SmartplotFrame(FigureFrame):
+    def __init__(
+            self, parent=None, plot_args=[], plot_kwargs={}, plot_cls=None):
+
+        from pyrocko.plot import smartplot
+
+        FigureFrame.__init__(
+            self,
+            parent=parent,
+            figure_cls=smartplot.SmartplotFigure)
+
+        if plot_cls is None:
+            plot_cls = smartplot.Plot
+
+        self.plot = plot_cls(
+            self, *plot_args,
+            fig=self.figure,
+            call_mpl_init=False,
+            **plot_kwargs)
 
 
 class WebKitFrame(qw.QFrame):
