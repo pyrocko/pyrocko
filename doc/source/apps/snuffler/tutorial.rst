@@ -41,7 +41,7 @@ Things to remember for now are:
   button within the trace view.
 * Snuffler has a command line, which is accessed by pressing :kbd:`:` (colon).
 * Using the mouse wheel while holding down :kbd:`<control>` allows you to
-  quickly change the number of tracks shown on display. 
+  quickly change the number of tracks shown on display.
 
 How to get help:
 
@@ -59,7 +59,7 @@ Big datasets
 Snuffler will only show waveform data, when there are not too many data samples
 within the current view. Zoom out to get an overview on what is available -
 zoom in to see the waveforms. With this behaviour, it is possible to quickly
-get an overview over tens of thousands of files without any problems. 
+get an overview over tens of thousands of files without any problems.
 
 Here's an example of just a few thousand files:
 
@@ -104,7 +104,7 @@ Of course, you can also restrict it to use only specific files::
     into lots of filenames and most shells have a limit on how long a command
     line can be. If that happens, you may use the :option:`snuffler --pattern`
     command line option to avoid that problem::
-    
+
         snuffler --pattern='.*LHZ.*' testdata
 
     The pattern argument is a regular expression, so '``.*``' is used instead
@@ -145,41 +145,9 @@ off, to see some filter artifacts at the boundary! Then turn it on again.
     Occasionally, the downsampling process may be disturbing. It can be turned
     off in the right-click menu under :guilabel:`Allow Downsampling`.
 
-
-VNC-long datasets
------------------
-
-For very long time frames which are stored remotely you might run into quite some delay with every mouseclick when using snuffler because X forwarding doesn't work as good anymore. A bit better it works with VNC. Here we will use the tightvncserver remotely.
-
-To install on Ubuntu::
-
-    sudo apt install tightvncserver tightvncpasswd'
-
-Set your password and start your virtuell X server on your remote host::
-
-    tightvncpasswd                  # asks for new password and sets it
-    tightvncserver -localhost       # is running on localhost now, port 5902
-
-Now start an ssh tunel from your local maschine to the VNC port on the remote::
-
-    ssh -L 5902:localhost:5902 user@maschine
-
-Now you can start an VNC client on the lokal machine and connect to the local port 5092. On linux you can use vinagre for example.
-
-It might be necessary to configure the Desktop environment on yor remote machine. Gnome doesn't work good here so it's better to use lxde, xfce, mate, openbox or notion. To configure open the file ~/.vnc/xstartup and write::
-
-    #/bin/sh
-    unset SESSION_MANAGER
-    unset DBUS_SESSION_BUS_ADDRESS
-    startxfce4
-
-And make the file executable::
-
-    chmod a+x ~/.vnc/xstartup
-
-In this case you must have installed xfce before::
-
-    sudo apt install xfce4
+If you are working with big datasets which are stored remotely and you are
+using x-forwarding to access the data it might be to slow. Under
+:ref:`Remote_stored_data` we show an alternitive using VNC.
 
 
 Scaling
@@ -197,7 +165,7 @@ clipping.
     :align: center
 
 The current scale range on each track is shown when :guilabel:`Show Scale
-Range` in the right-click menu is selected. 
+Range` in the right-click menu is selected.
 
 Events and station coordinates
 ------------------------------
@@ -222,10 +190,10 @@ Make sure you have internet access, select a minimum magnitude and hit
 .. image:: /static/screenshot-7.png
     :align: center
 
-Aha, so this one is coming in from Bali! 
+Aha, so this one is coming in from Bali!
 
 .. note::
-    
+
     This catalog search feature queries the web page of the given catalog for
     the time range currently in view, so please use this in a civilized manner.
     Uneccessarily large queries may look like a denial-of-service attack to
@@ -284,7 +252,7 @@ To enhance a *normal marker* to an *event marker*, select the marker and press
     Here's a little trick: an event marker created like this will have as
     origin the coordinates of the station of the trace on which the
     original normal marker was created. This way, you can easily sort the
-    traces according to their distance to this station. 
+    traces according to their distance to this station.
 
 A table listing all markers opens when pressing the key :kbd:`m`. By default,
 columns indicating the *type* (*T*), the *time* and - if available - the
@@ -336,3 +304,51 @@ used to create file names (and directories) as needed, expanding the
 ``'%(variable)s'`` placeholders with metadata from the waveforms. The
 :option:`--store-interval <snuffler --store-interval>` tells Snuffler after
 intervals of how many seconds, the seismograms should be dumped to file.
+
+.. _Remote_stored_data:
+
+Remote stored data
+------------------
+
+If you want to access and work with remote stored data from a local PC there
+are basically three options VNC, X-forwarding and SSHFS. When using SSHFS your
+remote repository has to be mounted locally via ssh which will take quite some
+time and might therefor not be suiteble. X-forwarding is as if you are running
+your programm locally, when it's really running on the remote end. Due to a
+great bandwidth usage it is very slow. VNC instead let the remote PC do all the
+graphic drawings and such and sends you just 'screenshots' which can make it
+much faster. So here a short instruction on how VNC can be used for working
+with remote stored data. We will use the tightvncserver.
+
+To install on Ubuntu::
+
+    sudo apt install tightvncserver tightvncpasswd'
+
+Set your password and start your virtuell X server on your remote host::
+
+    tightvncpasswd                  # asks for new password and sets it
+    tightvncserver -localhost       # is running on localhost now, port 5902
+
+Now start an ssh tunel from your local maschine to the VNC port on the remote::
+
+    ssh -L 5902:localhost:5902 user@maschine
+
+Now you can start an VNC client on the lokal machine and connect to the local
+port 5092. On linux you can use vinagre for example.
+
+It might be necessary to configure the Desktop environment on your remote
+machine. Gnome isn't optimal here, it's better to use lxde, xfce, mate,
+openbox or notion. To configure open the file ~/.vnc/xstartup and write::
+
+    #/bin/sh
+    unset SESSION_MANAGER
+    unset DBUS_SESSION_BUS_ADDRESS
+    startxfce4
+
+Make the file executable::
+
+    chmod a+x ~/.vnc/xstartup
+
+In this case you must have installed xfce before::
+
+    sudo apt install xfce4
