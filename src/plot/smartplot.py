@@ -511,7 +511,10 @@ class Plot(object):
             return 1.0
 
     def get_device_pixel_ratio(self):
-        return self._fig.canvas.device_pixel_ratio
+        try:
+            return self._fig.canvas.device_pixel_ratio
+        except AttributeError:
+            return 1.0
 
     def make_limits(self, lims):
         a = plot.AutoScaler(space=0.05)
