@@ -4611,7 +4611,7 @@ class PileViewer(qw.QFrame):
     def adjust_controls(self):
         dtmin, dtmax = self.viewer.content_deltat_range()
         maxfreq = 0.5/dtmin
-        minfreq = (0.5/dtmax)*0.001
+        minfreq = (0.5/dtmax)*0.0001
         self.lowpass_control.set_range(minfreq, maxfreq)
         self.highpass_control.set_range(minfreq, maxfreq)
 
