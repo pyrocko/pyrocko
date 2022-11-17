@@ -278,6 +278,7 @@ class Spectrogram(Snuffling):
 
         self.iframe += 1
 
+        zvalues = []
         for i, nslc in enumerate(nslcs):
 
             t, f, a = self.make_spectrogram(
@@ -300,11 +301,12 @@ class Spectrogram(Snuffling):
             zmin = max(min_a, mean_a - 3.0 * std_a)
             zmax = min(max_a, mean_a + 3.0 * std_a)
 
+            zvalues.append(zmin)
+            zvalues.append(zmax)
+
             c = axes.pcolormesh(
                 t, f, a,
                 cmap=get_cmap(self.ctb_name),
-                vmin=zmin,
-                vmax=zmax,
                 shading='gouraud')
             frame.plot.set_color_dim(c, 'psd')
 
@@ -345,6 +347,7 @@ class Spectrogram(Snuffling):
         frame.plot.colorbar('psd')
         frame.plot.set_lim('time', t[0], t[-1])
         frame.plot.set_lim('frequency', fmin, fmax)
+        frame.plot.set_lim('psd', min(zvalues), max(zvalues))
         frame.plot.set_label('time', '')
         frame.plot.set_label('frequency', 'Frequency [Hz]')
 
