@@ -5,11 +5,11 @@
 from __future__ import absolute_import
 from . import (
     minmax, rms, stalta, geofon, ampspec, catalogs, download, cake_phase,
-    seismosizer, map, polarization)
+    seismosizer, map, polarization, spectrogram)
 
 modules = [
     minmax, rms, download, stalta, geofon, ampspec, catalogs, map, cake_phase,
-    seismosizer, polarization]
+    seismosizer, polarization, spectrogram]
 
 
 def __snufflings__():

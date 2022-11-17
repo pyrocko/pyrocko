@@ -1017,7 +1017,7 @@ class SmartplotFrame(FigureFrame):
             plot_cls = smartplot.Plot
 
         self.plot = plot_cls(
-            self, *plot_args,
+            *plot_args,
             fig=self.figure,
             call_mpl_init=False,
             **plot_kwargs)
