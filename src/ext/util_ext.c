@@ -179,7 +179,7 @@ util_error_t tts(time_t t, double tfrac, const char *format, char **sout) {
         return TIME_FORMAT_ERROR;  /* formatting date/time failed */
     }
 
-    *sout = (char*)malloc(n + strlen(sfrac) - 1 + 1);
+    *sout = (char*)malloc(n + strlen(sfrac) + 1);
     if (*sout == NULL) {
         return ALLOC_FAILED;  /* malloc failed */
     }
