@@ -708,7 +708,7 @@ def nice_time_tick_inc(tinc_approx):
 
     elif tinc_approx >= 1.0:
         nice = [
-            1., 2., 5., 10., 20, 30, 60., 120., 300., 600., 1200., 1800.,
+            1., 2., 5., 10., 20., 30., 60., 120., 300., 600., 1200., 1800.,
             1*hours, 2*hours, 3*hours, 6*hours, 12*hours, days, 2*days]
 
         for tinc in nice:
