@@ -1523,11 +1523,16 @@ class ExplosionSource(SourceWithDerivedMagnitude):
                 self.lat, self.lon,
                 points=points,
                 interpolation=interpolation)[0]
+
+            bulk_moduli = store.config.get_bulk_moduli(
+                self.lat, self.lon,
+                points=points,
+                interpolation=interpolation)[0]
         except meta.OutOfBounds:
             raise DerivedMagnitudeError(
                 'Could not get shear modulus at source position.')
 
-        return float(3. * shear_moduli)
+        return float(2. * shear_moduli + bulk_moduli)
 
     def get_factor(self):
         return 1.0
@@ -1854,11 +1859,16 @@ class VLVDSource(SourceWithDerivedMagnitude):
                 self.lat, self.lon,
                 points=points,
                 interpolation=target.interpolation)[0]
+
+            bulk_moduli = store.config.get_bulk_moduli(
+                    self.lat, self.lon,
+                    points=points,
+                    interpolation=target.interpolation)[0]
         except meta.OutOfBounds:
             raise DerivedMagnitudeError(
                 'Could not get shear modulus at source position.')
 
-        return float(3. * shear_moduli)
+        return float(2. * shear_moduli + bulk_moduli)
 
     def base_key(self):
         return Source.base_key(self) + \
