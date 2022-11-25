@@ -751,7 +751,6 @@ depends_on:
 - docs
 - tests-windows
 - pip-sdist
-- pip-manylinux1
 - pip-manylinux2014
 - pip-windows
 - conda-packages-linux
