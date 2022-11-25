@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `pyrocko.plot.mpl_time_axis`
 - Convenience script for Windows users to download and install MSVC build tools
   15 from the command line.
+- Pseudo-dynamic rupture model: add method to get centroid location.
 
 ### Changed
 - Squirrel: refactored Channel and Sensor classes, improved channel-to-sensor
