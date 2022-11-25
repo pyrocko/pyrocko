@@ -6,7 +6,47 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
-*empty*
+### Added
+
+- Squirrel:
+  - `squirrel jackseis`: new command line options: `--traversal`, `--tinc`
+- Fomosto QSEIS backend: added support for qseis_2006b with adjustable source
+  disk radius. Setting this to zero allows calculating of seismograms which are
+  correct for low frequencies down to static displacement.
+- Snufflings:
+  - Seismosizer: add single-force source model.
+  - Smartplot integration for improved MPL plot/figure layouting.
+  - New built-in Snuffling: Spectrogram
+- Docs: add mini-tutorial on how to set up and use remote Snuffler through VNC.
+- New function to get a Snuffler-like time axis in MPL plots
+  `pyrocko.plot.mpl_time_axis`
+- Convenience script for Windows users to download and install MSVC build tools
+  15 from the command line.
+
+### Changed
+- Squirrel: refactored Channel and Sensor classes, improved channel-to-sensor
+  logic.
+- Snuffler: enlarged default filter ranges.
+
+### Fixed
+- *Important:* fixed buffer overflow error in `pyrocko.util.time_to_str`. This
+  one-byte buffer overflow occurred for time formats, when the format string
+  did *not* request fractional seconds to be appended, e.g. `'%Y-%m-%d
+  %H:%M:%S'`. It caused random crashes on macOS and, for longer format strings,
+  also on Linux. The error did not occur with the default `format` parameter of
+  `time_to_str`.
+- Squirrel: various bug fixes and minor improvements.
+- Automap: improved GMT6 support.
+- Fix crash in `pyrocko.trace.degapper` with `fillmethod='zeros'`.
+- Fix output channel naming in `pyrocko.trace.rotate_to_rt`.
+- Snuffler:
+  - Now always uses locale-independent dates in time axis.
+  - Various appearance fixes.
+  - Prevent a confusing warning at startup on macOS.
+- Snufflings:
+  - STA/LTA: fix error where markers were being inserted multiple times.
+  - Fix Snuffler crashes when exception is raised in trigger button calls.
+- Much improved `pyrocko.plot.smartplot` module.
 
 ## v2022.06.10
 
