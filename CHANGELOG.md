@@ -28,6 +28,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Squirrel: refactored Channel and Sensor classes, improved channel-to-sensor
   logic.
 - Snuffler: enlarged default filter ranges.
+- Reimplemented TypeC (3D) GF store. To my knowledge this store type has not
+  yet been used in the wild, so felt free to improve the design.
 
 ### Fixed
 - *Important:* fixed buffer overflow error in `pyrocko.util.time_to_str`. This
