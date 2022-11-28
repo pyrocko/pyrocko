@@ -469,6 +469,7 @@ platform:
 steps:
 - name: install
   commands:
+  - C:\Windows\System32\cleanmgr.exe /dC
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\Lib\\site-packages\\pyrocko
   - pip install --no-deps --no-build-isolation --force-reinstall --use-feature=in-tree-build .
   - xcopy C:\\vagrant\\test-data test\\data\\ /E /Y
@@ -569,6 +570,14 @@ steps:
       from_secret: pypi-username
     PYPI_PASSWORD:
       from_secret: pypi-password
+
+- name: cleanup
+  commands:
+  - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\Lib\\site-packages\\pyrocko
+  - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py36
+  - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py37
+  - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py38
+  - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py39
 
 ---
 
