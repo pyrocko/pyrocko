@@ -469,9 +469,9 @@ platform:
 steps:
 - name: install
   commands:
-  - xcopy C:\\vagrant\\test-data test\\data\\ /E /Y
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\Lib\\site-packages\\pyrocko
-  - pip install --no-deps --no-build-isolation --force-reinstall .
+  - pip install --no-deps --no-build-isolation --force-reinstall --use-feature=in-tree-build .
+  - xcopy C:\\vagrant\\test-data test\\data\\ /E /Y
 
 - name: tests-base
   commands:
