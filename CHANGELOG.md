@@ -50,6 +50,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - STA/LTA: fix error where markers were being inserted multiple times.
   - Fix Snuffler crashes when exception is raised in trigger button calls.
 - Much improved `pyrocko.plot.smartplot` module.
+- Corrected conversion between volume-change and moment for VLVD and explosion
+  sources.
 
 ## v2022.06.10
 
