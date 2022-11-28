@@ -30,6 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Snuffler: enlarged default filter ranges.
 - Reimplemented TypeC (3D) GF store. To my knowledge this store type has not
   yet been used in the wild, so felt free to improve the design.
+- Default antialising FIR filter ``fir-remez`` now uses 45 x q taps instead of
+  40 x q.
 
 ### Fixed
 - *Important:* fixed buffer overflow error in `pyrocko.util.time_to_str`. This
