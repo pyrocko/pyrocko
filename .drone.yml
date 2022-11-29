@@ -166,7 +166,7 @@ steps:
     branch:
       exclude:
       - release
-      - deploy-docs
+      - deploy-pip
   commands:
   - pip3 install -f dist pyrocko --no-index --no-deps
   - pip3 install -f dist pyrocko
