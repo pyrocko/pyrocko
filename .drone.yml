@@ -85,6 +85,7 @@ trigger:
   - release
   - candidate
   - pip
+  - deploy-pip
 
 steps:
 
@@ -128,6 +129,7 @@ steps:
   when:
     branch:
     - release
+    - deploy-pip
   commands:
   - bash maintenance/pip/upload_wheels.sh live
   environment:
@@ -147,6 +149,7 @@ trigger:
   - release
   - candidate
   - pip
+  - deploy-pip
 
 steps:
 - name: build
@@ -163,6 +166,7 @@ steps:
     branch:
       exclude:
       - release
+      - deploy-docs
   commands:
   - pip3 install -f dist pyrocko --no-index --no-deps
   - pip3 install -f dist pyrocko
@@ -176,6 +180,7 @@ steps:
     branch:
       exclude:
       - release
+      - deploy-pip
   commands:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install -f dist --no-index --no-deps pyrocko
@@ -215,6 +220,7 @@ steps:
   when:
     branch:
     - release
+    - deploy-pip
   commands:
   - bash maintenance/pip/upload_wheels.sh live
   environment:
@@ -235,6 +241,8 @@ trigger:
     - conda
     - pip
     - release
+    - deploy-docs
+    - deploy-pip
 
 steps:
 
@@ -294,6 +302,8 @@ trigger:
     - conda
     - pip
     - release
+    - deploy-docs
+    - deploy-pip
 
 
 steps:
@@ -352,6 +362,8 @@ trigger:
     - conda
     - pip
     - release
+    - deploy-docs
+    - deploy-pip
 
 steps:
 - name: tests-examples
@@ -409,6 +421,8 @@ trigger:
     - conda
     - pip
     - release
+    - deploy-docs
+    - deploy-pip
 
 steps:
 - name: tests-gui
@@ -462,6 +476,8 @@ trigger:
     - conda
     - pip
     - release
+    - deploy-docs
+    - deploy-pip
 
 platform:
   os: windows
@@ -517,6 +533,7 @@ trigger:
   - release
   - candidate
   - pip
+  - deploy-pip
   - pip-windows-release
 
 platform:
@@ -562,6 +579,7 @@ steps:
     branch:
     - release
     - pip-windows-release
+    - deploy-pip
   commands:
   - pip install twine
   - bash maintenance/pip/upload_wheels.sh live
@@ -597,6 +615,8 @@ trigger:
     - conda
     - pip
     - release
+    - deploy-docs
+    - deploy-pip
 
 steps:
 - name: build
