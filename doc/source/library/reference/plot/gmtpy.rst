@@ -1,5 +1,5 @@
-GMT4/5 Python wrapper
-=====================
+GMT4/5/6 Python wrapper
+=======================
 
 ``gmtpy``
 --------------
@@ -13,9 +13,6 @@ GMT4/5 Python wrapper
         .. automethod:: __getattr__
 
     .. autoclass:: Guru
-        :members:
-
-    .. autoclass:: AutoScaler
         :members:
 
     .. autoclass:: Ax

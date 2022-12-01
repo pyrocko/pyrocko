@@ -176,7 +176,7 @@ class GmtPyTestCase(unittest.TestCase):
             gmt.psxy(
                 in_columns=(x, y2), W='1p,blue', *(widget.JXY() + guru.R()))
 
-            fname = 'gmtpy_test_layout.png'
+            fname = 'gmtpy_test_layout_v2.png'
             fpath = self.fpath(fname)
             gmt.save(fpath)
 
@@ -231,7 +231,7 @@ class GmtPyTestCase(unittest.TestCase):
                 plot.plot((x, y2), '-W1p,%s' % gmtpy.color(
                     gmtpy.color_tup('scarletred2')))
                 plot.text((3., 0.5, 'hello'), size=20.)
-                fname = 'gmtpy_test_simple_%s.png' % ymode
+                fname = 'gmtpy_test_simple_v2_%s.png' % ymode
                 fpath = self.fpath(fname)
                 plot.save(fpath)
                 self.compare_with_ref(fname, 0.01, show=False)

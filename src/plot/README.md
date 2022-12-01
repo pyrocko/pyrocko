@@ -9,4 +9,4 @@
 
 ## GMTPy
 
-`pyrocko.plot.gmtpy` With support for GMT5 pyrocko's gmtpy exposes GMT's neat mapping functions to Python 2/3.
+`pyrocko.plot.gmtpy` With support for GMT5 and GMT6 pyrocko's gmtpy exposes GMT's neat mapping functions to Python 3.

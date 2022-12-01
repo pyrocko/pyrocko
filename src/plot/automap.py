@@ -20,6 +20,7 @@ from pyrocko.guts_array import Array
 from pyrocko.dataset import topo
 from pyrocko import orthodrome as od
 from . import gmtpy
+from . import nice_value
 
 
 points_in_region = od.points_in_region
@@ -617,7 +618,7 @@ class Map(Object):
         else:
             axes_layout = self.axes_layout
 
-        scale_km = gmtpy.nice_value(self.radius/5.) / 1000.
+        scale_km = nice_value(self.radius/5.) / 1000.
 
         if self.show_center_mark:
             gmt.psxy(
