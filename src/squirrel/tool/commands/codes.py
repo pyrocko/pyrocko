@@ -8,7 +8,7 @@ from __future__ import absolute_import, print_function
 from pyrocko.squirrel.model import to_kind
 
 
-headline = 'Get summary of available data codes.'
+headline = 'Get summary of available station/channel codes.'
 
 
 def make_subparser(subparsers):
