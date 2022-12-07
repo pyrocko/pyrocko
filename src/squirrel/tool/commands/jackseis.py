@@ -160,7 +160,7 @@ class Converter(HasPaths):
                  '%%(wmin_year)s, %%(wmin_month)s, %%(wmin_day)s, %%(wmin)s, '
                  '%%(wmin_jday)s, %%(wmax_year)s, %%(wmax_month)s, '
                  '%%(wmax_day)s, %%(wmax)s, %%(wmax_jday)s. '
-                 'Example: --output=\'data/%%s/trace-%%s-%%c.mseed\'')
+                 'Example: --out-path=\'data/%%s/trace-%%s-%%c.mseed\'')
 
         p.add_argument(
             '--out-sds-path',
@@ -169,7 +169,7 @@ class Converter(HasPaths):
             help='Set output path to create SDS (https://www.seiscomp.de'
                  '/seiscomp3/doc/applications/slarchive/SDS.html), rooted at '
                  'the given path. Implies --tinc=86400. '
-                 'Example: --output-sds-path=data/sds')
+                 'Example: --out-sds-path=data/sds')
 
         p.add_argument(
             '--out-format',
