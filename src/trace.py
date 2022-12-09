@@ -1002,20 +1002,14 @@ class Trace(Object):
             corner, 'Corner frequency of lowpass', nyquist_warn,
             nyquist_exception)
 
-        (b, a) = _get_cached_filter_coeffs(
+        sos = _get_cached_filter_coefs(
             order, [corner*2.0*self.deltat], btype='low')
-
-        if len(a) != order+1 or len(b) != order+1:
-            logger.warning(
-                'Erroneous filter coefficients returned by '
-                'scipy.signal.butter(). You may need to downsample the '
-                'signal before filtering.')
 
         data = self.ydata.astype(num.float64)
         if demean:
             data -= num.mean(data)
         self.drop_growbuffer()
-        self.ydata = signal.lfilter(b, a, data)
+        self.ydata = signal.sosfilt(sos, data)
 
     def highpass(self, order, corner, nyquist_warn=True,
                  nyquist_exception=False, demean=True):
@@ -1033,19 +1027,14 @@ class Trace(Object):
             corner, 'Corner frequency of highpass', nyquist_warn,
             nyquist_exception)
 
-        (b, a) = _get_cached_filter_coeffs(
+        sos = _get_cached_filter_coefs(
             order, [corner*2.0*self.deltat], btype='high')
 
         data = self.ydata.astype(num.float64)
-        if len(a) != order+1 or len(b) != order+1:
-            logger.warning(
-                'Erroneous filter coefficients returned by '
-                'scipy.signal.butter(). You may need to downsample the '
-                'signal before filtering.')
         if demean:
             data -= num.mean(data)
         self.drop_growbuffer()
-        self.ydata = signal.lfilter(b, a, data)
+        self.ydata = signal.sosfilt(sos, data)
 
     def bandpass(self, order, corner_hp, corner_lp, demean=True):
         '''
@@ -1060,15 +1049,17 @@ class Trace(Object):
 
         self.nyquist_check(corner_hp, 'Lower corner frequency of bandpass')
         self.nyquist_check(corner_lp, 'Higher corner frequency of bandpass')
-        (b, a) = _get_cached_filter_coeffs(
+
+        sos = _get_cached_filter_coefs(
             order,
             [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)],
             btype='band')
+
         data = self.ydata.astype(num.float64)
         if demean:
             data -= num.mean(data)
         self.drop_growbuffer()
-        self.ydata = signal.lfilter(b, a, data)
+        self.ydata = signal.sosfilt(sos, data)
 
     def bandstop(self, order, corner_hp, corner_lp, demean=True):
         '''
@@ -1083,15 +1074,17 @@ class Trace(Object):
 
         self.nyquist_check(corner_hp, 'Lower corner frequency of bandstop')
         self.nyquist_check(corner_lp, 'Higher corner frequency of bandstop')
-        (b, a) = _get_cached_filter_coeffs(
+
+        sos = _get_cached_filter_coefs(
             order,
             [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)],
             btype='bandstop')
+
         data = self.ydata.astype(num.float64)
         if demean:
             data -= num.mean(data)
         self.drop_growbuffer()
-        self.ydata = signal.lfilter(b, a, data)
+        self.ydata = signal.sosfilt(sos, data)
 
     def envelope(self, inplace=True):
         '''
