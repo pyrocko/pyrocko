@@ -2,7 +2,7 @@ Earthquake catalog search
 =========================
 
 Pyrocko provides access to some online earthquake catalogs via the
-:mod:`pyrocko.catalog` module.
+:mod:`pyrocko.client.catalog` module.
 
 
 Searching the GlobalCMT catalog
@@ -55,7 +55,7 @@ Search for an event in Geofon catalog
 --------------------------------------------------
 
 Search for an event name only in the `Geofon <http://geofon.gfz-potsdam.de>`_
-catalog [#f2]_ using :meth:`~pyrocko.catalog.Geofon`, with a given magnitude
+catalog [#f2]_ using :meth:`~pyrocko.client.catalog.Geofon`, with a given magnitude
 range and timeframe.
 
 .. literalinclude :: /../../examples/catalog_search_geofon.py
