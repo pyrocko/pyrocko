@@ -57,6 +57,9 @@ def get_catalog(name):
     elif name == 'isc':
         from pyrocko.client.isc import ISC
         return ISC()
+    elif name == 'usgs':
+        from pyrocko.client.usgs import USGS
+        return USGS()
     else:
         raise NoSuchCatalog(name)
 
