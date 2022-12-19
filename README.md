@@ -2,7 +2,7 @@
 ### _A seismology toolkit for Python_
 
 [![Build Status](https://drone.pyrocko.org/api/badges/pyrocko/pyrocko/status.svg?ref=refs/heads/master)](https://drone.pyrocko.org/pyrocko/pyrocko)
-[![Anaconda-Server Badge](https://anaconda.org/pyrocko/pyrocko/badges/installer/conda.svg)](https://conda.anaconda.org/pyrocko)
+[![Anaconda-Server Badge](https://anaconda.org/pyrocko/pyrocko/badges/version.svg)](https://conda.anaconda.org/pyrocko)
 [![PyPI](https://img.shields.io/pypi/v/pyrocko.svg)](https://pypi.python.org/pypi/pyrocko/)
 
 
