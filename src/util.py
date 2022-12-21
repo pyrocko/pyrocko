@@ -63,42 +63,51 @@ Module content
 
 from __future__ import division, print_function
 
-import time
-import logging
-import os
-import sys
-import re
 import calendar
-import math
 import fnmatch
+import logging
+import math
+import os
+import re
+import sys
+import time
+
 try:
     import fcntl
 except ImportError:
     fcntl = None
+import errno
 import optparse
 import os.path as op
-import errno
 
 import numpy as num
 from scipy import signal
+
 import pyrocko
 from pyrocko import dummy_progressbar
 
-
 try:
-    from urllib.parse import urlencode, quote, unquote  # noqa
-    from urllib.request import (
-        Request, build_opener, HTTPDigestAuthHandler, urlopen as _urlopen)  # noqa
     from urllib.error import HTTPError, URLError  # noqa
+    from urllib.parse import quote, unquote, urlencode  # noqa
+    from urllib.request import HTTPDigestAuthHandler, Request, build_opener
+    from urllib.request import urlopen as _urlopen  # noqa
 
 except ImportError:
-    from urllib import urlencode, quote, unquote # noqa
-    from urllib2 import (Request, build_opener, HTTPDigestAuthHandler,   # noqa
-                         HTTPError, URLError, urlopen as _urlopen)  # noqa
+    from urllib import quote, unquote, urlencode  # noqa
+
+    from urllib2 import (
+        HTTPDigestAuthHandler,
+        HTTPError,
+        Request,
+        URLError,
+        build_opener,
+    )
+    from urllib2 import urlopen as _urlopen  # noqa
 
 try:
-    import certifi
     import ssl
+
+    import certifi
     g_ssl_context = ssl.create_default_context(cafile=certifi.where())
 except ImportError:
     g_ssl_context = None
@@ -1780,7 +1789,9 @@ def iter_select_files(
         exclude=None,
         selector=None,
         show_progress=True,
-        pass_through=None):
+        pass_through=None,
+        min_file_size=None,
+        max_file_size=None):
 
     '''
     Recursively select files (generator variant).
@@ -1792,7 +1803,8 @@ def iter_select_files(
         progress_beg('selecting files...')
 
     ngood = 0
-    check_include = None
+    check_functions = []
+
     if include is not None:
         rinclude = re.compile(include)
 
@@ -1807,33 +1819,41 @@ def iter_select_files(
             infos = Anon(**m.groupdict())
             return selector(infos)
 
-    check_exclude = None
+        check_functions.append(check_include)
+
     if exclude is not None:
         rexclude = re.compile(exclude)
 
         def check_exclude(path):
             return not bool(rexclude.search(path))
 
-    if check_include and check_exclude:
+        check_functions.append(check_exclude)
 
-        def check(path):
-            return check_include(path) and check_exclude(path)
+    def check_file_size(path):
+        if not min_file_size and not max_file_size:
+            return True
 
-    elif check_include:
-        check = check_include
+        file_size = os.path.getsize(path)
+        if min_file_size and max_file_size \
+                and min_file_size <= file_size <= max_file_size:
+            return True
+        elif min_file_size and min_file_size <= file_size:
+            return True
+        elif max_file_size and file_size <= max_file_size:
+            return True
+        return False
 
-    elif check_exclude:
-        check = check_exclude
+    check_functions.append(check_file_size)
 
-    else:
-        check = None
+    def check(path):
+        return all(check_func(path) for check_func in check_functions)
 
     if isinstance(paths, str):
         paths = [paths]
 
     for path in paths:
         if pass_through and pass_through(path):
-            if check is None or check(path):
+            if check(path):
                 yield path
 
         elif os.path.isdir(path):
@@ -1842,11 +1862,11 @@ def iter_select_files(
                 filenames.sort()
                 for filename in filenames:
                     path = op.join(dirpath, filename)
-                    if check is None or check(path):
+                    if check(path):
                         yield os.path.abspath(path)
                         ngood += 1
         else:
-            if check is None or check(path):
+            if check(path):
                 yield os.path.abspath(path)
                 ngood += 1
 
@@ -2401,7 +2421,7 @@ def read_leap_seconds(tzfile='/usr/share/zoneinfo/right/UTC'):
     See also 'man 5 tzfile'.
     '''
 
-    from struct import unpack, calcsize
+    from struct import calcsize, unpack
     out = []
     with open(tzfile, 'rb') as f:
         # read header
@@ -2539,8 +2559,9 @@ def utc_gps_offset(t_gps):
 
 
 def make_iload_family(iload_fh, doc_fmt='FMT', doc_yielded_objects='FMT'):
-    import itertools
     import glob
+    import itertools
+
     from pyrocko.io.io_common import FileLoadError
 
     def iload_filename(filename, **kwargs):

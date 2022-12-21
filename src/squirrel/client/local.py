@@ -7,10 +7,11 @@ from __future__ import absolute_import, print_function
 
 import logging
 
-from pyrocko.guts import List, StringChoice, String
 from pyrocko import has_paths
-from . import base
+from pyrocko.guts import Int, List, String, StringChoice
+
 from .. import io
+from . import base
 
 guts_prefix = 'squirrel'
 
@@ -50,6 +51,14 @@ class LocalData(base.Source, has_paths.HasPaths):
     format = FileFormat.T(
         default='detect',
         help='Assume files are of given format.')
+    min_file_size = Int.T(
+        optional=True,
+        help='Minimum file size to add in bytes.'
+    )
+    max_file_size = Int.T(
+        optional=True,
+        help='Maximum file size to add in bytes.'
+    )
 
     def describe(self):
         return 'localdata'
@@ -61,6 +70,8 @@ class LocalData(base.Source, has_paths.HasPaths):
             include=self.include,
             exclude=self.exclude,
             format=self.format,
+            min_file_size=self.min_file_size,
+            max_file_size=self.max_file_size,
             check=check)
 
 

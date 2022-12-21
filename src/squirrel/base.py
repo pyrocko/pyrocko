@@ -5,29 +5,36 @@
 
 from __future__ import absolute_import, print_function
 
-import sys
-import os
-
-import math
 import logging
-import threading
+import math
+import os
 import queue
+import sys
+import threading
 from collections import defaultdict
 
-from pyrocko.guts import Object, Int, List, Tuple, String, Timestamp, Dict
-from pyrocko import util, trace
+from pyrocko import trace, util
+from pyrocko.guts import Dict, Int, List, Object, String, Timestamp, Tuple
 from pyrocko.progress import progress
 
-from . import model, io, cache, dataset
-
-from .model import to_kind_id, WaveformOrder, to_kind, to_codes, \
-    STATION, CHANNEL, RESPONSE, EVENT, WAVEFORM, codes_patterns_list, \
-    codes_patterns_for_kind
-from .client import fdsn, catalog
-from .selection import Selection, filldocs
+from . import cache, client, dataset, environment, error, io, model
+from .client import catalog, fdsn
 from .database import abspath
-from .operators.base import Operator, CodesPatternFiltering
-from . import client, environment, error
+from .model import (
+    CHANNEL,
+    EVENT,
+    RESPONSE,
+    STATION,
+    WAVEFORM,
+    WaveformOrder,
+    codes_patterns_for_kind,
+    codes_patterns_list,
+    to_codes,
+    to_kind,
+    to_kind_id,
+)
+from .operators.base import CodesPatternFiltering, Operator
+from .selection import Selection, filldocs
 
 logger = logging.getLogger('psq.base')
 
@@ -543,6 +550,8 @@ class Squirrel(Selection):
             format='detect',
             include=None,
             exclude=None,
+            min_file_size=None,
+            max_file_size=None,
             check=True):
 
         '''
@@ -579,6 +588,16 @@ class Squirrel(Selection):
         :type format:
             str
 
+        :param min_file_size:
+            Minimum file size to include in bytes.
+        :type min_file_size:
+            int
+
+        :param max_file_size:
+            Maximum file size to include in bytes.
+        :type max_file_size:
+            int
+
         :param check:
             If ``True``, all file modification times are checked to see if
             cached information has to be updated (slow). If ``False``, only
@@ -608,7 +627,9 @@ class Squirrel(Selection):
                     show_progress=False,
                     include=include,
                     exclude=exclude,
-                    pass_through=lambda path: path.startswith('virtual:')
+                    pass_through=lambda path: path.startswith('virtual:'),
+                    min_file_size=min_file_size,
+                    max_file_size=max_file_size,
                 ), kind_mask, format)
 
             self._load(check)

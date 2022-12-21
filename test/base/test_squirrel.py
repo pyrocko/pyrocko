@@ -1,23 +1,26 @@
-from __future__ import print_function, absolute_import
+from __future__ import absolute_import, print_function
 
-import time
+import copy
+import logging
 import math
 import os
-import copy
-import pickle
-import unittest
-import tempfile
-import shutil
 import os.path as op
-import logging
+import pickle
+import shutil
+import tempfile
+import time
+import unittest
 from collections import defaultdict
 
 import numpy as num
 
-from .. import common
-from pyrocko import squirrel, util, pile, io, trace, model as pmodel
-from pyrocko import progress
+from pyrocko import io
+from pyrocko import model as pmodel
+from pyrocko import pile, progress, squirrel, trace, util
 from pyrocko.parimap import parimap
+
+from .. import common
+
 try:
     from StringIO import StringIO
 except ImportError:
@@ -180,6 +183,19 @@ class SquirrelTestCase(unittest.TestCase):
                 for (fn, format) in SquirrelTestCase.test_files[:]:
                     fpath = common.test_data_file(fn)
                     sq.add(fpath, kinds=kinds)
+
+                for (fn, format) in SquirrelTestCase.test_files[:]:
+                    fpath = common.test_data_file(fn)
+                    sq.add(fpath, kinds=kinds, min_file_size=10)
+
+                for (fn, format) in SquirrelTestCase.test_files[:]:
+                    fpath = common.test_data_file(fn)
+                    sq.add(fpath, kinds=kinds, max_file_size=10)
+
+                for (fn, format) in SquirrelTestCase.test_files[:]:
+                    fpath = common.test_data_file(fn)
+                    sq.add(fpath, kinds=kinds, min_file_size=10,
+                           max_file_size=1000)
 
                 sq.get_stats()
                 if kinds is not None:
