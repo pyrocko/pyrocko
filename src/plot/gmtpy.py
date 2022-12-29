@@ -27,7 +27,10 @@ import math
 import numpy as num
 import copy
 from select import select
-from scipy.io import netcdf
+try:
+    from scipy.io import netcdf_file
+except ImportError:
+    from scipy.io.netcdf import netcdf_file
 
 from pyrocko import ExternalProgramMissing
 
@@ -1473,7 +1476,7 @@ def savegrd(x, y, z, filename, title=None, naming='xy'):
 
     assert y.size, x.size == z.shape
     ny, nx = z.shape
-    nc = netcdf.netcdf_file(filename, 'w')
+    nc = netcdf_file(filename, 'w')
     assert naming in ('xy', 'lonlat')
 
     if naming == 'xy':
@@ -1525,7 +1528,7 @@ def loadgrd(filename):
     Read COARDS compliant netcdf (grd) file.
     '''
 
-    nc = netcdf.netcdf_file(filename, 'r')
+    nc = netcdf_file(filename, 'r')
     vkeys = list(nc.variables.keys())
     kx = 'x'
     ky = 'y'

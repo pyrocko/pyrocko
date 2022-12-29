@@ -1764,7 +1764,7 @@ def include_constructor(loader, node):
                     op.abspath(inc_file),
                     ' -> '.join('"%s"' % s for s in included_files)))
 
-    with open(inc_file) as f:
+    with open(inc_file, 'rb') as f:
         return _load(
             f,
             Loader=loader.__class__, filename=inc_file,
