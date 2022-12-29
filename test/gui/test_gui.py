@@ -144,7 +144,7 @@ class GUITest(unittest.TestCase):
         style = slider.style()
         opt = qw.QStyleOptionSlider()
         return style.subControlRect(
-            qw.QStyle.CC_Slider, opt, qw.QStyle.SC_SliderHandle)
+            qw.QStyle.CC_Slider, opt, qw.QStyle.SC_SliderHandle, slider)
 
     def drag_slider(self, slider):
         ''' Click *slider*, drag from one side to the other, release mouse
