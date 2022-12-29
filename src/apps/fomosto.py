@@ -13,7 +13,7 @@ import shutil
 from optparse import OptionParser
 
 from pyrocko import util, trace, gf, cake, io, fomosto
-from pyrocko.gui import marker
+from pyrocko.gui.snuffler import marker
 from pyrocko.util import mpl_show
 
 logger = logging.getLogger('pyrocko.apps.fomosto')

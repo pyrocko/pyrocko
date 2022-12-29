@@ -3,7 +3,7 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
-from pyrocko.gui.snuffler.snuffling import Snuffling
+from ..snuffling import Snuffling
 from pyrocko import trace
 
 

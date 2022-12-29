@@ -2,7 +2,7 @@ import unittest
 import tempfile
 
 from pyrocko import util, model
-from pyrocko.gui import marker
+from pyrocko.gui.snuffler import marker
 
 
 class MarkerTestCase(unittest.TestCase):
