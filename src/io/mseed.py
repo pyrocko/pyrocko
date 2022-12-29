@@ -24,7 +24,18 @@ class CodeTooLong(FileSaveError):
     pass
 
 
-def iload(filename, load_data=True, offset=0, segment_size=0, nsegments=0):
+class MSeedTimeSpanError(FileLoadError):
+    pass
+
+
+def iload(
+        filename,
+        load_data=True,
+        offset=0,
+        segment_size=0,
+        nsegments=0,
+        time_span_error='log'):
+
     from pyrocko import mseed_ext
 
     have_zero_rate_traces = False
@@ -48,6 +59,29 @@ def iload(filename, load_data=True, offset=0, segment_size=0, nsegments=0):
                     continue
 
                 ydata = tr_tuple[8]
+
+                nsamples = int(round((tmax-tmin)/deltat)) + 1
+                if ydata is not None and ydata.size != nsamples:
+                    message = \
+                        'Time span reported by libmseed is inconsistent ' \
+                        'with number of samples extracted (nsamples_data - ' \
+                        'nsamples_expected = %i - %i = %i). This can happen ' \
+                        'when the datalogger clock drifts. File: %s' % (
+                            ydata.size,
+                            nsamples,
+                            ydata.size - nsamples,
+                            filename)
+
+                    if time_span_error == 'raise':
+                        raise MSeedTimeSpanError(message)
+                    elif time_span_error == 'log':
+                        logger.error(message)
+                    elif time_span_error == 'ignore':
+                        pass
+                    else:
+                        assert False
+
+                    tmax = tmin + nsamples * deltat
 
                 tr = trace.Trace(
                     network.strip(),

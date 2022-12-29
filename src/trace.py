@@ -133,6 +133,10 @@ class Trace(Object):
                     'fixme: trace must be created with tmax or ydata')
         else:
             n = int(round((tmax - self.tmin) / self.deltat)) + 1
+            if ydata is not None and ydata.size != n:
+                logger.warning(
+                    'Trace created with inconsistent time span and number of '
+                    'samples. Changing end time.')
             self.tmax = self.tmin + (n - 1) * self.deltat
 
         self.meta = meta
