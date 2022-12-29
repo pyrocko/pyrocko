@@ -113,7 +113,7 @@ def data_to_grid(m, x, y, data):
     points_out = tile_to_length_width(m=m, ref_lat=lat, ref_lon=lon)
 
     t, _ = m._get_topo_tile('land')
-    t.data = num.zeros_like(t.data, dtype=num.float)
+    t.data = num.zeros_like(t.data, dtype=float)
     t.data[:] = num.nan
 
     t.data = interpolator(points_out).reshape(t.data.shape)
