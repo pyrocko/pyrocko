@@ -3,7 +3,7 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
-from .qt_compat import qc, qg, qw, QPixmapCache
+from ..qt_compat import qc, qg, qw, QPixmapCache
 
 from .marker import EventMarker, PhaseMarker
 from ..util import make_QPolygonF
