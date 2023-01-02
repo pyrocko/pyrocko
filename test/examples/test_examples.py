@@ -98,12 +98,7 @@ example_files = [
 
 def _make_function(test_name, fn):
     def f(self):
-        imp = imp2 = None
-        try:
-            import imp
-
-        except ImportError:
-            import importlib.machinery as imp2
+        import importlib.util as imp2
 
         basename = os.path.basename(fn)
 
@@ -120,10 +115,10 @@ def _make_function(test_name, fn):
                 util.ensuredir(run_dir)
                 os.chdir(run_dir)
 
-                if imp:
-                    imp.load_source(test_name, fn)
-                else:
-                    imp2.SourceFileLoader(project_dir, fn)
+                spec = imp2.spec_from_file_location(test_name, fn)
+                module = imp2.module_from_spec(spec)
+                sys.modules[test_name] = module
+                spec.loader.exec_module(module)
 
             except example.util.DownloadError:
                 raise unittest.SkipTest(
@@ -154,6 +149,9 @@ def _make_function(test_name, fn):
                 raise e
 
             finally:
+                if test_name in sys.modules:
+                    del sys.modules[test_name]
+
                 sys.argv = sys_argv_original
                 os.chdir(cwd)
 
