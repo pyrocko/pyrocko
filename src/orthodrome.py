@@ -1070,7 +1070,9 @@ def radius_to_region(lat, lon, radius):
         return None
 
 
-def geographic_midpoint(lats, lons, weights=None):
+def geographic_midpoint(
+        lats, lons, weights=None, depths=None, earthradius=earthradius):
+
     '''
     Calculate geographic midpoints by finding the center of gravity.
 
@@ -1080,12 +1082,15 @@ def geographic_midpoint(lats, lons, weights=None):
     :param lats: Latitudes in [deg].
     :param lons: Longitudes in [deg].
     :param weights: Weighting factors.
+    :param depths: Depths in [m].
     :type lats: :py:class:`numpy.ndarray`, ``(N)``
     :type lons: :py:class:`numpy.ndarray`, ``(N)``
     :type weights: optional, :py:class:`numpy.ndarray`, ``(N)``
+    :type depths: optional, :py:class:`numpy.ndarray`, ``(N)``
 
-    :return: Latitudes and longitudes of the midpoints in [deg].
-    :rtype: :py:class:`numpy.ndarray`, ``(2xN)``
+    :return: Latitudes and longitudes of the midpoint in [deg] (and depth [m]
+        if depths are given).
+    :rtype: ``(lat, lon)`` or ``(lat, lon, depth)``
     '''
     if not weights:
         weights = num.ones(len(lats))
@@ -1094,21 +1099,39 @@ def geographic_midpoint(lats, lons, weights=None):
     weights /= total_weigth
     lats = lats * d2r
     lons = lons * d2r
-    x = num.sum(num.cos(lats) * num.cos(lons) * weights)
-    y = num.sum(num.cos(lats) * num.sin(lons) * weights)
-    z = num.sum(num.sin(lats) * weights)
+    if depths is not None:
+        radii = (earthradius - depths) / earthradius
+    else:
+        radii = 1.0
+
+    x = num.sum(num.cos(lats) * num.cos(lons) * weights * radii)
+    y = num.sum(num.cos(lats) * num.sin(lons) * weights * radii)
+    z = num.sum(num.sin(lats) * weights * radii)
 
     lon = num.arctan2(y, x)
     hyp = num.sqrt(x**2 + y**2)
     lat = num.arctan2(z, hyp)
+    depth = earthradius - num.sqrt(x**2 + y**2 + z**2) * earthradius
 
-    return lat/d2r, lon/d2r
+    if depths is None:
+        return lat/d2r, lon/d2r
+    else:
+        return lat/d2r, lon/d2r, depth
 
 
-def geographic_midpoint_locations(locations, weights=None):
-    coords = num.array([loc.effective_latlon
-                        for loc in locations])
-    return geographic_midpoint(coords[:, 0], coords[:, 1], weights)
+def geographic_midpoint_locations(
+        locations, weights=None, include_depth=False):
+
+    if not include_depth:
+        coords = num.array([loc.effective_latlon
+                            for loc in locations])
+        return geographic_midpoint(
+            coords[:, 0], coords[:, 1], weights)
+    else:
+        coords = num.array([loc.effective_latlon + (loc.depth,)
+                            for loc in locations])
+        return geographic_midpoint(
+            coords[:, 0], coords[:, 1], weights=weights, depths=coords[:, 2])
 
 
 def geodetic_to_ecef(lat, lon, alt):
