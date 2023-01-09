@@ -1067,33 +1067,6 @@ def get_wgs84():
     return _wgs84
 
 
-def amap(n):
-
-    def wrap(f):
-        if n == 1:
-            @wraps(f)
-            def func(*args):
-                it = num.nditer(args + (None,))
-                for ops in it:
-                    ops[-1][...] = f(*ops[:-1])
-
-                return it.operands[-1]
-        elif n == 2:
-            @wraps(f)
-            def func(*args):
-                it = num.nditer(args + (None, None))
-                for ops in it:
-                    ops[-2][...], ops[-1][...] = f(*ops[:-2])
-
-                return it.operands[-2], it.operands[-1]
-        else:
-            raise ValueError('Cannot wrap %s' % f.__qualname__)
-
-        return func
-    return wrap
-
-
-@amap(2)
 def ne_to_latlon_proj(lat0, lon0, north_m, east_m):
     lat0, lon0, north_m, east_m = float_array_broadcast(
         lat0, lon0, north_m, east_m)
