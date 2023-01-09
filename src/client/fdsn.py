@@ -650,7 +650,7 @@ def event(
             raise InvalidRequest(
                 'If parsed=True is selected, format="xml" must be selected.')
 
-        return quakeml.load_xml(stream=fh)
+        return quakeml.QuakeML.load_xml(stream=fh)
 
     else:
         return fh
