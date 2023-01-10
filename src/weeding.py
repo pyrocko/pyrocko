@@ -44,7 +44,7 @@ def _weed(dists, badnesses, neighborhood=1, interaction_radius=3.,
 
     kept = num.logical_not(deleted).nonzero()[0]
 
-    xdists = dists[num.meshgrid(kept, kept)]
+    xdists = dists[tuple(num.meshgrid(kept, kept))]
     xbadnesses = badnesses[kept]
     xdeleted = _weed(xdists, xbadnesses, neighborhood, interaction_radius,
                      del_frac, max_del-ndeleted, max_depth, depth+1)
@@ -74,7 +74,7 @@ def weed(x, y, badnesses, neighborhood=1, nwanted=None, interaction_radius=3.):
         max_del=n-nwanted, max_depth=500, depth=0)
 
     kept = num.logical_not(deleted).nonzero()[0]
-    dists_kept = dists[num.meshgrid(kept, kept)]
+    dists_kept = dists[tuple(num.meshgrid(kept, kept))]
     meandists_kept = neighborhood_density(dists_kept, neighborhood)
     return deleted, meandists_kept
 
