@@ -4125,6 +4125,351 @@ class DoubleDCSource(SourceWithMagnitude):
         return source
 
 
+class TripleDCSource(SourceWithMagnitude):
+    '''
+    Three double-couple point sources separated in space and time.
+    Moment share between the sub-sources is controlled by the
+    parameter mix.
+    The position of the subsources is dependent on the moment
+    distribution between the two sources. Depth, east and north
+    shift are given for the centroid between the two double-couples.
+    The subsources will positioned according to their moment shares
+    around this centroid position.
+    This is done according to their delta parameters, which are
+    therefore in relation to that centroid.
+    Note that depth of the subsources therefore can be
+    depth+/-delta_depth. For shallow earthquakes therefore
+    the depth has to be chosen deeper to avoid sampling
+    above surface.
+    '''
+
+    strike1 = Float.T(
+        default=0.0,
+        help='strike direction in [deg], measured clockwise from north')
+
+    dip1 = Float.T(
+        default=90.0,
+        help='dip angle in [deg], measured downward from horizontal')
+
+    rake1 = Float.T(
+        default=0.0,
+        help='rake angle in [deg], '
+             'measured counter-clockwise from right-horizontal '
+             'in on-plane view')
+
+    strike2 = Float.T(
+        default=0.0,
+        help='strike direction in [deg], measured clockwise from north')
+
+    dip2 = Float.T(
+        default=90.0,
+        help='dip angle in [deg], measured downward from horizontal')
+
+    rake2 = Float.T(
+        default=0.0,
+        help='rake angle in [deg], '
+             'measured counter-clockwise from right-horizontal '
+             'in on-plane view')
+
+    strike3 = Float.T(
+        default=0.0,
+        help='strike direction in [deg], measured clockwise from north')
+
+    dip3 = Float.T(
+        default=90.0,
+        help='dip angle in [deg], measured downward from horizontal')
+
+    rake3 = Float.T(
+        default=0.0,
+        help='rake angle in [deg], '
+             'measured counter-clockwise from right-horizontal '
+             'in on-plane view')
+
+    north_shift1 = Float.T(
+        default=0.0,
+        help='')
+
+    east_shift1 = Float.T(
+        default=0.0,
+        help='')
+
+    depth1 = Float.T(
+        default=0.0,
+        help='')
+
+    delta_time1 = Float.T(
+        default=0.0,
+        help='')
+
+    north_shift2 = Float.T(
+        default=0.0,
+        help='')
+
+    east_shift2 = Float.T(
+        default=0.0,
+        help='')
+
+    depth2 = Float.T(
+        default=0.0,
+        help='')
+
+    delta_time2 = Float.T(
+        default=0.0,
+        help='')
+
+    north_shift3 = Float.T(
+        default=0.0,
+        help='')
+
+    east_shift3 = Float.T(
+        default=0.0,
+        help='')
+
+    depth3 = Float.T(
+        default=0.0,
+        help='')
+
+    delta_time3 = Float.T(
+        default=0.0,
+        help='')
+
+    magnitude1 = Float.T(
+        default=1.0)
+
+    magnitude2 = Float.T(
+        default=1.0)
+
+    magnitude3 = Float.T(
+        default=1.0)
+
+    stf1 = STF.T(
+        optional=True,
+        help='Source time function of subsource 1 '
+             '(if given, overrides STF from attribute :py:gattr:`Source.stf`)')
+
+    stf2 = STF.T(
+        optional=True,
+        help='Source time function of subsource 2 '
+             '(if given, overrides STF from attribute :py:gattr:`Source.stf`)')
+
+    stf3 = STF.T(
+        optional=True,
+        help='Source time function of subsource 2 '
+             '(if given, overrides STF from attribute :py:gattr:`Source.stf`)')
+
+    discretized_source_class = meta.DiscretizedMTSource
+
+    # def __init__(self, **kwargs):
+    #     if 'moment' in kwargs:
+    #         mom = kwargs.pop('moment')
+    #         if 'magnitude' not in kwargs:
+    #             kwargs['magnitude'] = float(pmt.moment_to_magnitude(mom))
+
+    #     SourceWithMagnitude.__init__(self, **kwargs)
+
+    def base_key(self):
+        return (
+            self.lat, self.lon, self.time, type(self).__name__) + \
+            self.effective_stf1_pre().base_key() + \
+            self.effective_stf2_pre().base_key() + \
+            self.effective_stf3_pre().base_key() + (
+            self.strike1, self.dip1, self.rake1,
+            self.strike2, self.dip2, self.rake2,
+            self.strike3, self.dip3, self.rake3,
+            self.north_shift1, self.east_shift1, self.depth1, self.delta_time1,
+            self.north_shift2, self.east_shift2, self.depth2, self.delta_time2,
+            self.north_shift3, self.east_shift3, self.depth3, self.delta_time3,
+            self.moment1, self.moment2, self.moment3)
+
+    @property
+    def moment1(self):
+        return float(pmt.moment_to_magnitude(self.magnitude1))
+
+    @property
+    def moment2(self):
+        return float(pmt.moment_to_magnitude(self.magnitude2))
+
+    @property
+    def moment3(self):
+        return float(pmt.moment_to_magnitude(self.magnitude3))
+
+    @property
+    def moment(self):
+        return float(num.sum([self.moment1, self.moment2, self.moment3]))
+
+    @moment.setter
+    def moment(self, value):
+        mag_part = float(pmt.moment_to_magnitude(value / 3.))
+        self.magnitude1 = mag_part
+        self.magnitude2 = mag_part
+        self.magnitude3 = mag_part
+
+    @property
+    def magnitude(self):
+        return pmt.moment_to_magnitude(self.moment)
+
+    @magnitude.setter
+    def magnitude(self, value):
+        self.moment = pmt.magnitude_to_moment(value)
+
+    def get_factor(self):
+        return self.moment
+
+    def effective_stf1_pre(self):
+        return self.stf1 or self.stf or g_unit_pulse
+
+    def effective_stf2_pre(self):
+        return self.stf2 or self.stf or g_unit_pulse
+
+    def effective_stf3_pre(self):
+        return self.stf3 or self.stf or g_unit_pulse
+
+    def effective_stf_post(self):
+        return g_unit_pulse
+
+    def split(self):
+        # a1 = 1.0 - self.mix
+        # a2 = self.mix
+        # delta_north = math.cos(self.azimuth * d2r) * self.distance
+        # delta_east = math.sin(self.azimuth * d2r) * self.distance
+
+        dc1 = DCSource(
+            lat=self.lat,
+            lon=self.lon,
+            time=self.time + self.delta_time1,
+            north_shift=self.north_shift1,
+            east_shift=self.east_shift1,
+            depth=self.depth1,
+            moment=self.moment1,
+            strike=self.strike1,
+            dip=self.dip1,
+            rake=self.rake1,
+            stf=self.stf1 or self.stf)
+
+        dc2 = DCSource(
+            lat=self.lat,
+            lon=self.lon,
+            time=self.time + self.delta_time2,
+            north_shift=self.north_shift2,
+            east_shift=self.east_shift2,
+            depth=self.depth2,
+            moment=self.moment2,
+            strike=self.strike2,
+            dip=self.dip2,
+            rake=self.rake2,
+            stf=self.stf2 or self.stf)
+
+        dc3 = DCSource(
+            lat=self.lat,
+            lon=self.lon,
+            time=self.time + self.delta_time3,
+            north_shift=self.north_shift3,
+            east_shift=self.east_shift3,
+            depth=self.depth3,
+            moment=self.moment3,
+            strike=self.strike3,
+            dip=self.dip3,
+            rake=self.rake3,
+            stf=self.stf3 or self.stf)
+
+        return [dc1, dc2, dc3]
+
+    def discretize_basesource(self, store, target=None):
+        # a1 = 1.0 - self.mix
+        # a2 = self.mix
+        mot1 = pmt.MomentTensor(strike=self.strike1, dip=self.dip1,
+                                rake=self.rake1, scalar_moment=self.moment1)
+        mot2 = pmt.MomentTensor(strike=self.strike2, dip=self.dip2,
+                                rake=self.rake2, scalar_moment=self.moment2)
+        mot3 = pmt.MomentTensor(strike=self.strike3, dip=self.dip3,
+                                rake=self.rake3, scalar_moment=self.moment3)
+
+        # delta_north = math.cos(self.azimuth * d2r) * self.distance
+        # delta_east = math.sin(self.azimuth * d2r) * self.distance
+
+        times1, amplitudes1 = self.effective_stf1_pre().discretize_t(
+            store.config.deltat, self.time + self.delta_time1)
+
+        times2, amplitudes2 = self.effective_stf2_pre().discretize_t(
+            store.config.deltat, self.time + self.delta_time2)
+
+        times3, amplitudes3 = self.effective_stf3_pre().discretize_t(
+            store.config.deltat, self.time + self.delta_time3)
+
+        nt1 = times1.size
+        nt2 = times2.size
+        nt3 = times3.size
+
+        ds = meta.DiscretizedMTSource(
+            lat=self.lat,
+            lon=self.lon,
+            times=num.concatenate((times1, times2, times3)),
+            north_shifts=num.concatenate((
+                num.repeat(self.north_shift1, nt1),
+                num.repeat(self.north_shift2, nt2),
+                num.repeat(self.north_shift3, nt3))),
+            east_shifts=num.concatenate((
+                num.repeat(self.east_shift1, nt1),
+                num.repeat(self.east_shift2, nt2),
+                num.repeat(self.east_shift3, nt3))),
+            depths=num.concatenate((
+                num.repeat(self.depth1, nt1),
+                num.repeat(self.depth2, nt2),
+                num.repeat(self.depth3, nt3))),
+            m6s=num.vstack((
+                mot1.m6()[num.newaxis, :] * amplitudes1[:, num.newaxis],
+                mot2.m6()[num.newaxis, :] * amplitudes2[:, num.newaxis],
+                mot3.m6()[num.newaxis, :] * amplitudes3[:, num.newaxis])))
+
+        return ds
+
+    def pyrocko_moment_tensor(self, store=None, target=None):
+        mot1 = pmt.MomentTensor(strike=self.strike1, dip=self.dip1,
+                                rake=self.rake1, scalar_moment=self.moment1)
+        mot2 = pmt.MomentTensor(strike=self.strike2, dip=self.dip2,
+                                rake=self.rake2, scalar_moment=self.moment2)
+        mot3 = pmt.MomentTensor(strike=self.strike3, dip=self.dip3,
+                                rake=self.rake3, scalar_moment=self.moment3)
+        return pmt.MomentTensor(m=mot1.m() + mot2.m() + mot3.m())
+
+    def pyrocko_event(self, store=None, target=None, **kwargs):
+        return SourceWithMagnitude.pyrocko_event(
+            self, store, target,
+            moment_tensor=self.pyrocko_moment_tensor(store, target),
+            **kwargs)
+
+    @classmethod
+    def from_pyrocko_event(cls, ev, **kwargs):
+        d = {}
+        mt = ev.moment_tensor
+        if mt:
+            (strike, dip, rake), _ = mt.both_strike_dip_rake()
+            d.update(
+                strike1=float(strike),
+                dip1=float(dip),
+                rake1=float(rake),
+                strike2=float(strike),
+                dip2=float(dip),
+                rake2=float(rake),
+                strike3=float(strike),
+                dip3=float(dip),
+                rake3=float(rake),
+                magnitude=float(mt.moment_magnitude()))
+
+        d.update(kwargs)
+        source = super(TripleDCSource, cls).from_pyrocko_event(ev, **d)
+        source.north_shift1 = ev.north_shift
+        source.east_shift1 = ev.east_shift
+        source.north_shift = 0.
+        source.east_shift = 0.
+
+        source.stf1 = source.stf
+        source.stf2 = HalfSinusoidSTF(effective_duration=0.)
+        source.stf3 = HalfSinusoidSTF(effective_duration=0.)
+        source.stf = None
+        return source
+
+
 class DoublePDR(SourceWithDerivedMagnitude):
     '''
     Two linked pseudo dynamic rupture source planes.
