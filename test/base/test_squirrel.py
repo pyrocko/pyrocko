@@ -1002,6 +1002,18 @@ class SquirrelTestCase(unittest.TestCase):
         assert len(stations) == 3
         stations = sq.get_stations(model='pyrocko')
         assert len(stations) == 2
+        stations = sq.get_stations(
+            model='pyrocko', codes='GE.EIL.*')
+        assert len(stations) == 2
+        stations = sq.get_stations(
+            model='pyrocko', codes='GE.EIL.')
+        assert len(stations) == 2
+        stations = sq.get_stations(
+            model='pyrocko', codes=squirrel.CodesNSL('GE.EIL.'))
+        assert len(stations) == 2
+        stations = sq.get_stations(
+            model='pyrocko', codes=squirrel.CodesNSLCE('GE.EIL..BHZ'))
+        assert len(stations) == 2
         stations = sq.get_stations(model='stationxml')
         assert len(stations) == 3
 

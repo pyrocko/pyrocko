@@ -2484,10 +2484,16 @@ class Squirrel(Selection):
 
         from pyrocko import model as pmodel
 
+        if codes is not None:
+            codes = codes_patterns_for_kind(STATION, codes)
+
         by_nsl = defaultdict(lambda: (list(), list()))
         for station in self.get_stations(obj, tmin, tmax, time, codes):
             sargs = station._get_pyrocko_station_args()
             by_nsl[station.codes.nsl][0].append(sargs)
+
+        if codes is not None:
+            codes = [model.CodesNSLCE(c) for c in codes]
 
         for channel in self.get_channels(obj, tmin, tmax, time, codes):
             sargs = channel._get_pyrocko_station_args()
