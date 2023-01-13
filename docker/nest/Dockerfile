@@ -17,7 +17,7 @@ RUN apt-get install -y python3-dev python3-setuptools python3-numpy-dev
 
 # testing requirements
 RUN apt-get install -y xvfb libgles2-mesa
-RUN apt-get install -y python3-coverage python3-nose
+RUN apt-get install -y python3-coverage python3-nose python3-pytest
 
 # base runtime requirements
 RUN apt-get install -y \
