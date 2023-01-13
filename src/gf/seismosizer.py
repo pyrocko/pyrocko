@@ -3165,8 +3165,8 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
             interpolation=interpolation)
 
         if (self.nx, self.ny) != (nx, ny):
-            times_interp = time_interpolator(source_points[:, :2])
-            vr_interp = vr_interpolator(source_points[:, :2])
+            times_interp = time_interpolator(source_points[:, :2].copy())
+            vr_interp = vr_interpolator(source_points[:, :2].copy())
         else:
             times_interp = times.T.ravel()
             vr_interp = vr.T.ravel()
