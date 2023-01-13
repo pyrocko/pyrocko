@@ -253,7 +253,7 @@ steps:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
   - pip3 install utm
-  - pip3 install git+https://github.com/pyrocko/kite
+  - pip3 install --no-deps git+https://github.com/pyrocko/kite
   - pip3 install obspy
   - python3 -m coverage run --parallel-mode -m nose test.base
   - for x in .coverage.* ; do mv $x $${x#.} ; done
@@ -265,7 +265,7 @@ steps:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
   - pip3 install utm
-  - pip3 install git+https://github.com/pyrocko/kite
+  - pip3 install --no-deps git+https://github.com/pyrocko/kite
   - pip3 install obspy
   - python3 -m coverage run --parallel-mode -m nose test.base
   - for x in .coverage.* ; do mv $x $${x#.} ; done
@@ -314,7 +314,7 @@ steps:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
   - pip3 install utm
-  - pip3 install git+https://github.com/pyrocko/kite
+  - pip3 install --no-deps git+https://github.com/pyrocko/kite
   - pip3 install obspy
   - python3 -m coverage run --parallel-mode -m nose test.gf
   - for x in .coverage.* ; do mv $x $${x#.} ; done
@@ -326,7 +326,7 @@ steps:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
   - pip3 install utm
-  - pip3 install git+https://github.com/pyrocko/kite
+  - pip3 install --no-deps git+https://github.com/pyrocko/kite
   - pip3 install obspy
   - python3 -m coverage run --parallel-mode -m nose test.gf
   - for x in .coverage.* ; do mv $x $${x#.} ; done
@@ -373,7 +373,7 @@ steps:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
   - pip3 install utm
-  - pip3 install git+https://github.com/pyrocko/kite
+  - pip3 install --no-deps git+https://github.com/pyrocko/kite
   - pip3 install obspy
   - python3 -m coverage run --parallel-mode -m nose test.examples
   - for x in .coverage.* ; do mv $x $${x#.} ; done
@@ -385,7 +385,7 @@ steps:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
   - pip3 install utm
-  - pip3 install git+https://github.com/pyrocko/kite
+  - pip3 install --no-deps git+https://github.com/pyrocko/kite
   - pip3 install obspy
   - python3 -m coverage run --parallel-mode -m nose test.examples
   - for x in .coverage.* ; do mv $x $${x#.} ; done
@@ -625,7 +625,7 @@ steps:
   commands:
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
   - pip3 install utm
-  - pip3 install git+https://github.com/pyrocko/kite
+  - pip3 install --no-deps git+https://github.com/pyrocko/kite
   - pip3 install obspy
   - wget -r -nH --cut-dirs=2 --no-parent --reject="index.html*" https://data.pyrocko.org/builds/${DRONE_COMMIT}/coverage/data/
   - python3 -m coverage combine coverage/data/coverage.*
