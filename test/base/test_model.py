@@ -156,8 +156,8 @@ class ModelTestCase(unittest.TestCase):
 
             r = g(projected, 'R')
             t = g(projected, 'T')
-            assert(near(r.ydata[0], 1.0, 0.001))
-            assert(near(t.ydata[0], 1.0, 0.001))
+            assert near(r.ydata[0], 1.0, 0.001)
+            assert near(t.ydata[0], 1.0, 0.001)
 
     def testProjectionsZOnly(self):
         km = 1000.
@@ -188,7 +188,7 @@ class ModelTestCase(unittest.TestCase):
                         return tr
 
             z = g(projected, 'U')
-            assert(near(z.ydata[0], 1.0, 0.001))
+            assert near(z.ydata[0], 1.0, 0.001)
 
     def getGNSSCampaign(self, nstations=25, nsparse=False):
         rstate = num.random.RandomState(None)

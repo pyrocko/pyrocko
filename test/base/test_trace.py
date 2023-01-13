@@ -210,9 +210,9 @@ class TraceTestCase(unittest.TestCase):
         e = trace.Trace(deltat=1., ydata=edata, tmin=1., channel='E')
         n = trace.Trace(deltat=1., ydata=ndata, tmin=1., channel='N')
         l, q, t = trace.rotate_to_lqt([z, n, e], ba, inci, in_channels)
-        assert(num.all(l.get_ydata() - num.sqrt(3.) < 1.0e-12))
-        assert(num.all(t.get_ydata() < 1.0e-12))
-        assert(num.all(q.get_ydata() < 1.0e-12))
+        assert num.all(l.get_ydata() - num.sqrt(3.) < 1.0e-12)
+        assert num.all(t.get_ydata() < 1.0e-12)
+        assert num.all(q.get_ydata() < 1.0e-12)
 
     def testProjection(self):
         s2 = math.sqrt(2.)
@@ -246,9 +246,9 @@ class TraceTestCase(unittest.TestCase):
             if tr.channel == 'U':
                 u = tr
 
-        assert(num.all(r.get_ydata() - num.array([2., 1.]) < 1.0e-6))
-        assert(num.all(t.get_ydata() - num.array([0., -1]) < 1.0e-6))
-        assert(num.all(u.get_ydata() - num.array([-1., 1.]) < 1.0e-6))
+        assert num.all(r.get_ydata() - num.array([2., 1.]) < 1.0e-6)
+        assert num.all(t.get_ydata() - num.array([0., -1]) < 1.0e-6)
+        assert num.all(u.get_ydata() - num.array([-1., 1.]) < 1.0e-6)
 
         deps = trace.project_dependencies(
             rot45,
@@ -269,7 +269,7 @@ class TraceTestCase(unittest.TestCase):
         if tr.channel == 'U':
             u = tr
 
-        assert(num.all(u.get_ydata() - num.array([-1., 1.]) < 1.0e-6))
+        assert num.all(u.get_ydata() - num.array([-1., 1.]) < 1.0e-6)
 
     def testExtend(self):
         tmin = sometime
@@ -558,7 +558,7 @@ class TraceTestCase(unittest.TestCase):
                         c2.chop(tmin, tmax, include_last=True)
 
                         d = num.abs(c1.get_ydata() - c2.get_ydata())
-                        assert(num.all(d < 1e-5))
+                        assert num.all(d < 1e-5)
                     else:
                         assert num.all(d < 1e-5)
 

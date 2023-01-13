@@ -116,16 +116,16 @@ class MomentTensorTestCase(unittest.TestCase):
         want_mom = 2E7
         m1.moment = want_mom
         sm2 = m1.scalar_moment()
-        assert(sm2 == m1.moment)
-        assert(abs(sm2 - want_mom) < 1E-8)
+        assert sm2 == m1.moment
+        assert abs(sm2 - want_mom) < 1E-8
 
         mag = moment_to_magnitude(want_mom)
-        assert(m1.magnitude == mag)
+        assert m1.magnitude == mag
 
         want_mag = 3.5
         m1.magnitude = want_mag
         mom = magnitude_to_moment(want_mag)
-        assert(m1.moment == mom)
+        assert m1.moment == mom
 
     def testKagan(self):
         eps = 0.01

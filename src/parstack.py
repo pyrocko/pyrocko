@@ -25,7 +25,7 @@ def parstack(arrays, offsets, shifts, weights, method,
         nparallel = multiprocessing.cpu_count()
 
     narrays = offsets.size
-    assert(len(arrays) == narrays)
+    assert len(arrays) == narrays
     nshifts = shifts.size // narrays
     assert shifts.shape == (nshifts, narrays)
     shifts = num.reshape(shifts, (nshifts*narrays))

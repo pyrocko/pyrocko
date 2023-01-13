@@ -381,7 +381,8 @@ Some routines in pyrocko are parallelized using OpenMP and these will
 only run on one core with your current configuration.
 ''')
         if platform.uname()[0] == 'Darwin':
-            print('''Since you are running on Mac OS, it's likely that the problem here
+            print('''
+Since you are running on Mac OS, it's likely that the problem here
 is Apple's Clang, which does not support OpenMP at all. The easiest
 way to get around this is to download the latest version of gcc from
 here: http://hpc.sourceforge.net. After downloading, just point the

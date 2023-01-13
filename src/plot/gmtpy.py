@@ -1719,7 +1719,7 @@ class Guru(object):
         return len(self.templates)
 
     def __delitem__(self, template_name):
-        del(self.templates[template_name])
+        del self.templates[template_name]
 
     def _simple_fill(self, template_names, **kwargs):
         templates = [self.templates[n] for n in template_names]
@@ -3247,7 +3247,7 @@ class LineStreamChopper(object):
                 buf.close()
                 buf = newbuf
 
-        yield(buf.getvalue())
+        yield buf.getvalue()
         buf.close()
 
     def read(self, size=None):
@@ -3436,14 +3436,14 @@ class GMT(object):
         suppressdefaults = kwargs.pop('suppress_defaults', False)
         config_override = kwargs.pop('config', None)
 
-        assert(not self.finished)
+        assert not self.finished
 
         # check for mutual exclusiveness on input and output possibilities
-        assert(1 >= len(
+        assert (1 >= len(
             [x for x in [
                 in_stream, in_filename, in_string, in_columns, in_rows]
              if x is not None]))
-        assert(1 >= len([x for x in [out_stream, out_filename, out_discard]
+        assert (1 >= len([x for x in [out_stream, out_filename, out_discard]
                          if x is not None]))
 
         options = []

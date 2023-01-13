@@ -277,10 +277,10 @@ class UtilTestCase(unittest.TestCase):
             s1 = random_word()
             se = util.escape_s(s1)
             s2 = util.unescape_s(se)
-            assert(s1 == s2)
+            assert s1 == s2
             se = util.escape_d(s1)
             s2 = util.unescape_d(se)
-            assert(s1 == s2)
+            assert s1 == s2
 
     def test_qsplit(self):
         def random_word():
@@ -296,7 +296,7 @@ class UtilTestCase(unittest.TestCase):
                 for qj in (util.qjoin_s, util.qjoin_d):
                     s = qj(line_in, sep)
                     line_out = util.qsplit(s, sep)
-                    assert(line_in == line_out)
+                    assert line_in == line_out
 
     def test_qsplit_empty(self):
         for sep in (',', '.', '\n', '\t', '[', ']', ' '):

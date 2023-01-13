@@ -18,16 +18,16 @@ class RDSeedTestCase(unittest.TestCase):
         fpath = common.test_data_file('test_stations.dseed')
         dseed = rdseed.SeedVolumeAccess(fpath)
         pyrocko_stations = dseed.get_pyrocko_stations()
-        assert(len(pyrocko_stations) == 1)
-        assert(len(dseed.get_pyrocko_events()) == 0)
+        assert len(pyrocko_stations) == 1
+        assert len(dseed.get_pyrocko_events()) == 0
 
         tr = trace.Trace(tmax=1., network='CX', station='PB01', channel='HHZ')
-        assert(isinstance(dseed.get_pyrocko_response(tr, target='dis'),
-                          trace.Evalresp))
+        assert isinstance(dseed.get_pyrocko_response(tr, target='dis'),
+                          trace.Evalresp)
 
         st = dseed.get_pyrocko_station(tr)
-        assert(st.network == tr.network)
-        assert(st.network == tr.network)
+        assert st.network == tr.network
+        assert st.network == tr.network
 
     def test_problems(self):
         p = eventdata.Problems()

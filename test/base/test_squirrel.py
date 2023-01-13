@@ -876,9 +876,9 @@ class SquirrelTestCase(unittest.TestCase):
                 expires=1000.,
                 cache_path=tempdir)
 
-            assert(sq.get_nnuts() == nnuts)
+            assert sq.get_nnuts() == nnuts
             sq.update(tmin=tmin, tmax=tmax)
-            assert(sq.get_nnuts() == nnuts)
+            assert sq.get_nnuts() == nnuts
 
             sq = squirrel.Squirrel(database=database)
             sq.add_fdsn(
@@ -890,9 +890,9 @@ class SquirrelTestCase(unittest.TestCase):
                 expires=0.,
                 cache_path=tempdir)
 
-            assert(sq.get_nnuts() == nnuts)
+            assert sq.get_nnuts() == nnuts
             sq.update(tmin=tmin, tmax=tmax)
-            assert(sq.get_nnuts() == nnuts)
+            assert sq.get_nnuts() == nnuts
 
         finally:
             shutil.rmtree(tempdir)
@@ -1050,9 +1050,9 @@ class SquirrelTestCase(unittest.TestCase):
             sq.add_catalog(
                 'geofon', cache_path=tempdir, query_args={'magmin': 6.0})
             sq.update(tmin=tmin, tmax=tmax)
-            assert(len(sq.get_events()) == 1)
+            assert len(sq.get_events()) == 1
             sq.update(tmin=tmin, tmax=tmax2)
-            assert(len(sq.get_events()) == 3)
+            assert len(sq.get_events()) == 3
 
         finally:
             shutil.rmtree(tempdir)
@@ -1060,7 +1060,7 @@ class SquirrelTestCase(unittest.TestCase):
     def test_fake_pile(self):
         database = squirrel.Database()
         sq = squirrel.Squirrel(database=database)
-        assert(len(list(sq.pile.chopper())) == 0)
+        assert len(list(sq.pile.chopper())) == 0
         assert sq.pile.tmin is None
         assert sq.pile.tmax is None
         assert sq.pile.get_tmin() is None

@@ -727,7 +727,7 @@ class GutsTestCase(unittest.TestCase):
                         assert_ae(a1.v, e)
                     else:
                         assert last[0] == int(
-                            not(t.default() == a1.v and t.optional))
+                            not (t.default() == a1.v and t.optional))
                         self.assertEqual(a1.v, e)
                         self.assertEqual(a2.v, e)
 
@@ -1248,7 +1248,7 @@ l_flow: ['a', 'b', 'c']
 
         b = B(a=A())
         b2 = load_string(b.dump())
-        assert(isinstance(b2.a, A))
+        assert isinstance(b2.a, A)
 
     def testNumpyFloat(self):
 

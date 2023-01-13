@@ -188,10 +188,10 @@ class GUITest(unittest.TestCase):
         self.write_to_input_line('hide *')
         self.pile_viewer.update()
 
-        assert(self.viewer.shown_tracks_range == (0, 1))
+        assert self.viewer.shown_tracks_range == (0, 1)
         self.write_to_input_line('unhide')
 
-        assert(self.viewer.shown_tracks_range == initrange)
+        assert self.viewer.shown_tracks_range == initrange
 
         self.write_to_input_line('markers')
         self.write_to_input_line('markers 4')
@@ -346,14 +346,14 @@ class GUITest(unittest.TestCase):
         self.viewer.go_to_time(-20., 20)
         self.pile_viewer.update()
         self.viewer.update()
-        assert(len(self.viewer.markers) != 0)
-        assert(len(self.viewer.markers) == nmarkers * 2)
+        assert len(self.viewer.markers) != 0
+        assert len(self.viewer.markers) == nmarkers * 2
         len_before = len(self.viewer.markers)
         self.viewer.remove_marker(
             self.viewer.markers[0])
-        assert(len(self.viewer.markers) == len_before-1)
+        assert len(self.viewer.markers) == len_before-1
         self.viewer.remove_markers(self.viewer.markers)
-        assert(len(self.viewer.markers) == 0)
+        assert len(self.viewer.markers) == 0
 
     def test_actions(self):
         # Click through many menu option combinations that do not require
