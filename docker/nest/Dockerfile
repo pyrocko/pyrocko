@@ -44,7 +44,7 @@ RUN apt-get install -y \
 RUN apt-get install -y \
         python3-sqlalchemy python3-lxml python3-greenlet \
     && pip3 install --no-deps \
-        obspy
+        obspy==1.3   # 2023-01-16: 1.4 has too high numpy requirement for debian:stable
 
 # additional runtime requirements for gmt
 RUN apt-get install -y \
