@@ -34,6 +34,18 @@ RUN apt-get install -y \
 RUN apt-get install -y \
         python3-jinja2 python3-pybtex
 
+# optional runtime requirements obspy, kite
+RUN apt-get install -y \
+        python3-geojson python3-pyqtgraph \
+    && pip3 install --no-deps \
+        utm git+https://github.com/pyrocko/kite
+
+# optional runtime requirements obspy
+RUN apt-get install -y \
+        python3-sqlalchemy python3-lxml python3-greenlet \
+    && pip3 install --no-deps \
+        obspy
+
 # additional runtime requirements for gmt
 RUN apt-get install -y \
         gmt gmt-gshhg poppler-utils imagemagick
