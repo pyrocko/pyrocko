@@ -4778,6 +4778,433 @@ class DoublePDR(SourceWithDerivedMagnitude):
         return super(DoublePDR, cls).from_pyrocko_event(ev, **d)
 
 
+class TriplePDR(SourceWithDerivedMagnitude):
+    '''
+    Three linked pseudo dynamic rupture source planes.
+    '''
+    strike1 = Float.T(
+        default=0.0,
+        help='Strike direction in [deg], measured clockwise from north.')
+
+    dip1 = Float.T(
+        default=0.0,
+        help='Dip angle in [deg], measured downward from horizontal.')
+
+    length1 = Float.T(
+        default=10. * km,
+        help='Length of rectangular source area in [m].')
+
+    width1 = Float.T(
+        default=5. * km,
+        help='Width of rectangular source area in [m].')
+
+    nucleation_x1 = Float.T(
+        default=0.,
+        help='Horizontal position of rupture nucleation in normalized fault '
+             'plane coordinates (``-1.`` = left edge, ``+1.`` = right edge).')
+
+    nucleation_y1 = Float.T(
+        default=0.,
+        help='Down-dip position of rupture nucleation in normalized fault '
+             'plane coordinates (``-1.`` = upper edge, ``+1.`` = lower edge).')
+
+    gamma1 = Float.T(
+        default=0.8,
+        help='Scaling factor between rupture velocity and S-wave velocity: '
+             r':math:`v_r = \gamma * v_s`.')
+
+    nx1 = Int.T(
+        default=2,
+        help='Number of discrete source patches in x direction (along '
+             'strike).')
+
+    ny1 = Int.T(
+        default=2,
+        help='Number of discrete source patches in y direction (down dip).')
+
+    slip1 = Float.T(
+        optional=True,
+        help='Maximum slip of the rectangular source [m]. '
+             'Setting the slip the tractions/stress field '
+             'will be normalized to accomodate the desired maximum slip.')
+
+    rake1 = Float.T(
+        optional=True,
+        help='Rake angle in [deg], '
+             'measured counter-clockwise from right-horizontal '
+             'in on-plane view. Rake is translated into homogenous tractions '
+             'in strike and up-dip direction. ``rake`` is mutually exclusive '
+             'with tractions parameter.')
+
+    north_shift1 = Float.T(
+        default=0.0,
+        help='')
+
+    east_shift1 = Float.T(
+        default=0.0,
+        help='')
+
+    depth1 = Float.T(
+        default=0.0,
+        help='')
+
+    delta_time1 = Float.T(
+        default=0.0,
+        help='')
+
+    strike2 = Float.T(
+        default=0.0,
+        help='Strike direction in [deg], measured clockwise from north.')
+
+    dip2 = Float.T(
+        default=0.0,
+        help='Dip angle in [deg], measured downward from horizontal.')
+
+    length2 = Float.T(
+        default=10. * km,
+        help='Length of rectangular source area in [m].')
+
+    width2 = Float.T(
+        default=5. * km,
+        help='Width of rectangular source area in [m].')
+
+    nucleation_x2 = Float.T(
+        default=0.,
+        help='Horizontal position of rupture nucleation in normalized fault '
+             'plane coordinates (``-1.`` = left edge, ``+1.`` = right edge).')
+
+    nucleation_y2 = Float.T(
+        default=0.,
+        help='Down-dip position of rupture nucleation in normalized fault '
+             'plane coordinates (``-1.`` = upper edge, ``+1.`` = lower edge).')
+
+    gamma2 = Float.T(
+        default=0.8,
+        help='Scaling factor between rupture velocity and S-wave velocity: '
+             r':math:`v_r = \gamma * v_s`.')
+
+    nx2 = Int.T(
+        default=2,
+        help='Number of discrete source patches in x direction (along '
+             'strike).')
+
+    ny2 = Int.T(
+        default=2,
+        help='Number of discrete source patches in y direction (down dip).')
+
+    slip2 = Float.T(
+        optional=True,
+        help='Maximum slip of the rectangular source [m]. '
+             'Setting the slip the tractions/stress field '
+             'will be normalized to accomodate the desired maximum slip.')
+
+    rake2 = Float.T(
+        optional=True,
+        help='Rake angle in [deg], '
+             'measured counter-clockwise from right-horizontal '
+             'in on-plane view. Rake is translated into homogenous tractions '
+             'in strike and up-dip direction. ``rake`` is mutually exclusive '
+             'with tractions parameter.')
+
+    north_shift2 = Float.T(
+        default=0.0,
+        help='')
+
+    east_shift2 = Float.T(
+        default=0.0,
+        help='')
+
+    depth2 = Float.T(
+        default=0.0,
+        help='')
+
+    delta_time2 = Float.T(
+        default=0.0,
+        help='')
+
+    strike3 = Float.T(
+        default=0.0,
+        help='Strike direction in [deg], measured clockwise from north.')
+
+    dip3 = Float.T(
+        default=0.0,
+        help='Dip angle in [deg], measured downward from horizontal.')
+
+    length3 = Float.T(
+        default=10. * km,
+        help='Length of rectangular source area in [m].')
+
+    width3 = Float.T(
+        default=5. * km,
+        help='Width of rectangular source area in [m].')
+
+    nucleation_x3 = Float.T(
+        default=0.,
+        help='Horizontal position of rupture nucleation in normalized fault '
+             'plane coordinates (``-1.`` = left edge, ``+1.`` = right edge).')
+
+    nucleation_y3 = Float.T(
+        default=0.,
+        help='Down-dip position of rupture nucleation in normalized fault '
+             'plane coordinates (``-1.`` = upper edge, ``+1.`` = lower edge).')
+
+    gamma3 = Float.T(
+        default=0.8,
+        help='Scaling factor between rupture velocity and S-wave velocity: '
+             r':math:`v_r = \gamma * v_s`.')
+
+    nx3 = Int.T(
+        default=2,
+        help='Number of discrete source patches in x direction (along '
+             'strike).')
+
+    ny3 = Int.T(
+        default=2,
+        help='Number of discrete source patches in y direction (down dip).')
+
+    slip3 = Float.T(
+        optional=True,
+        help='Maximum slip of the rectangular source [m]. '
+             'Setting the slip the tractions/stress field '
+             'will be normalized to accomodate the desired maximum slip.')
+
+    rake3 = Float.T(
+        optional=True,
+        help='Rake angle in [deg], '
+             'measured counter-clockwise from right-horizontal '
+             'in on-plane view. Rake is translated into homogenous tractions '
+             'in strike and up-dip direction. ``rake`` is mutually exclusive '
+             'with tractions parameter.')
+
+    north_shift3 = Float.T(
+        default=0.0,
+        help='')
+
+    east_shift3 = Float.T(
+        default=0.0,
+        help='')
+
+    depth3 = Float.T(
+        default=0.0,
+        help='')
+
+    delta_time3 = Float.T(
+        default=0.0,
+        help='')
+
+    eikonal_decimation = Int.T(
+        optional=True,
+        default=1,
+        help='Sub-source eikonal factor, a smaller eikonal factor will'
+             ' increase the accuracy of rupture front calculation but'
+             ' increases also the computation time.')
+
+    decimation_factor = Int.T(
+        optional=True,
+        default=1,
+        help='Sub-source decimation factor, a larger decimation will'
+             ' make the result inaccurate but shorten the necessary'
+             ' computation time (use for testing puposes only).')
+
+    nthreads = Int.T(
+        optional=True,
+        default=1,
+        help='Number of threads for Okada forward modelling, '
+             'matrix inversion and calculation of point subsources. '
+             'Note: for small/medium matrices 1 thread is most efficient.')
+
+    pure_shear = Bool.T(
+        optional=True,
+        default=False,
+        help='Calculate only shear tractions and omit tensile tractions.')
+
+    smooth_rupture = Bool.T(
+        default=True,
+        help='Smooth the tractions by weighting partially ruptured'
+             ' fault patches.')
+
+    aggressive_oversampling = Bool.T(
+        default=False,
+        help='Aggressive oversampling for basesource discretization. '
+             'When using \'multilinear\' interpolation oversampling has'
+             ' practically no effect.')
+
+    discretized_source_class = meta.DiscretizedMTSource
+
+    def base_key(self):
+        return SourceWithDerivedMagnitude.base_key(self) + (
+            self.slip1,
+            self.strike1, self.dip1, self.rake1,
+            self.length1, self.width1,
+            self.nucleation_x1, self.nucleation_y1,
+            self.gamma1,
+            self.slip2,
+            self.strike2, self.dip2, self.rake2,
+            self.length2, self.width2,
+            self.nucleation_x2, self.nucleation_y2,
+            self.gamma2,
+            self.slip3,
+            self.strike3, self.dip3, self.rake3,
+            self.length3, self.width3,
+            self.nucleation_x3, self.nucleation_y3,
+            self.gamma3,
+            self.decimation_factor,
+            self.pure_shear,
+            self.north_shift1, self.east_shift1, self.depth1, self.delta_time1,
+            self.north_shift2, self.east_shift2, self.depth2, self.delta_time2,
+            self.north_shift3, self.east_shift3, self.depth3, self.delta_time3)
+
+    def get_factor(self):
+        return 1.0
+
+    def split(self):
+        kwargs = dict(
+            lat=self.lat,
+            lon=self.lon,
+            anchor='top',
+            pure_shear=self.pure_shear,
+            smooth_rupture=self.smooth_rupture,
+            aggressive_oversampling=self.aggressive_oversampling)
+
+        pdr1 = PseudoDynamicRupture(
+            time=self.time + self.delta_time1,
+            north_shift=self.north_shift1,
+            east_shift=self.east_shift1,
+            depth=self.depth1,
+            strike=self.strike1,
+            dip=self.dip1,
+            rake=self.rake1,
+            length=self.length1,
+            width=self.width1,
+            gamma=self.gamma1,
+            nucleation_x=self.nucleation_x1,
+            nucleation_y=self.nucleation_y1,
+            nx=self.nx1,
+            ny=self.ny1,
+            slip=self.slip1,
+            nthreads=self.nthreads,
+            **kwargs)
+
+        pdr2 = PseudoDynamicRupture(
+            time=self.time + self.delta_time2,
+            north_shift=self.north_shift2,
+            east_shift=self.east_shift2,
+            depth=self.depth2,
+            strike=self.strike2,
+            dip=self.dip2,
+            rake=self.rake2,
+            length=self.length2,
+            width=self.width2,
+            gamma=self.gamma2,
+            nucleation_x=self.nucleation_x2,
+            nucleation_y=self.nucleation_y2,
+            nx=self.nx2,
+            ny=self.ny2,
+            slip=self.slip2,
+            nthreads=self.nthreads,
+            **kwargs)
+
+        pdr3 = PseudoDynamicRupture(
+            time=self.time + self.delta_time3,
+            north_shift=self.north_shift3,
+            east_shift=self.east_shift3,
+            depth=self.depth3,
+            strike=self.strike3,
+            dip=self.dip3,
+            rake=self.rake3,
+            length=self.length3,
+            width=self.width3,
+            gamma=self.gamma3,
+            nucleation_x=self.nucleation_x3,
+            nucleation_y=self.nucleation_y3,
+            nx=self.nx3,
+            ny=self.ny3,
+            slip=self.slip3,
+            nthreads=self.nthreads,
+            **kwargs)
+
+        return [pdr1, pdr2, pdr3]
+
+    def discretize_basesource(self, store, target=None):
+        dss = [
+            src.discretize_basesource(store, target=target)
+            for src in self.split()]
+
+        return meta.DiscretizedMTSource(
+            lat=self.lat,
+            lon=self.lon,
+            north_shifts=num.concatenate((
+                dss[0].north_shifts,
+                dss[1].north_shifts,
+                dss[2].north_shifts)),
+            east_shifts=num.concatenate((
+                dss[0].east_shifts,
+                dss[1].east_shifts,
+                dss[2].east_shifts)),
+            times=num.concatenate((
+                dss[0].times,
+                dss[1].times,
+                dss[2].times)),
+            depths=num.concatenate((
+                dss[0].depths,
+                dss[1].depths,
+                dss[2].depths)),
+            m6s=num.vstack((
+                dss[0].m6s,
+                dss[1].m6s,
+                dss[2].m6s)))
+
+    def pyrocko_moment_tensor(self, store=None, target=None):
+        sources = self.split()
+
+        mot1 = sources[0].pyrocko_moment_tensor(store=store, target=target)
+        mot2 = sources[1].pyrocko_moment_tensor(store=store, target=target)
+        mot3 = sources[2].pyrocko_moment_tensor(store=store, target=target)
+
+        return pmt.MomentTensor(m=mot1.m() + mot2.m() + mot3.m())
+
+    def pyrocko_event(self, store=None, target=None, **kwargs):
+        return SourceWithDerivedMagnitude.pyrocko_event(
+            self, store, target,
+            **kwargs)
+
+    def get_magnitude(self, store=None, target=None):
+        sources = self.split()
+
+        mag1 = sources[0].get_magnitude(store=store, target=target)
+        mag2 = sources[1].get_magnitude(store=store, target=target)
+        mag3 = sources[2].get_magnitude(store=store, target=target)
+
+        return pmt.moment_to_magnitude(num.sum(
+            [pmt.magnitude_to_moment(mag) for mag in (mag1, mag2, mag3)]))
+
+    def get_moment(self, *args, **kwargs):
+        return float(pmt.magnitude_to_moment(self.get_magnitude(
+            *args, **kwargs)))
+
+    @classmethod
+    def from_pyrocko_event(cls, ev, **kwargs):
+        d = {}
+        mt = ev.moment_tensor
+        if mt:
+            (strike, dip, rake), _ = mt.both_strike_dip_rake()
+            d.update(
+                strike1=float(strike),
+                dip1=float(dip),
+                rake1=float(rake),
+                strike2=float(strike),
+                dip2=float(dip),
+                rake2=float(rake),
+                strike3=float(strike),
+                dip3=float(dip),
+                rake3=float(rake),
+                slip1=0.0,
+                slip2=0.0)
+
+        d.update(kwargs)
+        return super(TriplePDR, cls).from_pyrocko_event(ev, **d)
+
+
 class RingfaultSource(SourceWithMagnitude):
     '''
     A ring fault with vertical doublecouples.
