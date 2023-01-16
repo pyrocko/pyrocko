@@ -3071,10 +3071,14 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
             self._interpolators[interpolation] = (
                 nx, ny, times, vr,
                 RegularGridInterpolator(
-                    (points_xy[::ny, 0], points_xy[:ny, 1]), times,
+                    num.ascontiguousarray(
+                        (points_xy[::ny, 0], points_xy[:ny, 1])),
+                    times,
                     method=interp_map[interpolation]),
                 RegularGridInterpolator(
-                    (points_xy[::ny, 0], points_xy[:ny, 1]), vr,
+                    num.ascontiguousarray(
+                        (points_xy[::ny, 0], points_xy[:ny, 1])),
+                    vr,
                     method=interp_map[interpolation]))
         return self._interpolators[interpolation]
 
