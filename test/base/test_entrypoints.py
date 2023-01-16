@@ -22,7 +22,7 @@ def test_fomosto():
 
     test_arguments = (
         ['--help'],
-        ['init', 'qseis.2006a', tmp_store]
+        ['init', 'qseis.2006b', tmp_store]
         )
 
     _run_main(fomosto, test_arguments)
