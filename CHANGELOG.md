@@ -6,7 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
-*empty*
+### Fixed
+- Fix compatibility with newer versions of NumPy and SciPy.
+- Fix broken function pyrocko.client.fdsn.event.
+- Fix broken YAML-serialization of `Trace` objects.
+- Squirrel: fix problems in `get_stations` with `model='pyrocko'`
+- Various minor bugs and typos fixed.
 
 ## v2022.11.29
 
