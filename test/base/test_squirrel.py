@@ -448,11 +448,14 @@ class SquirrelTestCase(unittest.TestCase):
             # closed - closed
             assert len(sq.get_nuts(tmin=tmin, tmax=tmin)) == int(0 <= ie < ne)
 
+    def test_chop(self):
+        self.run_chop()
+
     def benchmark_chop(self):
-        bench = self.test_chop(100000, ne=10)
+        bench = self.run_chop(100000, ne=10)
         print(bench)
 
-    def test_chop(self, nt=100, ne=10):
+    def run_chop(self, nt=100, ne=10):
 
         tmin_g = util.stt('2000-01-01 00:00:00')
         tmax_g = util.stt('2020-01-01 00:00:00')
@@ -558,10 +561,6 @@ class SquirrelTestCase(unittest.TestCase):
                 sq.get_coverage(kind, None, None, codes, limit=10)
 
         return bench
-
-    def benchmark_loading(self):
-        bench = self.test_loading(hours=24, with_pile=False)
-        print(bench)
 
     def test_coverage(self):
 
@@ -669,7 +668,14 @@ class SquirrelTestCase(unittest.TestCase):
             sq.get_coverage(
                 'waveform', tmin, tmin + 3*d)[0].changes)
 
-    def test_loading(self, with_pile=False, hours=1):
+    def test_loading(self):
+        self.run_loading()
+
+    def benchmark_loading(self):
+        bench = self.run_loading(hours=24, with_pile=False)
+        print(bench)
+
+    def run_loading(self, with_pile=False, hours=1):
         dir = op.join(tempfile.gettempdir(), 'testdataset_d_%i' % hours)
 
         if not os.path.exists(dir):
