@@ -982,8 +982,9 @@ class BaseStore(object):
         if not self._f_index:
             self.open()
 
-        return num.histogram(self._records['data_offset'],
-                             bins=[0, 1, 2, 3, num.uint64(-1)])[0]
+        return num.histogram(
+            self._records['data_offset'],
+            bins=[0, 1, 2, 3, num.array(-1).astype(num.uint64)])[0]
 
     @property
     def size_index(self):

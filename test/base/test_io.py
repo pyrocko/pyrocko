@@ -171,7 +171,7 @@ class IOTestCase(unittest.TestCase):
             tr2 = io.load(tempfn)[0]
             assert tr == tr2
 
-    @random_traces(nsamples=10000, limit=2**27)
+    @random_traces(nsamples=10000, limit=2**27, dtypes=[num.int32])
     def testMSeedSTEIM(self, tr):
 
         fn1 = os.path.join(self.tmpdir, 'steim1')
