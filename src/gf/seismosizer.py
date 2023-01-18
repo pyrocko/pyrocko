@@ -4259,13 +4259,14 @@ class TripleDCSource(SourceWithMagnitude):
 
     discretized_source_class = meta.DiscretizedMTSource
 
-    # def __init__(self, **kwargs):
-    #     if 'moment' in kwargs:
-    #         mom = kwargs.pop('moment')
-    #         if 'magnitude' not in kwargs:
-    #             kwargs['magnitude'] = float(pmt.moment_to_magnitude(mom))
+    def __init__(self, **kwargs):
+        if 'moment' in kwargs:
+            mom = kwargs.pop('moment')
+        if 'magnitude' in kwargs:
+            mom = float(pmt.magnitude_to_moment(kwargs.pop('magnitude')))
 
-    #     SourceWithMagnitude.__init__(self, **kwargs)
+        SourceWithMagnitude.__init__(self, **kwargs)
+        self.moment = mom
 
     def base_key(self):
         return (
@@ -4279,19 +4280,19 @@ class TripleDCSource(SourceWithMagnitude):
             self.north_shift1, self.east_shift1, self.depth1, self.delta_time1,
             self.north_shift2, self.east_shift2, self.depth2, self.delta_time2,
             self.north_shift3, self.east_shift3, self.depth3, self.delta_time3,
-            self.moment1, self.moment2, self.moment3)
+            self.magnitude1, self.magnitude2, self.magnitude3)
 
     @property
     def moment1(self):
-        return float(pmt.moment_to_magnitude(self.magnitude1))
+        return float(pmt.magnitude_to_moment(self.magnitude1))
 
     @property
     def moment2(self):
-        return float(pmt.moment_to_magnitude(self.magnitude2))
+        return float(pmt.magnitude_to_moment(self.magnitude2))
 
     @property
     def moment3(self):
-        return float(pmt.moment_to_magnitude(self.magnitude3))
+        return float(pmt.magnitude_to_moment(self.magnitude3))
 
     @property
     def moment(self):
@@ -4328,11 +4329,6 @@ class TripleDCSource(SourceWithMagnitude):
         return g_unit_pulse
 
     def split(self):
-        # a1 = 1.0 - self.mix
-        # a2 = self.mix
-        # delta_north = math.cos(self.azimuth * d2r) * self.distance
-        # delta_east = math.sin(self.azimuth * d2r) * self.distance
-
         dc1 = DCSource(
             lat=self.lat,
             lon=self.lon,
@@ -4375,17 +4371,12 @@ class TripleDCSource(SourceWithMagnitude):
         return [dc1, dc2, dc3]
 
     def discretize_basesource(self, store, target=None):
-        # a1 = 1.0 - self.mix
-        # a2 = self.mix
         mot1 = pmt.MomentTensor(strike=self.strike1, dip=self.dip1,
                                 rake=self.rake1, scalar_moment=self.moment1)
         mot2 = pmt.MomentTensor(strike=self.strike2, dip=self.dip2,
                                 rake=self.rake2, scalar_moment=self.moment2)
         mot3 = pmt.MomentTensor(strike=self.strike3, dip=self.dip3,
                                 rake=self.rake3, scalar_moment=self.moment3)
-
-        # delta_north = math.cos(self.azimuth * d2r) * self.distance
-        # delta_east = math.sin(self.azimuth * d2r) * self.distance
 
         times1, amplitudes1 = self.effective_stf1_pre().discretize_t(
             store.config.deltat, self.time + self.delta_time1)
@@ -4453,15 +4444,22 @@ class TripleDCSource(SourceWithMagnitude):
                 rake2=float(rake),
                 strike3=float(strike),
                 dip3=float(dip),
-                rake3=float(rake),
-                magnitude=float(mt.moment_magnitude()))
+                rake3=float(rake))
 
         d.update(kwargs)
         source = super(TripleDCSource, cls).from_pyrocko_event(ev, **d)
+        source.depth1 = ev.depth
         source.north_shift1 = ev.north_shift
         source.east_shift1 = ev.east_shift
+
+        source.depth = 0.
         source.north_shift = 0.
         source.east_shift = 0.
+
+        if mt:
+            source.magnitude1 = float(mt.moment_magnitude())
+            source.magnitude2 = 1.
+            source.magnitude3 = 1.
 
         source.stf1 = source.stf
         source.stf2 = HalfSinusoidSTF(effective_duration=0.)
@@ -6640,6 +6638,8 @@ source_classes = [
     PseudoDynamicRupture,
     DoubleDCSource,
     DoublePDR,
+    TripleDCSource,
+    TriplePDR,
     RingfaultSource,
     CombiSource,
     SFSource,
