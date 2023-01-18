@@ -5138,13 +5138,16 @@ class LocalEngine(Engine):
         tmax = num.fromiter(
             (t.tmax for t in targets), dtype=float, count=len(targets))
 
-        itmin = num.floor(tmin * rate).astype(num.int64)
-        itmax = num.ceil(tmax * rate).astype(num.int64)
-        nsamples = itmax - itmin + 1
+        mask = num.logical_and(num.isfinite(tmin), num.isfinite(tmax))
 
-        mask = num.isnan(tmin)
-        itmin[mask] = 0
-        nsamples[mask] = -1
+        itmin = num.zeros_like(tmin, dtype=num.int64)
+        itmax = num.zeros_like(tmin, dtype=num.int64)
+        nsamples = num.full_like(tmin, -1, dtype=num.int64)
+
+        itmin[mask] = num.floor(tmin[mask] * rate).astype(num.int64)
+        itmax[mask] = num.ceil(tmax[mask] * rate).astype(num.int64)
+        nsamples = itmax - itmin + 1
+        nsamples[num.logical_not(mask)] = -1
 
         base_source = self._cached_discretize_basesource(
             source, store_, dsource_cache, target)
