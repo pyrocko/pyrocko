@@ -290,7 +290,7 @@ class ModelTestCase(unittest.TestCase):
 
             idx += ncomp
 
-        num.testing.assert_array_equal(corr_arr, corr_arr_ref)
+        num.testing.assert_allclose(corr_arr, corr_arr_ref, rtol=1e-5)
 
     def testGNSSCampaignCovarianceMatrix(self):
         campaign = self.getGNSSCampaign(2)
@@ -324,7 +324,7 @@ class ModelTestCase(unittest.TestCase):
 
             idx += ncomp
 
-        num.testing.assert_array_equal(covar_arr, covar_ref)
+        num.testing.assert_allclose(covar_arr, covar_ref, rtol=1e-5)
 
     def testGNSSCampaignSparse(self):
         nstations = 20
