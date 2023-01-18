@@ -170,8 +170,8 @@ steps:
   commands:
   - pip3 install -f dist pyrocko --no-index --no-deps
   - pip3 install -f dist pyrocko
-  - pip3 install --only-binary=PyQt5 PyQt5 jinja2 nose
-  - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
+  - pip3 install --only-binary=PyQt5 PyQt5 jinja2 pytest
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest
 
 - name: test-mixed
   image: pyrocko-fat-nest
@@ -184,7 +184,7 @@ steps:
   commands:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install -f dist --no-index --no-deps pyrocko
-  - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest
 
 - name: stage
   image: pyrocko-util
@@ -252,7 +252,7 @@ steps:
   commands:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
-  - python3 -m coverage run --parallel-mode -m nose test.base
+  - python3 -m coverage run --parallel-mode -m pytest test/base
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
 - name: tests-base-hptime
@@ -261,7 +261,7 @@ steps:
   commands:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
-  - python3 -m coverage run --parallel-mode -m nose test.base
+  - python3 -m coverage run --parallel-mode -m pytest test/base
   - for x in .coverage.* ; do mv $x $${x#.} ; done
   environment:
     PYROCKO_USE_HIGH_PRECISION_TIME: 1
@@ -307,7 +307,7 @@ steps:
   commands:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
-  - python3 -m coverage run --parallel-mode -m nose test.gf
+  - python3 -m coverage run --parallel-mode -m pytest test/gf
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
 - name: tests-gf-hptime
@@ -316,7 +316,7 @@ steps:
   commands:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
-  - python3 -m coverage run --parallel-mode -m nose test.gf
+  - python3 -m coverage run --parallel-mode -m pytest test/gf
   - for x in .coverage.* ; do mv $x $${x#.} ; done
   environment:
     PYROCKO_USE_HIGH_PRECISION_TIME: 1
@@ -360,7 +360,7 @@ steps:
   commands:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
-  - python3 -m coverage run --parallel-mode -m nose test.examples
+  - python3 -m coverage run --parallel-mode -m pytest test/examples
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
 - name: tests-examples-hptime
@@ -369,7 +369,7 @@ steps:
   commands:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
-  - python3 -m coverage run --parallel-mode -m nose test.examples
+  - python3 -m coverage run --parallel-mode -m pytest test/examples
   - for x in .coverage.* ; do mv $x $${x#.} ; done
   environment:
     PYROCKO_USE_HIGH_PRECISION_TIME: 1
@@ -413,7 +413,7 @@ steps:
   commands:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
-  - xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m nose test.gui test.base.test_obspy_compat:ObsPyCompatTestCase.test_obspy_fiddle test.base.test_obspy_compat:ObsPyCompatTestCase.test_obspy_snuffle
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m pytest test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
 - name: tests-gui-hptime
@@ -422,7 +422,7 @@ steps:
   commands:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
-  - xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m nose test.gui test.base.test_obspy_compat:ObsPyCompatTestCase.test_obspy_fiddle test.base.test_obspy_compat:ObsPyCompatTestCase.test_obspy_snuffle
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m pytest test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
   - for x in .coverage.* ; do mv $x $${x#.} ; done
   environment:
     PYROCKO_USE_HIGH_PRECISION_TIME: 1
