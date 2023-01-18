@@ -589,7 +589,7 @@ setup(
     # ],
     install_requires=[
         'numpy>=1.8',
-        'scipy',
+        'scipy>=1.0',
         'pyyaml',
         'matplotlib',
         'requests',
