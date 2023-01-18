@@ -3068,18 +3068,19 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
             points_xy[:, 0] = (points_xy[:, 0] - anch_x) * self.length / 2.
             points_xy[:, 1] = (points_xy[:, 1] - anch_y) * self.width / 2.
 
+            ascont = num.ascontiguousarray
+
             self._interpolators[interpolation] = (
                 nx, ny, times, vr,
                 RegularGridInterpolator(
-                    num.ascontiguousarray(
-                        (points_xy[::ny, 0], points_xy[:ny, 1])),
+                    (ascont(points_xy[::ny, 0]), ascont(points_xy[:ny, 1])),
                     times,
                     method=interp_map[interpolation]),
                 RegularGridInterpolator(
-                    num.ascontiguousarray(
-                        (points_xy[::ny, 0], points_xy[:ny, 1])),
+                    (ascont(points_xy[::ny, 0]), ascont(points_xy[:ny, 1])),
                     vr,
                     method=interp_map[interpolation]))
+
         return self._interpolators[interpolation]
 
     def discretize_patches(
