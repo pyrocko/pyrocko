@@ -4260,13 +4260,16 @@ class TripleDCSource(SourceWithMagnitude):
     discretized_source_class = meta.DiscretizedMTSource
 
     def __init__(self, **kwargs):
+        mom = None
         if 'moment' in kwargs:
             mom = kwargs.pop('moment')
         if 'magnitude' in kwargs:
             mom = float(pmt.magnitude_to_moment(kwargs.pop('magnitude')))
 
         SourceWithMagnitude.__init__(self, **kwargs)
-        self.moment = mom
+
+        if mom is not None:
+            self.moment = mom
 
     def base_key(self):
         return (
@@ -4372,11 +4375,14 @@ class TripleDCSource(SourceWithMagnitude):
 
     def discretize_basesource(self, store, target=None):
         mot1 = pmt.MomentTensor(strike=self.strike1, dip=self.dip1,
-                                rake=self.rake1, scalar_moment=self.moment1)
+                                rake=self.rake1,
+                                scalar_moment=self.moment1 / self.moment)
         mot2 = pmt.MomentTensor(strike=self.strike2, dip=self.dip2,
-                                rake=self.rake2, scalar_moment=self.moment2)
+                                rake=self.rake2,
+                                scalar_moment=self.moment2 / self.moment)
         mot3 = pmt.MomentTensor(strike=self.strike3, dip=self.dip3,
-                                rake=self.rake3, scalar_moment=self.moment3)
+                                rake=self.rake3,
+                                scalar_moment=self.moment3 / self.moment)
 
         times1, amplitudes1 = self.effective_stf1_pre().discretize_t(
             store.config.deltat, self.time + self.delta_time1)
