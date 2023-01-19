@@ -155,7 +155,7 @@ logger = logging.getLogger('pyrocko.util')
 
 try:
     import progressbar as progressbar_mod
-except ImportError:
+except (ImportError, AttributeError):
     from pyrocko import dummy_progressbar as progressbar_mod
 
 
