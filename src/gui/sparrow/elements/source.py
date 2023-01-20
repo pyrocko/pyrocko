@@ -170,7 +170,9 @@ class SourceElement(base.Element):
             self.get_name(),
             self._get_controls(),
             visible=True,
-            remove=self.remove)
+            title_controls=[
+                self.get_title_control_remove(),
+                self.get_title_control_visible()])
 
         self.update()
 
@@ -380,7 +382,7 @@ class SourceElement(base.Element):
     def _get_controls(self):
         if not self._controls:
             from ..state import \
-                state_bind_checkbox, state_bind_slider, state_bind_combobox
+                state_bind_slider, state_bind_combobox
             from pyrocko import gf
 
             source = self._state.source_selection
@@ -500,11 +502,6 @@ class SourceElement(base.Element):
             pb = qw.QPushButton('Save')
             layout.addWidget(pb, il, 2)
             pb.clicked.connect(self.open_file_save_dialog)
-
-            il += 1
-            cb = qw.QCheckBox('Show')
-            layout.addWidget(cb, il, 0)
-            state_bind_checkbox(self, self._state, 'visible', cb)
 
             il += 1
             layout.addWidget(qw.QFrame(), il, 0, 1, 3)

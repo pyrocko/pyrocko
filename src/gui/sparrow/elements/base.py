@@ -20,7 +20,8 @@ from pyrocko.gui.qt_compat import qc, qw
 from pyrocko.gui.vtk_util import cpt_to_vtk_lookuptable
 
 from .. import common
-from ..state import state_bind_combobox, state_bind
+from ..state import \
+    state_bind_combobox, state_bind, state_bind_checkbox
 
 
 def random_id():
@@ -75,18 +76,22 @@ class Element(object):
         self._state = None
 
     def get_title_control_remove(self):
-        button = MyDockWidgetTitleBarButton('\u00d7')
+        button = common.MyDockWidgetTitleBarButton('\u00d7')
         button.setStatusTip('Remove Element')
         button.clicked.connect(self.remove)
         return button
 
     def get_title_control_visible(self):
-        button = MyDockWidgetTitleBarButton('\u2b53')
+        button = common.MyDockWidgetTitleBarButtonToggle('\u2b53')
         button.setStatusTip('Toggle Element Visibility')
         assert hasattr(self._state, 'visible')
 
-        return button
+        button.setCheckable(True)
+        # button.setChecked(True)
 
+        state_bind_checkbox(self, self._state, 'visible', button)
+
+        return button
 
 
 class CPTChoice(StringChoice):

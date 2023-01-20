@@ -204,3 +204,119 @@ class CPTComboBox(qw.QComboBox):
 
         else:
             qw.QComboBox.paintEvent(self, e)
+
+
+class MyDockWidgetTitleBarButton(qw.QPushButton):
+
+    def __init__(self, *args, **kwargs):
+        qw.QPushButton.__init__(self, *args, **kwargs)
+        self.setFlat(True)
+        self.setSizePolicy(
+            qw.QSizePolicy.Fixed, qw.QSizePolicy.Fixed)
+
+    def sizeHint(self):
+        s = qw.QPushButton.sizeHint(self)
+        return qc.QSize(s.height(), s.height())
+
+
+class MyDockWidgetTitleBarButtonToggle(MyDockWidgetTitleBarButton):
+    def __init__(self, *args, **kwargs):
+        MyDockWidgetTitleBarButton.__init__(self, *args, **kwargs)
+        self._text_checked = '\u2b53'
+        self._text_unchecked = '\u2b54'
+
+    # def changeEvent(self, event):
+    #     self.setFlat(True)
+    #     if self.isChecked:
+    #         self.setText(self._text_checked)
+    #     else:
+    #         self.setText(self._text_unchecked)
+
+    def hitButton(self, event):
+        # self.setFlat(True)
+        if self.isDown():
+            self.setText(self._text_checked)
+        else:
+            self.setText(self._text_unchecked)
+
+        return True
+
+
+class MyDockWidgetTitleBarLabel(qw.QLabel):
+
+    def event(self, ev):
+        ev.ignore()
+        return qw.QLabel.event(self, ev)
+
+
+class MyDockWidgetTitleBar(qw.QFrame):
+
+    def __init__(self, title, title_controls=[]):
+        qw.QFrame.__init__(self)
+
+        lab = MyDockWidgetTitleBarLabel('<strong>%s</strong>' % title)
+        lab.setSizePolicy(
+            qw.QSizePolicy.Expanding, qw.QSizePolicy.Minimum)
+
+        button_hide = MyDockWidgetTitleBarButton('-')
+        button_hide.setStatusTip('Hide Panel')
+
+        layout = qw.QGridLayout()
+        layout.setSpacing(0)
+        layout.addWidget(lab, 0, 0)
+        layout.addWidget(button_hide, 0, 1)
+        for i, button in enumerate(title_controls):
+            layout.addWidget(button, 0, 2 + i)
+
+        self.setLayout(layout)
+        self.setBackgroundRole(qg.QPalette.Mid)
+        self.setAutoFillBackground(True)
+        self.button_hide = button_hide
+
+    def event(self, ev):
+        ev.ignore()
+        return qw.QFrame.event(self, ev)
+
+
+class MyDockWidget(qw.QDockWidget):
+
+    def __init__(self, name, parent, title_controls=[], **kwargs):
+        qw.QDockWidget.__init__(self, name, parent, **kwargs)
+
+        self.setFeatures(
+            qw.QDockWidget.DockWidgetClosable
+            | qw.QDockWidget.DockWidgetMovable
+            | qw.QDockWidget.DockWidgetFloatable
+            | qw.QDockWidget.DockWidgetClosable)
+
+        self._visible = False
+        self._blocked = False
+
+        tb = MyDockWidgetTitleBar(name, title_controls)
+        tb.button_hide.clicked.connect(self.hide)
+        self.setTitleBarWidget(tb)
+        self.titlebar = tb
+
+    def setVisible(self, visible):
+        self._visible = visible
+        if not self._blocked:
+            qw.QDockWidget.setVisible(self, self._visible)
+
+    def show(self):
+        self.setVisible(True)
+
+    def hide(self):
+        self.setVisible(False)
+
+    def setBlocked(self, blocked):
+        self._blocked = blocked
+        if blocked:
+            qw.QDockWidget.setVisible(self, False)
+        else:
+            qw.QDockWidget.setVisible(self, self._visible)
+
+    def block(self):
+        self.setBlocked(True)
+
+    def unblock(self):
+        self.setBlocked(False)
