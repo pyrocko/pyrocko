@@ -74,6 +74,20 @@ class Element(object):
         self._listeners = []
         self._state = None
 
+    def get_title_control_remove(self):
+        button = MyDockWidgetTitleBarButton('\u00d7')
+        button.setStatusTip('Remove Element')
+        button.clicked.connect(self.remove)
+        return button
+
+    def get_title_control_visible(self):
+        button = MyDockWidgetTitleBarButton('\u2b53')
+        button.setStatusTip('Toggle Element Visibility')
+        assert hasattr(self._state, 'visible')
+
+        return button
+
+
 
 class CPTChoice(StringChoice):
     choices = [

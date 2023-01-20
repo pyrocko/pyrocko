@@ -133,11 +133,13 @@ class CrosshairElement(Element):
 
     def set_parent(self, parent):
         Element.set_parent(self, parent)
+
         self._parent.add_panel(
             self.get_name(),
             self._get_controls(),
-            visible=False,
-            remove=self.remove)
+            [self.get_title_control_remove(),
+             self.get_title_control_visible()],
+            visible=False):
 
         for var in ['distance', 'lat', 'lon']:
             self.register_state_listener3(self.update, self._parent.state, var)
@@ -210,6 +212,9 @@ class CrosshairElement(Element):
         self._controls = frame
 
         return self._controls
+
+    def _get_title_controls(self):
+
 
 
 __all__ = [
