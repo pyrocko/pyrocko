@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+*empty*
+
+## v2023.01.20
+
 ### Fixed
 - Fix compatibility with newer versions of NumPy and SciPy.
 - Fix broken function pyrocko.client.fdsn.event.
