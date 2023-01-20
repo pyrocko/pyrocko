@@ -9,6 +9,7 @@ requires = ["setuptools", "wheel", "numpy>=1.8"]
 
 [project]
 name = "pyrocko"
+version = "2022.11.29"
 authors = [
     {name = "The Pyrocko Developers", email = "info@pyrocko.org"},
 ]
