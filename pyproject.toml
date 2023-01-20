@@ -7,6 +7,56 @@
 [build-system]
 requires = ["setuptools", "wheel", "numpy>=1.8"]
 
+[project]
+name = "pyrocko"
+authors = [
+    {name = "The Pyrocko Developers", email = "info@pyrocko.org"},
+]
+maintainers = [
+    {name = "Sebastian Heimann", email = "sebastian.heimann@uni-potsdam.de"}
+]
+description = "A versatile seismology toolkit for Python."
+readme = "README.md"
+requires-python = ">=3.7"
+license = {text = "GPLv3"}
+keywords = [
+    "seismology", "waveform analysis", "earthquake modelling", "geophysics",
+    "geophysical inversion"
+]
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 2.7",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: C",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Operating System :: POSIX",
+    "Operating System :: MacOS",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+dependencies = [
+    "numpy>=1.8",
+    "scipy>=1.0",
+    "pyyaml",
+    "matplotlib",
+    "requests",
+]
+
+[project.optional-dependencies]
+gui_scripts = [
+    'PyQt5',
+]
+
+[project.urls]
+homepage = "https://pyrocko.org"
+documentation = "https://pyrocko.org/docs"
+repository = "https://git.pyrocko.org"
+changelog = "https://git.pyrocko.org/pyrocko/pyrocko/src/branch/master/CHANGELOG.md"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
