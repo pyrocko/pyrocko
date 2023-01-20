@@ -15,14 +15,13 @@ except ImportError as e:
 
 import numpy as num
 
-from pyrocko import geometry, cake
+from pyrocko import geometry
 from pyrocko.guts import Bool, String, List
 from pyrocko.gui.qt_compat import qw
 from pyrocko.gui.vtk_util import TrimeshPipe, faces_to_cells
 
 from .. import common
 
-from .topo import TopoMeshPipe
 from .base import Element, ElementState, CPTHandler, CPTState
 
 logger = logging.getLogger('kite_scene')
@@ -162,7 +161,9 @@ class KiteElement(Element):
             self.get_name(),
             self._get_controls(),
             visible=True,
-            remove=self.remove)
+            title_controls=[
+                self.get_title_control_remove(),
+                self.get_title_control_visible()])
 
         self.update()
 
@@ -270,8 +271,6 @@ class KiteElement(Element):
 
     def _get_controls(self):
         if not self._controls:
-            from ..state import state_bind_checkbox
-
             frame = qw.QFrame()
             layout = qw.QGridLayout()
             frame.setLayout(layout)
@@ -287,11 +286,7 @@ class KiteElement(Element):
             self.cpt_handler.cpt_controls(
                 self._parent, self._state.cpt, layout)
 
-            cb = qw.QCheckBox('Show')
-            layout.addWidget(cb, 4, 0)
-            state_bind_checkbox(self, self._state, 'visible', cb)
-
-            layout.addWidget(qw.QFrame(), 5, 0, 1, 3)
+            layout.addWidget(qw.QFrame(), 4, 0, 1, 3)
 
             self._controls = frame
 

@@ -76,7 +76,7 @@ class IcosphereElement(Element):
             self.get_name(),
             self._get_controls(),
             visible=True,
-            remove=self.remove)
+            title_controls=[self.get_title_control_remove()])
 
         self.update()
 
@@ -207,10 +207,6 @@ class IcosphereElement(Element):
             add_slider('Ambient', 'ambient', 5)
             add_slider('Diffuse', 'diffuse', 6)
             add_slider('Specular', 'specular', 7)
-
-            cb = qw.QCheckBox('Show')
-            layout.addWidget(cb, 8, 0)
-            state_bind_checkbox(self, state, 'visible', cb)
 
             cb = qw.QCheckBox('Smooth')
             layout.addWidget(cb, 8, 1)

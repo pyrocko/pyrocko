@@ -86,7 +86,9 @@ class GeometryElement(base.Element):
             self.get_name(),
             self._get_controls(),
             visible=True,
-            remove=self.remove)
+            title_controls=[
+                self.get_title_control_remove(),
+                self.get_title_control_visible()])
 
         for var in ['tmin', 'tmax', 'lat', 'lon']:
             self.register_state_listener3(self.update, self._parent.state, var)
@@ -273,7 +275,7 @@ class GeometryElement(base.Element):
     def _get_controls(self):
         state = self._state
         if not self._controls:
-            from ..state import state_bind_checkbox, state_bind_combobox, \
+            from ..state import state_bind_combobox, \
                 state_bind_slider
 
             frame = qw.QFrame()
@@ -356,13 +358,6 @@ class GeometryElement(base.Element):
 
                 self._opacity_label = opacity_label
                 self._opacity_slider = slider_opacity
-
-                il += 1
-
-                # visibility
-                cb = qw.QCheckBox('Show')
-                layout.addWidget(cb, il, 0)
-                state_bind_checkbox(self, state, 'visible', cb)
 
                 il += 1
                 layout.addWidget(qw.QFrame(), il, 0, 1, 3)

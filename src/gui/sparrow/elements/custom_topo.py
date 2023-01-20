@@ -44,7 +44,6 @@ class CustomTopoElement(Element):
         return 'Custom Topography'
 
     def bind_state(self, state):
-        print('ZZZ', 'binding', id(state))
         Element.bind_state(self, state)
         self.register_state_listener3(self.update, state, 'visible')
         self.register_state_listener3(self.update, state, 'exaggeration')
@@ -60,7 +59,9 @@ class CustomTopoElement(Element):
             self.get_name(),
             self._get_controls(),
             visible=True,
-            remove=self.remove)
+            title_controls=[
+                self.get_title_control_remove(),
+                self.get_title_control_visible()])
 
         self.update()
 
@@ -190,10 +191,6 @@ class CustomTopoElement(Element):
             layout.addWidget(slider, 2, 1)
 
             state_bind_slider(self, state, 'opacity', slider, factor=0.001)
-
-            cb = qw.QCheckBox('Show')
-            layout.addWidget(cb, 3, 0)
-            state_bind_checkbox(self, state, 'visible', cb)
 
             cb = qw.QCheckBox('Smooth')
             layout.addWidget(cb, 3, 1)

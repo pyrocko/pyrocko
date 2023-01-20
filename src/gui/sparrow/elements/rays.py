@@ -143,7 +143,9 @@ class RaysElement(Element):
             self.get_name(),
             self._get_controls(),
             visible=True,
-            remove=self.remove)
+            title_controls=[
+                self.get_title_control_remove(),
+                self.get_title_control_visible()])
 
         self.update()
 
@@ -214,7 +216,7 @@ class RaysElement(Element):
 
     def _get_controls(self):
         if self._controls is None:
-            from ..state import state_bind_checkbox, state_bind_slider
+            from ..state import state_bind_slider
 
             frame = qw.QFrame()
             layout = qw.QGridLayout()
@@ -250,9 +252,7 @@ class RaysElement(Element):
 
             iy += 1
 
-            cb = qw.QCheckBox('Show')
-            layout.addWidget(cb, iy, 0)
-            state_bind_checkbox(self, state, 'visible', cb)
+            layout.addWidget(qw.QFrame(), iy, 0)
 
             self._controls = frame
 

@@ -106,101 +106,6 @@ class QVTKWidget(QVTKRenderWindowInteractor):
         self._viewer.update_vtk_widget_size()
 
 
-class MyDockWidgetTitleBarButton(qw.QPushButton):
-
-    def __init__(self, *args, **kwargs):
-        qw.QPushButton.__init__(self, *args, **kwargs)
-        self.setFlat(True)
-        self.setSizePolicy(
-            qw.QSizePolicy.Fixed, qw.QSizePolicy.Fixed)
-
-    def sizeHint(self):
-        s = qw.QPushButton.sizeHint(self)
-        return qc.QSize(s.height(), s.height())
-
-
-class MyDockWidgetTitleBarLabel(qw.QLabel):
-
-    def event(self, ev):
-        ev.ignore()
-        return qw.QLabel.event(self, ev)
-
-
-class MyDockWidgetTitleBar(qw.QFrame):
-
-    def __init__(self, title):
-        qw.QFrame.__init__(self)
-
-        lab = MyDockWidgetTitleBarLabel('<strong>%s</strong>' % title)
-        lab.setSizePolicy(
-            qw.QSizePolicy.Expanding, qw.QSizePolicy.Minimum)
-
-        button_hide = MyDockWidgetTitleBarButton('-')
-        button_hide.setStatusTip('Hide Panel')
-        button_close = MyDockWidgetTitleBarButton('\u00d7')
-        button_close.setStatusTip('Remove Element')
-
-        layout = qw.QGridLayout()
-        layout.setSpacing(0)
-        layout.addWidget(lab, 0, 0)
-        layout.addWidget(button_hide, 0, 1)
-        layout.addWidget(button_close, 0, 2)
-
-        self.setLayout(layout)
-        self.setBackgroundRole(qg.QPalette.Mid)
-        self.setAutoFillBackground(True)
-        self.button_hide = button_hide
-        self.button_close = button_close
-
-    def event(self, ev):
-        ev.ignore()
-        return qw.QFrame.event(self, ev)
-
-
-class MyDockWidget(qw.QDockWidget):
-
-    def __init__(self, name, parent, **kwargs):
-        qw.QDockWidget.__init__(self, name, parent, **kwargs)
-
-        self.setFeatures(
-            qw.QDockWidget.DockWidgetClosable
-            | qw.QDockWidget.DockWidgetMovable
-            | qw.QDockWidget.DockWidgetFloatable
-            | qw.QDockWidget.DockWidgetClosable)
-
-        self._visible = False
-        self._blocked = False
-
-        tb = MyDockWidgetTitleBar(name)
-        tb.button_hide.clicked.connect(self.hide)
-        self.setTitleBarWidget(tb)
-        self.titlebar = tb
-
-    def setVisible(self, visible):
-        self._visible = visible
-        if not self._blocked:
-            qw.QDockWidget.setVisible(self, self._visible)
-
-    def show(self):
-        self.setVisible(True)
-
-    def hide(self):
-        self.setVisible(False)
-
-    def setBlocked(self, blocked):
-        self._blocked = blocked
-        if blocked:
-            qw.QDockWidget.setVisible(self, False)
-        else:
-            qw.QDockWidget.setVisible(self, self._visible)
-
-    def block(self):
-        self.setBlocked(True)
-
-    def unblock(self):
-        self.setBlocked(False)
-
-
 class DetachedViewer(qw.QMainWindow):
 
     def __init__(self, main_window, vtk_frame):
@@ -1574,9 +1479,11 @@ class SparrowViewer(qw.QMainWindow):
             # volatile=False,
             tabify=True,
             where=qc.Qt.RightDockWidgetArea,
-            remove=None):
+            remove=None,
+            title_controls=[]):
 
-        dockwidget = MyDockWidget(name, self)
+        dockwidget = common.MyDockWidget(
+            name, self, title_controls=title_controls)
 
         if not visible:
             dockwidget.hide()
@@ -1585,14 +1492,10 @@ class SparrowViewer(qw.QMainWindow):
             dockwidget.block()
 
         dockwidget.setWidget(panel)
-        if remove is not None:
-            dockwidget.titlebar.button_close.clicked.connect(remove)
-        else:
-            dockwidget.titlebar.button_close.hide()
 
         panel.setParent(dockwidget)
 
-        dockwidgets = self.findChildren(MyDockWidget)
+        dockwidgets = self.findChildren(common.MyDockWidget)
         dws = [x for x in dockwidgets if self.dockWidgetArea(x) == where]
 
         self.addDockWidget(where, dockwidget)
@@ -1622,7 +1525,7 @@ class SparrowViewer(qw.QMainWindow):
     def update_panel_visibility(self, *args):
         self.setUpdatesEnabled(False)
         mbar = self.menuBar()
-        dockwidgets = self.findChildren(MyDockWidget)
+        dockwidgets = self.findChildren(common.MyDockWidget)
 
         mbar.setVisible(self.gui_state.panels_visible)
         for dockwidget in dockwidgets:

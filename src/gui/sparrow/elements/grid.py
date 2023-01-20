@@ -132,7 +132,9 @@ class GridElement(Element):
             self.get_name(),
             self._get_controls(),
             visible=True,
-            remove=self.remove)
+            title_controls=[
+                self.get_title_control_remove(),
+                self.get_title_control_visible()])
 
         for var in ['distance', 'lat', 'lon']:
             self.register_state_listener3(self.update, self._parent.state, var)
@@ -182,8 +184,8 @@ class GridElement(Element):
 
     def _get_controls(self):
         if not self._controls:
-            from ..state import state_bind_checkbox, \
-                state_bind_combobox_color, state_bind_lineedit
+            from ..state import state_bind_combobox_color, \
+                state_bind_lineedit
 
             frame = qw.QFrame()
             layout = qw.QGridLayout()
@@ -199,19 +201,15 @@ class GridElement(Element):
             layout.addWidget(cb, 0, 1)
             state_bind_combobox_color(self, self._state, 'color', cb)
 
-            cb = qw.QCheckBox('Show')
-            layout.addWidget(cb, 1, 0)
-            state_bind_checkbox(self, self._state, 'visible', cb)
-
-            layout.addWidget(qw.QLabel('Depth [km]'), 2, 0)
+            layout.addWidget(qw.QLabel('Depth [km]'), 1, 0)
             le = qw.QLineEdit()
-            layout.addWidget(le, 2, 1)
+            layout.addWidget(le, 1, 1)
             state_bind_lineedit(
                 self, self._state, 'depth', le,
                 from_string=lambda s: float(s)*1000.,
                 to_string=lambda v: str(v/1000.))
 
-            layout.addWidget(qw.QFrame(), 3, 0, 1, 2)
+            layout.addWidget(qw.QFrame(), 2, 0, 1, 2)
 
         self._controls = frame
 
