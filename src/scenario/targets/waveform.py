@@ -412,43 +412,46 @@ class WaveformGenerator(TargetGenerator):
         nwin = int(round((tmax - tmin) / tinc))
 
         pbar = None
-        for iwin in range(nwin):
-            tmin_win = tmin + iwin*tinc
-            tmax_win = tmin + (iwin+1)*tinc
+        try:
+            for iwin in range(nwin):
+                tmin_win = tmin + iwin*tinc
+                tmax_win = tmin + (iwin+1)*tinc
 
-            if have_waveforms(tmin_win, tmax_win):
-                continue
+                if have_waveforms(tmin_win, tmax_win):
+                    continue
 
-            if pbar is None:
-                pbar = util.progressbar('Generating waveforms', (nwin-iwin))
+                if pbar is None:
+                    pbar = util.progressbar(
+                        'Generating waveforms', (nwin-iwin))
 
-            pbar.update(iwin)
+                pbar.update(iwin)
 
-            trs = self.get_waveforms(engine, sources, tmin_win, tmax_win)
+                trs = self.get_waveforms(engine, sources, tmin_win, tmax_win)
 
-            try:
-                wpaths = io.save(
-                    trs, path_traces,
-                    additional=dict(
-                        wmin_year=tts(tmin_win, format='%Y'),
-                        wmin_month=tts(tmin_win, format='%m'),
-                        wmin_day=tts(tmin_win, format='%d'),
-                        wmin=tts(tmin_win, format='%Y-%m-%d_%H-%M-%S'),
-                        wmax_year=tts(tmax_win, format='%Y'),
-                        wmax_month=tts(tmax_win, format='%m'),
-                        wmax_day=tts(tmax_win, format='%d'),
-                        wmax=tts(tmax_win, format='%Y-%m-%d_%H-%M-%S')))
+                try:
+                    wpaths = io.save(
+                        trs, path_traces,
+                        additional=dict(
+                            wmin_year=tts(tmin_win, format='%Y'),
+                            wmin_month=tts(tmin_win, format='%m'),
+                            wmin_day=tts(tmin_win, format='%d'),
+                            wmin=tts(tmin_win, format='%Y-%m-%d_%H-%M-%S'),
+                            wmax_year=tts(tmax_win, format='%Y'),
+                            wmax_month=tts(tmax_win, format='%m'),
+                            wmax_day=tts(tmax_win, format='%d'),
+                            wmax=tts(tmax_win, format='%Y-%m-%d_%H-%M-%S')))
 
-                for wpath in wpaths:
-                    logger.debug('Generated file: %s' % wpath)
+                    for wpath in wpaths:
+                        logger.debug('Generated file: %s' % wpath)
 
-                add_files(wpaths)
+                    add_files(wpaths)
 
-            except FileSaveError as e:
-                raise ScenarioError(str(e))
+                except FileSaveError as e:
+                    raise ScenarioError(str(e))
 
-        if pbar is not None:
-            pbar.finish()
+        finally:
+            if pbar is not None:
+                pbar.finish()
 
     def ensure_responses(self, path):
         from pyrocko.io import stationxml

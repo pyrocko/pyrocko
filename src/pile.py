@@ -403,6 +403,11 @@ def loader(
 
             return abort
 
+        def finish(self):
+            if self._bar:
+                self._bar.finish()
+                self._bar = None
+
     if not filenames:
         logger.warning('No files to load from')
         return
@@ -411,99 +416,103 @@ def loader(
     if filename_attributes:
         regex = re.compile(filename_attributes)
 
-    progress = Progress('Looking at files', len(filenames))
+    try:
+        progress = Progress('Looking at files', len(filenames))
 
-    failures = []
-    to_load = []
-    for i, filename in enumerate(filenames):
-        try:
-            abspath = os.path.abspath(filename)
-
-            substitutions = None
-            if regex:
-                m = regex.search(filename)
-                if not m:
-                    raise FilenameAttributeError(
-                        "Cannot get attributes with pattern '%s' "
-                        "from path '%s'" % (filename_attributes, filename))
-
-                substitutions = {}
-                for k in m.groupdict():
-                    if k in ('network', 'station', 'location', 'channel'):
-                        substitutions[k] = m.groupdict()[k]
-
-            mtime = os.stat(filename)[8]
-            tfile = None
-            if cache:
-                tfile = cache.get(abspath)
-
-            mustload = (
-                not tfile or
-                (tfile.format != fileformat and fileformat != 'detect') or
-                tfile.mtime != mtime or
-                substitutions is not None)
-
-            to_load.append((mustload, mtime, abspath, substitutions, tfile))
-
-        except (OSError, FilenameAttributeError) as xerror:
-            failures.append(abspath)
-            logger.warning(xerror)
-
-        abort = progress.update(i+1)
-        if abort:
-            progress.update(len(filenames))
-            return
-
-    progress.update(len(filenames))
-
-    to_load.sort(key=lambda x: x[2])
-
-    nload = len([1 for x in to_load if x[0]])
-    iload = 0
-
-    count_all = False
-    if nload < 0.01*len(to_load):
-        nload = len(to_load)
-        count_all = True
-
-    if to_load:
-        progress = Progress('Scanning files', nload)
-
-        for (mustload, mtime, abspath, substitutions, tfile) in to_load:
+        failures = []
+        to_load = []
+        for i, filename in enumerate(filenames):
             try:
-                if mustload:
-                    tfile = TracesFile(
-                        None, abspath, fileformat,
-                        substitutions=substitutions, mtime=mtime)
+                abspath = os.path.abspath(filename)
 
-                    if cache and not substitutions:
-                        cache.put(abspath, tfile)
+                substitutions = None
+                if regex:
+                    m = regex.search(filename)
+                    if not m:
+                        raise FilenameAttributeError(
+                            "Cannot get attributes with pattern '%s' "
+                            "from path '%s'" % (filename_attributes, filename))
 
-                    if not count_all:
-                        iload += 1
+                    substitutions = {}
+                    for k in m.groupdict():
+                        if k in ('network', 'station', 'location', 'channel'):
+                            substitutions[k] = m.groupdict()[k]
 
-                if count_all:
-                    iload += 1
+                mtime = os.stat(filename)[8]
+                tfile = None
+                if cache:
+                    tfile = cache.get(abspath)
 
-            except (io.FileLoadError, OSError) as xerror:
+                mustload = (
+                    not tfile or
+                    (tfile.format != fileformat and fileformat != 'detect') or
+                    tfile.mtime != mtime or
+                    substitutions is not None)
+
+                to_load.append(
+                    (mustload, mtime, abspath, substitutions, tfile))
+
+            except (OSError, FilenameAttributeError) as xerror:
                 failures.append(abspath)
                 logger.warning(xerror)
-            else:
-                yield tfile
 
-            abort = progress.update(iload+1)
+            abort = progress.update(i+1)
             if abort:
-                break
+                progress.update(len(filenames))
+                return
 
-        progress.update(nload)
+        progress.update(len(filenames))
 
-    if failures:
-        logger.warning(
-            'The following file%s caused problems and will be ignored:\n' %
-            util.plural_s(len(failures)) + '\n'.join(failures))
+        to_load.sort(key=lambda x: x[2])
 
-    if cache:
-        cache.dump_modified()
+        nload = len([1 for x in to_load if x[0]])
+        iload = 0
+
+        count_all = False
+        if nload < 0.01*len(to_load):
+            nload = len(to_load)
+            count_all = True
+
+        if to_load:
+            progress = Progress('Scanning files', nload)
+
+            for (mustload, mtime, abspath, substitutions, tfile) in to_load:
+                try:
+                    if mustload:
+                        tfile = TracesFile(
+                            None, abspath, fileformat,
+                            substitutions=substitutions, mtime=mtime)
+
+                        if cache and not substitutions:
+                            cache.put(abspath, tfile)
+
+                        if not count_all:
+                            iload += 1
+
+                    if count_all:
+                        iload += 1
+
+                except (io.FileLoadError, OSError) as xerror:
+                    failures.append(abspath)
+                    logger.warning(xerror)
+                else:
+                    yield tfile
+
+                abort = progress.update(iload+1)
+                if abort:
+                    break
+
+            progress.update(nload)
+
+        if failures:
+            logger.warning(
+                'The following file%s caused problems and will be ignored:\n' %
+                util.plural_s(len(failures)) + '\n'.join(failures))
+
+        if cache:
+            cache.dump_modified()
+    finally:
+        progress.finish()
 
 
 def tlen(x):
@@ -1377,32 +1386,36 @@ class Pile(TracesGroup):
         # during chopping
         gather_cache = {}
         pbar = None
-        if progress is not None:
-            pbar = util.progressbar(progress, len(keys))
+        try:
+            if progress is not None:
+                pbar = util.progressbar(progress, len(keys))
 
-        for ikey, key in enumerate(keys):
-            def tsel(tr):
-                return gather(tr) == key and (outer_trace_selector is None or
-                                              outer_trace_selector(tr))
+            for ikey, key in enumerate(keys):
+                def tsel(tr):
+                    return gather(tr) == key and (
+                        outer_trace_selector is None
+                        or outer_trace_selector(tr))
 
-            def gsel(gr):
-                if gr not in gather_cache:
-                    gather_cache[gr] = gr.gather_keys(gather)
+                def gsel(gr):
+                    if gr not in gather_cache:
+                        gather_cache[gr] = gr.gather_keys(gather)
 
-                return key in gather_cache[gr] and (
-                    outer_group_selector is None or outer_group_selector(gr))
+                    return key in gather_cache[gr] and (
+                        outer_group_selector is None
+                        or outer_group_selector(gr))
 
-            kwargs['trace_selector'] = tsel
-            kwargs['group_selector'] = gsel
+                kwargs['trace_selector'] = tsel
+                kwargs['group_selector'] = gsel
 
-            for traces in self.chopper(*args, **kwargs):
-                yield traces
+                for traces in self.chopper(*args, **kwargs):
+                    yield traces
 
+                if pbar:
+                    pbar.update(ikey+1)
+
+        finally:
             if pbar:
-                pbar.update(ikey+1)
-
-        if pbar:
-            pbar.finish()
+                pbar.finish()
 
     def gather_keys(self, gather, selector=None):
         keys = set()

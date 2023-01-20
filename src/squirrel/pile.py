@@ -334,24 +334,27 @@ class Pile(object):
         # the use of this gather-cache makes it impossible to modify the pile
         # during chopping
         pbar = None
-        if progress is not None:
-            pbar = util.progressbar(progress, len(keys))
+        try:
+            if progress is not None:
+                pbar = util.progressbar(progress, len(keys))
 
-        for ikey, key in enumerate(keys):
-            def tsel(tr):
-                return gather(tr) == key and (outer_trace_selector is None or
-                                              outer_trace_selector(tr))
+            for ikey, key in enumerate(keys):
+                def tsel(tr):
+                    return gather(tr) == key and (
+                        outer_trace_selector is None or
+                        outer_trace_selector(tr))
 
-            kwargs['trace_selector'] = tsel
+                kwargs['trace_selector'] = tsel
 
-            for traces in self.chopper(*args, **kwargs):
-                yield traces
+                for traces in self.chopper(*args, **kwargs):
+                    yield traces
 
+                if pbar:
+                    pbar.update(ikey+1)
+
+        finally:
             if pbar:
-                pbar.update(ikey+1)
-
-        if pbar:
-            pbar.finish()
+                pbar.finish()
 
     def reload_modified(self):
         self._squirrel.reload()

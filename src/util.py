@@ -153,11 +153,6 @@ except ImportError:
 
 logger = logging.getLogger('pyrocko.util')
 
-try:
-    import progressbar as progressbar_mod
-except (ImportError, AttributeError):
-    from pyrocko import dummy_progressbar as progressbar_mod
-
 
 try:
     num_full = num.full
@@ -174,10 +169,6 @@ except AttributeError:
         a = num.empty_like(arr, dtype=dtype, order=order, subok=subok)
         a.fill(fill_value)
         return a
-
-
-def progressbar_module():
-    return progressbar_mod
 
 
 g_setup_logging_args = 'pyrocko', 'warning'
@@ -739,19 +730,28 @@ class BetterHelpFormatter(optparse.IndentedHelpFormatter):
             ['%*s%s' % (self.current_indent, '', line) for line in lines])
 
 
+class ProgressBar:
+    def __init__(self, label, n):
+        from pyrocko.progress import progress
+        self._context = progress.view()
+        self._context.__enter__()
+        self._task = progress.task(label, n)
+
+    def update(self, i):
+        self._task.update(i)
+
+    def finish(self):
+        self._task.done()
+        if self._context:
+            self._context.__exit__()
+            self._context = None
+
+
 def progressbar(label, maxval):
-    progressbar_mod = progressbar_module()
     if force_dummy_progressbar:
-        progressbar_mod = dummy_progressbar
+        return dummy_progressbar.ProgressBar(maxval=maxval).start()
 
-    widgets = [
-        label, ' ',
-        progressbar_mod.Bar(marker='-', left='[', right=']'), ' ',
-        progressbar_mod.Percentage(), ' ',
-        progressbar_mod.ETA()]
-
-    pbar = progressbar_mod.ProgressBar(widgets=widgets, maxval=maxval).start()
-    return pbar
+    return ProgressBar(label, maxval)
 
 
 def progress_beg(label):

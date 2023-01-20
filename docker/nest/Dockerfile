@@ -23,7 +23,7 @@ RUN apt-get install -y python3-coverage python3-nose python3-pytest
 RUN apt-get install -y \
         python3-numpy python3-scipy python3-matplotlib \
         python3-requests python3-future \
-        python3-yaml python3-progressbar
+        python3-yaml
 
 # gui runtime requirements
 RUN apt-get install -y \

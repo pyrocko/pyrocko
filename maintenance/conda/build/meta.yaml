@@ -27,7 +27,6 @@ requirements:
     - matplotlib
     - pyqt
     - pyyaml
-    - progressbar2
     - requests
     - jinja2
 

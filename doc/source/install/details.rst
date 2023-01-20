@@ -32,7 +32,6 @@ installed from source:
    * `requests <http://docs.python-requests.org/en/master/>`_
 
 * Optional Python modules:
-   * `progressbar2 <http://pypi.python.org/pypi/progressbar2>`_
    * `Jinja2 <http://jinja.pocoo.org/>`_ (required for the :ref:`fomosto report <fomosto_report>` subcommand)
    * `nosetests <https://pypi.python.org/pypi/nose>`_ (to run the unittests)
    * `coverage <https://pypi.python.org/pypi/coverage>`_ (unittest coverage report)
