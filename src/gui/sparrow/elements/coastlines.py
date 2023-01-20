@@ -142,7 +142,9 @@ class CoastlinesElement(Element):
             self.get_name(),
             self._get_controls(),
             visible=True,
-            remove=self.remove)
+            title_controls=[
+                self.get_title_control_remove(),
+                self.get_title_control_visible()])
 
         for var in ['lat', 'lon', 'depth', 'distance', 'azimuth', 'dip']:
             self.register_state_listener3(
@@ -191,8 +193,7 @@ class CoastlinesElement(Element):
     def _get_controls(self):
         if not self._controls:
             from ..state import state_bind_combobox, \
-                state_bind_checkbox, state_bind_slider, \
-                state_bind_combobox_color
+                state_bind_slider, state_bind_combobox_color
 
             frame = qw.QFrame()
             layout = qw.QGridLayout()
@@ -241,10 +242,6 @@ class CoastlinesElement(Element):
             layout.addWidget(slider, 3, 1)
             state_bind_slider(
                 self, self._state, 'line_width', slider, factor=0.1)
-
-            cb = qw.QCheckBox('Show')
-            layout.addWidget(cb, 4, 0)
-            state_bind_checkbox(self, self._state, 'visible', cb)
 
             layout.addWidget(qw.QFrame(), 5, 0, 1, 2)
 

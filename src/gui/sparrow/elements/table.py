@@ -135,7 +135,9 @@ class TableElement(base.Element):
             self.get_name(),
             self._get_controls(),
             visible=True,
-            remove=self.remove)
+            title_controls=[
+                self.get_title_control_remove(),
+                self.get_title_control_visible()])
 
         for var in ['tmin', 'tmax', 'tduration', 'tposition']:
             self.register_state_listener3(
@@ -370,7 +372,7 @@ class TableElement(base.Element):
 
     def _get_controls(self):
         if self._controls is None:
-            from ..state import state_bind_checkbox, state_bind_slider, \
+            from ..state import state_bind_slider, \
                 state_bind_combobox, state_bind_spinbox
 
             frame = qw.QFrame()
@@ -512,12 +514,6 @@ class TableElement(base.Element):
             cb = common.string_choices_to_combobox(MaskingModeChoice)
             layout.addWidget(cb, iy, 1)
             state_bind_combobox(self, self._state, 'time_masking_mode', cb)
-
-            iy += 1
-
-            cb = qw.QCheckBox('Show')
-            layout.addWidget(cb, iy, 0)
-            state_bind_checkbox(self, self._state, 'visible', cb)
 
             iy += 1
 

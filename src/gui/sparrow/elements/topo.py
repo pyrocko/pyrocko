@@ -149,7 +149,9 @@ class TopoElement(Element):
             self.get_name(),
             self._get_controls(),
             visible=True,
-            remove=self.remove)
+            title_controls=[
+                self.get_title_control_remove(),
+                self.get_title_control_visible()])
 
         self.update()
 
@@ -405,12 +407,6 @@ class TopoElement(Element):
             cb = common.string_choices_to_combobox(vstate.ShadingChoice)
             layout.addWidget(cb, iy, 1)
             state_bind_combobox(self, state, 'shading', cb)
-
-            iy += 1
-
-            cb = qw.QCheckBox('Show')
-            layout.addWidget(cb, iy, 0)
-            state_bind_checkbox(self, state, 'visible', cb)
 
             iy += 1
 

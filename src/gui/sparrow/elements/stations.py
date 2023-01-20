@@ -121,7 +121,9 @@ class StationsElement(Element):
             self.get_name(),
             self._get_controls(),
             visible=True,
-            remove=self.remove)
+            title_controls=[
+                self.get_title_control_remove(),
+                self.get_title_control_visible()])
         self.update()
 
     def unset_parent(self):
@@ -212,7 +214,7 @@ class StationsElement(Element):
 
     def _get_controls(self):
         if not self._controls:
-            from ..state import state_bind_checkbox, state_bind_slider
+            from ..state import state_bind_slider
 
             frame = qw.QFrame()
             layout = qw.QGridLayout()
@@ -242,11 +244,7 @@ class StationsElement(Element):
             pb_file.clicked.connect(self.open_file_load_dialog)
             pb_fdsn.clicked.connect(self.open_fdsn_load_dialog)
 
-            cb = qw.QCheckBox('Show')
-            layout.addWidget(cb, 2, 0)
-            state_bind_checkbox(self, self._state, 'visible', cb)
-
-            layout.addWidget(qw.QFrame(), 3, 0, 1, 3)
+            layout.addWidget(qw.QFrame(), 2, 0, 1, 3)
 
             self._controls = frame
 

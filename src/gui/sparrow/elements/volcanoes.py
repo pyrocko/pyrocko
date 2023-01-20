@@ -82,7 +82,9 @@ class VolcanoesElement(Element):
             self.get_name(),
             self._get_controls(),
             visible=True,
-            remove=self.remove)
+            title_controls=[
+                self.get_title_control_remove(),
+                self.get_title_control_visible()])
 
         self.update()
 
@@ -121,7 +123,7 @@ class VolcanoesElement(Element):
 
     def _get_controls(self):
         if not self._controls:
-            from ..state import state_bind_checkbox, state_bind_slider
+            from ..state import state_bind_slider
 
             frame = qw.QFrame()
             layout = qw.QGridLayout()
@@ -140,11 +142,7 @@ class VolcanoesElement(Element):
             layout.addWidget(slider, 0, 1)
             state_bind_slider(self, self._state, 'size', slider)
 
-            cb = qw.QCheckBox('Show')
-            layout.addWidget(cb, 1, 0)
-            state_bind_checkbox(self, self._state, 'visible', cb)
-
-            layout.addWidget(qw.QFrame(), 2, 0, 1, 2)
+            layout.addWidget(qw.QFrame(), 1, 0, 1, 2)
 
             self._controls = frame
 

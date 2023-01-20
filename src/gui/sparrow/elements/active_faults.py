@@ -150,7 +150,9 @@ class ActiveFaultsElement(Element):
             self.get_name(),
             self._get_controls(),
             visible=True,
-            remove=self.remove)
+            title_controls=[
+                self.get_title_control_remove(),
+                self.get_title_control_visible()])
 
         self.update()
 
@@ -216,15 +218,13 @@ class ActiveFaultsElement(Element):
             layout.addWidget(slider, 0, 1)
             state_bind_slider(self, self._state, 'line_width', slider)
 
-            cb = qw.QCheckBox('Show')
             cb_color_slip_type = qw.QCheckBox('Color by slip type')
 
             layout.addWidget(cb_color_slip_type, 1, 0)
             state_bind_checkbox(self, self._state, 'color_by_slip_type',
                                 cb_color_slip_type)
 
-            layout.addWidget(cb, 2, 0)
-            state_bind_checkbox(self, self._state, 'visible', cb)
+            layout.addWidget(qw.QFrame(), 2, 0, 1, 2)
 
             self._controls = frame
 

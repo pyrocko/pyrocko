@@ -137,9 +137,10 @@ class CrosshairElement(Element):
         self._parent.add_panel(
             self.get_name(),
             self._get_controls(),
-            [self.get_title_control_remove(),
-             self.get_title_control_visible()],
-            visible=False):
+            visible=False,
+            title_controls=[
+                self.get_title_control_remove(),
+                self.get_title_control_visible()])
 
         for var in ['distance', 'lat', 'lon']:
             self.register_state_listener3(self.update, self._parent.state, var)
@@ -186,8 +187,7 @@ class CrosshairElement(Element):
 
     def _get_controls(self):
         if not self._controls:
-            from ..state import state_bind_checkbox, \
-                state_bind_combobox_color
+            from ..state import state_bind_combobox_color
 
             frame = qw.QFrame()
             layout = qw.QGridLayout()
@@ -203,18 +203,11 @@ class CrosshairElement(Element):
             layout.addWidget(cb, 0, 1)
             state_bind_combobox_color(self, self._state, 'color', cb)
 
-            cb = qw.QCheckBox('Show')
-            layout.addWidget(cb, 1, 0)
-            state_bind_checkbox(self, self._state, 'visible', cb)
-
             layout.addWidget(qw.QFrame(), 2, 0, 1, 2)
 
         self._controls = frame
 
         return self._controls
-
-    def _get_title_controls(self):
-
 
 
 __all__ = [

@@ -97,7 +97,9 @@ class HudElement(Element):
             self.get_name(),
             self._get_controls(),
             visible=True,
-            remove=self.remove)
+            title_controls=[
+                self.get_title_control_remove(),
+                self.get_title_control_visible()])
 
         self.register_state_listener3(
             self.update, self._parent.gui_state, 'size')
@@ -177,7 +179,7 @@ class HudElement(Element):
 
     def _get_controls(self):
         if not self._controls:
-            from ..state import state_bind_checkbox, state_bind_lineedit, \
+            from ..state import state_bind_lineedit, \
                 state_bind_combobox, state_bind_slider
 
             frame = qw.QFrame()
@@ -189,16 +191,25 @@ class HudElement(Element):
             layout.addWidget(le, 0, 1)
             state_bind_lineedit(self, self._state, 'template', le)
 
-            cb = qw.QCheckBox('Show')
-            layout.addWidget(cb, 1, 0)
-            state_bind_checkbox(self, self._state, 'visible', cb)
-
             cb = common.string_choices_to_combobox(HudPositionChoice)
-            layout.addWidget(qw.QLabel('Position'), 2, 0)
-            layout.addWidget(cb, 2, 1)
+            layout.addWidget(qw.QLabel('Position'), 1, 0)
+            layout.addWidget(cb, 1, 1)
             state_bind_combobox(self, self._state, 'position', cb)
 
-            layout.addWidget(qw.QLabel('Lightness'), 3, 0)
+            layout.addWidget(qw.QLabel('Lightness'), 2, 0)
+
+            slider = qw.QSlider(qc.Qt.Horizontal)
+            slider.setSizePolicy(
+                qw.QSizePolicy(
+                    qw.QSizePolicy.Expanding, qw.QSizePolicy.Fixed))
+            slider.setMinimum(0)
+            slider.setMaximum(1000)
+            layout.addWidget(slider, 2, 1)
+
+            state_bind_slider(
+                self, self._state, 'lightness', slider, factor=0.001)
+
+            layout.addWidget(qw.QLabel('Fontsize'), 3, 0)
 
             slider = qw.QSlider(qc.Qt.Horizontal)
             slider.setSizePolicy(
@@ -209,22 +220,9 @@ class HudElement(Element):
             layout.addWidget(slider, 3, 1)
 
             state_bind_slider(
-                self, self._state, 'lightness', slider, factor=0.001)
-
-            layout.addWidget(qw.QLabel('Fontsize'), 4, 0)
-
-            slider = qw.QSlider(qc.Qt.Horizontal)
-            slider.setSizePolicy(
-                qw.QSizePolicy(
-                    qw.QSizePolicy.Expanding, qw.QSizePolicy.Fixed))
-            slider.setMinimum(0)
-            slider.setMaximum(1000)
-            layout.addWidget(slider, 4, 1)
-
-            state_bind_slider(
                 self, self._state, 'fontsize', slider, factor=0.001)
 
-            layout.addWidget(qw.QFrame(), 5, 0)
+            layout.addWidget(qw.QFrame(), 4, 0)
 
         self._controls = frame
 

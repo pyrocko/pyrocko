@@ -67,7 +67,9 @@ class SpheroidElement(Element):
             self.get_name(),
             self._get_controls(),
             visible=True,
-            remove=self.remove)
+            title_controls=[
+                self.get_title_control_remove(),
+                self.get_title_control_visible()])
 
         self.update()
 
@@ -145,7 +147,7 @@ class SpheroidElement(Element):
     def _get_controls(self):
         state = self._state
         if not self._controls:
-            from ..state import state_bind_slider, state_bind_checkbox
+            from ..state import state_bind_slider
 
             frame = qw.QFrame()
             layout = qw.QGridLayout()
@@ -179,12 +181,6 @@ class SpheroidElement(Element):
             pb = qw.QPushButton('Move Here')
             layout.addWidget(pb, iy, 0)
             pb.clicked.connect(self.move_here)
-
-            iy += 1
-
-            cb = qw.QCheckBox('Show')
-            layout.addWidget(cb, iy, 0)
-            state_bind_checkbox(self, state, 'visible', cb)
 
             iy += 1
 
