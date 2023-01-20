@@ -139,7 +139,6 @@ class CrosshairElement(Element):
             self._get_controls(),
             visible=False,
             title_controls=[
-                self.get_title_control_remove(),
                 self.get_title_control_visible()])
 
         for var in ['distance', 'lat', 'lon']:

@@ -21,7 +21,7 @@ from pyrocko.gui.vtk_util import cpt_to_vtk_lookuptable
 
 from .. import common
 from ..state import \
-    state_bind_combobox, state_bind, state_bind_checkbox
+    state_bind_combobox, state_bind
 
 
 def random_id():
@@ -75,9 +75,8 @@ class Element(object):
         self._listeners = []
         self._state = None
 
-    def update_visibility(self):
-        assert hasattr(self._state, 'visible')
-        self._state.visible = not self._state.visible
+    def update_visibility(self, visible):
+        self._state.visible = visible
 
     def get_title_control_remove(self):
         button = common.MyDockWidgetTitleBarButton('\u00d7')
@@ -86,12 +85,21 @@ class Element(object):
         return button
 
     def get_title_control_visible(self):
-        button = common.MyDockWidgetTitleBarButtonToggle('\u2b53')
-        button.set_text_unchecked('\u2b54')
-        button.setStatusTip('Toggle Element Visibility')
         assert hasattr(self._state, 'visible')
 
-        button.clicked.connect(self.update_visibility)
+        button = common.MyDockWidgetTitleBarButtonToggle('\u2b53', '\u2b54')
+        button.setStatusTip('Toggle Element Visibility')
+        button.toggled.connect(self.update_visibility)
+
+        def set_button_checked(*args):
+            button.blockSignals(True)
+            button.set_checked(self._state.visible)
+            button.blockSignals(False)
+
+        set_button_checked()
+
+        self.register_state_listener3(
+            set_button_checked, self._state, 'visible')
 
         return button
 

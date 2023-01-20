@@ -220,23 +220,29 @@ class MyDockWidgetTitleBarButton(qw.QPushButton):
 
 
 class MyDockWidgetTitleBarButtonToggle(MyDockWidgetTitleBarButton):
-    def __init__(self, *args, **kwargs):
-        MyDockWidgetTitleBarButton.__init__(self, *args, **kwargs)
+
+    toggled = qc.pyqtSignal(bool)
+
+    def __init__(self, text_checked, text_unchecked, *args, **kwargs):
+        MyDockWidgetTitleBarButton.__init__(
+            self, text_checked, *args, **kwargs)
 
         self._checked = True
-        self._text_checked = self.text()
-        self._text_unchecked = self.text()
+        self._text_checked = text_checked
+        self._text_unchecked = text_unchecked
+        self.update_text()
+        self.clicked.connect(self.toggle)
 
-        self.clicked.connect(self.update_text)
+    def set_checked(self, checked):
+        self._checked = checked
+        self.update_text()
 
-    def set_text_checked(self, text):
-        self._text_checked = text
-
-    def set_text_unchecked(self, text):
-        self._text_unchecked = text
+    def toggle(self):
+        self._checked = not self._checked
+        self.update_text()
+        self.toggled.emit(self._checked)
 
     def update_text(self):
-        self._checked = not self._checked
         if self._checked:
             self.setText(self._text_checked)
         else:
