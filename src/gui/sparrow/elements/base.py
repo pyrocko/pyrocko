@@ -75,6 +75,10 @@ class Element(object):
         self._listeners = []
         self._state = None
 
+    def update_visibility(self):
+        assert hasattr(self._state, 'visible')
+        self._state.visible = not self._state.visible
+
     def get_title_control_remove(self):
         button = common.MyDockWidgetTitleBarButton('\u00d7')
         button.setStatusTip('Remove Element')
@@ -83,13 +87,11 @@ class Element(object):
 
     def get_title_control_visible(self):
         button = common.MyDockWidgetTitleBarButtonToggle('\u2b53')
+        button.set_text_unchecked('\u2b54')
         button.setStatusTip('Toggle Element Visibility')
         assert hasattr(self._state, 'visible')
 
-        button.setCheckable(True)
-        # button.setChecked(True)
-
-        state_bind_checkbox(self, self._state, 'visible', button)
+        button.clicked.connect(self.update_visibility)
 
         return button
 
