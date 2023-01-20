@@ -13,6 +13,8 @@
     #define timegm _mkgmtime
     #define sscanf sscanf_s
 
+    typedef SSIZE_T ssize_t;
+
     char * strsep(char **sp, char *sep)
     {
         char *p, *s;
