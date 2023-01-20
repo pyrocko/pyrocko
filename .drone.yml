@@ -528,9 +528,6 @@ steps:
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py38
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py39
 
-  - conda create -y -n py36 python=3.6 m2-tar m2-gzip m2-patch setuptools pip numpy=1.14
-  - conda run -n py36 python -m pip wheel -v -w dist "--only-binary=:all:" .
-
   - conda create -y -n py37 python=3.7 m2-tar m2-gzip m2-patch setuptools pip numpy=1.14
   - conda run -n py37 python -m pip wheel -v -w dist "--only-binary=:all:" .
 
@@ -539,6 +536,9 @@ steps:
 
   - conda create -y -n py39 python=3.9 m2-tar m2-gzip m2-patch setuptools pip numpy=1.16
   - conda run -n py39 python -m pip wheel -v -w dist "--only-binary=:all:" .
+
+  - conda create -y -n py310 python=3.10 m2-tar m2-gzip m2-patch setuptools pip numpy=1.21
+  - conda run -n py310 python -m pip wheel -v -w dist "--only-binary=:all:" .
 
 - name: upload-testing
   when:
