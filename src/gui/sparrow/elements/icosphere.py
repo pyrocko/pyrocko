@@ -76,7 +76,9 @@ class IcosphereElement(Element):
             self.get_name(),
             self._get_controls(),
             visible=True,
-            title_controls=[self.get_title_control_remove()])
+            title_controls=[
+                self.get_title_control_remove(),
+                self.get_title_control_visible()])
 
         self.update()
 

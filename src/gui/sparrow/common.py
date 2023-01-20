@@ -222,24 +222,25 @@ class MyDockWidgetTitleBarButton(qw.QPushButton):
 class MyDockWidgetTitleBarButtonToggle(MyDockWidgetTitleBarButton):
     def __init__(self, *args, **kwargs):
         MyDockWidgetTitleBarButton.__init__(self, *args, **kwargs)
-        self._text_checked = '\u2b53'
-        self._text_unchecked = '\u2b54'
 
-    # def changeEvent(self, event):
-    #     self.setFlat(True)
-    #     if self.isChecked:
-    #         self.setText(self._text_checked)
-    #     else:
-    #         self.setText(self._text_unchecked)
+        self._checked = True
+        self._text_checked = self.text()
+        self._text_unchecked = self.text()
 
-    def hitButton(self, event):
-        # self.setFlat(True)
-        if self.isDown():
+        self.clicked.connect(self.update_text)
+
+    def set_text_checked(self, text):
+        self._text_checked = text
+
+    def set_text_unchecked(self, text):
+        self._text_unchecked = text
+
+    def update_text(self):
+        self._checked = not self._checked
+        if self._checked:
             self.setText(self._text_checked)
         else:
             self.setText(self._text_unchecked)
-
-        return True
 
 
 class MyDockWidgetTitleBarLabel(qw.QLabel):
