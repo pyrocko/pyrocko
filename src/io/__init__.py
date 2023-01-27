@@ -9,7 +9,7 @@ import logging
 from pyrocko import util, trace
 
 from . import (mseed, sac, kan, segy, yaff, seisan_waveform, gse1, gcf,
-               datacube, suds, css, gse2, tdms_idas)
+               datacube, suds, css, gse2, tdms_idas, hdf5_idas)
 from .io_common import FileLoadError, FileSaveError
 
 import numpy as num
@@ -24,7 +24,7 @@ def allowed_formats(operation, use=None, default=None):
     if operation == 'load':
         lst = ['detect', 'from_extension', 'mseed', 'sac', 'segy', 'seisan',
                'seisan.l', 'seisan.b', 'kan', 'yaff', 'gse1', 'gse2', 'gcf',
-               'datacube', 'suds', 'css', 'tdms_idas']
+               'datacube', 'suds', 'css', 'tdms_idas', 'hdf5_idas']
 
     elif operation == 'save':
         lst = ['mseed', 'sac', 'text', 'yaff', 'gse2']
@@ -88,7 +88,8 @@ def detect_format(filename):
         (gse2, 'gse2'),
         (datacube, 'datacube'),
         (suds, 'suds'),
-        (tdms_idas, 'tdms_idas')]
+        (tdms_idas, 'tdms_idas'),
+        (hdf5_idas, 'hdf5_idas')]
 
     for mod, fmt in formats:
         if mod.detect(data):
@@ -130,7 +131,8 @@ def iload(filename, format='mseed', getdata=True, substitutions=None):
         '.sgy': 'segy',
         '.gse': 'gse2',
         '.wfdisc': 'css',
-        '.tdms': 'tdms_idas'
+        '.tdms': 'tdms_idas',
+        '.h5': 'hdf5_idas'
     }
 
     if format == 'from_extension':
@@ -154,7 +156,8 @@ def iload(filename, format='mseed', getdata=True, substitutions=None):
         'datacube': datacube,
         'suds': suds,
         'css': css,
-        'tdms_idas': tdms_idas
+        'tdms_idas': tdms_idas,
+        'hdf5_idas': hdf5_idas
     }
 
     add_args = {
