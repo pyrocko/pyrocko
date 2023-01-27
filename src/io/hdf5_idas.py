@@ -1,4 +1,3 @@
-import h5py
 from datetime import datetime
 from pyrocko import trace
 
@@ -34,21 +33,20 @@ META_KEYS = {
 }
 
 
-def get_meta(filename):
+def get_meta(h5file):
     """
     Get metadata from HDF5 file using (almost) the same fields as for the TDMS files.
     
     Parameters
     ----------
-    filename : str
-        Name of the file to extract metadata from
+    h5file : HDF5 file object
+        The file to extract metadata from
     Returns
     -------
         Dictionary containing the metadata 
 
     """
 
-    f = h5py.File(filename, "r")
     key_list = list(META_KEYS.keys())
     val_list = list(META_KEYS.values())
 
@@ -61,7 +59,7 @@ def get_meta(filename):
                   'Acquisition/Custom/UserSettings',
                   'Acquisition/Raw[0]']:
         try:
-            field_keys = f[field].attrs.keys()
+            field_keys = h5file[field].attrs.keys()
             for val in val_list:
                 if val in field_keys:
                     meta[key_list[val_list.index(val)]] = f[field].attrs[val]
@@ -76,15 +74,22 @@ def get_meta(filename):
         if val in meta.keys():
             meta[val] = bool(meta[val])
     
-    f.close()
     return meta
 
 
 def iload(filename, load_data=True):
 
-    meta = get_meta(filename)
+    # prevent hard dependency on h5py
+    try:
+        import h5py
+    except Exception as e:
+        print(e)
+        raise ImportError("Please install 'h5py' to proceed, e.g. by running 'pip install h5py'")
+
 
     with h5py.File(filename, "r") as f:
+        # get the meta data
+        meta = get_meta(f)
         # get the actual time series if load_data
         data = f['Acquisition/Raw[0]/RawData'][:].copy() if load_data else None
         # get the sampling rate, starttime, number of samples in space and time
