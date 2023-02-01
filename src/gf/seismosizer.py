@@ -3891,7 +3891,7 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
         delta_times = num.concatenate((
             [times[1] - times[0]],
             num.diff(times)))
-        moment_src = delta_times * moment_rate
+        moment_src = delta_times * moment_rate_
 
         centroid_t = num.sum(
             moment_src / num.sum(moment_src) * times) + self.time
@@ -3899,6 +3899,7 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
         mt = self.pyrocko_moment_tensor(store, *args, **kwargs)
 
         return model.Event(
+            name=self.name,
             lat=centroid_lat,
             lon=centroid_lon,
             depth=centroid_d,
