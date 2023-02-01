@@ -911,9 +911,18 @@ class RuptureMap(Map):
         if 'bottom' in anchor:
             dy += 4 * h
 
+        kwargs['D'] = kwargs.get(
+            'D', 'j%s+w%gc/%gc+h+o%gc/%gc' % (a_str, w, h, dx, dy))
+        kwargs['F'] = kwargs.get(
+            'F', '+g238/236/230+c%g/%g/%g/%g' % (lgap, rgap, bgap, tgap))
+
+        if not kwargs['D']:
+            del kwargs['D']
+
+        if not kwargs['F']:
+            del kwargs['F']
+
         self.gmt.psscale(
-            D='j%s+w%gc/%gc+h+o%gc/%gc' % (a_str, w, h, dx, dy),
-            F='+g238/236/230+c%g/%g/%g/%g' % (lgap, rgap, bgap, tgap),
             *self.jxyr,
             **kwargs)
 
