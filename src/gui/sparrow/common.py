@@ -327,3 +327,10 @@ class MyDockWidget(qw.QDockWidget):
 
     def unblock(self):
         self.setBlocked(False)
+
+
+class MyDoubleSpinBox(qw.QDoubleSpinBox):
+    def __init__(self, *args, **kwargs):
+        qw.QDoubleSpinBox.__init__(self, *args, **kwargs)
+
+        self.setLocale(qc.QLocale(' English'))
