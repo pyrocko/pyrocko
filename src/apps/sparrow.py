@@ -15,18 +15,7 @@ def main():
         cli.main()
 
     except pyrocko.DependencyMissingVTK as e:
-        message = str(e)
-
-        if sys.version_info.major in (2, 3):
-            message += '''
-
-If you have installed Pyrocko under Python2 AND Python3, you can try to start
-Sparrow as
-
-    sparrow%i
-''' % {3: 2, 2: 3}[sys.version_info.major]
-
-        sys.exit(message)
+        sys.exit(str(e))
 
     except pyrocko.DependencyMissing as e:
         sys.exit(str(e))
