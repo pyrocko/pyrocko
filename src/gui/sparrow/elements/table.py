@@ -100,6 +100,7 @@ class TableElement(base.Element):
         self._size_combobox = None
 
         self._pipes = None
+        self._pipe_maps = None
         self._isize_min = 1
         self._isize_max = 6
 
@@ -155,6 +156,10 @@ class TableElement(base.Element):
         self._table = table
 
         self._istate += 1
+
+        if self._pipes is not None and self._istate != self._istate_view:
+            self._clear_pipes()
+
         self._update_controls()
 
     def get_size_parameter_extra_entries(self):
@@ -187,6 +192,9 @@ class TableElement(base.Element):
                 self._parent.remove_actor(p.actor)
 
             self._pipes = None
+
+        if self._pipe_maps is not None:
+            self._pipe_maps = None
 
     def _init_pipes_scatter(self):
         state = self._state
@@ -275,6 +283,7 @@ class TableElement(base.Element):
 
     def update(self, *args):
         state = self._state
+
         if self._pipes is not None and self._istate != self._istate_view:
             self._clear_pipes()
 
@@ -438,10 +447,10 @@ class TableElement(base.Element):
                     qw.QSizePolicy.Expanding, qw.QSizePolicy.Fixed))
             layout.addWidget(slider, iy, 1)
             state_bind_slider(
-                self, self._state, 'depth_min', slider)
+                self, self._state, 'depth_min', slider, factor=km)
             self._depth_min_slider = slider
 
-            spinbox = qw.QDoubleSpinBox()
+            spinbox = common.MyDoubleSpinBox()
             spinbox.setDecimals(1)
             spinbox.setSuffix(' km')
             spinbox.setSingleStep(1)
@@ -459,10 +468,10 @@ class TableElement(base.Element):
                     qw.QSizePolicy.Expanding, qw.QSizePolicy.Fixed))
             layout.addWidget(slider, iy, 1)
             state_bind_slider(
-                self, self._state, 'depth_max', slider)
+                self, self._state, 'depth_max', slider, factor=km)
             self._depth_max_slider = slider
 
-            spinbox = qw.QDoubleSpinBox()
+            spinbox = common.MyDoubleSpinBox()
             spinbox.setDecimals(1)
             spinbox.setSuffix(' km')
             spinbox.setSingleStep(1)
@@ -557,14 +566,14 @@ class TableElement(base.Element):
 
             for wdg in (self._depth_min_slider, self._depth_max_slider,
                         self._depth_min_spinbox, self._depth_max_spinbox):
-                wdg.setMinimum(int(depth_min))
-                wdg.setMaximum(int(depth_max))
+                wdg.setMinimum(int(num.floor(depth_min / km)))
+                wdg.setMaximum(int(num.ceil(depth_max / km)))
 
             for wdg in (self._depth_min_slider, self._depth_min_spinbox):
-                wdg.setValue(int(depth_min / km))
+                wdg.setValue(int(num.floor(depth_min / km)))
 
             for wdg in (self._depth_max_slider, self._depth_max_spinbox):
-                wdg.setValue(int(depth_max / km))
+                wdg.setValue(int(num.ceil(depth_max / km)))
 
 
 __all__ = [
