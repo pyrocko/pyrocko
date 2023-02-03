@@ -111,7 +111,7 @@ class KiteSceneElement(ElementState):
 class KiteState(ElementState):
     visible = Bool.T(default=True)
     scenes = List.T(KiteSceneElement.T(), default=[])
-    cpt = CPTState.T(default=CPTState.D(cpt_name='seismic'))
+    cpt = CPTState.T(default=CPTState.D(cpt_name='seismic_r'))
 
     def create(self):
         element = KiteElement()

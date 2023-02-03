@@ -220,7 +220,12 @@ class SourceElement(base.Element):
         self._controls = None
         self._state.source_selection = source
         self._parent.add_panel(
-            self.get_name(), self._get_controls(), visible=True)
+            self.get_name(),
+            self._get_controls(),
+            visible=True,
+            title_controls=[
+                self.get_title_control_remove(),
+                self.get_title_control_visible()])
 
         self.update()
 
