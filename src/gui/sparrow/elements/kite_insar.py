@@ -44,7 +44,6 @@ class SceneTileAdapter(object):
         x[1:] = frame.E + 0.5 * frame.dE
         x += frame.llLon
         return x
-        # return self._scene.frame.E + self._scene.frame.llLon
 
     def y(self):
         # TODO how to handle N given in m
@@ -54,7 +53,6 @@ class SceneTileAdapter(object):
         y[1:] = frame.N + 0.5 * frame.dN
         y += frame.llLat
         return y
-        # return self._scene.frame.N + self._scene.frame.llLat
 
     @property
     def data(self):
@@ -183,6 +181,24 @@ class KiteElement(Element):
             self._parent.update_view()
             self._parent = None
 
+    def _load_scene_from_fn(self, fn):
+        try:
+            scene = Scene.load(fn)
+        except ImportError:
+            qw.QMessageBox.warning(
+                self._parent, 'Import Error',
+                'Could not load Kite scene from %s' % fn)
+            return
+
+        if scene.frame.spacing != 'degree':
+            logger.warning(
+                'Sparrow requires Scene spacing in degrees. '
+                'Skipped %s', fn)
+
+            return
+
+        return scene
+
     def open_load_scene_dialog(self, *args):
         caption = 'Select one or more Kite scenes to open'
 
@@ -192,19 +208,9 @@ class KiteElement(Element):
             options=common.qfiledialog_options)
 
         for fname in fns:
-            try:
-                scene = Scene.load(fname)
-            except ImportError:
-                qw.QMessageBox.warning(
-                    self._parent, 'Import Error',
-                    'Could not load Kite scene from %s' % fname)
-                return
+            scene = self._load_scene_from_fn(fname)
 
-            if scene.frame.spacing != 'degree':
-                logger.warning(
-                    'Sparrow requires Scene spacing in degrees. '
-                    'Skipped %s', fname)
-
+            if scene is None:
                 continue
 
             logger.info('Adding Kite scene %s', fname)
@@ -235,14 +241,18 @@ class KiteElement(Element):
         if self._state.visible:
             for scene_element in state.scenes:
                 logger.info('Drawing Kite scene')
+
+                if scene_element.scene is None:
+                    scene_element.scene = self._load_scene_from_fn(
+                        scene_element.filename)
+
                 scene = scene_element.scene
+
                 scene_tile = SceneTileAdapter(scene)
 
                 k = (scene_tile, state.cpt.cpt_name)
 
                 if k not in self._meshes:
-                    # TODO handle different limits of multiples scenes?!
-
                     cpt = copy.deepcopy(
                         self.cpt_handler._cpts[state.cpt.cpt_name])
 
