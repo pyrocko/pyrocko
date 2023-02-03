@@ -170,7 +170,12 @@ class GeometryElement(base.Element):
         self._state.geometry = loaded_geometry
 
         self._parent.add_panel(
-            self.get_name(), self._get_controls(), visible=True)
+            self.get_name(),
+            self._get_controls(),
+            visible=True,
+            title_controls=[
+                self.get_title_control_remove(),
+                self.get_title_control_visible()])
 
         self.update()
 
