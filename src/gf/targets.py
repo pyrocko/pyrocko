@@ -32,11 +32,12 @@ class OptimizationMethod(StringChoice):
 
 def component_orientation(source, target, component):
     '''
-    Get component and azimuth for standard components R, T, Z, N, and E.
+    Get component and azimuth for standard components R, T, Z, U, N, and E.
 
     :param source: :py:class:`pyrocko.gf.Location` object
     :param target: :py:class:`pyrocko.gf.Location` object
-    :param component: string ``'R'``, ``'T'``, ``'Z'``, ``'N'`` or ``'E'``
+    :param component:
+        string ``'R'``, ``'T'``, ``'Z'``, ``'U'``, ``'N'`` or ``'E'``
     '''
 
     _, bazi = source.azibazi_to(target)
@@ -46,7 +47,8 @@ def component_orientation(source, target, component):
         'R': (bazi + 180., 0.),
         'N': (0., 0.),
         'E': (90., 0.),
-        'Z': (0., -90.)}[component]
+        'Z': (0., -90.),
+        'U': (0., -90.)}[component]
 
     return azi, dip
 
@@ -150,7 +152,7 @@ class Target(meta.Receiver):
             if cha[-2] == 'V':
                 return 'velocity'
         elif len(cha) == 1:
-            if cha in 'NEZ':
+            if cha in 'NEZU':
                 return 'displacement'
             if cha == 'P':
                 return 'pressure'
@@ -173,7 +175,7 @@ class Target(meta.Receiver):
         if self.azimuth is not None:
             return self.azimuth
         elif self.component_code() in 'NEZ':
-            return {'N': 0., 'E': 90., 'Z': 0.}[self.component_code()]
+            return {'N': 0., 'E': 90., 'Z': 0., 'U': 0.}[self.component_code()]
 
         raise BadTarget('cannot determine sensor component azimuth for '
                         '%s.%s.%s.%s' % self.codes)
@@ -182,7 +184,8 @@ class Target(meta.Receiver):
         if self.dip is not None:
             return self.dip
         elif self.component_code() in 'NEZ':
-            return {'N': 0., 'E': 0., 'Z': -90.}[self.component_code()]
+            return {
+                'N': 0., 'E': 0., 'Z': -90., 'U': -90.}[self.component_code()]
 
         raise BadTarget('cannot determine sensor component dip')
 

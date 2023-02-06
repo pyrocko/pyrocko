@@ -33,6 +33,8 @@ def guess_azimuth_from_name(channel_name):
         return 90.
     elif channel_name.endswith('Z'):
         return 0.
+    elif channel_name.endswith('U'):
+        return 0.
 
     return None
 
@@ -43,6 +45,8 @@ def guess_dip_from_name(channel_name):
     elif channel_name.endswith('E'):
         return 0.
     elif channel_name.endswith('Z'):
+        return -90.
+    elif channel_name.endswith('U'):
         return -90.
 
     return None
