@@ -176,6 +176,73 @@ class QSliderNoWheel(qw.QSlider):
         ev.ignore()
 
 
+class QSliderFloat(qw.QSlider):
+
+    sliderMovedFloat = qc.pyqtSignal(float)
+    valueChangedFloat = qc.pyqtSignal(float)
+    rangeChangedFloat = qc.pyqtSignal(float, float)
+
+    def __init__(self, *args, **kwargs):
+        qw.QSlider.__init__(self, *args, **kwargs)
+        self.setMinimum(0)
+        self.setMaximum(1000)
+        self.setSingleStep(10)
+        self.setPageStep(100)
+        self._fmin = 0.
+        self._fmax = 1.
+        self.valueChanged.connect(self._handleValueChanged)
+        self.sliderMoved.connect(self._handleSliderMoved)
+
+    def _f_to_i(self, fval):
+        fval = float(fval)
+        imin = self.minimum()
+        imax = self.maximum()
+        return max(
+            imin,
+            imin + min(
+                int(round(
+                    (fval-self._fmin) * (imax - imin)
+                    / (self._fmax-self._fmin))),
+                imax))
+
+    def _i_to_f(self, ival):
+        imin = self.minimum()
+        imax = self.maximum()
+        return self._fmin + (ival - imin) * (self._fmax - self._fmin) \
+            / (imax - imin)
+
+    def minimumFloat(self):
+        return self._fmin
+
+    def setMinimumFloat(self, fval):
+        self._fmin = float(fval)
+        self.rangeChangedFloat.emit(self._fmin, self._fmax)
+
+    def maximumFloat(self):
+        return self._fmax
+
+    def setMaximumFloat(self, fval):
+        self._fmax = float(fval)
+        self.rangeChangedFloat.emit(self._fmin, self._fmax)
+
+    def setRangeFloat(self, fmin, fmax):
+        self._fmin = float(fmin)
+        self._fmax = float(fmax)
+        self.rangeChangedFloat.emit(self._fmin, self._fmax)
+
+    def valueFloat(self):
+        return self._i_to_f(self.value())
+
+    def setValueFloat(self, fval):
+        qw.QSlider.setValue(self, self._f_to_i(fval))
+
+    def _handleValueChanged(self, ival):
+        self.valueChangedFloat.emit(self._i_to_f(ival))
+
+    def _handleSliderMoved(self, ival):
+        self.sliderMovedFloat.emit(self._i_to_f(ival))
+
+
 class MyValueEdit(qw.QLineEdit):
 
     edited = qc.pyqtSignal(float)
