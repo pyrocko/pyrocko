@@ -3,8 +3,6 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
-from __future__ import print_function
-
 if __name__ == '__main__':
     import sys
     import pyrocko

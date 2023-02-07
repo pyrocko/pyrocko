@@ -25,8 +25,6 @@ selection by the user. This list currently contains the following sites:
 Any other site can be specified by providing its full URL.
 '''
 
-from __future__ import absolute_import
-
 import re
 import logging
 import socket

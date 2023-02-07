@@ -16,8 +16,6 @@ Further content types are defined here to handle waveform orders, waveform
 promises, data coverage and sensor information.
 '''
 
-from __future__ import absolute_import, print_function
-
 import re
 import fnmatch
 import math

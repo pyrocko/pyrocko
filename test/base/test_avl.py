@@ -1,7 +1,6 @@
 # tested with Python 3.5, july-2017 (1.12)
 # tested with Python 2.4, september-2007 (1.12)
 # tested with Python 2.5, december-2008 (1.12_1)
-from __future__ import division, print_function, absolute_import
 
 import sys  # noqa
 import unittest

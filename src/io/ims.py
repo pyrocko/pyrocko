@@ -5,7 +5,6 @@
 '''
 Module to read and write GSE2.0, GSE2.1, and IMS1.0 files.
 '''
-from __future__ import print_function, absolute_import
 
 import sys
 import re

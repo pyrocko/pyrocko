@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # http://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
@@ -6,7 +5,6 @@
 '''
 Lightweight declarative YAML and XML data binding for Python.
 '''
-from __future__ import absolute_import, print_function
 
 import datetime
 import calendar
@@ -38,14 +36,6 @@ try:
     range = xrange
 except NameError:
     newstr = str
-
-try:
-    # needed for py2/py3 compatibility to allow
-    #   from pyrocko.guts import FileNotFoundError
-    FileNotFoundError = FileNotFoundError
-except NameError:
-    class FileNotFoundError(EnvironmentError):
-        pass
 
 
 ALLOW_INCLUDE = False

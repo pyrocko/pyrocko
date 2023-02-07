@@ -13,7 +13,6 @@ which is based on this one:
 
     http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/259148
 """
-from __future__ import absolute_import
 
 import asynchat
 import asyncore

@@ -7,9 +7,6 @@
 Access to some IRIS (non-FDSN) web services.
 '''
 
-from __future__ import absolute_import
-
-
 import logging
 import re
 from xml.parsers.expat import ParserCreate

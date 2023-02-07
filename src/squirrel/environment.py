@@ -16,8 +16,6 @@ module provides functions to create local environments and to look for a usable
 environment in the hierarchy of a user's project directory.
 '''
 
-from __future__ import absolute_import, print_function
-
 import os
 import logging
 

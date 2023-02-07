@@ -7,7 +7,6 @@ Access to the USGS Global Crustal Database.
 
 Simple queries and statistical analysis
 '''
-from __future__ import absolute_import
 
 import numpy as num
 import copy

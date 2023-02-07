@@ -1,4 +1,3 @@
-from __future__ import print_function
 from pyrocko import io
 from pyrocko.example import get_example_data
 

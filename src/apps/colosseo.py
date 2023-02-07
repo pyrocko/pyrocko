@@ -1,4 +1,3 @@
-from __future__ import print_function
 # http://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century

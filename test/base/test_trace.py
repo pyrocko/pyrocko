@@ -1,5 +1,3 @@
-# python 2/3
-from __future__ import division, print_function, absolute_import
 
 from pyrocko import trace, util, model, pile, guts, response
 import unittest

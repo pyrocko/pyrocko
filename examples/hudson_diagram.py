@@ -1,4 +1,3 @@
-from __future__ import print_function
 import sys
 from matplotlib import pyplot as plt
 from pyrocko.plot import hudson, beachball, mpl_init, mpl_color

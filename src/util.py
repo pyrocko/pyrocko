@@ -1,5 +1,4 @@
 # http://pyrocko.org - GPLv3
-
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
@@ -61,8 +60,6 @@ Module content
 ..............
 '''
 
-from __future__ import division, print_function
-
 import time
 import logging
 import os
@@ -85,16 +82,11 @@ import pyrocko
 from pyrocko import dummy_progressbar
 
 
-try:
-    from urllib.parse import urlencode, quote, unquote  # noqa
-    from urllib.request import (
-        Request, build_opener, HTTPDigestAuthHandler, urlopen as _urlopen)  # noqa
-    from urllib.error import HTTPError, URLError  # noqa
+from urllib.parse import urlencode, quote, unquote  # noqa
+from urllib.request import Request, build_opener, HTTPDigestAuthHandler  # noqa
+from urllib.request import urlopen as _urlopen  # noqa
+from urllib.error import HTTPError, URLError  # noqa
 
-except ImportError:
-    from urllib import urlencode, quote, unquote # noqa
-    from urllib2 import (Request, build_opener, HTTPDigestAuthHandler,   # noqa
-                         HTTPError, URLError, urlopen as _urlopen)  # noqa
 
 try:
     import certifi

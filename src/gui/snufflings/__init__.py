@@ -2,7 +2,7 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from __future__ import absolute_import
+
 from . import (
     minmax, rms, stalta, geofon, ampspec, catalogs, download, cake_phase,
     seismosizer, map, polarization, spectrogram)

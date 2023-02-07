@@ -6,8 +6,6 @@
 This module provides basic signal processing for seismic traces.
 '''
 
-from __future__ import division, absolute_import
-
 import time
 import math
 import copy

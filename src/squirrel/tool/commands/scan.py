@@ -3,8 +3,6 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
-from __future__ import absolute_import, print_function
-
 headline = 'Scan and index files and directories.'
 
 

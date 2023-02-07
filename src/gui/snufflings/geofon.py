@@ -2,7 +2,7 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from __future__ import absolute_import
+
 from pyrocko.gui.snuffling import Snuffling
 from pyrocko.gui.util import EventMarker
 

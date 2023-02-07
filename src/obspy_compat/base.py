@@ -34,8 +34,6 @@ Pyrocko and ObsPy classes.
 
 '''
 
-from __future__ import absolute_import
-
 
 def to_pyrocko_trace(trace):
     '''

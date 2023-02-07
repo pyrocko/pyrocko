@@ -2,8 +2,6 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, division
 
 import logging
 import os

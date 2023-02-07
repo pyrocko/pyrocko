@@ -1,7 +1,7 @@
 '''
 Calculate P-phase arrivals.
 '''
-from __future__ import print_function
+
 from pyrocko import cake
 import numpy as num
 

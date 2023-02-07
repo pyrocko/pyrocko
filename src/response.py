@@ -5,8 +5,6 @@
 
 '''This module provides convenience objects to handle frequency responses.'''
 
-from __future__ import print_function, division, absolute_import
-
 import math
 import logging
 

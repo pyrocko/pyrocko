@@ -25,8 +25,6 @@ http://www.soest.hawaii.edu/pwessel/gshhg/.
     Shoreline Database, J. Geophys. Res., 101, #B4, pp. 8741-8743, 1996.
 '''
 
-from __future__ import absolute_import
-
 import logging
 import io
 import struct

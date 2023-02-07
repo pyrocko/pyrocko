@@ -21,8 +21,6 @@ moment according to the "standard decomposition" can be found in the
 output of :py:meth:`MomentTensor.standard_decomposition`.
 '''
 
-from __future__ import division, print_function, absolute_import
-
 import math
 import numpy as num
 

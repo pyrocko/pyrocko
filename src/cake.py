@@ -43,7 +43,6 @@ The main classes defined in this module are:
      :py:class:`Discontinuity`.
 '''
 
-from __future__ import absolute_import
 from functools import reduce
 
 import os

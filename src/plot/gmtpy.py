@@ -9,7 +9,6 @@ A Python interface to GMT.
 # This file is part of GmtPy (http://emolch.github.io/gmtpy/)
 # See there for copying and licensing information.
 
-from __future__ import print_function, absolute_import
 import subprocess
 try:
     from StringIO import StringIO as BytesIO
