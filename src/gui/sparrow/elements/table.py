@@ -8,6 +8,7 @@ import copy
 import numpy as num
 
 from pyrocko.guts import Bool, Float, String, StringChoice
+from pyrocko.gui import util as gui_util
 from pyrocko.gui.vtk_util import ScatterPipe, BeachballPipe
 from pyrocko.gui.qt_compat import qw, qc
 
@@ -77,8 +78,8 @@ class TableState(base.ElementState):
     color_parameter = String.T(optional=True)
     cpt = base.CPTState.T(default=base.CPTState.D())
     size_parameter = String.T(optional=True)
-    depth_min = Float.T(default=-60*km)
-    depth_max = Float.T(default=700*km)
+    depth_min = Float.T(optional=True)
+    depth_max = Float.T(optional=True)
     depth_offset = Float.T(default=0.0)
     symbol = SymbolChoice.T(default='sphere')
     time_masking_opacity = Float.T(default=0.0)
@@ -381,8 +382,8 @@ class TableElement(base.Element):
 
     def _get_controls(self):
         if self._controls is None:
-            from ..state import state_bind_slider, \
-                state_bind_combobox, state_bind_spinbox
+            from ..state import state_bind_slider, state_bind_slider_float, \
+                state_bind_combobox, state_bind_lineedit
 
             frame = qw.QFrame()
             layout = qw.QGridLayout()
@@ -440,61 +441,51 @@ class TableElement(base.Element):
 
             iy += 1
 
-            layout.addWidget(qw.QLabel('Depth Min'), iy, 0)
-            slider = qw.QSlider(qc.Qt.Horizontal)
+            layout.addWidget(qw.QLabel('Depth Min [km]'), iy, 0)
+            slider = gui_util.QSliderFloat(qc.Qt.Horizontal)
             slider.setSizePolicy(
                 qw.QSizePolicy(
                     qw.QSizePolicy.Expanding, qw.QSizePolicy.Fixed))
+            slider.setMinimumFloat(-60*km)
+            slider.setMaximumFloat(700*km)
             layout.addWidget(slider, iy, 1)
-            state_bind_slider(
-                self, self._state, 'depth_min', slider, factor=km)
+            state_bind_slider_float(
+                self, self._state, 'depth_min', slider,
+                min_is_none=True)
             self._depth_min_slider = slider
 
-            spinbox = common.MyDoubleSpinBox()
-            spinbox.setDecimals(1)
-            spinbox.setSuffix(' km')
-            spinbox.setSingleStep(1)
-            layout.addWidget(spinbox, iy, 2)
-            state_bind_spinbox(
-                self, self._state, 'depth_min', spinbox, factor=km)
-            self._depth_min_spinbox = spinbox
+            le = qw.QLineEdit()
+            layout.addWidget(le, iy, 2)
+            state_bind_lineedit(
+                self, self._state, 'depth_min', le,
+                from_string=lambda s: None if s == 'off' else float(s)*1000.,
+                to_string=lambda v: 'off' if v is None else str(v/1000.))
+
+            self._depth_min_lineedit = le
 
             iy += 1
 
-            layout.addWidget(qw.QLabel('Depth Max'), iy, 0)
-            slider = qw.QSlider(qc.Qt.Horizontal)
+            layout.addWidget(qw.QLabel('Depth Max [km]'), iy, 0)
+            slider = gui_util.QSliderFloat(qc.Qt.Horizontal)
             slider.setSizePolicy(
                 qw.QSizePolicy(
                     qw.QSizePolicy.Expanding, qw.QSizePolicy.Fixed))
+            slider.setMinimumFloat(-60*km)
+            slider.setMaximumFloat(700*km)
             layout.addWidget(slider, iy, 1)
-            state_bind_slider(
-                self, self._state, 'depth_max', slider, factor=km)
+            state_bind_slider_float(
+                self, self._state, 'depth_max', slider,
+                max_is_none=True)
             self._depth_max_slider = slider
 
-            spinbox = common.MyDoubleSpinBox()
-            spinbox.setDecimals(1)
-            spinbox.setSuffix(' km')
-            spinbox.setSingleStep(1)
-            layout.addWidget(spinbox, iy, 2)
-            state_bind_spinbox(
-                self, self._state, 'depth_max', spinbox, factor=km)
-            self._depth_max_spinbox = spinbox
+            le = qw.QLineEdit()
+            layout.addWidget(le, iy, 2)
+            state_bind_lineedit(
+                self, self._state, 'depth_max', le,
+                from_string=lambda s: None if s == 'off' else float(s)*1000.,
+                to_string=lambda v: 'off' if v is None else str(v/1000.))
 
-            def sync_depth_min(value):
-                state = self._state
-                if state.depth_min > value:
-                    state.depth_min = value
-
-            def sync_depth_max(value):
-                state = self._state
-                if state.depth_max < value:
-                    state.depth_max = value
-
-            self._depth_max_slider.valueChanged.connect(sync_depth_min)
-            self._depth_max_spinbox.valueChanged.connect(sync_depth_min)
-
-            self._depth_min_slider.valueChanged.connect(sync_depth_max)
-            self._depth_min_spinbox.valueChanged.connect(sync_depth_max)
+            self._depth_max_lineedit = le
 
             iy += 1
 
@@ -561,19 +552,14 @@ class TableElement(base.Element):
         if self._table is not None and self._table.has_col('depth'):
             depth = self._table.get_col('depth')
 
-            depth_min = depth.min()
-            depth_max = depth.max()
+            if depth.size > 0:
 
-            for wdg in (self._depth_min_slider, self._depth_max_slider,
-                        self._depth_min_spinbox, self._depth_max_spinbox):
-                wdg.setMinimum(int(num.floor(depth_min / km)))
-                wdg.setMaximum(int(num.ceil(depth_max / km)))
+                depth_min = depth.min()
+                depth_max = depth.max()
 
-            for wdg in (self._depth_min_slider, self._depth_min_spinbox):
-                wdg.setValue(int(num.floor(depth_min / km)))
-
-            for wdg in (self._depth_max_slider, self._depth_max_spinbox):
-                wdg.setValue(int(num.ceil(depth_max / km)))
+                for wdg in (self._depth_min_slider, self._depth_max_slider):
+                    wdg.setMinimumFloat(depth_min)
+                    wdg.setMaximumFloat(depth_max)
 
 
 __all__ = [
