@@ -31,12 +31,6 @@ except ImportError:
 from .util import time_to_str, str_to_time, TimeStrError, hpfloat, \
     get_time_float
 
-try:
-    newstr = unicode
-    range = xrange
-except NameError:
-    newstr = str
-
 
 ALLOW_INCLUDE = False
 
@@ -47,12 +41,6 @@ class GutsSafeDumper(SafeDumper):
 
 class GutsSafeLoader(SafeLoader):
     pass
-
-
-try:
-    unicode
-except NameError:
-    unicode = str
 
 
 g_iprop = 0
@@ -109,26 +97,26 @@ for (style, cls) in str_style_map.items():
         GutsSafeDumper.add_representer(cls, make_str_presenter(style))
 
 
-class uliteral(unicode):
+class uliteral(str):
     pass
 
 
-class ufolded(unicode):
+class ufolded(str):
     pass
 
 
-class usinglequoted(unicode):
+class usinglequoted(str):
     pass
 
 
-class udoublequoted(unicode):
+class udoublequoted(str):
     pass
 
 
 def make_unicode_presenter(style):
     def presenter(dumper, data):
         return dumper.represent_scalar(
-            'tag:yaml.org,2002:str', unicode(data), style=style)
+            'tag:yaml.org,2002:str', str(data), style=style)
 
     return presenter
 
@@ -963,7 +951,7 @@ class SObject(Object):
 
     class __T(TBase):
         def regularize_extra(self, val):
-            if isinstance(val, (str, newstr)):
+            if isinstance(val, str):
                 return self.cls(val)
 
             return val
@@ -1036,7 +1024,7 @@ class Bool(Object):
         strict = True
 
         def regularize_extra(self, val):
-            if isinstance(val, (str, newstr)):
+            if isinstance(val, str):
                 if val.lower().strip() in ('0', 'false'):
                     return False
 
@@ -1060,7 +1048,7 @@ class String(Object):
 
 
 class Unicode(Object):
-    dummy_for = newstr
+    dummy_for = str
 
     class __T(TBase):
         def __init__(self, *args, **kwargs):
@@ -1284,7 +1272,7 @@ class Duration(Object):
     class __T(TBase):
 
         def regularize_extra(self, val):
-            if isinstance(val, (str, newstr)):
+            if isinstance(val, str):
                 unit = val[-1]
                 if unit in unit_factors:
                     return float(val[:-1]) * unit_factors[unit]
@@ -1315,7 +1303,7 @@ class Timestamp(Object):
                 tt = val.timetuple()
                 val = time_float(calendar.timegm(tt))
 
-            elif isinstance(val, (str, newstr)):
+            elif isinstance(val, str):
                 val = val.strip()
                 tz_offset = 0
 
@@ -1378,7 +1366,7 @@ class DateTimestamp(Object):
                 tt = val.timetuple()
                 val = time_float(calendar.timegm(tt))
 
-            elif isinstance(val, (str, newstr)):
+            elif isinstance(val, str):
                 val = str_to_time(val, format='%Y-%m-%d')
 
             elif isinstance(val, int):
@@ -1431,10 +1419,10 @@ class StringPattern(String):
 class UnicodePattern(Unicode):
 
     '''
-    Any ``unicode`` matching pattern ``%(pattern)s``.
+    Any ``str`` matching pattern ``%(pattern)s``.
     '''
 
-    dummy_for = newstr
+    dummy_for = str
     pattern = '.*'
 
     class __T(TBase):
@@ -1649,7 +1637,7 @@ def _dump(
 
     if header:
         stream.write(enc(u'%YAML 1.1\n'))
-        if isinstance(header, (str, newstr)):
+        if isinstance(header, str):
             banner = u'\n'.join('# ' + x for x in header.splitlines()) + '\n'
             stream.write(enc(banner))
 
@@ -1773,12 +1761,12 @@ yaml.add_multi_constructor('!', multi_constructor, Loader=GutsSafeLoader)
 yaml.add_representer(dict, dict_noflow_representer, Dumper=GutsSafeDumper)
 
 
-def newstr_representer(dumper, data):
+def str_representer(dumper, data):
     return dumper.represent_scalar(
-        'tag:yaml.org,2002:str', unicode(data))
+        'tag:yaml.org,2002:str', str(data))
 
 
-yaml.add_representer(newstr, newstr_representer, Dumper=GutsSafeDumper)
+yaml.add_representer(str, str_representer, Dumper=GutsSafeDumper)
 
 
 class Constructor(object):
@@ -1946,7 +1934,7 @@ def _dump_xml_header(stream, banner=None):
         enc = no_encode
 
     stream.write(enc(u'<?xml version="1.0" encoding="UTF-8" ?>\n'))
-    if isinstance(banner, (str, newstr)):
+    if isinstance(banner, str):
         stream.write(enc(u'<!-- %s -->\n' % banner))
 
 
@@ -2016,7 +2004,7 @@ def _dump_xml(
 
             for (k, v) in elems:
                 if k is None:
-                    stream.write(enc(escape(newstr(v), {'\0': '&#00;'})))
+                    stream.write(enc(escape(str(v), {'\0': '&#00;'})))
                 else:
                     _dump_xml(v, stream,  depth+1, k, False, ns_map, ns_ignore)
 
@@ -2030,7 +2018,7 @@ def _dump_xml(
         stream.write(enc(u'%s<%s>%s</%s>\n' % (
             indent,
             name,
-            escape(newstr(obj), {'\0': '&#00;'}),
+            escape(str(obj), {'\0': '&#00;'}),
             name)))
 
 

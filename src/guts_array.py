@@ -8,7 +8,7 @@ from io import BytesIO
 from base64 import b64decode, b64encode
 import binascii
 
-from .guts import TBase, Object, ValidationError, literal, newstr
+from .guts import TBase, Object, ValidationError, literal
 
 
 try:
@@ -66,7 +66,7 @@ class Array(Object):
                 return array_equal(self._default, val)
 
         def regularize_extra(self, val):
-            if isinstance(val, (str, newstr)):
+            if isinstance(val, str):
                 ndim = None
                 if self.shape:
                     ndim = len(self.shape)
@@ -126,7 +126,7 @@ class Array(Object):
                             % ', '.join(sorted(allowed)))
 
                     data = val['data']
-                    if not isinstance(data, (str, newstr)):
+                    if not isinstance(data, str):
                         raise ValidationError(
                             'data must be given as a base64 encoded string')
 

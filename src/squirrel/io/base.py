@@ -5,7 +5,6 @@
 
 import time
 import logging
-from builtins import str as newstr
 
 from pyrocko import util
 from pyrocko.io.io_common import FileLoadError
@@ -202,7 +201,7 @@ def iload(
     selection = None
     kind_ids = to_kind_ids(content)
 
-    if isinstance(paths, (str, newstr)):
+    if isinstance(paths, str):
         paths = [paths]
     else:
         if segment is not None:

@@ -62,10 +62,6 @@ from scipy.optimize import bisect, brentq
 
 from . import util, config
 
-try:
-    newstr = unicode
-except NameError:
-    newstr = str
 
 logger = logging.getLogger('cake')
 
@@ -1147,12 +1143,12 @@ class PhaseDef(object):
 
 
 def to_phase_defs(phases):
-    if isinstance(phases, (str, newstr, PhaseDef)):
+    if isinstance(phases, (str, PhaseDef)):
         phases = [phases]
 
     phases_out = []
     for phase in phases:
-        if isinstance(phase, (str, newstr)):
+        if isinstance(phase, str):
             phases_out.extend(PhaseDef(x.strip()) for x in phase.split(','))
         elif isinstance(phase, PhaseDef):
             phases_out.append(phase)
@@ -3012,7 +3008,7 @@ def anything_to_crust2_profile(crust2_profile):
     if isinstance(crust2_profile, tuple):
         lat, lon = [float(x) for x in crust2_profile]
         return crust2x2.get_profile(lat, lon)
-    elif isinstance(crust2_profile, (str, newstr)):
+    elif isinstance(crust2_profile, str):
         return crust2x2.get_profile(crust2_profile)
     elif isinstance(crust2_profile, crust2x2.Crust2Profile):
         return crust2_profile
@@ -3789,10 +3785,10 @@ class LayeredModel(object):
         ``depth_max``.
         '''
 
-        if isinstance(depth_min, (str, newstr)):
+        if isinstance(depth_min, str):
             depth_min = self.discontinuity(depth_min).z
 
-        if isinstance(depth_max, (str, newstr)):
+        if isinstance(depth_max, str):
             depth_max = self.discontinuity(depth_max).z
 
         mod_extracted = LayeredModel()

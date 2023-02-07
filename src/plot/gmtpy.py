@@ -33,10 +33,6 @@ except ImportError:
 
 from pyrocko import ExternalProgramMissing
 
-try:
-    newstr = unicode
-except NameError:
-    newstr = str
 
 find_bb = re.compile(br'%%BoundingBox:((\s+[-0-9]+){4})')
 find_hiresbb = re.compile(br'%%HiResBoundingBox:((\s+[-0-9.]+){4})')
@@ -3211,12 +3207,12 @@ class TableLiner(object):
     def __iter__(self):
         if self.in_columns is not None:
             for row in zip(*self.in_columns):
-                yield (' '.join([newstr(x) for x in row])+'\n').encode(
+                yield (' '.join([str(x) for x in row])+'\n').encode(
                     self.encoding)
 
         if self.in_rows is not None:
             for row in self.in_rows:
-                yield (' '.join([newstr(x) for x in row])+'\n').encode(
+                yield (' '.join([str(x) for x in row])+'\n').encode(
                     self.encoding)
 
 

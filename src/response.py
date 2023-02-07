@@ -16,11 +16,6 @@ from pyrocko.guts import Object, Float, Int, String, Complex, Tuple, List, \
     StringChoice, Bool
 from pyrocko.guts_array import Array
 
-try:
-    newstr = unicode
-except NameError:
-    newstr = str
-
 
 guts_prefix = 'pf'
 
@@ -28,7 +23,7 @@ logger = logging.getLogger('pyrocko.response')
 
 
 def asarray_1d(x, dtype):
-    if isinstance(x, (list, tuple)) and x and isinstance(x[0], (str, newstr)):
+    if isinstance(x, (list, tuple)) and x and isinstance(x[0], str):
         return num.asarray(list(map(dtype, x)), dtype=dtype)
     else:
         a = num.asarray(x, dtype=dtype)

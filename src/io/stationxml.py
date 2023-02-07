@@ -22,11 +22,6 @@ from pyrocko.util import hpfloat, time_to_str, get_time_float
 import pyrocko.model
 from pyrocko import util, response
 
-try:
-    newstr = unicode
-except NameError:
-    newstr = str
-
 guts_prefix = 'sx'
 
 guts_xmlns = 'http://www.fdsn.org/xml/station/1'
@@ -333,7 +328,7 @@ class DummyAwareOptionalTimestamp(Object):
                 tt = val.timetuple()
                 val = time_float(calendar.timegm(tt))
 
-            elif isinstance(val, (str, newstr)):
+            elif isinstance(val, str):
                 val = val.strip()
 
                 tz_offset = 0

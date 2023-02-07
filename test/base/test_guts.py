@@ -18,7 +18,7 @@ from pyrocko.guts import StringPattern, Object, Bool, Int, Float, String, \
     load, load_string, load_xml_string, load_xml, load_all, iload_all, \
     load_all_xml, iload_all_xml, dump, dump_xml, dump_all, dump_all_xml, \
     make_typed_list_class, walk, zip_walk, path_to_str, clone, set_elements, \
-    get_elements, YPathError, FileNotFoundError
+    get_elements, YPathError
 
 import pyrocko.guts
 

@@ -37,11 +37,6 @@ from pyrocko import config
 from pyrocko.util import \
     urlencode, Request, build_opener, HTTPDigestAuthHandler, urlopen, HTTPError
 
-try:
-    newstr = unicode
-except NameError:
-    newstr = str
-
 
 logger = logging.getLogger('pyrocko.client.fdsn')
 
@@ -238,7 +233,7 @@ def _request(
 
     req = Request(url)
     if post:
-        if isinstance(post, newstr):
+        if isinstance(post, str):
             post = post.encode('utf8')
         logger.debug('POST data: \n%s' % post.decode('utf8'))
         req.data = post
