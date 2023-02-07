@@ -285,7 +285,7 @@ class Station(Location):
 
         out_groups = []
         for kind, components in cg.items():
-            for sys in ('ENZ', '12Z', 'XYZ', 'RTZ', '123'):
+            for sys in ('ENU', 'ENZ', '12Z', 'XYZ', 'RTZ', '123'):
                 if allin(sys, components):
                     out_groups.append(tuple([kind+c for c in sys]))
 
