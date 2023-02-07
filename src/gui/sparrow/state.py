@@ -16,6 +16,7 @@ from pyrocko.guts import StringChoice, Float, List, Bool, Timestamp, Tuple, \
 from pyrocko.color import Color, interpolate as interpolate_color
 
 from pyrocko.gui import talkie
+from pyrocko.gui import util as gui_util
 from . import common, light
 
 guts_prefix = 'sparrow'
@@ -167,17 +168,72 @@ def state_bind(
     wrap_update_widget()
 
 
-def state_bind_slider(owner, state, path, widget, factor=1., dtype=float):
+def state_bind_slider(
+        owner, state, path, widget, factor=1.,
+        dtype=float,
+        min_is_none=False,
+        max_is_none=False):
+
     app = common.get_app()
 
     def make_funcs():
         def update_state(widget, state):
-            app.status('%g' % (widget.value() * factor))
-            state.set(path, dtype(widget.value() * factor))
+            val = widget.value()
+            if (min_is_none and val == widget.minimum()) \
+                    or (max_is_none and val == widget.maximum()):
+                state.set(path, None)
+            else:
+                app.status('%g' % (val * factor))
+                state.set(path, dtype(val * factor))
 
         def update_widget(state, widget):
+            val = state.get(path)
             widget.blockSignals(True)
-            widget.setValue(int(state.get(path) * 1. / factor))
+            if min_is_none and val is None:
+                widget.setValue(widget.minimum())
+            elif max_is_none and val is None:
+                widget.setValue(widget.maximum())
+            else:
+                widget.setValue(int(state.get(path) * 1. / factor))
+            widget.blockSignals(False)
+
+        return update_state, update_widget
+
+    update_state, update_widget = make_funcs()
+
+    state_bind(
+        owner, state, [path], update_state, widget, [widget.valueChanged],
+        update_widget)
+
+
+def state_bind_slider_float(
+        owner, state, path, widget,
+        min_is_none=False,
+        max_is_none=False):
+
+    assert isinstance(widget, gui_util.QSliderFloat)
+
+    app = common.get_app()
+
+    def make_funcs():
+        def update_state(widget, state):
+            val = widget.valueFloat()
+            if (min_is_none and val == widget.minimumFloat()) \
+                    or (max_is_none and val == widget.maximumFloat()):
+                state.set(path, None)
+            else:
+                app.status('%g' % (val))
+                state.set(path, val)
+
+        def update_widget(state, widget):
+            val = state.get(path)
+            widget.blockSignals(True)
+            if min_is_none and val is None:
+                widget.setValueFloat(widget.minimumFloat())
+            elif max_is_none and val is None:
+                widget.setValueFloat(widget.maximumFloat())
+            else:
+                widget.setValueFloat(state.get(path))
             widget.blockSignals(False)
 
         return update_state, update_widget

@@ -468,7 +468,7 @@ class CatalogElement(TableElement):
             frame = TableElement._get_controls(self)  # sets self._controls
             layout = frame.layout()
 
-            lab = qw.QLabel('Load from:')
+            lab = qw.QLabel('Load from')
             pb_file = qw.QPushButton('File')
 
             layout.addWidget(lab, 0, 0)
