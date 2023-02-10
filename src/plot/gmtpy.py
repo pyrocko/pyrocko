@@ -9,7 +9,6 @@ A Python interface to GMT.
 # This file is part of GmtPy (http://emolch.github.io/gmtpy/)
 # See there for copying and licensing information.
 
-from __future__ import print_function, absolute_import
 import subprocess
 try:
     from StringIO import StringIO as BytesIO
@@ -27,14 +26,13 @@ import math
 import numpy as num
 import copy
 from select import select
-from scipy.io import netcdf
+try:
+    from scipy.io import netcdf_file
+except ImportError:
+    from scipy.io.netcdf import netcdf_file
 
 from pyrocko import ExternalProgramMissing
 
-try:
-    newstr = unicode
-except NameError:
-    newstr = str
 
 find_bb = re.compile(br'%%BoundingBox:((\s+[-0-9]+){4})')
 find_hiresbb = re.compile(br'%%HiResBoundingBox:((\s+[-0-9.]+){4})')
@@ -1473,7 +1471,7 @@ def savegrd(x, y, z, filename, title=None, naming='xy'):
 
     assert y.size, x.size == z.shape
     ny, nx = z.shape
-    nc = netcdf.netcdf_file(filename, 'w')
+    nc = netcdf_file(filename, 'w')
     assert naming in ('xy', 'lonlat')
 
     if naming == 'xy':
@@ -1525,7 +1523,7 @@ def loadgrd(filename):
     Read COARDS compliant netcdf (grd) file.
     '''
 
-    nc = netcdf.netcdf_file(filename, 'r')
+    nc = netcdf_file(filename, 'r')
     vkeys = list(nc.variables.keys())
     kx = 'x'
     ky = 'y'
@@ -1716,7 +1714,7 @@ class Guru(object):
         return len(self.templates)
 
     def __delitem__(self, template_name):
-        del(self.templates[template_name])
+        del self.templates[template_name]
 
     def _simple_fill(self, template_names, **kwargs):
         templates = [self.templates[n] for n in template_names]
@@ -3209,12 +3207,12 @@ class TableLiner(object):
     def __iter__(self):
         if self.in_columns is not None:
             for row in zip(*self.in_columns):
-                yield (' '.join([newstr(x) for x in row])+'\n').encode(
+                yield (' '.join([str(x) for x in row])+'\n').encode(
                     self.encoding)
 
         if self.in_rows is not None:
             for row in self.in_rows:
-                yield (' '.join([newstr(x) for x in row])+'\n').encode(
+                yield (' '.join([str(x) for x in row])+'\n').encode(
                     self.encoding)
 
 
@@ -3244,7 +3242,7 @@ class LineStreamChopper(object):
                 buf.close()
                 buf = newbuf
 
-        yield(buf.getvalue())
+        yield buf.getvalue()
         buf.close()
 
     def read(self, size=None):
@@ -3433,14 +3431,14 @@ class GMT(object):
         suppressdefaults = kwargs.pop('suppress_defaults', False)
         config_override = kwargs.pop('config', None)
 
-        assert(not self.finished)
+        assert not self.finished
 
         # check for mutual exclusiveness on input and output possibilities
-        assert(1 >= len(
+        assert (1 >= len(
             [x for x in [
                 in_stream, in_filename, in_string, in_columns, in_rows]
              if x is not None]))
-        assert(1 >= len([x for x in [out_stream, out_filename, out_discard]
+        assert (1 >= len([x for x in [out_stream, out_filename, out_discard]
                          if x is not None]))
 
         options = []

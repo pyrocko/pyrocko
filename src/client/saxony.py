@@ -2,7 +2,6 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from __future__ import absolute_import, division
 
 from pyrocko import util, model
 from .base_catalog import EarthquakeCatalog

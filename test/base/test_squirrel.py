@@ -1,4 +1,3 @@
-from __future__ import absolute_import, print_function
 
 import copy
 import logging
@@ -464,11 +463,14 @@ class SquirrelTestCase(unittest.TestCase):
             # closed - closed
             assert len(sq.get_nuts(tmin=tmin, tmax=tmin)) == int(0 <= ie < ne)
 
+    def test_chop(self):
+        self.run_chop()
+
     def benchmark_chop(self):
-        bench = self.test_chop(100000, ne=10)
+        bench = self.run_chop(100000, ne=10)
         print(bench)
 
-    def test_chop(self, nt=100, ne=10):
+    def run_chop(self, nt=100, ne=10):
 
         tmin_g = util.stt('2000-01-01 00:00:00')
         tmax_g = util.stt('2020-01-01 00:00:00')
@@ -574,10 +576,6 @@ class SquirrelTestCase(unittest.TestCase):
                 sq.get_coverage(kind, None, None, codes, limit=10)
 
         return bench
-
-    def benchmark_loading(self):
-        bench = self.test_loading(hours=24, with_pile=False)
-        print(bench)
 
     def test_coverage(self):
 
@@ -685,7 +683,14 @@ class SquirrelTestCase(unittest.TestCase):
             sq.get_coverage(
                 'waveform', tmin, tmin + 3*d)[0].changes)
 
-    def test_loading(self, with_pile=False, hours=1):
+    def test_loading(self):
+        self.run_loading()
+
+    def benchmark_loading(self):
+        bench = self.run_loading(hours=24, with_pile=False)
+        print(bench)
+
+    def run_loading(self, with_pile=False, hours=1):
         dir = op.join(tempfile.gettempdir(), 'testdataset_d_%i' % hours)
 
         if not os.path.exists(dir):
@@ -892,9 +897,9 @@ class SquirrelTestCase(unittest.TestCase):
                 expires=1000.,
                 cache_path=tempdir)
 
-            assert(sq.get_nnuts() == nnuts)
+            assert sq.get_nnuts() == nnuts
             sq.update(tmin=tmin, tmax=tmax)
-            assert(sq.get_nnuts() == nnuts)
+            assert sq.get_nnuts() == nnuts
 
             sq = squirrel.Squirrel(database=database)
             sq.add_fdsn(
@@ -906,9 +911,9 @@ class SquirrelTestCase(unittest.TestCase):
                 expires=0.,
                 cache_path=tempdir)
 
-            assert(sq.get_nnuts() == nnuts)
+            assert sq.get_nnuts() == nnuts
             sq.update(tmin=tmin, tmax=tmax)
-            assert(sq.get_nnuts() == nnuts)
+            assert sq.get_nnuts() == nnuts
 
         finally:
             shutil.rmtree(tempdir)
@@ -1018,6 +1023,18 @@ class SquirrelTestCase(unittest.TestCase):
         assert len(stations) == 3
         stations = sq.get_stations(model='pyrocko')
         assert len(stations) == 2
+        stations = sq.get_stations(
+            model='pyrocko', codes='GE.EIL.*')
+        assert len(stations) == 2
+        stations = sq.get_stations(
+            model='pyrocko', codes='GE.EIL.')
+        assert len(stations) == 2
+        stations = sq.get_stations(
+            model='pyrocko', codes=squirrel.CodesNSL('GE.EIL.'))
+        assert len(stations) == 2
+        stations = sq.get_stations(
+            model='pyrocko', codes=squirrel.CodesNSLCE('GE.EIL..BHZ'))
+        assert len(stations) == 2
         stations = sq.get_stations(model='stationxml')
         assert len(stations) == 3
 
@@ -1054,9 +1071,9 @@ class SquirrelTestCase(unittest.TestCase):
             sq.add_catalog(
                 'geofon', cache_path=tempdir, query_args={'magmin': 6.0})
             sq.update(tmin=tmin, tmax=tmax)
-            assert(len(sq.get_events()) == 1)
+            assert len(sq.get_events()) == 1
             sq.update(tmin=tmin, tmax=tmax2)
-            assert(len(sq.get_events()) == 3)
+            assert len(sq.get_events()) == 3
 
         finally:
             shutil.rmtree(tempdir)
@@ -1064,7 +1081,7 @@ class SquirrelTestCase(unittest.TestCase):
     def test_fake_pile(self):
         database = squirrel.Database()
         sq = squirrel.Squirrel(database=database)
-        assert(len(list(sq.pile.chopper())) == 0)
+        assert len(list(sq.pile.chopper())) == 0
         assert sq.pile.tmin is None
         assert sq.pile.tmax is None
         assert sq.pile.get_tmin() is None

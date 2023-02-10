@@ -7,7 +7,7 @@ rm -rf wheels_temp wheels
 mkdir wheels_temp
 mv pyproject.toml pyproject.toml.orig
 for x in `ls /opt/python` ; do
-    "/opt/python/$x/bin/python" -c 'import sys ; sys.exit(not ((3, 6, 0) <= sys.version_info < (3, 11, 0)))' || continue
+    "/opt/python/$x/bin/python" -c 'import sys ; sys.exit(not ((3, 7, 0) <= sys.version_info <= (3, 11, 0)))' || continue
     [ -f "maintenance/pip/pyproject-build-pip-$x.toml" ] || continue
     cp "maintenance/pip/pyproject-build-pip-$x.toml" pyproject.toml
     "/opt/python/$x/bin/pip" install --upgrade pip

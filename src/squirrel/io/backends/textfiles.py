@@ -3,10 +3,7 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
-from __future__ import absolute_import, print_function
-
 import logging
-from builtins import str as newstr
 
 from pyrocko.io.io_common import get_stats, touch  # noqa
 from ... import model
@@ -125,7 +122,7 @@ def iload_pyrocko_stations(file_path, segment, content):
                     if len(toks) == 5:
                         description = u''
                     else:
-                        description = newstr(toks[5])
+                        description = str(toks[5])
 
                     nut = model.make_station_nut(
                         file_segment=0,

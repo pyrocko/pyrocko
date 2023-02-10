@@ -9,11 +9,6 @@ from pyrocko import gf
 from pyrocko import cake
 import numpy as num
 
-try:
-    newstr = unicode
-except NameError:
-    newstr = str
-
 
 class CakePhase(Snuffling):
     '''

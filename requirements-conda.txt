@@ -1,10 +1,9 @@
 setuptools
 wheel
 numpy>=1.8
-scipy
+scipy>=1.0
 pyyaml
 matplotlib
-progressbar2
 requests
 jinja2
 pyqt

@@ -49,6 +49,11 @@ The following pseudo URLs are supported:
 
     Acquire data from Hamburg Univerisity Wiechert camera module.
 
+.. describe:: cube://<device>
+
+    Acquire data from DiGOS DATA-CUBE recorder connected via serial interface.
+    Example: ``snuffler cube:///dev/ttyUSB0``
+
 
 Options
 -------

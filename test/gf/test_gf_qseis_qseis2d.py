@@ -1,4 +1,3 @@
-from __future__ import division, print_function, absolute_import
 
 import random
 import math
@@ -128,10 +127,10 @@ mantle
         # qseis
         config_q = copy.deepcopy(config_q2)
         config_q.id = 'qseis2d_test_q'
-        config_q.modelling_code_id = 'qseis.2006a'
+        config_q.modelling_code_id = 'qseis.2006b'
 
         qconf = qseis.QSeisConfig()
-        qconf.qseis_version = '2006a'
+        qconf.qseis_version = '2006b'
 
         qconf.slowness_window = slowness_window
 

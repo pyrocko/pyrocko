@@ -16,7 +16,7 @@ if not op.exists(store_id):
 # We need a pyrocko.gf.Engine object which provides us with the traces
 # extracted from the store. In this case we are going to use a local
 # engine since we are going to query a local store.
-engine = gf.LocalEngine(store_superdirs=['.'], use_config=True)
+engine = gf.LocalEngine(store_superdirs=['.'])
 
 # The dynamic parameter used for discretization of the PseudoDynamicRupture are
 # extracted from the stores config file.

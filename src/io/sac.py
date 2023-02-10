@@ -5,7 +5,6 @@
 '''
 SAC IO library for Python
 '''
-from __future__ import absolute_import
 
 import struct
 import logging

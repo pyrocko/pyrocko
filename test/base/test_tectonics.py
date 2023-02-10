@@ -1,4 +1,3 @@
-from __future__ import division, print_function, absolute_import
 import unittest
 import numpy as num
 from numpy.testing import assert_allclose

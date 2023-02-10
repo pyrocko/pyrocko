@@ -25,9 +25,6 @@ Name               Description
 =================  ============================================
 '''
 
-
-from __future__ import absolute_import, division, print_function
-
 from collections import defaultdict
 from functools import cmp_to_key
 import time
@@ -3068,14 +3065,19 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
             points_xy[:, 0] = (points_xy[:, 0] - anch_x) * self.length / 2.
             points_xy[:, 1] = (points_xy[:, 1] - anch_y) * self.width / 2.
 
+            ascont = num.ascontiguousarray
+
             self._interpolators[interpolation] = (
                 nx, ny, times, vr,
                 RegularGridInterpolator(
-                    (points_xy[::ny, 0], points_xy[:ny, 1]), times,
+                    (ascont(points_xy[::ny, 0]), ascont(points_xy[:ny, 1])),
+                    times,
                     method=interp_map[interpolation]),
                 RegularGridInterpolator(
-                    (points_xy[::ny, 0], points_xy[:ny, 1]), vr,
+                    (ascont(points_xy[::ny, 0]), ascont(points_xy[:ny, 1])),
+                    vr,
                     method=interp_map[interpolation]))
+
         return self._interpolators[interpolation]
 
     def discretize_patches(
@@ -3165,8 +3167,10 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
             interpolation=interpolation)
 
         if (self.nx, self.ny) != (nx, ny):
-            times_interp = time_interpolator(source_points[:, :2])
-            vr_interp = vr_interpolator(source_points[:, :2])
+            times_interp = time_interpolator(
+                num.ascontiguousarray(source_points[:, :2]))
+            vr_interp = vr_interpolator(
+                num.ascontiguousarray(source_points[:, :2]))
         else:
             times_interp = times.T.ravel()
             vr_interp = vr.T.ravel()
@@ -5131,13 +5135,16 @@ class LocalEngine(Engine):
         tmax = num.fromiter(
             (t.tmax for t in targets), dtype=float, count=len(targets))
 
-        itmin = num.floor(tmin * rate).astype(num.int64)
-        itmax = num.ceil(tmax * rate).astype(num.int64)
-        nsamples = itmax - itmin + 1
+        mask = num.logical_and(num.isfinite(tmin), num.isfinite(tmax))
 
-        mask = num.isnan(tmin)
-        itmin[mask] = 0
-        nsamples[mask] = -1
+        itmin = num.zeros_like(tmin, dtype=num.int64)
+        itmax = num.zeros_like(tmin, dtype=num.int64)
+        nsamples = num.full_like(tmin, -1, dtype=num.int64)
+
+        itmin[mask] = num.floor(tmin[mask] * rate).astype(num.int64)
+        itmax[mask] = num.ceil(tmax[mask] * rate).astype(num.int64)
+        nsamples = itmax - itmin + 1
+        nsamples[num.logical_not(mask)] = -1
 
         base_source = self._cached_discretize_basesource(
             source, store_, dsource_cache, target)

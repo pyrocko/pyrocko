@@ -11,7 +11,6 @@
 #   payload size, a hash, and a record type.
 # * A record payload consists of a sequence of record entries.
 # * A record entry consists of a key, a type, and a value.
-from __future__ import absolute_import, division
 
 from struct import unpack, pack
 from io import BytesIO

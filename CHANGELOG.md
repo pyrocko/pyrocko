@@ -6,12 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
-*empty*
+### Added
+- Squirrel: new subcommand 'check' to detect common data/metadata problems.
+  Also available as a method on the Squirrel object.
+
+### Fixed
+- Corrected implementation of `Squirrel.get_sensors`.
+
+## v2023.01.20
+
+### Fixed
+- Fix compatibility with newer versions of NumPy and SciPy.
+- Fix broken function pyrocko.client.fdsn.event.
+- Fix broken YAML-serialization of `Trace` objects.
+- Squirrel: fix problems in `get_stations` with `model='pyrocko'`
+- Various minor bugs and typos fixed.
 
 ## v2022.11.29
 
 ### Added
-
 - Squirrel:
   - `squirrel jackseis`: new command line options: `--traversal`, `--tinc`
 - Fomosto QSEIS backend: added support for qseis_2006b with adjustable source

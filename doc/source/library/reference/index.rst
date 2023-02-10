@@ -2,8 +2,7 @@ Reference
 =========
 
 .. toctree::
-   :maxdepth: 3
-   :includehidden:
+   :maxdepth: 1
 
    cake
    client

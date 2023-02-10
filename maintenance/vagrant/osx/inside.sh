@@ -58,7 +58,6 @@ conda install -y \
     matplotlib \
     pyqt \
     pyyaml \
-    progressbar2 \
     requests \
     jinja2 \
     nose

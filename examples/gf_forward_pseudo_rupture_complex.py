@@ -84,7 +84,7 @@ plot.draw_nucleation_point()
 plot.save('dynamic_complex_dislocations.png')
 
 # Forward model waveforms for one station
-engine = gf.LocalEngine(store_superdirs=['.'], use_config=True)
+engine = gf.LocalEngine(store_superdirs=['.'])
 store = engine.get_store(store_id)
 
 waveform_target = gf.Target(

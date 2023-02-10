@@ -1,5 +1,4 @@
 # http://pyrocko.org - GPLv3
-
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
@@ -61,10 +60,6 @@ Module content
 ..............
 '''
 
-from __future__ import division, print_function
-
-import calendar
-import fnmatch
 import logging
 import math
 import os
@@ -79,30 +74,16 @@ except ImportError:
 import errno
 import optparse
 import os.path as op
+from urllib.error import HTTPError, URLError  # noqa
+from urllib.parse import quote, unquote, urlencode  # noqa
+from urllib.request import HTTPDigestAuthHandler, Request, build_opener  # noqa
+from urllib.request import urlopen as _urlopen  # noqa
 
 import numpy as num
 from scipy import signal
 
 import pyrocko
 from pyrocko import dummy_progressbar
-
-try:
-    from urllib.error import HTTPError, URLError  # noqa
-    from urllib.parse import quote, unquote, urlencode  # noqa
-    from urllib.request import HTTPDigestAuthHandler, Request, build_opener
-    from urllib.request import urlopen as _urlopen  # noqa
-
-except ImportError:
-    from urllib import quote, unquote, urlencode  # noqa
-
-    from urllib2 import (
-        HTTPDigestAuthHandler,
-        HTTPError,
-        Request,
-        URLError,
-        build_opener,
-    )
-    from urllib2 import urlopen as _urlopen  # noqa
 
 try:
     import ssl
@@ -162,11 +143,6 @@ except ImportError:
 
 logger = logging.getLogger('pyrocko.util')
 
-try:
-    import progressbar as progressbar_mod
-except ImportError:
-    from pyrocko import dummy_progressbar as progressbar_mod
-
 
 try:
     num_full = num.full
@@ -183,10 +159,6 @@ except AttributeError:
         a = num.empty_like(arr, dtype=dtype, order=order, subok=subok)
         a.fill(fill_value)
         return a
-
-
-def progressbar_module():
-    return progressbar_mod
 
 
 g_setup_logging_args = 'pyrocko', 'warning'
@@ -748,19 +720,28 @@ class BetterHelpFormatter(optparse.IndentedHelpFormatter):
             ['%*s%s' % (self.current_indent, '', line) for line in lines])
 
 
+class ProgressBar:
+    def __init__(self, label, n):
+        from pyrocko.progress import progress
+        self._context = progress.view()
+        self._context.__enter__()
+        self._task = progress.task(label, n)
+
+    def update(self, i):
+        self._task.update(i)
+
+    def finish(self):
+        self._task.done()
+        if self._context:
+            self._context.__exit__()
+            self._context = None
+
+
 def progressbar(label, maxval):
-    progressbar_mod = progressbar_module()
     if force_dummy_progressbar:
-        progressbar_mod = dummy_progressbar
+        return dummy_progressbar.ProgressBar(maxval=maxval).start()
 
-    widgets = [
-        label, ' ',
-        progressbar_mod.Bar(marker='-', left='[', right=']'), ' ',
-        progressbar_mod.Percentage(), ' ',
-        progressbar_mod.ETA()]
-
-    pbar = progressbar_mod.ProgressBar(widgets=widgets, maxval=maxval).start()
-    return pbar
+    return ProgressBar(label, maxval)
 
 
 def progress_beg(label):
@@ -1101,7 +1082,7 @@ def decimate_coeffs(q, n=None, ftype='iir'):
         if (n, 1./q) not in coeffs:
             coeffs[n, 1./q] = signal.remez(
                 n+1, (0., .75/q, 1./q, 1.),
-                (1., 0.), Hz=2, weight=(1, 50))
+                (1., 0.), fs=2, weight=(1, 50))
         b = coeffs[n, 1./q]
         return b, [1.], n
 

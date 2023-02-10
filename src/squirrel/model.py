@@ -16,8 +16,6 @@ Further content types are defined here to handle waveform orders, waveform
 promises, data coverage and sensor information.
 '''
 
-from __future__ import absolute_import, print_function
-
 import re
 import fnmatch
 import math
@@ -651,11 +649,14 @@ class ChannelBase(Location):
     def time_span(self):
         return (self.tmin, self.tmax)
 
+    def _get_sensor_codes(self):
+        return self.codes.replace(
+            channel=self.codes.channel[:-1] + '?')
+
     def _get_sensor_args(self):
         def getattr_rep(k):
             if k == 'codes':
-                return self.codes.replace(
-                    channel=self.codes.channel[:-1] + '?')
+                return self._get_sensor_codes()
             else:
                 return getattr(self, k)
 
@@ -724,26 +725,29 @@ def cut_intervals(channels):
 
     times = sorted(times)
 
-    if len(times) < 2:
+    if any(channel.tmin is None for channel in channels):
+        times[0:0] = [None]
+
+    if any(channel.tmax is None for channel in channels):
+        times.append(None)
+
+    if len(times) <= 2:
         return channels
 
     channels_out = []
     for channel in channels:
-        tstart = channel.tmin
-        for t in times:
-            if (channel.tmin is None or channel.tmin < t) \
-                    and (channel.tmax is None or t < channel.tmax):
+        for i in range(len(times)-1):
+            tmin = times[i]
+            tmax = times[i+1]
+            if ((channel.tmin is None or (
+                    tmin is not None and channel.tmin <= tmin))
+                    and (channel.tmax is None or (
+                        tmax is not None and tmax <= channel.tmax))):
 
                 channel_out = clone(channel)
-                channel_out.tmin = tstart
-                channel_out.tmax = t
+                channel_out.tmin = tmin
+                channel_out.tmax = tmax
                 channels_out.append(channel_out)
-                tstart = t
-
-        if channel.tmax is None:
-            channel_out = clone(channel)
-            channel_out.tmin = tstart
-            channels_out.append(channel_out)
 
     return channels_out
 
@@ -757,10 +761,16 @@ class Sensor(ChannelBase):
 
     @classmethod
     def from_channels(cls, channels):
-        channels = cut_intervals(channels)
-
         groups = defaultdict(list)
         for channel in channels:
+            groups[channel._get_sensor_codes()].append(channel)
+
+        channels_cut = []
+        for group in groups.values():
+            channels_cut.extend(cut_intervals(group))
+
+        groups = defaultdict(list)
+        for channel in channels_cut:
             groups[channel._get_sensor_args()].append(channel)
 
         return [
@@ -1557,13 +1567,15 @@ class Coverage(Object):
 
         srate = self.sample_rate
 
+        total = self.total
+
         return ' '.join((
             ('%s,' % to_kind(self.kind_id)).ljust(9),
             ('%s,' % str(self.codes)).ljust(18),
             ts,
             '%10.3g,' % srate if srate else '',
             '%4i' % len(self.changes),
-            '%s' % duration_to_str(self.total)))
+            '%s' % duration_to_str(total) if total else 'none'))
 
     @property
     def sample_rate(self):
@@ -1598,6 +1610,49 @@ class Coverage(Object):
                     yield last_t, t, last_count
 
             last = (t, count)
+
+    def iter_uncovered_by(self, other):
+        a = self
+        b = other
+        ia = ib = -1
+        ca = cb = 0
+        last = None
+        while not (ib + 1 == len(b.changes) and ia + 1 == len(a.changes)):
+            if ib + 1 == len(b.changes):
+                ia += 1
+                t, ca = a.changes[ia]
+            elif ia + 1 == len(a.changes):
+                ib += 1
+                t, cb = b.changes[ib]
+            elif a.changes[ia+1][0] < b.changes[ib+1][0]:
+                ia += 1
+                t, ca = a.changes[ia]
+            else:
+                ib += 1
+                t, cb = b.changes[ib]
+
+            if last is not None:
+                tl, cal, cbl = last
+                if tl < t and cal > 0 and cbl == 0:
+                    yield tl, t, ia, ib
+
+            last = (t, ca, cb)
+
+    def iter_uncovered_by_combined(self, other):
+        ib_last = None
+        group = None
+        for tmin, tmax, _, ib in self.iter_uncovered_by(other):
+            if ib_last is None or ib != ib_last:
+                if group:
+                    yield (group[0][0], group[-1][1])
+
+                group = []
+
+            group.append((tmin, tmax))
+            ib_last = ib
+
+        if group:
+            yield (group[0][0], group[-1][1])
 
 
 __all__ = [

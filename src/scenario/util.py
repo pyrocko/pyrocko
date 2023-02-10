@@ -2,7 +2,6 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from __future__ import absolute_import, division, print_function
 
 from pyrocko import gf
 from .error import CannotCreatePath

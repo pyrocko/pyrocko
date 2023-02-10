@@ -3,7 +3,6 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from __future__ import print_function
 
 import sys
 import re
@@ -444,25 +443,27 @@ def command_redeploy(args):
 
     show_progress = True
 
-    if show_progress:
-        pbar = util.progressbar('redeploying', dest.config.nrecords)
-
-    for i, args in enumerate(dest.config.iter_nodes()):
-        try:
-            tr = source.get(args, interpolation='off')
-            dest.put(args, tr)
-
-        except (gf.meta.OutOfBounds, gf.store.NotAllowedToInterpolate) as e:
-            logger.debug('skipping %s, (%s)' % (sindex(args), e))
-
-        except gf.store.StoreError as e:
-            logger.warning('cannot insert %s, (%s)' % (sindex(args), e))
-
+    try:
         if show_progress:
-            pbar.update(i+1)
+            pbar = util.progressbar('redeploying', dest.config.nrecords)
 
-    if show_progress:
-        pbar.finish()
+        for i, args in enumerate(dest.config.iter_nodes()):
+            try:
+                tr = source.get(args, interpolation='off')
+                dest.put(args, tr)
+
+            except (gf.meta.OutOfBounds, gf.store.NotAllowedToInterpolate) as e:  # noqa
+                logger.debug('skipping %s, (%s)' % (sindex(args), e))
+
+            except gf.store.StoreError as e:
+                logger.warning('cannot insert %s, (%s)' % (sindex(args), e))
+
+            if show_progress:
+                pbar.update(i+1)
+
+    finally:
+        if show_progress:
+            pbar.finish()
 
 
 def command_view(args):
@@ -661,32 +662,34 @@ def command_import(args):
     try:
         gf.store.Store.create(dest_store_dir, config=config)
         dest = gf.Store(dest_store_dir, 'w')
-        if show_progress:
-            pbar = util.progressbar(
-                'importing', dest.config.nrecords/dest.config.ncomponents)
-
-        for i, args in enumerate(dest.config.iter_nodes(level=-1)):
-            source_depth, distance = [float(x) for x in args]
-            traces = db.get_traces_pyrocko(distance, source_depth)
-            ig_to_trace = dict((tr.meta['ig']-1, tr) for tr in traces)
-            for ig in range(db.ng):
-                if ig in ig_to_trace:
-                    tr = ig_to_trace[ig]
-                    gf_tr = gf.store.GFTrace(
-                        tr.get_ydata(),
-                        int(round(tr.tmin / tr.deltat)),
-                        tr.deltat)
-
-                else:
-                    gf_tr = gf.store.Zero
-
-                dest.put((source_depth, distance, ig), gf_tr)
-
+        try:
             if show_progress:
-                pbar.update(i+1)
+                pbar = util.progressbar(
+                    'importing', dest.config.nrecords/dest.config.ncomponents)
 
-        if show_progress:
-            pbar.finish()
+            for i, args in enumerate(dest.config.iter_nodes(level=-1)):
+                source_depth, distance = [float(x) for x in args]
+                traces = db.get_traces_pyrocko(distance, source_depth)
+                ig_to_trace = dict((tr.meta['ig']-1, tr) for tr in traces)
+                for ig in range(db.ng):
+                    if ig in ig_to_trace:
+                        tr = ig_to_trace[ig]
+                        gf_tr = gf.store.GFTrace(
+                            tr.get_ydata(),
+                            int(round(tr.tmin / tr.deltat)),
+                            tr.deltat)
+
+                    else:
+                        gf_tr = gf.store.Zero
+
+                    dest.put((source_depth, distance, ig), gf_tr)
+
+                if show_progress:
+                    pbar.update(i+1)
+
+        finally:
+            if show_progress:
+                pbar.finish()
 
         dest.close()
 
@@ -748,46 +751,50 @@ def command_export(args):
 
     out_db = gfdb.Gfdb(target_path)
 
-    if show_progress:
-        pbar = util.progressbar(
-            'exporting', config.nrecords/config.ncomponents)
-
-    for i, (z, x) in enumerate(config.iter_nodes(level=-1)):
-
-        data_out = []
-        for ig in range(config.ncomponents):
-            try:
-                tr = source.get((z, x, ig), interpolation='off')
-                data_out.append((tr.t, tr.data * config.factor))
-
-            except gf.store.StoreError as e:
-                logger.warning('cannot get %s, (%s)' % (sindex((z, x, ig)), e))
-                data_out.append(None)
-
-        # put a zero valued sample to no-data zero-traces at a compatible time
-        tmins = [
-            entry[0][0]
-            for entry in data_out
-            if entry is not None and entry[0].size != 0]
-
-        if tmins:
-            tmin = min(tmins)
-            for entry in data_out:
-                if entry is not None and entry[0].size == 0:
-                    entry[0].resize(1)
-                    entry[1].resize(1)
-                    entry[0][0] = tmin
-                    entry[1][0] = 0.0
-
-        out_db.put_traces_slow(x, z, data_out)
-
+    try:
         if show_progress:
-            pbar.update(i+1)
+            pbar = util.progressbar(
+                'exporting', config.nrecords/config.ncomponents)
 
-    if show_progress:
-        pbar.finish()
+        for i, (z, x) in enumerate(config.iter_nodes(level=-1)):
 
-    source.close()
+            data_out = []
+            for ig in range(config.ncomponents):
+                try:
+                    tr = source.get((z, x, ig), interpolation='off')
+                    data_out.append((tr.t, tr.data * config.factor))
+
+                except gf.store.StoreError as e:
+                    logger.warning(
+                        'cannot get %s, (%s)' % (sindex((z, x, ig)), e))
+                    data_out.append(None)
+
+            # put a zero valued sample to no-data zero-traces at a compatible
+            # time
+            tmins = [
+                entry[0][0]
+                for entry in data_out
+                if entry is not None and entry[0].size != 0]
+
+            if tmins:
+                tmin = min(tmins)
+                for entry in data_out:
+                    if entry is not None and entry[0].size == 0:
+                        entry[0].resize(1)
+                        entry[1].resize(1)
+                        entry[0][0] = tmin
+                        entry[1][0] = 0.0
+
+            out_db.put_traces_slow(x, z, data_out)
+
+            if show_progress:
+                pbar.update(i+1)
+
+        source.close()
+
+    finally:
+        if show_progress:
+            pbar.finish()
 
 
 def phasedef_or_horvel(x):

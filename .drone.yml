@@ -170,8 +170,8 @@ steps:
   commands:
   - pip3 install -f dist pyrocko --no-index --no-deps
   - pip3 install -f dist pyrocko
-  - pip3 install --only-binary=PyQt5 PyQt5 jinja2 nose
-  - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
+  - pip3 install --only-binary=PyQt5 PyQt5 jinja2 pytest
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest
 
 - name: test-mixed
   image: pyrocko-fat-nest
@@ -184,7 +184,7 @@ steps:
   commands:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install -f dist --no-index --no-deps pyrocko
-  - xvfb-run -s '-screen 0 640x480x24' python3 -m nose test
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest
 
 - name: stage
   image: pyrocko-util
@@ -252,10 +252,7 @@ steps:
   commands:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
-  - pip3 install utm
-  - pip3 install git+https://github.com/pyrocko/kite
-  - pip3 install obspy
-  - python3 -m coverage run --parallel-mode -m nose test.base
+  - python3 -m coverage run --parallel-mode -m pytest test/base
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
 - name: tests-base-hptime
@@ -264,10 +261,7 @@ steps:
   commands:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
-  - pip3 install utm
-  - pip3 install git+https://github.com/pyrocko/kite
-  - pip3 install obspy
-  - python3 -m coverage run --parallel-mode -m nose test.base
+  - python3 -m coverage run --parallel-mode -m pytest test/base
   - for x in .coverage.* ; do mv $x $${x#.} ; done
   environment:
     PYROCKO_USE_HIGH_PRECISION_TIME: 1
@@ -313,10 +307,7 @@ steps:
   commands:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
-  - pip3 install utm
-  - pip3 install git+https://github.com/pyrocko/kite
-  - pip3 install obspy
-  - python3 -m coverage run --parallel-mode -m nose test.gf
+  - python3 -m coverage run --parallel-mode -m pytest test/gf
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
 - name: tests-gf-hptime
@@ -325,10 +316,7 @@ steps:
   commands:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
-  - pip3 install utm
-  - pip3 install git+https://github.com/pyrocko/kite
-  - pip3 install obspy
-  - python3 -m coverage run --parallel-mode -m nose test.gf
+  - python3 -m coverage run --parallel-mode -m pytest test/gf
   - for x in .coverage.* ; do mv $x $${x#.} ; done
   environment:
     PYROCKO_USE_HIGH_PRECISION_TIME: 1
@@ -372,10 +360,7 @@ steps:
   commands:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
-  - pip3 install utm
-  - pip3 install git+https://github.com/pyrocko/kite
-  - pip3 install obspy
-  - python3 -m coverage run --parallel-mode -m nose test.examples
+  - python3 -m coverage run --parallel-mode -m pytest test/examples
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
 - name: tests-examples-hptime
@@ -384,10 +369,7 @@ steps:
   commands:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
-  - pip3 install utm
-  - pip3 install git+https://github.com/pyrocko/kite
-  - pip3 install obspy
-  - python3 -m coverage run --parallel-mode -m nose test.examples
+  - python3 -m coverage run --parallel-mode -m pytest test/examples
   - for x in .coverage.* ; do mv $x $${x#.} ; done
   environment:
     PYROCKO_USE_HIGH_PRECISION_TIME: 1
@@ -431,8 +413,7 @@ steps:
   commands:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
-  - pip3 install obspy
-  - xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m nose test.gui test.base.test_obspy_compat:ObsPyCompatTestCase.test_obspy_fiddle test.base.test_obspy_compat:ObsPyCompatTestCase.test_obspy_snuffle
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m pytest test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
 - name: tests-gui-hptime
@@ -441,8 +422,7 @@ steps:
   commands:
   - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
-  - pip3 install obspy
-  - xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m nose test.gui test.base.test_obspy_compat:ObsPyCompatTestCase.test_obspy_fiddle test.base.test_obspy_compat:ObsPyCompatTestCase.test_obspy_snuffle
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m pytest test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
   - for x in .coverage.* ; do mv $x $${x#.} ; done
   environment:
     PYROCKO_USE_HIGH_PRECISION_TIME: 1
@@ -548,9 +528,6 @@ steps:
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py38
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py39
 
-  - conda create -y -n py36 python=3.6 m2-tar m2-gzip m2-patch setuptools pip numpy=1.14
-  - conda run -n py36 python -m pip wheel -v -w dist "--only-binary=:all:" .
-
   - conda create -y -n py37 python=3.7 m2-tar m2-gzip m2-patch setuptools pip numpy=1.14
   - conda run -n py37 python -m pip wheel -v -w dist "--only-binary=:all:" .
 
@@ -559,6 +536,9 @@ steps:
 
   - conda create -y -n py39 python=3.9 m2-tar m2-gzip m2-patch setuptools pip numpy=1.16
   - conda run -n py39 python -m pip wheel -v -w dist "--only-binary=:all:" .
+
+  - conda create -y -n py310 python=3.10 m2-tar m2-gzip m2-patch setuptools pip numpy=1.21
+  - conda run -n py310 python -m pip wheel -v -w dist "--only-binary=:all:" .
 
 - name: upload-testing
   when:
@@ -624,9 +604,6 @@ steps:
   pull: never
   commands:
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
-  - pip3 install utm
-  - pip3 install git+https://github.com/pyrocko/kite
-  - pip3 install obspy
   - wget -r -nH --cut-dirs=2 --no-parent --reject="index.html*" https://data.pyrocko.org/builds/${DRONE_COMMIT}/coverage/data/
   - python3 -m coverage combine coverage/data/coverage.*
   - python3 -m coverage html

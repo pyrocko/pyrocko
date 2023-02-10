@@ -2,7 +2,6 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from __future__ import absolute_import
 
 import csv
 import logging
@@ -110,7 +109,7 @@ class Volcanoes(object):
         self._load_volcanoes(self.fname_pleistocene, VolcanoPleistocene)
 
     def _load_volcanoes(self, fname, cls):
-        with open(fname, 'r') as f:
+        with open(fname, 'r', encoding='utf8') as f:
             next(f)  # skip header
             reader = csv.reader(f, dialect='unix')
             for row in reader:

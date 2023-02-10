@@ -1,4 +1,3 @@
-from __future__ import division, print_function, absolute_import
 from pyrocko import util
 from pyrocko.util import HTTPError, URLErrorSSL
 from pyrocko.client import catalog

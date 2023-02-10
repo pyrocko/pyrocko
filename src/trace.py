@@ -6,8 +6,6 @@
 This module provides basic signal processing for seismic traces.
 '''
 
-from __future__ import division, absolute_import
-
 import time
 import math
 import copy
@@ -104,6 +102,9 @@ class Trace(Object):
 
         if mtime is not None and not isinstance(mtime, time_float):
             mtime = Trace.mtime.regularize_extra(mtime)
+
+        if ydata is not None and not isinstance(ydata, num.ndarray):
+            ydata = Trace.ydata.regularize_extra(ydata)
 
         self._growbuffer = None
 

@@ -3,8 +3,6 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
-from __future__ import absolute_import, print_function
-
 from pyrocko.guts import Object, Timestamp, List
 
 from ..model import CodesNSLCE

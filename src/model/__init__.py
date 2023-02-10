@@ -2,10 +2,6 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-'''
-'''
-
-from __future__ import absolute_import
 
 from .content import *  # noqa
 from .location import *  # noqa

@@ -46,7 +46,6 @@ in the Pyrocko source directory)::
     plt.show()
 
 '''
-from __future__ import absolute_import
 
 import math
 import random
@@ -56,12 +55,6 @@ import numpy as num
 
 from pyrocko.util import parse_md, time_to_str, arange2, to_time_float
 from pyrocko.guts import StringChoice, Float, Int, Bool, Tuple, Object
-
-
-try:
-    newstr = unicode
-except NameError:
-    newstr = str
 
 
 __doc__ += parse_md(__file__)
@@ -83,7 +76,7 @@ _doc_units = "``'point'``, ``'inch'``, or ``'cm'``"
 
 
 def apply_units(x, units):
-    if isinstance(units, (str, newstr)):
+    if isinstance(units, str):
         units = units_dict[units]
 
     if isinstance(x, (int, float)):
@@ -146,7 +139,7 @@ def color(x=None):
         else:
             return (0, 0, 0)
 
-    elif isinstance(x, (str, newstr)):
+    elif isinstance(x, str):
         if x in tango_colors:
             return tango_colors[x]
 

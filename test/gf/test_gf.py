@@ -1,4 +1,3 @@
-from __future__ import division, print_function, absolute_import
 
 import time
 import sys
@@ -931,7 +930,7 @@ class GFTestCase(unittest.TestCase):
 
             store = gf.Store(store_dir)
 
-            assert(store.t('P', args) is not None)
+            assert store.t('P', args) is not None
             self.assertEqual(store.t('last(S|P)', args), store.t('S', args))
             self.assertEqual(store.t('(S|P)', args), store.t('S', args))
             self.assertEqual(store.t('(P|S)', args), store.t('P', args))

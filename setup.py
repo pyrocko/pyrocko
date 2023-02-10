@@ -1,4 +1,3 @@
-from __future__ import absolute_import, division, print_function
 import sys
 import os
 import os.path as op
@@ -16,7 +15,7 @@ is_windows = sys.platform.startswith('win')
 
 
 packname = 'pyrocko'
-version = '2022.11.29'
+version = '2023.01.20'
 
 
 class NotInAGitRepos(Exception):
@@ -381,7 +380,8 @@ Some routines in pyrocko are parallelized using OpenMP and these will
 only run on one core with your current configuration.
 ''')
         if platform.uname()[0] == 'Darwin':
-            print('''Since you are running on Mac OS, it's likely that the problem here
+            print('''
+Since you are running on Mac OS, it's likely that the problem here
 is Apple's Clang, which does not support OpenMP at all. The easiest
 way to get around this is to download the latest version of gcc from
 here: http://hpc.sourceforge.net. After downloading, just point the
@@ -581,14 +581,14 @@ setup(
     keywords=[
         'seismology, waveform analysis, earthquake modelling, geophysics,'
         ' geophysical inversion'],
-    python_requires='>=3.5, <4',
+    python_requires='>=3.7, <4',
     # Removed in favor of PEP 518 advocating `pyproject.toml`:
     # setup_requires=[
     #     'numpy>=1.8'
     # ],
     install_requires=[
         'numpy>=1.8',
-        'scipy',
+        'scipy>=1.0',
         'pyyaml',
         'matplotlib',
         'requests',

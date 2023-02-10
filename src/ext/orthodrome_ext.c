@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #ifdef _WIN32
     #define _USE_MATH_DEFINES
+    typedef SSIZE_T ssize_t;
 #endif
 #include <math.h>
 

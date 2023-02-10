@@ -2,7 +2,6 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from __future__ import absolute_import, division, print_function
 
 import sys
 import time
@@ -22,11 +21,6 @@ from pyrocko.util import hpfloat, time_to_str, get_time_float
 
 import pyrocko.model
 from pyrocko import util, response
-
-try:
-    newstr = unicode
-except NameError:
-    newstr = str
 
 guts_prefix = 'sx'
 
@@ -334,7 +328,7 @@ class DummyAwareOptionalTimestamp(Object):
                 tt = val.timetuple()
                 val = time_float(calendar.timegm(tt))
 
-            elif isinstance(val, (str, newstr)):
+            elif isinstance(val, str):
                 val = val.strip()
 
                 tz_offset = 0

@@ -2,7 +2,6 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from __future__ import absolute_import, print_function
 
 import math
 import random
@@ -22,10 +21,6 @@ from pyrocko.dataset import topo
 from pyrocko import orthodrome as od
 from . import gmtpy
 
-try:
-    newstr = unicode
-except NameError:
-    newstr = str
 
 points_in_region = od.points_in_region
 
@@ -118,7 +113,7 @@ class FloatTile(Object):
 
 class City(Object):
     def __init__(self, name, lat, lon, population=None, asciiname=None):
-        name = newstr(name)
+        name = str(name)
         lat = float(lat)
         lon = float(lon)
         if asciiname is None:

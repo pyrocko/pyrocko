@@ -17,13 +17,13 @@ RUN apt-get install -y python3-dev python3-setuptools python3-numpy-dev
 
 # testing requirements
 RUN apt-get install -y xvfb libgles2-mesa
-RUN apt-get install -y python3-coverage python3-nose
+RUN apt-get install -y python3-coverage python3-nose python3-pytest
 
 # base runtime requirements
 RUN apt-get install -y \
         python3-numpy python3-scipy python3-matplotlib \
         python3-requests python3-future \
-        python3-yaml python3-progressbar
+        python3-yaml
 
 # gui runtime requirements
 RUN apt-get install -y \
@@ -33,6 +33,18 @@ RUN apt-get install -y \
 # optional runtime requirements
 RUN apt-get install -y \
         python3-jinja2 python3-pybtex
+
+# optional runtime requirements obspy, kite
+RUN apt-get install -y \
+        python3-geojson python3-pyqtgraph \
+    && pip3 install --no-deps \
+        utm git+https://github.com/pyrocko/kite
+
+# optional runtime requirements obspy
+RUN apt-get install -y \
+        python3-sqlalchemy python3-lxml python3-greenlet \
+    && pip3 install --no-deps \
+        obspy==1.3   # 2023-01-16: 1.4 has too high numpy requirement for debian:stable
 
 # additional runtime requirements for gmt
 RUN apt-get install -y \

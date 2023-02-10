@@ -2,7 +2,6 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from __future__ import absolute_import, print_function, division
 
 import os
 import sys
@@ -409,12 +408,12 @@ class GreensFunctionTest(Object):
         for sr_id in self.src_ids:
             if sr_id not in self.sources:
                 continue
-            if not(src_id == 'all' or sr_id == src_id):
+            if not (src_id == 'all' or sr_id == src_id):
                 continue
             for sn_id in self.sen_ids:
                 if sn_id not in self.sensors:
                     continue
-                if not(sen_id == 'all' or sn_id == sen_id):
+                if not (sen_id == 'all' or sn_id == sen_id):
                     continue
                 try:
                     response = self.engine.process(
@@ -449,9 +448,9 @@ class GreensFunctionTest(Object):
                 src_id, sen_id = ids
             else:
                 src_id = sen_id = None
-            if not(trc_id == 'all' or
-                   ((src_id == 'all' or src_id in self.sources) and
-                    (sen_id == 'all' or sen_id in self.sensors))):
+            if not (trc_id == 'all' or
+                    ((src_id == 'all' or src_id in self.sources) and
+                     (sen_id == 'all' or sen_id in self.sensors))):
                 continue
             tdict = self.traces[tid]
             if 'displacement_traces' not in tdict:

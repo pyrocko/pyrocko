@@ -3,8 +3,6 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
-from __future__ import print_function
-
 from collections import defaultdict
 import math
 import logging
@@ -186,7 +184,7 @@ def solve_layout_fixed_panels(size, shape, limits, aspects, fracs=None):
         vmin, vmax = vxs[ix]
         udata = vmax - vmin
         eps = 1e-7 * u
-        assert(udata <= u + eps)
+        assert udata <= u + eps
         vlimits_x[ix, 0] = (vmin + vmax) / 2.0 - u / 2.0
         vlimits_x[ix, 1] = (vmin + vmax) / 2.0 + u / 2.0
 
@@ -196,7 +194,7 @@ def solve_layout_fixed_panels(size, shape, limits, aspects, fracs=None):
         vmin, vmax = vys[iy]
         udata = vmax - vmin
         eps = 1e-7 * u
-        assert(udata <= u + eps)
+        assert udata <= u + eps
         vlimits_y[iy, 0] = (vmin + vmax) / 2.0 - u / 2.0
         vlimits_y[iy, 1] = (vmin + vmax) / 2.0 + u / 2.0
 
@@ -554,7 +552,7 @@ class Plot(object):
         return lims
 
     def set_lim(self, dim, vmin, vmax):
-        assert(vmin <= vmax)
+        assert vmin <= vmax
         self._view_limits[self._dim_index(dim), :] = vmin, vmax
 
     def _get_mpl_view_limits(self):

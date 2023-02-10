@@ -48,7 +48,7 @@ older waveform archive access module is implemented in
 **Submodules**
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    base <base>
    selection <selection>
@@ -58,6 +58,7 @@ older waveform archive access module is implemented in
    dataset <dataset>
    client <client/index>
    io <io/index>
+   check <check>
    cache <cache>
    error <error>
    pile <pile>

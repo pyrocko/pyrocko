@@ -2,7 +2,6 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from __future__ import absolute_import, division
 
 import errno
 import time
@@ -982,8 +981,9 @@ class BaseStore(object):
         if not self._f_index:
             self.open()
 
-        return num.histogram(self._records['data_offset'],
-                             bins=[0, 1, 2, 3, num.uint64(-1)])[0]
+        return num.histogram(
+            self._records['data_offset'],
+            bins=[0, 1, 2, 3, num.array(-1).astype(num.uint64)])[0]
 
     @property
     def size_index(self):
@@ -1472,18 +1472,21 @@ class Store(BaseStore):
         Store.create(store_dir_incomplete, config, force=force)
 
         decimated = Store(store_dir_incomplete, 'w')
-        if show_progress:
-            pbar = util.progressbar('decimating store', self.config.nrecords)
-
-        for i, args in enumerate(decimated.config.iter_nodes()):
-            tr = self.get(args, decimate=decimate)
-            decimated.put(args, tr)
-
+        try:
             if show_progress:
-                pbar.update(i+1)
+                pbar = util.progressbar(
+                    'decimating store', self.config.nrecords)
 
-        if show_progress:
-            pbar.finish()
+            for i, args in enumerate(decimated.config.iter_nodes()):
+                tr = self.get(args, decimate=decimate)
+                decimated.put(args, tr)
+
+                if show_progress:
+                    pbar.update(i+1)
+
+        finally:
+            if show_progress:
+                pbar.finish()
 
         decimated.close()
 
@@ -1515,30 +1518,33 @@ class Store(BaseStore):
         else:
             logger.info('No holes in travel time tables')
 
-        if show_progress:
-            pbar = util.progressbar('checking store', self.config.nrecords)
-
-        problems = 0
-        for i, args in enumerate(self.config.iter_nodes()):
-            tr = self.get(args)
-            if tr and not tr.is_zero:
-                if not tr.begin_value == tr.data[0]:
-                    logger.warning('wrong begin value for trace at %s '
-                                   '(data corruption?)' % str(args))
-                    problems += 1
-                if not tr.end_value == tr.data[-1]:
-                    logger.warning('wrong end value for trace at %s '
-                                   '(data corruption?)' % str(args))
-                    problems += 1
-                if not num.all(num.isfinite(tr.data)):
-                    logger.warning('nans or infs in trace at %s' % str(args))
-                    problems += 1
-
+        try:
             if show_progress:
-                pbar.update(i+1)
+                pbar = util.progressbar('checking store', self.config.nrecords)
 
-        if show_progress:
-            pbar.finish()
+            problems = 0
+            for i, args in enumerate(self.config.iter_nodes()):
+                tr = self.get(args)
+                if tr and not tr.is_zero:
+                    if not tr.begin_value == tr.data[0]:
+                        logger.warning('wrong begin value for trace at %s '
+                                       '(data corruption?)' % str(args))
+                        problems += 1
+                    if not tr.end_value == tr.data[-1]:
+                        logger.warning('wrong end value for trace at %s '
+                                       '(data corruption?)' % str(args))
+                        problems += 1
+                    if not num.all(num.isfinite(tr.data)):
+                        logger.warning(
+                            'nans or infs in trace at %s' % str(args))
+                        problems += 1
+
+                if show_progress:
+                    pbar.update(i+1)
+
+        finally:
+            if show_progress:
+                pbar.finish()
 
         return problems
 

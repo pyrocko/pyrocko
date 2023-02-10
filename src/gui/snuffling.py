@@ -8,7 +8,6 @@ Snuffling infrastructure
 This module provides the base class :py:class:`Snuffling` for user-defined
 snufflings and some utilities for their handling.
 '''
-from __future__ import absolute_import
 
 import os
 import sys

@@ -13,7 +13,6 @@ which is based on this one:
 
     http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/259148
 """
-from __future__ import absolute_import
 
 import asynchat
 import asyncore
@@ -45,11 +44,6 @@ import matplotlib.pyplot as plt  # noqa
 from pyrocko.plot import cake_plot  # noqa
 from pyrocko import gf, util  # noqa
 from pyrocko.util import quote, unquote  # noqa
-
-try:
-    newstr = unicode
-except NameError:
-    newstr = str
 
 logger = logging.getLogger('pyrocko.gf.server')
 
@@ -311,9 +305,9 @@ class RequestHandler(asynchat.async_chat, SHRH):
                     out.appendleft(a[num_sent:])
 
         except socket.error as why:
-            if isinstance(why, newstr):
+            if isinstance(why, str):
                 self.log_error(why)
-            elif isinstance(why, tuple) and isinstance(why[-1], newstr):
+            elif isinstance(why, tuple) and isinstance(why[-1], str):
                 self.log_error(why[-1])
             else:
                 self.log_error(str(why))

@@ -3,8 +3,6 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
-from __future__ import absolute_import, print_function
-
 from pyrocko.squirrel.tool.common import ldq, dq
 
 headline = 'Export station metadata as StationXML.'

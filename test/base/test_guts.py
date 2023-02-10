@@ -1,4 +1,3 @@
-from __future__ import division, print_function, absolute_import
 
 import unittest
 import calendar
@@ -19,7 +18,7 @@ from pyrocko.guts import StringPattern, Object, Bool, Int, Float, String, \
     load, load_string, load_xml_string, load_xml, load_all, iload_all, \
     load_all_xml, iload_all_xml, dump, dump_xml, dump_all, dump_all_xml, \
     make_typed_list_class, walk, zip_walk, path_to_str, clone, set_elements, \
-    get_elements, YPathError, FileNotFoundError
+    get_elements, YPathError
 
 import pyrocko.guts
 
@@ -727,7 +726,7 @@ class GutsTestCase(unittest.TestCase):
                         assert_ae(a1.v, e)
                     else:
                         assert last[0] == int(
-                            not(t.default() == a1.v and t.optional))
+                            not (t.default() == a1.v and t.optional))
                         self.assertEqual(a1.v, e)
                         self.assertEqual(a2.v, e)
 
@@ -1248,7 +1247,7 @@ l_flow: ['a', 'b', 'c']
 
         b = B(a=A())
         b2 = load_string(b.dump())
-        assert(isinstance(b2.a, A))
+        assert isinstance(b2.a, A)
 
     def testNumpyFloat(self):
 

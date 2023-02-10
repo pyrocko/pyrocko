@@ -22,7 +22,6 @@ However, this information is not intended to be complete. Please refer to the
 QuakeML Manual for details.
 '''
 
-from __future__ import absolute_import
 import logging
 from pyrocko.guts import StringPattern, StringChoice, String, Float, Int,\
     Timestamp, Object, List, Union, Bool, Unicode

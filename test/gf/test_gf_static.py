@@ -1,4 +1,3 @@
-from __future__ import division, print_function, absolute_import
 
 import unittest
 import numpy as num
@@ -124,7 +123,7 @@ mantle
         self.tempdirs.append(store_dir)
 
         qsconf = qseis.QSeisConfig()
-        qsconf.qseis_version = '2006a'
+        qsconf.qseis_version = '2006b'
 
         qsconf.time_region = (
             gf.meta.Timing('0'),
@@ -148,7 +147,7 @@ mantle
             distance_min=0*km,
             distance_max=20*km,
             distance_delta=2.5*km,
-            modelling_code_id='qseis.2006a',
+            modelling_code_id='qseis.2006b',
             earthmodel_1d=mod,
             tabulated_phases=[
                 gf.meta.TPDef(

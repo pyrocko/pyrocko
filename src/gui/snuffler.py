@@ -5,7 +5,6 @@
 '''
 Effective seismological trace viewer.
 '''
-from __future__ import absolute_import
 
 import os
 import sys

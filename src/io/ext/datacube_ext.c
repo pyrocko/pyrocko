@@ -13,6 +13,8 @@
     #define timegm _mkgmtime
     #define sscanf sscanf_s
 
+    typedef SSIZE_T ssize_t;
+
     char * strsep(char **sp, char *sep)
     {
         char *p, *s;
@@ -1179,19 +1181,31 @@ static PyObject* w_datacube_load(PyObject *m, PyObject *args) {
     struct module_state *st = GETSTATE(m);
 
     locale_t loc = newlocale(LC_ALL_MASK, "C", NULL);
-    uselocale(loc);
-    freelocale(loc);
+    if (loc == (locale_t) 0) {
+        PyErr_SetString(st->error, "unable to create locale");
+        return NULL;
+    }
+    locale_t oldloc = uselocale(loc);
+    if (oldloc == (locale_t) 0) {
+        PyErr_SetString(st->error, "unable to set locale");
+        freelocale(loc);
+        return NULL;
+    }
 
     if (!PyArg_ParseTuple(args, "iinnO", &f, &load_data,
                           &offset_want, &nsamples_want, &barr)) {
         PyErr_SetString(st->error,
             "usage load(f, load_data, offset_want, nsamples_want)");
+        uselocale(oldloc);
+        freelocale(loc);
         return NULL;
     }
 
     err = datacube_init(&reader, f);
     if (err != SUCCESS) {
         PyErr_SetString(st->error, datacube_error_names[err]);
+        uselocale(oldloc);
+        freelocale(loc);
         return NULL;
     }
     reader.load_data = load_data;
@@ -1202,6 +1216,8 @@ static PyObject* w_datacube_load(PyObject *m, PyObject *args) {
         err = pyarray_to_bookmarks(&reader, barr);
         if (err != SUCCESS) {
             PyErr_SetString(st->error, "bookmarks corrupted");
+            uselocale(oldloc);
+            freelocale(loc);
             return NULL;
         }
     }
@@ -1209,6 +1225,8 @@ static PyObject* w_datacube_load(PyObject *m, PyObject *args) {
     err = datacube_load(&reader);
     if (err != SUCCESS) {
         PyErr_SetString(st->error, datacube_error_names[err]);
+        uselocale(oldloc);
+        freelocale(loc);
         return NULL;
     }
 
@@ -1222,9 +1240,13 @@ static PyObject* w_datacube_load(PyObject *m, PyObject *args) {
 
     if (isnull(hlist) || isnull(alist) || isnull(gtup) || isnull(barr)) {
         PyErr_SetString(st->error, "could not build python objects");
+        uselocale(oldloc);
+        freelocale(loc);
         return NULL;
     }
 
+    uselocale(oldloc);
+    freelocale(loc);
     return Py_BuildValue("NNNKN", hlist, alist, gtup,
                          (unsigned long long)nsamples_total, barr);
 }

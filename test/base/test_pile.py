@@ -1,4 +1,3 @@
-from __future__ import division, print_function, absolute_import
 from pyrocko import trace, pile as genuine_pile, io, config, util
 from pyrocko.squirrel import pile as fake_pile
 

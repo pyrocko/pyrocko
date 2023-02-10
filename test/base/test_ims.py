@@ -1,4 +1,3 @@
-from __future__ import division, print_function, absolute_import
 import unittest
 
 from .. import common
@@ -25,7 +24,7 @@ class IMSTestCase(unittest.TestCase):
                 a1,
                 a2,
                 filled_int32(10, 0),
-                filled_int32(10, 2**31),
+                filled_int32(10, -2**31),
                 filled_int32(10, 2**31-1),
                 num.zeros(0, dtype=num.int32)]:
 

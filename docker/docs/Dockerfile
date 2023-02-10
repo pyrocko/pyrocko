@@ -20,7 +20,7 @@ RUN pip3 install sphinx git+https://git.pyrocko.org/pyrocko/sphinx-sleekcat-them
 RUN apt-get install -y \
         python3-numpy python3-scipy python3-matplotlib \
         python3-requests python3-future \
-        python3-yaml python3-progressbar
+        python3-yaml
 
 # gui runtime requirements
 RUN apt-get install -y \
