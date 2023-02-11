@@ -50,7 +50,6 @@ class ParstackTestCase(unittest.TestCase):
                             dtype=dtype,
                             impl='numpy')
 
-
                         assert offset1 == offset2
                         num.testing.assert_almost_equal(
                             result1, result2,
