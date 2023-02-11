@@ -1,15 +1,15 @@
-import random
-import unittest
 import multiprocessing
+import random
 import time
+import unittest
 from collections import defaultdict
+
 import numpy as num
-from .. import common
-
-from pyrocko import util, trace, autopick
-
-from pyrocko.parstack import parstack, get_offset_and_length
+from pyrocko import autopick, trace, util
 from pyrocko.parstack import argmax as pargmax
+from pyrocko.parstack import get_offset_and_length, parstack
+
+from .. import common
 
 
 def numeq(a, b, eps):
@@ -38,16 +38,23 @@ class ParstackTestCase(unittest.TestCase):
 
             for method in (0, 1):
                 for nparallel in range(1, 5):
-                    r1, o1 = parstack(
-                        arrays, offsets, shifts, weights, method,
-                        impl='openmp',
-                        nparallel=nparallel)
+                    for dtype in (num.float32, num.float64):
+                        result1, offset1 = parstack(
+                            arrays, offsets, shifts, weights, method,
+                            impl='openmp',
+                            dtype=dtype,
+                            nparallel=nparallel)
 
-                    r2, o2 = parstack(
-                        arrays, offsets, shifts, weights, method, impl='numpy')
+                        result2, offset2 = parstack(
+                            arrays, offsets, shifts, weights, method,
+                            dtype=dtype,
+                            impl='numpy')
 
-                    assert o1 == o2
-                    num.testing.assert_almost_equal(r1, r2, decimal=6)
+
+                        assert offset1 == offset2
+                        num.testing.assert_almost_equal(
+                            result1, result2,
+                            decimal=6)
 
     def test_parstack_limited(self):
         for i in range(10):
@@ -371,4 +378,5 @@ class ParstackTestCase(unittest.TestCase):
 
 if __name__ == '__main__':
     util.setup_logging('test_parstack', 'warning')
+    unittest.main()
     unittest.main()

@@ -14,6 +14,10 @@
 #define CHUNKSIZE 10
 #define NBLOCK 64
 
+#define BAD_ARRAY 1
+#define BAD_DTYPE 2
+#define BAD_ALIGNMENT 3
+
 struct module_state {
     PyObject *error;
 };
@@ -31,19 +35,31 @@ int parstack_config(
         size_t *lengths,
         size_t nshifts,
         int32_t *shifts,
-        double *weights,
-        int method,
         size_t *lengthout,
         int32_t *offsetout);
 
 int parstack(
+        size_t narrays,
+        double **arrays,
+        int32_t *offsets,
+        size_t *lengths,
+        size_t nshifts,
+        int32_t *shifts,
+        double *weights,
+        int method,
+        size_t lengthout,
+        int32_t offsetout,
+        double *result,
+        int nparallel);
+
+int parstackf(
         size_t narrays,
         float **arrays,
         int32_t *offsets,
         size_t *lengths,
         size_t nshifts,
         int32_t *shifts,
-        double *weights,
+        float *weights,
         int method,
         size_t lengthout,
         int32_t offsetout,
@@ -77,13 +93,8 @@ int parstack_config(
         size_t *lengths,
         size_t nshifts,
         int32_t *shifts,
-        double *weights,
-        int method,
         size_t *lengthout,
         int32_t *offsetout) {
-
-    (void)weights;  /* silence warnings */
-    (void)method;
 
     if (narrays < 1) {
         return NODATA;
@@ -109,14 +120,14 @@ int parstack_config(
     return SUCCESS;
 }
 
-int parstack(
+int parstackf(
         size_t narrays,
         float **arrays,
         int32_t *offsets,
         size_t *lengths,
         size_t nshifts,
         int32_t *shifts,
-        double *weights,
+        float *weights,
         int method,
         size_t lengthout,
         int32_t offsetout,
@@ -156,10 +167,10 @@ int parstack(
 	#endif
         for (ishift=0; ishift<(int32_t)nshifts; ishift++) {
             for (iarray=0; iarray<narrays; iarray++) {
-                istart = offsets[iarray] + shifts[ishift*narrays + iarray];
-                weight = (float) weights[ishift*narrays + iarray];
+                weight = weights[ishift*narrays + iarray];
                 if (weight == 0.0)
                     continue;
+                istart = offsets[iarray] + shifts[ishift*narrays + iarray];
                 #if defined(_OPENMP)
                     #pragma omp simd
                 #endif
@@ -185,10 +196,111 @@ int parstack(
                 temp[i] = 0.0;
             }
             for (iarray=0; iarray<narrays; iarray++) {
-                istart = offsets[iarray] + shifts[ishift*narrays + iarray];
-                weight = (float) weights[ishift*narrays + iarray];
+                weight = weights[ishift*narrays + iarray];
                 if (weight == 0.0)
                     continue;
+                istart = offsets[iarray] + shifts[ishift*narrays + iarray];
+                #if defined(_OPENMP)
+                    #pragma omp simd
+                #endif
+                for (i=(size_t)i32max(0, imin - istart); i<(size_t)i32max(0, i32min(nsamp - istart + imin, lengths[iarray])); i++) {
+                    temp[istart-imin+i] += arrays[iarray][i] * weight;
+                }
+            }
+            m = 0.;
+            for (i=0; i<nsamp; i++) {
+                //m += temp[i]*temp[i];
+                m = fmaxf(m, temp[i]);
+            }
+            result[ishift] = m;
+        }
+        free(temp);
+        }
+    }
+    Py_END_ALLOW_THREADS
+    return SUCCESS;
+}
+
+int parstack(
+        size_t narrays,
+        double **arrays,
+        int32_t *offsets,
+        size_t *lengths,
+        size_t nshifts,
+        int32_t *shifts,
+        double *weights,
+        int method,
+        size_t lengthout,
+        int32_t offsetout,
+        double *result,
+        int nparallel) {
+
+	(void) nparallel;
+    int32_t imin, istart, ishift;
+    size_t iarray, nsamp, i;
+    double weight;
+    int chunk;
+    double *temp;
+    double m;
+
+    if (narrays < 1) {
+        return NODATA;
+    }
+
+    if (nshifts > INT_MAX) {
+        return INVALID;
+    }
+
+    imin = offsetout;
+    nsamp = lengthout;
+
+    chunk = CHUNKSIZE;
+
+    Py_BEGIN_ALLOW_THREADS
+    if (method == 0) {
+	#if defined(_OPENMP)
+        #pragma omp parallel private(ishift, iarray, i, istart, weight) num_threads(nparallel)
+	#endif
+        {
+
+	#if defined(_OPENMP)
+        #pragma omp for schedule(dynamic, chunk) nowait
+	#endif
+        for (ishift=0; ishift<(int32_t)nshifts; ishift++) {
+            for (iarray=0; iarray<narrays; iarray++) {
+                weight = weights[ishift*narrays + iarray];
+                if (weight == 0.0)
+                    continue;
+                istart = offsets[iarray] + shifts[ishift*narrays + iarray];
+                #if defined(_OPENMP)
+                    #pragma omp simd
+                #endif
+                for (i=(size_t)i32max(0, imin - istart); i<(size_t)i32max(0, i32min(nsamp - istart + imin, lengths[iarray])); i++) {
+                    result[ishift*nsamp + istart-imin+i] += arrays[iarray][i] * weight;
+                }
+            }
+        }
+        }
+
+    } else if (method == 1) {
+
+	#if defined(_OPENMP)
+        #pragma omp parallel private(ishift, iarray, i, istart, weight, temp, m)
+	#endif
+        {
+        temp = (double*)calloc(nsamp, sizeof(double));
+	#if defined(_OPENMP)
+        #pragma omp for schedule(dynamic,chunk) nowait
+	#endif
+        for (ishift=0; ishift<(int32_t)nshifts; ishift++) {
+            for (i=0; i<nsamp; i++) {
+                temp[i] = 0.0;
+            }
+            for (iarray=0; iarray<narrays; iarray++) {
+                weight = weights[ishift*narrays + iarray];
+                if (weight == 0.0)
+                    continue;
+                istart = offsets[iarray] + shifts[ishift*narrays + iarray];
                 #if defined(_OPENMP)
                     #pragma omp simd
                 #endif
@@ -234,7 +346,7 @@ int argmax(double *arrayin, uint32_t *arrayout, size_t nx, size_t ny, int nparal
         }
         for (iy=0; iy<ny; iy++){
             for (ix_offset=0; ix_offset<smin(NBLOCK, nx-ix); ix_offset++) {
-                if (arrayin[iy*nx + ix + ix_offset] > vmax[ix_offset]){
+                if (arrayin[iy*nx + ix + ix_offset] > vmax[ix_offset]) {
                     vmax[ix_offset] = arrayin[iy*nx + ix + ix_offset];
                     imax[ix_offset] = iy;
                 }
@@ -245,66 +357,69 @@ int argmax(double *arrayin, uint32_t *arrayout, size_t nx, size_t ny, int nparal
         }
     }
     }
-
     Py_END_ALLOW_THREADS
 
     return SUCCESS;
 }
 
 
-int good_array(PyObject* o, int typenum) {
+int bad_array(PyObject* o, int type_num, char* name) {
     if (!PyArray_Check(o)) {
-        PyErr_SetString(PyExc_ValueError, "not a NumPy array" );
-        return 0;
-    }
-
-    if (PyArray_TYPE((PyArrayObject*)o) != typenum) {
-        PyErr_SetString(PyExc_ValueError, "array of unexpected type");
-        return 0;
+        PyErr_Format(PyExc_ValueError, "%s not a NumPy array", name);
+        return BAD_ARRAY;
     }
 
     if (!PyArray_ISCARRAY((PyArrayObject*)o)) {
-        PyErr_SetString(PyExc_ValueError, "array is not contiguous or not well behaved");
-        return 0;
+        PyErr_Format(PyExc_ValueError, "%s array is not contiguous or not well behaved", name);
+        return BAD_ALIGNMENT;
     }
 
-    return 1;
+    if (PyArray_TYPE((PyArrayObject*)o) != type_num) {
+        PyErr_Format(PyExc_ValueError, "%s array of unexpected dtype", name);
+        return BAD_DTYPE;
+    }
+
+    return SUCCESS;
 }
 
-static PyObject* w_parstack(PyObject *module, PyObject *args) {
+static PyObject* w_parstack(PyObject *module, PyObject *args, PyObject *kwds){
 
     PyObject *arrays, *offsets, *shifts, *weights, *arr;
-    PyObject *result;
-    int method, nparallel;
+    PyObject *result = Py_None;
+    int method;
+    int nparallel = 1;
     size_t narrays, nshifts, nweights;
     size_t *clengths;
     size_t lengthout;
     int32_t offsetout;
     int lengthout_arg;
     int32_t *coffsets, *cshifts;
-    double *cweights;
     float **carrays, *cresult;
     npy_intp array_dims[1];
     size_t i;
-    int err;
+    int err = 0;
 
     carrays = NULL;
     clengths = NULL;
     struct module_state *st = GETSTATE(module);
 
-    if (!PyArg_ParseTuple(args, "OOOOiiiOi", &arrays, &offsets, &shifts,
-                          &weights, &method, &lengthout_arg, &offsetout, &result, &nparallel)) {
+    static char *kwlist[] = {"arrays", "offsets", "shifts", "weights", "method", "lengthout", "offsetout", "result", "nparallel", NULL};
 
-        PyErr_SetString(
-            st->error,
-            "usage parstack(arrays, offsets, shifts, weights, method, lengthout, offsetout, result, nparallel)" );
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOOOiii|Oi", kwlist, &arrays, &offsets, &shifts,
+                                     &weights, &method, &lengthout_arg, &offsetout, &result, &nparallel))
+        return NULL;
 
+    int dtype = PyArray_TYPE((PyArrayObject*)weights);
+    if (dtype != NPY_FLOAT && dtype != NPY_DOUBLE) {
+        PyErr_SetString(PyExc_ValueError, "Bad dtype, only float64 and float32 is supported.");
         return NULL;
     }
-    if (!good_array(offsets, NPY_INT32)) return NULL;
-    if (!good_array(shifts, NPY_INT32)) return NULL;
-    if (!good_array(weights, NPY_DOUBLE)) return NULL;
-    if (result != Py_None && !good_array(result, NPY_FLOAT)) return NULL;
+
+    if (bad_array(offsets, NPY_INT32, "offsets")) return NULL;
+    if (bad_array(shifts, NPY_INT32, "shifts")) return NULL;
+
+    if (bad_array(weights, dtype, "weights")) return NULL;
+    if (result != Py_None && bad_array(result, dtype, "result")) return NULL;
 
     coffsets = PyArray_DATA((PyArrayObject*)offsets);
     narrays = PyArray_SIZE((PyArrayObject*)offsets);
@@ -312,7 +427,6 @@ static PyObject* w_parstack(PyObject *module, PyObject *args) {
     cshifts = PyArray_DATA((PyArrayObject*)shifts);
     nshifts = PyArray_SIZE((PyArrayObject*)shifts);
 
-    cweights = PyArray_DATA((PyArrayObject*)weights);
     nweights = PyArray_SIZE((PyArrayObject*)weights);
 
     nshifts /= narrays;
@@ -324,7 +438,7 @@ static PyObject* w_parstack(PyObject *module, PyObject *args) {
     }
 
     if (!PyList_Check(arrays)) {
-        PyErr_SetString(st->error, "arg #1 must be a list of NumPy arrays.");
+        PyErr_SetString(st->error, "arrays must be a list of NumPy arrays.");
         return NULL;
     }
 
@@ -348,23 +462,15 @@ static PyObject* w_parstack(PyObject *module, PyObject *args) {
 
     for (i=0; i<narrays; i++) {
         arr = PyList_GetItem(arrays, i);
-        if (!good_array(arr, NPY_FLOAT)) {
-            free(carrays);
-            free(clengths);
-            return NULL;
-        }
+        if (bad_array(arr, dtype, "arrays")) return NULL;
         carrays[i] = PyArray_DATA((PyArrayObject*)arr);
         clengths[i] = PyArray_SIZE((PyArrayObject*)arr);
     }
     if (lengthout_arg < 0) {
-        err = parstack_config(narrays, coffsets, clengths, nshifts, cshifts,
-                              cweights, method, &lengthout, &offsetout);
-
-        if (err != 0) {
+        if (parstack_config(narrays, coffsets, clengths, nshifts, cshifts,
+                            &lengthout, &offsetout)) {
             PyErr_SetString(st->error, "parstack_config() failed");
-            free(carrays);
-            free(clengths);
-            return NULL;
+            goto cleanup;
         }
     } else {
         lengthout = (size_t)lengthout_arg;
@@ -378,59 +484,63 @@ static PyObject* w_parstack(PyObject *module, PyObject *args) {
 
     if (result != Py_None) {
         if (PyArray_SIZE((PyArrayObject*)result) != array_dims[0]) {
-            free(carrays);
-            free(clengths);
-            return NULL;
+            PyErr_SetString(st->error, "results is of unexpected size");
+            goto cleanup;
         }
         Py_INCREF(result);
     } else {
-        result = PyArray_SimpleNew(1, array_dims, NPY_FLOAT);
-        cresult = PyArray_DATA((PyArrayObject*)result);
-
-        for (i=0; i<(size_t)array_dims[0]; i++) {
-            cresult[i] = 0.0;
-        }
-
+        result = PyArray_ZEROS(1, array_dims, dtype, 0);
         if (result == NULL) {
-            free(carrays);
-            free(clengths);
-            return NULL;
+            PyErr_SetString(st->error, "cannot allocate result");
+            goto cleanup;
         }
     }
     cresult = PyArray_DATA((PyArrayObject*)result);
 
-    err = parstack(narrays, carrays, coffsets, clengths, nshifts, cshifts,
-                   cweights, method, lengthout, offsetout, cresult, nparallel);
+    if (dtype == NPY_FLOAT) {
+        err = parstackf(narrays, carrays, coffsets, clengths, nshifts, cshifts,
+                    PyArray_DATA((PyArrayObject*)weights), method, lengthout, offsetout, cresult, nparallel);
+    } else if (dtype == NPY_DOUBLE) {
+        err = parstack(narrays, carrays, coffsets, clengths, nshifts, cshifts,
+                    PyArray_DATA((PyArrayObject*)weights), method, lengthout, offsetout, cresult, nparallel);
+    }
+
+
 
     if (err != 0) {
         PyErr_SetString(st->error, "parstack() failed");
-        free(carrays);
-        free(clengths);
         Py_DECREF(result);
-        return NULL;
+        goto cleanup;
     }
 
     free(carrays);
     free(clengths);
     return Py_BuildValue("Ni", (PyObject *)result, offsetout);
+
+    cleanup:
+        free(carrays);
+        free(clengths);
+        return NULL;
+
 }
 
-static PyObject* w_argmax(PyObject *module, PyObject *args) {
+static PyObject* w_argmax(PyObject *module, PyObject *args, PyObject *kwds) {
     PyObject *arrayin;
     PyObject *result;
     double *carrayin;
     uint32_t *cresult;
     npy_intp *shape, shapeout[1];
     size_t i, ndim;
-    int err, nparallel;
+    int err;
+    int nparallel = 1;
     struct module_state *st = GETSTATE(module);
 
-    if (!PyArg_ParseTuple(args, "Oi", &arrayin, &nparallel)) {
-        PyErr_SetString(st->error, "usage argmax(array)");
-        return NULL;
-    }
+    static char *kwlist[] = {"array", "nparallel", NULL};
 
-    if (!good_array(arrayin, NPY_DOUBLE)) return NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|i", kwlist, &arrayin, &nparallel))
+        return NULL;
+
+    if (bad_array(arrayin, NPY_DOUBLE, "array")) return NULL;
 
     shape = PyArray_DIMS((PyArrayObject*)arrayin);
     ndim = PyArray_NDIM((PyArrayObject*)arrayin);
@@ -468,10 +578,10 @@ static PyObject* w_argmax(PyObject *module, PyObject *args) {
 
 
 static PyMethodDef ParstackMethods[] = {
-    {"parstack",  (PyCFunction) w_parstack, METH_VARARGS,
+    {"parstack",  (PyCFunction) w_parstack, METH_VARARGS | METH_KEYWORDS,
         "Parallel weight-and-delay stacking" },
 
-    {"argmax", (PyCFunction) w_argmax, METH_VARARGS,
+    {"argmax", (PyCFunction) w_argmax, METH_VARARGS | METH_KEYWORDS,
         "argmax of 2D numpy array along axis=0" },
 
     {NULL, NULL, 0, NULL}        /* Sentinel */

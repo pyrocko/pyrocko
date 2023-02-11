@@ -18,6 +18,7 @@ def parstack(arrays, offsets, shifts, weights, method,
              offsetout=0,
              result=None,
              nparallel=None,
+             dtype=num.float32,
              impl='openmp'):
 
     if nparallel is None:
@@ -32,9 +33,11 @@ def parstack(arrays, offsets, shifts, weights, method,
     assert weights.shape == (nshifts, narrays)
     weights = num.reshape(weights, (nshifts*narrays))
 
+    weights = weights.astype(dtype, copy=False)
+    arrays = [arr.astype(dtype, copy=False) for arr in arrays]
+
     if impl == 'openmp':
         parstack_impl = parstack_ext.parstack
-        arrays = [arr.astype(num.float32) for arr in arrays]
     elif impl == 'numpy':
         parstack_impl = parstack_numpy
 
