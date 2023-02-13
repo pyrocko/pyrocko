@@ -5,6 +5,7 @@ import unittest
 from collections import defaultdict
 
 import numpy as num
+
 from pyrocko import autopick, trace, util
 from pyrocko.parstack import argmax as pargmax
 from pyrocko.parstack import get_offset_and_length, parstack
@@ -373,9 +374,3 @@ class ParstackTestCase(unittest.TestCase):
 
             num.testing.assert_almost_equal(
                 mat0[:, ioff:ioff+neach], mat)
-
-
-if __name__ == '__main__':
-    util.setup_logging('test_parstack', 'warning')
-    unittest.main()
-    unittest.main()

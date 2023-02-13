@@ -18,7 +18,7 @@ def parstack(arrays, offsets, shifts, weights, method,
              offsetout=0,
              result=None,
              nparallel=None,
-             dtype=num.float32,
+             dtype=num.float64,
              impl='openmp'):
 
     if nparallel is None:

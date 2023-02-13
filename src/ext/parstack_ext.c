@@ -79,9 +79,6 @@ static int32_t i32max(int32_t a, int32_t b) {
     return (a > b) ? a : b;
 }
 
-static double dmax(double a, double b) {
-    return (a > b) ? a : b;
-}
 
 #define SUCCESS 0
 #define NODATA 1
@@ -311,7 +308,7 @@ int parstack(
             m = 0.;
             for (i=0; i<nsamp; i++) {
                 //m += temp[i]*temp[i];
-                m = fmaxf(m, temp[i]);
+                m = fmax(m, temp[i]);
             }
             result[ishift] = m;
         }
@@ -394,7 +391,8 @@ static PyObject* w_parstack(PyObject *module, PyObject *args, PyObject *kwds){
     int32_t offsetout;
     int lengthout_arg;
     int32_t *coffsets, *cshifts;
-    float **carrays, *cresult;
+    void **carrays;
+    void *cresult;
     npy_intp array_dims[1];
     size_t i;
     int err = 0;
@@ -408,17 +406,21 @@ static PyObject* w_parstack(PyObject *module, PyObject *args, PyObject *kwds){
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOOOiii|Oi", kwlist, &arrays, &offsets, &shifts,
                                      &weights, &method, &lengthout_arg, &offsetout, &result, &nparallel))
         return NULL;
+    if (!PyArray_Check(weights)) {
+        PyErr_SetString(PyExc_ValueError, "weights is not a NumPy array");
+        return NULL;
+    }
 
     int dtype = PyArray_TYPE((PyArrayObject*)weights);
     if (dtype != NPY_FLOAT && dtype != NPY_DOUBLE) {
         PyErr_SetString(PyExc_ValueError, "Bad dtype, only float64 and float32 is supported.");
         return NULL;
     }
+    if (bad_array(weights, dtype, "weights")) return NULL;
 
     if (bad_array(offsets, NPY_INT32, "offsets")) return NULL;
     if (bad_array(shifts, NPY_INT32, "shifts")) return NULL;
 
-    if (bad_array(weights, dtype, "weights")) return NULL;
     if (result != Py_None && bad_array(result, dtype, "result")) return NULL;
 
     coffsets = PyArray_DATA((PyArrayObject*)offsets);
@@ -447,7 +449,7 @@ static PyObject* w_parstack(PyObject *module, PyObject *args, PyObject *kwds){
         return NULL;
     }
 
-    carrays = (float**)calloc(narrays, sizeof(float*));
+    carrays = (void**)calloc(narrays, sizeof(void *));
     if (carrays == NULL) {
         PyErr_SetString(st->error, "alloc failed");
         return NULL;
@@ -462,7 +464,9 @@ static PyObject* w_parstack(PyObject *module, PyObject *args, PyObject *kwds){
 
     for (i=0; i<narrays; i++) {
         arr = PyList_GetItem(arrays, i);
-        if (bad_array(arr, dtype, "arrays")) return NULL;
+        if (bad_array(arr, dtype, "arrays")) {
+            goto cleanup;
+        }
         carrays[i] = PyArray_DATA((PyArrayObject*)arr);
         clengths[i] = PyArray_SIZE((PyArrayObject*)arr);
     }
@@ -498,11 +502,11 @@ static PyObject* w_parstack(PyObject *module, PyObject *args, PyObject *kwds){
     cresult = PyArray_DATA((PyArrayObject*)result);
 
     if (dtype == NPY_FLOAT) {
-        err = parstackf(narrays, carrays, coffsets, clengths, nshifts, cshifts,
-                    PyArray_DATA((PyArrayObject*)weights), method, lengthout, offsetout, cresult, nparallel);
+        err = parstackf(narrays, (float **) carrays, coffsets, clengths, nshifts, cshifts,
+                    PyArray_DATA((PyArrayObject*)weights), method, lengthout, offsetout, (float *) cresult, nparallel);
     } else if (dtype == NPY_DOUBLE) {
-        err = parstack(narrays, carrays, coffsets, clengths, nshifts, cshifts,
-                    PyArray_DATA((PyArrayObject*)weights), method, lengthout, offsetout, cresult, nparallel);
+        err = parstack(narrays, (double**) carrays, coffsets, clengths, nshifts, cshifts,
+                    PyArray_DATA((PyArrayObject*)weights), method, lengthout, offsetout, (double *) cresult, nparallel);
     }
 
 
