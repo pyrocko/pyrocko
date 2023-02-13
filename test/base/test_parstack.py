@@ -6,7 +6,7 @@ from collections import defaultdict
 
 import numpy as num
 
-from pyrocko import autopick, trace, util
+from pyrocko import autopick, trace
 from pyrocko.parstack import argmax as pargmax
 from pyrocko.parstack import get_offset_and_length, parstack
 
