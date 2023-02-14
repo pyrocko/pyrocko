@@ -1681,7 +1681,7 @@ class Channel(BaseNode):
     sensor = Equipment.T(optional=True, xmltagname='Sensor')
     pre_amplifier = Equipment.T(optional=True, xmltagname='PreAmplifier')
     data_logger = Equipment.T(optional=True, xmltagname='DataLogger')
-    equipment = Equipment.T(optional=True, xmltagname='Equipment')
+    equipment_list = List.T(Equipment.T(xmltagname='Equipment'))
     response = Response.T(optional=True, xmltagname='Response')
 
     @property
