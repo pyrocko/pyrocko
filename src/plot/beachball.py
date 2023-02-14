@@ -618,8 +618,32 @@ def plot_beachball_mpl(
     return collection
 
 
-def mts2amps(mts, projection, beachball_type, grid_resolution=200, mask=True,
-             view='top'):
+def amplitudes_ned(mt, vecs):
+    ep, en, et, vp, vn, vt = mt.eigensystem()
+    to_e = num.vstack((vn, vt, vp))
+    vecs_e = num.dot(to_e, vecs.T).T
+    rtp = numpy_xyz2rtp(vecs_e)
+    atheta, aphi = rtp[:, 1], rtp[:, 2]
+    return ep * num.cos(atheta)**2 + (
+        en * num.cos(aphi)**2 + et * num.sin(aphi)**2) * num.sin(atheta)**2
+
+
+def amplitudes(mt, azimuths, takeoff_angles):
+    azimuths = num.asarray(azimuths, dtype=float)
+    takeoff_angles = num.asarray(takeoff_angles, dtype=float)
+    assert azimuths.size == takeoff_angles.size
+    rtps = num.vstack((num.ones(azimuths.size), takeoff_angles, azimuths)).T
+    vecs = numpy_rtp2xyz(rtps)
+    return amplitudes_ned(mt, vecs)
+
+
+def mts2amps(
+        mts,
+        projection,
+        beachball_type,
+        grid_resolution=200,
+        mask=True,
+        view='top'):
 
     n_balls = len(mts)
     nx = grid_resolution
@@ -636,22 +660,10 @@ def mts2amps(mts, projection, beachball_type, grid_resolution=200, mask=True,
     amps = num_full(nx * ny, num.nan, dtype=num.float64)
 
     amps[ii_ok] = 0.
+    vecs3_ok = inverse_project(vecs2[ii_ok, :], projection)
+
     for mt in mts:
-        mt = deco_part(mt, beachball_type, view)
-
-        ep, en, et, vp, vn, vt = mt.eigensystem()
-
-        vecs3_ok = inverse_project(vecs2[ii_ok, :], projection)
-
-        to_e = num.vstack((vn, vt, vp))
-
-        vecs_e = num.dot(to_e, vecs3_ok.T).T
-        rtp = numpy_xyz2rtp(vecs_e)
-
-        atheta, aphi = rtp[:, 1], rtp[:, 2]
-        amps_ok = ep * num.cos(atheta)**2 + (
-            en * num.cos(aphi)**2 + et * num.sin(aphi)**2) * num.sin(atheta)**2
-
+        amps_ok = amplitudes_ned(deco_part(mt, beachball_type, view), vecs3_ok)
         if mask:
             amps_ok[amps_ok > 0] = 1.
             amps_ok[amps_ok < 0] = 0.
