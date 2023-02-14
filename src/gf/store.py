@@ -1663,27 +1663,41 @@ class Store(BaseStore):
 
         **Examples:**
 
-        If ``test_store`` is of :py:class:`~pyrocko.gf.meta.ConfigTypeA`::
+        If ``test_store`` is a :py:class:`Type A<pyrocko.gf.meta.ConfigTypeA>`
+        store::
 
-            test_store.t('p', (1000, 10000))
-            test_store.t('last{P|Pdiff}', (1000, 10000)) # The latter arrival
-                                                         # of P or diffracted
-                                                         # P phase
+            test_store.t('stored:p', (1000, 10000))
+            test_store.t('last{stored:P|stored:Pdiff}', (1000, 10000))
+                                             # The latter arrival
+                                             # of P or diffracted
+                                             # P phase
 
-        If ``test_store`` is of :py:class:`~pyrocko.gf.meta.ConfigTypeB`::
+        If ``test_store`` is a :py:class:`Type B<pyrocko.gf.meta.ConfigTypeB>`
+        store::
 
             test_store.t('S', (1000, 1000, 10000))
-            test_store.t('first{P|p|Pdiff|sP}', (1000, 1000, 10000)) # The
-                        `                                # first arrival of
-                                                         # the given phases is
-                                                         # selected
+            test_store.t('first{P|p|Pdiff|sP}', (1000, 1000, 10000))
+                                             # The first arrival of
+                                             # the given phases is
+                                             # selected
 
-        :param timing: Timing string as described above
+        Independent of the store type, it is also possible to specify two
+        location objects and the GF index tuple is calculated internally::
+
+             test_store.t('p', source, target)
+
+        :param timing: travel-time definition
         :type timing: str or :py:class:`~pyrocko.gf.meta.Timing`
-        :param \\*args: :py:class:`~pyrocko.gf.meta.Config` index tuple, e.g.
-            ``(source_depth, distance, component)`` as in
-            :py:class:`~pyrocko.gf.meta.ConfigTypeA`.
-        :type \\*args: tuple
+        :param \\*args: if ``len(args) == 1``, ``args[0]`` must be a
+            :py:class:`GF index tuple <pyrocko.gf.meta.Config>`, e.g.
+            ``(source_depth, distance, component)`` for a
+            :py:class:`Type A<pyrocko.gf.meta.ConfigTypeA>` store. If
+            ``len(args) == 2``, two location objects are expected, e.g.
+            ``(source, receiver)`` and the appropriate GF index is computed
+            internally.
+        :type \\*args: (:py:class:`tuple`,) or
+            (:py:class:`~pyrocko.model.Location`,
+            :py:class:`~pyrocko.model.Location`)
         :returns: Phase arrival according to ``timing``
         :rtype: float or None
         '''
