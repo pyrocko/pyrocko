@@ -513,7 +513,17 @@ def iload_fh(f):
                 response=resp)
 
         else:
-            raise RespError('incomplete response information')
+            logger.warning(
+                'Incomplete response information for %s (%s - %s).',
+                '.'.join(nslc),
+                util.time_to_str(tmin),
+                util.time_to_str(tmax))
+
+            yield ChannelResponse(
+                codes=nslc,
+                start_date=tmin,
+                end_date=tmax,
+                response=None)
 
 
 iload_filename, iload_dirname, iload_glob, iload = util.make_iload_family(
