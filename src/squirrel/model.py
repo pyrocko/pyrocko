@@ -168,7 +168,7 @@ class CodesNSLCE(CodesNSLCEBase, Codes):
 
     @property
     def nslce(self):
-        return self[:4]
+        return self[:5]
 
     @property
     def nslc(self):
@@ -181,6 +181,14 @@ class CodesNSLCE(CodesNSLCEBase, Codes):
     @property
     def ns(self):
         return self[:2]
+
+    @property
+    def codes_nsl(self):
+        return CodesNSL(self)
+
+    @property
+    def codes_nsl_star(self):
+        return CodesNSL(self.network, self.station, '*')
 
     def as_tuple(self):
         return tuple(self)
