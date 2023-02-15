@@ -64,7 +64,7 @@ def ptftype(s):
     elif s.startswith(b'D'):
         return 'DIGITAL (Z-TRANSFORM)'
     else:
-        raise RespError('unknown pz transfer function type')
+        raise RespError('Unknown PZ transfer function type.')
 
 
 def pcftype(s):
@@ -75,7 +75,7 @@ def pcftype(s):
     elif s.startswith(b'D'):
         return 'DIGITAL'
     else:
-        raise RespError('unknown cf transfer function type')
+        raise RespError('Unknown cf transfer function type.')
 
 
 def pblock_060(content):
@@ -343,7 +343,7 @@ def get1(content, field, default=None, optional=False):
         elif default is not None:
             return default
         else:
-            raise RespError('key not found: %s' % field)
+            raise RespError('Key not found: %s' % field)
 
 
 def getn(content, field):
@@ -393,17 +393,17 @@ def gett1o(lst, t):
     elif len(lst) == 1:
         return lst[0]
     else:
-        raise RespError('duplicate entry')
+        raise RespError('Duplicate entry.')
 
 
 def gett1(lst, t):
     lst = [x for x in lst if isinstance(x, t)]
     if len(lst) == 0:
-        raise RespError('entry not found')
+        raise RespError('Entry not found.')
     elif len(lst) == 1:
         return lst[0]
     else:
-        raise RespError('duplicate entry')
+        raise RespError('Duplicate entry.')
 
 
 class ChannelResponse(guts.Object):
@@ -433,14 +433,14 @@ def iload_fh(f):
             tmin = pdate(get1(cc, b'22'))
             tmax = pdate(get1(cc, b'23'))
         except util.TimeStrError as e:
-            raise RespError('invalid date in RESP information. (%s)' % str(e))
+            raise RespError('Invalid date in RESP information (%s).' % str(e))
 
         stage_elements = {}
 
         istage = -1
         for block, content in rcs:
             if block not in bdefs:
-                raise RespError('unknown block type found: %s' % block)
+                raise RespError('Unknown block type found: %s' % block)
 
             istage_temp, x = bdefs[block]['parse'](content)
             if istage_temp != -1:
@@ -492,10 +492,10 @@ def iload_fh(f):
 
                 if not all(f == totalgain_frequency for f in gain_frequencies):
                     logger.warning(
-                        'no total gain reported and inconsistent gain '
+                        'No total gain reported and inconsistent gain '
                         'frequency values found in resp file for %s.%s.%s.%s: '
                         'omitting total gain and frequency from created '
-                        'instrument sensitivity object' % nslc)
+                        'instrument sensitivity object.' % nslc)
 
                     totalgain_value = None
                     totalgain_frequency = None
@@ -587,7 +587,7 @@ def make_stationxml(pyrocko_stations, channel_responses):
 
             stations[net, sta].channel_list.append(channel)
         else:
-            logger.warning('no station information for %s.%s.%s' %
+            logger.warning('No station information for %s.%s.%s.' %
                            (net, sta, loc))
 
     for station in stations.values():
