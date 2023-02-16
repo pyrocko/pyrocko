@@ -92,6 +92,10 @@ def cake_model_to_config(mod):
     return '\n'.join(srows), len(srows), ref_depth
 
 
+def volume_change_to_pressure(rhos, vps, vss):
+    return -rhos * (vps ** 2 - vss ** 2 * (4. / 3.))
+
+
 class QSeisSourceMech(Object):
     pass
 
@@ -781,6 +785,35 @@ class QSeisGFBuilder(gf.builder.Builder):
 
         self.store = gf.store.Store(store_dir, 'w')
 
+        storeconf = self.store.config
+
+        dummy_lat = 10.0
+        dummy_lon = 10.0
+
+        depths = storeconf.coords[0]
+        lats = num.ones_like(depths) * dummy_lat
+        lons = num.ones_like(depths) * dummy_lon
+        points = num.vstack([lats, lons, depths]).T
+
+        if storeconf.stored_quantity == "pressure":
+            self.vps = storeconf.get_vp(
+                lat=dummy_lat,
+                lon=dummy_lon,
+                points=points,
+                interpolation='multilinear')
+
+            self.vss = storeconf.get_vs(
+                lat=dummy_lat,
+                lon=dummy_lon,
+                points=points,
+                interpolation='multilinear')
+
+            self.rhos = storeconf.get_vs(
+                lat=dummy_lat,
+                lon=dummy_lon,
+                points=points,
+                interpolation='multilinear')
+
         if block_size is None:
             block_size = (1, 1, 100)
 
@@ -853,6 +886,15 @@ class QSeisGFBuilder(gf.builder.Builder):
             # this value
             distances.append(self.gf_config.distance_max)
 
+        if self.store.config.stored_quantity == 'pressure':
+            dv_to_pressure_factor = volume_change_to_pressure(
+                self.rhos, self.vps, self.vss)
+        else:
+            dv_to_pressure_factor = +1
+
+        pex = (MomentTensor(m=symmat6(1, 1, 1, 0, 0, 0)),
+               {'v': (0, dv_to_pressure_factor)})
+
         mex = (MomentTensor(m=symmat6(1, 1, 1, 0, 0, 0)),
                {'r': (0, +1), 'z': (1, +1)})
 
@@ -878,11 +920,15 @@ class QSeisGFBuilder(gf.builder.Builder):
             'fh.tt': (off+2, -1),
             'fz.tz': (off+3, +1),
             'fh.tz': (off+4, +1)})
-        if component_scheme == 'elastic2':
+        if component_scheme == 'scalar1':
+            gfsneeded = (1, 0, 0, 0, 0, 0)
+            gfmapping = [pex]
+
+        elif component_scheme == 'elastic2':
             gfsneeded = (1, 0, 0, 0, 0, 0)
             gfmapping = [mex]
 
-        if component_scheme == 'elastic5':
+        elif component_scheme == 'elastic5':
             gfsneeded = (0, 0, 0, 0, 1, 1)
             gfmapping = [msf]
 

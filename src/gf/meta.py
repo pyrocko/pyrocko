@@ -251,6 +251,9 @@ class ComponentScheme(StringChoice):
                       sources only
     ``poroelastic10`` Poroelastic for :py:class:`~pyrocko.gf.meta.ConfigTypeA`
                       and :py:class:`~pyrocko.gf.meta.ConfigTypeB` stores
+    ``scalar1``       Scalar store e.g. acoustic pressure
+                      for :py:class:`~pyrocko.gf.meta.ConfigTypeA`
+                      and :py:class:`~pyrocko.gf.meta.ConfigTypeB` stores
     ================= =========================================================
     '''
 
@@ -311,6 +314,7 @@ class QuantityType(StringChoice):
         'pressure',
         'tilt',
         'pore_pressure',
+        'pressure',
         'darcy_velocity',
         'vertical_tilt']
 
