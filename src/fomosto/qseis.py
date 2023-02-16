@@ -92,6 +92,10 @@ def cake_model_to_config(mod):
     return '\n'.join(srows), len(srows), ref_depth
 
 
+def volume_change_to_pressure(rhos, vps, vss):
+    return -rhos * (vps ** 2 - vss ** 2 * (4. / 3.))
+
+
 class QSeisSourceMech(Object):
     pass
 
@@ -790,6 +794,14 @@ class QSeisGFBuilder(gf.builder.Builder):
         if self.store.config.component_scheme == 'elastic10_fd':
             ndistances = 33
 
+        storeconf = self.store.config
+
+        if storeconf.stored_quantity == "pressure":
+            self.depth_profile = storeconf.earthmodel_1d.profile('z')
+            self.vs_profile = storeconf.earthmodel_1d.profile('vs')
+            self.vp_profile = storeconf.earthmodel_1d.profile('vp')
+            self.rho_profile = storeconf.earthmodel_1d.profile('rho')
+
         if block_size is None:
             block_size = (1, 1, ndistances)
 
@@ -885,6 +897,21 @@ class QSeisGFBuilder(gf.builder.Builder):
 
         nreceivers = len(distances)
 
+        if self.store.config.stored_quantity == 'pressure':
+            try:
+                dv_to_pressure_factor = volume_change_to_pressure(
+                    rhos=num.interp(rz, self.depth_profile, self.rho_profile),
+                    vps=num.interp(rz, self.depth_profile, self.vp_profile),
+                    vss=num.interp(rz, self.depth_profile, self.vs_profile))
+            except ValueError:
+                raise ValueError(
+                    'Depth value %f outside interpolation range' % rz)
+        else:
+            dv_to_pressure_factor = +1
+
+        pex = (MomentTensor(m=symmat6(1, 1, 1, 0, 0, 0)),
+               {'v': (0, dv_to_pressure_factor)})
+
         mex = (MomentTensor(m=symmat6(1, 1, 1, 0, 0, 0)),
                {'r': (0, +1), 'z': (1, +1)})
 
@@ -909,11 +936,15 @@ class QSeisGFBuilder(gf.builder.Builder):
             'fh.tt': (off+2, -1),
             'fz.tz': (off+3, +1),
             'fh.tz': (off+4, +1)})
-        if component_scheme == 'elastic2':
+        if component_scheme == 'scalar1':
+            gfsneeded = (1, 0, 0, 0, 0, 0)
+            gfmapping = [pex]
+
+        elif component_scheme == 'elastic2':
             gfsneeded = (1, 0, 0, 0, 0, 0)
             gfmapping = [mex]
 
-        if component_scheme == 'elastic5':
+        elif component_scheme == 'elastic5':
             gfsneeded = (0, 0, 0, 0, 1, 1)
             gfmapping = [msf]
 

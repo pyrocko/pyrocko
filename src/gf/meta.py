@@ -217,6 +217,13 @@ class ComponentSchemeDescription(Object):
 
 component_scheme_descriptions = [
     ComponentSchemeDescription(
+        name='scalar1',
+        source_terms=['m0'],
+        ncomponents=1,
+        default_stored_quantity=None,
+        provided_components=[
+            'scalar']),
+    ComponentSchemeDescription(
         name='elastic2',
         source_terms=['m0'],
         ncomponents=2,
@@ -330,6 +337,9 @@ class ComponentScheme(StringChoice):
                       :py:class:`~pyrocko.gf.meta.ConfigTypeA` and
                       :py:class:`~pyrocko.gf.meta.ConfigTypeB` stores, MT
                       sources only
+    ``scalar1``       Scalar store e.g. acoustic pressure
+                      for :py:class:`~pyrocko.gf.meta.ConfigTypeA`
+                      and :py:class:`~pyrocko.gf.meta.ConfigTypeB` stores
     ================= =========================================================
     '''
 
@@ -391,6 +401,7 @@ class QuantityType(StringChoice):
         'rotation_velocity',
         'rotation_acceleration',
         'pressure',
+        'volume_change',
         'tilt',
         'pore_pressure',
         'darcy_velocity',
@@ -878,7 +889,7 @@ class DiscretizedSource(Object):
     distributions and the :py:class:`DiscretizedExplosionSource` for pure
     explosion/implosion type source distributions. The geometry calculations
     are implemented in the base class. How Green's function components have to
-    be weighted and sumed is defined in the derived classes.
+    be weighted and summed is defined in the derived classes.
 
     Like in the :py:class:`pyrocko.model.location.Location` class, the
     positions of the point sources contained in the discretized source are
@@ -1143,6 +1154,7 @@ class DiscretizedExplosionSource(DiscretizedSource):
     m0s = Array.T(shape=(None,), dtype=float)
 
     provided_schemes = (
+        'scalar1',
         'elastic2',
         'elastic8',
         'elastic10',
@@ -1152,7 +1164,7 @@ class DiscretizedExplosionSource(DiscretizedSource):
     def get_source_terms(self, scheme):
         self.check_scheme(scheme)
 
-        if scheme == 'elastic2':
+        if scheme in ('scalar1', 'elastic2'):
             return self.m0s[:, num.newaxis].copy()
 
         elif scheme in ('elastic8', 'elastic10', 'rotational8'):

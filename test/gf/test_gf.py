@@ -472,7 +472,7 @@ class GFTestCase(unittest.TestCase):
                         source_terms,
                         shifts,
                         receiver_coords,
-                        'dummy',
+                        'scalar1',
                         'nearest_neighbor',
                         num.array(
                             [itmin if itmin is not None else 0],

@@ -5720,7 +5720,8 @@ class HorizontalVectorRule(Rule):
 class ScalarRule(Rule):
 
     def __init__(self, quantity, differentiate=0):
-        self.c = quantity
+        self.c = '%s.scalar' % quantity
+        self.differentiate = differentiate
 
     def required_components(self, target):
         return (self.c, )
@@ -5760,6 +5761,8 @@ channel_rules = {
         VectorRule('velocity', differentiate=1),
         VectorRule('displacement', differentiate=2)],
     'pore_pressure': [ScalarRule('pore_pressure')],
+    'pressure': [ScalarRule('pressure')],
+    'volume_change': [ScalarRule('volume_change')],
     'vertical_tilt': [HorizontalVectorRule('vertical_tilt')],
     'darcy_velocity': [VectorRule('darcy_velocity')],
 }
