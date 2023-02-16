@@ -582,10 +582,10 @@ static PyObject* w_argmax(PyObject *module, PyObject *args, PyObject *kwds) {
 
 
 static PyMethodDef ParstackMethods[] = {
-    {"parstack",  (PyCFunction) w_parstack, METH_VARARGS | METH_KEYWORDS,
+    {"parstack", (PyCFunction)(void(*)(void))w_parstack, METH_VARARGS | METH_KEYWORDS,
         "Parallel weight-and-delay stacking" },
 
-    {"argmax", (PyCFunction) w_argmax, METH_VARARGS | METH_KEYWORDS,
+    {"argmax", (PyCFunction)(void(*)(void))w_argmax, METH_VARARGS | METH_KEYWORDS,
         "argmax of 2D numpy array along axis=0" },
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
