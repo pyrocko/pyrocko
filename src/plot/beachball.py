@@ -25,9 +25,12 @@ _view_south = num.array([[0, 0, -1],
 
 _view_north = _view_south.T
 
-_view_east = num.array([[1, 0, 0],
-                        [0, 0, -1],
-                        [0, 1, 0]])
+# _view_east = num.array([[1, 0, 0],
+#                         [0, 0, -1],
+#                         [0, 1, 0]])
+_view_east = num.array([[0, 0, -1],
+                        [1, 0, 0],
+                        [0, -1, 0]])
 
 _view_west = _view_east.T
 
