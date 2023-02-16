@@ -117,7 +117,8 @@ def make_colormap(
         vmax,
         C=None,
         cmap=None,
-        space=False):
+        space=False,
+        **kwargs):
     '''
     Create gmt-readable colormap cpt file called my_<cmap>.cpt.
 
@@ -149,7 +150,7 @@ def make_colormap(
     :type space: optional, bool
     '''
 
-    scaler = AutoScaler(mode='min-max')
+    scaler = AutoScaler(mode='min-max', **kwargs)
     scale = scaler.make_scale((vmin, vmax))
 
     incr = scale[2]
@@ -797,6 +798,8 @@ class RuptureMap(Map):
             unit='',
             color='',
             style='',
+            pen_size_factor=0.25,
+            cpt=None,
             **kwargs):
 
         '''
@@ -841,31 +844,34 @@ class RuptureMap(Map):
             optional, str
         '''
 
-        pen_size = self._fontsize / 40.
+        pen_size = self._fontsize / 10. * pen_size_factor
 
         if not color:
             color = self._fontcolor
 
         a_string = '%g+f%s,%s+r%gc+u%s' % (
-            anot_int, self.font, color, pen_size*4, unit)
+            anot_int, self.font, color, pen_size * 2, unit)
         if angle:
             a_string += '+a%g' % angle
+
         c_string = '%g' % contour_int
 
-        if kwargs:
-            kwargs['A'], kwargs['C'] = a_string, c_string
-        else:
-            kwargs = dict(A=a_string, C=c_string)
+        w_add = ''
+        if cpt is not None:
+            c_string = cpt
+            w_add = '+c'
+
+        kwargs['A'], kwargs['C'] = a_string, c_string
+        kwargs['S'] = kwargs.get('S', '10')
 
         if style:
             style = ',' + style
 
-        args = ['-Wc%gp,%s%s+s' % (pen_size, color, style)]
+        args = ['-Wc%gp,%s%s+s%s' % (pen_size, color, style, w_add)]
 
         self.gmt.grdcontour(
             gridfile,
-            S='10',
-            W='a%gp,%s%s+s' % (pen_size*4, color, style),
+            W='a%gp,%s%s+s%s' % (pen_size*4, color, style, w_add),
             *self.jxyr + args,
             **kwargs)
 
@@ -1026,7 +1032,15 @@ class RuptureMap(Map):
 
         self.draw_dynamic_data(data, **kwargs)
 
-    def draw_time_contour(self, store, clevel=[], **kwargs):
+    def draw_time_contour(
+            self,
+            store,
+            clevel=[],
+            cmap=None,
+            clim=None,
+            interpolation='nearest',
+            time_shift=0.,
+            **kwargs):
         '''
         Draw high contour lines of the rupture front propgation time.
 
@@ -1042,6 +1056,9 @@ class RuptureMap(Map):
 
         _, _, _, _, points_xy = self.source._discretize_points(store, cs='xyz')
         _, _, times, _, _, _ = self.source.get_vr_time_interpolators(store)
+
+        times = times.copy()
+        times += time_shift
 
         scaler = AutoScaler(mode='0-max', approx_ticks=8)
         scale = scaler.make_scale([num.min(times), num.max(times)])
@@ -1064,9 +1081,22 @@ class RuptureMap(Map):
         tmp_grd_file = 'tmpdata.grd'
         self.xy_data_to_grid(points_xy[:, 0], points_xy[:, 1],
                              times, tmp_grd_file)
+
+        if cmap is not None:
+            vmin, vmax = clim or scale[:2]
+
+            make_colormap(
+                self.gmt,
+                vmin,
+                vmax,
+                cmap=cmap,
+                inc=kwargs['contour_int'])
+
+            kwargs['cpt'] = 'my_%s.cpt' % cmap
+
         self.draw_contour(tmp_grd_file, **kwargs)
 
-        clear_temp(gridfiles=[tmp_grd_file], cpts=[])
+        clear_temp(gridfiles=[tmp_grd_file], cpts=[cmap])
 
     def draw_points(self, lats, lons, symbol='point', size=None, **kwargs):
         '''
