@@ -312,6 +312,7 @@ class QuantityType(StringChoice):
         'velocity',
         'acceleration',
         'pressure',
+        'volume_change',
         'tilt',
         'pore_pressure',
         'pressure',
@@ -760,7 +761,7 @@ class DiscretizedSource(Object):
     distributions and the :py:class:`DiscretizedExplosionSource` for pure
     explosion/implosion type source distributions. The geometry calculations
     are implemented in the base class. How Green's function components have to
-    be weighted and sumed is defined in the derived classes.
+    be weighted and summed is defined in the derived classes.
 
     Like in the :py:class:`Location` class, the positions of the point sources
     contained in the discretized source are defined by a common reference point
@@ -1025,6 +1026,7 @@ class DiscretizedExplosionSource(DiscretizedSource):
     m0s = Array.T(shape=(None,), dtype=float)
 
     provided_schemes = (
+        'scalar1',
         'elastic2',
         'elastic8',
         'elastic10',
@@ -1033,7 +1035,7 @@ class DiscretizedExplosionSource(DiscretizedSource):
     def get_source_terms(self, scheme):
         self.check_scheme(scheme)
 
-        if scheme == 'elastic2':
+        if scheme in ('scalar1', 'elastic2'):
             return self.m0s[:, num.newaxis].copy()
 
         elif scheme in ('elastic8', 'elastic10'):

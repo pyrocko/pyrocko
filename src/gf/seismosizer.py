@@ -4724,6 +4724,8 @@ channel_rules = {
         VectorRule('velocity', differentiate=1),
         VectorRule('displacement', differentiate=2)],
     'pore_pressure': [ScalarRule('pore_pressure')],
+    'pressure': [ScalarRule('pressure')],
+    'volume_change': [ScalarRule('volume_change')],
     'vertical_tilt': [HorizontalVectorRule('vertical_tilt')],
     'darcy_velocity': [VectorRule('darcy_velocity')],
 }

@@ -335,7 +335,7 @@ typedef struct {
 #define NSUMMANDS_MAX 6
 
 typedef void (*make_weights_function_t)(const float64_t*, const float64_t*, const float64_t*, float64_t*);
-static void make_weights_dummy(const float64_t*, const float64_t*, const float64_t*, float64_t*);
+static void make_weights_scalar1(const float64_t*, const float64_t*, const float64_t*, float64_t*);
 static void make_weights_elastic2(const float64_t*, const float64_t*, const float64_t*, float64_t*);
 static void make_weights_elastic5(const float64_t*, const float64_t*, const float64_t*, float64_t*);
 static void make_weights_elastic8(const float64_t*, const float64_t*, const float64_t*, float64_t*);
@@ -353,9 +353,9 @@ typedef struct {
     const make_weights_function_t make_weights;
 } component_scheme_t;
 
-const size_t nsummands_dummy[] = {1};
-static const uint64_t igs_dummy_0[] = {0};
-static const uint64_t *igs_dummy[] = {igs_dummy_0};
+const size_t nsummands_scalar1[] = {1};
+static const uint64_t igs_scalar1_0[] = {0};
+static const uint64_t *igs_scalar1[] = {igs_scalar1_0};
 
 const size_t nsummands_elastic2[] = {1, 1, 1};
 static const uint64_t igs_elastic2_0[] = {0};
@@ -388,7 +388,7 @@ static const uint64_t igs_elastic18_2[] = {12, 13, 14, 15, 16, 17};
 static const uint64_t *igs_elastic18[] = {igs_elastic18_0, igs_elastic18_1, igs_elastic18_2};
 
 typedef enum {
-    DUMMY = 0,
+    SCALAR1 = 0,
     ELASTIC2,
     ELASTIC5,
     ELASTIC8,
@@ -398,7 +398,7 @@ typedef enum {
 } component_scheme_id;
 
 const component_scheme_t component_schemes[] = {
-    {"dummy", 1, 1, 1, nsummands_dummy, igs_dummy, make_weights_dummy},
+    {"scalar1", 1, 1, 1, nsummands_scalar1, igs_scalar1, make_weights_scalar1},
     {"elastic2", 1, 3, 1, nsummands_elastic2, igs_elastic2, make_weights_elastic2},
     {"elastic5", 3, 3, 3, nsummands_elastic5, igs_elastic5, make_weights_elastic5},
     {"elastic8", 6, 3, 5, nsummands_elastic8, igs_elastic8, make_weights_elastic8},
@@ -1971,7 +1971,7 @@ static void distance4(const float64_t *a, const float64_t *b, float64_t *distanc
 }
 
 
-static void make_weights_dummy(
+static void make_weights_scalar1(
         const float64_t *source_coords,
         const float64_t *ms,
         const float64_t *receiver_coords,
