@@ -4685,6 +4685,7 @@ class ScalarRule(Rule):
 
     def __init__(self, quantity, differentiate=0):
         self.c = quantity
+        self.differentiate = differentiate
 
     def required_components(self, target):
         return (self.c, )

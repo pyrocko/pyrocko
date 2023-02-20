@@ -156,6 +156,13 @@ class ComponentSchemeDescription(Object):
 
 component_scheme_descriptions = [
     ComponentSchemeDescription(
+        name='scalar1',
+        source_terms=['m0'],
+        ncomponents=1,
+        default_stored_quantity=None,
+        provided_components=[
+            'pressure']),
+    ComponentSchemeDescription(
         name='elastic2',
         source_terms=['m0'],
         ncomponents=2,

@@ -478,6 +478,207 @@ mantle
 
             assert num.all(ds < 0.05)
 
+    def test_qseis_pressure(self):
+        random.seed(23)
+
+        vp = 5.8 * km
+        vs = 0.0 * km
+        vp_slow = 5.0 * km
+
+        mod = cake.LayeredModel.from_scanlines(cake.read_nd_model_str('''
+  0. %(vp)g %(vs)g 2.6 1264. 600.
+ 20. %(vp)g %(vs)g 2.6 1264. 600.'''.lstrip() % dict(vp=vp/km, vs=vs/km)))
+
+        store_id_qseis = 'pressure_qseis'
+
+        qsconf = qseis.QSeisConfig()
+        qsconf.qseis_version = '2006b'
+
+        textra = 5.0
+
+        qsconf.time_region = (
+            gf.meta.Timing('{vel:%g}-%g' % (vp/km, textra)),
+            gf.meta.Timing('{vel:%g}+%g' % (vp_slow/km, textra)))
+
+        qsconf.cut = (
+            gf.meta.Timing('{vel:%g}-%g' % (vp/km, textra)),
+            gf.meta.Timing('{vel:%g}+%g' % (vp_slow/km, textra)))
+
+        qsconf.relevel_with_fade_in = True
+
+        qsconf.fade = (
+            gf.meta.Timing('{vel:%g}-%g' % (vp/km, textra)),
+            gf.meta.Timing('{vel:%g}-%g' % (vp/km, 0.)),
+            gf.meta.Timing('{vel:%g}+%g' % (vp_slow/km, 0.)),
+            gf.meta.Timing('{vel:%g}+%g' % (vp_slow/km, textra)))
+
+        qsconf.wavelet_duration_samples = 0.001
+        qsconf.sw_flat_earth_transform = 0
+        qsconf.wavenumber_sampling = 5.
+        qsconf.aliasing_suppression_factor = 0.01
+
+        sample_rate = 10.
+
+        config = gf.meta.ConfigTypeA(
+            id=store_id_qseis,
+            sample_rate=sample_rate,
+            receiver_depth=0.*km,
+            source_depth_min=1.*km,
+            source_depth_max=19*km,
+            source_depth_delta=6.*km,
+            distance_min=10.*km,
+            distance_max=20*km,
+            distance_delta=2*km,
+            modelling_code_id='qseis.2006b',
+            earthmodel_1d=mod,
+            component_scheme="scalar1",
+            tabulated_phases=[
+                gf.meta.TPDef(
+                    id='any_P',
+                    definition='p,P,p\\,P\\'),
+            ])
+
+        config.validate()
+
+        store_dir_qseis = mkdtemp(prefix=store_id_qseis)
+        self.tempdirs.append(store_dir_qseis)
+
+        gf.store.Store.create_editables(
+            store_dir_qseis, config=config, extra={'qseis': qsconf})
+
+        store = gf.store.Store(store_dir_qseis, 'r')
+        store.make_travel_time_tables()
+        store.close()
+
+        try:
+            qseis.build(store_dir_qseis, nworkers=1)
+        except qseis.QSeisError as e:
+            if str(e).find('could not start qseis') != -1:
+                logger.warning('qseis not installed; '
+                               'skipping test_pyrocko_gf_vs_qseis')
+                return
+            else:
+                raise
+
+        sdepth = rand(config.source_depth_min, config.source_depth_max)
+        sdepth = round(
+            (sdepth - config.source_depth_min)
+            / config.source_depth_delta) * config.source_depth_delta \
+            + config.source_depth_min
+
+        source = gf.ExplosionSource(
+            lat=0.,
+            lon=0.,
+            depth=sdepth,
+            magnitude=3.)
+
+        for ii in range(5):
+            azi = random.random()*365.
+            dist = rand(config.distance_min, config.distance_max)
+            dist = round(dist / config.distance_delta) * config.distance_delta
+
+            dnorth = dist * math.cos(azi*d2r)
+            deast = dist * math.sin(azi*d2r)
+
+            targets = []
+            for cha in 'v':
+                target = gf.Target(
+                    quantity='pressure',
+                    codes=('', '0000', 'PG', cha),
+                    north_shift=dnorth,
+                    east_shift=deast,
+                    depth=config.receiver_depth,
+                    store_id=store_id_qseis)
+
+                targets.append(target)
+
+            discretized_source = source.discretize_basesource(
+                store=store, target=target)
+            m0s = discretized_source.get_source_terms('scalar1')
+
+            runner = qseis.QSeisRunner()
+            conf = qseis.QSeisConfigFull()
+            conf.qseis_version = '2006b'
+            conf.receiver_distances = [dist/km]
+            conf.receiver_azimuths = [azi]
+            conf.receiver_depth = config.receiver_depth / km
+            conf.source_depth = source.depth / km
+
+            distance_3d_max = math.sqrt(
+                config.distance_max**2 + (
+                    config.source_depth_max - config.source_depth_min)**2)
+
+            nsamples = trace.nextpow2(
+                int(math.ceil(
+                    distance_3d_max / vp * 2.0 + 2.*textra)
+                    * config.sample_rate))
+
+            conf.time_start = -textra
+            conf.time_window = (nsamples-1) / config.sample_rate
+            conf.time_reduction_velocity = 0.0
+            conf.nsamples = nsamples
+            conf.source_mech = qseis.QSeisSourceMechMT(
+                mnn=float(m0s),
+                mee=float(m0s),
+                mdd=float(m0s),
+                mne=0.,
+                mnd=0.,
+                med=0.)
+            conf.earthmodel_1d = mod
+
+            conf.sw_flat_earth_transform = 0
+            conf.filter_surface_effects = 1
+            conf.wavenumber_sampling = 5.
+            conf.wavelet_duration_samples = 0.001
+            conf.aliasing_suppression_factor = 0.01
+
+            conf.validate()
+            runner.run(conf)
+
+            trs = runner.get_traces()
+            for tr in trs:
+                pass
+                tr.lowpass(4, config.sample_rate / 8., demean=False)
+                tr.highpass(4, config.sample_rate / 80.)
+
+            engine = gf.LocalEngine(store_dirs=[
+                store_dir_qseis, store_dir_qseis])
+
+            trs2 = engine.process(source, targets).pyrocko_traces()
+            for tr in trs2:
+                tr.shift(config.deltat)
+                tr.lowpass(4, config.sample_rate / 8., demean=False)
+                tr.highpass(4, config.sample_rate / 80.)
+
+            trace.snuffle(trs+trs2)
+#
+#            tmin = store.t(
+#                '{vel:%g}' % (vp/km), source, target) - textra*0.2
+#            tmax = store.t(
+#                '{vel:%g}' % (vs/km), source, target) + textra*0.2
+#
+#            for tr in trs + trs2:
+#                tr.chop(tmin, tmax)
+#
+#            denom = 0.0
+#            for cha in 'rtz':
+#                t1 = g(trs, cha)
+#                t2 = g(trs2, cha)
+#                denom += num.sum(t1.ydata**2) + num.sum(t2.ydata**2)
+#
+#            ds = []
+#            for cha in 'rtz':
+#                t1 = g(trs, cha)
+#                t2 = g(trs2, cha)
+#                ds.append(2.0 * num.sum((t1.ydata - t2.ydata)**2) / denom)
+#
+#            ds = num.array(ds)
+
+#            if not num.all(ds < 0.05):
+#               trace.snuffle(trs+trs2)
+
+#           assert num.all(ds < 0.05)
+
 
 if __name__ == '__main__':
     util.setup_logging('test_gf_qseis', 'warning')
