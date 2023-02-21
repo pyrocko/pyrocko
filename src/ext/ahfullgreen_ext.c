@@ -75,12 +75,7 @@ struct module_state {
     PyObject *error;
 };
 
-#if PY_MAJOR_VERSION >= 3
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
-#else
-#define GETSTATE(m) (&_state); (void) m;
-static struct module_state _state;
-#endif
 
 int good_array(PyObject* o, int typenum, ssize_t size_want) {
     if (!PyArray_Check(o)) {
@@ -403,7 +398,6 @@ static PyMethodDef ahfullgreen_ext_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-#if PY_MAJOR_VERSION >= 3
 
 static int ahfullgreen_ext_traverse(PyObject *m, visitproc visit, void *arg) {
     Py_VISIT(GETSTATE(m)->error);
@@ -433,19 +427,9 @@ static struct PyModuleDef moduledef = {
 PyMODINIT_FUNC
 PyInit_ahfullgreen_ext(void)
 
-#else
-#define INITERROR return
-
-void
-initahfullgreen_ext(void)
-#endif
 
 {
-#if PY_MAJOR_VERSION >= 3
     PyObject *module = PyModule_Create(&moduledef);
-#else
-    PyObject *module = Py_InitModule("ahfullgreen_ext", ahfullgreen_ext_methods);
-#endif
     import_array();
 
     if (module == NULL)
@@ -461,7 +445,5 @@ initahfullgreen_ext(void)
     Py_INCREF(st->error);
     PyModule_AddObject(module, "Error", st->error);
 
-#if PY_MAJOR_VERSION >= 3
     return module;
-#endif
 }

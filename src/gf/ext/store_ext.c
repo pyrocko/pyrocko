@@ -117,12 +117,7 @@ struct module_state {
     PyObject *error;
 };
 
-#if PY_MAJOR_VERSION >= 3
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
-#else
-#define GETSTATE(m) (&_state); (void) m;
-static struct module_state _state;
-#endif
 
 typedef npy_float32 gf_dtype;
 typedef npy_float32 float32_t;
@@ -3196,7 +3191,6 @@ static PyMethodDef store_ext_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-#if PY_MAJOR_VERSION >= 3
 
 static int store_ext_traverse(PyObject *m, visitproc visit, void *arg) {
     Py_VISIT(GETSTATE(m)->error);
@@ -3226,19 +3220,8 @@ static struct PyModuleDef moduledef = {
 PyMODINIT_FUNC
 PyInit_store_ext(void)
 
-#else
-#define INITERROR return
-
-void
-initstore_ext(void)
-#endif
-
 {
-#if PY_MAJOR_VERSION >= 3
     PyObject *module = PyModule_Create(&moduledef);
-#else
-    PyObject *module = Py_InitModule("store_ext", store_ext_methods);
-#endif
     import_array();
 
     if (module == NULL)
@@ -3254,7 +3237,5 @@ initstore_ext(void)
     Py_INCREF(st->error);
     PyModule_AddObject(module, "StoreExtError", st->error);
 
-#if PY_MAJOR_VERSION >= 3
     return module;
-#endif
 }

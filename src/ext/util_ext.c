@@ -14,12 +14,7 @@ struct module_state {
     PyObject *error;
 };
 
-#if PY_MAJOR_VERSION >= 3
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
-#else
-#define GETSTATE(m) (&_state)
-static struct module_state _state;
-#endif
 
 typedef enum {
     SUCCESS = 0,
@@ -265,8 +260,6 @@ static PyMethodDef util_ext_methods[] = {
 };
 
 
-#if PY_MAJOR_VERSION >= 3
-
 static int util_ext_traverse(PyObject *m, visitproc visit, void *arg) {
     Py_VISIT(GETSTATE(m)->error);
     return 0;
@@ -295,18 +288,8 @@ static struct PyModuleDef moduledef = {
 PyMODINIT_FUNC
 PyInit_util_ext(void)
 
-#else
-#define INITERROR return
-
-void
-initutil_ext(void)
-#endif
 {
-#if PY_MAJOR_VERSION >= 3
     PyObject *module = PyModule_Create(&moduledef);
-#else
-    PyObject *module = Py_InitModule("util_ext", util_ext_methods);
-#endif
 
     if (module == NULL)
         INITERROR;
@@ -322,7 +305,5 @@ initutil_ext(void)
     Py_INCREF(st->error);
     PyModule_AddObject(module, "UtilExtError", st->error);
 
-#if PY_MAJOR_VERSION >= 3
     return module;
-#endif
 }

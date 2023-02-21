@@ -24,12 +24,7 @@ struct module_state {
 };
 
 
-#if PY_MAJOR_VERSION >= 3
-  #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
-#else
-  #define GETSTATE(m) (&_state); (void) m;
-  static struct module_state _state;
-#endif
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
 
 
 typedef struct {
@@ -1268,8 +1263,6 @@ static PyMethodDef okada_ext_methods[] = {
 };
 
 
-#if PY_MAJOR_VERSION >= 3
-
 static int okada_traverse(PyObject *m, visitproc visit, void *arg) {
     Py_VISIT(GETSTATE(m)->error);
     return 0;
@@ -1298,18 +1291,8 @@ static struct PyModuleDef moduledef = {
 PyMODINIT_FUNC
 PyInit_okada_ext(void)
 
-#else
-#define INITERROR return
-
-void initokada_ext(void)
-#endif
-
 {
-#if PY_MAJOR_VERSION >= 3
   PyObject *module = PyModule_Create(&moduledef);
-#else
-  PyObject *module = Py_InitModule("okada_ext", okada_ext_methods);
-#endif
   import_array();
 
   if (module == NULL)
@@ -1325,7 +1308,5 @@ void initokada_ext(void)
   Py_INCREF(st->error);
   PyModule_AddObject(module, "pyrocko.modelling.okada_ext.OkadaExtError", st->error);
 
-#if PY_MAJOR_VERSION >= 3
   return module;
-#endif
 }

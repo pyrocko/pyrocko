@@ -18,12 +18,7 @@ struct module_state {
     PyObject *error;
 };
 
-#if PY_MAJOR_VERSION >= 3
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
-#else
-#define GETSTATE(m) (&_state); (void) m;
-static struct module_state _state;
-#endif
 
 static PyObject*
 evresp_wrapper (PyObject *m, PyObject *args)
@@ -128,8 +123,6 @@ static PyMethodDef evalresp_ext_methods[] = {
 };
 
 
-#if PY_MAJOR_VERSION >= 3
-
 static int evalresp_ext_traverse(PyObject *m, visitproc visit, void *arg) {
     Py_VISIT(GETSTATE(m)->error);
     return 0;
@@ -158,19 +151,9 @@ static struct PyModuleDef moduledef = {
 PyMODINIT_FUNC
 PyInit_evalresp_ext(void)
 
-#else
-#define INITERROR return
-
-void
-initevalresp_ext(void)
-#endif
 
 {
-#if PY_MAJOR_VERSION >= 3
     PyObject *module = PyModule_Create(&moduledef);
-#else
-    PyObject *module = Py_InitModule("evalresp_ext", evalresp_ext_methods);
-#endif
     import_array();
 
     if (module == NULL)
@@ -186,7 +169,5 @@ initevalresp_ext(void)
     Py_INCREF(st->error);
     PyModule_AddObject(module, "EvalrespExtError", st->error);
 
-#if PY_MAJOR_VERSION >= 3
     return module;
-#endif
 }

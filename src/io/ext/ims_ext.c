@@ -7,12 +7,7 @@ struct module_state {
     PyObject *error;
 };
 
-#if PY_MAJOR_VERSION >= 3
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
-#else
-#define GETSTATE(m) (&_state); (void) m;
-static struct module_state _state;
-#endif
 
 static char translate[128] = {
     -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
@@ -130,11 +125,7 @@ static PyObject* ims_decode_cm6(PyObject *m, PyObject *args) {
     npy_intp array_dims[1] = {0};
 
     struct module_state *st = GETSTATE(m);
-#if PY_MAJOR_VERSION >= 3
     if (!PyArg_ParseTuple(args, "yn", &in_data, &sbufsize)) {
-#else
-    if (!PyArg_ParseTuple(args, "sn", &in_data, &sbufsize)) {
-#endif
         PyErr_SetString(st->error, "invalid arguments in decode_cm6(data, sizehint)" );
         return NULL;
     }
@@ -322,8 +313,6 @@ static PyMethodDef ims_ext_methods[] = {
 };
 
 
-#if PY_MAJOR_VERSION >= 3
-
 static int ims_ext_traverse(PyObject *m, visitproc visit, void *arg) {
     Py_VISIT(GETSTATE(m)->error);
     return 0;
@@ -352,19 +341,9 @@ static struct PyModuleDef moduledef = {
 PyMODINIT_FUNC
 PyInit_ims_ext(void)
 
-#else
-#define INITERROR return
-
-void
-initims_ext(void)
-#endif
 
 {
-#if PY_MAJOR_VERSION >= 3
     PyObject *module = PyModule_Create(&moduledef);
-#else
-    PyObject *module = Py_InitModule("ims_ext", ims_ext_methods);
-#endif
     import_array();
 
     if (module == NULL)
@@ -380,7 +359,5 @@ initims_ext(void)
     Py_INCREF(st->error);
     PyModule_AddObject(module, "IMSError", st->error);
 
-#if PY_MAJOR_VERSION >= 3
     return module;
-#endif
 }

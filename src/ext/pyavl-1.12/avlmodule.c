@@ -20,12 +20,10 @@
 #endif							/* !BAD_STATIC_FORWARD */
 #endif							/*MPW_C */
 
-#if PY_MAJOR_VERSION >= 3
 #undef staticforward
 #undef statichere
 #define staticforward static
 #define statichere static
-#endif
 
 #undef DOCUMENTATION
 
@@ -260,11 +258,7 @@ Py_LOCAL(PyObject *) avl_tree_ins(avl_tree_Object * self, PyObject * args)
 		/* compare failed and insertion was prevented */
 		if (rv == -2)
 			return NULL;
-#if PY_MAJOR_VERSION >= 3
 	} else if (PyLong_Check(arg2)) {
-#else
-	} else if (PyInt_Check(arg2) || PyLong_Check(arg2)) {
-#endif
 		long idx = PyLong_AsLong(arg2);	/*PyInt_AsUnsignedLongMask(arg2) */
 		avl_size_t rank;
 
@@ -789,18 +783,10 @@ Py_LOCAL(PyObject *) avl_tree_repr(avl_tree_Object * self)
 
 	rc = Py_ReprEnter((PyObject *) self);
 	if (rc != 0)
-#if PY_MAJOR_VERSION >= 3
 		return rc > 0 ? PyUnicode_FromString("[...]") : NULL;
-#else
-		return rc > 0 ? PyString_FromString("[...]") : NULL;
-#endif
 
 	if (len == 0) {
-#if PY_MAJOR_VERSION >= 3
 		result = PyUnicode_FromString("[]");
-#else
-		result = PyString_FromString("[]");
-#endif
 		goto finish;
 	}
 
@@ -1002,7 +988,6 @@ Py_LOCAL(PyObject *) avl_tree_concat_inplace_seq(PyObject * self,
 	}
 }
 
-#if PY_MAJOR_VERSION >= 3
 static PySequenceMethods avl_tree_as_sequence = {
 	(lenfunc) avl_tree_size, /* sq_length */
 	(binaryfunc) avl_tree_concat, /* sq_concat */
@@ -1015,27 +1000,8 @@ static PySequenceMethods avl_tree_as_sequence = {
 	(binaryfunc) avl_tree_concat_inplace_seq, /* sq_inplace_concat */
 	(ssizeargfunc) NULL, /* sq_inplace_repeat */
 };
-#else
-static PySequenceMethods avl_tree_as_sequence = {
-	(lenfunc) avl_tree_size,	/* sq_length */
-	(binaryfunc) avl_tree_concat,	/* sq_concat */
-	(ssizeargfunc) avl_tree_repeat,	/* sq_repeat */
-	(ssizeargfunc) avl_tree_get,	/* sq_item_ */
-	(ssizessizeargfunc) avl_tree_slice,	/* sq_slice */
-	(ssizeobjargproc) NULL,		/* sq_ass_item_ */
-	(ssizessizeobjargproc) NULL,	/* sq_ass_slice */
-	(objobjproc) avl_tree_contains,	/* sq_contains */
-	/* Added in release 2.0 */
-	(binaryfunc) avl_tree_concat_inplace_seq,	/* sq_inplace_concat */
-	(ssizeargfunc) NULL			/* sq_inplace_repeat */
-};
-#endif
 
-#if PY_MAJOR_VERSION >= 3
 #define GetIndicesExType PyObject*
-#else
-#define GetIndicesExType PySliceObject*
-#endif
 
 static PyObject * avl_tree_mp_subscript(avl_tree_Object* self, PyObject* item) {
 
@@ -1541,12 +1507,7 @@ Py_LOCAL(PyObject *) avl_from_iter(PyObject * unused, PyObject * args,
 		 &compare_func))
 		return NULL;
 #if 0==0
-#if PY_MAJOR_VERSION >= 3
 	if (len_object != NULL && !PyLong_Check(len_object)) {
-#else
-	if (len_object != NULL && !PyInt_Check(len_object)
-		&& !PyLong_Check(len_object)) {
-#endif
 		PyErr_SetString(PyExc_TypeError,
 						"argument 'len' (position 2) must be of type 'int' or 'long'");
 		return NULL;
@@ -1555,11 +1516,7 @@ Py_LOCAL(PyObject *) avl_from_iter(PyObject * unused, PyObject * args,
 	if (compare_func == NULL) {
 		compare_func = Py_None;
 	}
-#if PY_MAJOR_VERSION >= 3
 	return avl_do_load(iter_object, "__next__", len_object, compare_func);
-#else
-	return avl_do_load(iter_object, "next", len_object, compare_func);
-#endif
 }
 
 /* List of functions defined in the module */
@@ -1580,8 +1537,6 @@ PyDoc_STRVAR(avl_module_doc,
 			 "(that can act like a sequence and an ordered container) "
 			 "with AVL trees");
 
-
-#if PY_MAJOR_VERSION >= 3
 
 /*
 static int avl_traverse(PyObject *m, visitproc visit, void *arg) {
@@ -1612,12 +1567,6 @@ static struct PyModuleDef moduledef = {
 PyMODINIT_FUNC
 PyInit_avl(void)
 
-#else
-#define INITERROR return
-
-void
-initavl(void)
-#endif
 {
 	PyObject *m;
 	/*PyObject *d;*/
@@ -1633,11 +1582,7 @@ initavl(void)
 
 	avl_iter_Type.tp_getattro = PyObject_GenericGetAttr;
 
-#if PY_MAJOR_VERSION >= 3
     m = PyModule_Create(&moduledef);
-#else
-	m = Py_InitModule3("avl", avl_methods, avl_module_doc);
-#endif
 
     if (m == NULL)
         INITERROR;
@@ -1651,7 +1596,5 @@ initavl(void)
 	/*	d = PyModule_GetDict(m); */
 	/*	PyDict_SetItemString(d, "Error", st->error); */
 
-#if PY_MAJOR_VERSION >= 3
     return m;
-#endif
 }

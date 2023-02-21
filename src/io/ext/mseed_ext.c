@@ -17,14 +17,7 @@ struct module_state
     PyObject *error;
 };
 
-#if PY_MAJOR_VERSION >= 3
 #define GETSTATE(m) ((struct module_state *)PyModule_GetState(m))
-#else
-#define GETSTATE(m) \
-    (&_state);      \
-    (void)m;
-static struct module_state _state;
-#endif
 
 #define OFF_MAX ~((off_t)1 << (sizeof(off_t) * 8 - 1))
 #define OFF_MIN ((off_t)1 << (sizeof(off_t) * 8 - 1))
@@ -547,7 +540,6 @@ static PyMethodDef mseed_ext_methods[] = {
     {NULL, NULL, 0, NULL} /* Sentinel */
 };
 
-#if PY_MAJOR_VERSION >= 3
 
 static int mseed_ext_traverse(PyObject *m, visitproc visit, void *arg)
 {
@@ -577,18 +569,9 @@ static struct PyModuleDef moduledef = {
 PyMODINIT_FUNC
 PyInit_mseed_ext(void)
 
-#else
-#define INITERROR return
-
-void initmseed_ext(void)
-#endif
 
 {
-#if PY_MAJOR_VERSION >= 3
     PyObject *module = PyModule_Create(&moduledef);
-#else
-    PyObject *module = Py_InitModule("mseed_ext", mseed_ext_methods);
-#endif
     import_array();
 
     if (module == NULL)
@@ -606,7 +589,5 @@ void initmseed_ext(void)
     PyModule_AddObject(module, "MSeedError", st->error);
     PyModule_AddObject(module, "HPTMODULUS", PyLong_FromLong(HPTMODULUS));
 
-#if PY_MAJOR_VERSION >= 3
     return module;
-#endif
 }

@@ -22,12 +22,7 @@ struct module_state {
     PyObject *error;
 };
 
-#if PY_MAJOR_VERSION >= 3
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
-#else
-#define GETSTATE(m) (&_state); (void) m;
-static struct module_state _state;
-#endif
 
 int parstack_config(
         size_t narrays,
@@ -592,8 +587,6 @@ static PyMethodDef ParstackMethods[] = {
 };
 
 
-#if PY_MAJOR_VERSION >= 3
-
 static int parstack_ext_traverse(PyObject *m, visitproc visit, void *arg) {
     Py_VISIT(GETSTATE(m)->error);
     return 0;
@@ -623,19 +616,9 @@ static struct PyModuleDef moduledef = {
 PyMODINIT_FUNC
 PyInit_parstack_ext(void)
 
-#else
-#define INITERROR return
-
-void
-initparstack_ext(void)
-#endif
 
 {
-#if PY_MAJOR_VERSION >= 3
     PyObject *module = PyModule_Create(&moduledef);
-#else
-    PyObject *module = Py_InitModule("parstack_ext", ParstackMethods);
-#endif
     import_array();
 
     if (module == NULL)
@@ -651,7 +634,5 @@ initparstack_ext(void)
     Py_INCREF(st->error);
     PyModule_AddObject(module, "ParstackExtError", st->error);
 
-#if PY_MAJOR_VERSION >= 3
     return module;
-#endif
 }
