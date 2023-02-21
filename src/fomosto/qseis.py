@@ -808,7 +808,7 @@ class QSeisGFBuilder(gf.builder.Builder):
                 points=points,
                 interpolation='multilinear')
 
-            self.rhos = storeconf.get_vs(
+            self.rhos = storeconf.get_rho(
                 lat=dummy_lat,
                 lon=dummy_lon,
                 points=points,
@@ -888,7 +888,7 @@ class QSeisGFBuilder(gf.builder.Builder):
 
         if self.store.config.stored_quantity == 'pressure':
             dv_to_pressure_factor = volume_change_to_pressure(
-                self.rhos, self.vps, self.vss)
+                self.rhos[index], self.vps[index], self.vss[index])
         else:
             dv_to_pressure_factor = +1
 

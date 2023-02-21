@@ -4684,7 +4684,7 @@ class HorizontalVectorRule(Rule):
 class ScalarRule(Rule):
 
     def __init__(self, quantity, differentiate=0):
-        self.c = quantity
+        self.c = '%s.scalar' % quantity
         self.differentiate = differentiate
 
     def required_components(self, target):
@@ -5091,6 +5091,7 @@ class LocalEngine(Engine):
         try:
             for rule in available_rules[quantity]:
                 cneeded = rule.required_components(target)
+
                 if all(c in cprovided for c in cneeded):
                     return rule
 

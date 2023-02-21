@@ -161,7 +161,7 @@ component_scheme_descriptions = [
         ncomponents=1,
         default_stored_quantity=None,
         provided_components=[
-            'pressure']),
+            'scalar']),
     ComponentSchemeDescription(
         name='elastic2',
         source_terms=['m0'],
