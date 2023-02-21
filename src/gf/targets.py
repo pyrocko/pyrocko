@@ -174,7 +174,7 @@ class Target(meta.Receiver):
     def effective_azimuth(self):
         if self.azimuth is not None:
             return self.azimuth
-        elif self.component_code() in 'NEZ':
+        elif self.component_code() in 'NEZU':
             return {'N': 0., 'E': 90., 'Z': 0., 'U': 0.}[self.component_code()]
 
         raise BadTarget('cannot determine sensor component azimuth for '
@@ -183,7 +183,7 @@ class Target(meta.Receiver):
     def effective_dip(self):
         if self.dip is not None:
             return self.dip
-        elif self.component_code() in 'NEZ':
+        elif self.component_code() in 'NEZU':
             return {
                 'N': 0., 'E': 0., 'Z': -90., 'U': -90.}[self.component_code()]
 
