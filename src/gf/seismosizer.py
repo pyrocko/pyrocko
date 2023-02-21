@@ -5091,7 +5091,6 @@ class LocalEngine(Engine):
         try:
             for rule in available_rules[quantity]:
                 cneeded = rule.required_components(target)
-
                 if all(c in cprovided for c in cneeded):
                     return rule
 
