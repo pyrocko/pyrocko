@@ -5063,6 +5063,8 @@ class TriplePDR(SourceWithDerivedMagnitude):
         return 1.0
 
     def split(self):
+        no_threads = int(num.floor(self.nthreads / 3))
+
         kwargs = dict(
             lat=self.lat,
             lon=self.lon,
@@ -5087,7 +5089,7 @@ class TriplePDR(SourceWithDerivedMagnitude):
             nx=self.nx1,
             ny=self.ny1,
             slip=self.slip1,
-            nthreads=self.nthreads,
+            nthreads=no_threads,
             **kwargs)
 
         pdr2 = PseudoDynamicRupture(
@@ -5106,7 +5108,7 @@ class TriplePDR(SourceWithDerivedMagnitude):
             nx=self.nx2,
             ny=self.ny2,
             slip=self.slip2,
-            nthreads=self.nthreads,
+            nthreads=no_threads,
             **kwargs)
 
         pdr3 = PseudoDynamicRupture(
@@ -5125,7 +5127,7 @@ class TriplePDR(SourceWithDerivedMagnitude):
             nx=self.nx3,
             ny=self.ny3,
             slip=self.slip3,
-            nthreads=self.nthreads,
+            nthreads=no_threads,
             **kwargs)
 
         return [pdr1, pdr2, pdr3]
