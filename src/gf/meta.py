@@ -322,7 +322,6 @@ class QuantityType(StringChoice):
         'volume_change',
         'tilt',
         'pore_pressure',
-        'pressure',
         'darcy_velocity',
         'vertical_tilt']
 
