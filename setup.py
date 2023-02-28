@@ -5,7 +5,6 @@ import time
 import shutil
 import tempfile
 import numpy
-import glob
 
 from pkg_resources import parse_version as pv
 from setuptools import setup, Extension, __version__ as setuptools_version
@@ -282,51 +281,24 @@ class CustomBuildAppCommand(build_ext):
         self.make_app()
 
     def make_app(self):
-        import os
-        import shutil
         from setuptools import setup
-
-        APP = ['apps/snuffler']
-        DATA_FILES = []
-        OPTIONS = {
-            'argv_emulation': True,
-            'iconfile': 'src/data/snuffler.icns',
-            'packages': 'pyrocko',
-            'excludes': [
-                'PyQt4.QtDesigner',
-                'PyQt4.QtScript',
-                'PyQt4.QtScriptTools',
-                'PyQt4.QtTest',
-                'PyQt4.QtCLucene',
-                'PyQt4.QtDeclarative',
-                'PyQt4.QtHelp',
-                'PyQt4.QtSql',
-                'PyQt4.QtTest',
-                'PyQt4.QtXml',
-                'PyQt4.QtXmlPatterns',
-                'PyQt4.QtMultimedia',
-                'PyQt4.phonon',
-                'matplotlib.tests',
-                'matplotlib.testing'],
-            'plist': 'src/data/Info.plist'}
-
         setup(
-            app=APP,
-            data_files=DATA_FILES,
-            options={'py2app': OPTIONS},
+            app=['src/apps/snuffler.py'],
+            options={
+                'py2app': {
+                    'argv_emulation': False,
+                    'iconfile': 'src/data/snuffler.icns',
+                    'packages': ['chardet'],
+                    'excludes': ['test'],
+                    'plist': {
+                        'CFBundleDisplayName': 'Snuffler',
+                        'CFBundleExecutable': 'Snuffler',
+                        'CFBundleName': 'Snuffler',
+                    },
+                },
+            },
             setup_requires=['py2app'],
         )
-
-        # Manually delete files which refuse to be ignored using 'excludes':
-        want_delete = glob.glob(
-            'dist/snuffler.app/Contents/Frameworks/libvtk*')
-
-        map(os.remove, want_delete)
-
-        want_delete_dir = glob.glob(
-            'dist/Snuffler.app/Contents/Resources/lib/python2.7/'
-            'matplotlib/test*')
-        map(shutil.rmtree, want_delete_dir)
 
 
 def _check_for_openmp():
@@ -437,7 +409,7 @@ subpacknames = [
 
 cmdclass = {
     'build_py': CustomBuildPyCommand,
-    # 'py2app': CustomBuildAppCommand,
+    'py2app': CustomBuildAppCommand,
     'build_ext': CustomBuildExtCommand}
 
 
