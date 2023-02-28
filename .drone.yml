@@ -15,6 +15,15 @@ kind: pipeline
 type: docker
 name: docs
 
+trigger:
+  branch:
+    exclude:  # special branches
+    - pip
+    - conda
+    - deploy-pip
+    - deploy-conda
+    - app
+
 steps:
 - name: build
   image: pyrocko-docs
@@ -237,7 +246,7 @@ name: tests-base
 
 trigger:
   branch:
-    exclude: &special
+    exclude:  # special branches
     - pip
     - conda
     - docs
@@ -295,7 +304,15 @@ name: tests-gf
 
 trigger:
   branch:
-    exclude: *special
+    exclude:  # special branches
+    - pip
+    - conda
+    - docs
+    - deploy-pip
+    - deploy-conda
+    - deploy-docs
+    - release
+    - app
 
 steps:
 - name: tests-gf
@@ -343,7 +360,15 @@ name: tests-examples
 
 trigger:
   branch:
-    exclude: *special
+    exclude:  # special branches
+    - pip
+    - conda
+    - docs
+    - deploy-pip
+    - deploy-conda
+    - deploy-docs
+    - release
+    - app
 
 steps:
 - name: tests-examples
@@ -391,7 +416,15 @@ name: tests-gui
 
 trigger:
   branch:
-    exclude: *special
+    exclude:  # special branches
+    - pip
+    - conda
+    - docs
+    - deploy-pip
+    - deploy-conda
+    - deploy-docs
+    - release
+    - app
 
 steps:
 - name: tests-gui
@@ -439,7 +472,15 @@ name: tests-windows
 
 trigger:
   branch:
-    exclude: *special
+    exclude:  # special branches
+    - pip
+    - conda
+    - docs
+    - deploy-pip
+    - deploy-conda
+    - deploy-docs
+    - release
+    - app
 
 platform:
   os: windows
@@ -506,7 +547,15 @@ name: tests-osx-arm64
 
 trigger:
   branch:
-    exclude: *special
+    exclude:  # special branches
+    - pip
+    - conda
+    - docs
+    - deploy-pip
+    - deploy-conda
+    - deploy-docs
+    - release
+    - app
 
 platform:
   os: darwin
@@ -652,7 +701,15 @@ depends_on:
 
 trigger:
   branch:
-    exclude: *special
+    exclude:  # special branches
+    - pip
+    - conda
+    - docs
+    - deploy-pip
+    - deploy-conda
+    - deploy-docs
+    - release
+    - app
 
 steps:
 - name: build
@@ -856,6 +913,39 @@ steps:
   commands:
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Windows\\Temp\\pyrocko*
 
+---
+
+kind: pipeline
+type: exec
+name: osx-app
+
+platform:
+  os: darwin
+  arch: arm64
+
+trigger:
+  branch:
+    - app
+    - candidate
+    - release
+
+steps:
+- name: build-arm64
+  commands:
+   - maintenance/osx-app/build.sh
+- name: build-x86_64
+  commands:
+   - maintenance/osx-app/build_x86_64.sh
+- name: stage
+  commands:
+  - maintenance/drone-rsync.sh dist/ ${DRONE_COMMIT}/apps/
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
 
 ---
 
@@ -876,6 +966,7 @@ depends_on:
 - conda-packages-osx-64
 - conda-packages-osx-arm64
 - conda-packages-windows
+- osx-app
 
 trigger:
   status:

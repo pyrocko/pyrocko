@@ -52,7 +52,8 @@ def to_message():
     for name, link in [
             ('docs', 'https://data.pyrocko.org/builds/%s/docs/'),
             ('coverage', 'https://data.pyrocko.org/builds/%s/coverage/index.html'),  # noqa
-            ('wheels', 'https://data.pyrocko.org/builds/%s/wheels/')]:
+            ('wheels', 'https://data.pyrocko.org/builds/%s/wheels/'),
+            ('apps', 'https://data.pyrocko.org/builds/%s/apps/')]:
 
         link = link % env['commit']
         r = requests.get(link)

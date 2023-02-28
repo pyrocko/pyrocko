@@ -297,7 +297,7 @@ class CustomBuildAppCommand(build_ext):
                     },
                 },
             },
-            setup_requires=['py2app'],
+            setup_requires=['py2app', 'chardet'],
         )
 
 
