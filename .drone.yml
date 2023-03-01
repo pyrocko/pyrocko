@@ -237,12 +237,15 @@ name: tests-base
 
 trigger:
   branch:
-    exclude:
-    - conda
+    exclude: &special-branches
     - pip
-    - release
-    - deploy-docs
+    - conda
+    - docs
     - deploy-pip
+    - deploy-conda
+    - deploy-docs
+    - release
+    - app
 
 steps:
 
@@ -292,13 +295,7 @@ name: tests-gf
 
 trigger:
   branch:
-    exclude:
-    - conda
-    - pip
-    - release
-    - deploy-docs
-    - deploy-pip
-
+    exclude: *special
 
 steps:
 - name: tests-gf
@@ -346,12 +343,7 @@ name: tests-examples
 
 trigger:
   branch:
-    exclude:
-    - conda
-    - pip
-    - release
-    - deploy-docs
-    - deploy-pip
+    exclude: *special
 
 steps:
 - name: tests-examples
@@ -399,12 +391,7 @@ name: tests-gui
 
 trigger:
   branch:
-    exclude:
-    - conda
-    - pip
-    - release
-    - deploy-docs
-    - deploy-pip
+    exclude: *special
 
 steps:
 - name: tests-gui
@@ -452,12 +439,7 @@ name: tests-windows
 
 trigger:
   branch:
-    exclude:
-    - conda
-    - pip
-    - release
-    - deploy-docs
-    - deploy-pip
+    exclude: *special
 
 platform:
   os: windows
@@ -524,12 +506,7 @@ name: tests-osx-arm64
 
 trigger:
   branch:
-    exclude:
-    - conda
-    - pip
-    - release
-    - deploy-docs
-    - deploy-pip
+    exclude: *special
 
 platform:
   os: darwin
@@ -675,12 +652,7 @@ depends_on:
 
 trigger:
   branch:
-    exclude:
-    - conda
-    - pip
-    - release
-    - deploy-docs
-    - deploy-pip
+    exclude: *special
 
 steps:
 - name: build
