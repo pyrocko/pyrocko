@@ -60,10 +60,10 @@ conda install -y \
     pyyaml \
     requests \
     jinja2 \
-    nose
+    pytest
 
 python3 install.py deps conda --yes && \
     python3 install.py user --yes && \
     python3 -m pyrocko.print_version deps >> "$outfile" && \
-    python3 -m nose "$thetest" > >(tee -a "$outfile") 2> >(tee -a "$outfile" >&2) || \
+    python3 -m pytest -v "$thetest" > >(tee -a "$outfile") 2> >(tee -a "$outfile" >&2) || \
     /usr/bin/true

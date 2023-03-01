@@ -37,5 +37,5 @@ pip3=/usr/bin/pip3
 "$python3" install.py deps system --yes && \
     sudo "$pip3" install --no-deps --force-reinstall --upgrade . && \
     "$python3" -m pyrocko.print_version deps >> "$outfile_py3" && \
-    "$python3" -m nose "$thetest" > >(tee -a "$outfile_py3") 2> >(tee -a "$outfile_py3" >&2) || \
+    "$python3" -m pytest -v  "$thetest" > >(tee -a "$outfile_py3") 2> >(tee -a "$outfile_py3" >&2) || \
     /bin/true

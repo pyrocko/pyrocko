@@ -3,4 +3,3 @@ scipy
 pyyaml
 matplotlib
 requests
-nose

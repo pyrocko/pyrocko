@@ -5,7 +5,7 @@ scipy>=1.0
 pyyaml
 matplotlib
 requests
-nose
+pytest
 jinja2
 pybtex
 PyQt5

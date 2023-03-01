@@ -11,10 +11,10 @@ Pyrocko uses Setuptools for its installation script. See `setup.py` and
 
 ## Testing
 
-Nosetests is used for testing. To run all tests, run
+Pytest is used for testing. To run all tests, run
 
 ```sh
-python -m nose test
+python -m pytest
 ```
 
 ## CI

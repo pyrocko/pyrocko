@@ -3,5 +3,4 @@ scipy
 pyyaml
 matplotlib
 requests
-nose
 PyOpenGL

@@ -8,6 +8,5 @@ scipy>=1.0
 pyyaml
 matplotlib
 requests
-nose
 jinja2
 pyqt

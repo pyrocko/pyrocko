@@ -33,7 +33,7 @@ installed from source:
 
 * Optional Python modules:
    * `Jinja2 <http://jinja.pocoo.org/>`_ (required for the :ref:`fomosto report <fomosto_report>` subcommand)
-   * `nosetests <https://pypi.python.org/pypi/nose>`_ (to run the unittests)
+   * `pytest <https://pytest.org>`_ (to run the unittests)
    * `coverage <https://pypi.python.org/pypi/coverage>`_ (unittest coverage report)
 
 * Manually install these optional software tools:
