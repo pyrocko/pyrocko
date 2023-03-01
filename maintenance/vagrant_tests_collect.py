@@ -37,16 +37,15 @@ def parse_result(res, package, box, fn):
 
         res.log = txt.strip()
 
-        m = re.search(r'---+\nTOTAL +(.+)\n---+', txt)
+        m = re.search(r'^=+ (.*) =+$', lines[-1], re.M)
         if m:
-            res.coverage = m.group(1)
-
-        m = re.search(r'^((OK|FAILED)( +\([^\)]+\))?)', txt, re.M)
-        if m:
-            res.result = m.group(1)
+            if m.group(1).find('failed') != -1:
+                res.result = 'FAILED (%s)' % m.group(1)
+            else:
+                res.result = 'OK (%s)' % m.group(1)
 
         count = {}
-        for x in re.findall(r'... SKIP: (.*)$', txt, re.M):
+        for x in re.findall(r'^(.*) SKIPPED', txt, re.M):
             if x not in count:
                 count[x] = 1
             else:
@@ -55,10 +54,7 @@ def parse_result(res, package, box, fn):
         for x in sorted(count.keys()):
             res.skips.append('%s (%ix)' % (x, count[x]))
 
-        for x in re.findall(r'^ERROR: .*$', txt, re.M):
-            res.errors.append(x)
-
-        for x in re.findall(r'^FAIL: .*$', txt, re.M):
+        for x in re.findall(r'^(.*) FAILED', txt, re.M):
             res.fails.append(x)
 
 
