@@ -787,32 +787,11 @@ class QSeisGFBuilder(gf.builder.Builder):
 
         storeconf = self.store.config
 
-        dummy_lat = 10.0
-        dummy_lon = 10.0
-
-        depths = storeconf.coords[0]
-        lats = num.ones_like(depths) * dummy_lat
-        lons = num.ones_like(depths) * dummy_lon
-        points = num.vstack([lats, lons, depths]).T
-
         if storeconf.stored_quantity == "pressure":
-            self.vps = storeconf.get_vp(
-                lat=dummy_lat,
-                lon=dummy_lon,
-                points=points,
-                interpolation='multilinear')
-
-            self.vss = storeconf.get_vs(
-                lat=dummy_lat,
-                lon=dummy_lon,
-                points=points,
-                interpolation='multilinear')
-
-            self.rhos = storeconf.get_rho(
-                lat=dummy_lat,
-                lon=dummy_lon,
-                points=points,
-                interpolation='multilinear')
+            self.depth_profile = storeconf.earthmodel_1d.profile('z')
+            self.vs_profile = storeconf.earthmodel_1d.profile('vs')
+            self.vp_profile = storeconf.earthmodel_1d.profile('vp')
+            self.rho_profile = storeconf.earthmodel_1d.profile('rho')
 
         if block_size is None:
             block_size = (1, 1, 100)
@@ -887,8 +866,14 @@ class QSeisGFBuilder(gf.builder.Builder):
             distances.append(self.gf_config.distance_max)
 
         if self.store.config.stored_quantity == 'pressure':
-            dv_to_pressure_factor = volume_change_to_pressure(
-                self.rhos[index], self.vps[index], self.vss[index])
+            try:
+                dv_to_pressure_factor = volume_change_to_pressure(
+                    rhos=num.interp(rz, self.depth_profile, self.rho_profile),
+                    vps=num.interp(rz, self.depth_profile, self.vp_profile),
+                    vss=num.interp(rz, self.depth_profile, self.vs_profile))
+            except ValueError:
+                raise ValueError(
+                    'Depth value %f outside interpolation range' % rz)
         else:
             dv_to_pressure_factor = +1
 
