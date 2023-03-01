@@ -237,7 +237,7 @@ name: tests-base
 
 trigger:
   branch:
-    exclude: &special-branches
+    exclude: &special
     - pip
     - conda
     - docs
