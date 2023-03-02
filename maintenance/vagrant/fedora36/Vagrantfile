@@ -1,0 +1,13 @@
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  config.vm.box = "generic/fedora36"
+  config.vm.provider "virtualbox" do |vb|
+     vb.customize ["modifyvm", :id, "--memory", "3072"]
+  end
+  config.vm.network :private_network, ip: '192.168.115.19'
+  config.vm.network :forwarded_port, guest: 22, host: 22019, id: 'ssh'
+  config.vm.synced_folder ".", "/vagrant",
+    type: "rsync",
+    rsync__chown: true
+end

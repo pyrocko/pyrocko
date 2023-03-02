@@ -242,6 +242,16 @@ def cmd_deps_system(parser, args):
             pass
 
     if not distribution:
+        try:
+            with open('/etc/redhat-release', 'r') as f:
+                x = f.read()
+                if x:
+                    distribution = 'rpm'
+
+        except Exception:
+            pass
+
+    if not distribution:
         sys.exit(
             'Cannot determine platform for automatic prerequisite '
             'installation.')

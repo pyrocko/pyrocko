@@ -19,13 +19,11 @@ rm -f "$outfile_py3"
 
 cd $HOME
 export LC_ALL="C"
-
 /vagrant/wait_dpkg_locks.sh
 
 sudo apt-get update -y
 sudo apt-get upgrade -y
 sudo apt-get install -y git python3-setuptools xvfb
-sudo apt-get install -y libgles2-mesa
 
 if [ -e "$pyrockodir" ] ; then
     sudo rm -rf "$pyrockodir"
@@ -36,7 +34,7 @@ ln -s "/pyrocko-test-data" "test/data"
 ln -s "/vagrant/example_run_dir" "test/example_run_dir"
 
 python3 install.py deps system --yes && \
-    sudo pip3 install --no-deps --force-reinstall --upgrade . && \
+    python3 install.py system --yes && \
     python3 -m pyrocko.print_version deps >> "$outfile_py3" && \
-    xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v  "$thetest" > >(tee -a "$outfile_py3") 2> >(tee -a "$outfile_py3" >&2) || \
+    xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v "$thetest" > >(tee -a "$outfile_py3") 2> >(tee -a "$outfile_py3" >&2) || \
     /bin/true
