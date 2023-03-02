@@ -554,12 +554,8 @@ if not have_pep621_support:
             'seismology, waveform analysis, earthquake modelling, geophysics,'
             ' geophysical inversion'],
         python_requires='>=3.7, <4',
-        # Removed in favor of PEP 518 advocating `pyproject.toml`:
-        # setup_requires=[
-        #     'numpy>=1.8'
-        # ],
         install_requires=[
-            'numpy>=1.8',
+            'numpy>=1.16',
             'scipy>=1.0',
             'pyyaml',
             'matplotlib',

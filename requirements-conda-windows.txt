@@ -3,7 +3,7 @@ m2-gzip
 m2-patch
 setuptools
 wheel
-numpy>=1.8
+numpy>=1.16
 scipy>=1.0
 pyyaml
 matplotlib

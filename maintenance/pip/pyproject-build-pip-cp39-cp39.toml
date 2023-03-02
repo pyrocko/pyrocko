@@ -5,4 +5,4 @@
 # Supersedes use of `setup_requires` in `setup.py`.
 
 [build-system]
-requires = ["setuptools", "wheel", "numpy>=1.8,<1.20"]
+requires = ["setuptools", "wheel", "numpy>=1.16,<1.20"]

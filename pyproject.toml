@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "wheel", "numpy>=1.8"]
+requires = ["setuptools", "wheel", "numpy>=1.16"]
 
 [project]
 name = "pyrocko"
@@ -35,7 +35,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Application Frameworks",
 ]
 dependencies = [
-    "numpy>=1.8",
+    "numpy>=1.16",
     "scipy>=1.0",
     "pyyaml",
     "matplotlib",
