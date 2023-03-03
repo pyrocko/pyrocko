@@ -53,7 +53,7 @@ Distribution specific details and prerequisite package lists
    :maxdepth: 1
 
    Ubuntu, Debian, Mint, ... (deb based) <deb>
-   Centos, Fedora, ... (rpm based) <centos>
+   Fedora, Centos, ... (rpm based) <rpm>
    OpenSuse <suse>
    Arch <arch>
 
