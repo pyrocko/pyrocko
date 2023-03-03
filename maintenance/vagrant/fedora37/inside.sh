@@ -34,6 +34,12 @@ ln -s "/vagrant/example_run_dir" "test/example_run_dir"
 
 python3=/usr/bin/python3
 pip3=/usr/bin/pip3
+
+# prevent hangs in numpy.linalg when running from a parimap subprocess...
+export MKL_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
+export OMP_NUM_THREADS=1
+
 "$python3" install.py deps system --yes && \
     sudo "$pip3" install --no-deps --force-reinstall --upgrade . && \
     "$python3" -m pyrocko.print_version deps >> "$outfile_py3" && \
