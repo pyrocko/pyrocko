@@ -101,7 +101,7 @@ def neighbors(vertices, faces):
 
     nv = vertices.shape[0]
     nf, nc = faces.shape
-    fedges = num.zeros((nf*nc, 2), dtype=num.int)
+    fedges = num.zeros((nf*nc, 2), dtype=int)
     for ic in range(nc):
         fedges[ic::nc, :] = faces[:, (ic, (ic+1) % nc)]
 
@@ -181,13 +181,13 @@ def truncate(vertices, faces):
     nv = vertices.shape[0]
     iverts, ifaces = adjacent_faces(vertices, faces)
     ifirsts = nextval_indices(iverts)
-    ilengths = num.zeros(ifirsts.size, dtype=num.int)
+    ilengths = num.zeros(ifirsts.size, dtype=int)
     ilengths[:-1] = num.diff(ifirsts)
     ilengths[-1] = iverts.size - ifirsts[-1]
     nc = num.max(ilengths)
     nf = nv
     vertices_new = face_centers(vertices, faces)
-    faces_new = num.zeros((nf, nc), dtype=num.int)
+    faces_new = num.zeros((nf, nc), dtype=int)
     for iface in range(nf):
         ifirst = ifirsts[iface]
         ilength = ilengths[iface]
