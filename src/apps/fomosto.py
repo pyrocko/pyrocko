@@ -564,7 +564,18 @@ def command_view(args):
     except (gf.meta.GridSpecError, gf.StoreError, gf.meta.OutOfBounds) as e:
         die(e)
 
-    trace.snuffle(traces, markers=markers, opengl=options.opengl)
+    def setup(win):
+        viewer = win.get_view()
+        viewer.menuitem_showboxes.setChecked(False)
+        viewer.menuitem_colortraces.setChecked(True)
+        viewer.menuitem_demean.setChecked(False)
+        viewer.menuitems_sorting[5][0].setChecked(True)
+        viewer.menuitems_scaling[2][0].setChecked(True)
+        viewer.sortingmode_change()
+        viewer.scalingmode_change()
+
+    trace.snuffle(
+        traces, markers=markers, opengl=options.opengl, launch_hook=setup)
 
 
 def command_extract(args):
