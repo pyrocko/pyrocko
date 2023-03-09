@@ -186,10 +186,10 @@ def tile_export(tle, path, format='stl', exaggeration=3., socket_scale=1.,
         nvertices = vertices.shape[0]
         nfaces = border_indices.size - 1
 
-        socket_vertices = vertices[border_indices.astype(num.int)].copy()
+        socket_vertices = vertices[border_indices.astype(int)].copy()
         socket_vertices[:, 0] = socket_level
 
-        socket_faces = num.empty((nfaces, 4), dtype=num.int)
+        socket_faces = num.empty((nfaces, 4), dtype=int)
         for iface in range(nfaces):
             socket_faces[iface, 0] = iface + nvertices
             socket_faces[iface, 1] = iface + nvertices + 1

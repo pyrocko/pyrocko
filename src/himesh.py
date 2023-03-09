@@ -40,7 +40,7 @@ class Level(object):
             icandidates = num.arange(self.nfaces)
 
         npoints = points.shape[0]
-        ifaces = num.zeros(npoints, dtype=num.int)
+        ifaces = num.zeros(npoints, dtype=int)
         points_flat_all = num.zeros((npoints, 3))
         for icandidate in icandidates:
             points_flat, mask = self.project(icandidate, points)

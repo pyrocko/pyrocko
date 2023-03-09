@@ -216,7 +216,7 @@ class TableElement(base.Element):
             self._pipes.append(
                 ScatterPipe(points))
             self._pipe_maps.append(
-                num.ones(points.shape[0], dtype=num.bool))
+                num.ones(points.shape[0], dtype=bool))
 
     def _init_pipes_beachball(self):
         state = self._state
