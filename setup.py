@@ -4,7 +4,6 @@ import os.path as op
 import time
 import shutil
 import tempfile
-import numpy
 
 from pkg_resources import parse_version as pv
 from setuptools import setup, Extension, __version__ as setuptools_version
@@ -17,6 +16,11 @@ have_pep621_support = pv(setuptools_version) >= pv('61.0.0')
 
 packname = 'pyrocko'
 version = '2023.01.20'
+
+
+def get_numpy_include():
+    import numpy
+    return numpy.get_include()
 
 
 class NotInAGitRepos(Exception):
@@ -44,6 +48,10 @@ def git_infos():
     return sha1, local_modifications
 
 
+def print_e(*args):
+    print(*args, file=sys.stderr)
+
+
 def make_info_module(packname, version):
     '''Put version and revision information into file src/info.py.'''
 
@@ -58,9 +66,7 @@ def make_info_module(packname, version):
             combi += '-modified'
 
     except (OSError, CalledProcessError, NotInAGitRepos):
-        print(
-            'Failed to include git commit ID into installation.',
-            file=sys.stderr)
+        print_e('Failed to include git commit ID into installation.')
 
     datestr = time.strftime('%Y-%m-%d_%H:%M:%S')
     combi += '-%s' % datestr
@@ -117,82 +123,6 @@ def get_readme_paths():
 
 def get_build_include(lib_name):
     return op.join(op.dirname(op.abspath(__file__)), lib_name)
-
-
-def find_pyrocko_installs():
-    found = []
-    seen = set()
-    orig_sys_path = sys.path
-    for p in sys.path:
-
-        ap = op.abspath(p)
-        if ap == op.abspath('.'):
-            continue
-
-        if ap in seen:
-            continue
-
-        seen.add(ap)
-
-        sys.path = [p]
-
-        try:
-            import pyrocko
-            dpath = op.dirname(op.abspath(pyrocko.__file__))
-            x = (pyrocko.installed_date, p, dpath,
-                 pyrocko.long_version)
-            found.append(x)
-            del sys.modules['pyrocko']
-            del sys.modules['pyrocko.info']
-        except (ImportError, AttributeError):
-            pass
-
-    sys.path = orig_sys_path
-    return found
-
-
-def print_installs(found, file):
-    print(
-        '\nsys.path configuration is: \n  %s\n' % '\n  '.join(sys.path),
-        file=file)
-
-    dates = sorted([xx[0] for xx in found])
-    i = 1
-
-    for (installed_date, p, installed_path, long_version) in found:
-        oldnew = ''
-        if len(dates) >= 2:
-            if installed_date == dates[0]:
-                oldnew = ' (oldest)'
-
-            if installed_date == dates[-1]:
-                oldnew = ' (newest)'
-
-        print('''Pyrocko installation #%i:
-  date installed: %s%s
-  version: %s
-  path: %s
-''' % (i, installed_date, oldnew, long_version, installed_path), file=file)
-        i += 1
-
-
-def check_multiple_install():
-    found = find_pyrocko_installs()
-    e = sys.stderr
-
-    dates = sorted([xx[0] for xx in found])
-
-    if len(found) > 1:
-        print_installs(found, e)
-
-    if len(found) > 1:
-        print(
-            '''Installation #1 is used with default sys.path configuration.
-
-WARNING: Multiple installations of Pyrocko are present on this system.''',
-            file=e)
-        if found[0][0] != dates[-1]:
-            print('WARNING: Not using newest installed version.', file=e)
 
 
 class CustomBuildPyCommand(build_py):
@@ -265,6 +195,10 @@ elif pyrocko.grumpy == 2:
                 f.write(module_code)
 
     def run(self):
+        import numpy
+        print_e('='*60)
+        print_e('NumPy version used for build: %s' % numpy.__version__)
+        print_e('='*60)
         make_info_module(packname, version)
         self.make_compat_modules()
         build_py.run(self)
@@ -341,20 +275,20 @@ int main() {
         shutil.rmtree(tmpdir)
 
     if exit_code == 0:
-        print('Continuing your build using OpenMP...')
+        print_e('Continuing your build using OpenMP...')
         return True
 
     import multiprocessing
     import platform
     if multiprocessing.cpu_count() > 1:
-        print('''WARNING
+        print_e('''WARNING
 OpenMP support is not available in your default C compiler, even though
 your machine has more than one core available.
 Some routines in pyrocko are parallelized using OpenMP and these will
 only run on one core with your current configuration.
 ''')
         if platform.uname()[0] == 'Darwin':
-            print('''
+            print_e('''
 Since you are running on Mac OS, it's likely that the problem here
 is Apple's Clang, which does not support OpenMP at all. The easiest
 way to get around this is to download the latest version of gcc from
@@ -366,7 +300,7 @@ export CC='/usr/local/bin/gcc'
 python setup.py clean
 python setup.py build
 ''')
-    print('Continuing your build without OpenMP...')
+    print_e('Continuing your build without OpenMP...')
     return False
 
 
@@ -421,19 +355,19 @@ else:
 ext_modules = [
     Extension(
         'datacube_ext',
-        include_dirs=[numpy.get_include()],
+        include_dirs=[get_numpy_include()],
         extra_compile_args=extra_compile_args,
         sources=[op.join('src', 'io', 'ext', 'datacube_ext.c')]),
 
     Extension(
         'signal_ext',
-        include_dirs=[numpy.get_include()],
+        include_dirs=[get_numpy_include()],
         extra_compile_args=extra_compile_args,
         sources=[op.join('src', 'ext', 'signal_ext.c')]),
 
     Extension(
         'mseed_ext',
-        include_dirs=[numpy.get_include(),
+        include_dirs=[get_numpy_include(),
                       get_build_include('libmseed')],
         extra_compile_args=extra_compile_args + (
             ['-D_CRT_SECURE_NO_WARNINGS', '-DWIN32'] if
@@ -443,7 +377,7 @@ ext_modules = [
 
     Extension(
         'ims_ext',
-        include_dirs=[numpy.get_include()],
+        include_dirs=[get_numpy_include()],
         extra_compile_args=extra_compile_args,
         sources=[op.join('src', 'io', 'ext', 'ims_ext.c')]),
 
@@ -459,33 +393,33 @@ ext_modules = [
 
     Extension(
         'eikonal_ext',
-        include_dirs=[numpy.get_include()],
+        include_dirs=[get_numpy_include()],
         extra_compile_args=extra_compile_args + omp_arg,
         extra_link_args=[] + omp_lib,
         sources=[op.join('src', 'ext', 'eikonal_ext.c')]),
 
     Extension(
         'orthodrome_ext',
-        include_dirs=[numpy.get_include()],
+        include_dirs=[get_numpy_include()],
         extra_compile_args=extra_compile_args,
         sources=[op.join('src', 'ext', 'orthodrome_ext.c')]),
 
     Extension(
         'parstack_ext',
-        include_dirs=[numpy.get_include()],
+        include_dirs=[get_numpy_include()],
         extra_compile_args=extra_compile_args + omp_arg,
         extra_link_args=[] + omp_lib,
         sources=[op.join('src', 'ext', 'parstack_ext.c')]),
 
     Extension(
         'autopick_ext',
-        include_dirs=[numpy.get_include()],
+        include_dirs=[get_numpy_include()],
         extra_compile_args=extra_compile_args,
         sources=[op.join('src', 'ext', 'autopick_ext.c')]),
 
     Extension(
         'gf.store_ext',
-        include_dirs=[numpy.get_include()],
+        include_dirs=[get_numpy_include()],
         extra_compile_args=extra_compile_args
         + ['-D_FILE_OFFSET_BITS=64'] + omp_arg,
         extra_link_args=[] + omp_lib,
@@ -493,13 +427,13 @@ ext_modules = [
 
     Extension(
         'ahfullgreen_ext',
-        include_dirs=[numpy.get_include()],
+        include_dirs=[get_numpy_include()],
         extra_compile_args=extra_compile_args,
         sources=[op.join('src', 'ext', 'ahfullgreen_ext.c')]),
 
     Extension(
         'modelling.okada_ext',
-        include_dirs=[numpy.get_include()],
+        include_dirs=[get_numpy_include()],
         extra_compile_args=extra_compile_args + omp_arg,
         extra_link_args=[] + omp_lib,
         sources=[op.join('src', 'modelling', 'ext', 'okada_ext.c')])]
@@ -513,7 +447,7 @@ ext_modules_non_windows = [
 
     Extension(
         'evalresp_ext',
-        include_dirs=[numpy.get_include(),
+        include_dirs=[get_numpy_include(),
                       get_build_include('evalresp-3.3.0/include/')],
         library_dirs=[get_build_include('evalresp-3.3.0/lib/')],
         libraries=['evresp'],

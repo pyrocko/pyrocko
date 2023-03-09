@@ -1,8 +1,0 @@
-# Build dependencies as advocated by PEP 518.
-#
-#   https://www.python.org/dev/peps/pep-0518/
-#
-# Supersedes use of `setup_requires` in `setup.py`.
-
-[build-system]
-requires = ["setuptools", "wheel", "numpy>=1.16,<1.17"]
