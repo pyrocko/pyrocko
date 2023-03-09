@@ -1349,16 +1349,16 @@ class RangeEdit(qw.QFrame):
         umin_w, umax_w = projection.get_out_range()
         tmin_w, tmax_w = projection.get_in_range()
         nbins = int(umax_w - umin_w)
-        counts = num.zeros(nbins, dtype=num.int)
+        counts = num.zeros(nbins, dtype=int)
         if self._provider:
             for data in self._provider.iter_data(self._data_name):
                 ibins = ((data - tmin_w) * (nbins / (tmax_w - tmin_w))) \
-                    .astype(num.int)
+                    .astype(int)
                 num.clip(ibins, 0, nbins-1, ibins)
                 counts += num.bincount(ibins, minlength=nbins)
 
         histogram = counts * h // (num.max(counts[1:-1]) or 1)
-        bitmap = num.zeros((h, nbins), dtype=num.bool)
+        bitmap = num.zeros((h, nbins), dtype=bool)
         for i in range(h):
             bitmap[h-1-i, :] = histogram > i
 
