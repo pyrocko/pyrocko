@@ -94,7 +94,7 @@ steps:
 
 kind: pipeline
 type: docker
-name: tests-base
+name: test-base
 
 trigger:
   branch:
@@ -111,7 +111,7 @@ trigger:
 
 steps:
 
-- name: tests-base
+- name: test-base
   image: pyrocko-fat-nest
   pull: never
   commands:
@@ -120,7 +120,7 @@ steps:
   - python3 -m coverage run --parallel-mode -m pytest test/base
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
-- name: tests-base-hptime
+- name: test-base-hptime
   image: pyrocko-fat-nest
   pull: never
   commands:
@@ -153,7 +153,7 @@ steps:
 
 kind: pipeline
 type: docker
-name: tests-gf
+name: test-gf
 
 trigger:
   branch:
@@ -169,7 +169,7 @@ trigger:
     - app
 
 steps:
-- name: tests-gf
+- name: test-gf
   image: pyrocko-fat-nest
   pull: never
   commands:
@@ -178,7 +178,7 @@ steps:
   - python3 -m coverage run --parallel-mode -m pytest test/gf
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
-- name: tests-gf-hptime
+- name: test-gf-hptime
   image: pyrocko-fat-nest
   pull: never
   commands:
@@ -210,7 +210,7 @@ steps:
 
 kind: pipeline
 type: docker
-name: tests-examples
+name: test-examples
 
 trigger:
   branch:
@@ -226,7 +226,7 @@ trigger:
     - app
 
 steps:
-- name: tests-examples
+- name: test-examples
   image: pyrocko-fat-nest
   pull: never
   commands:
@@ -235,7 +235,7 @@ steps:
   - python3 -m coverage run --parallel-mode -m pytest test/examples
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
-- name: tests-examples-hptime
+- name: test-examples-hptime
   image: pyrocko-fat-nest
   pull: never
   commands:
@@ -267,7 +267,7 @@ steps:
 
 kind: pipeline
 type: docker
-name: tests-gui
+name: test-gui
 
 trigger:
   branch:
@@ -283,7 +283,7 @@ trigger:
     - app
 
 steps:
-- name: tests-gui
+- name: test-gui
   image: pyrocko-fat-nest
   pull: never
   commands:
@@ -292,7 +292,7 @@ steps:
   - xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m pytest test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
-- name: tests-gui-hptime
+- name: test-gui-hptime
   image: pyrocko-fat-nest
   pull: never
   commands:
@@ -324,13 +324,13 @@ steps:
 
 kind: pipeline
 type: docker
-name: tests-coverage
+name: test-coverage
 
 depends_on:
-- tests-base
-- tests-gf
-- tests-examples
-- tests-gui
+- test-base
+- test-gf
+- test-examples
+- test-gui
 
 trigger:
   branch:
@@ -372,7 +372,7 @@ steps:
 
 kind: pipeline
 type: exec
-name: tests-windows
+name: test-windows
 
 trigger:
   branch:
@@ -402,25 +402,25 @@ steps:
   # ensure config is there to prevent race conditions in parallel test runs
   - conda run --name test_env_${DRONE_BUILD_NUMBER} python -m pyrocko.config
 
-- name: tests-base
+- name: test-base
   commands:
   - conda run --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/base
   depends_on:
   - install
 
-- name: tests-gf
+- name: test-gf
   commands:
   - conda run --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/gf
   depends_on:
   - install
 
-- name: tests-examples
+- name: test-examples
   commands:
   - conda run --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/examples
   depends_on:
   - install
 
-- name: tests-gui
+- name: test-gui
   commands:
   - conda run --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/gui
   depends_on:
@@ -429,10 +429,10 @@ steps:
 - name: finalize
   commands: []
   depends_on:
-  - tests-base
-  - tests-gf
-  - tests-examples
-  - tests-gui
+  - test-base
+  - test-gf
+  - test-examples
+  - test-gui
 
 - name: cleanup
   commands:
@@ -448,7 +448,7 @@ steps:
 
 kind: pipeline
 type: exec
-name: tests-osx-arm64
+name: test-osx-arm64
 
 trigger:
   branch:
@@ -477,26 +477,26 @@ steps:
   # ensure config is there to prevent race conditions in parallel test runs
   - conda run --name test_env_${DRONE_BUILD_NUMBER} python -m pyrocko.config
 
-- name: tests-base
+- name: test-base
   commands:
   - conda run --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/base
   depends_on:
   - install
 
-- name: tests-gf
+- name: test-gf
   commands:
   - conda run --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/gf
   depends_on:
   - install
 
-- name: tests-examples
+- name: test-examples
   commands:
   - conda run --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/examples
   depends_on:
   - install
 
 # Segfaults while trying to do offscreen testing
-#- name: tests-gui
+#- name: test-gui
 #  commands:
 #  - QT_QPA_PLATFORM=offscreen conda run --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/gui
 #  depends_on:
@@ -505,10 +505,10 @@ steps:
 - name: finalize
   commands: []
   depends_on:
-  - tests-base
-  - tests-gf
-  - tests-examples
-  # - tests-gui
+  - test-base
+  - test-gf
+  - test-examples
+  # - test-gui
 
 - name: cleanup
   commands:
@@ -987,9 +987,9 @@ name: notify-hive
 depends_on:
 - flake8
 - docs
-- tests-coverage
-- tests-windows
-- tests-osx-arm64
+- test-coverage
+- test-windows
+- test-osx-arm64
 - package-pip-sdist
 - package-pip-manylinux2014
 - package-pip-windows
