@@ -2082,24 +2082,26 @@ def create_lockfile(fn, timeout=None, timewarn=10.):
             return
 
         except OSError as e:
-            if e.errno == errno.EEXIST:
-                tnow = time.time()
-
-                if timeout is not None and tnow - t0 > timeout:
-                    raise Timeout(
-                        'Timeout (%gs) occured while waiting to get exclusive '
-                        'access to: %s' % (timeout, fn))
-
-                if timewarn is not None and tnow - t0 > timewarn:
-                    logger.warning(
-                        'Waiting since %gs to get exclusive access to: %s' % (
-                            timewarn, fn))
-
-                    timewarn *= 2
-
-                time.sleep(0.01)
+            if e.errno in (errno.EEXIST, 13):   # 13 occurs on windows
+                pass  # retry
             else:
                 raise
+
+        tnow = time.time()
+
+        if timeout is not None and tnow - t0 > timeout:
+            raise Timeout(
+                'Timeout (%gs) occured while waiting to get exclusive '
+                'access to: %s' % (timeout, fn))
+
+        if timewarn is not None and tnow - t0 > timewarn:
+            logger.warning(
+                'Waiting since %gs to get exclusive access to: %s' % (
+                    timewarn, fn))
+
+            timewarn *= 2
+
+        time.sleep(0.01)
 
 
 def delete_lockfile(fn):
