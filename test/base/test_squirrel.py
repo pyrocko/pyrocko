@@ -675,7 +675,7 @@ class SquirrelTestCase(unittest.TestCase):
         print(bench)
 
     def run_loading(self, with_pile=False, hours=1):
-        dir = op.join(tempfile.gettempdir(), 'testdataset_d_%i' % hours)
+        dir = op.join(self.tempdir, 'testdataset_d_%i' % hours)
 
         if not os.path.exists(dir):
             common.make_dataset(dir, tinc=36., tlen=hours*common.H)
@@ -684,7 +684,7 @@ class SquirrelTestCase(unittest.TestCase):
 
         bench = common.Benchmark('test_loading (%i files)' % len(fns))
         if with_pile:
-            cachedirname = tempfile.mkdtemp('testcache')
+            cachedirname = tempfile.mkdtemp('testcache', dir=self.tempdir)
 
             with bench.run('pile, initial scan'):
                 pile.make_pile(
