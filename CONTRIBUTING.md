@@ -23,16 +23,35 @@ Drone CI tests are run on any commits pushed to the repository. By default,
 flake8 is run, tests are run parallel in 4 groups, test coverage is measured,
 and docs are built. Success/failure is reported to the Pyrocko Hive.
 
+Build artifacts are uploaded to staging area at
+https://data.pyrocko.org/builds/
+
 Pushing to specific branches triggers extra pipelines:
 
+**Special tests**
+
 * `hptime`: tests are run in both time handling modes (double test time)
-* `pip`: pip wheels and sdist are built, tested and uploaded to
-  PyPi-testing
-* `conda`: anaconda packages are built and tested
+
+**Releasing**
+
+* `candidate`: run all tests + hptime tests, package, test built packages
+  and upload to testing area of conda/pip
+* `release`: build packages and publish, tests and package tests are skipped
+
+**Debugging package builds and docs generation**
+
+* `docs`: build docs and upload to staging area for inspection
+* `pip`: build pip wheels and sdist, test them and upload to PyPI testing
+* `conda`: anaconda packages are built
+* `app`: build OSX app and upload to staging area
+* `packaging`: build all packages (almost like `candidate` but skip normal
+  testing)
+
+**Selective deployment (for hotfixing)**
+
 * `deploy-docs`: docs are published
-* `candidate`: same as pip + anaconda + hptime
-* `release`: same as pip + anaconda + deploy-docs, packages are additionally
-  published and package tests are skipped
+* `deploy-pip`: build and publish pip packages
+* `deploy-conda`: build and publish conda packages
 
 ## Versioning and releases
 

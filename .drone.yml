@@ -18,6 +18,7 @@ name: docs
 trigger:
   branch:
     exclude:  # special branches
+    - packaging
     - pip
     - conda
     - deploy-pip
@@ -93,6 +94,7 @@ trigger:
   branch:
   - release
   - candidate
+  - packaging
   - pip
   - deploy-pip
 
@@ -123,6 +125,7 @@ steps:
   when:
     branch:
     - candidate
+    - packaging
     - pip
   commands:
   - bash maintenance/pip/upload_wheels.sh testing
@@ -157,6 +160,7 @@ trigger:
   branch:
   - release
   - candidate
+  - packaging
   - pip
   - deploy-pip
 
@@ -214,6 +218,7 @@ steps:
   when:
     branch:
     - candidate
+    - packaging
     - pip
   commands:
   - bash maintenance/pip/upload_wheels.sh testing
@@ -247,6 +252,7 @@ name: tests-base
 trigger:
   branch:
     exclude:  # special branches
+    - packaging
     - pip
     - conda
     - docs
@@ -305,6 +311,7 @@ name: tests-gf
 trigger:
   branch:
     exclude:  # special branches
+    - packaging
     - pip
     - conda
     - docs
@@ -361,6 +368,7 @@ name: tests-examples
 trigger:
   branch:
     exclude:  # special branches
+    - packaging
     - pip
     - conda
     - docs
@@ -417,6 +425,7 @@ name: tests-gui
 trigger:
   branch:
     exclude:  # special branches
+    - packaging
     - pip
     - conda
     - docs
@@ -473,6 +482,7 @@ name: tests-windows
 trigger:
   branch:
     exclude:  # special branches
+    - packaging
     - pip
     - conda
     - docs
@@ -548,6 +558,7 @@ name: tests-osx-arm64
 trigger:
   branch:
     exclude:  # special branches
+    - packaging
     - pip
     - conda
     - docs
@@ -624,6 +635,7 @@ trigger:
   branch:
   - release
   - candidate
+  - packaging
   - pip
   - deploy-pip
 
@@ -655,6 +667,7 @@ steps:
   when:
     branch:
     - candidate
+    - packaging
     - pip
   commands:
   - pip install twine
@@ -702,6 +715,7 @@ depends_on:
 trigger:
   branch:
     exclude:  # special branches
+    - packaging
     - pip
     - conda
     - docs
@@ -743,6 +757,7 @@ name: conda-packages-linux
 trigger:
   branch:
     - candidate
+    - packaging
     - release
     - conda
     - deploy-conda
@@ -760,6 +775,7 @@ steps:
   when:
     branch:
       - candidate
+      - packaging
       - conda
 
 - name: build-test-upload
@@ -786,6 +802,7 @@ name: conda-packages-osx-64
 trigger:
   branch:
     - candidate
+    - packaging
     - release
     - conda
     - deploy-conda
@@ -803,6 +820,7 @@ steps:
   when:
     branch:
       - candidate
+      - packaging
       - conda
 
 - name: build-test-upload
@@ -829,6 +847,7 @@ name: conda-packages-osx-arm64
 trigger:
   branch:
     - candidate
+    - packaging
     - release
     - conda
     - deploy-conda
@@ -845,6 +864,7 @@ steps:
   when:
     branch:
       - candidate
+      - packaging
       - conda
 
 - name: build-test-upload
@@ -878,6 +898,7 @@ name: conda-packages-windows
 trigger:
   branch:
     - candidate
+    - packaging
     - release
     - conda
     - deploy-conda
@@ -893,6 +914,7 @@ steps:
   when:
     branch:
       - candidate
+      - packaging
       - conda
 
 - name: build-test-upload
@@ -927,6 +949,7 @@ trigger:
   branch:
     - app
     - candidate
+    - packaging
     - release
 
 steps:
