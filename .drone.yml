@@ -1,3 +1,5 @@
+### Code Style Pipelines ######################################################
+
 kind: pipeline
 type: docker
 name: flake8
@@ -10,6 +12,8 @@ steps:
   - flake8 src test examples setup.py
 
 ---
+
+### Docs Pipelines ############################################################
 
 kind: pipeline
 type: docker
@@ -86,164 +90,7 @@ steps:
 
 ---
 
-kind: pipeline
-type: docker
-name: pip-sdist
-
-trigger:
-  branch:
-  - release
-  - candidate
-  - packaging
-  - pip
-  - deploy-pip
-
-steps:
-
-- name: build
-  image: pyrocko-nest
-  pull: never
-  commands:
-  - python3 setup.py sdist
-
-- name: stage
-  image: pyrocko-util
-  pull: never
-  commands:
-  - maintenance/drone-rsync.sh dist/ ${DRONE_COMMIT}/dist/
-  environment:
-    RSYNC_HOST:
-      from_secret: rsync-host
-    RSYNC_USER:
-      from_secret: rsync-user
-    RSYNC_KEY:
-      from_secret: rsync-key
-
-- name: upload-testing
-  image: pyrocko-nest
-  pull: never
-  when:
-    branch:
-    - candidate
-    - packaging
-    - pip
-  commands:
-  - bash maintenance/pip/upload_wheels.sh testing
-  environment:
-    PYPI_USERNAME:
-      from_secret: pypi-username
-    PYPI_PASSWORD:
-      from_secret: pypi-password
-
-- name: upload
-  image: pyrocko-nest
-  pull: never
-  when:
-    branch:
-    - release
-    - deploy-pip
-  commands:
-  - bash maintenance/pip/upload_wheels.sh live
-  environment:
-    PYPI_USERNAME:
-      from_secret: pypi-username
-    PYPI_PASSWORD:
-      from_secret: pypi-password
-
----
-
-kind: pipeline
-type: docker
-name: pip-manylinux2014
-
-trigger:
-  branch:
-  - release
-  - candidate
-  - packaging
-  - pip
-  - deploy-pip
-
-steps:
-- name: build
-  image: quay.io/pypa/manylinux2014_x86_64
-  commands:
-  - maintenance/pip/build_wheels.sh
-  environment:
-    PLAT: manylinux2014_x86_64
-
-- name: test-pure
-  image: pyrocko-util
-  pull: never
-  when:
-    branch:
-      exclude:
-      - release
-      - deploy-pip
-  commands:
-  - pip3 install -f dist pyrocko --no-index --no-deps
-  - pip3 install -f dist pyrocko
-  - pip3 install --only-binary=PyQt5 PyQt5 jinja2 pytest
-  - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest
-
-- name: test-mixed
-  image: pyrocko-fat-nest
-  pull: never
-  when:
-    branch:
-      exclude:
-      - release
-      - deploy-pip
-  commands:
-  - ln -sf /pyrocko-test-data test/data
-  - pip3 install -f dist --no-index --no-deps pyrocko
-  - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest
-
-- name: stage
-  image: pyrocko-util
-  pull: never
-  commands:
-  - maintenance/drone-rsync.sh dist/ ${DRONE_COMMIT}/wheels/
-  environment:
-    RSYNC_HOST:
-      from_secret: rsync-host
-    RSYNC_USER:
-      from_secret: rsync-user
-    RSYNC_KEY:
-      from_secret: rsync-key
-
-- name: upload-testing
-  image: pyrocko-nest
-  pull: never
-  when:
-    branch:
-    - candidate
-    - packaging
-    - pip
-  commands:
-  - bash maintenance/pip/upload_wheels.sh testing
-  environment:
-    PYPI_USERNAME:
-      from_secret: pypi-username
-    PYPI_PASSWORD:
-      from_secret: pypi-password
-
-- name: upload
-  image: pyrocko-nest
-  pull: never
-  when:
-    branch:
-    - release
-    - deploy-pip
-  commands:
-  - bash maintenance/pip/upload_wheels.sh live
-  environment:
-    PYPI_USERNAME:
-      from_secret: pypi-username
-    PYPI_PASSWORD:
-      from_secret: pypi-password
-
----
+### Testing Pipelines #########################################################
 
 kind: pipeline
 type: docker
@@ -476,6 +323,54 @@ steps:
 ---
 
 kind: pipeline
+type: docker
+name: tests-coverage
+
+depends_on:
+- tests-base
+- tests-gf
+- tests-examples
+- tests-gui
+
+trigger:
+  branch:
+    exclude:  # special branches
+    - packaging
+    - pip
+    - conda
+    - docs
+    - deploy-pip
+    - deploy-conda
+    - deploy-docs
+    - release
+    - app
+
+steps:
+- name: build
+  image: pyrocko-nest
+  pull: never
+  commands:
+  - pip3 install --no-deps --no-build-isolation --force-reinstall .
+  - wget -r -nH --cut-dirs=2 --no-parent --reject="index.html*" https://data.pyrocko.org/builds/${DRONE_COMMIT}/coverage/data/
+  - python3 -m coverage combine coverage/data/coverage.*
+  - python3 -m coverage html
+
+- name: stage
+  image: pyrocko-util
+  pull: never
+  commands:
+  - maintenance/drone-rsync.sh htmlcov/ ${DRONE_COMMIT}/coverage/
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
+
+---
+
+kind: pipeline
 type: exec
 name: tests-windows
 
@@ -627,9 +522,170 @@ steps:
 
 ---
 
+### Packaging  Pipelines ######################################################
+
+kind: pipeline
+type: docker
+name: package-pip-sdist
+
+trigger:
+  branch:
+  - release
+  - candidate
+  - packaging
+  - pip
+  - deploy-pip
+
+steps:
+
+- name: build
+  image: pyrocko-nest
+  pull: never
+  commands:
+  - python3 setup.py sdist
+
+- name: stage
+  image: pyrocko-util
+  pull: never
+  commands:
+  - maintenance/drone-rsync.sh dist/ ${DRONE_COMMIT}/dist/
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
+
+- name: upload-testing
+  image: pyrocko-nest
+  pull: never
+  when:
+    branch:
+    - candidate
+    - packaging
+    - pip
+  commands:
+  - bash maintenance/pip/upload_wheels.sh testing
+  environment:
+    PYPI_USERNAME:
+      from_secret: pypi-username
+    PYPI_PASSWORD:
+      from_secret: pypi-password
+
+- name: upload
+  image: pyrocko-nest
+  pull: never
+  when:
+    branch:
+    - release
+    - deploy-pip
+  commands:
+  - bash maintenance/pip/upload_wheels.sh live
+  environment:
+    PYPI_USERNAME:
+      from_secret: pypi-username
+    PYPI_PASSWORD:
+      from_secret: pypi-password
+
+---
+
+kind: pipeline
+type: docker
+name: package-pip-manylinux2014
+
+trigger:
+  branch:
+  - release
+  - candidate
+  - packaging
+  - pip
+  - deploy-pip
+
+steps:
+- name: build
+  image: quay.io/pypa/manylinux2014_x86_64
+  commands:
+  - maintenance/pip/build_wheels.sh
+  environment:
+    PLAT: manylinux2014_x86_64
+
+- name: test-pure
+  image: pyrocko-util
+  pull: never
+  when:
+    branch:
+      exclude:
+      - release
+      - deploy-pip
+  commands:
+  - pip3 install -f dist pyrocko --no-index --no-deps
+  - pip3 install -f dist pyrocko
+  - pip3 install --only-binary=PyQt5 PyQt5 jinja2 pytest
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest
+
+- name: test-mixed
+  image: pyrocko-fat-nest
+  pull: never
+  when:
+    branch:
+      exclude:
+      - release
+      - deploy-pip
+  commands:
+  - ln -sf /pyrocko-test-data test/data
+  - pip3 install -f dist --no-index --no-deps pyrocko
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest
+
+- name: stage
+  image: pyrocko-util
+  pull: never
+  commands:
+  - maintenance/drone-rsync.sh dist/ ${DRONE_COMMIT}/wheels/
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
+
+- name: upload-testing
+  image: pyrocko-nest
+  pull: never
+  when:
+    branch:
+    - candidate
+    - packaging
+    - pip
+  commands:
+  - bash maintenance/pip/upload_wheels.sh testing
+  environment:
+    PYPI_USERNAME:
+      from_secret: pypi-username
+    PYPI_PASSWORD:
+      from_secret: pypi-password
+
+- name: upload
+  image: pyrocko-nest
+  pull: never
+  when:
+    branch:
+    - release
+    - deploy-pip
+  commands:
+  - bash maintenance/pip/upload_wheels.sh live
+  environment:
+    PYPI_USERNAME:
+      from_secret: pypi-username
+    PYPI_PASSWORD:
+      from_secret: pypi-password
+
+---
+
 kind: pipeline
 type: exec
-name: pip-windows
+name: package-pip-windows
 
 trigger:
   branch:
@@ -704,55 +760,7 @@ steps:
 
 kind: pipeline
 type: docker
-name: coverage
-
-depends_on:
-- tests-base
-- tests-gf
-- tests-examples
-- tests-gui
-
-trigger:
-  branch:
-    exclude:  # special branches
-    - packaging
-    - pip
-    - conda
-    - docs
-    - deploy-pip
-    - deploy-conda
-    - deploy-docs
-    - release
-    - app
-
-steps:
-- name: build
-  image: pyrocko-nest
-  pull: never
-  commands:
-  - pip3 install --no-deps --no-build-isolation --force-reinstall .
-  - wget -r -nH --cut-dirs=2 --no-parent --reject="index.html*" https://data.pyrocko.org/builds/${DRONE_COMMIT}/coverage/data/
-  - python3 -m coverage combine coverage/data/coverage.*
-  - python3 -m coverage html
-
-- name: stage
-  image: pyrocko-util
-  pull: never
-  commands:
-  - maintenance/drone-rsync.sh htmlcov/ ${DRONE_COMMIT}/coverage/
-  environment:
-    RSYNC_HOST:
-      from_secret: rsync-host
-    RSYNC_USER:
-      from_secret: rsync-user
-    RSYNC_KEY:
-      from_secret: rsync-key
-
----
-
-kind: pipeline
-type: docker
-name: conda-packages-linux
+name: package-conda-linux
 
 trigger:
   branch:
@@ -797,7 +805,7 @@ steps:
 
 kind: pipeline
 type: exec
-name: conda-packages-osx-64
+name: package-conda-osx-64
 
 trigger:
   branch:
@@ -842,7 +850,7 @@ steps:
 
 kind: pipeline
 type: exec
-name: conda-packages-osx-arm64
+name: package-conda-osx-arm64
 
 trigger:
   branch:
@@ -893,7 +901,7 @@ steps:
 
 kind: pipeline
 type: exec
-name: conda-packages-windows
+name: package-conda-windows
 
 trigger:
   branch:
@@ -939,7 +947,7 @@ steps:
 
 kind: pipeline
 type: exec
-name: osx-app
+name: app-osx
 
 platform:
   os: darwin
@@ -977,19 +985,19 @@ type: docker
 name: notify-hive
 
 depends_on:
-- coverage
 - flake8
 - docs
+- tests-coverage
 - tests-windows
 - tests-osx-arm64
-- pip-sdist
-- pip-manylinux2014
-- pip-windows
-- conda-packages-linux
-- conda-packages-osx-64
-- conda-packages-osx-arm64
-- conda-packages-windows
-- osx-app
+- package-pip-sdist
+- package-pip-manylinux2014
+- package-pip-windows
+- package-conda-linux
+- package-conda-osx-64
+- package-conda-osx-arm64
+- package-conda-windows
+- app-osx
 
 trigger:
   status:
