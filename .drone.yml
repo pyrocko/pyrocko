@@ -231,6 +231,10 @@ steps:
   pull: never
   commands:
   - ln -sf /pyrocko-test-data test/data
+  - mkdir -p test/example_run_dir
+  - mkdir -p test/example_run_dir_local
+  - ln -sf /pyrocko-test-data/gf_stores/* test/example_run_dir
+  - ln -sf /pyrocko-test-data/gf_stores/* test/example_run_dir_local
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
   - python3 -m coverage run --parallel-mode -m pytest -v test/examples
   - for x in .coverage.* ; do mv $x $${x#.} ; done
@@ -240,6 +244,10 @@ steps:
   pull: never
   commands:
   - ln -sf /pyrocko-test-data test/data
+  - mkdir -p test/example_run_dir
+  - mkdir -p test/example_run_dir_local
+  - ln -sf /pyrocko-test-data/gf_stores/* test/example_run_dir
+  - ln -sf /pyrocko-test-data/gf_stores/* test/example_run_dir_local
   - pip3 install --no-deps --no-build-isolation --force-reinstall .
   - python3 -m coverage run --parallel-mode -m pytest -v test/examples
   - for x in .coverage.* ; do mv $x $${x#.} ; done
@@ -396,33 +404,39 @@ steps:
   - C:\Windows\System32\cleanmgr.exe /dC
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\Lib\\site-packages\\pyrocko
   - conda create --name test_env_${DRONE_BUILD_NUMBER} --yes pytest
-  - conda run --name test_env_${DRONE_BUILD_NUMBER} python install.py deps conda --yes
-  - conda run --name test_env_${DRONE_BUILD_NUMBER} python install.py user --yes
-  - xcopy C:\\vagrant\\test-data test\\data\\ /E /Y
+  - conda run --no-capture-output --name test_env_${DRONE_BUILD_NUMBER} python install.py deps conda --yes
+  - conda run --no-capture-output --name test_env_${DRONE_BUILD_NUMBER} python install.py user --yes
+  - New-Item -Path test\\data -ItemType SymbolicLink -Value C:\\vagrant\\test-data
   # ensure config is there to prevent race conditions in parallel test runs
-  - conda run --name test_env_${DRONE_BUILD_NUMBER} python -m pyrocko.config
+  - conda run --no-capture-output --name test_env_${DRONE_BUILD_NUMBER} python -m pyrocko.config
 
 - name: test-base
   commands:
-  - conda run --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/base
+  - conda run --no-capture-output --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/base
   depends_on:
   - install
 
 - name: test-gf
   commands:
-  - conda run --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/gf
+  - conda run --no-capture-output --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/gf
   depends_on:
   - install
 
 - name: test-examples
   commands:
-  - conda run --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/examples
+  - mkdir test\\example_run_dir
+  - mkdir test\\example_run_dir_local
+  - New-Item -Path test\\example_run_dir\\ak135_static -ItemType SymbolicLink -Value C:\\vagrant\\test-data\\gf_stores\\ak135_static
+  - New-Item -Path test\\example_run_dir\\crust2_mf -ItemType SymbolicLink -Value C:\\vagrant\\test-data\\gf_stores\\crust2_mf
+  - New-Item -Path test\\example_run_dir\\gf_abruzzo_nearfield_vmod_Ameri -ItemType SymbolicLink -Value C:\\vagrant\\test-data\\gf_stores\\gf_abruzzo_nearfield_vmod_Ameri
+  - New-Item -Path test\\example_run_dir\\iceland_reg_v2 -ItemType SymbolicLink -Value C:\\vagrant\\test-data\\gf_stores\\iceland_reg_v2
+  - conda run --no-capture-output --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/examples
   depends_on:
   - install
 
 - name: test-gui
   commands:
-  - conda run --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/gui
+  - conda run --no-capture-output --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/gui
   depends_on:
   - install
 
@@ -471,34 +485,38 @@ steps:
 - name: install
   commands:
   - conda create --name test_env_${DRONE_BUILD_NUMBER} --yes pytest
-  - conda run --name test_env_${DRONE_BUILD_NUMBER} python install.py deps conda --yes
-  - conda run --name test_env_${DRONE_BUILD_NUMBER} python install.py user --yes
+  - conda run --no-capture-output --name test_env_${DRONE_BUILD_NUMBER} python install.py deps conda --yes
+  - conda run --no-capture-output --name test_env_${DRONE_BUILD_NUMBER} python install.py user --yes
   - cp -r /Users/drone/test-data test/data
+  - mkdir -p test/example_run_dir
+  - mkdir -p test/example_run_dir_local
+  - ln -sf /Users/drone/test-data/gf_stores/* test/example_run_dir
+  - ln -sf /Users/drone/test-data/gf_stores/* test/example_run_dir_local
   # ensure config is there to prevent race conditions in parallel test runs
-  - conda run --name test_env_${DRONE_BUILD_NUMBER} python -m pyrocko.config
+  - conda run --no-capture-output --name test_env_${DRONE_BUILD_NUMBER} python -m pyrocko.config
 
 - name: test-base
   commands:
-  - conda run --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/base
+  - conda run --no-capture-output --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/base
   depends_on:
   - install
 
 - name: test-gf
   commands:
-  - conda run --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/gf
+  - conda run --no-capture-output --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/gf
   depends_on:
   - install
 
 - name: test-examples
   commands:
-  - conda run --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/examples
+  - conda run --no-capture-output --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/examples
   depends_on:
   - install
 
 # Segfaults while trying to do offscreen testing
 #- name: test-gui
 #  commands:
-#  - QT_QPA_PLATFORM=offscreen conda run --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/gui
+#  - QT_QPA_PLATFORM=offscreen conda run --no-capture-output --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/gui
 #  depends_on:
 #  - install
 
@@ -708,16 +726,16 @@ steps:
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py39
 
   - conda create -y -n py37 python=3.7 m2-tar m2-gzip m2-patch setuptools pip numpy=1.14
-  - conda run -n py37 python -m pip wheel -v -w dist "--only-binary=:all:" .
+  - conda run --no-capture-output -n py37 python -m pip wheel -v -w dist "--only-binary=:all:" .
 
   - conda create -y -n py38 python=3.8 m2-tar m2-gzip m2-patch setuptools pip numpy=1.14
-  - conda run -n py38 python -m pip wheel -v -w dist "--only-binary=:all:" .
+  - conda run --no-capture-output -n py38 python -m pip wheel -v -w dist "--only-binary=:all:" .
 
   - conda create -y -n py39 python=3.9 m2-tar m2-gzip m2-patch setuptools pip numpy=1.16
-  - conda run -n py39 python -m pip wheel -v -w dist "--only-binary=:all:" .
+  - conda run --no-capture-output -n py39 python -m pip wheel -v -w dist "--only-binary=:all:" .
 
   - conda create -y -n py310 python=3.10 m2-tar m2-gzip m2-patch setuptools pip numpy=1.21
-  - conda run -n py310 python -m pip wheel -v -w dist "--only-binary=:all:" .
+  - conda run --no-capture-output -n py310 python -m pip wheel -v -w dist "--only-binary=:all:" .
 
 - name: upload-testing
   when:
@@ -868,7 +886,7 @@ steps:
 - name: build-test
   commands:
   - cd maintenance/conda
-  - conda run -n base bash build_packages_osx_arm64.sh dryrun
+  - conda run --no-capture-output -n base bash build_packages_osx_arm64.sh dryrun
   when:
     branch:
       - candidate
@@ -878,7 +896,7 @@ steps:
 - name: build-test-upload
   commands:
   - cd maintenance/conda
-  - conda run -n base bash build_packages_osx_arm64.sh upload
+  - conda run --no-capture-output -n base bash build_packages_osx_arm64.sh upload
   environment:
     CONDA_USERNAME:
       from_secret: conda-username
@@ -918,7 +936,7 @@ steps:
 - name: build-test
   commands:
   - cd maintenance\\conda\\
-  - conda run -n base bash build_packages_windows.sh dryrun
+  - conda run --no-capture-output -n base bash build_packages_windows.sh dryrun
   when:
     branch:
       - candidate
@@ -928,7 +946,7 @@ steps:
 - name: build-test-upload
   commands:
   - cd maintenance\\conda\\
-  - conda run -n base bash build_packages_windows.sh upload
+  - conda run --no-capture-output -n base bash build_packages_windows.sh upload
   environment:
     CONDA_USERNAME:
       from_secret: conda-username
