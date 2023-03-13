@@ -155,13 +155,20 @@ Download :download:`beachball_example05.py </../../examples/beachball_example05.
 Beachballs views for cross-sections:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-It is useful to show beachballs from other view angles, as in cross-sections. For that, we can define a ``view`` for all beachball plotting functions as shown here:
+It is useful to show beachballs from other view angles, as in cross-sections.
+For that, we can define a ``view`` for all beachball plotting functions as
+shown here:
 
 Download :download:`beachball_example06.py </../../examples/beachball_example06.py>`
 
 .. literalinclude :: /../../examples/beachball_example06.py
     :language: python
 
+.. figure :: /static/beachball-example06.png
+    :align: center
+    :alt: Beachball from various cross-section view angles.
+
+    Beachball from top (center) and 8 different cross-sections.
 
 
 Add station symbols to focal sphere diagram

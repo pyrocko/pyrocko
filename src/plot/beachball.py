@@ -18,18 +18,18 @@ from pyrocko.util import num_full
 logger = logging.getLogger('pyrocko.plot.beachball')
 
 NA = num.newaxis
+d2r = num.pi / 180.
 
-_view_south = num.array([[0, 0, -1],
-                         [0, 1, 0],
-                         [1, 0, 0]])
 
-_view_north = _view_south.T
+def view_rotation(strike, dip):
+    return mtm.euler_to_matrix(
+        dip*d2r, strike*d2r, -90.*d2r)
 
-_view_east = num.array([[1, 0, 0],
-                        [0, 0, -1],
-                        [0, 1, 0]])
 
-_view_west = _view_east.T
+_view_south = view_rotation(90., 90.)
+_view_north = view_rotation(-90., 90.)
+_view_east = view_rotation(0., 90.)
+_view_west = view_rotation(180., 90.)
 
 
 class BeachballError(Exception):
@@ -413,20 +413,26 @@ def inverse_project(points, projection='lambert'):
 
 
 def deco_part(mt, mt_type='full', view='top'):
-    assert view in ('top', 'north', 'south', 'east', 'west'),\
-        'Allowed views are top, north, south, east and west'
     mt = mtm.as_mt(mt)
 
-    if view == 'top':
-        pass
-    elif view == 'north':
-        mt = mt.rotated(_view_north)
-    elif view == 'south':
-        mt = mt.rotated(_view_south)
-    elif view == 'east':
-        mt = mt.rotated(_view_east)
-    elif view == 'west':
-        mt = mt.rotated(_view_west)
+    if isinstance(view, str):
+        if view == 'top':
+            pass
+        elif view == 'north':
+            mt = mt.rotated(_view_north)
+        elif view == 'south':
+            mt = mt.rotated(_view_south)
+        elif view == 'east':
+            mt = mt.rotated(_view_east)
+        elif view == 'west':
+            mt = mt.rotated(_view_west)
+    elif isinstance(view, tuple):
+        mt = mt.rotated(view_rotation(*view))
+    else:
+        raise BeachballError(
+            'Invaild argument for `view`. Allowed values are "top", "north", '
+            '"south", "east", "west" or a tuple of angles `(strike, dip)` '
+            'orienting the view plane.')
 
     if mt_type == 'full':
         return mt
@@ -556,9 +562,10 @@ def plot_beachball_mpl(
         latter causes the beachball to be projected in the plots data
         coordinates (axes must have an aspect ratio of 1.0 or the
         beachball will be shown distorted when using this).
-    :param view: View the beachball from ``top``, ``north``, ``south``,
-        ``east`` or ``west``. Useful for to show beachballs in cross-sections.
-        Default is ``top``.
+    :param view: View the beachball from ``'top'``, ``'north'``, ``'south'``,
+        ``'east'`` or ``'west'``, or project onto plane given by
+        ``(strike, dip)``. Useful to show beachballs in cross-sections.
+        Default is ``'top'``.
     '''
 
     transform, position, size = choose_transform(

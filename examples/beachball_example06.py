@@ -1,42 +1,48 @@
-#!/usr/bin/env python3
 
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
+from pyrocko.plot import beachball, mpl_color
 from pyrocko import moment_tensor as pmt
-from pyrocko.plot import beachball
 
-mt = pmt.as_mt([0.424, -0.47, 0.33, 0.711, -0.09, 0.16])
-axes = plt.gca()
 
-beachball.plot_beachball_mpl(
-    mt, axes,
-    size=50.,
-    position=(0., 0.),
-    view='top')
+nrows = ncols = 3
 
-beachball.plot_beachball_mpl(
-    mt, axes,
-    size=50.,
-    position=(0, -1.),
-    view='south')
+fig = plt.figure(figsize=(6, 6))
+axes = fig.add_subplot(1, 1, 1, aspect=1.)
+fig.subplots_adjust(left=0., right=1., bottom=0., top=1.)
+axes.axison = False
+axes.set_xlim(-0.05 - ncols, ncols + 0.05)
+axes.set_ylim(-0.05 - nrows, nrows + 0.05)
 
-beachball.plot_beachball_mpl(
-    mt, axes,
-    size=50.,
-    position=(-1, 0.),
-    view='east')
+mt = pmt.as_mt((5., 90, 5.))
 
-beachball.plot_beachball_mpl(
-    mt, axes,
-    size=50.,
-    position=(0, 1.),
-    view='north')
+for view, irow, icol in [
+        ('top', 1, 1),
+        ((-90-45, 90.), 0, 0),
+        ('north', 0, 1),
+        ((-45, 90.), 0, 2),
+        ('east', 1, 2),
+        ((45., 90.), 2, 2),
+        ('south', 2, 1),
+        ((90.+45., 90.), 2, 0),
+        ('west', 1, 0)]:
 
-beachball.plot_beachball_mpl(
-    mt, axes,
-    size=50.,
-    position=(1, 0.),
-    view='west')
+    beachball.plot_beachball_mpl(
+        mt, axes,
+        position=(icol*2-ncols+1, -irow*2+nrows-1),
+        size_units='data',
+        linewidth=1.0,
+        color_t=mpl_color('skyblue2'),
+        view=view)
 
-axes.set_xlim(-2., 2.)
-axes.set_ylim(-2., 2.)
+    axes.annotate(
+        view,
+        xy=(icol*2-ncols+1, -irow*2+nrows-1.75),
+        xycoords='data',
+        xytext=(0, 0),
+        textcoords='offset points',
+        verticalalignment='center',
+        horizontalalignment='center',
+        rotation=0.)
+
+fig.savefig('beachball_example06.png')
 plt.show()
