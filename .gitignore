@@ -27,6 +27,7 @@ __pycache__/
 .idea
 
 /test/example_run_dir/
+/test/example_run_dir_local/
 /test/data/
 
 /maintenance/**/pyrocko.git/
