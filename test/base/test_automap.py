@@ -86,7 +86,7 @@ class AutomapTestCase(unittest.TestCase):
             assert m.have_coastlines()
 
             m.draw_cities(include=['Pompeji', 'Capri'])
-            fname = 'automap_test_napoli.png'
+            fname = 'automap_test_napoli_v2.png'
             fpath = self.fpath(fname)
             m.save(fpath)
             self.compare_with_ref(fname, 0.01, show=False)
