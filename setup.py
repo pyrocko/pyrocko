@@ -502,7 +502,8 @@ if not have_pep621_support:
 
         entry_points={
             'console_scripts':
-                ['fomosto = pyrocko.apps.fomosto:main',
+                ['pyrocko = pyrocko.apps.pyrocko:main',
+                 'fomosto = pyrocko.apps.fomosto:main',
                  'cake = pyrocko.apps.cake:main',
                  'automap = pyrocko.apps.automap:main',
                  'hamster = pyrocko.apps.hamster:main',

@@ -55,6 +55,7 @@ repository = "https://git.pyrocko.org"
 changelog = "https://git.pyrocko.org/pyrocko/pyrocko/src/branch/master/CHANGELOG.md"
 
 [project.entry-points.console_scripts]
+pyrocko = "pyrocko.apps.pyrocko:main"
 fomosto = "pyrocko.apps.fomosto:main"
 cake = "pyrocko.apps.cake:main"
 automap = "pyrocko.apps.automap:main"
