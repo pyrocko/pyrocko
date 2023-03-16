@@ -34,6 +34,7 @@ Pyrocko and ObsPy classes.
 
 '''
 
+
 def to_pyrocko_trace(trace):
     '''
     Convert ObsPy trace object to Pyrocko trace object.
