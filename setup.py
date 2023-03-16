@@ -338,6 +338,7 @@ subpacknames = [
     'pyrocko.gui.snuffler.snufflings.map',
     'pyrocko.gui.sparrow',
     'pyrocko.gui.sparrow.elements',
+    'pyrocko.gui.drum',
     'pyrocko.dataset',
     'pyrocko.dataset.topo',
     'pyrocko.streaming',
@@ -525,7 +526,8 @@ if not have_pep621_support:
                  'squirrel = pyrocko.apps.squirrel:main'],
             'gui_scripts':
                 ['snuffler = pyrocko.apps.snuffler:main',
-                 'sparrow = pyrocko.apps.sparrow:main'],
+                 'sparrow = pyrocko.apps.sparrow:main',
+                 'drum = pyrocko.apps.drum:main'],
         },
     )
 
