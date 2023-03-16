@@ -15,7 +15,10 @@ import re
 import zlib
 import struct
 import pickle
-
+try:
+    from urlparse import parse_qsl
+except ImportError:
+    from urllib.parse import parse_qsl
 
 from pyrocko.streaming import serial_hamster
 from pyrocko.streaming import slink
@@ -91,6 +94,9 @@ class AcquisitionThread(qc.QThread):
         self.queue = []
         self.post_process_sleep = post_process_sleep
         self._sun_is_shining = True
+
+    def get_wanted_poll_interval(self):
+        return 1000.
 
     def run(self):
         while True:
@@ -177,10 +183,13 @@ class SchoolSeismometerAcquisition(
 
     def __init__(self, *args, **kwargs):
         serial_hamster.SerialHamster.__init__(self, *args, **kwargs)
-        AcquisitionThread.__init__(self, post_process_sleep=0.01)
+        AcquisitionThread.__init__(self, post_process_sleep=0.0)
 
     def got_trace(self, tr):
         AcquisitionThread.got_trace(self, tr)
+
+    def get_wanted_poll_interval(self):
+        return 100.
 
 
 class EDLAcquisition(
@@ -215,7 +224,7 @@ def setup_acquisition_sources(args):
         msl = re.match(r'seedlink://([a-zA-Z0-9.-]+)(:(\d+))?(/(.*))?', arg)
         mca = re.match(r'cam://([^:]+)', arg)
         mus = re.match(r'hb628://([^:?]+)(\?([^?]+))?', arg)
-        msc = re.match(r'school://([^:]+)', arg)
+        msc = re.match(r'school://([^:?]+)(\?([^?]+))?', arg)
         med = re.match(r'edl://([^:]+)', arg)
         mcu = re.match(r'cube://([^:]+)', arg)
 
@@ -246,16 +255,18 @@ def setup_acquisition_sources(args):
                         sl.add_raw_stream_selector(stream)
 
             sources.append(sl)
+
         elif mca:
             port = mca.group(1)
             cam = CamAcquisition(port=port, deltat=0.0314504)
             sources.append(cam)
+
         elif mus:
             port = mus.group(1)
             try:
                 d = {}
                 if mus.group(3):
-                    d = dict(urlparse.parse_qsl(mus.group(3)))  # noqa
+                    d = dict(parse_qsl(mus.group(3)))
 
                 deltat = 1.0/float(d.get('rate', '50'))
                 channels = [(int(c), c) for c in d.get('channels', '01234567')]
@@ -268,13 +279,52 @@ def setup_acquisition_sources(args):
 
                 sources.append(hb628)
             except Exception:
-                raise
                 sys.exit('invalid acquisition source: %s' % arg)
 
         elif msc:
             port = msc.group(1)
-            sco = SchoolSeismometerAcquisition(port=port)
+
+            d = {}
+            if msc.group(3):
+                d = dict(parse_qsl(msc.group(3)))
+
+            d_rate = {
+                '20': ('a', 20.032),
+                '40': ('b', 39.860),
+                '80': ('c', 79.719)}
+
+            s_rate = d.get('rate', '80')
+            station = d.get('station', 'TEST')
+
+            if s_rate not in d_rate:
+                raise Exception(
+                    'Unsupported rate: %s (expected "20", "40" or "80")'
+                    % s_rate)
+
+            s_gain = d.get('gain', '4')
+
+            if s_gain not in ('1', '2', '4'):
+                raise Exception(
+                    'Unsupported gain: %s (expected "1", "2" or "4")'
+                    % s_gain)
+
+            start_string = s_gain + d_rate[s_rate][0]
+            deltat = 1.0 / d_rate[s_rate][1]
+
+            logger.info(
+                'School seismometer: trying to use device %s with gain=%s and '
+                'rate=%g.' % (port, s_gain, 1.0/deltat))
+
+            sco = SchoolSeismometerAcquisition(
+                port=port,
+                deltat=deltat,
+                start_string=start_string,
+                min_detection_size=50,
+                disallow_uneven_sampling_rates=False,
+                station=station)
+
             sources.append(sco)
+
         elif med:
             port = med.group(1)
             edl = EDLAcquisition(port=port)
@@ -295,10 +345,11 @@ def setup_acquisition_sources(args):
 class PollInjector(qc.QObject):
 
     def __init__(self, *args, **kwargs):
+        interval = kwargs.pop('interval', 1000.)
         qc.QObject.__init__(self)
         self._injector = pile.Injector(*args, **kwargs)
         self._sources = []
-        self.startTimer(1000)
+        self.startTimer(int(interval))
 
     def add_source(self, source):
         self._sources.append(source)
