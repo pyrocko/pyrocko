@@ -3,8 +3,6 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
-from __future__ import absolute_import, print_function, division
-
 from .active_faults import *  # noqa
 from .base import *  # noqa
 from .catalog import *  # noqa
