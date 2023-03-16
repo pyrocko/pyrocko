@@ -1,4 +1,7 @@
-from __future__ import print_function, absolute_import
+# https://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 
 import sys
 import logging
@@ -7,6 +10,7 @@ from io import StringIO
 
 import pyrocko
 from pyrocko import util
+from pyrocko import deps
 
 
 logger = logging.getLogger('pyrocko.gui.sparrow.cli')
@@ -166,9 +170,13 @@ def command_view(args):
 
     parser, options, args = cl_parse('view', args, setup)
 
-    pyrocko.sparrow(
-        use_depth_peeling=options.use_depth_peeling,
-        snapshots=options.snapshots)
+    try:
+        pyrocko.sparrow(
+            use_depth_peeling=options.use_depth_peeling,
+            snapshots=options.snapshots)
+
+    except deps.MissingPyrockoDependency as e:
+        die(str(e))
 
 
 def command_version(args):
@@ -181,7 +189,3 @@ def command_version(args):
 
     from pyrocko.print_version import print_version
     print_version(not options.short)
-
-
-if __name__ == '__main__':
-    main()

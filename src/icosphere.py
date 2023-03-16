@@ -3,8 +3,6 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
-from __future__ import absolute_import, print_function, division
-
 import math
 import numpy as num
 from .geometry import arr_vertices, arr_faces, normalize, refine_triangles, \
