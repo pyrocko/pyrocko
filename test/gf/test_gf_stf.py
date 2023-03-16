@@ -129,6 +129,26 @@ class GFSTFTestCase(unittest.TestCase):
             plt.plot(t_orig, a_orig, color='black')
             plt.plot(t, a)
             plt.plot(t, a, 'o')
+
+    def test_stf_regularized_yoffe(self):
+        from matplotlib import pyplot as plt
+
+        tref = 0.
+        for duration in [0., 3.]:
+            for peak_ratio in num.linspace(0., 1., 11):
+                stf = gf.RegularizedYoffeSTF(
+                    duration=duration, peak_ratio=peak_ratio, anchor=0)
+                t, a = stf.discretize_t(deltat=0.01, tref=tref)
+                assert numeq(stf.centroid_time(tref), tref, 1e-5)
+                # print(
+                #     numeq(stf.centroid_time(tref), tref, 1e-5),
+                #     stf.centroid_time(tref))
+                if show_plot:
+                    plt.title('Regularized Yoffe')
+                    plt.plot(t, a)
+                    plt.plot(t, a, 'o')
+
+        if show_plot:
             plt.show()
 
     def test_effective_durations(self):

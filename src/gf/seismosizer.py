@@ -60,6 +60,8 @@ pjoin = os.path.join
 
 guts_prefix = 'pf'
 
+PI_HALF = num.pi / 2
+PI3 = num.pi * 3
 d2r = math.pi / 180.
 r2d = 180. / math.pi
 km = 1e3
@@ -1374,6 +1376,208 @@ class MultiTriangleSTF(STF):
 
     def normalize(self):
         self.amplitudes /= (self.deltat * num.sum(num.abs(self.amplitudes)))
+
+
+class RegularizedYoffeSTF(STF):
+
+    """
+    Regularize-amplitudese type source time function proposed by Tinti et
+    al. 2005.
+
+    This function is derived from a convolution of the source-time function
+    first proposed by amplitudese (1951) with a triangular function.
+
+    [1] Tinti, E., Fukuyama, E., Piatanesi, A., & Cocco, M. (2005). A kinematic
+    source-time function compatible with earthquake dynamics. Bulletin of the
+    Seismological Society of America, 95(4), 1211-1223.
+
+    .. figure :: /static/stf-RegamplitudeseSTF.svg
+        :width: 40%
+        :alt: reg-amplitudese source time function
+    """
+
+    duration = Float.T(
+        default=1.0, help="baseline of the function (s)")
+
+    peak_ratio = Float.T(
+        default=0.1,
+        help="fraction of time compared to duration, "
+        "when the maximum amplitude is reached")
+
+    anchor = Float.T(
+        default=-1.0,
+        help="anchor point with respect to source.time: ("
+        "-1.0: left -> source duration [0, T] ~ hypocenter time, "
+        " 0.0: center -> source duration [-T/2, T/2] ~ centroid time, "
+        "+1.0: right -> source duration [-T, 0] ~ rupture end time)")
+
+    def __init__(self, **kwargs):
+        self._ratio = 1.27
+        self._min_peak_ratio_increment = 0.0001
+        STF.__init__(self, **kwargs)
+
+    def centroid_time(self, tref, deltat=0.01):
+        t, a = self.discretize_t(deltat, tref=tref)
+        return (a * t).sum()
+
+    @property
+    def scaled_peak_ratio(self):
+        if self.peak_ratio == 0.0:
+            return self._min_peak_ratio_increment
+
+        return self.peak_ratio * (self._ratio / 2) \
+            - self._min_peak_ratio_increment
+
+    @property
+    def peak_acceleration_time(self):
+        return self.scaled_peak_ratio * self.duration
+
+    def apply_anchor(self, times, tref, centroid_time):
+        if self.anchor == 0.0:
+            return tref + times - centroid_time
+        elif self.anchor == 1:
+            return num.flip(tref - times)
+        elif self.anchor == -1:
+            return times + tref
+
+    def discretize_t(self, deltat, tref):
+
+        tmin_stf, tmax_stf = 0, self.duration
+        tmin = (tmin_stf / deltat) * deltat
+        tmax = (tmax_stf / deltat) * deltat
+        nt = int(((tmax - tmin) / deltat)) + 1
+        times = num.linspace(0.0, self.duration, nt)
+
+        if self.duration == 0.0:
+            amplitudes = num.array([1.0])
+            return tref, amplitudes
+
+        else:
+            half_duration_triangle = self.peak_acceleration_time / self._ratio
+            tau_s = half_duration_triangle
+
+            duration_yoffe = self.duration - 2 * tau_s
+            tau_r = duration_yoffe
+
+            times_half = times / 2
+            tau_r_half = tau_r / 2
+            tau_r_el2 = tau_r ** 2
+            tau_s_2 = 2 * tau_s
+            tau_r_2 = 2 * tau_r
+            times_tau_r = tau_r - times
+            times_tau_s = times - tau_s
+            pi_2_tr = PI_HALF * tau_r
+
+            K = num.asarray((2 / (num.pi * tau_r * tau_s ** 2)))
+
+            def c1(times_half, times, times_tau_r):
+                c1 = (
+                    (times_half + tau_r / 4) * num.emath.sqrt(
+                        times * times_tau_r)
+                    + (times * tau_r - tau_r_el2)
+                    * num.emath.arcsin(num.emath.sqrt(times / tau_r))
+                    - (3 * tau_r_el2 / 4)
+                    * num.arctan(num.emath.sqrt((times_tau_r) / times)))
+                return num.real(c1)
+
+            c2 = PI3 * tau_r_el2 / 8
+
+            def c3(times, times_tau_s, times_tau_r):
+                times_rs = times_tau_r + tau_s
+                c3 = (
+                    (tau_s - times - tau_r_half) * num.emath.sqrt(
+                        times_tau_s * (times_rs))
+                    + tau_r
+                    * (tau_r_2 - 2 * times + tau_s_2)
+                    * num.emath.arcsin(num.emath.sqrt(times_tau_s / tau_r))
+                    + (3 * tau_r_el2 / 2)
+                    * num.arctan(num.emath.sqrt(times_rs / times_tau_s)))
+                return num.real(c3)
+
+            def c4(times_half, times, times_tau_r):
+                times_rs2 = times_tau_r + tau_s_2
+                c4 = (
+                    (times_half + tau_r / 4 - tau_s)
+                    * num.emath.sqrt((times - tau_s_2) * (times_rs2))
+                    - tau_r
+                    * (times_rs2)
+                    * num.emath.arcsin(num.emath.sqrt(
+                        (times - tau_s_2) / tau_r))
+                    - (3 * tau_r_el2 / 4)
+                    * num.arctan(num.emath.sqrt(
+                        (times_rs2) / (times - tau_s_2))))
+                return num.real(c4)
+
+            def c5(times):
+                c5 = pi_2_tr * (times - tau_r)
+                return c5
+
+            def c6(times):
+                c6 = pi_2_tr * (tau_s_2 - times + tau_r)
+                return c6
+
+            amplitudes = num.zeros_like(times)
+
+            mask1 = num.logical_and(times > 0.0, times < tau_s)
+            amplitudes[mask1] = c1(
+                times_half[mask1], times[mask1], times_tau_r[mask1]) + c2
+
+            mask2 = num.logical_and(times >= tau_s, times < tau_s_2)
+            amplitudes[mask2] = (
+                c1(times_half[mask2], times[mask2], times_tau_r[mask2])
+                - c2
+                + c3(times[mask2], times_tau_s[mask2], times_tau_r[mask2]))
+
+            mask3 = num.logical_and(times >= tau_r, times < tau_r + tau_s)
+            amplitudes[mask3] = (
+                c5(times[mask3])
+                + c3(times[mask3], times_tau_s[mask3], times_tau_r[mask3])
+                + c4(times_half[mask3], times[mask3], times_tau_r[mask3]))
+
+            mask4 = num.logical_and(
+                times >= tau_r + tau_s, times < tau_r + tau_s_2)
+            amplitudes[mask4] = \
+                c4(times_half[mask4], times[mask4], times_tau_r[mask4]) \
+                + c6(times[mask4])
+
+            if tau_r > tau_s_2:
+                amplitudes[times < 0.0] = 0.0
+
+                mask = num.logical_and(times >= tau_s_2, times < tau_r)
+                amplitudes[mask] = (
+                    c1(times_half[mask], times[mask], times_tau_r[mask])
+                    + c3(times[mask], times_tau_s[mask], times_tau_r[mask])
+                    + c4(
+                        times_half[mask],
+                        times[mask],
+                        times_tau_r[mask],
+                    )
+                )
+                amplitudes[times >= tau_r + tau_s_2] = 0.0
+
+            elif (tau_r >= tau_s and tau_r <= tau_s_2):
+                amplitudes[times < 0.0] = 0.0
+
+                mask = num.logical_and(times >= tau_s_2, times < tau_r)
+                amplitudes[mask] = (
+                    c5(times[mask])
+                    + c3(times[mask], times_tau_s[mask], times_tau_r[mask])
+                    - c2
+                )
+                amplitudes[times >= tau_r + tau_s_2] = 0.0
+            amplitudes *= K
+            norm_amplitudes = amplitudes / amplitudes.sum()
+            centroid_time = (norm_amplitudes * times).sum()
+            shifted_times = self.apply_anchor(times, tref, centroid_time)
+
+        return shifted_times, norm_amplitudes
+
+    def base_key(self):
+        return (
+            self.__class__.__name__,
+            self.duration,
+            self.peak_ratio,
+            self.anchor)
 
 
 class STFMode(StringChoice):
@@ -6414,6 +6618,7 @@ stf_classes = [
     TremorSTF,
     SimpleLandslideSTF,
     MultiTriangleSTF,
+    RegularizedYoffeSTF,
 ]
 
 __all__ = '''
