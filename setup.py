@@ -80,12 +80,15 @@ installed_date = %s
 ''' % tuple([repr(x) for x in (
         sha1, local_modifications, version, combi, datestr)])
 
-    try:
-        f = open(op.join('src', 'info.py'), 'w')
-        f.write(s)
-        f.close()
-    except Exception:
-        pass
+    info_path = op.join('src', 'info.py')
+    if os.path.exists(info_path):
+        # remove file for the case we are running as normal user but root-owned
+        # file from a previous run is in src.
+        os.unlink(info_path)
+
+    f = open(info_path, 'w')
+    f.write(s)
+    f.close()
 
 
 libmseed_sources = [op.join('libmseed', entry) for entry in [
