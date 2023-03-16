@@ -33,38 +33,8 @@ def sparrow(*args, **kwargs):
     Calls :py:func:`pyrocko.gui.sparrow.main`.
     '''
 
-    check_have_vtk()
+    from pyrocko import deps
+    deps.require('vtk')
 
     from pyrocko.gui.sparrow.main import main
     return main(*args, **kwargs)
-
-
-class DependencyMissing(Exception):
-    pass
-
-
-class DependencyMissingVTK(DependencyMissing):
-    pass
-
-
-def check_have_vtk():
-    import sys
-
-    try:
-        import vtk  # noqa
-    except ImportError:
-        message = '''VTK is not available.
-
-Either VTK is not installed or it does not support the currently running
-version of Python (Python%i).''' % sys.version_info.major
-
-        raise DependencyMissingVTK(message)
-
-    try:
-        from vtk.qt.QVTKRenderWindowInteractor \
-            import QVTKRenderWindowInteractor
-
-        QVTKRenderWindowInteractor
-    except ImportError:
-        message = 'The installed version of VTK is incompatible with Qt5.'
-        raise DependencyMissing(message)

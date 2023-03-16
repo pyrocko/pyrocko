@@ -3,8 +3,6 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
-from __future__ import absolute_import, print_function, division
-
 from pyrocko.gui.snuffler import snuffling as sn
 from pyrocko import obspy_compat as oc
 
