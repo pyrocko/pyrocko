@@ -60,6 +60,9 @@ def main():
 
             def run(self, parser, args):
                 from pyrocko import deps
+                print()
+                print('Python executable:\n  %s' % sys.executable)
+                print()
                 deps.print_installations()
 
         squirrel.run(

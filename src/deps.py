@@ -127,7 +127,8 @@ def find_pyrocko_installations():
 
 
 def str_installations(found):
-    lines = ['sys.path configuration is: \n  %s\n' % '\n  '.join(sys.path)]
+    lines = [
+        'Python library path (sys.path): \n  %s\n' % '\n  '.join(sys.path)]
 
     dates = sorted([xx[0] for xx in found])
     i = 1
