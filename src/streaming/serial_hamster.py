@@ -61,6 +61,9 @@ class Queue(object):
     def capacity(self):
         return self.nmax
 
+    def __str__(self):
+        return ' '.join('%g' % v for v in self.queue)
+
 
 class SerialHamsterError(Exception):
     pass
@@ -70,12 +73,14 @@ class SerialHamster(object):
 
     def __init__(
             self, port=0, baudrate=9600, timeout=5, buffersize=128,
+            start_string=None,
             network='', station='TEST', location='', channels=['Z'],
             disallow_uneven_sampling_rates=True,
             deltat=None,
             deltat_tolerance=0.01,
             in_file=None,
             lookback=5,
+            min_detection_size=5,
             tune_to_quickones=True):
 
         self.port = port
@@ -101,8 +106,9 @@ class SerialHamster(object):
         self.listeners = []
         self.quit_requested = False
         self.tune_to_quickones = tune_to_quickones
+        self.start_string = start_string
 
-        self.min_detection_size = 5
+        self.min_detection_size = min_detection_size
 
     def add_listener(self, obj):
         self.listeners.append(weakref.ref(obj))
@@ -135,7 +141,9 @@ class SerialHamster(object):
             self.ser = self.in_file
 
     def send_start(self):
-        pass
+        ser = self.ser
+        if self.start_string is not None:
+            ser.write(self.start_string.encode('ascii'))
 
     def acquisition_stop(self):
         if self.ser is not None:
@@ -286,7 +294,7 @@ class SerialHamster(object):
 
         if self.tmin is not None and self.deltat is not None:
             for channel, values in zip(self.channels, self.values):
-                v = num.array(values, dtype=int)
+                v = num.array(values, dtype=num.int32)
 
                 tr = trace.Trace(
                     network=self.network,

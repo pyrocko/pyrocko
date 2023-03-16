@@ -38,7 +38,7 @@ attribute_dtypes = [
 name_to_icol = dict(
     (name, icol) for (icol, name) in enumerate(attribute_names))
 
-event_dtype = num.dtype(list(zip(attribute_names, attribute_dtypes)))
+# event_dtype = num.dtype(list(zip(attribute_names, attribute_dtypes)))
 
 t_time = num.float64
 

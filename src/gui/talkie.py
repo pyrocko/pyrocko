@@ -394,3 +394,19 @@ for method_name in ['reverse', 'sort']:
         setattr(TalkieList, method_name, x())
     except AttributeError:
         pass
+
+
+class Listener(object):
+
+    def listener(self, listener):
+        if not hasattr(self, '_strong_refs'):
+            self._strong_refs = []
+
+        self._strong_refs.append(listener)
+        return listener
+
+    def listener_no_args(self, listener):
+        def listener1(k, v):
+            listener()
+
+        return self.listener(listener1)

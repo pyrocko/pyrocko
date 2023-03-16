@@ -75,7 +75,7 @@ class Pile(object):
         for ref in self._listeners:
             obj = ref()
             if obj:
-                obj.pile_changed(what)
+                obj.pile_changed(what, [])
 
     def get_tmin(self):
         return self.tmin
