@@ -48,15 +48,11 @@ class SpheroidElement(Element):
 
     def bind_state(self, state):
         Element.bind_state(self, state)
-
-        for var in [
-                'visible', 'level', 'opacity',
-                'lat', 'lon', 'depth', 'a', 'b', 'c', 'azimuth', 'dip']:
-
-            self.register_state_listener3(self.update, state, var)
-
-    def unbind_state(self):
-        self._listeners = []
+        self.talkie_connect(
+            state,
+            ['visible', 'level', 'opacity', 'lat', 'lon', 'depth', 'a', 'b',
+             'c', 'azimuth', 'dip'],
+            self.update)
 
     def set_parent(self, parent):
         Element.set_parent(self, parent)

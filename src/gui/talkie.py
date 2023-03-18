@@ -240,15 +240,15 @@ def type_eq_proxy_seq(seq):
     return list(TypeEqProxy(x) for x in seq)
 
 
-class ListenerRef(object):
-    def __init__(self, talkie_root, listener, path, ref_listener):
+class TalkieConnection(object):
+    def __init__(self, talkie_root, path, listener):
         self._talkie_root = talkie_root
         self._listener = listener
         self._path = path
-        self._ref_listener = ref_listener
+        self._ref_listener = ref(listener)
 
     def release(self):
-        self._talkie_root.remove_listener(self)
+        self._talkie_root.disconnect(self)
 
 
 class TalkieRoot(Talkie):
@@ -257,15 +257,15 @@ class TalkieRoot(Talkie):
         self._listeners = listdict()
         Talkie.__init__(self, **kwargs)
 
-    def add_listener(self, listener, path=''):
-        ref_listener = ref(listener)
-        self._listeners[path].append(ref_listener)
-        return ListenerRef(self, listener, path, ref_listener)
+    def talkie_connect(self, path, listener):
+        connection = TalkieConnection(self, path, listener)
+        self._listeners[path].append(connection._ref_listener)
+        return connection
 
-    def remove_listener(self, listener_ref):
+    def talkie_disconnect(self, connection):
         try:
-            self._listeners[listener_ref._path].remove(
-                listener_ref._ref_listener)
+            self._listeners[connection._path].remove(
+                connection._ref_listener)
         except ValueError:
             pass
 
@@ -396,17 +396,33 @@ for method_name in ['reverse', 'sort']:
         pass
 
 
-class Listener(object):
+def drop_args_wrapper(f):
+    def f_drop_args(*args):
+        f()
 
-    def listener(self, listener):
-        if not hasattr(self, '_strong_refs'):
-            self._strong_refs = []
+    return f_drop_args
 
-        self._strong_refs.append(listener)
-        return listener
 
-    def listener_no_args(self, listener):
-        def listener1(k, v):
-            listener()
+class TalkieConnectionOwner(object):
+    def __init__(self):
+        self._connections = []
 
-        return self.listener(listener1)
+    def talkie_connect(self, state, path, listener, drop_args=False):
+        if drop_args:
+            listener = drop_args_wrapper(listener)
+
+        if not isinstance(path, str):
+            return [
+                self.talkie_connect(state, path_, listener, False)
+                for path_ in path]
+
+        connection = state.talkie_connect(path, listener)
+        self._connections.append(connection)
+        return connection
+
+    def talkie_disconnect_all(self):
+        while self._connections:
+            try:
+                self._connections.pop().release()
+            except Exception:
+                pass

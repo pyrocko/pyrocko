@@ -7,6 +7,7 @@ import vtk
 
 from pyrocko.guts import Bool, List, String, StringChoice, Float, get_elements
 from pyrocko.gui.qt_compat import qw, qc
+from pyrocko.gui.talkie import TalkieConnectionOwner
 from pyrocko import util
 
 
@@ -70,7 +71,7 @@ class HudElement(Element):
         Element.__init__(self)
         self._controls = None
         self._actor = None
-        self._listeners2 = []
+        self._connections2 = TalkieConnectionOwner()
 
     def get_name(self):
         return 'HUD'
@@ -78,16 +79,16 @@ class HudElement(Element):
     def bind_state(self, state):
         Element.bind_state(self, state)
 
-        for var in ['visible', 'lightness', 'fontsize', 'template',
-                    'position']:
-            self.register_state_listener3(self.update, state, var)
+        self.talkie_connect(
+            state,
+            ['visible', 'lightness', 'fontsize', 'template', 'position'],
+            self.update)
 
-        self.register_state_listener3(self.update_bindings, state, 'variables')
+        self.talkie_connect(state, 'variables', self.update_bindings)
 
     def unbind_state(self):
-        self._listeners.clear()
-        self._listeners2.clear()
-        self._state = None
+        self._connections2.talkie_disconnect_all()
+        Element.unbind_state(self)
 
     def set_parent(self, parent):
         self._parent = parent
@@ -99,8 +100,8 @@ class HudElement(Element):
                 self.get_title_control_remove(),
                 self.get_title_control_visible()])
 
-        self.register_state_listener3(
-            self.update, self._parent.gui_state, 'size')
+        self.talkie_connect(
+            self._parent.gui_state, 'size', self.update)
 
         self.update_bindings()
         self.update()
@@ -119,13 +120,10 @@ class HudElement(Element):
             self._parent = None
 
     def update_bindings(self, *args):
-        while self._listeners2:
-            listener_ref = self._listeners2.pop()
-            listener_ref.release()
+        self._connections2.talkie_disconnect_all()
 
-        for variable in self._state.variables:
-            self._listeners2.append(
-                self._parent.state.add_listener(self.update, variable))
+        self._connections2.talkie_connect(
+            self._parent.state, self._state.variables, self.update)
 
     def update(self, *args):
         state = self._state

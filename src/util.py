@@ -68,6 +68,8 @@ import re
 import calendar
 import math
 import fnmatch
+import inspect
+import weakref
 try:
     import fcntl
 except ImportError:
@@ -2866,3 +2868,10 @@ def get_threadpool_limits():
 def fmt_summary(entries, widths):
     return ' | '.join(
         entry.ljust(width) for (entry, width) in zip(entries, widths))
+
+
+def smart_weakref(obj, callback=None):
+    if inspect.ismethod(obj):
+        return weakref.WeakMethod(obj, callback)
+    else:
+        return weakref.ref(obj, callback)

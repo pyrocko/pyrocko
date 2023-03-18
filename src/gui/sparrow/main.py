@@ -22,6 +22,7 @@ from pyrocko import geonames
 from pyrocko import moment_tensor as pmt
 
 from pyrocko.gui.util import Progressbars, RangeEdit
+from pyrocko.gui.talkie import TalkieConnectionOwner
 from pyrocko.gui.qt_compat import qw, qc, qg
 # from pyrocko.gui import vtk_util
 
@@ -155,10 +156,10 @@ class YAMLEditor(qw.QTextEdit):
         return qw.QTextEdit.event(self, ev)
 
 
-class StateEditor(qw.QFrame):
+class StateEditor(qw.QFrame, TalkieConnectionOwner):
     def __init__(self, viewer, *args, **kwargs):
         qw.QFrame.__init__(self, *args, **kwargs)
-        self.listeners = []
+        TalkieConnectionOwner.__init__(self)
 
         layout = qw.QGridLayout()
 
@@ -203,14 +204,11 @@ class StateEditor(qw.QFrame):
         self.bind_state()
 
     def bind_state(self, *args):
-        ref = self.viewer.state.add_listener(self.update_state)
-        self.listeners.append(ref)
+        self.talkie_connect(self.viewer.state, '', self.update_state)
         self.update_state()
 
     def unbind_state(self):
-        while self.listeners:
-            listener = self.listeners.pop()
-            self.viewer.state.remove_listener(listener)
+        self.talkie_disconnect_all()
 
     def update_state(self, *args):
         cursor = self.source_editor.textCursor()
@@ -245,13 +243,12 @@ class StateEditor(qw.QFrame):
             self.error_display.setPlainText(str(e))
 
 
-class SparrowViewer(qw.QMainWindow):
+class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
     def __init__(self, use_depth_peeling=True, events=None, snapshots=None):
         qw.QMainWindow.__init__(self)
+        TalkieConnectionOwner.__init__(self)
 
         common.get_app().set_main_window(self)
-
-        self.listeners = []
 
         self.state = vstate.ViewerState()
         self.gui_state = vstate.ViewerGuiState()
@@ -293,8 +290,8 @@ class SparrowViewer(qw.QMainWindow):
         self._add_vtk_widget_size_menu_entries(menu_sizes)
 
         # detached/attached
-        self.register_state_listener3(
-            self.update_detached, self.gui_state, 'detached')
+        self.talkie_connect(
+            self.gui_state, 'detached', self.update_detached)
 
         action = qw.QAction('Detach')
         action.setCheckable(True)
@@ -461,8 +458,8 @@ class SparrowViewer(qw.QMainWindow):
         self._elements = {}
         self._elements_active = {}
 
-        self.register_state_listener3(
-            self.update_elements, self.state, 'elements')
+        self.talkie_connect(
+            self.state, 'elements', self.update_elements)
 
         self.state.elements.append(elements.IcosphereState(
             element_id='icosphere',
@@ -522,8 +519,8 @@ class SparrowViewer(qw.QMainWindow):
         self.show()
         self.windowHandle().showMaximized()
 
-        self.register_state_listener3(
-            self.update_vtk_widget_size, self.gui_state, 'fixed_size')
+        self.talkie_connect(
+            self.gui_state, 'fixed_size', self.update_vtk_widget_size)
 
         self.update_vtk_widget_size()
 
@@ -588,8 +585,8 @@ class SparrowViewer(qw.QMainWindow):
             variable_size_action.blockSignals(False)
 
         update_widget()
-        self.register_state_listener3(
-            update_widget, self.gui_state, 'fixed_size')
+        self.talkie_connect(
+            self.gui_state, 'fixed_size', update_widget)
 
     def update_vtk_widget_size(self, *args):
         if self.gui_state.fixed_size:
@@ -1120,8 +1117,8 @@ class SparrowViewer(qw.QMainWindow):
 
         self.focal_point_checkbox = cb
 
-        self.register_state_listener3(
-            self.update_focal_point, self.gui_state, 'focal_point')
+        self.talkie_connect(
+            self.gui_state, 'focal_point', self.update_focal_point)
 
         self.update_focal_point()
 
@@ -1180,11 +1177,13 @@ class SparrowViewer(qw.QMainWindow):
         layout.addWidget(self._crosshair_checkbox, 4, 0, 1, 2)
 
         # camera bindings
-        for var in ['lat', 'lon', 'depth', 'strike', 'dip', 'distance']:
-            self.register_state_listener3(self.update_camera, self.state, var)
+        self.talkie_connect(
+            self.state,
+            ['lat', 'lon', 'depth', 'strike', 'dip', 'distance'],
+            self.update_camera)
 
-        self.register_state_listener3(
-            self.update_panel_visibility, self.gui_state, 'panels_visible')
+        self.talkie_connect(
+            self.gui_state, 'panels_visible', self.update_panel_visibility)
 
         return frame
 
@@ -1335,14 +1334,14 @@ class SparrowViewer(qw.QMainWindow):
         layout.addWidget(label_effective_tmax, 6, 1)
 
         for var in ['tmin', 'tmax', 'tduration', 'tposition']:
-            self.register_state_listener3(
-                self.update_effective_time_labels, self.state, var)
+            self.talkie_connect(
+                self.state, var, self.update_effective_time_labels)
 
         self._label_effective_tmin = label_effective_tmin
         self._label_effective_tmax = label_effective_tmax
 
-        self.register_state_listener3(
-            self.update_tcursor, self.gui_state, 'tcursor')
+        self.talkie_connect(
+            self.gui_state, 'tcursor', self.update_tcursor)
 
         return frame
 
@@ -1359,8 +1358,8 @@ class SparrowViewer(qw.QMainWindow):
         layout.addWidget(cb, 0, 1)
         vstate.state_bind_combobox(self, self.state, 'lighting', cb)
 
-        self.register_state_listener3(
-            self.update_render_settings, self.state, 'lighting')
+        self.talkie_connect(
+            self.state, 'lighting', self.update_render_settings)
 
         # background
 
@@ -1373,8 +1372,8 @@ class SparrowViewer(qw.QMainWindow):
         vstate.state_bind_combobox_background(
             self, self.state, 'background', cb)
 
-        self.register_state_listener3(
-            self.update_render_settings, self.state, 'background')
+        self.talkie_connect(
+            self.state, 'background', self.update_render_settings)
 
         return frame
 
@@ -1400,12 +1399,6 @@ class SparrowViewer(qw.QMainWindow):
         self.state.strike = 90.
         self.state.dip = 0
         self.gui_state.focal_point = 'center'
-
-    def register_state_listener(self, listener):
-        self.listeners.append(listener)  # keep listeners alive
-
-    def register_state_listener3(self, listener, state, path):
-        self.register_state_listener(state.add_listener(listener, path))
 
     def get_camera_geometry(self):
 

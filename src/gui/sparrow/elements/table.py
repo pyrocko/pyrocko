@@ -109,24 +109,24 @@ class TableElement(base.Element):
 
     def bind_state(self, state):
         base.Element.bind_state(self, state)
-        for var in ['visible', 'size']:
-            self.register_state_listener3(self.update, state, var)
+        self.talkie_connect(state, ['visible', 'size'], self.update)
 
-        for var in [
-                'depth_min', 'depth_max', 'time_masking_shape',
-                'time_masking_mode', 'time_masking_opacity']:
-
-            self.register_state_listener3(self.update_alpha, state, var)
+        self.talkie_connect(
+            state,
+            ['depth_min', 'depth_max', 'time_masking_shape',
+             'time_masking_mode', 'time_masking_opacity'],
+            self.update_alpha)
 
         self.cpt_handler.bind_state(state.cpt, self.update)
 
-        for var in ['symbol', 'size_parameter', 'color_parameter']:
-            self.register_state_listener3(self.update_sizes, state, var)
+        self.talkie_connect(
+            state,
+            ['symbol', 'size_parameter', 'color_parameter'],
+            self.update_sizes)
 
     def unbind_state(self):
         self.cpt_handler.unbind_state()
-        self._listeners = []
-        self._state = None
+        base.Element.unbind_state(self)
 
     def get_name(self):
         return 'Table'
@@ -142,8 +142,8 @@ class TableElement(base.Element):
                 self.get_title_control_visible()])
 
         for var in ['tmin', 'tmax', 'tduration', 'tposition']:
-            self.register_state_listener3(
-                self.update_alpha, self._parent.state, var)
+            self.talkie_connect(
+                self._parent.state, var, self.update_alpha)
 
         self._parent.register_data_provider(self)
 

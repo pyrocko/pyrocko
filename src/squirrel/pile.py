@@ -4,7 +4,6 @@
 # ---|P------/S----------~Lg----------
 
 import logging
-import weakref
 from pyrocko import squirrel as psq, trace, util
 from pyrocko import pile as classic_pile
 
@@ -69,7 +68,7 @@ class Pile(object):
         self.notify_listeners(event)
 
     def add_listener(self, obj):
-        self._listeners.append(weakref.ref(obj))
+        self._listeners.append(util.smart_weakref(obj))
 
     def notify_listeners(self, what):
         for ref in self._listeners:

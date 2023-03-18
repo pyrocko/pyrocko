@@ -65,8 +65,7 @@ class VolcanoesElement(Element):
 
     def bind_state(self, state):
         Element.bind_state(self, state)
-        for var in ['visible', 'size']:
-            self.register_state_listener3(self.update, state, var)
+        self.talkie_connect(state, ['visible', 'size'], self.update)
 
     def get_name(self):
         return 'Volcanoes'

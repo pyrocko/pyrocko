@@ -7,12 +7,11 @@ from __future__ import absolute_import, print_function, division
 
 import math
 import time
-import weakref
 import numpy as num
 
 from pyrocko.gui.qt_compat import qc, qg, qw
 
-from pyrocko.gui.talkie import Listener
+from pyrocko.gui.talkie import TalkieConnectionOwner
 from pyrocko.gui.drum.state import State, TextStyle
 from pyrocko.gui_util import make_QPolygonF, PhaseMarker
 from pyrocko import trace, util, pile
@@ -227,7 +226,7 @@ class Empty(Exception):
     pass
 
 
-class DrumLine(qc.QObject, Listener):
+class DrumLine(qc.QObject, TalkieConnectionOwner):
     def __init__(self, iline, tmin, tmax, traces, state):
         qc.QObject.__init__(self)
         self.traces = traces
@@ -242,10 +241,7 @@ class DrumLine(qc.QObject, Listener):
         self._ydata_cache = {}
         self._time_per_pixel = None
         self.access_counter = 0
-
-        state.add_listener(
-            self.listener_no_args(self._empty_cache),
-            path='style.trace_resolution')
+        self.talkie_connect(state, 'style.trace_resolution', self._empty_cache)
 
     def data_range(self, mode='min-max'):
         if not self.traces:
@@ -437,7 +433,7 @@ class MarkerStore(object):
         self._notify_listeners('remove_many', x)
 
     def add_listener(self, obj):
-        self._listeners.append(weakref.ref(obj))
+        self._listeners.append(util.smart_weakref(obj))
 
     def _adjust_minmax(self):
         if self._by_tmin:
@@ -459,7 +455,7 @@ class MarkerStore(object):
         return iter(self._by_tmin)
 
 
-class DrumViewMain(qw.QWidget, Listener):
+class DrumViewMain(qw.QWidget, TalkieConnectionOwner):
 
     def __init__(self, pile, *args):
         qw.QWidget.__init__(self, *args)
@@ -468,10 +464,10 @@ class DrumViewMain(qw.QWidget, Listener):
 
         st = self.state = State()
         self.markers = MarkerStore()
-        self.markers.add_listener(self.listener_no_args(self._markers_changed))
+        self.markers.add_listener(self._markers_changed)
 
         self.pile = pile
-        self.pile.add_listener(self.listener(self._pile_changed))
+        self.pile.add_listener(self._pile_changed)
 
         self._drumlines = {}
         self._wheel_pos = 0
@@ -484,15 +480,29 @@ class DrumViewMain(qw.QWidget, Listener):
         self._init_touch()
         self._init_following()
 
-        sal = self.state.add_listener
+        self.talkie_connect(
+            self.state,
+            '',
+            self._state_changed,
+            drop_args=True)
 
-        sal(self.listener_no_args(self._state_changed))
-        sal(self.listener_no_args(self._drop_cached_drumlines), 'filters')
-        sal(self.listener_no_args(self._drop_cached_drumlines), 'nslc')
-        sal(self.listener_no_args(self._drop_cached_drumlines), 'tline')
-        sal(self.listener_no_args(
-            self._adjust_background_color), 'style.background_color')
-        sal(self.listener_no_args(self._adjust_follow), 'follow')
+        self.talkie_connect(
+            self.state,
+            ['filters', 'nslc', 'tline'],
+            self._drop_cached_drumlines,
+            drop_args=True)
+
+        self.talkie_connect(
+            self.state,
+            'style.background_color',
+            self._adjust_background_color,
+            drop_args=True)
+
+        self.talkie_connect(
+            self.state,
+            'follow',
+            self._adjust_follow,
+            drop_args=True)
 
         self._adjust_background_color()
         self._adjust_follow()
@@ -521,7 +531,7 @@ class DrumViewMain(qw.QWidget, Listener):
     def _state_changed(self):
         self.update()
 
-    def _markers_changed(self):
+    def _markers_changed(self, *_):
         self.update()
 
     def _pile_changed(self, what, content):

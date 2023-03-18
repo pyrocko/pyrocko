@@ -9,8 +9,6 @@ import logging
 import sqlite3
 import re
 import time
-import types
-import weakref
 
 from pyrocko.io.io_common import FileLoadError
 from pyrocko import util
@@ -251,11 +249,7 @@ class Database(object):
             callback=self._notify_listeners)
 
     def add_listener(self, listener):
-        if isinstance(listener, types.MethodType):
-            listener_ref = weakref.WeakMethod(listener)
-        else:
-            listener_ref = weakref.ref(listener)
-
+        listener_ref = util.smart_weakref(listener)
         self._listeners.append(listener_ref)
         return listener_ref
 

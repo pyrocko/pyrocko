@@ -5,7 +5,6 @@
 
 import time
 import logging
-import weakref
 import math
 import numpy as num
 from scipy import stats
@@ -111,7 +110,7 @@ class SerialHamster(object):
         self.min_detection_size = min_detection_size
 
     def add_listener(self, obj):
-        self.listeners.append(weakref.ref(obj))
+        self.listeners.append(util.smart_weakref(obj))
 
     def clear_listeners(self):
         self.listeners = []

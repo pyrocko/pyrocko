@@ -7,7 +7,6 @@ import errno
 import time
 import os
 import struct
-import weakref
 import math
 import shutil
 try:
@@ -151,7 +150,7 @@ class GFTrace(object):
             begin_value = 0.0
             end_value = 0.0
 
-        self.data = weakref.ref(data)()
+        self.data = data
         self.itmin = itmin
         self.deltat = deltat
         self.is_zero = is_zero

@@ -102,13 +102,12 @@ class StationsElement(Element):
 
     def bind_state(self, state):
         Element.bind_state(self, state)
-        for var in ['visible', 'size', 'station_selection']:
-            self.register_state_listener3(self.update, state, var)
+        self.talkie_connect(
+            state,
+            ['visible', 'size', 'station_selection'],
+            self.update)
 
         self._current_selection = None
-
-    def unbind_state(self):
-        self._listeners = []
 
     def get_name(self):
         return 'Stations'

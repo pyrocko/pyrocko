@@ -43,12 +43,10 @@ class CustomTopoElement(Element):
 
     def bind_state(self, state):
         Element.bind_state(self, state)
-        self.register_state_listener3(self.update, state, 'visible')
-        self.register_state_listener3(self.update, state, 'exaggeration')
-        self.register_state_listener3(self.update, state, 'opacity')
-        self.register_state_listener3(self.update, state, 'smooth')
-        self.register_state_listener3(self.update, state, 'cpt')
-        self.register_state_listener3(self.update, state, 'path')
+        self.talkie_connect(
+            state,
+            ['visible', 'exaggeration', 'opacity', 'smooth', 'cpt', 'path'],
+            self.update)
 
     def set_parent(self, parent):
         self._parent = parent
