@@ -13,7 +13,7 @@ from pyrocko.guts import String, Float, StringChoice
 from pyrocko.plot import AutoScaler, AutoScaleMode
 from pyrocko.dataset import topo
 
-from pyrocko.gui.talkie import TalkieRoot
+from pyrocko.gui.talkie import TalkieRoot, TalkieConnectionOwner
 from pyrocko.gui.qt_compat import qc, qw
 from pyrocko.gui.vtk_util import cpt_to_vtk_lookuptable
 
@@ -37,17 +37,11 @@ class ElementState(TalkieRoot):
         TalkieRoot.__init__(self, **kwargs)
 
 
-class Element(object):
+class Element(TalkieConnectionOwner):
     def __init__(self):
-        self._listeners = []
+        TalkieConnectionOwner.__init__(self)
         self._parent = None
         self._state = None
-
-    def register_state_listener(self, listener):
-        self._listeners.append(listener)  # keep listeners alive
-
-    def register_state_listener3(self, listener, state, path):
-        self.register_state_listener(state.add_listener(listener, path))
 
     def remove(self):
         if self._parent and self._state:
@@ -64,13 +58,7 @@ class Element(object):
         self._state = state
 
     def unbind_state(self):
-        for listener in self._listeners:
-            try:
-                listener.release()
-            except Exception:
-                pass
-
-        self._listeners = []
+        self.talkie_disconnect_all()
         self._state = None
 
     def update_visibility(self, visible):
@@ -96,8 +84,8 @@ class Element(object):
 
         set_button_checked()
 
-        self.register_state_listener3(
-            set_button_checked, self._state, 'visible')
+        self.talkie_connect(
+            self._state, 'visible', set_button_checked)
 
         return button
 
@@ -131,12 +119,13 @@ class CPTHandler(Element):
         for state_attr in [
                 'cpt_name', 'cpt_mode', 'cpt_scale_min', 'cpt_scale_max']:
 
-            self.register_state_listener3(
-                update_function, cpt_state, state_attr)
+            self.talkie_connect(
+                cpt_state, state_attr, update_function)
 
         self._state = cpt_state
 
     def unbind_state(self):
+        Element.unbind_state(self)
         self._cpts = {}
         self._lookuptable = None
         self._values = None

@@ -383,7 +383,7 @@ class CatalogElement(TableElement):
 
     def bind_state(self, state):
         TableElement.bind_state(self, state)
-        self.register_state_listener3(self.update, state, 'selection')
+        self.talkie_connect(state, 'selection', self.update)
 
     def update(self, *args):
         state = self._state

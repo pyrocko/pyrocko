@@ -110,24 +110,17 @@ class RaysElement(Element):
         self._pipe = None
         self._controls = None
         self._active_faults = None
-        self._listeners = []
         self._mod = cake.load_model()
         self._stations = model.load_stations('stations.txt')
         self._params = ()
 
     def bind_state(self, state):
-        upd = self.update
-        self._listeners.append(upd)
-        for var in [
-                'visible', 'line_width', 'opacity',
-                'lat', 'lon', 'depth']:
-
-            self.register_state_listener(self.update, state, var)
+        self.talkie_connect(
+            state,
+            ['visible', 'line_width', 'opacity', 'lat', 'lon', 'depth'],
+            self.update)
 
         self._state = state
-
-    def unbind_state(self):
-        self._listeners = []
 
     def get_name(self):
         return 'Rays'

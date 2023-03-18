@@ -6,7 +6,6 @@
 import os
 import logging
 import time
-import weakref
 import copy
 import re
 import sys
@@ -1077,7 +1076,7 @@ class Pile(TracesGroup):
         self.abspaths = set()
 
     def add_listener(self, obj):
-        self.listeners.append(weakref.ref(obj))
+        self.listeners.append(util.smart_weakref(obj))
 
     def notify_listeners(self, what, content):
         for ref in self.listeners:

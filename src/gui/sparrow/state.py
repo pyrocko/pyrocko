@@ -160,8 +160,7 @@ def state_bind(
         sig.connect(wrap_update_state)
 
     for path in paths:
-        owner.register_state_listener(wrap_update_widget)
-        state.add_listener(wrap_update_widget, path)
+        owner.talkie_connect(state, path, wrap_update_widget)
 
     wrap_update_widget()
 

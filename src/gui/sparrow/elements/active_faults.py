@@ -132,9 +132,10 @@ class ActiveFaultsElement(Element):
 
     def bind_state(self, state):
         Element.bind_state(self, state)
-        self.register_state_listener3(self.update, state, 'visible')
-        self.register_state_listener3(self.update, state, 'line_width')
-        self.register_state_listener3(self.update, state, 'color_by_slip_type')
+        self.talkie_connect(
+            state,
+            ['visible', 'line_width', 'color_by_slip_type'],
+            self.update)
 
     def get_name(self):
         return 'Active Faults'

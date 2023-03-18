@@ -111,17 +111,12 @@ class PlatesBoundsElement(Element):
         self._pipe = None
         self._controls = None
         self._plates = None
-        self._listeners = []
         self._plate_line = None
         self._plate_lines = []
 
     def bind_state(self, state):
         Element.bind_state(self, state)
-        for var in ['visible', 'opacity']:
-            self.register_state_listener3(self.update, state, var)
-
-    def unbind_state(self):
-        self._listerners = []
+        self.talkie_connect(state, ['visible', 'opacity'], self.update)
 
     def get_name(self):
         return 'Plate bounds'

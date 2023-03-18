@@ -44,7 +44,6 @@ class GeometryState(base.ElementState):
 class GeometryElement(base.Element):
 
     def __init__(self):
-        self._listeners = []
         self._parent = None
         self._state = None
         self._controls = None
@@ -88,8 +87,10 @@ class GeometryElement(base.Element):
                 self.get_title_control_remove(),
                 self.get_title_control_visible()])
 
-        for var in ['tmin', 'tmax', 'lat', 'lon']:
-            self.register_state_listener3(self.update, self._parent.state, var)
+        self.talkie_connect(
+            self._parent.state,
+            ['tmin', 'tmax', 'lat', 'lon'],
+            self.update)
 
         self.update()
 
@@ -108,22 +109,17 @@ class GeometryElement(base.Element):
 
     def bind_state(self, state):
         base.Element.bind_state(self, state)
-        for var in [
-                'visible', 'geometry', 'display_parameter', 'time', 'opacity']:
 
-            self.register_state_listener3(self.update, state, var)
+        self.talkie_connect(
+            state,
+            ['visible', 'geometry', 'display_parameter', 'time', 'opacity'],
+            self.update)
 
         self.cpt_handler.bind_state(state.cpt, self.update)
 
     def unbind_state(self):
-        for listener in self._listeners:
-            try:
-                listener.release()
-            except Exception:
-                pass
-
         self.cpt_handler.unbind_state()
-        self._state = None
+        base.Element.unbind_state(self)
 
     def get_cpt_name(self, cpt, display_parameter):
         return '{}_{}'.format(cpt, display_parameter)

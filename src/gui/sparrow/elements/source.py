@@ -149,16 +149,16 @@ class SourceElement(base.Element):
 
     def bind_state(self, state):
         base.Element.bind_state(self, state)
-        for var in ['visible', 'source_selection', 'deltat',
-                    'display_parameter']:
-            self.register_state_listener3(self.update, state, var)
+        self.talkie_connect(
+            state,
+            ['visible', 'source_selection', 'deltat', 'display_parameter'],
+            self.update)
 
         self.cpt_handler.bind_state(state.cpt, self.update)
 
     def unbind_state(self):
-        self._listeners = []
-        self._state = None
         self.cpt_handler.unbind_state()
+        base.Element.unbind_state(self)
 
     def get_name(self):
         return 'Source'

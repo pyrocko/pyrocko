@@ -128,8 +128,7 @@ class CrosshairElement(Element):
 
     def bind_state(self, state):
         Element.bind_state(self, state)
-        self.register_state_listener3(self.update, state, 'visible')
-        self.register_state_listener3(self.update, state, 'color')
+        self.talkie_connect(state, ['visible', 'color'], self.update)
 
     def set_parent(self, parent):
         Element.set_parent(self, parent)
@@ -141,8 +140,8 @@ class CrosshairElement(Element):
             title_controls=[
                 self.get_title_control_visible()])
 
-        for var in ['distance', 'lat', 'lon']:
-            self.register_state_listener3(self.update, self._parent.state, var)
+        self.talkie_connect(
+            self._parent.state, ['distance', 'lat', 'lon'], self.update)
 
         self.update()
 

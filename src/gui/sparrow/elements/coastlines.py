@@ -128,11 +128,10 @@ class CoastlinesElement(Element):
 
     def bind_state(self, state):
         Element.bind_state(self, state)
-        for var in ['visible', 'resolution', 'opacity', 'color', 'line_width']:
-            self.register_state_listener3(self.update, state, var)
-
-    def unbind_state(self):
-        self._listeners = []
+        self.talkie_connect(
+            state,
+            ['visible', 'resolution', 'opacity', 'color', 'line_width'],
+            self.update)
 
     def set_parent(self, parent):
         self._parent = parent
@@ -144,9 +143,10 @@ class CoastlinesElement(Element):
                 self.get_title_control_remove(),
                 self.get_title_control_visible()])
 
-        for var in ['lat', 'lon', 'depth', 'distance', 'azimuth', 'dip']:
-            self.register_state_listener3(
-                self.update_clipping, self._parent.state, var)
+        self.talkie_connect(
+            self._parent.state,
+            ['lat', 'lon', 'depth', 'distance', 'azimuth', 'dip'],
+            self.update_clipping)
 
         self.update()
         self.update_clipping()

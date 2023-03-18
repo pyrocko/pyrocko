@@ -132,15 +132,13 @@ class KiteElement(Element):
 
     def bind_state(self, state):
         Element.bind_state(self, state)
-        for var in ['visible', 'scenes']:
-            self.register_state_listener3(self.update, state, var)
+        self.talkie_connect(state, ['visible', 'scenes'], self.update)
 
         self.cpt_handler.bind_state(state.cpt, self.update)
 
     def unbind_state(self):
         self.cpt_handler.unbind_state()
-        self._listeners = []
-        self._state = None
+        Element.unbind_state(self)
 
     def get_name(self):
         return 'Kite InSAR Scenes'

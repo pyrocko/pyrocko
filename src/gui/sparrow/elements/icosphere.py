@@ -61,14 +61,15 @@ class IcosphereElement(Element):
 
     def bind_state(self, state):
         Element.bind_state(self, state)
-        for var in ['visible', 'level', 'base', 'kind', 'smooth', 'color',
-                    'ambient', 'diffuse', 'specular', 'depth', 'opacity']:
+        variables = [
+            'visible', 'level', 'base', 'kind', 'smooth', 'color', 'ambient',
+            'diffuse', 'specular', 'depth', 'opacity']
 
-            self.register_state_listener3(self.update, state, var)
+        self.talkie_connect(state, variables, self.update)
 
     def set_parent(self, parent):
         Element.set_parent(self, parent)
-        self.register_state_listener3(self.update, self._parent.state, 'dip')
+        self.talkie_connect(self._parent.state, 'dip', self.update)
 
         self._parent.add_panel(
             self.get_name(),
