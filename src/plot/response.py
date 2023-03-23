@@ -33,11 +33,14 @@ Example
 
 import logging
 import math
+import hashlib
+from io import BytesIO
 
 import numpy as num
 
 from pyrocko import util
 from pyrocko import guts
+from pyrocko.response import InvalidResponseError
 
 
 logger = logging.getLogger('plot.response')
@@ -56,7 +59,9 @@ def draw(
         normalize=False,
         style={},
         label=None,
-        show_breakpoints=False):
+        show_breakpoints=False,
+        color_pool=None,
+        label_pool=None):
 
     '''
     Draw instrument response in Bode plot style to given Matplotlib axes
@@ -103,6 +108,28 @@ def draw(
         tf = normalize_on_flat(f, tf)
 
     ta = num.abs(tf)
+
+    if color_pool is not None:
+        fh = BytesIO()
+        f.dump(fh)
+        tf.dump(fh)
+        c_key = hashlib.sha1(fh.getvalue()).hexdigest()
+        fh.close()
+        if c_key not in color_pool[0]:
+            color_pool[0][c_key] \
+                = color_pool[1][len(color_pool[0]) % len(color_pool[1])]
+            new = True
+        else:
+            new = False
+
+        style = dict(style)
+        style['color'] = color_pool[0][c_key]
+
+        if label_pool is not None:
+            ikey = list(color_pool[0].keys()).index(c_key) + 1
+            slabel = '%i' % ikey
+            label_pool.append('(%s) %s' % (slabel, label))
+            label = slabel if new else None
 
     if axes_amplitude:
         axes_amplitude.plot(f, ta, label=label, **style)
@@ -189,7 +216,8 @@ def plot(
         figsize=None,
         styles=None,
         labels=None,
-        show_breakpoints=False):
+        show_breakpoints=False,
+        separate_combined_labels=None):
 
     '''
     Draw instrument responses in Bode plot style.
@@ -233,11 +261,17 @@ def plot(
     setup_axes(axes_amplitude, axes_phase)
 
     if styles is None:
-        styles = [
-            dict(color=to01(graph_colors[i % len(graph_colors)]))
-            for i in range(len(responses))]
+        styles = [{} for i in range(len(responses))]
+        color_pool = ({}, [to01(color) for color in graph_colors])
+
     else:
+        color_pool = None
         assert len(styles) == len(responses)
+
+    if separate_combined_labels is not None:
+        label_pool = []
+    else:
+        label_pool = None
 
     if labels is None:
         labels = [None] * len(responses)
@@ -247,24 +281,35 @@ def plot(
     a_ranges, p_ranges = [], []
     have_labels = False
     for style, resp, label in zip(styles, responses, labels):
-        a_range, p_range = draw(
-            response=resp,
-            axes_amplitude=axes_amplitude,
-            axes_phase=axes_phase,
-            fmin=fmin, fmax=fmax, nf=nf,
-            normalize=normalize,
-            style=style,
-            label=label,
-            show_breakpoints=show_breakpoints)
+        try:
+            a_range, p_range = draw(
+                response=resp,
+                axes_amplitude=axes_amplitude,
+                axes_phase=axes_phase,
+                fmin=fmin, fmax=fmax, nf=nf,
+                normalize=normalize,
+                style=style,
+                label=label,
+                show_breakpoints=show_breakpoints,
+                color_pool=color_pool,
+                label_pool=label_pool)
 
-        if label is not None:
-            have_labels = True
+            if label is not None:
+                have_labels = True
 
-        a_ranges.append(a_range)
-        p_ranges.append(p_range)
+            a_ranges.append(a_range)
+            p_ranges.append(p_range)
+
+        except InvalidResponseError as e:
+            logger.error(
+                'Error occured for response labeled "%s": %s' % (label, e))
 
     if have_labels:
         axes_amplitude.legend(loc='lower right', prop=dict(size=fontsize))
+
+    if separate_combined_labels == 'print':
+        for label in label_pool:
+            print(label)
 
     if a_ranges:
         a_ranges = num.array(a_ranges)
@@ -292,6 +337,9 @@ def plot(
     else:
         plt.show()
 
+    if separate_combined_labels == 'return':
+        return label_pool
+
 
 def tts(t):
     if t is None:
@@ -302,7 +350,9 @@ def tts(t):
 
 def load_response_information(
         filename, format,
-        nslc_patterns=None, fake_input_units=None, stages=None):
+        nslc_patterns=None,
+        fake_input_units=None,
+        stages=None):
 
     from pyrocko import pz, trace
     from pyrocko.io import resp as fresp
@@ -504,6 +554,15 @@ if __name__ == '__main__':
         default=False,
         help='show breakpoints of pole-zero responses')
 
+    parser.add_option(
+        '--index-labels',
+        dest='index_labels',
+        action='store_true',
+        default=False,
+        help='label graphs only by index and print details to terminal '
+             'to save space when many labels would be shown. Aggregate '
+             'identical responses under a common index.')
+
     (options, args) = parser.parse_args(sys.argv[1:])
 
     if len(args) == 0:
@@ -540,4 +599,5 @@ if __name__ == '__main__':
         fmin=options.fmin, fmax=options.fmax, nf=200,
         normalize=options.normalize,
         labels=labels, filename=options.filename, dpi=options.dpi,
-        show_breakpoints=options.show_breakpoints)
+        show_breakpoints=options.show_breakpoints,
+        separate_combined_labels='print' if options.index_labels else None)
