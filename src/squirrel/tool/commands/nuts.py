@@ -3,6 +3,9 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
+from ..common import ldq
+from pyrocko.squirrel import model
+
 headline = 'Search indexed contents.'
 
 
@@ -17,19 +20,35 @@ def setup(parser):
     parser.add_squirrel_selection_arguments()
     parser.add_squirrel_query_arguments()
 
+    style_choices = ['index', 'summary', 'yaml']
+
     parser.add_argument(
-        '--contents',
-        action='store_true',
-        dest='print_contents',
-        default=False,
-        help='Print contents.')
+        '--style',
+        dest='style',
+        choices=style_choices,
+        default='index',
+        help='Set style of presentation. Choices: %s' % ldq(style_choices))
 
 
 def run(parser, args):
     squirrel = args.make_squirrel()
     for nut in squirrel.iter_nuts(**args.squirrel_query):
-        if args.print_contents:
-            print('# %s' % nut.summary)
-            print(squirrel.get_content(nut).dump())
-        else:
+        if args.style == 'index':
             print(nut.summary)
+        else:
+            cache_id = 'waveform' \
+                if nut.kind_id == model.WAVEFORM \
+                else 'default'
+
+            content = squirrel.get_content(nut, cache_id=cache_id)
+
+            if args.style == 'yaml':
+                print('# %s' % nut.summary)
+                print(content.dump())
+            elif args.style == 'summary':
+                print(content.summary)
+
+            if cache_id == 'waveform':
+                squirrel.clear_accessor(
+                    accessor_id='default',
+                    cache_id=cache_id)

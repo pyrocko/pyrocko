@@ -63,7 +63,7 @@ class ReportRMSTool(squirrel.SquirrelCommand):
                     cut_off_fading=False)
 
                 tr.chop(batch.tmin, batch.tmax)
-                print(tr.str_codes, time_to_str(batch.tmin), rms(tr.ydata))
+                print(str(tr.codes), time_to_str(batch.tmin), rms(tr.ydata))
 
 
 class PlotRMSTool(squirrel.SquirrelCommand):

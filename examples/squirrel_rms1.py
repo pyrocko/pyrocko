@@ -74,4 +74,4 @@ for batch in sq.chopper_waveforms(
         tr.chop(batch.tmin, batch.tmax)
 
         # Print channel codes, timestamp and RMS value of the hour.
-        print(tr.str_codes, time_to_str(batch.tmin), rms(tr.ydata))
+        print(str(tr.codes), time_to_str(batch.tmin), rms(tr.ydata))

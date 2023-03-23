@@ -1333,6 +1333,13 @@ class Response(Object):
                                          xmltagname='InstrumentPolynomial')
     stage_list = List.T(ResponseStage.T(xmltagname='Stage'))
 
+    @property
+    def output_sample_rate(self):
+        if self.stage_list:
+            return self.stage_list[-1].output_sample_rate
+        else:
+            return None
+
     def check_sample_rates(self, channel):
 
         if self.stage_list:

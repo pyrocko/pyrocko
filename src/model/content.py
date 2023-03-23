@@ -4,6 +4,7 @@
 # ---|P------/S----------~Lg----------
 
 import math
+import re
 
 from pyrocko import util
 
@@ -18,17 +19,21 @@ def time_or_none_to_str(x, format):
         return util.time_to_str(x, format=format)
 
 
+def shorten_time_str(s):
+    return re.sub(r'(((((-01)?-01)? 00)?:00)?:00)?(\.0+)?$', '', s)
+
+
 def squirrel_content(cls):
 
     def str_codes(self):
-        return '.'.join(self.codes)
+        return str(self.codes)
 
     cls.str_codes = property(str_codes)
 
     def str_time_span(self):
         tmin, tmax = self.time_span
         deltat = getattr(self, 'deltat', 0)
-        if deltat > 0:
+        if deltat is not None and deltat > 0:
             fmt = min(9, max(0, -int(math.floor(math.log10(self.deltat)))))
         else:
             fmt = 6
@@ -41,9 +46,23 @@ def squirrel_content(cls):
 
     cls.str_time_span = property(str_time_span)
 
+    def str_time_span_short(self):
+        return ' - '.join(
+            shorten_time_str(x) for x in self.str_time_span.split(' - '))
+
+    cls.str_time_span_short = property(str_time_span_short)
+
+    def summary_entries(self):
+        return (
+            self.__class__.__name__,
+            str(self.codes),
+            self.str_time_span)
+
+    if not hasattr(cls, 'summary_entries'):
+        cls.summary_entries = property(summary_entries)
+
     def summary(self):
-        return '%s %-16s %s' % (
-            self.__class__.__name__, self.str_codes, self.str_time_span)
+        return util.fmt_summary(self.summary_entries, (10, 20, 0))
 
     if not hasattr(cls, 'summary'):
         cls.summary = property(summary)

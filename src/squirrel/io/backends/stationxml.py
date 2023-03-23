@@ -86,6 +86,11 @@ def iload(format, file_path, segment, content):
 
                     deltat = 1.0 / channel.sample_rate.value
 
+                if deltat is None and channel.response:
+                    out_rate_resp = channel.response.output_sample_rate
+                    if out_rate_resp:
+                        deltat = 1.0 / out_rate_resp
+
                 nut = model.make_channel_nut(
                     file_segment=0,
                     file_element=inut,

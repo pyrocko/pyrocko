@@ -165,10 +165,16 @@ class Trace(Object):
         return self.tmin, self.tmax
 
     @property
+    def summary_entries(self):
+        return (
+            self.__class__.__name__,
+            str(self.codes),
+            self.str_time_span,
+            '%g' % (1.0/self.deltat))
+
+    @property
     def summary(self):
-        return '%s %-16s %s %g' % (
-            self.__class__.__name__, self.str_codes, self.str_time_span,
-            self.deltat)
+        return util.fmt_summary(self.summary_entries, (10, 20, 55, 0))
 
     def __getstate__(self):
         return (self.network, self.station, self.location, self.channel,

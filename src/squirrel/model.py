@@ -893,9 +893,9 @@ class ResponseStage(Object):
                 and self.output_quantity == 'counts':
             return 'digitizer'
 
-        elif self.input_quantity == 'counts' \
-                and self.output_quantity == 'counts' \
-                and self.input_sample_rate != self.output_sample_rate:
+        elif self.decimation_factor is not None \
+                and (self.input_quantity is None or self.input_quantity == 'counts') \
+                and (self.output_quantity is None or self.output_quantity == 'counts'):  # noqa
             return 'decimation'
 
         elif self.input_quantity in observational_quantities \
@@ -906,20 +906,67 @@ class ResponseStage(Object):
             return 'unknown'
 
     @property
-    def summary(self):
+    def decimation_factor(self):
         irate = self.input_sample_rate
         orate = self.output_sample_rate
-        factor = None
-        if irate and orate:
-            factor = irate / orate
-        return 'ResponseStage, ' + (
-            '%s%s => %s%s%s' % (
-                self.input_quantity or '?',
-                ' @ %g Hz' % irate if irate else '',
-                self.output_quantity or '?',
-                ' @ %g Hz' % orate if orate else '',
-                ' :%g' % factor if factor else '')
-        )
+        if irate is not None and orate is not None \
+                and irate > orate and irate / orate > 1.0:
+
+            return irate / orate
+        else:
+            return None
+
+    @property
+    def summary_quantities(self):
+        return '%s -> %s' % (
+            self.input_quantity or '?',
+            self.output_quantity or '?')
+
+    @property
+    def summary_rates(self):
+        irate = self.input_sample_rate
+        orate = self.output_sample_rate
+        factor = self.decimation_factor
+
+        if irate and orate is None:
+            return '%g Hz' % irate
+
+        elif orate and irate is None:
+            return '%g Hz' % orate
+
+        elif irate and orate and irate == orate:
+            return '%g Hz' % irate
+
+        elif any(x for x in (irate, orate, factor)):
+            return '%s -> %s Hz (%s)' % (
+                '%g' % irate if irate else '?',
+                '%g' % orate if orate else '?',
+                ':%g' % factor if factor else '?')
+        else:
+            return ''
+
+    @property
+    def summary_elements(self):
+        xs = [x.summary for x in self.elements]
+        return '%s' % ('*'.join(x for x in xs if x != 'one') or 'one')
+
+    @property
+    def summary_log(self):
+        return ''.join(sorted(set(x[0][0].upper() for x in self.log)))
+
+    @property
+    def summary_entries(self):
+        return (
+            self.__class__.__name__,
+            self.stage_type,
+            self.summary_log,
+            self.summary_quantities,
+            self.summary_rates,
+            self.summary_elements)
+
+    @property
+    def summary(self):
+        return util.fmt_summary(self.summary_entries, (10, 15, 3, 30, 30, 0))
 
     def get_effective(self):
         return MultiplyResponse(responses=list(self.elements))
@@ -987,14 +1034,14 @@ class Response(Object):
 
     @property
     def output_quantity(self):
-        return self.stages[-1].input_quantity if self.stages else None
+        return self.stages[-1].output_quantity if self.stages else None
 
     @property
     def output_sample_rate(self):
         return self.stages[-1].output_sample_rate if self.stages else None
 
     @property
-    def stages_summary(self):
+    def summary_stages(self):
         def grouped(xs):
             xs = list(xs)
             g = []
@@ -1012,16 +1059,30 @@ class Response(Object):
             for g in grouped(stage.stage_type for stage in self.stages))
 
     @property
-    def summary(self):
+    def summary_quantities(self):
         orate = self.output_sample_rate
-        return '%s %-16s %s' % (
-            self.__class__.__name__, self.str_codes, self.str_time_span) \
-            + ', ' + ', '.join((
-                '%s => %s' % (
-                    self.input_quantity or '?', self.output_quantity or '?')
-                + (' @ %g Hz' % orate if orate else ''),
-                self.stages_summary,
-            ))
+        return '%s -> %s%s' % (
+            self.input_quantity or '?',
+            self.output_quantity or '?',
+            ' @ %g Hz' % orate if orate else '')
+
+    @property
+    def summary_log(self):
+        return ''.join(sorted(set(x[0][0].upper() for x in self.log)))
+
+    @property
+    def summary_entries(self):
+        return (
+            self.__class__.__name__,
+            str(self.codes),
+            self.str_time_span,
+            self.summary_log,
+            self.summary_quantities,
+            self.summary_stages)
+
+    @property
+    def summary(self):
+        return util.fmt_summary(self.summary_entries, (10, 20, 55, 3, 35, 0))
 
     def get_effective(self, input_quantity=None):
         try:
@@ -1409,7 +1470,7 @@ class Nut(Object):
         return DummyTrace(self)
 
     @property
-    def summary(self):
+    def summary_entries(self):
         if self.tmin == self.tmax:
             ts = util.time_to_str(self.tmin)
         else:
@@ -1417,10 +1478,15 @@ class Nut(Object):
                 util.time_to_str(self.tmin),
                 util.time_to_str(self.tmax))
 
-        return ' '.join((
-            ('%s,' % to_kind(self.kind_id)).ljust(9),
-            ('%s,' % str(self.codes)).ljust(18),
-            ts))
+        return (
+            self.__class__.__name__,
+            to_kind(self.kind_id),
+            str(self.codes),
+            ts)
+
+    @property
+    def summary(self):
+        return util.fmt_summary(self.summary_entries, (10, 16, 20, 0))
 
 
 def make_waveform_nut(**kwargs):
@@ -1568,8 +1634,8 @@ class Coverage(Object):
             changes=changes)
 
     @property
-    def summary(self):
-        ts = '%s - %s,' % (
+    def summary_entries(self):
+        ts = '%s - %s' % (
             util.time_to_str(self.tmin),
             util.time_to_str(self.tmax))
 
@@ -1577,13 +1643,20 @@ class Coverage(Object):
 
         total = self.total
 
-        return ' '.join((
-            ('%s,' % to_kind(self.kind_id)).ljust(9),
-            ('%s,' % str(self.codes)).ljust(18),
+        return (
+            self.__class__.__name__,
+            to_kind(self.kind_id),
+            str(self.codes),
             ts,
-            '%10.3g,' % srate if srate else '',
-            '%4i' % len(self.changes),
-            '%s' % duration_to_str(total) if total else 'none'))
+            '%10.3g' % srate if srate else '',
+            '%i' % len(self.changes),
+            '%s' % duration_to_str(total) if total else 'none')
+
+    @property
+    def summary(self):
+        return util.fmt_summary(
+            self.summary_entries,
+            (10, 16, 20, 55, 10, 4, 0))
 
     @property
     def sample_rate(self):

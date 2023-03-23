@@ -2861,3 +2861,8 @@ def get_threadpool_limits():
 
     except ImportError:
         return threadpool_limits_dummy
+
+
+def fmt_summary(entries, widths):
+    return ' | '.join(
+        entry.ljust(width) for (entry, width) in zip(entries, widths))

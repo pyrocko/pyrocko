@@ -10,6 +10,8 @@ from pyrocko.plot import terminal
 from pyrocko.get_terminal_size import get_terminal_size
 from pyrocko.squirrel.error import ToolError
 
+from ..common import ldq
+
 
 headline = 'Report time spans covered.'
 
@@ -27,6 +29,15 @@ Time spans covered by the given data selection are listed or plotted.
 def setup(parser):
     parser.add_squirrel_selection_arguments()
     parser.add_squirrel_query_arguments(without=['time'])
+
+    style_choices = ['visual', 'summary', 'yaml']
+
+    parser.add_argument(
+        '--style',
+        dest='style',
+        choices=style_choices,
+        default='visual',
+        help='Set style of presentation. Choices: %s' % ldq(style_choices))
 
 
 def run(parser, args):
@@ -60,38 +71,48 @@ def run(parser, args):
             **kwargs)
 
         if coverage:
-            slabels = [entry.labels for entry in coverage]
 
-            scs = [max(len(s) for s in entries) for entries in zip(*slabels)]
+            if args.style == 'yaml':
+                for entry in coverage:
+                    print(entry)
+            elif args.style == 'summary':
+                for entry in coverage:
+                    print(entry.summary)
+            elif args.style == 'visual':
+                slabels = [entry.labels for entry in coverage]
 
-            label = 'kind: %s' % kind
-            sc = max(len(label), sum(scs)) + 1
-            si = (sx-sc) - 2
-            sl = si // 2
-            sr = si - sl
-            print(''.join((
-                label.ljust(sc),
-                terminal.ansi_dim,
-                terminal.bar_right,
-                util.time_to_str(tmin).ljust(sl),
-                util.time_to_str(tmax).rjust(sr),
-                terminal.bar_left,
-                terminal.ansi_dim_reset)))
+                scs = [
+                    max(len(s) for s in entries)
+                    for entries in zip(*slabels)]
 
-            for (scodes, srate), entry in zip(slabels, coverage):
-                line = \
-                    (scodes.ljust(scs[0])
-                     + ' ' + srate.rjust(scs[1])).ljust(sc) \
-                    + terminal.bar(
-                        tmin, tmax, entry.changes,
-                        entry.tmin, entry.tmax,
-                        sx-sc)
-
-                print(line)
-
-            for line in terminal.time_axis(tmin, tmax, sx-sc):
+                label = 'kind: %s' % kind
+                sc = max(len(label), sum(scs)) + 1
+                si = (sx-sc) - 2
+                sl = si // 2
+                sr = si - sl
                 print(''.join((
-                    ' '*sc,
+                    label.ljust(sc),
                     terminal.ansi_dim,
-                    line,
+                    terminal.bar_right,
+                    util.time_to_str(tmin).ljust(sl),
+                    util.time_to_str(tmax).rjust(sr),
+                    terminal.bar_left,
                     terminal.ansi_dim_reset)))
+
+                for (scodes, srate), entry in zip(slabels, coverage):
+                    line = \
+                        (scodes.ljust(scs[0])
+                         + ' ' + srate.rjust(scs[1])).ljust(sc) \
+                        + terminal.bar(
+                            tmin, tmax, entry.changes,
+                            entry.tmin, entry.tmax,
+                            sx-sc)
+
+                    print(line)
+
+                for line in terminal.time_axis(tmin, tmax, sx-sc):
+                    print(''.join((
+                        ' '*sc,
+                        terminal.ansi_dim,
+                        line,
+                        terminal.ansi_dim_reset)))

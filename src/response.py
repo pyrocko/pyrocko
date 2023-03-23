@@ -57,6 +57,13 @@ class IsNotScalar(Exception):
     pass
 
 
+def str_fmax_failsafe(resp):
+    try:
+        return '%g' % resp.get_fmax()
+    except InvalidResponseError:
+        return '?'
+
+
 class FrequencyResponse(Object):
     '''
     Evaluates frequency response at given frequencies.
@@ -95,6 +102,22 @@ class FrequencyResponse(Object):
     def construction(self):
         return []
 
+    @property
+    def summary(self):
+        if type(self) is FrequencyResponse:
+            return 'one'
+        else:
+            return 'unknown'
+
+
+def str_gain(gain):
+    if gain == 1.0:
+        return 'one'
+    elif isinstance(gain, complex):
+        return 'gain{%s}' % repr(gain)
+    else:
+        return 'gain{%g}' % gain
+
 
 class Gain(FrequencyResponse):
     '''
@@ -111,6 +134,10 @@ class Gain(FrequencyResponse):
 
     def get_scalar(self):
         return self.constant
+
+    @property
+    def summary(self):
+        return str_gain(self.constant)
 
 
 class Evalresp(FrequencyResponse):
@@ -175,6 +202,10 @@ class Evalresp(FrequencyResponse):
         transfer = x[0][4]
         return transfer
 
+    @property
+    def summary(self):
+        return 'eresp'
+
 
 class InverseEvalresp(FrequencyResponse):
     '''
@@ -214,6 +245,10 @@ class InverseEvalresp(FrequencyResponse):
 
         transfer = x[0][4]
         return 1./transfer
+
+    @property
+    def summary(self):
+        return 'inv_eresp'
 
 
 def aslist(x):
@@ -339,6 +374,13 @@ class PoleZeroResponse(FrequencyResponse):
 
         return finalize_construction(breakpoints)
 
+    @property
+    def summary(self):
+        if self.is_scalar():
+            return str_gain(self.get_scalar())
+
+        return 'pz{%i,%i}' % (len(self.poles), len(self.zeros))
+
 
 class DigitalPoleZeroResponse(FrequencyResponse):
     '''
@@ -416,6 +458,14 @@ class DigitalPoleZeroResponse(FrequencyResponse):
         b, a = zpk2tf(self.zeros, self.poles, self.constant)
         return DigitalFilterResponse(b, a, deltat)
 
+    @property
+    def summary(self):
+        if self.is_scalar():
+            return str_gain(self.get_scalar())
+
+        return 'dpz{%i,%i,%s}' % (
+            len(self.poles), len(self.zeros), str_fmax_failsafe(self))
+
 
 class ButterworthResponse(FrequencyResponse):
     '''
@@ -468,6 +518,13 @@ class ButterworthResponse(FrequencyResponse):
 
         return signal.freqs(b, a, freqs*2.*math.pi)[1]
 
+    @property
+    def summary(self):
+        return 'butter_%s{%i,%g}' % (
+            self.type,
+            self.order,
+            self.corner)
+
 
 class SampledResponse(FrequencyResponse):
     '''
@@ -515,6 +572,10 @@ class SampledResponse(FrequencyResponse):
             left=inv_or_none(self.left),
             right=inv_or_none(self.right))
 
+    @property
+    def summary(self):
+        return 'sampled'
+
 
 class IntegrationResponse(FrequencyResponse):
     '''
@@ -542,6 +603,13 @@ class IntegrationResponse(FrequencyResponse):
         resp[nonzero] = self.gain / (1.0j * 2. * num.pi*freqs[nonzero])**self.n
         return resp
 
+    @property
+    def summary(self):
+        return 'integration{%i}' % self.n + (
+            '*gain{%g}' % self.gain
+            if self.gain is not None and self.gain != 1.0
+            else '')
+
 
 class DifferentiationResponse(FrequencyResponse):
     '''
@@ -563,6 +631,13 @@ class DifferentiationResponse(FrequencyResponse):
 
     def evaluate(self, freqs):
         return self.gain * (1.0j * 2. * num.pi * freqs)**self.n
+
+    @property
+    def summary(self):
+        return 'differentiation{%i}' % self.n + (
+            '*gain{%g}' % self.gain
+            if self.gain is not None and self.gain != 1.0
+            else '')
 
 
 class DigitalFilterResponse(FrequencyResponse):
@@ -630,6 +705,19 @@ class DigitalFilterResponse(FrequencyResponse):
         tr_new.set_ydata(signal.lfilter(self.b, self.a, tr.get_ydata()))
         return tr_new
 
+    @property
+    def summary(self):
+        if self.is_scalar():
+            return str_gain(self.get_scalar())
+
+        elif len(self.a) == 1:
+            return 'fir{%i,<=%sHz}' % (
+                len(self.b), str_fmax_failsafe(self))
+
+        else:
+            return 'iir{%i,%i,<=%sHz}' % (
+                len(self.b), len(self.a), str_fmax_failsafe(self))
+
 
 class AnalogFilterResponse(FrequencyResponse):
     '''
@@ -645,6 +733,15 @@ class AnalogFilterResponse(FrequencyResponse):
         FrequencyResponse.__init__(
             self, b=aslist(b), a=aslist(a), **kwargs)
 
+    def is_scalar(self):
+        return len(self.a) == 1 and len(self.b) == 1
+
+    def get_scalar(self):
+        if self.is_scalar():
+            return self.b[0] / self.a[0]
+        else:
+            raise IsNotScalar()
+
     def evaluate(self, freqs):
         return signal.freqs(self.b, self.a, freqs*2.*math.pi)[1]
 
@@ -654,6 +751,14 @@ class AnalogFilterResponse(FrequencyResponse):
         if b.ndim == 2:
             b = b[0]
         return DigitalFilterResponse(b.tolist(), a.tolist(), deltat)
+
+    @property
+    def summary(self):
+        if self.is_scalar():
+            return str_gain(self.get_scalar())
+
+        return 'analog{%i,%i,%g}' % (
+            len(self.b), len(self.a), self.get_fmax())
 
 
 class MultiplyResponse(FrequencyResponse):
@@ -705,6 +810,14 @@ class MultiplyResponse(FrequencyResponse):
 
         return finalize_construction(breakpoints)
 
+    @property
+    def summary(self):
+        if self.is_scalar(self):
+            return str_gain(self.get_scalar())
+        else:
+            xs = [x.summary for x in self.responses]
+            return '(%s)' % ('*'.join(x for x in xs if x != 'one') or 'one')
+
 
 class DelayResponse(FrequencyResponse):
 
@@ -712,6 +825,10 @@ class DelayResponse(FrequencyResponse):
 
     def evaluate(self, freqs):
         return num.exp(-2.0J * self.delay * num.pi * freqs)
+
+    @property
+    def summary(self):
+        return 'delay{%g}' % self.delay
 
 
 class InvalidResponseError(Exception):
@@ -732,6 +849,10 @@ class InvalidResponse(FrequencyResponse):
             self.have_warned = True
 
         return util.num_full_like(freqs, None, dtype=num.complex)
+
+    @property
+    def summary(self):
+        return 'invalid'
 
 
 def simplify_responses(responses):
