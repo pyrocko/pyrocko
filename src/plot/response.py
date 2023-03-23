@@ -125,14 +125,17 @@ def draw(
         style = dict(style)
         style['color'] = color_pool[0][c_key]
 
+        ikey = list(color_pool[0].keys()).index(c_key) + 1
+        slabel = '[%i]' % ikey
+
         if label_pool is not None:
-            ikey = list(color_pool[0].keys()).index(c_key) + 1
-            slabel = '%i' % ikey
-            label_pool.append('(%s) %s' % (slabel, label))
-            label = slabel if new else None
+            label_pool.append('%s %s' % (slabel, label))
+            eff_label = slabel if new else None
+        else:
+            eff_label = '%s %s' % (slabel, label)
 
     if axes_amplitude:
-        axes_amplitude.plot(f, ta, label=label, **style)
+        axes_amplitude.plot(f, ta, label=eff_label, **style)
         for checkpoint in response.checkpoints:
             axes_amplitude.plot(
                 checkpoint.frequency, checkpoint.value, 'o',
@@ -174,7 +177,7 @@ def draw(
         tp = num.unwrap(num.angle(tf))
         ioff = int(num.round(tp[iflat] / (2.0*num.pi)))
         tp -= ioff * 2.0 * num.pi
-        axes_phase.plot(f, tp/num.pi, label=label, **style)
+        axes_phase.plot(f, tp/num.pi, label=eff_label, **style)
     else:
         tp = [0.]
 

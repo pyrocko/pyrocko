@@ -1084,16 +1084,24 @@ class Response(Object):
     def summary(self):
         return util.fmt_summary(self.summary_entries, (10, 20, 55, 3, 35, 0))
 
-    def get_effective(self, input_quantity=None):
+    def get_effective(self, input_quantity=None, stages=(None, None)):
         try:
             elements = response_converters(input_quantity, self.input_quantity)
         except ConversionError as e:
             raise ConversionError(str(e) + ' (%s)' % self.summary)
 
         elements.extend(
-            stage.get_effective() for stage in self.stages)
+            stage.get_effective() for stage in self.stages[slice(*stages)])
 
-        return MultiplyResponse(responses=simplify_responses(elements))
+        if input_quantity is None \
+                or input_quantity == self.input_quantity:
+            checkpoints = self.checkpoints
+        else:
+            checkpoints = []
+
+        return MultiplyResponse(
+            responses=simplify_responses(elements),
+            checkpoints=checkpoints)
 
 
 @squirrel_content
