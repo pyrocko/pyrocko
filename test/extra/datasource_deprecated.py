@@ -23,7 +23,7 @@ def produce(deltat, duration):
         nt = int(t/deltat)
         while n < nt:
             d = random.randint(-127, 128)
-            sys.stdout.write("%i\n" % d)
+            sys.stdout.write('%i\n' % d)
             n += 1
 
         sys.stdout.flush()

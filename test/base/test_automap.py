@@ -143,6 +143,6 @@ class AutomapTestCase(unittest.TestCase):
         m.save(fpath)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     util.setup_logging('test_automap', 'warning')
     unittest.main()

@@ -249,7 +249,7 @@ class FDSNSource(Source, has_paths.HasPaths):
         optional=True,
         help='Directory path where any downloaded waveforms and station '
              'meta-data are to be kept. By default the Squirrel '
-             'environment\'s cache directory is used.')
+             "environment's cache directory is used.")
 
     shared_waveforms = Bool.T(
         default=False,

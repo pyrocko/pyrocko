@@ -253,7 +253,7 @@ class GSHHGTest(unittest.TestCase):
             plt.show()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     plot = False
     util.setup_logging('test_gshhg', 'debug')
     unittest.main(exit=False)

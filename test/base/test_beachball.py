@@ -278,6 +278,6 @@ class BeachballTestCase(unittest.TestCase):
             plt.show()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     util.setup_logging('test_beachball', 'warning')
     unittest.main()

@@ -280,6 +280,6 @@ def cnumeqrel(a, b, eps=0.0):
     return num.all(num.abs(a - b)/(num.abs(a) + num.abs(b)) <= eps)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     util.setup_logging('test_response', 'warning')
     unittest.main()

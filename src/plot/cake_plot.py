@@ -409,7 +409,7 @@ def plot_rays(paths, rays, zstart, zstop,
 
         for zs, xs in zip(fanz, fanx):
             if phase_label in labels:
-                phase_label = ""
+                phase_label = ''
 
             axes.plot(xs, zs, color=color, label=phase_label)
             if legend:

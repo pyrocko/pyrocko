@@ -18,7 +18,7 @@ logger = logging.getLogger('pyrocko.progress')
 
 # spinner = u'\u25dc\u25dd\u25de\u25df'
 # spinner = '⣾⣽⣻⢿⡿⣟⣯⣷'
-spinner = "◴◷◶◵"
+spinner = '◴◷◶◵'
 skull = u'\u2620'
 check = u'\u2714'
 cross = u'\u2716'

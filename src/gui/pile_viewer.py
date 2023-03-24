@@ -1809,7 +1809,7 @@ def MakePileViewerMainClass(base):
             return min(9, max(1, int(-math.floor(math.log10(min_deltat)))+2))
 
         def write_markers(self, fn=None):
-            caption = "Choose a file name to write markers"
+            caption = 'Choose a file name to write markers'
             if not fn:
                 fn, _ = qw.QFileDialog.getSaveFileName(
                     self, caption, options=qfiledialog_options)
@@ -1823,7 +1823,7 @@ def MakePileViewerMainClass(base):
                     self.fail('Failed to write marker file: %s' % str(e))
 
         def write_selected_markers(self, fn=None):
-            caption = "Choose a file name to write selected markers"
+            caption = 'Choose a file name to write selected markers'
             if not fn:
                 fn, _ = qw.QFileDialog.getSaveFileName(
                     self, caption, options=qfiledialog_options)
@@ -1843,7 +1843,7 @@ def MakePileViewerMainClass(base):
             :py:class:`pyrocko.model.Event` instances and their marker
             representation to the pile viewer.
             '''
-            caption = "Selet one or more files to open"
+            caption = 'Selet one or more files to open'
             if not fn:
                 fn, _ = qw.QFileDialog.getOpenFileName(
                     self, caption, options=qfiledialog_options)
@@ -1859,7 +1859,7 @@ def MakePileViewerMainClass(base):
             '''
             Open QFileDialog to open, read and add markers to the pile viewer.
             '''
-            caption = "Selet one or more marker files to open"
+            caption = 'Selet one or more marker files to open'
             if not fn:
                 fn, _ = qw.QFileDialog.getOpenFileName(
                     self, caption, options=qfiledialog_options)
@@ -4367,7 +4367,7 @@ class PileViewer(qw.QFrame):
             self.inputline_changed)
 
         self.inputline.setPlaceholderText(
-            u'Quick commands: e.g. \'c HH?\' to select channels. '
+            u"Quick commands: e.g. 'c HH?' to select channels. "
             u'Use ↑ or ↓ to navigate.')
         self.inputline.setFocusPolicy(qc.Qt.ClickFocus)
         self.input_area.hide()

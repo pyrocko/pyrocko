@@ -238,7 +238,7 @@ def snuffler_from_commandline(args=None):
         default=config.config().cache_dir,
         metavar='DIR',
         help='use directory DIR to cache trace metadata '
-             '(default=\'%default\')')
+             "(default='%default')")
 
     parser.add_option(
         '--force-cache',

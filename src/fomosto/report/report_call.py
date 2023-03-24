@@ -108,7 +108,7 @@ def add_sensor_options(parser):
                    help="The maximum distance to place sensors. Value of"
                         " 'None' will use store maximum.")
     grp.add_option('--sensor_count', '-c', type=int, default=50,
-                   help="The number of sensors to use.")
+                   help='The number of sensors to use.')
     parser.add_option_group(grp)
 
 
@@ -468,7 +468,7 @@ def command_dnone(command, args):
 program_name = 'fomosto report'
 usage = 'Create a pdf of displacment and velocity traces, max. amplitude of' \
         ' traces and' \
-        ' displacment spectra for Green\'s Function stores.\n\n' \
+        " displacment spectra for Green's Function stores.\n\n" \
         'Usage: {0} <subcommand> <arguments> ... [options]\n\nSubcommands:\n' \
         '{1}\n\nTo get further help and a list of available options for any' \
         ' subcommand run:\n\n{2}{0} <subcommand> --help\n\n'. \

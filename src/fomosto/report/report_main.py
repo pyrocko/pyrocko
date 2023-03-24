@@ -290,7 +290,7 @@ class GreensFunctionTest(Object):
             return 'unfiltered'
 
     def getAnnotateString(self, src_id, sen_id, fac=None):
-        tstr = 'Green\'s Function: {0}\n{1}\n{2}'.format(
+        tstr = "Green's Function: {0}\n{1}\n{2}".format(
             self.store_id, self.getSourceString(src_id),
             self.getSensorString(sen_id))
         if fac is not None:
@@ -991,7 +991,7 @@ class GreensFunctionTest(Object):
                       xy=anno_pt, fontsize=(self.__notesize),
                       xycoords='figure fraction', ha=hor_ali, color=color)
         if zerotrc:
-            lfax.annotate("Zero amplitudes!\nSpectra will not\nbe plotted.",
+            lfax.annotate('Zero amplitudes!\nSpectra will not\nbe plotted.',
                           xy=(0.001, 0.), fontsize=25, alpha=0.75,
                           rotation=0., xycoords='axes fraction',
                           color=plot.mpl_color('aluminium4'))

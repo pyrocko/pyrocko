@@ -91,7 +91,7 @@ class CatalogSource(Source):
     cache_path = String.T(
         optional=True,
         help='Directory path where the partial local copy of the catalog is '
-             'kept. By default the Squirrel environment\'s cache directory is '
+             "kept. By default the Squirrel environment's cache directory is "
              'used.')
 
     def __init__(self, catalog, query_args=None, **kwargs):

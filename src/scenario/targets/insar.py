@@ -258,7 +258,7 @@ class ScenePatch(Object):
 
         if ncoords == 0:
             logger.warning('InSAR taget has no valid points,'
-                           ' maybe it\'s all water?')
+                           " maybe it's all water?")
 
         return self.SatelliteGeneratorTarget(
             scene_patch=self,
@@ -421,7 +421,7 @@ class InSARGenerator(TargetGenerator):
                 nthreads=0)
         except gf.meta.OutOfBounds:
             logger.warning('Could not calculate InSAR displacements'
-                           ' - the GF store\'s extend is too small!')
+                           " - the GF store's extend is too small!")
             return []
 
         scenes = [res.scene for res in resp.static_results()]

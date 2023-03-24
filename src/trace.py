@@ -1942,8 +1942,8 @@ class Trace(Object):
         name = '%s %s %s - %s' % (
             self.channel,
             self.station,
-            time.strftime("%d-%m-%y %H:%M:%S", time.gmtime(self.tmin)),
-            time.strftime("%d-%m-%y %H:%M:%S", time.gmtime(self.tmax)))
+            time.strftime('%d-%m-%y %H:%M:%S', time.gmtime(self.tmin)),
+            time.strftime('%d-%m-%y %H:%M:%S', time.gmtime(self.tmax)))
 
         pylab.title(name)
         pylab.show()
@@ -3214,7 +3214,7 @@ def hilbert(x, N=None):
     if N is None:
         N = len(x)
     if N <= 0:
-        raise ValueError("N must be positive.")
+        raise ValueError('N must be positive.')
     if num.iscomplexobj(x):
         logger.warning('imaginary part of x ignored.')
         x = num.real(x)

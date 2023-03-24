@@ -59,6 +59,6 @@ class CrustDBTestCase(unittest.TestCase):
         fig.clear()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     util.setup_logging('test_crustdb', 'warning')
     unittest.main()

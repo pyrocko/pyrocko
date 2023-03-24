@@ -47,7 +47,7 @@ subcommand_descriptions = {
     'upgrade':       'upgrade store format to latest version',
     'addref':        'import citation references to GF store config',
     'qc':            'quality check',
-    'report':        'report for Green\'s Function databases',
+    'report':        "report for Green's Function databases",
 }
 
 subcommand_usages = {

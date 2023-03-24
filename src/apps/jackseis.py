@@ -403,7 +403,7 @@ def main(args=None):
         default=config.config().cache_dir,
         metavar='DIR',
         help='use directory DIR to cache trace metadata '
-             '(default=\'%default\')')
+             "(default='%default')")
 
     parser.add_option(
         '--quiet',
@@ -463,7 +463,7 @@ def main(args=None):
              'producing many small files for gappy traces), %(wmin_year)s, '
              '%(wmin_month)s, %(wmin_day)s, %(wmin)s, %(wmin_jday)s, '
              '%(wmax_year)s, %(wmax_month)s, %(wmax_day)s, %(wmax)s, '
-             '%(wmax_jday)s. Example: --output=\'data/%s/trace-%s-%c.mseed\'')
+             "%(wmax_jday)s. Example: --output='data/%s/trace-%s-%c.mseed'")
 
     parser.add_option(
         '--output-dir',
@@ -501,8 +501,8 @@ def main(args=None):
         choices=('station-by-station', 'channel-by-channel', 'chronological'),
         default='station-by-station',
         help='set traversal order for traces processing. '
-             'Choices are \'station-by-station\' [default], '
-             '\'channel-by-channel\', and \'chronological\'. Chronological '
+             "Choices are 'station-by-station' [default], "
+             "'channel-by-channel', and 'chronological'. Chronological "
              'traversal uses more processing memory but makes it possible to '
              'join multiple stations into single output files')
 

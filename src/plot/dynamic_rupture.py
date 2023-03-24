@@ -1408,7 +1408,7 @@ class RuptureView(Object):
                 linewidths=1.5, **kwargs)
 
             plt.setp(cont.collections, path_effects=[
-                patheffects.withStroke(linewidth=2.0, foreground="beige"),
+                patheffects.withStroke(linewidth=2.0, foreground='beige'),
                 patheffects.Normal()])
 
             clabels = self._axes.clabel(
@@ -1418,7 +1418,7 @@ class RuptureView(Object):
                 **kwargs)
 
             plt.setp(clabels, path_effects=[
-                patheffects.withStroke(linewidth=1.25, foreground="beige"),
+                patheffects.withStroke(linewidth=1.25, foreground='beige'),
                 patheffects.Normal()])
 
     def draw_points(self, length, width, *args, **kwargs):

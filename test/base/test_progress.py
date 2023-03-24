@@ -77,5 +77,5 @@ class ProgressTestCase(unittest.TestCase):
                     t1.fail('oh damn...')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()

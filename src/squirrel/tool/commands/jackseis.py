@@ -158,7 +158,7 @@ class Converter(HasPaths):
                  '%%(wmin_year)s, %%(wmin_month)s, %%(wmin_day)s, %%(wmin)s, '
                  '%%(wmin_jday)s, %%(wmax_year)s, %%(wmax_month)s, '
                  '%%(wmax_day)s, %%(wmax)s, %%(wmax_jday)s. '
-                 'Example: --out-path=\'data/%%s/trace-%%s-%%c.mseed\'')
+                 "Example: --out-path='data/%%s/trace-%%s-%%c.mseed'")
 
         p.add_argument(
             '--out-sds-path',

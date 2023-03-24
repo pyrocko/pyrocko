@@ -87,9 +87,9 @@ n, e = thrust.outline(cs='xy').T
 
 fig, _ = plt.subplots(1, 2, figsize=(8, 4))
 fig.suptitle(
-    "fault: dep={:0.2f}, l={}, w={:0.2f},str={},"
-    "rake={}, dip={}, slip={}, Mw={:0.3f}\n"
-    "satellite: heading={}, look angle={}"
+    'fault: dep={:0.2f}, l={}, w={:0.2f},str={},'
+    'rake={}, dip={}, slip={}, Mw={:0.3f}\n'
+    'satellite: heading={}, look angle={}'
     .format(dep/km, leng/km, wid/km,
             strike, rake, dip, slip, heading, look, mw),
     fontsize=14,

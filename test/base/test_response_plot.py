@@ -75,6 +75,6 @@ class ResponsePlotTestCase(unittest.TestCase):
             # self.compare_with_ref(fname, 0.01)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     util.setup_logging('test_response_plot', 'warning')
     unittest.main()

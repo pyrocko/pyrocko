@@ -20,8 +20,8 @@ def hexdump(chars, sep=' ', width=16):
         line = chars[:width]
         chars = chars[width:]
         line = line.ljust(width, '\000')
-        print("%s%s%s" % (
-            sep.join("%02x" % ord(c) for c in line),
+        print('%s%s%s' % (
+            sep.join('%02x' % ord(c) for c in line),
             sep, quotechars(line)))
 
 

@@ -14,6 +14,6 @@ class GeonamesTestCase(unittest.TestCase):
             ['Bremen', 'Hamburg', 'Kiel', 'Luebeck'])
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     util.setup_logging('test_geonames', 'warning')
     unittest.main()

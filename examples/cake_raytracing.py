@@ -96,7 +96,7 @@ coords = num.array((x_want, num.tile(z_want, x_want.shape))).T
 
 # *interpolate_many* then interpolates onset times for each of these
 # pairs.
-tts = interpolated_tts["stored:depth_p"].interpolate_many(coords)
+tts = interpolated_tts['stored:depth_p'].interpolate_many(coords)
 
 # Plot distance vs. onset time
 plt.plot(x_want, tts, '.')

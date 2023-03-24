@@ -273,13 +273,13 @@ class Pile(object):
 
         if tmin is None:
             if self.tmin is None:
-                logger.warning('Pile\'s tmin is not set - pile may be empty.')
+                logger.warning("Pile's tmin is not set - pile may be empty.")
                 return
             tmin = self.tmin + tpad
 
         if tmax is None:
             if self.tmax is None:
-                logger.warning('Pile\'s tmax is not set - pile may be empty.')
+                logger.warning("Pile's tmax is not set - pile may be empty.")
                 return
             tmax = self.tmax - tpad
 

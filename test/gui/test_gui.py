@@ -284,7 +284,7 @@ class GUITest(unittest.TestCase):
 
                 if fkey_int != 10:
                     want = conf.phase_key_mapping.get(
-                        "F%s" % fkey_int, 'Undefined')
+                        'F%s' % fkey_int, 'Undefined')
                 else:
                     want = None
                 m = pv.viewer.get_markers()[0]

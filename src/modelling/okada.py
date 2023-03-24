@@ -118,7 +118,7 @@ class OkadaSource(AnalyticalRectangularSource):
         default=0.25,
         help='Poisson ratio :math:`\\nu`. '
              'The Poisson ratio :math:`\\nu`. If set to ``None``, calculated '
-             'from the Lame\' parameters :math:`\\lambda` and :math:`\\mu` '
+             "from the Lame' parameters :math:`\\lambda` and :math:`\\mu` "
              'using :math:`\\nu = \\frac{\\lambda}{2(\\lambda + \\mu)}` (e.g. '
              'Mueller 2007).',
         optional=True)

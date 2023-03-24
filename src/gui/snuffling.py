@@ -264,7 +264,7 @@ class Snuffling(object):
                 'mseed', 'sac', 'kan', 'segy', 'seisan', 'seisan.l',
                 'seisan.b', 'gse1', 'gcf', 'yaff', 'datacube',
                 'from_extension', 'detect'),
-            help='assume files are of given FORMAT [default: \'%default\']')
+            help="assume files are of given FORMAT [default: '%default']")
 
         parser.add_option(
             '--pattern',
@@ -536,7 +536,7 @@ class Snuffling(object):
         scroll_area.setWidget(f)
         scroll_area.setWidgetResizable(True)
 
-        self._panel_parent.add_tab(name or "Pixmap", scroll_area)
+        self._panel_parent.add_tab(name or 'Pixmap', scroll_area)
         return f
 
     def web_frame(self, url=None, name=None):

@@ -59,7 +59,7 @@ class MomentTensorTestCase(unittest.TestCase):
                                num.array(m2.both_strike_dip_rake()))
                        < 1e-7*100), \
             "angles don't match after forward-backward calculation:\n' \
-            'first:\n"+str(m1) + "\nsecond:\n"+str(m2)
+            'first:\n"+str(m1) + '\nsecond:\n'+str(m2)
 
     def assertSame(self, a, b, eps, errstr):
         assert num.all(num.abs(num.array(a)-num.array(b)) < eps), errstr
@@ -171,6 +171,6 @@ class MomentTensorTestCase(unittest.TestCase):
             assert num.all((mt1.m() - mt2.m()) < 1e-6)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     util.setup_logging('test_moment_tensor', 'warning')
     unittest.main()

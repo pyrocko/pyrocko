@@ -38,7 +38,7 @@ def to_xstr(x):
 
 def quoted_presenter(dumper, data):
     return dumper.represent_scalar(
-        'tag:yaml.org,2002:str', str(data), style='\'')
+        'tag:yaml.org,2002:str', str(data), style="'")
 
 
 AgnosticSafeDumper.add_representer(xstr, quoted_presenter)

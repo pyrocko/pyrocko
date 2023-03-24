@@ -376,6 +376,6 @@ class ModelTestCase(unittest.TestCase):
                     ev1.validate()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     util.setup_logging('test_trace', 'warning')
     unittest.main()

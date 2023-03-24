@@ -33,6 +33,6 @@ class Crust2x2TestCase(unittest.TestCase):
         p.averages()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     util.setup_logging('test_crust2x2', 'info')
     unittest.main()

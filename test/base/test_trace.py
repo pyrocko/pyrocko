@@ -648,7 +648,7 @@ class TraceTestCase(unittest.TestCase):
             else:
                 self.assertTrue(all(tc == tr))
 
-            self.assertEqual(m, 0., 'misfit\'s m of equal traces is != 0')
+            self.assertEqual(m, 0., "misfit's m of equal traces is != 0")
 
     def testMisfitOfSameTracesDtDifferentShifted(self):
         test_file = common.test_data_file('1989.072.evt.mseed')
@@ -689,7 +689,7 @@ class TraceTestCase(unittest.TestCase):
         for cand in tts:
             for setup in setups:
                 m, n = rt.misfit(candidate=cand, setup=setup)
-                self.assertNotEqual(m, None, 'misfit\'s m is None')
+                self.assertNotEqual(m, None, "misfit's m is None")
 
     def testMisfitBox(self):
 
@@ -870,6 +870,6 @@ class TraceTestCase(unittest.TestCase):
         assert tr1 == tr2
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     util.setup_logging('test_trace', 'warning')
     unittest.main()

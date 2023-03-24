@@ -106,7 +106,7 @@ class URLErrorSSL(URLError):
             'Requesting web resource failed and the problem could be '
             'related to SSL. Python standard libraries on some older '
             'systems (like Ubuntu 14.04) are known to have trouble '
-            'with some SSL setups of today\'s servers: %s'
+            "with some SSL setups of today's servers: %s"
             % URLError.__str__(self))
 
 
@@ -371,7 +371,7 @@ def _download(url, fpath, username=None, password=None,
                 download_file(url, fpath)
 
     except req_HTTPError as e:
-        logging.warning("http error: %s" % e)
+        logging.warning('http error: %s' % e)
         raise DownloadError('could not download file(s) from: %s' % url)
 
     finally:
@@ -568,7 +568,7 @@ def check_time_class(t, error='raise'):
     if not isinstance(t, get_time_float()):
         message = (
             'Timestamp %g is of type %s but should be of type %s with '
-            'Pyrocko\'s currently selected time handling mode.\n\n'
+            "Pyrocko's currently selected time handling mode.\n\n"
             'See https://pyrocko.org/docs/current/library/reference/util.html'
             '#high-precision-time-handling-mode' % (
                 t, type(t), get_time_float()))
@@ -684,7 +684,7 @@ class BetterHelpFormatter(optparse.IndentedHelpFormatter):
         help_text_width = self.width - help_text_position
 
         opts = self.option_strings[option]
-        opts = "%*s%s" % (self.current_indent, "", opts)
+        opts = '%*s%s' % (self.current_indent, '', opts)
         if option.help:
             help_text = self.expand_default(option)
 
@@ -699,11 +699,11 @@ class BetterHelpFormatter(optparse.IndentedHelpFormatter):
             lines.append('')
             if option.help:
                 help_lines = wrap(help_text, help_text_width)
-                lines.extend(["%*s%s" % (help_text_position, "", line)
+                lines.extend(['%*s%s' % (help_text_position, '', line)
                               for line in help_lines])
             lines.append('')
 
-        return "\n".join(lines)
+        return '\n'.join(lines)
 
     def format_description(self, description):
         if not description:
@@ -1427,7 +1427,7 @@ def decitab(n):
     return GlobalVars.decitab[n]
 
 
-def ctimegm(s, format="%Y-%m-%d %H:%M:%S"):
+def ctimegm(s, format='%Y-%m-%d %H:%M:%S'):
     '''
     Convert string representing UTC time to system time.
 
@@ -1445,7 +1445,7 @@ def ctimegm(s, format="%Y-%m-%d %H:%M:%S"):
     return calendar.timegm(time.strptime(s, format))
 
 
-def gmctime(t, format="%Y-%m-%d %H:%M:%S"):
+def gmctime(t, format='%Y-%m-%d %H:%M:%S'):
     '''
     Get string representation from system time, UTC.
 
@@ -1458,7 +1458,7 @@ def gmctime(t, format="%Y-%m-%d %H:%M:%S"):
     return time.strftime(format, time.gmtime(t))
 
 
-def gmctime_v(t, format="%a, %d %b %Y %H:%M:%S"):
+def gmctime_v(t, format='%a, %d %b %Y %H:%M:%S'):
     '''
     Get string representation from system time, UTC. Same as
     :py:func:`gmctime` but with a more verbose default format.
@@ -1470,7 +1470,7 @@ def gmctime_v(t, format="%a, %d %b %Y %H:%M:%S"):
     return time.strftime(format, time.gmtime(t))
 
 
-def gmctime_fn(t, format="%Y-%m-%d_%H-%M-%S"):
+def gmctime_fn(t, format='%Y-%m-%d_%H-%M-%S'):
     '''
     Get string representation from system time, UTC. Same as
     :py:func:`gmctime` but with a default usable in filenames.
@@ -2215,7 +2215,7 @@ re_escapequotes = re.compile(r"(['\\])")
 
 
 def escapequotes(s):
-    return re_escapequotes.sub(r"\\\1", s)
+    return re_escapequotes.sub(r'\\\1', s)
 
 
 class TableWriter(object):

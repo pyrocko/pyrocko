@@ -216,7 +216,7 @@ class QSSPConfigFull(QSSPConfig):
     @property
     def components(self):
         if self.qssp_version in ('2017', '2020'):
-            if self.stored_quantity == "rotation":
+            if self.stored_quantity == 'rotation':
                 fmt = 5
             else:
                 fmt = 3
@@ -268,7 +268,7 @@ class QSSPConfigFull(QSSPConfig):
         model_str, nlines = cake_model_to_config(self.earthmodel_1d)
         d['n_model_lines'] = nlines
         d['model_lines'] = model_str
-        if self.stored_quantity == "rotation":
+        if self.stored_quantity == 'rotation':
             d['output_rotation'] = 1
             d['output_displacement'] = 0
         else:
@@ -786,7 +786,7 @@ class QSSPGFBuilder(gf.builder.Builder):
         self.store = gf.store.Store(store_dir, 'w')
         baseconf = self.store.get_extra('qssp')
         if baseconf.qssp_version in ('2017', '2020'):
-            if self.store.config.stored_quantity == "rotation":
+            if self.store.config.stored_quantity == 'rotation':
                 self.gfmapping = [
                     (MomentTensor(m=symmat6(1, 0, 0, 1, 0, 0)),
                      {'_rota_n': (0, -1), '_rota_e': (3, -1),

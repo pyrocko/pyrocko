@@ -50,7 +50,7 @@ def _get_terminal_size_windows():
         if res:
             (bufx, bufy, curx, cury, wattr,
              left, top, right, bottom,
-             maxx, maxy) = struct.unpack("hhhhHhhhhhh", csbi.raw)
+             maxx, maxy) = struct.unpack('hhhhHhhhhhh', csbi.raw)
             sizex = right - left + 1
             sizey = bottom - top + 1
             return sizex, sizey
@@ -100,6 +100,6 @@ def _get_terminal_size_linux():
     return int(cr[1]), int(cr[0])
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     sizex, sizey = get_terminal_size()
     print(sizex, sizey)

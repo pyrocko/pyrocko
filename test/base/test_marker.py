@@ -49,6 +49,6 @@ class MarkerTestCase(unittest.TestCase):
         assert in_pmarker.get_event_time() == time_float(111.)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     util.setup_logging('test_marker', 'warning')
     unittest.main()

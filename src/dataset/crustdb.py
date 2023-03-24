@@ -153,7 +153,7 @@ class VelocityProfile(Object):
         '''
 
         if phase not in ['s', 'p']:
-            raise AttributeError('Phase has to be either \'p\' or \'s\'.')
+            raise AttributeError("Phase has to be either 'p' or 's'.")
 
         if phase == 'p':
             vel = self._step_vp if stepped else self.vp
@@ -282,7 +282,7 @@ class CrustDB(object):
         return self.profiles[key]
 
     def __str__(self):
-        rstr = "Container contains %d velocity profiles:\n\n" % self.nprofiles
+        rstr = 'Container contains %d velocity profiles:\n\n' % self.nprofiles
         return rstr
 
     @property
@@ -612,7 +612,7 @@ class CrustDB(object):
                     sdepth[sdepth < dmax],
                     alpha=.8, color='w', linestyle=':', label='Median')
 
-        ax.grid(True, which="both", color="w", linewidth=.8, alpha=.4)
+        ax.grid(True, which='both', color='w', linewidth=.8, alpha=.4)
 
         ax.text(.025, .025, '%d Profiles' % self.nprofiles,
                 color='w', alpha=.7,

@@ -107,7 +107,7 @@ class SmartPlotTestCase(unittest.TestCase):
         self.save_and_compare(p, 'pair')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     plot = True
     util.setup_logging('test_smartplot', 'warning')
     unittest.main()

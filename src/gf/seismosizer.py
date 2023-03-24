@@ -145,7 +145,7 @@ def ufloat(s):
         factor = units[s[-1]]
         s = s[:-1]
         if not s:
-            raise ValueError('unit without a number: \'%s\'' % s)
+            raise ValueError("unit without a number: '%s'" % s)
 
     return float(s) * factor
 
@@ -1602,7 +1602,7 @@ class RectangularExplosionSource(ExplosionSource):
     aggressive_oversampling = Bool.T(
         default=False,
         help='Aggressive oversampling for basesource discretization. '
-             'When using \'multilinear\' interpolation oversampling has'
+             "When using 'multilinear' interpolation oversampling has"
              ' practically no effect.')
 
     def base_key(self):
@@ -2101,7 +2101,7 @@ class RectangularSource(SourceWithDerivedMagnitude):
     aggressive_oversampling = Bool.T(
         default=False,
         help='Aggressive oversampling for basesource discretization. '
-             'When using \'multilinear\' interpolation oversampling has'
+             "When using 'multilinear' interpolation oversampling has"
              ' practically no effect.')
 
     def __init__(self, **kwargs):
@@ -2533,7 +2533,7 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
     aggressive_oversampling = Bool.T(
         default=False,
         help='Aggressive oversampling for basesource discretization. '
-             'When using \'multilinear\' interpolation oversampling has'
+             "When using 'multilinear' interpolation oversampling has"
              ' practically no effect.')
 
     def __init__(self, **kwargs):
@@ -4919,11 +4919,11 @@ class LocalEngine(Engine):
 
     store_superdirs = List.T(
         String.T(),
-        help='directories which are searched for Green\'s function stores')
+        help="directories which are searched for Green's function stores")
 
     store_dirs = List.T(
         String.T(),
-        help='additional individual Green\'s function store directories')
+        help="additional individual Green's function store directories")
 
     default_store_id = String.T(
         optional=True,
@@ -4956,7 +4956,7 @@ class LocalEngine(Engine):
     def _check_store_dirs_type(self):
         for sdir in ['store_dirs', 'store_superdirs']:
             if not isinstance(self.__getattribute__(sdir), list):
-                raise TypeError("{} of {} is not of type list".format(
+                raise TypeError('{} of {} is not of type list'.format(
                     sdir, self.__class__.__name__))
 
     def _get_store_id(self, store_dir):

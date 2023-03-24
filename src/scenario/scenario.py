@@ -260,7 +260,7 @@ class ScenarioGenerator(LocationGenerator):
         return p
 
     def make_map(self, filename):
-        logger.info('Plotting scenario\'s map...')
+        logger.info("Plotting scenario's map...")
         if not gmtpy.have_gmt():
             logger.warning('Cannot plot map, GMT is not installed.')
             return
@@ -336,7 +336,7 @@ class ScenarioGenerator(LocationGenerator):
         gf_store_superdirs = engine.store_superdirs
 
         if interactive:
-            print('We could not find the following Green\'s function stores:\n'
+            print("We could not find the following Green's function stores:\n"
                   '%s\n'
                   'We can try to download the stores from '
                   'http://kinherd.org into one of the following '
@@ -363,7 +363,7 @@ class ScenarioGenerator(LocationGenerator):
 
         download_dir = gf_store_superdirs[s-1]
         util.ensuredir(download_dir)
-        logger.info('Downloading Green\'s functions stores to %s'
+        logger.info("Downloading Green's functions stores to %s"
                     % download_dir)
 
         oldwd = os.getcwd()

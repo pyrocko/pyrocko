@@ -162,6 +162,6 @@ class DataCubeTestCase(unittest.TestCase):
             #     traces_uncorrected + traces_corrected + traces_corrected2)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     util.setup_logging('test_io', 'warning')
     unittest.main()

@@ -486,9 +486,9 @@ class AcquisitionThread(threading.Thread):
     def stop(self):
         self._sun_is_shining = False
 
-        logger.debug("Waiting for thread to terminate...")
+        logger.debug('Waiting for thread to terminate...')
         self.wait()
-        logger.debug("Thread has terminated.")
+        logger.debug('Thread has terminated.')
 
     def got_trace(self, tr):
         self.queue.put(tr)

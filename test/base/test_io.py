@@ -347,7 +347,7 @@ class IOTestCase(unittest.TestCase):
         assert e.lon == -116.9945
         assert e.lat == 33.986
         assert e.depth == 17300
-        assert e.time == util.stt("1999-04-02 17:05:10.500")
+        assert e.time == util.stt('1999-04-02 17:05:10.500')
 
         fpath = common.test_data_file('example-catalog.xml')
         qml = quakeml.QuakeML.load_xml(filename=fpath)
@@ -410,6 +410,6 @@ class IOTestCase(unittest.TestCase):
         assert data.size > 0
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     util.setup_logging('test_io', 'warning')
     unittest.main()

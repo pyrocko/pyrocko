@@ -338,6 +338,6 @@ class UtilTestCase(unittest.TestCase):
             assert list(it) == list(range(n))
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     util.setup_logging('test_util', 'info')
     unittest.main()

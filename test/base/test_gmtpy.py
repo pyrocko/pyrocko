@@ -236,7 +236,7 @@ class GmtPyTestCase(unittest.TestCase):
                 plot.save(fpath)
                 self.compare_with_ref(fname, 0.01, show=False)
 
-    @unittest.skip('won\'t-fix-this')
+    @unittest.skip("won't-fix-this")
     def test_simple_density(self):
         x = num.linspace(0., 2.*math.pi, 50)
         y = num.linspace(0., 2.*math.pi, 50)
@@ -320,7 +320,7 @@ class GmtPyTestCase(unittest.TestCase):
             self.compare_with_ref(fname, 0.001, show=False)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     plot = True
     util.setup_logging('test_gmtpy', 'warning')
     unittest.main()

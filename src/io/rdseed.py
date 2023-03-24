@@ -252,7 +252,7 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
         if not os.path.isfile(self.seedvolume):
             raise SeedVolumeNotFound()
 
-        self.tempdir = tempfile.mkdtemp("", "SeedVolumeAccess-")
+        self.tempdir = tempfile.mkdtemp('', 'SeedVolumeAccess-')
         self.station_headers_file = os.path.join(
             self.tempdir, 'station_header_infos')
         self._unpack()

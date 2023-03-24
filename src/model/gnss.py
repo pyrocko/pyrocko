@@ -29,7 +29,7 @@ class GNSSComponent(Object):
 
     shift = Float.T(
         default=0.,
-        help='Component\'s shift in unit')
+        help="Component's shift in unit")
 
     sigma = Float.T(
         default=0.,

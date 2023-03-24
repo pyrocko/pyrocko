@@ -131,7 +131,7 @@ def save(traces, filename_template, additional={}, overwrite=True,
             mseed_ext.store_traces(trtups, fn, record_length, append, steim)
         except mseed_ext.MSeedError as e:
             raise FileSaveError(
-                str(e) + ' (while storing traces to file \'%s\')' % fn)
+                str(e) + " (while storing traces to file '%s')" % fn)
 
     return list(fn_tr.keys())
 

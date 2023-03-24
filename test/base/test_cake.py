@@ -246,6 +246,6 @@ Phase definition "P<(cmb)(moho)pP<(cmb)(moho)p":
                 assert pdef == pdef_want
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     util.setup_logging('test_cake', 'warning')
     unittest.main()

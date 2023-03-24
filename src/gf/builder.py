@@ -89,7 +89,7 @@ class Builder(object):
 
     def log_warnings(self, index, logger):
         for warning, noccur in self.warnings.items():
-            msg = "block {}: " + warning
+            msg = 'block {}: ' + warning
             logger.warning(msg.format(index, noccur))
 
         self.warnings = defaultdict(int)

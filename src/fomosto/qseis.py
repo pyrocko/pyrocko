@@ -263,7 +263,7 @@ class QSeisConfigFull(QSeisConfig):
                 self.earthmodel_receiver_1d)
             assert ref_depth == ref_depth2
         else:
-            model_str = "# no receiver side model"
+            model_str = '# no receiver side model'
             nlines = 0
 
         d['n_model_receiver_lines'] = nlines
@@ -312,7 +312,7 @@ class QSeisConfigFull(QSeisConfig):
         d['str_gf_filenames'] = str_str_vals(self.gf_filenames)
 
         if self.source_mech:
-            d['str_source'] = '%s \'%s\'' % (
+            d['str_source'] = "%s '%s'" % (
                 self.source_mech.string_for_config(),
                 self.seismogram_filename)
         else:

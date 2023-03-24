@@ -6,7 +6,7 @@
 from pyrocko import io
 from pyrocko.apps.jackseis import process, tfmt
 
-headline = 'Squirrel\'s adaption of classic Jackseis.'
+headline = "Squirrel's adaption of classic Jackseis."
 
 
 def make_subparser(subparsers):
@@ -81,7 +81,7 @@ def setup(parser):
              'producing many small files for gappy traces), %%(wmin_year)s, '
              '%%(wmin_month)s, %%(wmin_day)s, %%(wmin)s, %%(wmax_year)s, '
              '%%(wmax_month)s, %%(wmax_day)s, %%(wmax)s. Example: '
-             '--output=\'data/%%s/trace-%%s-%%c.mseed\'')
+             "--output='data/%%s/trace-%%s-%%c.mseed'")
 
     parser.add_argument(
         '--output-dir',
@@ -119,8 +119,8 @@ def setup(parser):
         choices=('station-by-station', 'channel-by-channel', 'chronological'),
         default='station-by-station',
         help='set traversal order for traces processing. '
-             'Choices are \'station-by-station\' [default], '
-             '\'channel-by-channel\', and \'chronological\'. Chronological '
+             "Choices are 'station-by-station' [default], "
+             "'channel-by-channel', and 'chronological'. Chronological "
              'traversal uses more processing memory but makes it possible to '
              'join multiple stations into single output files')
 

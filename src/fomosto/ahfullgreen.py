@@ -214,7 +214,7 @@ class AhfullGFBuilder(gf.builder.Builder):
 
                     x = xs[tr.meta['isource']]
                     if x > firstx + (nx-1)*dx:
-                        logger.error("x out of range")
+                        logger.error('x out of range')
                         continue
 
                     ig, factor = gfmap[tr.channel]

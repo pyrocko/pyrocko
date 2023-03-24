@@ -208,7 +208,7 @@ class MyValueEdit(qw.QLineEdit):
                 value = float(t)
 
             if not (self.mi <= value <= self.ma):
-                raise Exception("out of range")
+                raise Exception('out of range')
 
             if value != self.value:
                 self.value = value
@@ -239,7 +239,7 @@ class MyValueEdit(qw.QLineEdit):
                 t = 'off'
 
         if t in ('off', 'below', 'above'):
-            self.setStyleSheet("font-style: italic;")
+            self.setStyleSheet('font-style: italic;')
         else:
             self.setStyleSheet(None)
 
@@ -260,7 +260,7 @@ class ValControl(qw.QWidget):
 
         qc.QObject.__init__(self, *args)
 
-        self.lname = qw.QLabel("name")
+        self.lname = qw.QLabel('name')
         self.lname.setSizePolicy(
             qw.QSizePolicy(qw.QSizePolicy.Minimum, qw.QSizePolicy.Minimum))
         self.lvalue = MyValueEdit(
@@ -452,7 +452,7 @@ class ColorbarControl(qw.QWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.lname = qw.QLabel("Colormap")
+        self.lname = qw.QLabel('Colormap')
         self.lname.setSizePolicy(
             qw.QSizePolicy(qw.QSizePolicy.Minimum, qw.QSizePolicy.Minimum))
 

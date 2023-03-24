@@ -573,7 +573,7 @@ class Timing(SObject):
     offset_is = String.T(optional=True)
     select = PhaseSelect.T(
         default='',
-        help=('Can be either ``\'%s\'``, ``\'%s\'``, or ``\'%s\'``. ' %
+        help=("Can be either ``'%s'``, ``'%s'``, or ``'%s'``. " %
               tuple(PhaseSelect.choices)))
 
 
@@ -1633,7 +1633,7 @@ class Config(Object):
 
     reference = String.T(
         optional=True,
-        help='Store reference name composed of the store\'s :gattr:`id` and '
+        help="Store reference name composed of the store's :gattr:`id` and "
              'the first six letters of its :gattr:`uuid`.')
 
     def __init__(self, **kwargs):
@@ -1865,7 +1865,7 @@ class Config(Object):
 
         if interpolation is None:
             raise TypeError('Interpolation method not defined! available: '
-                            "multilinear", "nearest_neighbor")
+                            'multilinear', 'nearest_neighbor')
 
         earthmod = self.earthmodel_1d
         store_depth_profile = self.get_source_depths()
@@ -2896,7 +2896,7 @@ def float_or_none(s):
         factor = units[s[-1]]
         s = s[:-1]
         if not s:
-            raise ValueError('unit without a number: \'%s\'' % s)
+            raise ValueError("unit without a number: '%s'" % s)
 
     if s:
         return float(s) * factor

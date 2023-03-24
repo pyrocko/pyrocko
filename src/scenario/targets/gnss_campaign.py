@@ -83,7 +83,7 @@ class GNSSCampaignGenerator(TargetGenerator):
                 nthreads=0)
         except gf.meta.OutOfBounds:
             logger.warning('Could not calculate GNSS displacements'
-                           ' - the GF store\'s extend is too small!')
+                           " - the GF store's extend is too small!")
             return []
 
         campaigns = [r.campaign for r in resp.static_results()]

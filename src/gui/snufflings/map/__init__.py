@@ -98,7 +98,7 @@ class RootedHTTPServer(HTTPServer):
 class RootedHTTPRequestHandler(SimpleHTTPRequestHandler):
 
     def log_message(self, format, *args):
-        logger.debug("%s - - [%s] %s\n" % (
+        logger.debug('%s - - [%s] %s\n' % (
             self.client_address[0],
             self.log_date_time_string(),
             format % args))

@@ -163,6 +163,6 @@ class CatalogTestCase(unittest.TestCase):
         is_the_haiti_event(ev)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     util.setup_logging('test_catalog', 'debug')
     unittest.main()

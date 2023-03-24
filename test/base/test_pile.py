@@ -137,6 +137,6 @@ class PileTestCase(unittest.TestCase):
             assert numeq(tr.ydata, num.arange(100, dtype=float), 0.001)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     util.setup_logging('test_pile', 'warning')
     unittest.main()

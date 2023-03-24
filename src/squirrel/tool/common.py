@@ -148,7 +148,7 @@ class PyrockoArgumentParser(argparse.ArgumentParser):
         s = '\n'.join(lines)
 
         if os.environ.get('PYROCKO_RST_HELP', '0') == '0':
-            s = s.replace('```', '\'')
+            s = s.replace('```', "'")
             s = s.replace('``', '')
             s = wrap(s)
         else:
@@ -422,10 +422,10 @@ def add_squirrel_selection_arguments(parser):
         dest='include',
         metavar='REGEX',
         help='Only include files whose paths match the regular expression '
-             '``REGEX``. Examples: ``--include=\'\\.MSEED$\'`` would only '
+             "``REGEX``. Examples: ``--include='\\.MSEED$'`` would only "
              'match files ending with ```.MSEED```. '
-             '``--include=\'\\.BH[EN]\\.\'`` would match paths containing '
-             '```.BHE.``` or ```.BHN.```. ``--include=\'/2011/\'`` would '
+             "``--include='\\.BH[EN]\\.'`` would match paths containing "
+             "```.BHE.``` or ```.BHN.```. ``--include='/2011/'`` would "
              'match paths with a subdirectory ```2011``` in their path '
              'hierarchy.')
 
@@ -434,7 +434,7 @@ def add_squirrel_selection_arguments(parser):
         dest='exclude',
         metavar='REGEX',
         help='Only include files whose paths do not match the regular '
-             'expression ``REGEX``. Examples: ``--exclude=\'/\\.DS_Store/\'`` '
+             "expression ``REGEX``. Examples: ``--exclude='/\\.DS_Store/'`` "
              'would exclude anything inside any ```.DS_Store``` subdirectory.')
 
     group.add_argument(

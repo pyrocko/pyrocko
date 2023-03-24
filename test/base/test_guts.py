@@ -57,7 +57,7 @@ samples[Bool] = [True, False]
 samples[Int] = [2**n for n in [1, 30]]  # ,31,65] ]
 samples[Float] = [0., 1., math.pi, float('inf'), float('-inf'), float('nan')]
 samples[String] = [
-    '', 'test', 'abc def', '<', '\n', '"', '\'',
+    '', 'test', 'abc def', '<', '\n', '"', "'",
     ''.join(chr(x) for x in range(32, 128))]
 # chr(0) and other special chars don't work with xml...
 

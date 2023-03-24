@@ -856,7 +856,7 @@ class TimestampDefaultMaker(DefaultMaker):
         return str_to_time(self._stime, self._format)
 
     def __repr__(self):
-        return "str_to_time(%s)" % repr(self._stime)
+        return 'str_to_time(%s)' % repr(self._stime)
 
 
 def with_metaclass(meta, *bases):

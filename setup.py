@@ -239,10 +239,10 @@ class CustomBuildAppCommand(build_ext):
 
 
 def _check_for_openmp():
-    """Check  whether the default compiler supports OpenMP.
+    '''Check  whether the default compiler supports OpenMP.
     This routine is adapted from pynbody // yt.
     Thanks to Nathan Goldbaum and Andrew Pontzen.
-    """
+    '''
     import distutils.sysconfig
     import subprocess
 
@@ -385,7 +385,7 @@ ext_modules = [
         sources=[op.join('src', 'io', 'ext', 'ims_ext.c')]),
 
     Extension(
-        "avl",
+        'avl',
         sources=[op.join('src', 'ext', 'pyavl-1.12', 'avl.c'),
                  op.join('src', 'ext', 'pyavl-1.12', 'avlmodule.c')],
         define_macros=[('HAVE_AVL_VERIFY', None),

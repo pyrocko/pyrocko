@@ -120,9 +120,9 @@ class AcquisitionThread(qc.QThread):
     def stop(self):
         self._sun_is_shining = False
 
-        logger.debug("Waiting for thread to terminate...")
+        logger.debug('Waiting for thread to terminate...')
         self.wait()
-        logger.debug("Thread has terminated.")
+        logger.debug('Thread has terminated.')
 
     def got_trace(self, tr):
         self.mutex.lock()
@@ -562,7 +562,7 @@ class SnufflerStartWizard(qw.QWizard):
         lyt.addWidget(text_data)
 
         lyt.addWidget(qw.QLabel(
-            'This message won\'t be shown again.\n\n'
+            "This message won't be shown again.\n\n"
             'We appreciate your contribution!\n- The Pyrocko Developers'
             ))
 
@@ -647,7 +647,7 @@ class SnufflerWindow(qw.QMainWindow):
         self.dockwidget_to_toggler = {}
         self.dockwidgets = []
 
-        self.setWindowTitle("Snuffler")
+        self.setWindowTitle('Snuffler')
 
         self.pile_viewer = pile_viewer.PileViewer(
             pile, ntracks_shown_max=ntracks, use_opengl=opengl,

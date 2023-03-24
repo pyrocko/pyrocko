@@ -294,7 +294,7 @@ class AutoScaler(Object):
     snap = Bool.T(
         default=False,
         help='If set to True, snap output range to multiples of increment. '
-             'This parameter has no effect, if mode is set to ``\'off\'``.')
+             "This parameter has no effect, if mode is set to ``'off'``.")
 
     inc = Float.T(
         optional=True,
@@ -305,9 +305,9 @@ class AutoScaler(Object):
         default=0.0,
         help='Add some padding to the range. The value given, is the fraction '
              'by which the output range is increased on each side. If mode is '
-             '``\'0-max\'`` or ``\'min-0\'``, the end at zero is kept fixed '
+             "``'0-max'`` or ``'min-0'``, the end at zero is kept fixed "
              'at zero. This parameter has no effect if mode is set to '
-             '``\'off\'``.')
+             "``'off'``.")
 
     exp_factor = Int.T(
         default=3,

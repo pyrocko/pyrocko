@@ -2306,7 +2306,7 @@ class Widget(Guru):
         def indent(ind, str):
             return ('\n'+ind).join(str.splitlines())
         size, offset = self.get_size()
-        s = "%s (%g x %g) (%g, %g)\n" % ((self.__class__,) + size + offset)
+        s = '%s (%g x %g) (%g, %g)\n' % ((self.__class__,) + size + offset)
         children = self.get_children()
         if children:
             s += '\n'.join(['  ' + indent('  ', str(c)) for c in children])
@@ -2317,7 +2317,7 @@ class Widget(Guru):
         def indent(ind, str):
             return ('\n'+ind).join(str.splitlines())
         mins, grows, aspect = self.get_policy()
-        s = "%s: minimum=(%s, %s), grow=(%s, %s), aspect=%s\n" % (
+        s = '%s: minimum=(%s, %s), grow=(%s, %s), aspect=%s\n' % (
             (self.__class__,) + mins+grows+(aspect,))
 
         children = self.get_children()
@@ -2638,12 +2638,12 @@ class FrameLayout(Widget):
         av = sv - (st[1]+sb[1]+sc[1])
 
         if ah < 0.0:
-            raise GmtPyError("Container not wide enough for contents "
-                             "(FrameLayout, available: %g cm, needed: %g cm)"
+            raise GmtPyError('Container not wide enough for contents '
+                             '(FrameLayout, available: %g cm, needed: %g cm)'
                              % (sh/cm, (sl[0]+sr[0]+sc[0])/cm))
         if av < 0.0:
-            raise GmtPyError("Container not high enough for contents "
-                             "(FrameLayout, available: %g cm, needed: %g cm)"
+            raise GmtPyError('Container not high enough for contents '
+                             '(FrameLayout, available: %g cm, needed: %g cm)'
                              % (sv/cm, (st[1]+sb[1]+sc[1])/cm))
 
         slh, srh, sch = distribute((sl[0], sr[0], sc[0]),
@@ -2803,12 +2803,12 @@ class GridLayout(Widget):
             ah = sh
 
         if ah < 0.0:
-            raise GmtPyError("Container not wide enough for contents "
-                             "(GridLayout, available: %g cm, needed: %g cm)"
+            raise GmtPyError('Container not wide enough for contents '
+                             '(GridLayout, available: %g cm, needed: %g cm)'
                              % (sh/cm, (num.sum(esh.max(0)))/cm))
         if av < 0.0:
-            raise GmtPyError("Container not high enough for contents "
-                             "(GridLayout, available: %g cm, needed: %g cm)"
+            raise GmtPyError('Container not high enough for contents '
+                             '(GridLayout, available: %g cm, needed: %g cm)'
                              % (sv/cm, (num.sum(esv.max(1)))/cm))
 
         nx, ny = esh.shape
@@ -3090,7 +3090,7 @@ class GMT(object):
             else:
                 self.gmt_config['PAPER_MEDIA'] = config_papersize
 
-        self.tempdir = tempfile.mkdtemp("", "gmtpy-")
+        self.tempdir = tempfile.mkdtemp('', 'gmtpy-')
         self.gmt_config_filename = pjoin(self.tempdir, 'gmt.conf')
         self.gen_gmt_config_file(self.gmt_config_filename, self.gmt_config)
 
@@ -3538,7 +3538,7 @@ class GMT(object):
     def __str__(self):
         s = ''
         for com in self.command_log:
-            s += com[0] + "\n  " + "\n  ".join(com[1:]) + "\n\n"
+            s += com[0] + '\n  ' + '\n  '.join(com[1:]) + '\n\n'
         return s
 
     def page_size_points(self):
@@ -4149,7 +4149,7 @@ def nice_palette(gmt, widget, scaleguru, cptfile, zlabeloffset=0.8*inch,
         label_font_size = gmt.label_font_size()
         label_offset = zlabeloffset
         gmt.pstext(
-            R=(0, 1, 0, 2), D="%gp/0p" % label_offset,
+            R=(0, 1, 0, 2), D='%gp/0p' % label_offset,
             N=True,
             in_rows=[(1, 1, label_font_size, -90, label_font, 'CB',
                      par_ax['zlabel'])],

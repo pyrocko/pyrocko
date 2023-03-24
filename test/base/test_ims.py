@@ -310,6 +310,6 @@ IDC_SEIS  APL   shn      1994/12/25 10:00:00.000 1994/12/25 10:00:00.030      0.
         assert s.strip() == s2.strip()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     util.setup_logging('test_ims', 'warning')
     unittest.main()

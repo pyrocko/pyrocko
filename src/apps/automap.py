@@ -76,21 +76,21 @@ def main(args=None):
         dest='show_grid',
         default=True,
         action='store_false',
-        help='don\'t show grid lines')
+        help="don't show grid lines")
 
     parser.add_option(
         '--no-topo',
         dest='show_topo',
         default=True,
         action='store_false',
-        help='don\'t show topography')
+        help="don't show topography")
 
     parser.add_option(
         '--no-cities',
         dest='show_cities',
         default=True,
         action='store_false',
-        help='don\'t show cities')
+        help="don't show cities")
 
     parser.add_option(
         '--no-illuminate',

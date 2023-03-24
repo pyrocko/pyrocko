@@ -94,18 +94,18 @@ class SlowSlink(object):
         self.running = False  # intentionally before the kill
 
         os.kill(self.slink.pid, signal.SIGTERM)
-        logger.debug("Waiting for slinktool to terminate...")
+        logger.debug('Waiting for slinktool to terminate...')
         it = 0
         while self.slink.poll() == -1:
             time.sleep(0.01)
             if it == 200:
                 logger.debug(
-                    "Waiting for slinktool to terminate... trying harder...")
+                    'Waiting for slinktool to terminate... trying harder...')
                 os.kill(self.slink.pid, signal.SIGKILL)
 
             it += 1
 
-        logger.debug("Done, slinktool has terminated")
+        logger.debug('Done, slinktool has terminated')
 
     def process(self):
         try:

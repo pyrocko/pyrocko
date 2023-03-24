@@ -88,6 +88,6 @@ class TectonicsTestCase(unittest.TestCase):
         assert 'EU' in gsrm.plate_names()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     util.setup_logging('test_tectonics', 'warning')
     unittest.main()

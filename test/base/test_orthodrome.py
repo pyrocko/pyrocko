@@ -608,7 +608,7 @@ def plot_erroneous_ne_to_latlon():
             print('ok', gsize, lat, lon)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     plot = False
     util.setup_logging('test_orthodrome', 'warning')
     unittest.main(exit=False)

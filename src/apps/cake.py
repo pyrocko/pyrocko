@@ -69,7 +69,7 @@ want to define phases in Cake's syntax.
 
 ''')
         group.add_option(
-            '--phase', '--phases', dest='phases', action="append",
+            '--phase', '--phases', dest='phases', action='append',
             default=[], metavar='PHASE1,PHASE2,...',
             help='''Comma separated list of seismic phases in Cake\'s syntax.
 
@@ -277,7 +277,7 @@ as in --phases.''')
             group.add_option(
                 '--size', dest='size', type='string',
                 default='a4',
-                help='gives size of returned plot, use \'a5\' or \'a4\'')
+                help="gives size of returned plot, use 'a5' or 'a4'")
         if 'show' in want:
             group.add_option(
                 '-u', '--show', dest='show', action='store_true',

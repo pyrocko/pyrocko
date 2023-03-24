@@ -86,6 +86,6 @@ class ObsPyCompatTestCase(unittest.TestCase):
         self.assertEqual(len(events), len(cat))
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     util.setup_logging('test_obspy_compat', 'warning')
     unittest.main()

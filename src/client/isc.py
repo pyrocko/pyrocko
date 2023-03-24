@@ -103,7 +103,7 @@ class ISC(EarthquakeCatalog):
                         + '-' * 79 + '\n' + page + '\n' + '-' * 79)
                 else:
                     raise ISCError(
-                        'Couldn\'t parse XML results from ISC:\n'
+                        "Couldn't parse XML results from ISC:\n"
                         + '-' * 79 + '\n' + page + '\n' + '-' * 79)
 
             events = data.get_pyrocko_events()
