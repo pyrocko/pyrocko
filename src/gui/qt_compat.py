@@ -35,14 +35,14 @@ if not qt5_backend_available:
 if matplotlib.get_backend().find('Qt4') != -1:
     matplotlib.use('Qt5Agg')
 
-import PyQt5 as PyQt
-from PyQt5 import Qt
-from PyQt5 import QtCore as qc
-from PyQt5 import QtGui as qg
-from PyQt5 import QtWidgets as qw
-from PyQt5 import QtNetwork as qn
-from PyQt5 import QtSvg as qsvg
-from PyQt5 import QtPrintSupport as qprint
+import PyQt5 as PyQt  # noqa
+from PyQt5 import Qt  # noqa
+from PyQt5 import QtCore as qc  # noqa
+from PyQt5 import QtGui as qg  # noqa
+from PyQt5 import QtWidgets as qw  # noqa
+from PyQt5 import QtNetwork as qn  # noqa
+from PyQt5 import QtSvg as qsvg  # noqa
+from PyQt5 import QtPrintSupport as qprint  # noqa
 
 def getSaveFileName(*args, **kwargs):
      return qw.QFileDialog.getSaveFileName(*args, **kwargs)[0]

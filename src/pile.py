@@ -135,9 +135,9 @@ class Sorted(object):
         return state
 
     def __setstate__(self, state):
-        l, key = state
+        it, key = state
         self._set_key(key)
-        self._avl = avl.from_iter(iter(l), len(l))
+        self._avl = avl.from_iter(iter(it), len(it))
 
     def insert(self, value):
         self._avl.insert(value)

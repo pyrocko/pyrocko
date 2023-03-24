@@ -136,7 +136,7 @@ class QSeisRBandpassFilter(Object):
     upper_cutoff = Float.T(default=10.0)
 
     def string_for_config(self):
-        return '%(order) %(lower_cutoff)5e %(upper_cutoff)5e' % self.__dict__
+        return '%(order)i %(lower_cutoff)5e %(upper_cutoff)5e' % self.__dict__
 
 
 class QSeisSConfig(Object):

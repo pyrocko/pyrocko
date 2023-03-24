@@ -76,3 +76,12 @@ testpaths = [
     "test/gui",
     "test/examples",
 ]
+
+[tool.ruff]
+line-length = 79
+select = ["E", "F", "Q"]  # "B"
+
+[tool.ruff.flake8-quotes]
+docstring-quotes = "single"
+inline-quotes = "single"
+multiline-quotes = "single"

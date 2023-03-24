@@ -153,7 +153,7 @@ def skip_on_download_error(f):
 
 def have_gui():
     display = os.environ.get('DISPLAY', '')
-    if not display and not platform.system() in ('Windows', 'Darwin'):
+    if not display and platform.system() not in ('Windows', 'Darwin'):
         return False
 
     try:

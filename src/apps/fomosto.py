@@ -1116,7 +1116,7 @@ Browse pre-calculated Green's function stores online:
 
     parser, options, args = cl_parse(
         'download', args, setup=setup, details=details)
-    if not len(args) in (1, 2):
+    if len(args) not in (1, 2):
         sys.exit(parser.format_help())
 
     if len(args) == 2:

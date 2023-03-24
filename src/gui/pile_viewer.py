@@ -2585,11 +2585,11 @@ def MakePileViewerMainClass(base):
             if self.ntracks != ntracks:
                 self.ntracks = ntracks
                 if self.shown_tracks_range is not None:
-                    l, h = self.shown_tracks_range
+                    low, high = self.shown_tracks_range
                 else:
-                    l, h = 0, self.ntracks
+                    low, high = 0, self.ntracks
 
-                self.tracks_range_changed.emit(self.ntracks, l, h)
+                self.tracks_range_changed.emit(self.ntracks, low, high)
 
         def set_tracks_range(self, range, start=None):
 

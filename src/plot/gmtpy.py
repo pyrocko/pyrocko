@@ -2899,12 +2899,12 @@ def aspect_for_projection(gmtversion, *args, **kwargs):
         with open(fn, 'rb') as f:
             s = f.read()
 
-        l, b, r, t = get_bbox(s)
+        l, b, r, t = get_bbox(s)  # noqa
     else:
         gmt.psbasemap('-G0', finish=True, *args, **kwargs)
-        l, b, r, t = gmt.bbox()
+        l, b, r, t = gmt.bbox()  # noqa
 
-    return (t-b)/(r-l)
+    return (t-b)/(r-l)  # noqa
 
 
 def text_box(
@@ -2937,8 +2937,8 @@ def text_box(
     dx, dy = None, None
     for line in stderr.splitlines():
         if line.startswith(b'%%HiResBoundingBox:'):
-            l, b, r, t = [float(x) for x in line.split()[-4:]]
-            dx, dy = r-l, t-b
+            l, b, r, t = [float(x) for x in line.split()[-4:]]  # noqa
+            dx, dy = r-l, t-b  # noqa
             break
 
     return dx, dy

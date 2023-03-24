@@ -834,8 +834,8 @@ Scale*.
                 return 1.0
 
         def rect_to_figure_coords(rect):
-            l, b, w, h = rect
-            return (l / width, b / height, w / width, h / height)
+            l, b, w, h = rect  # noqa
+            return (l / width, b / height, w / width, h / height)  # noqa
 
         ny = len(axes)
         if ny == 0:

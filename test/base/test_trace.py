@@ -207,8 +207,8 @@ class TraceTestCase(unittest.TestCase):
         z = trace.Trace(deltat=1., ydata=zdata, tmin=1., channel='Z')
         e = trace.Trace(deltat=1., ydata=edata, tmin=1., channel='E')
         n = trace.Trace(deltat=1., ydata=ndata, tmin=1., channel='N')
-        l, q, t = trace.rotate_to_lqt([z, n, e], ba, inci, in_channels)
-        assert num.all(l.get_ydata() - num.sqrt(3.) < 1.0e-12)
+        l, q, t = trace.rotate_to_lqt([z, n, e], ba, inci, in_channels)  # noqa
+        assert num.all(l.get_ydata() - num.sqrt(3.) < 1.0e-12)  # noqa
         assert num.all(t.get_ydata() < 1.0e-12)
         assert num.all(q.get_ydata() < 1.0e-12)
 
