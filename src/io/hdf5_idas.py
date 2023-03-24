@@ -8,7 +8,7 @@ META_KEYS = {
     'spatial_resolution': 'SpatialResolution',
     'fibre_index': 'FibreIndex',
     'fibre_length_multiplier': 'FibreLengthMultiplier',
-     #'unit_calibration': 'Unit Calibration (nm)',
+    #'unit_calibration': 'Unit Calibration (nm)',
     'start_distance': 'StartDistance',
     'stop_distance': 'StopDistance',
     'normalization': 'Normalization',
@@ -20,7 +20,7 @@ META_KEYS = {
     'zero_offset': 'ZeroOffset',
     'p_parameter': 'P',
     'p_coefficients': 'P_Coefficients',
-    #'idas_version': 'iDASVersion',
+    'idas_version': 'Version',
     'precice_sampling_freq': 'PreciseSamplingFrequency',
     'receiver_gain': 'ReceiverGain',
     #'continuous_mode': 'Continuous Mode',
@@ -28,7 +28,6 @@ META_KEYS = {
     'geo_lon': 'Longitude',
     'geo_elevation': 'Altitude',
 
-    'channel': None,
     'unit': 'RawDataUnit' 
 }
 
@@ -56,23 +55,24 @@ def get_meta(h5file):
                   'Acquisition/Custom/AdvancedUserSettings',
                   'Acquisition/Custom/SystemSettings',
                   'Acquisition/Custom/SystemInformation/GPS',
+                  'Acquisition/Custom/SystemInformation/OSVersion',
                   'Acquisition/Custom/UserSettings',
                   'Acquisition/Raw[0]']:
         try:
             field_keys = h5file[field].attrs.keys()
             for val in val_list:
                 if val in field_keys:
-                    meta[key_list[val_list.index(val)]] = f[field].attrs[val]
+                    meta[key_list[val_list.index(val)]] = h5file[field].attrs[val]
         except:
-            pass
+            raise KeyError("Key '%s' not found in PRODML H5 file." % val)
                 
     # some type conversions
-    for val in ['p_coefficients', 'receiver_gain', 'source_mode', 'unit']:
-        if val in meta.keys():
-            meta[val] = meta[val].decode("utf-8")
+    for val in ['p_coefficients', 'receiver_gain', 'source_mode', 'unit', 'idas_version']:
+        meta[val] = meta[val].decode("utf-8")
     for val in ['decimation_filter', 'normalization']:
-        if val in meta.keys():
-            meta[val] = bool(meta[val])
+        meta[val] = bool(meta[val])
+    for val in ['receiver_gain']:
+        meta[val] = tuple([float(item) for item in meta[val].split(";")])
     
     return meta
 
@@ -83,33 +83,24 @@ def iload(filename, load_data=True):
     try:
         import h5py
     except Exception as e:
-        print(e)
-        raise ImportError("Please install 'h5py' to proceed, e.g. by running 'pip install h5py'")
-
+        raise ImportError("Please install 'h5py' to proceed, e.g. by running 'pip install h5py'") from e
 
     with h5py.File(filename, "r") as f:
         # get the meta data
         meta = get_meta(f)
         # get the actual time series if load_data
-        data = f['Acquisition/Raw[0]/RawData'][:].copy() if load_data else None
+        data = f['Acquisition/Raw[0]/RawData'][:] if load_data else None
         # get the sampling rate, starttime, number of samples in space and time
         deltat = 1. / f['Acquisition/Raw[0]'].attrs['OutputDataRate']
-        tmin = datetime.strptime(
-            f['Acquisition/Raw[0]/RawData'].attrs['PartStartTime'].decode('ascii'),
-            '%Y-%m-%dT%H:%M:%S.%f+00:00').timestamp()
+        tmin = datetime.fromisoformat(
+            f['Acquisition/Raw[0]/RawData'].attrs['PartStartTime'].decode('ascii')).timestamp()
         nchan = f['Acquisition/Raw[0]'].attrs['NumberOfLoci']
-        try:
-            # usually this should be here?
-            nsamp = f['Acquisition/Raw[0]/RawDataTime'].attrs['Count'] 
-        except:
-            # but sometimes it is here?
-            nsamp = f['Acquisition/Raw[0]/RawData'].attrs['Count'] 
+        nsamp = f['Acquisition/Raw[0]/RawDataTime'].attrs['Count'] 
 
     for icha in range(nchan):
-        
-        assert icha < 99999
         station = '%05i' % icha
-        meta['channel'] = icha
+        meta_icha = meta.copy()
+        meta_icha['channel'] = icha
 
         tr = trace.Trace(
             network='DA',
@@ -118,7 +109,7 @@ def iload(filename, load_data=True):
             deltat=deltat,
             tmin=tmin,
             tmax=tmin + (nsamp - 1) * deltat,
-            meta=meta)
+            meta=meta_icha)
 
         if data is not None:
             tr.set_ydata(data[:,icha])
