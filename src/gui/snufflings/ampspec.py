@@ -9,14 +9,14 @@ from matplotlib import cm
 
 
 def window(freqs, fc, b):
+    w = num.zeros(len(freqs))
     if fc == 0.:
-        w = num.zeros(len(freqs))
-        w[freqs == 0] = 1.
+        w[freqs == 0.0] = 1.
         return w
-    T = num.log10(freqs/fc)*b
-    w = (num.sin(T)/T)**4
+    mask = num.logical_and(freqs != 0.0, freqs != fc)
+    T = num.log10(freqs[mask]/fc)*b
+    w[mask] = (num.sin(T)/T)**4
     w[freqs == fc] = 1.
-    w[freqs == 0.] = 0.
     w /= num.sum(w)
     return w
 
@@ -58,7 +58,6 @@ class AmpSpec(Snuffling):
             for trace in traces:
                 all.append(trace)
 
-        extrema = []
         colors = iter(cm.Accent(num.linspace(0., 1., len(all))))
         if self.want_smoothing:
             alpha = 0.2
@@ -67,8 +66,8 @@ class AmpSpec(Snuffling):
             alpha = 1.
             additional = ''
 
-        minf = 0.
-        maxf = 0.
+        flimits = []
+        alimits = []
         pblabel = 'Calculating amplitude spectra %s' % additional
         pb = self.get_viewer().parent().get_progressbars()
         pb.set_status(pblabel, 0)
@@ -83,15 +82,15 @@ class AmpSpec(Snuffling):
             tr.ydata = tr.ydata.astype(float)
             tr.ydata -= tr.ydata.mean()
             f, a = tr.spectrum()
-            minf = min([f.min(), minf])
-            maxf = max([f.max(), maxf])
+            flimits.append(f[1])
+            flimits.append(f[-1])
             absa = num.abs(a)
             labsa = num.log(absa)
             stdabsa = num.std(labsa)
             meanabsa = num.mean(labsa)
-            mi, ma = meanabsa - 3*stdabsa, meanabsa + 3*stdabsa
-            extrema.append(mi)
-            extrema.append(ma)
+            lamin, lamax = meanabsa - 5*stdabsa, meanabsa + 5*stdabsa
+            alimits.append(num.exp(lamin))
+            alimits.append(num.exp(lamax))
             c = next(colors)
             plot_data.append((f, num.abs(a)))
             plot_data_supplement.append((c, alpha, '.'.join(tr.nslc_id)))
@@ -108,13 +107,19 @@ class AmpSpec(Snuffling):
         args = ('c', 'alpha', 'label')
         for d, s in zip(plot_data, plot_data_supplement):
             p.plot(*d, **dict(zip(args, s)))
-        mi, ma = min(extrema), max(extrema)
+
         p.set_xscale('log')
         p.set_yscale('log')
-        p.set_ylim(num.exp(mi), num.exp(ma))
-        p.set_xlim(minf, maxf)
+
+        amin, amax = num.min(alimits), num.max(alimits)
+        p.set_ylim(amin, amax)
+
+        fmin, fmax = num.min(flimits), num.max(flimits)
+        p.set_xlim(fmin, fmax)
+
         p.set_xlabel('Frequency [Hz]')
         p.set_ylabel('Counts')
+
         handles, labels = p.get_legend_handles_labels()
         leg_dict = dict(zip(labels, handles))
         if num_traces > 1:
@@ -134,7 +139,7 @@ class AmpSpec(Snuffling):
         smooth = num.zeros(len(freqs), dtype=freqs.dtype)
         amps = num.array(amps)
         for i, fc in enumerate(freqs):
-            fkey = tuple((self.b, fc, freqs[0], freqs[1], freqs[-1]))
+            fkey = tuple((b, fc, freqs[0], freqs[1], freqs[-1]))
             if fkey in self._wins.keys():
                 win = self._wins[fkey]
             else:
