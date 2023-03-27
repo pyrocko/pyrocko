@@ -7,11 +7,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## Unreleased
 
 ### Added
-- Squirrel: new subcommand 'check' to detect common data/metadata problems.
+- Squirrel: new subcommand `check` to detect common data/metadata problems.
   Also available as a method on the Squirrel object.
+- Squirrel: new subcommand `response` to plot and investigate instrument
+  responses
+- Improved response plotting and added the ability to combine common responses.
+- Added a script `pyrocko` which can print some information about the Pyrocko
+  installation and about the availability of its required and optional deps.
+- Jackseis: added option to scale seismograms with a common factor.
+
+### Changed
+- Squirrel: format of object summary outputs are now more consistent and more
+  shell-pipe-friendly.
+- Fomosto: `view` now autoconfigures Snuffler after startup in a useful way.
 
 ### Fixed
 - Corrected implementation of `Squirrel.get_sensors`.
+- Corrected handling of the `view` argument in beachball plotting functions.
 
 ## v2023.01.20
 
