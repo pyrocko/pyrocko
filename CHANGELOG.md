@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+*empty*
+
+## v2023.03.27
+
 ### Added
 - Squirrel: new subcommand `check` to detect common data/metadata problems.
   Also available as a method on the Squirrel object.
