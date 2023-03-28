@@ -782,6 +782,71 @@ steps:
 ---
 
 kind: pipeline
+type: exec
+name: package-pip-osx-universal2
+
+trigger:
+  branch:
+  - release
+  - candidate
+  - packaging
+  - pip
+  - deploy-pip
+
+platform:
+  os: darwin
+  arch: arm64
+
+steps:
+- name: build-3.11
+  commands:
+  - mkdir -p wheels
+  - /usr/local/bin/python3.11 -m venv venv-3.11
+  - venv-3.11/bin/python -m pip install --upgrade pip
+  - venv-3.11/bin/python -m pip install wheel
+  - venv-3.11/bin/python -m pip wheel -v . -w dist "--only-binary=:all:"
+- name: build-3.10
+  commands:
+  - mkdir -p wheels
+  - /usr/local/bin/python3.10 -m venv venv-3.10
+  - venv-3.10/bin/python -m pip install --upgrade pip
+  - venv-3.10/bin/python -m pip install wheel
+  - venv-3.10/bin/python -m pip wheel -v . -w dist "--only-binary=:all:"
+
+- name: upload-testing
+  when:
+    branch:
+    - candidate
+    - packaging
+    - pip
+  commands:
+  - /usr/local/bin/python3.11 -m pip install twine
+  - bash maintenance/pip/upload_wheels.sh testing
+  environment:
+    TWINE: "/usr/local/bin/python3.11 -m twine"
+    PYPI_USERNAME:
+      from_secret: pypi-username
+    PYPI_PASSWORD:
+      from_secret: pypi-password
+
+- name: upload
+  when:
+    branch:
+    - release
+    - deploy-pip
+  commands:
+  - /usr/local/bin/python3.11 -m pip install twine
+  - bash maintenance/pip/upload_wheels.sh live
+  environment:
+    TWINE: "/usr/local/bin/python3.11 -m twine"
+    PYPI_USERNAME:
+      from_secret: pypi-username
+    PYPI_PASSWORD:
+      from_secret: pypi-password
+
+---
+
+kind: pipeline
 type: docker
 name: package-conda-linux
 
