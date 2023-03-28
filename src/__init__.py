@@ -26,6 +26,22 @@ def make_squirrel(*args, **kwargs):
     return Squirrel(*args, **kwargs)
 
 
+def snuffle(*args, **kwargs):
+    '''
+    Start Snuffler.
+
+    Calls :py:func:`pyrocko.gui.snuffler.snuffle`
+    '''
+
+    from pyrocko import deps
+
+    deps.require('PyQt5.Qt')
+    deps.require('PyQt5.QtWebEngine')
+
+    from pyrocko.gui.snuffler import snuffler
+    return snuffler.snuffle(*args, **kwargs)
+
+
 def sparrow(*args, **kwargs):
     '''
     Start Sparrow.
@@ -34,7 +50,10 @@ def sparrow(*args, **kwargs):
     '''
 
     from pyrocko import deps
+
     deps.require('vtk')
+    deps.require('PyQt5.Qt')
+    # deps.import_optional('kite', 'InSAR visualization')
 
     from pyrocko.gui.sparrow.main import main
     return main(*args, **kwargs)
@@ -46,6 +65,11 @@ def drum(*args, **kwargs):
 
     Calls :py:func:`pyrocko.gui.drum.main`.
     '''
+
+    from pyrocko import deps
+
+    deps.require('PyQt5.Qt')
+    deps.require('serial')
 
     from pyrocko.gui.drum.main import main
     return main(*args, **kwargs)
