@@ -7,6 +7,10 @@
 import sys
 import os.path as op
 from importlib import import_module
+import logging
+
+logger = logging.getLogger('pyrocko.deps')
+
 
 _pyrocko_deps = {
     'required': [
@@ -22,6 +26,7 @@ _pyrocko_deps = {
         ('PyQtWebEngine', 'PyQt5.QtWebEngine', 'PYQT_WEBENGINE_VERSION_STR'),
         ('vtk', 'vtk', 'VTK_VERSION'),
         ('pyserial', 'serial', '__version__'),
+        ('kite', 'kite', '__version__'),
     ],
 }
 
@@ -91,7 +96,22 @@ exits without error. The original error was:
                 package_name,
                 package_name,
                 module_name,
+                str(e))) from None
+
+
+def import_optional(module_name, needed_for):
+    try:
+        return import_module(module_name)
+    except ImportError as e:
+        package_name = _module_to_package_name[module_name]
+
+        logger.info(
+            '''Optional Pyrocko dependency '%s' is not available (needed for %s): %s''' % (
+                package_name,
+                needed_for,
                 str(e)))
+
+        return None
 
 
 def require_all(group):

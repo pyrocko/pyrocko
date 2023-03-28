@@ -7,8 +7,7 @@ import copy
 import logging
 try:
     from kite import Scene
-except ImportError as e:
-    print(e)
+except ImportError:
     Scene = None
 
 import numpy as num

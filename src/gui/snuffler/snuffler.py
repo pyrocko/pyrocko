@@ -19,6 +19,7 @@ from os.path import join as pjoin
 from optparse import OptionParser
 
 
+from pyrocko import deps
 from pyrocko import pile as pile_mod
 from pyrocko import util
 from pyrocko import model
@@ -342,23 +343,30 @@ def snuffler_from_commandline(args=None):
     for marker_fn in extend_paths(options.marker_fns):
         markers.extend(marker.load_markers(marker_fn))
 
-    return snuffle(
-        this_pile,
-        stations=stations,
-        events=events,
-        markers=markers,
-        ntracks=options.ntracks,
-        marker_editor_sortable=options.marker_editor_sortable,
-        follow=options.follow,
-        controls=True,
-        opengl=options.opengl,
-        paths=args,
-        cache_dir=options.cache_dir,
-        regex=options.regex,
-        format=options.format,
-        force_cache=options.force_cache,
-        store_path=options.store_path,
-        store_interval=options.store_interval)
+    import pyrocko
+
+    try:
+        return pyrocko.snuffle(
+            this_pile,
+            stations=stations,
+            events=events,
+            markers=markers,
+            ntracks=options.ntracks,
+            marker_editor_sortable=options.marker_editor_sortable,
+            follow=options.follow,
+            controls=True,
+            opengl=options.opengl,
+            paths=args,
+            cache_dir=options.cache_dir,
+            regex=options.regex,
+            format=options.format,
+            force_cache=options.force_cache,
+            store_path=options.store_path,
+            store_interval=options.store_interval)
+
+    except deps.MissingPyrockoDependency as e:
+        logger.fatal(str(e))
+        sys.exit(1)
 
 
 if __name__ == '__main__':

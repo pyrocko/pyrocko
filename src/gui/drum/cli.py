@@ -6,6 +6,7 @@ from optparse import OptionParser
 from io import StringIO
 
 import pyrocko
+from pyrocko import deps
 from pyrocko import util
 
 
@@ -151,7 +152,10 @@ def command_view(args):
 
     parser, options, args = cl_parse('view', args, setup)
 
-    pyrocko.drum()
+    try:
+        pyrocko.drum()
+    except deps.MissingPyrockoDependency as e:
+        die(str(e))
 
 
 def command_version(args):
