@@ -43,6 +43,7 @@ fi
 conda-build --python 3.8 --numpy 1.21 build
 conda-build --python 3.9 --numpy 1.21 build
 conda-build --python 3.10 --numpy 1.21 build
+conda-build --python 3.11 --numpy 1.23 build
 
 if [ "$ACTION" == "upload" ] ; then
     trap - EXIT
