@@ -388,7 +388,11 @@ class DummyAwareOptionalTimestamp(Object):
                     val = util.str_to_time(val) - tz_offset
 
                 except util.TimeStrError:
-                    year = int(val[:4])
+                    if val == 'None':
+                        return None  # StationXML contained "None"
+                    else:
+                        year = int(val[:4])
+
                     if sys.maxsize > 2**32:  # if we're on 64bit
                         if year > this_year + 100:
                             return None  # StationXML contained a dummy date
@@ -396,6 +400,7 @@ class DummyAwareOptionalTimestamp(Object):
                         if year < 1903:  # for macOS, 1900-01-01 dummy dates
                             return None
 
+                        return None  # time-stamp format incomplete
                     else:  # 32bit end of time is in 2038
                         if this_year < 2037 and year > 2037 or year < 1903:
                             return None  # StationXML contained a dummy date
@@ -435,7 +440,8 @@ class RestrictedStatus(StringChoice):
     choices = [
         'open',
         'closed',
-        'partial']
+        'partial',
+        'public']
 
 
 class Type(StringChoice):
@@ -548,7 +554,13 @@ class Units(Object):
 
 
 class Counter(Int):
-    pass
+
+    class __T(TBase):
+
+        def regularize_extra(self, val):
+            print(val, len(val))
+            if isinstance(val, str) and len(val) == 0:
+                return None  # empty Total Number of Stations empty
 
 
 class SampleRateRatio(Object):
