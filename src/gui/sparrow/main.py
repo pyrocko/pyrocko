@@ -268,6 +268,7 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
         self._render_window_size = (0, 0)
         self._use_depth_peeling = use_depth_peeling
         self._in_update_elements = False
+        self._update_elements_enabled = True
 
         mbar = qw.QMenuBar()
         self.setMenuBar(mbar)
@@ -496,7 +497,7 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
                 if isinstance(obj, str):
                     snapshots_.extend(snapshots_mod.load_snapshots(obj))
                 else:
-                    snapshots.append(obj)
+                    snapshots_.append(obj)
 
             snapshots_panel.add_snapshots(snapshots_)
             self.raise_panel(snapshots_panel)
@@ -825,9 +826,13 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
         self._animation = None
 
     def set_state(self, state):
+        self._update_elements_enabled = False
         self.setUpdatesEnabled(False)
         self.state.diff_update(state)
+        self.state.sort_elements()
         self.setUpdatesEnabled(True)
+        self._update_elements_enabled = True
+        self.update_elements()
 
     def periodical(self):
         pass
@@ -842,7 +847,10 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
             self._render_window_size = render_window_size
             self.resize_event(*render_window_size)
 
-    def update_elements(self, path, value):
+    def update_elements(self, *_):
+        if not self._update_elements_enabled:
+            return
+
         if self._in_update_elements:
             return
 
@@ -850,13 +858,17 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
         for estate in self.state.elements:
             if estate.element_id not in self._elements:
                 new_element = estate.create()
-                logger.debug('Creating "%s".' % type(new_element).__name__)
+                logger.debug('Creating "%s" ("%s").' % (
+                    type(new_element).__name__,
+                    estate.element_id))
                 self._elements[estate.element_id] = new_element
 
             element = self._elements[estate.element_id]
 
             if estate.element_id not in self._elements_active:
-                logger.debug('Adding "%s".' % type(element).__name__)
+                logger.debug('Adding "%s" ("%s")' % (
+                    type(element).__name__,
+                    estate.element_id))
                 element.bind_state(estate)
                 element.set_parent(self)
                 self._elements_active[estate.element_id] = element
@@ -865,7 +877,9 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
         deactivate = []
         for element_id, element in self._elements_active.items():
             if element_id not in state_element_ids:
-                logger.debug('Removing "%s".' % type(element).__name__)
+                logger.debug('Removing "%s" ("%s").' % (
+                    type(element).__name__,
+                    element_id))
                 element.unset_parent()
                 deactivate.append(element_id)
 
