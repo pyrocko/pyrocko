@@ -14,3 +14,4 @@ practice.
    jackseis/index
    colosseo/index
    squirrel/index
+   sparrow/index
