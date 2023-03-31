@@ -20,6 +20,8 @@ km = 1e3
 
 
 def inormalize(x, imin, imax, discrete=True):
+    if x.size == 0:
+        return num.full(x.shape, imin, dtype=int)
 
     xmin = num.nanmin(x)
     xmax = num.nanmax(x)
@@ -282,6 +284,18 @@ class TableElement(base.Element):
         self._parent.add_actor(p.actor)
         p.set_size_factor(state.size * 0.005)
 
+    def _init_pipes(self):
+        if self._state.symbol == 'beachball':
+            self._init_pipes_beachball()
+        else:
+            self._init_pipes_scatter()
+
+    def _update_pipes(self):
+        if self._state.symbol == 'beachball':
+            self._update_pipes_beachball()
+        else:
+            self._update_pipes_scatter()
+
     def update(self, *args):
         state = self._state
 
@@ -295,18 +309,11 @@ class TableElement(base.Element):
 
         else:
             if self._istate != self._istate_view and self._table:
-                if state.symbol == 'beachball':
-                    self._init_pipes_beachball()
-                else:
-                    self._init_pipes_scatter()
-
+                self._init_pipes()
                 self._istate_view = self._istate
 
             if self._pipes is not None:
-                if state.symbol == 'beachball':
-                    self._update_pipes_beachball()
-                else:
-                    self._update_pipes_scatter()
+                self._update_pipes()
 
         self.update_alpha()  # TODO: only if needed?
         self._parent.update_view()

@@ -421,8 +421,9 @@ class CatalogElement(TableElement):
         fns, _ = qw.QFileDialog.getOpenFileNames(
             self._parent, caption, options=common.qfiledialog_options)
 
-        self._state.selection = FileCatalogSelection(
-            paths=[str(fn) for fn in fns])
+        if fns:
+            self._state.selection = FileCatalogSelection(
+                paths=[str(fn) for fn in fns])
 
     def open_catalog_load_dialog(self):
         dialog = qw.QDialog(self._parent)
