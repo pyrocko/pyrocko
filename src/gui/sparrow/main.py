@@ -12,6 +12,7 @@ import tempfile
 import os
 import shutil
 import platform
+from collections import defaultdict
 from subprocess import check_call
 
 import numpy as num
@@ -1465,7 +1466,7 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
         self.update_view()
 
     def add_panel(
-            self, name, panel,
+            self, title_label, panel,
             visible=False,
             # volatile=False,
             tabify=True,
@@ -1474,7 +1475,7 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
             title_controls=[]):
 
         dockwidget = common.MyDockWidget(
-            name, self, title_controls=title_controls)
+            self, title_label, title_controls=title_controls)
 
         if not visible:
             dockwidget.hide()
@@ -1497,12 +1498,48 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
                 dws[len(dws) - nwrap + len(dws) % nwrap], dockwidget)
 
         mitem = dockwidget.toggleViewAction()
+
+        def update_label(*args):
+            mitem.setText(dockwidget.titlebar._title_label.get_full_title())
+            self.update_slug_abbreviated_lengths()
+
+        dockwidget.titlebar._title_label.title_changed.connect(update_label)
+        dockwidget.titlebar._title_label.title_changed.connect(
+            self.update_slug_abbreviated_lengths)
+
+        update_label()
+
         self._panel_togglers[dockwidget] = mitem
         self.panels_menu.addAction(mitem)
         if visible:
             dockwidget.setVisible(True)
             dockwidget.setFocus()
             dockwidget.raise_()
+
+    def update_slug_abbreviated_lengths(self):
+        dockwidgets = self.findChildren(common.MyDockWidget)
+        title_labels = []
+        for dw in dockwidgets:
+            title_labels.append(dw.titlebar._title_label)
+
+        by_title = defaultdict(list)
+        for tl in title_labels:
+            by_title[tl.get_title()].append(tl)
+
+        for group in by_title.values():
+            slugs = [tl.get_slug() for tl in group]
+
+            n = max(len(slug) for slug in slugs)
+            nunique = len(set(slugs))
+
+            while n > 0 and len(set(slug[:n-1] for slug in slugs)) == nunique:
+                n -= 1
+
+            if n > 0:
+                n = max(3, n)
+
+            for tl in group:
+                tl.set_slug_abbreviated_length(n)
 
     def raise_panel(self, panel):
         dockwidget = panel.parent()
