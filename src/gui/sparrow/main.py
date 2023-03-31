@@ -699,6 +699,7 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
         wif = vtk.vtkWindowToImageFilter()
         wif.SetInput(self.renwin)
         wif.SetInputBufferTypeToRGBA()
+        wif.SetScale(1, 1)
         wif.ReadFrontBufferOff()
         writer = vtk.vtkPNGWriter()
         writer.SetInputConnection(wif.GetOutputPort())
@@ -707,9 +708,6 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
         wif.Modified()
         writer.SetFileName(path)
         writer.Write()
-
-        self.vtk_widget.setFixedSize(
-            qw.QWIDGETSIZE_MAX, qw.QWIDGETSIZE_MAX)
 
         self.gui_state.fixed_size = original_fixed_size
 
@@ -746,8 +744,9 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
         self._animation_timer.setInterval(int(round(interpolator.dt * 1000.)))
         self._animation_timer.start()
         if output_path is not None:
-            self.vtk_widget.setFixedSize(qc.QSize(1920, 1080))
-            # self.vtk_widget.setFixedSize(qc.QSize(960, 540))
+            original_fixed_size = self.gui_state.fixed_size
+            if original_fixed_size is None:
+                self.gui_state.fixed_size = (1920., 1080.)
 
             wif = vtk.vtkWindowToImageFilter()
             wif.SetInput(self.renwin)
@@ -756,7 +755,8 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
             wif.ReadFrontBufferOff()
             writer = vtk.vtkPNGWriter()
             temp_path = tempfile.mkdtemp()
-            self._animation_saver = (wif, writer, temp_path, output_path)
+            self._animation_saver = (
+                wif, writer, temp_path, output_path, original_fixed_size)
             writer.SetInputConnection(wif.GetOutputPort())
 
     def next_animation_frame(self):
@@ -780,7 +780,7 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
         self.set_state(state)
         self.renwin.Render()
         if self._animation_saver:
-            wif, writer, temp_path, _ = self._animation_saver
+            wif, writer, temp_path, _, _ = self._animation_saver
             wif.Modified()
             fn = os.path.join(temp_path, 'f%09i.png')
             writer.SetFileName(fn % self._animation_iframe)
@@ -799,10 +799,11 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
             self._animation_timer.stop()
 
         if self._animation_saver:
-            self.vtk_widget.setFixedSize(
-                qw.QWIDGETSIZE_MAX, qw.QWIDGETSIZE_MAX)
 
-            wif, writer, temp_path, output_path = self._animation_saver
+            wif, writer, temp_path, output_path, original_fixed_size \
+                = self._animation_saver
+            self.gui_state.fixed_size = original_fixed_size
+
             fn_path = os.path.join(temp_path, 'f%09d.png')
             check_call([
                 'ffmpeg', '-y',
