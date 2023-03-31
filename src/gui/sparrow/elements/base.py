@@ -231,7 +231,10 @@ class CPTHandler(Element):
                     state.cpt_scale_max = None
 
         if state.cpt_name is not None and self._values is not None:
-            vscale = (num.nanmin(self._values), num.nanmax(self._values))
+            if self._values.size == 0:
+                vscale = (0., 1.)
+            else:
+                vscale = (num.nanmin(self._values), num.nanmax(self._values))
 
             vmin, vmax = None, None
             if None not in (state.cpt_scale_min, state.cpt_scale_max):
