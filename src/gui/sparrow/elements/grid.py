@@ -125,7 +125,7 @@ class GridElement(Element):
     def set_parent(self, parent):
         Element.set_parent(self, parent)
         self._parent.add_panel(
-            self.get_name(),
+            self.get_title_label(),
             self._get_controls(),
             visible=True,
             title_controls=[

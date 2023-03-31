@@ -249,26 +249,84 @@ class MyDockWidgetTitleBarButtonToggle(MyDockWidgetTitleBarButton):
 
 class MyDockWidgetTitleBarLabel(qw.QLabel):
 
+    title_changed = qc.pyqtSignal()
+    representation_changed = qc.pyqtSignal()
+
+    def __init__(self, title, *args, **kwargs):
+        qw.QLabel.__init__(self, '', *args, **kwargs)
+        self._slug = ''
+        self._slug_abbreviated_length = 0
+        self._title = ''
+        self.set_title(title)
+
+    def set_title(self, title):
+        self._title = title
+        self.title_changed.emit()
+        self.update_text()
+
+    def get_title(self):
+        return self._title
+
+    def get_abbreviated_slug(self):
+        slug = self._slug[:self._slug_abbreviated_length]
+        if len(slug) != 0 and slug != self._slug:
+            return slug + '...'
+        else:
+            return slug
+
+    def update_text(self):
+        slug = self.get_abbreviated_slug()
+        self.setText('<strong>%s</strong>%s' % (
+            self._title,
+            ' <small>%s</small>' % slug if slug else ''))
+        self.representation_changed.emit()
+
     def event(self, ev):
         ev.ignore()
         return qw.QLabel.event(self, ev)
 
+    def set_slug(self, slug):
+        self._slug = slug
+        self.setToolTip(slug)
+        self.update_text()
+        self.title_changed.emit()
+
+    def set_slug_abbreviated_length(self, n):
+        self._slug_abbreviated_length = n
+        self.update_text()
+
+    def get_slug(self):
+        return self._slug
+
+    def get_full_title(self):
+        slug = self._slug
+        return '%s%s' % (
+            self._title, ' [%s]' % slug if slug else '')
+
+    def get_abbreviated_title(self):
+        slug = self.get_abbreviated_slug()
+        return '%s%s' % (self._title, ' [%s]' % slug if slug else '')
+
 
 class MyDockWidgetTitleBar(qw.QFrame):
 
-    def __init__(self, title, title_controls=[]):
+    def __init__(self, title_label, title_controls=[]):
         qw.QFrame.__init__(self)
 
-        lab = MyDockWidgetTitleBarLabel('<strong>%s</strong>' % title)
-        lab.setSizePolicy(
+        if isinstance(title_label, str):
+            title_label = MyDockWidgetTitleBarLabel(title_label)
+
+        title_label.setSizePolicy(
             qw.QSizePolicy.Expanding, qw.QSizePolicy.Minimum)
+
+        self._title_label = title_label
 
         button_hide = MyDockWidgetTitleBarButton('-')
         button_hide.setStatusTip('Hide Panel')
 
         layout = qw.QGridLayout()
         layout.setSpacing(0)
-        layout.addWidget(lab, 0, 0)
+        layout.addWidget(title_label, 0, 0)
         layout.addWidget(button_hide, 0, 1)
         for i, button in enumerate(title_controls):
             layout.addWidget(button, 0, 2 + i)
@@ -285,8 +343,9 @@ class MyDockWidgetTitleBar(qw.QFrame):
 
 class MyDockWidget(qw.QDockWidget):
 
-    def __init__(self, name, parent, title_controls=[], **kwargs):
-        qw.QDockWidget.__init__(self, name, parent, **kwargs)
+    def __init__(self, parent, title_label, title_controls=[], **kwargs):
+
+        qw.QDockWidget.__init__(self, parent, **kwargs)
 
         self.setFeatures(
             qw.QDockWidget.DockWidgetClosable
@@ -297,10 +356,17 @@ class MyDockWidget(qw.QDockWidget):
         self._visible = False
         self._blocked = False
 
-        tb = MyDockWidgetTitleBar(name, title_controls)
+        tb = MyDockWidgetTitleBar(title_label, title_controls)
         tb.button_hide.clicked.connect(self.hide)
         self.setTitleBarWidget(tb)
         self.titlebar = tb
+
+        def update_title():
+            lab = self.titlebar._title_label.get_abbreviated_title()
+            self.setWindowTitle(lab)
+
+        self.titlebar._title_label.representation_changed.connect(update_title)
+        update_title()
 
     def setVisible(self, visible):
         self._visible = visible

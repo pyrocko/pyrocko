@@ -64,6 +64,18 @@ class Element(TalkieConnectionOwner):
     def update_visibility(self, visible):
         self._state.visible = visible
 
+    def get_title_label(self):
+        title_label = common.MyDockWidgetTitleBarLabel(self.get_name())
+
+        def update_label(*args):
+            title_label.set_slug(self._state.element_id)
+
+        self.talkie_connect(
+            self._state, 'element_id', update_label)
+
+        update_label()
+        return title_label
+
     def get_title_control_remove(self):
         button = common.MyDockWidgetTitleBarButton('\u00d7')
         button.setStatusTip('Remove Element')

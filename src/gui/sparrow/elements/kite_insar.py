@@ -151,7 +151,7 @@ class KiteElement(Element):
 
         self._parent = parent
         self._parent.add_panel(
-            self.get_name(),
+            self.get_title_label(),
             self._get_controls(),
             visible=True,
             title_controls=[
