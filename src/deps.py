@@ -106,7 +106,8 @@ def import_optional(module_name, needed_for):
         package_name = _module_to_package_name[module_name]
 
         logger.info(
-            '''Optional Pyrocko dependency '%s' is not available (needed for %s): %s''' % (
+            'Optional Pyrocko dependency "%s" is not available '
+            '(needed for %s): %s' % (
                 package_name,
                 needed_for,
                 str(e)))
