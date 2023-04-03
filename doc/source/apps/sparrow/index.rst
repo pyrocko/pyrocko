@@ -79,7 +79,7 @@ The focus point is visually shown when "Crosshair" in the navigation panel is
 checked.
 
 The depth of the focal point can be set by modifying the third value [km] in
-the "Location" field. Use negative values to set the focal point into the
+the "Location" field. Use negative values to lift the focal point into the
 atmosphere.
 
 **Elements**
@@ -109,29 +109,28 @@ Hive.
 
 **Snapshots and animations**
 
-To take a snapshot of the current scene with all its settings, you can use the
-Snapshot tool which is available from the "Panels" menu. A snapshot is not
-simply a screenshot of the scene. Instead, it is a snapshot of the internal
-state of the Sparrow application. You can go back to any snapshot by
-double-clicking its thumbnail. The snapshot tool also allows you to transition
-between snapshots. This is done by interpolating the numerical state values,
-where possible, between the two snapshot states.
+To save the the current scene with all its settings, you can use the "Snapshot"
+tool which is available from the "Panels" menu. A Sparrow snapshot is a dump of
+the complete internal state of the scene (and not an just an image of the
+current view). You can go back to any snapshot by double-clicking its
+thumbnail. The tool also allows you to transition between snapshots. This is
+done by interpolating the numerical state values, where possible, between the
+two snapshot states.
 
 Simple animations are made by arranging multiple snapshots and transitions into
 a timeline. The animations can be saved as MP4 movies to show-off your research
 findings in a feasible and convenient way. By default the movies are exported
-as Full HD (1920 x 1080 pixels). Other formats can be chosen by setting the
-size though the "View" menu. To export a still image, use "Export Image..."
+in Full HD size (1920 x 1080 pixels). Other formats can be chosen by setting
+the size though the "View" menu. To export a still image, use "Export Image..."
 from the "File" menu.
 
 Snapshot sequences can be saved as YAML text files. You can edit these files
-simply with a text editor if you feel that what you want achieve is more
-efficiently done this way. Of course you can also create or manipulate them
-from a script. This is especially convenient for YAML files. YAML files can be
-read/written in Python using the `pyyaml <https://pyyaml.org/>`_ package in an
-agnostic way or by using the dedicated loaders in Pyrocko to directly
-instantiate objects of the dedicated Pyrocko classes which are also used
-internally in Sparrow.
+with a text editor if you feel that what you want achieve is more efficiently
+done this way. Of course you can also create or manipulate them from a script.
+This is especially convenient with YAML files. YAML files can be read/written
+in Python using the `pyyaml <https://pyyaml.org/>`_ package in an agnostic way
+or by using the dedicated loaders in Pyrocko to directly instantiate objects of
+the Pyrocko classes which are also used internally in Sparrow.
 
 **Textual manipulation of the Sparrow's state**
 
