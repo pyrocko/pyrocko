@@ -92,8 +92,17 @@ lift the focal point above sea-level.
 The scene shown in the view is composed of a variable number of elements. By
 default the *Icosphere*, *Grid* and *Coastline* elements are shown. More
 elements can be added through the *Add* menu. The elements can be configured
-with their associated control panels. To toggle the visibility of an
-element click the pentagon symbol in its control panel title bar.
+with their associated control panels.
+
+Elements have different controls provided within their panel title bar:
+
+* \_ Hide the control panel. It can be regained via the *Panels* menu. The
+  element will still be shown in the scene.
+
+* X Remove the element from the scene.
+
+* ⭓ Toggle the visibility of an element. To untoggle again click on the
+  now present ⭔.
 
 Two useful elements are:
 
@@ -105,8 +114,23 @@ Two useful elements are:
   datasets using the Pyrocko commands ``automap --download-etopo`` and
   ``automap --download-srtmgl3`` (about 36 GB).
 
-Further elements allow display of subtitles, time counters, station locations,
-InSAR displacements, source models, faults, volcanoes and more.
+Further elements allow display of
+
+* subtitles,
+
+* time counters,
+
+* station locations,
+
+* InSAR displacements,
+
+* source models,
+
+* faults,
+
+* volcanoes
+
+* ...
 
 If you would like to implement a new element and need some pointers to get
 started, have a chat with us in the `Sparrow channel
@@ -116,7 +140,7 @@ Hive.
 **Snapshots and animations**
 
 To capture the state of the current scene with all its settings, use the
-Snapshot tool which is available from the *Panels* menu. You can go back to any
+*Snapshot* tool which is available from the *Panels* menu. You can go back to any
 snapshot by double-clicking its thumbnail. The snapshot tool also allows you to
 transition between snapshots.  This is done by interpolating the numerical
 state values (where possible) between the two snapshot states. Double-click the
