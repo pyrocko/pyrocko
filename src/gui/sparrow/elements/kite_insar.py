@@ -12,7 +12,7 @@ except ImportError:
 
 import numpy as num
 
-from pyrocko import geometry
+from pyrocko import geometry, cake
 from pyrocko.guts import Bool, String, List
 from pyrocko.gui.qt_compat import qw
 from pyrocko.gui.vtk_util import TrimeshPipe, faces_to_cells
@@ -66,20 +66,15 @@ class KiteMeshPipe(TrimeshPipe):
 
         nlat = lat_edge.size
         nlon = lon_edge.size
-        nvertices = nlat * nlon
 
         assert nlat > 1 and nlon > 1
         assert data_center.shape == (nlat-1, nlon-1)
 
-        rtp = num.empty((nvertices, 3))
-        rtp[:, 0] = 1.0
-        rtp[:, 1] = (num.repeat(lat_edge, nlon) + 90.) * d2r
-        rtp[:, 2] = num.tile(lon_edge, nlat) * d2r
-        vertices = geometry.rtp2xyz(rtp)
+        ele = num.zeros((nlat, nlon))
+        ele[:-1, :-1] = data_center * 100000.
+        vertices, faces = geometry.topo_to_mesh(
+            lat_edge, lon_edge, ele, cake.earthradius)
 
-        faces = geometry.topo_to_faces_quad(nlat, nlon)
-
-        self._tile = tile
         self._raw_vertices = vertices
 
         if cells_cache is not None:
@@ -93,7 +88,7 @@ class KiteMeshPipe(TrimeshPipe):
         data_center = data_center.flatten()
 
         TrimeshPipe.__init__(
-            self, self._raw_vertices,
+            self, vertices,
             cells=cells, values=data_center, **kwargs)
 
 
@@ -208,7 +203,7 @@ class KiteElement(Element):
             if scene is None:
                 continue
 
-            logger.info('Adding Kite scene %s', fname)
+            logger.debug('Adding Kite scene %s', fname)
 
             scene_element = KiteSceneElement(filename=fname)
             scene_element.scene = scene
@@ -217,7 +212,7 @@ class KiteElement(Element):
         self.update()
 
     def clear_scenes(self, *args):
-        logger.info('Clearing all loaded Kite scenes')
+        logger.debug('Clearing all loaded Kite scenes')
 
         for mesh in self._meshes.values():
             self._parent.remove_actor(mesh.actor)
@@ -235,7 +230,7 @@ class KiteElement(Element):
 
         if self._state.visible:
             for scene_element in state.scenes:
-                logger.info('Drawing Kite scene')
+                logger.debug('Drawing Kite scene')
 
                 if scene_element.scene is None:
                     scene_element.scene = self._load_scene_from_fn(
