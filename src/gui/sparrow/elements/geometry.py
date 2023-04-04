@@ -44,6 +44,7 @@ class GeometryState(base.ElementState):
 class GeometryElement(base.Element):
 
     def __init__(self):
+        base.Element.__init__(self)
         self._parent = None
         self._state = None
         self._controls = None
