@@ -516,6 +516,7 @@ class TrimeshPipe(object):
         self.polydata.GetPoints().SetData(numpy_to_vtk(vertices))
 
     def set_values(self, values):
+        values = num.ascontiguousarray(values, dtype=num.float64)
         vvalues = numpy_to_vtk(values)
         self.polydata.GetCellData().SetScalars(vvalues)
         # self.mapper.SetScalarRange(values.min(), values.max())
