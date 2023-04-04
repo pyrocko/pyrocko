@@ -92,17 +92,12 @@ lift the focal point above sea-level.
 The scene shown in the view is composed of a variable number of elements. By
 default the *Icosphere*, *Grid* and *Coastline* elements are shown. More
 elements can be added through the *Add* menu. The elements can be configured
-with their associated control panels.
+with their associated control panels. Their title bar controls do as follows:
 
-Elements have different controls provided within their panel title bar:
-
-* \_ Hide the control panel. It can be regained via the *Panels* menu. The
+* ✖ Remove the element from the scene.
+* ⭓/⭔ Toggle the visibility of an element.
+* ━ Hide the control panel. It can be regained via the *Panels* menu. The
   element will still be shown in the scene.
-
-* X Remove the element from the scene.
-
-* ⭓ Toggle the visibility of an element. To untoggle again click on the
-  now present ⭔.
 
 Two useful elements are:
 
@@ -117,19 +112,12 @@ Two useful elements are:
 Further elements allow display of
 
 * subtitles,
-
 * time counters,
-
 * station locations,
-
 * InSAR displacements,
-
 * source models,
-
 * faults,
-
 * volcanoes
-
 * ...
 
 If you would like to implement a new element and need some pointers to get
