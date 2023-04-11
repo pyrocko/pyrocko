@@ -4,7 +4,9 @@
 # ---|P------/S----------~Lg----------
 
 import difflib
+from collections import defaultdict
 
+from pyrocko import util
 from pyrocko.guts import Object, List, clone
 from weakref import ref
 
@@ -44,7 +46,35 @@ def new_uid():
     return '#%i' % g_uid
 
 
+def has_computed(cls):
+    cls._computed = defaultdict(list)
+    cls._computed_rev = defaultdict(list)
+
+    for prop_name in dir(cls):
+        try:
+            prop = getattr(cls, prop_name)
+            depends_on = prop.fget._computed_depends_on
+            for name in depends_on:
+                cls._computed_rev[name].append(prop_name)
+                cls._computed[prop_name].append(name)
+
+        except AttributeError:
+            pass
+
+    return cls
+
+
+def computed(depends_on):
+    def wrapper(func):
+        func._computed_depends_on = depends_on
+        return property(func)
+
+    return wrapper
+
+
 class Talkie(Object):
+    _computed = None
+    _computed_rev = None
 
     def __setattr__(self, name, value):
         try:
@@ -66,6 +96,9 @@ class Talkie(Object):
 
         Object.__setattr__(self, name, value)
         self.fire([name], value)
+        if self._computed_rev is not None:
+            for dname in self._computed_rev[name]:
+                self.fire([dname], None)
 
     def fire(self, path, value):
         self.fire_event(path, value)
@@ -426,3 +459,95 @@ class TalkieConnectionOwner(object):
                 self._connections.pop().release()
             except Exception:
                 pass
+
+
+def none_or(f):
+    def g(x):
+        if x is None:
+            return ''
+        else:
+            return f(x)
+
+    return g
+
+
+def noop(x):
+    return x
+
+
+class TalkieStringer:
+    def __init__(self, root):
+        self._root = root
+        self._formatters = {
+            'date': none_or(lambda v: util.time_to_str(v, format='%Y-%m-%d')),
+            'datetime': none_or(lambda v: util.time_to_str(v))}
+
+        self._paths = []
+
+    def __getitem__(self, key):
+
+        stringer = self
+
+        class Proxy:
+            def __init__(self, val, formatter, path, talkie_root):
+                self._formatter = formatter
+                self._val = val
+                self._path = path
+                self._talkie_root = talkie_root
+
+            def register_path(self):
+                stringer._paths.append(
+                    (self._talkie_root, '.'.join(self._path)))
+
+            def _computed(self):
+                return getattr(self._val, '_computed', ())
+
+            def __getattr__(self, key):
+                if key in self._val.T.propnames \
+                        or key in self._computed():
+
+                    self._path.append(key)
+                    val = getattr(self._val, key)
+                    pval = self._proxy(val)
+                    if not isinstance(pval, (Proxy, ListProxy)):
+                        self.register_path()
+
+                    return pval
+                else:
+                    return '{' + key + '}'
+
+            def __format__(self, *args, **kwargs):
+                self.register_path()
+                return self._val.__format__(*args, **kwargs)
+
+            def _proxy(self, val):
+                if isinstance(val, TalkieRoot):
+                    return Proxy(
+                        val, self._formatter, [], val)
+
+                elif isinstance(val, Object):
+                    return Proxy(
+                        val, self._formatter, self._path, self._talkie_root)
+
+                elif isinstance(val, list):
+                    return ListProxy(
+                        val, self._formatter, self._path, self._talkie_root)
+
+                else:
+                    return self._formatter(val)
+
+        class ListProxy(Proxy):
+            def __getitem__(self, i):
+                self._path[-1] += '[%i]' % i
+                return self._proxy(self._val[i])
+
+        key = key.split('|', 1)
+        if len(key) == 2:
+            key, formatter = key[0], self._formatters[key[1]]
+        else:
+            key, formatter = key[0], noop
+
+        return getattr(Proxy(self._root, formatter, [], self._root), key)
+
+    def get_paths(self):
+        return self._paths

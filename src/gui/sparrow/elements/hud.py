@@ -5,10 +5,9 @@
 
 import vtk
 
-from pyrocko.guts import Bool, List, String, StringChoice, Float, get_elements
+from pyrocko.guts import Bool, String, StringChoice, Float
 from pyrocko.gui.qt_compat import qw, qc
-from pyrocko.gui.talkie import TalkieConnectionOwner
-from pyrocko import util
+from pyrocko.gui.talkie import TalkieConnectionOwner, TalkieStringer
 
 
 from .base import Element, ElementState
@@ -24,7 +23,6 @@ class HudPositionChoice(StringChoice):
 
 class HudState(ElementState):
     visible = Bool.T(default=True)
-    variables = List.T(String.T(optional=True))
     template = String.T()
     position = HudPositionChoice.T(default='bottom')
     lightness = Float.T(default=1.0)
@@ -33,36 +31,6 @@ class HudState(ElementState):
     def create(self):
         element = HudElement()
         return element
-
-
-def none_or(f):
-    def g(x):
-        if x is None:
-            return ''
-        else:
-            return f(x)
-
-    return g
-
-
-class Stringer(object):
-    def __init__(self, d):
-        self._d = d
-        self._formatters = {
-            'date': none_or(lambda v: util.time_to_str(v, format='%Y-%m-%d')),
-            'datetime': none_or(lambda v: util.time_to_str(v))}
-
-    def __getitem__(self, key):
-        key = key.split('|', 1)
-        if len(key) == 2:
-            key, formatter = key[0], self._formatters.get(key[1], str)
-        else:
-            key, formatter = key[0], str
-
-        if key in self._d:
-            return formatter(self._d[key])
-        else:
-            return '{' + key + '}'
 
 
 class HudElement(Element):
@@ -84,7 +52,7 @@ class HudElement(Element):
             ['visible', 'lightness', 'fontsize', 'template', 'position'],
             self.update)
 
-        self.talkie_connect(state, 'variables', self.update_bindings)
+        self.talkie_connect(state, 'template', self.update_bindings)
 
     def unbind_state(self):
         self._connections2.talkie_disconnect_all()
@@ -121,9 +89,10 @@ class HudElement(Element):
 
     def update_bindings(self, *args):
         self._connections2.talkie_disconnect_all()
-
-        self._connections2.talkie_connect(
-            self._parent.state, self._state.variables, self.update)
+        s = TalkieStringer(self._parent.state)
+        self._state.template.format_map(s)
+        for (state, path) in s.get_paths():
+            self._connections2.talkie_connect(state, path, self.update)
 
     def update(self, *args):
         state = self._state
@@ -136,11 +105,7 @@ class HudElement(Element):
 
         actor = self._actor
 
-        vs = [
-            get_elements(pstate, variable)[0]
-            for variable in self._state.variables]
-
-        s = Stringer(d=dict((str(i), v) for (i, v) in enumerate(vs)))
+        s = TalkieStringer(pstate)
         actor.SetInput(self._state.template.format_map(s))
 
         sx, sy = self._parent.gui_state.size
