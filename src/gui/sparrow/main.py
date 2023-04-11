@@ -319,12 +319,11 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
                 ('Catalog', elements.CatalogState()),
                 ('Coastlines', elements.CoastlinesState()),
                 ('Source', elements.SourceState()),
-                ('HUD (tmax)', elements.HudState(
-                    variables=['tmax'],
-                    template='tmax: {0|date}',
+                ('HUD Subtitle', elements.HudState(
+                    template='Subtitle')),
+                ('HUD (tmax_effective)', elements.HudState(
+                    template='tmax: {tmax_effective|date}',
                     position='top-left')),
-                ('HUD subtitle', elements.HudState(
-                    template='Awesome')),
                 ('Volcanoes', elements.VolcanoesState()),
                 ('Faults', elements.ActiveFaultsState()),
                 ('Plate bounds', elements.PlatesBoundsState()),

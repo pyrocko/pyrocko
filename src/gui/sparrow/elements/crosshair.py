@@ -10,6 +10,8 @@ from .. import common
 
 from .base import Element, ElementState
 
+guts_prefix = 'sparrow'
+
 
 def cross3d_flat(a=1., b=0.5):
     lines_ned = []

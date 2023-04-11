@@ -100,6 +100,7 @@ def interpolate_background(a, b, blend):
                 a.color_bottom, b.color_bottom, blend))
 
 
+@talkie.has_computed
 class ViewerState(talkie.TalkieRoot):
     lat = Float.T(default=0.0)
     lon = Float.T(default=0.0)
@@ -115,12 +116,12 @@ class ViewerState(talkie.TalkieRoot):
     lighting = LightingChoice.T(default=LightingChoice.choices[0])
     background = Background.T(default=Background.D(color=Color('black')))
 
-    @property
+    @talkie.computed(['tmin', 'tmax', 'tduration', 'tposition'])
     def tmin_effective(self):
         return common.tmin_effective(
             self.tmin, self.tmax, self.tduration, self.tposition)
 
-    @property
+    @talkie.computed(['tmin', 'tmax', 'tduration', 'tposition'])
     def tmax_effective(self):
         return common.tmax_effective(
             self.tmin, self.tmax, self.tduration, self.tposition)
@@ -149,7 +150,7 @@ def state_bind(
                     update_state(widget, state)
                 common.de_errorize(widget)
             except Exception as e:
-                logger.warn('caught exception: %s' % e)
+                logger.warn('Caught exception: %s' % e)
                 common.errorize(widget)
 
         return wrap_update_widget, wrap_update_state
