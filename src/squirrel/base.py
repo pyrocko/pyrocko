@@ -10,6 +10,7 @@ import queue
 import sys
 import threading
 from collections import defaultdict
+from typing import Iterator
 
 from pyrocko import trace, util
 from pyrocko.guts import Dict, Int, List, Object, String, Timestamp, Tuple
@@ -2316,7 +2317,7 @@ class Squirrel(Selection):
             degap=True, maxgap=5, maxlap=None,
             snap=None, include_last=False, load_data=True,
             accessor_id=None, clear_accessor=True, operator_params=None,
-            grouping=None):
+            grouping=None) -> Iterator[Batch]:
 
         '''
         Iterate window-wise over waveform archive.
@@ -2470,23 +2471,27 @@ class Squirrel(Selection):
                 for iwin in range(nwin):
                     wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)
 
-                    chopped = self.get_waveforms(
-                        tmin=wmin-tpad,
-                        tmax=wmax+tpad,
-                        codes=scl,
-                        snap=snap,
-                        include_last=include_last,
-                        load_data=load_data,
-                        want_incomplete=want_incomplete,
-                        degap=degap,
-                        maxgap=maxgap,
-                        maxlap=maxlap,
-                        accessor_id=accessor_id,
-                        operator_params=operator_params)
+                    try:
+                        chopped = self.get_waveforms(
+                            tmin=wmin-tpad,
+                            tmax=wmax+tpad,
+                            codes=scl,
+                            snap=snap,
+                            include_last=include_last,
+                            load_data=load_data,
+                            want_incomplete=want_incomplete,
+                            degap=degap,
+                            maxgap=maxgap,
+                            maxlap=maxlap,
+                            accessor_id=accessor_id,
+                            operator_params=operator_params)
+                    except error.NotAvailable as exc:
+                        logger.error(str(exc))
+                        continue
+                    finally:
+                        self.advance_accessor(accessor_id)
 
-                    self.advance_accessor(accessor_id)
-
-                    yield Batch(
+                    res = yield Batch(
                         tmin=wmin,
                         tmax=wmax,
                         i=iwin,
@@ -2494,6 +2499,9 @@ class Squirrel(Selection):
                         igroup=igroup,
                         ngroups=ngroups,
                         traces=chopped)
+
+                    if res == 'skip group':
+                        break
 
         finally:
             self._n_choppers_active -= 1

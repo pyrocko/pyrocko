@@ -2,19 +2,10 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-
-<<<<<<< HEAD
 from __future__ import absolute_import, print_function
 
 import importlib
 import importlib.util
-||||||| 38318a4d
-from __future__ import absolute_import, print_function
-
-import re
-=======
-import re
->>>>>>> origin/master
 import logging
 import os
 import os.path as op
@@ -443,148 +434,169 @@ class Converter(HasPaths):
                 part.convert(args, chain)
 
             del task
+            return
 
+        sq = args.make_squirrel()
+
+        cli_overrides = Converter.from_arguments(args)
+        cli_overrides.set_basepath('.')
+
+        chain = Chain(cli_overrides, chain)
+
+        chain.mcall('add_dataset', sq)
+
+        tmin = chain.get('tmin')
+        tmax = chain.get('tmax')
+        tinc = chain.get('tinc')
+        codes = chain.get('codes')
+        downsample = chain.get('downsample')
+        out_path, is_sds = chain.fcall('get_effective_out_path') \
+            or (None, False)
+
+        if is_sds and tinc != 86400.:
+            logger.warning('Setting time window to 1 day to generate SDS.')
+            tinc = 86400.0
+
+        out_format = chain.get('out_format')
+        out_data_type = chain.get('out_data_type')
+
+        out_meta_path = chain.fcall('get_effective_out_meta_path')
+
+        if out_meta_path is not None:
+            sx = sq.get_stationxml(codes=codes, tmin=tmin, tmax=tmax)
+            util.ensuredirs(out_meta_path)
+            sx.dump_xml(filename=out_meta_path)
+            if out_path is None:
+                return
+
+        target_deltat = None
+        if downsample is not None:
+            target_deltat = 1.0 / float(downsample)
+
+        save_kwargs = {}
+        if out_format == 'mseed':
+            save_kwargs['record_length'] = chain.get(
+                'out_mseed_record_length')
+            save_kwargs['steim'] = chain.get(
+                'out_mseed_steim')
+
+        traversal = chain.get('traversal')
+        if traversal is not None:
+            grouping = TraversalChoice.name_to_grouping[traversal]
         else:
-            sq = args.make_squirrel()
+            grouping = None
 
-            cli_overrides = Converter.from_arguments(args)
-            cli_overrides.set_basepath('.')
+        tpad = 0.0
+        if target_deltat is not None:
+            tpad += target_deltat * 50.
 
-            chain = Chain(cli_overrides, chain)
+        task = None
+        rename_rules = self.get_effective_rename_rules(chain)
 
-            chain.mcall('add_dataset', sq)
+        waveform_chopper = sq.chopper_waveforms(
+            tmin=tmin, tmax=tmax, tpad=tpad, tinc=tinc,
+            codes=codes, snap_window=True, grouping=grouping)
 
-            tmin = chain.get('tmin')
-            tmax = chain.get('tmax')
-            tinc = chain.get('tinc')
-            codes = chain.get('codes')
-            downsample = chain.get('downsample')
-            out_path, is_sds = chain.fcall('get_effective_out_path') \
-                or (None, False)
+        for batch in waveform_chopper:
 
-            if is_sds and tinc != 86400.:
-                logger.warning('Setting time window to 1 day to generate SDS.')
-                tinc = 86400.0
+            if task is None:
+                task = make_task('Jackseis blocks', batch.n * batch.ngroups)
 
-            out_format = chain.get('out_format')
-            out_data_type = chain.get('out_data_type')
+            tlabel = '%s%s - %s' % (
+                'groups %i / %i: ' % (batch.igroup, batch.ngroups)
+                if batch.ngroups > 1 else '',
+                util.time_to_str(batch.tmin),
+                util.time_to_str(batch.tmax))
 
-            out_meta_path = chain.fcall('get_effective_out_meta_path')
+            task.update(batch.i + batch.igroup * batch.n, tlabel)
 
-            if out_meta_path is not None:
-                sx = sq.get_stationxml(codes=codes, tmin=tmin, tmax=tmax)
-                util.ensuredirs(out_meta_path)
-                sx.dump_xml(filename=out_meta_path)
-                if out_path is None:
-                    return
+            twmin = batch.tmin
+            twmax = batch.tmax
+            traces = batch.traces
 
-            target_deltat = None
-            if downsample is not None:
-                target_deltat = 1.0 / float(downsample)
+            additional = dict(
+                wmin_year=tts(twmin, format='%Y'),
+                wmin_month=tts(twmin, format='%m'),
+                wmin_day=tts(twmin, format='%d'),
+                wmin_jday=tts(twmin, format='%j'),
+                wmin=tts(twmin, format='%Y-%m-%d_%H-%M-%S'),
+                wmax_year=tts(twmax, format='%Y'),
+                wmax_month=tts(twmax, format='%m'),
+                wmax_day=tts(twmax, format='%d'),
+                wmax_jday=tts(twmax, format='%j'),
+                wmax=tts(twmax, format='%Y-%m-%d_%H-%M-%S'))
 
-            save_kwargs = {}
-            if out_format == 'mseed':
-                save_kwargs['record_length'] = chain.get(
-                    'out_mseed_record_length')
-                save_kwargs['steim'] = chain.get(
-                    'out_mseed_steim')
+            # Rename traces
+            for tr in traces:
+                self.do_rename(rename_rules, tr)
+                chain.fcall("do_rename_callback", tr)
 
-            traversal = chain.get('traversal')
-            if traversal is not None:
-                grouping = TraversalChoice.name_to_grouping[traversal]
-            else:
-                grouping = None
+            # Remove existing files from traces
+            filenames = {tr: tr.fill_template(out_path, **additional)
+                                for tr in traces}
+            clash = False
+            for tr, filename in filenames.items():
+                if op.exists(filename):
+                    logger.warning(
+                        "File %s exists already, not overwriting it.",
+                        filename)
+                    traces.remove(tr)
+                    # this is the hacky part:
+                    clash = True
+            if clash:
+                logger.warning("Skipping group")
+                waveform_chopper.send("skip group")
+                continue
 
-            tpad = 0.0
+            # Resample
             if target_deltat is not None:
-                tpad += target_deltat * 50.
-
-            task = None
-            rename_rules = self.get_effective_rename_rules(chain)
-            for batch in sq.chopper_waveforms(
-                    tmin=tmin, tmax=tmax, tpad=tpad, tinc=tinc,
-                    codes=codes,
-                    snap_window=True,
-                    grouping=grouping):
-
-                if task is None:
-                    task = make_task(
-                        'Jackseis blocks', batch.n * batch.ngroups)
-
-                tlabel = '%s%s - %s' % (
-                    'groups %i / %i: ' % (batch.igroup, batch.ngroups)
-                    if batch.ngroups > 1 else '',
-                    util.time_to_str(batch.tmin),
-                    util.time_to_str(batch.tmax))
-
-                task.update(batch.i + batch.igroup * batch.n, tlabel)
-
-                twmin = batch.tmin
-                twmax = batch.tmax
-
-                traces = batch.traces
-
-                if target_deltat is not None:
-                    out_traces = []
-                    for tr in traces:
-                        try:
-                            tr.downsample_to(
-                                target_deltat, snap=True, demean=False)
-
-                            out_traces.append(tr)
-
-                        except (trace.TraceTooShort, trace.NoData):
-                            pass
-
-                    traces = out_traces
-
-                for tr in traces:
-                    self.do_rename(rename_rules, tr)
-                    chain.fcall("do_rename_callback", tr)
-
-                if out_data_type:
-                    for tr in traces:
-                        tr.ydata = tr.ydata.astype(
-                            OutputDataTypeChoice.name_to_dtype[out_data_type])
-
-                chopped_traces = []
+                out_traces = []
                 for tr in traces:
                     try:
-                        otr = tr.chop(twmin, twmax, inplace=False)
-                        chopped_traces.append(otr)
-                    except trace.NoData:
+                        tr.downsample_to(
+                            target_deltat, snap=True, demean=False)
+
+                        out_traces.append(tr)
+
+                    except (trace.TraceTooShort, trace.NoData):
                         pass
 
-                traces = chopped_traces
+                traces = out_traces
 
-                if out_path is not None:
-                    try:
-                        io.save(
-                            traces, out_path,
-                            format=out_format,
-                            overwrite=args.force,
-                            additional=dict(
-                                wmin_year=tts(twmin, format='%Y'),
-                                wmin_month=tts(twmin, format='%m'),
-                                wmin_day=tts(twmin, format='%d'),
-                                wmin_jday=tts(twmin, format='%j'),
-                                wmin=tts(twmin, format='%Y-%m-%d_%H-%M-%S'),
-                                wmax_year=tts(twmax, format='%Y'),
-                                wmax_month=tts(twmax, format='%m'),
-                                wmax_day=tts(twmax, format='%d'),
-                                wmax_jday=tts(twmax, format='%j'),
-                                wmax=tts(twmax, format='%Y-%m-%d_%H-%M-%S')),
-                            **save_kwargs)
 
-                    except io.FileSaveError as e:
-                        raise JackseisError(str(e))
+            if out_data_type:
+                for tr in traces:
+                    tr.ydata = tr.ydata.astype(
+                        OutputDataTypeChoice.name_to_dtype[out_data_type])
 
-                else:
-                    for tr in traces:
-                        print(tr.summary)
+            chopped_traces = []
+            for tr in traces:
+                try:
+                    otr = tr.chop(twmin, twmax, inplace=False)
+                    chopped_traces.append(otr)
+                except trace.NoData:
+                    pass
 
-            if task:
-                task.done()
+            traces = chopped_traces
+            if out_path is not None:
+
+                try:
+                    io.save(
+                        traces, out_path,
+                        format=out_format,
+                        overwrite=args.force,
+                        additional=additional,
+                        **save_kwargs)
+
+                except io.FileSaveError as e:
+                    raise JackseisError(str(e))
+
+            else:
+                for tr in traces:
+                    print(tr.summary)
+
+        if task:
+            task.done()
 
 
 g_defaults = Converter(

@@ -25,6 +25,7 @@ __pycache__/
 *.err_log
 .vagrant
 .idea
+venv/
 
 /test/example_run_dir/
 /test/data/
