@@ -379,6 +379,18 @@ class IOTestCase(unittest.TestCase):
         sx2 = guts.load_xml(string=s)
         assert sx.dump_xml() == sx2.dump_xml()
 
+    def testReadHypoDDFile(self):
+        from pyrocko.io.hypodd import HypoDDDataset  # noqa
+
+        fpath = common.test_data_file('test_hypodd.txt')
+        hdd = HypoDDDataset.from_catalog(fpath)
+        clusters = hdd.get_event_clusters()
+        assert len(clusters) == 3
+
+        ref_nevents = [3, 2, 2]
+        for events, ref_n in zip(clusters.values(), ref_nevents):
+            assert len(events) == ref_n
+
     def testReadTDMSiDAS(self):
         from pyrocko.io import tdms_idas
         fpath = common.test_data_file('test_idas.tdms')
