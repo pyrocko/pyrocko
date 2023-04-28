@@ -255,7 +255,10 @@ def process(get_pile, options):
                 for tr in traces:
                     try:
                         tr.downsample_to(
-                            target_deltat, snap=True, demean=False)
+                            target_deltat,
+                            snap=True,
+                            demean=False,
+                            allow_upsample_max=4)
 
                         if options.output_data_type == 'same':
                             tr.ydata = tr.ydata.astype(tr.ydata.dtype)
