@@ -170,6 +170,8 @@ class Map(Object):
         help='replace topo color while keeping topographic shading')
     topo_cpt_wet = String.T(default='light_sea')
     topo_cpt_dry = String.T(default='light_land')
+    topo_dry_path = String.T(optional=True)
+    topo_wet_path = String.T(optional=True)
     axes_layout = String.T(optional=True)
     custom_cities = List.T(City.T())
     gmt_config = Dict.T(String.T(), String.T())
@@ -443,7 +445,25 @@ class Map(Object):
 
         self._draw_basefeatures()
 
+    def _read_grd(self, path):
+        lons, lats, z = gmtpy.loadgrd(path)
+        dlons = num.diff(lons)
+        dlats = num.diff(lats)
+        dlon = dlons[0]
+        dlat = dlats[0]
+        eps = 1e-5
+        assert num.all(num.abs(dlons - dlon) < dlon*eps)
+        assert num.all(num.abs(dlats - dlat) < dlat*eps)
+        return topo.tile.Tile(
+            lons[0], lats[0], dlon, dlat, z)
+
     def _get_topo_tile(self, k):
+        if k == 'land' and self.topo_dry_path is not None:
+            return self._read_grd(self.topo_dry_path), 'custom'
+
+        if k == 'ocean' and self.topo_wet_path is not None:
+            return self._read_grd(self.topo_wet_path), 'custom'
+
         t = None
         demname = None
         for dem in self._dems[k]:
