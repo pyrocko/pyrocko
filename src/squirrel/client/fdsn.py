@@ -20,6 +20,7 @@ from ..model import make_waveform_promise_nut, ehash, InvalidWaveform, \
     order_summary, WaveformOrder, g_tmin, g_tmax, g_tmin_queries, \
     codes_to_str_abbreviated, CodesNSLCE
 from ..database import ExecuteGet1Error
+from pyrocko.squirrel.error import SquirrelError
 from pyrocko.client import fdsn
 
 from pyrocko import util, trace, io
@@ -218,6 +219,10 @@ class ErrorLog(Object):
                 len(recent), util.plural_s(recent), '; '.join(kinds))
         else:
             return ''
+
+
+class Aborted(SquirrelError):
+    pass
 
 
 class FDSNSource(Source, has_paths.HasPaths):
@@ -633,6 +638,8 @@ class FDSNSource(Source, has_paths.HasPaths):
         while i < len(orders):
             orders_now = orders[i:i+neach]
             selection_now = orders_to_selection(orders_now)
+            nsamples_estimate = sum(
+                order.estimate_nsamples() for order in orders_now)
 
             nsuccess = 0
             elog.append_checkpoint()
@@ -650,11 +657,17 @@ class FDSNSource(Source, has_paths.HasPaths):
 
                     path = op.join(tmpdir, 'tmp.mseed')
                     with open(path, 'wb') as f:
+                        nread = 0
                         while True:
                             buf = data.read(1024)
+                            nread += len(buf)
                             if not buf:
                                 break
                             f.write(buf)
+
+                            # abort if we get way more data than expected
+                            if nread > nsamples_estimate * 4 * 10:
+                                raise Aborted('Too much data received.')
 
                     trs = io.load(path)
 
@@ -712,6 +725,12 @@ class FDSNSource(Source, has_paths.HasPaths):
                     now = time.time()
                     for order in orders_now:
                         elog.append(now, order, 'empty result')
+                        error_permanent(order)
+
+                except Aborted as e:
+                    now = time.time()
+                    for order in orders_now:
+                        elog.append(now, order, 'aborted', str(e))
                         error_permanent(order)
 
                 except util.HTTPError as e:

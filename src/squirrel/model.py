@@ -1219,6 +1219,9 @@ class WaveformOrder(Object):
         if not num.all(num.isfinite(tr.ydata)):
             raise InvalidWaveform('waveform has NaN values')
 
+    def estimate_nsamples(self):
+        return int(round((self.tmax - self.tmin) / self.deltat))+1
+
 
 def order_summary(orders):
     codes_list = sorted(set(order.codes for order in orders))
