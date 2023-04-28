@@ -666,7 +666,10 @@ class FDSNSource(Source, has_paths.HasPaths):
                             f.write(buf)
 
                             # abort if we get way more data than expected
-                            if nread > nsamples_estimate * 4 * 10:
+                            if nread > max(
+                                    1024 * 1000,
+                                    nsamples_estimate * 4 * 10):
+
                                 raise Aborted('Too much data received.')
 
                     trs = io.load(path)
