@@ -36,15 +36,21 @@ from pyrocko import has_paths
 from pyrocko.guts import Object, String, Timestamp, List, Tuple, Int, Dict, \
     Duration, Bool, clone, dump_all_spickle
 
+
 guts_prefix = 'squirrel'
 
 fdsn.g_timeout = 60.
 
 logger = logging.getLogger('psq.client.fdsn')
 
-sites_not_supporting = {
+g_sites_not_supporting = {
     'startbefore': ['geonet'],
     'includerestricted': ['geonet', 'ncedc', 'scedc']}
+
+g_keys_conflicting_post_codes = {
+    'network', 'station', 'location', 'channel', 'minlatitude', 'maxlatitude',
+    'minlongitude', 'maxlongitude', 'latitude', 'longitude', 'minradius',
+    'maxradius'}
 
 
 def make_task(*args):
@@ -156,6 +162,18 @@ def orders_to_selection(orders, pad=1.0):
     return selection_padded
 
 
+def codes_to_selection(codes_list, tmin, tmax):
+    if codes_list is None:
+        return None
+
+    selection = []
+    for codes in sorted(codes_list):
+        selection.append(
+           codes.nslc + (tmin, tmax))
+
+    return selection
+
+
 class ErrorEntry(Object):
     time = Timestamp.T()
     order = WaveformOrder.T()
@@ -256,6 +274,11 @@ class FDSNSource(Source, has_paths.HasPaths):
         optional=True,
         help='Common query arguments, which are appended to all queries.')
 
+    codes = List.T(
+        CodesNSLCE.T(),
+        optional=True,
+        help='List of codes patterns to query via POST parameters.')
+
     expires = Duration.T(
         optional=True,
         help='Expiration time [s]. Information older than this will be '
@@ -293,8 +316,21 @@ class FDSNSource(Source, has_paths.HasPaths):
         optional=True,
         help='Path to Python module to locally patch metadata errors.')
 
-    def __init__(self, site, query_args=None, **kwargs):
-        Source.__init__(self, site=site, query_args=query_args, **kwargs)
+    def __init__(self, site, query_args=None, codes=None, **kwargs):
+        if codes:
+            codes = [CodesNSLCE(codes_) for codes_ in codes]
+
+        if codes is not None and query_args is not None:
+            conflicting = g_keys_conflicting_post_codes \
+                & set(query_args.keys())
+
+            if conflicting:
+                raise SquirrelError(
+                    'Cannot use %s in `query_args` when `codes` are also '
+                    'given.' % ' or '.join("'%s'" % k for k in conflicting))
+
+        Source.__init__(
+            self, site=site, query_args=query_args, codes=codes, **kwargs)
 
         self._constraint = None
         self._hash = self.make_hash()
@@ -321,6 +357,10 @@ class FDSNSource(Source, has_paths.HasPaths):
                 for k in sorted(self.query_args.keys()))
         else:
             s += 'noqueryargs'
+
+        if self.codes is not None:
+            s += 'post_codes:' + ','.join(
+                codes.safe_str for codes in self.codes)
 
         return ehash(s)
 
@@ -489,19 +529,26 @@ class FDSNSource(Source, has_paths.HasPaths):
     def _do_channel_query(self, constraint):
         extra_args = {}
 
-        if self.site in sites_not_supporting['startbefore']:
-            if constraint.tmin is not None and constraint.tmin != g_tmin:
-                extra_args['starttime'] = constraint.tmin
-            if constraint.tmax is not None and constraint.tmax != g_tmax:
-                extra_args['endtime'] = constraint.tmax
+        tmin = constraint.tmin \
+            if constraint.tmin is not None and constraint.tmin != g_tmin \
+            else g_tmin_queries
 
+        tmax = constraint.tmax \
+            if constraint.tmax is not None and constraint.tmax != g_tmax \
+            else g_tmax
+
+        if self.site in g_sites_not_supporting['startbefore']:
+            ktmin = 'starttime'
+            ktmax = 'endtime'
         else:
-            if constraint.tmin is not None and constraint.tmin != g_tmin:
-                extra_args['endafter'] = constraint.tmin
-            if constraint.tmax is not None and constraint.tmax != g_tmax:
-                extra_args['startbefore'] = constraint.tmax
+            ktmin = 'endafter'
+            ktmax = 'startbefore'
 
-        if self.site not in sites_not_supporting['includerestricted']:
+        if self.codes is None:
+            extra_args[ktmin] = tmin
+            extra_args[ktmax] = tmax
+
+        if self.site not in g_sites_not_supporting['includerestricted']:
             extra_args.update(
                 includerestricted=(
                     self.user_credentials is not None
@@ -518,6 +565,7 @@ class FDSNSource(Source, has_paths.HasPaths):
                 site=self.site,
                 format='text',
                 level='channel',
+                selection=codes_to_selection(self.codes, tmin, tmax),
                 **extra_args)
 
             self._hotfix('channel', channel_sx)
@@ -784,7 +832,7 @@ class FDSNSource(Source, has_paths.HasPaths):
     def _do_response_query(self, selection):
         extra_args = {}
 
-        if self.site not in sites_not_supporting['includerestricted']:
+        if self.site not in g_sites_not_supporting['includerestricted']:
             extra_args.update(
                 includerestricted=(
                     self.user_credentials is not None
