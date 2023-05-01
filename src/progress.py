@@ -60,7 +60,18 @@ g_viewer = 'terminal'
 
 
 def set_default_viewer(viewer):
+    '''
+    Set default viewer for progress indicators.
+
+    :param viewer:
+        Name of viewer, choices: ``'terminal'``, ``'log'``, ``'off'``, default:
+        ``'terminal'``.
+    :type viewer:
+        str
+    '''
+
     global g_viewer
+    assert viewer in g_viewer_classes
     g_viewer = viewer
 
 

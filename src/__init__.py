@@ -7,6 +7,8 @@
 A toolbox and library for seismology.
 '''
 
+import sys
+
 try:
     from .info import *  # noqa
     __version__ = version  # noqa
@@ -23,6 +25,35 @@ def get_logger():
 
 class ExternalProgramMissing(Exception):
     pass
+
+
+def app_init(log_level='info', progress_viewer='terminal', program_name=None):
+    '''
+    Setup logging and progress indicators for Pyrocko scripts.
+
+    This is a shortcut for calling :py:func:`pyrocko.util.setup_logging` and
+    :py:func:`pyrocko.progress.set_default_viewer`.
+
+    :param program_name:
+        ``programname`` argument for :py:func:`pyrocko.util.setup_logging`
+    :type program_name:
+        str
+
+    :param log_level:
+        ``levelname`` argument for :py:func:`pyrocko.util.setup_logging`
+    :type log_level:
+        str
+
+    :param progress_viewer:
+        ``viewer`` argument for
+        :py:func:`pyrocko.progress.set_default_viewer`
+    '''
+    from pyrocko import util, progress
+    if program_name is None:
+        program_name = sys.argv[0]
+
+    util.setup_logging(sys.argv[0], log_level)
+    progress.set_default_viewer(progress_viewer)
 
 
 def make_squirrel(*args, **kwargs):
