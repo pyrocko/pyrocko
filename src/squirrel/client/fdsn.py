@@ -134,15 +134,22 @@ def orders_sort_key(order):
     return (order.codes, order.tmin)
 
 
-def orders_to_selection(orders):
+def orders_to_selection(orders, pad=1.0):
     selection = []
+    nslc_to_deltat = {}
     for order in sorted(orders, key=orders_sort_key):
         selection.append(
-            order.codes.nslc + (
-                order.tmin-1.0*order.deltat,
-                order.tmax+1.0*order.deltat))
+            order.codes.nslc + (order.tmin, order.tmax))
+        nslc_to_deltat[order.codes.nslc] = order.deltat
 
-    return combine_selections(selection)
+    selection = combine_selections(selection)
+    selection_padded = []
+    for (net, sta, loc, cha, tmin, tmax) in selection:
+        deltat = nslc_to_deltat[net, sta, loc, cha]
+        selection_padded.append((
+            net, sta, loc, cha, tmin-pad*deltat, tmax+pad*deltat))
+
+    return selection_padded
 
 
 class ErrorEntry(Object):
