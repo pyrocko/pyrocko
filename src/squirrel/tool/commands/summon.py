@@ -24,6 +24,11 @@ def make_subparser(subparsers):
 def setup(parser):
     parser.add_squirrel_selection_arguments()
     parser.add_squirrel_query_arguments()
+    parser.add_argument(
+        '--channel-priorities',
+        dest='channel_priorities',
+        metavar='CHA',
+        help='TODO')
 
 
 def run(parser, args):
@@ -35,12 +40,20 @@ def run(parser, args):
 
     tinc = 3600.
 
+    channel_priorities = None
+    if args.channel_priorities:
+        channel_priorities = [
+            cha.strip() for cha in args.channel_priorities.split(',')]
+
     with progress.view():
         nwindows = int(math.ceil((d['tmax'] - d['tmin']) / tinc))
         task = progress.task('Summoning', nwindows)
         iwindow = 0
         for trs in squirrel.chopper_waveforms(
-                tinc=tinc, load_data=False, **d):
+                tinc=tinc,
+                load_data=False,
+                channel_priorities=channel_priorities,
+                **d):
 
             iwindow += 1
             task.update(iwindow)

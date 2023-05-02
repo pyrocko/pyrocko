@@ -1922,7 +1922,7 @@ class Squirrel(Selection):
 
         return [self.get_content(nut) for nut in nuts]
 
-    def _redeem_promises(self, *args, order_only=False):
+    def _redeem_promises(self, *args, codes_exclude=None, order_only=False):
 
         def split_promise(order):
             self._split_nuts(
@@ -1935,6 +1935,10 @@ class Squirrel(Selection):
 
         waveforms = list(self.iter_nuts('waveform', *args))
         promises = list(self.iter_nuts('waveform_promise', *args))
+        if codes_exclude is not None:
+            promises = [
+                promise for promise in promises
+                if promise.codes not in codes_exclude]
 
         codes_to_avail = defaultdict(list)
         for nut in waveforms:
@@ -2104,7 +2108,7 @@ class Squirrel(Selection):
     @filldocs
     def get_waveform_nuts(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None,
-            order_only=False):
+            codes_exclude=None, order_only=False):
 
         '''
         Get waveform content entities matching given constraints.
@@ -2119,9 +2123,15 @@ class Squirrel(Selection):
         '''
 
         args = self._get_selection_args(WAVEFORM, obj, tmin, tmax, time, codes)
-        self._redeem_promises(*args, order_only=order_only)
-        return sorted(
+        self._redeem_promises(
+            *args, codes_exclude=codes_exclude, order_only=order_only)
+        nuts = sorted(
             self.iter_nuts('waveform', *args), key=lambda nut: nut.dkey)
+
+        if codes_exclude is not None:
+            nuts = [nut for nut in nuts if nut.codes not in codes_exclude]
+
+        return nuts
 
     @filldocs
     def have_waveforms(
@@ -2143,9 +2153,10 @@ class Squirrel(Selection):
     @filldocs
     def get_waveforms(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None,
-            uncut=False, want_incomplete=True, degap=True, maxgap=5,
-            maxlap=None, snap=None, include_last=False, load_data=True,
-            accessor_id='default', operator_params=None, order_only=False):
+            codes_exclude=None, uncut=False, want_incomplete=True, degap=True,
+            maxgap=5, maxlap=None, snap=None, include_last=False,
+            load_data=True, accessor_id='default', operator_params=None,
+            order_only=False, channel_priorities=None, target_deltat=None):
 
         '''
         Get waveforms matching given constraints.
@@ -2225,6 +2236,16 @@ class Squirrel(Selection):
         tmin, tmax, codes = self._get_selection_args(
             WAVEFORM, obj, tmin, tmax, time, codes)
 
+        if channel_priorities is not None:
+            return self._get_waveforms_prioritized(
+                tmin=tmin, tmax=tmax, codes=codes,
+                uncut=uncut, want_incomplete=want_incomplete, degap=degap,
+                maxgap=maxgap, maxlap=maxlap, snap=snap,
+                include_last=include_last, load_data=load_data,
+                accessor_id=accessor_id, operator_params=operator_params,
+                order_only=order_only, channel_priorities=channel_priorities,
+                target_deltat=target_deltat)
+
         self_tmin, self_tmax = self.get_time_span(
             ['waveform', 'waveform_promise'])
 
@@ -2249,7 +2270,8 @@ class Squirrel(Selection):
                     accessor_id=accessor_id, params=operator_params)
 
         nuts = self.get_waveform_nuts(
-            obj, tmin, tmax, time, codes, order_only=order_only)
+            obj, tmin, tmax, time, codes, codes_exclude=codes_exclude,
+            order_only=order_only)
 
         if order_only:
             return []
@@ -2289,6 +2311,36 @@ class Squirrel(Selection):
 
         return processed
 
+    def _get_waveforms_prioritized(
+            self, tmin=None, tmax=None, codes=None,
+            channel_priorities=None, target_deltat=None, **kwargs):
+
+        trs_all = []
+        codes_have = set()
+        for channel in channel_priorities:
+            assert len(channel) == 2
+            if codes is not None:
+                codes_now = [
+                    codes_.replace(channel=channel+'?') for codes_ in codes]
+            else:
+                codes_now = model.CodesNSLCE('*', '*', '*', channel+'?')
+
+            codes_exclude_now = set(
+                codes_.replace(channel=channel+codes_.channel[-1])
+                for codes_ in codes_have)
+
+            trs = self.get_waveforms(
+                tmin=tmin,
+                tmax=tmax,
+                codes=codes_now,
+                codes_exclude=codes_exclude_now,
+                **kwargs)
+
+            codes_have.update(set(tr.codes for tr in trs))
+            trs_all.extend(trs)
+
+        return trs_all
+
     @filldocs
     def chopper_waveforms(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None,
@@ -2297,7 +2349,7 @@ class Squirrel(Selection):
             degap=True, maxgap=5, maxlap=None,
             snap=None, include_last=False, load_data=True,
             accessor_id=None, clear_accessor=True, operator_params=None,
-            grouping=None):
+            grouping=None, channel_priorities=None, target_deltat=None):
 
         '''
         Iterate window-wise over waveform archive.
@@ -2463,7 +2515,9 @@ class Squirrel(Selection):
                         maxgap=maxgap,
                         maxlap=maxlap,
                         accessor_id=accessor_id,
-                        operator_params=operator_params)
+                        operator_params=operator_params,
+                        channel_priorities=channel_priorities,
+                        target_deltat=target_deltat)
 
                     self.advance_accessor(accessor_id)
 
