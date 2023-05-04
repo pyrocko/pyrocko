@@ -32,6 +32,19 @@ def setup(parser):
                  ldq(level_choices),
                  dq(level_default)))
 
+    on_error_choices = ('raise', 'warn', 'ignore')
+    on_error_default = 'raise'
+
+    parser.add_argument(
+        '--on-error',
+        dest='on_error',
+        choices=on_error_choices,
+        default=on_error_default,
+        help='How to handle metadata errors. Choices: %s. '
+             'Default: %s.' % (
+                 ldq(on_error_choices),
+                 dq(on_error_default)))
+
     out_format_choices = ('xml', 'yaml')
     out_format_default = 'xml'
 
@@ -49,7 +62,9 @@ def setup(parser):
 def run(parser, args):
     squirrel = args.make_squirrel()
 
-    sx = squirrel.get_stationxml(**args.squirrel_query, level=args.level)
+    sx = squirrel.get_stationxml(
+        **args.squirrel_query, level=args.level, on_error=args.on_error)
+
     if args.out_format == 'xml':
         print(sx.dump_xml())
     elif args.out_format == 'yaml':

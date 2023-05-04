@@ -2808,7 +2808,7 @@ class Squirrel(Selection):
 
     def get_stationxml(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None,
-            level='response'):
+            level='response', on_error='raise'):
 
         '''
         Get station/channel/response metadata in StationXML representation.
@@ -2852,9 +2852,15 @@ class Squirrel(Selection):
                     'Station', (net, sta), stations)
 
                 if errors:
-                    raise sx.Inconsistencies(
-                        'Inconsistencies found:\n  %s'
-                        % '\n  '.join(errors))
+                    e_message = 'Inconsistencies found:\n  %s' \
+                        % '\n  '.join(errors)
+
+                    if on_error == 'ignore':
+                        pass
+                    elif on_error == 'warn':
+                        logger.warning(e_message)
+                    else:
+                        raise sx.Inconsistencies(e_message)
 
                 network.station_list.extend(stations)
 
@@ -2873,28 +2879,54 @@ class Squirrel(Selection):
                             'Channel', (net, sta, loc, cha), channels)
 
                         if errors:
-                            raise sx.Inconsistencies(
-                                'Inconsistencies found:\n  %s'
-                                % '\n  '.join(errors))
+                            e_message = 'Inconsistencies found:\n  %s' \
+                                % '\n  '.join(errors)
+
+                            if on_error == 'ignore':
+                                pass
+                            elif on_error == 'warn':
+                                logger.warning(e_message)
+                            else:
+                                raise sx.Inconsistencies(e_message)
 
                         for channel in channels:
                             station = sx.find_containing(stations, channel)
                             if station is not None:
                                 station.channel_list.append(channel)
                             else:
-                                raise sx.Inconsistencies(
-                                    'No station or station epoch found for '
-                                    'channel: %s' % '.'.join(
-                                        (net, sta, loc, cha)))
+                                e_message = \
+                                    'No station or station epoch found ' \
+                                    'for channel: %s' % '.'.join(
+                                        (net, sta, loc, cha))
+
+                                if on_error == 'ignore':
+                                    pass
+                                elif on_error == 'warn':
+                                    logger.warning(e_message)
+                                else:
+                                    raise sx.Inconsistencies(e_message)
+
+                                continue
 
                             if level != 'response':
                                 continue
 
-                            response_sq, response_sx = self.get_response(
-                                codes=(net, sta, loc, cha),
-                                tmin=channel.start_date,
-                                tmax=channel.end_date,
-                                model='stationxml+')
+                            try:
+                                response_sq, response_sx = self.get_response(
+                                    codes=(net, sta, loc, cha),
+                                    tmin=channel.start_date,
+                                    tmax=channel.end_date,
+                                    model='stationxml+')
+
+                            except error.NotAvailable as e:
+                                if on_error == 'ignore':
+                                    pass
+                                elif on_error == 'warn':
+                                    logger.warning(e)
+                                else:
+                                    raise
+
+                                continue
 
                             if not (
                                     sx.eq_open(
@@ -2902,10 +2934,17 @@ class Squirrel(Selection):
                                     and sx.eq_open(
                                         channel.end_date, response_sq.tmax)):
 
-                                raise sx.Inconsistencies(
-                                    'Response time span does not match '
+                                e_message = \
+                                    'Response time span does not match ' \
                                     'channel time span: %s' % '.'.join(
-                                        (net, sta, loc, cha)))
+                                        (net, sta, loc, cha))
+
+                                if on_error == 'ignore':
+                                    pass
+                                elif on_error == 'warn':
+                                    logger.warning(e_message)
+                                else:
+                                    raise sx.Inconsistencies(e_message)
 
                             channel.response = response_sx
 
