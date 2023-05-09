@@ -602,7 +602,7 @@ It allows you to browse and process large archives of waveform data.</p>
 <p>Basic processing is complemented by Snufflings (<i>Plugins</i>):</p>
 <ul>
     <li><b>Download seismograms</b> from GEOFON IRIS and others</li>
-    <li><b>Earthquake catalog</b> access to GEOFON, GobalCMT, USGS...</li>
+    <li><b>Earthquake catalog</b> access to GEOFON, GlobalCMT, USGS...</li>
     <li><b>Cake</b>, Calculate synthetic arrival times</li>
     <li><b>Seismosizer</b>, generate synthetic seismograms on-the-fly</li>
     <li>
