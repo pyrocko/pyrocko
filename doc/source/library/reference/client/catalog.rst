@@ -5,7 +5,7 @@ Online earthquake catalogs (``client.catalog``)
     :members:
 
 
-``Geofon``
+``GEOFON``
 -------------------------
 
 .. autoclass :: pyrocko.client.catalog.Geofon

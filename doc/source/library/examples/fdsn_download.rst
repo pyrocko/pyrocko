@@ -4,7 +4,7 @@ Downloading seismic data (FDSN)
 Waveforms and meta data can be retrieved from online `FDSN services <http://www.fdsn.org>`_ using the :py:mod:`pyrocko.fdsn` modules.
 
 
-Seismic data from Geofon
+Seismic data from GEOFON
 -------------------------
 
 The following demo explains how to download waveform data and instrument

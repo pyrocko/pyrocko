@@ -52,7 +52,7 @@ class CatalogSearch(Snuffling):
     def setup(self):
 
         self.catalogs = {
-            'Geofon': catalog.Geofon(),
+            'GEOFON': catalog.Geofon(),
             'USGS/NEIC US': catalog.USGS('us'),
             'Global-CMT': catalog.GlobalCMT(),
             'Saxony (Uni-Leipzig)': catalog.Saxony(),

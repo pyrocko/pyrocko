@@ -69,10 +69,10 @@ We expect to see the following output:
     duration: 5.4
 
 
-Search for an event in Geofon catalog
+Search for an event in GEOFON catalog
 --------------------------------------------------
 
-Search for an event name only in the `Geofon <http://geofon.gfz-potsdam.de>`_
+Search for an event name only in the `GEOFON <http://geofon.gfz-potsdam.de>`_
 catalog [#f2]_ using :meth:`~pyrocko.client.catalog.Geofon`, with a given magnitude
 range and timeframe.
 
