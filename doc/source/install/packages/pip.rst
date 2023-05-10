@@ -26,7 +26,7 @@ Variant 1: allow pip to resolve dependencies
 
     # and, (only) if you want to use Snuffler:
 
-    pip install --only-binary :all: PyQt5
+    pip install --only-binary :all: PyQt5 PyQtWebEngine
 
 **Advantages:**
 

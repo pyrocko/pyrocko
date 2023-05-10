@@ -29,7 +29,7 @@ User installation from source into isolated environment
     python -m venv myenv
     source myenv/bin/activate
     pip install .                          # pip auto-resolves prerequisites (!)
-    pip install --only-binary :all: PyQt5  # for Snuffler
+    pip install --only-binary :all: PyQt5 PyQtWebEngine # for Snuffler
 
 
 User installation from source using system packages for the prerequisites
