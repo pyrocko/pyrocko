@@ -286,7 +286,8 @@ class NoSuchPhase(StoreError):
 
     def __str__(self):
         return 'phase for key "%s" not found. ' \
-               'Running "fomosto ttt" may be needed.' % self.value
+               'Running "fomosto ttt" or "fomosto sat" may be needed.' \
+               % self.value
 
 
 def remove_if_exists(fn, force=False):
