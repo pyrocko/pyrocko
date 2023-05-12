@@ -2930,6 +2930,15 @@ class Ray(object):
         except ValueError:
             raise RefineFailed()
 
+    def t_and_attributes(self, attributes):
+        d = {
+            'takeoff_angle': lambda: self.takeoff_angle(),
+            'incidence_angle': lambda: self.incidence_angle(),
+            't': lambda: self.t,
+            'p': lambda: self.p}
+
+        return tuple(d[k]() for k in ['t'] + attributes)
+
     def takeoff_angle(self):
         '''
         Get takeoff angle of ray.

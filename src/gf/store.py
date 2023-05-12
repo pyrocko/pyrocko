@@ -1596,15 +1596,29 @@ class Store(BaseStore):
 
         return self._phases[phase_id]
 
-    def get_phase(self, phase_def):
+    def get_phase(self, phase_def, attributes=None):
         toks = phase_def.split(':', 1)
         if len(toks) == 2:
             provider, phase_def = toks
         else:
             provider, phase_def = 'stored', toks[0]
 
+        if attributes and provider not in ['stored', 'cake', 'iaspei']:
+            raise meta.TimingAttributeError(
+                'Attributes (%s) not supported for provider \'%s\'.' % (
+                    ', '.join("'%s'" % attribute for attribute in attributes),
+                    provider))
+
         if provider == 'stored':
-            return self.get_stored_phase(phase_def)
+            if attributes is None:
+                return self.get_stored_phase(phase_def)
+            else:
+                def evaluate(args):
+                    return tuple(
+                        self.get_stored_phase(phase_def, attribute)(args)
+                        for attribute in ['phase'] + attributes)
+
+                return evaluate
 
         elif provider == 'vel':
             vel = float(phase_def) * 1000.
@@ -1638,27 +1652,38 @@ class Store(BaseStore):
                 else:
                     assert False
 
-                t = []
                 if phases:
                     rays = mod.arrivals(
                         phases=phases,
                         distances=[x*cake.m2d],
                         zstart=zs,
                         zstop=zr)
-
-                    for ray in rays:
-                        t.append(ray.t)
-
-                if t:
-                    return min(t)
                 else:
-                    return None
+                    rays = []
+
+                rays.sort(key=lambda ray: ray.t)
+
+                if rays:
+                    if attributes is None:
+                        return rays[0].t
+                    else:
+                        try:
+                            return rays[0].t_and_attributes(attributes)
+                        except KeyError as e:
+                            raise meta.TimingAttributeError(
+                                'Attribute %s not supported for provider '
+                                '\'%s\'.' % (str(e), provider)) from None
+                else:
+                    if attributes is None:
+                        return None
+                    else:
+                        return (None,) * (len(attributes) + 1)
 
             return evaluate
 
         raise StoreError('unsupported phase provider: %s' % provider)
 
-    def t(self, timing, *args):
+    def t(self, timing, *args, attributes=None):
         '''
         Compute interpolated phase arrivals.
 
@@ -1699,6 +1724,12 @@ class Store(BaseStore):
         :type \\*args: (:py:class:`tuple`,) or
             (:py:class:`~pyrocko.model.Location`,
             :py:class:`~pyrocko.model.Location`)
+
+        :param attributes: additional attributes to return along with the time.
+            Requires the attribute to be either stored or it must be supported
+            by the phase calculation backend. E.g. ``['takeoff_angle']``.
+        :type attributes: :py:class:`list` of :py:class:`str`
+
         :returns: Phase arrival according to ``timing``
         :rtype: float or None
         '''
@@ -1711,7 +1742,7 @@ class Store(BaseStore):
         if not isinstance(timing, meta.Timing):
             timing = meta.Timing(timing)
 
-        return timing.evaluate(self.get_phase, args)
+        return timing.evaluate(self.get_phase, args, attributes=attributes)
 
     def get_available_interpolation_tables(self):
         filenames = glob(op.join(self.store_dir, 'phases', '*'))

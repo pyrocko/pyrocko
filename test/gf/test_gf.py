@@ -964,6 +964,21 @@ class GFTestCase(unittest.TestCase):
                 store.t('{cake:P}', args) + store.t('{vel_surface:10}', args),
                 0.1)
 
+            attrs = ['takeoff_angle', 'incidence_angle', 'p']
+            assert numeq(
+                store.t('first{cake:P|cake:S}', args, attributes=attrs),
+                store.t('{cake:P}', args, attributes=attrs), 0.1)
+
+            assert numeq(
+                store.t('last{cake:P|cake:S}', args, attributes=attrs),
+                store.t('{cake:S}', args, attributes=attrs), 0.1)
+
+            with self.assertRaises(gf.NoSuchPhase):
+                store.t('{stored:P}', args, attributes=['bielefeld'])
+
+            with self.assertRaises(gf.TimingAttributeError):
+                store.t('{cake:P}', args, attributes=['bielefeld'])
+
     def test_ttt_lsd(self):
         for typ in ['a', 'b']:
             store_dir = self.get_regional_ttt_store_dir(typ)

@@ -401,6 +401,10 @@ class InvalidTimingSpecification(ValidationError):
     pass
 
 
+class TimingAttributeError(Exception):
+    pass
+
+
 class Timing(SObject):
     '''
     Definition of a time instant relative to one or more named phase arrivals.
@@ -535,7 +539,7 @@ class Timing(SObject):
 
         return ''.join(s)
 
-    def evaluate(self, get_phase, args):
+    def evaluate(self, get_phase, args, attributes=None):
         try:
             if self.offset_is == 'slowness' and self.offset != 0.0:
                 phase_offset = get_phase(
@@ -545,24 +549,51 @@ class Timing(SObject):
                 offset = self.offset
 
             if self.phase_defs:
-                phases = [
-                    get_phase(phase_def) for phase_def in self.phase_defs]
-                times = [phase(args) for phase in phases]
-                if self.offset_is == 'percent':
-                    times = [t*(1.+offset/100.)
-                             for t in times if t is not None]
-                else:
-                    times = [t+offset for t in times if t is not None]
+                extra_args = ()
+                if attributes:
+                    extra_args = (attributes,)
 
-                if not times:
-                    return None
-                elif self.select == 'first':
-                    return min(times)
+                phases = [
+                    get_phase(phase_def, *extra_args)
+                    for phase_def in self.phase_defs]
+
+                results = [phase(args) for phase in phases]
+                results = [
+                    result if isinstance(result, tuple) else (result,)
+                    for result in results]
+
+                results = [
+                    result for result in results
+                    if result[0] is not None]
+
+                if self.select == 'first':
+                    results.sort(key=lambda result: result[0])
                 elif self.select == 'last':
-                    return max(times)
+                    results.sort(key=lambda result: -result[0])
+
+                if not results:
+                    if attributes is not None:
+                        return (None,) * (len(attributes) + 1)
+                    else:
+                        return None
+
                 else:
-                    return times[0]
+                    t, values = results[0][0], results[0][1:]
+                    if self.offset_is == 'percent':
+                        t = t*(1.+offset/100.)
+                    else:
+                        t = t + offset
+
+                    if attributes is not None:
+                        return (t, ) + values
+                    else:
+                        return t
+
             else:
+                if attributes is not None:
+                    raise TimingAttributeError(
+                        'Cannot get phase attributes from offset-only '
+                        'definition.')
                 return offset
 
         except spit.OutOfBounds:
@@ -3049,4 +3080,5 @@ SeismosizerTrace
 SeismosizerResult
 Result
 StaticResult
+TimingAttributeError
 '''.split()
