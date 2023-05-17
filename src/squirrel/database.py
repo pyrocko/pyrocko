@@ -199,7 +199,10 @@ class Database(object):
 
         try:
             logger.debug('Opening connection to database: %s' % database_path)
-            self._conn = sqlite3.connect(database_path, isolation_level=None)
+            self._conn = sqlite3.connect(
+                database_path,
+                isolation_level=None,
+                check_same_thread=False if sqlite3.threadsafety else True)
         except sqlite3.OperationalError:
             raise error.SquirrelError(
                 'Cannot connect to database: %s' % database_path)
