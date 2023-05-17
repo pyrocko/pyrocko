@@ -198,11 +198,16 @@ class Database(object):
             util.ensuredirs(database_path)
 
         try:
-            logger.debug('Opening connection to database: %s' % database_path)
+            logger.debug(
+                'Opening connection to database (threadsafety: %i): %s',
+                sqlite3.threadsafety,
+                database_path)
+
             self._conn = sqlite3.connect(
                 database_path,
                 isolation_level=None,
                 check_same_thread=False if sqlite3.threadsafety else True)
+
         except sqlite3.OperationalError:
             raise error.SquirrelError(
                 'Cannot connect to database: %s' % database_path)
