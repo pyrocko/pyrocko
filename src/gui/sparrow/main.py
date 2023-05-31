@@ -1679,7 +1679,8 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
         clip_dist = max(1.0, feature_horizon)  # , math.sqrt(num.sum(cam**2)))
         # clip_dist = feature_horizon
 
-        camera.SetClippingRange(max(clip_dist*0.001, clip_dist-3.0), clip_dist)
+        camera.SetClippingRange(
+            max(clip_dist*0.00001, clip_dist-3.0), clip_dist)
 
         self.camera_params = (
             cam, up, foc, planet_horizon, feature_horizon, clip_dist)
