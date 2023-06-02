@@ -44,15 +44,17 @@ def run(parser, args):
     from pyrocko import squirrel as sq
 
     squirrel = args.make_squirrel()
-    tmin_g, tmax_g = squirrel.get_time_span()
+    kwargs = args.squirrel_query
+    kinds = kwargs.pop('kind', sq.supported_content_kinds())
+
+    tmin_g, tmax_g = squirrel.get_time_span(kinds, tight=True)
+
     sx, _ = get_terminal_size()
 
     now = time.time()
     if tmax_g is None or tmax_g > now:
         tmax_g = now
 
-    kwargs = args.squirrel_query
-    kinds = kwargs.pop('kind', sq.supported_content_kinds())
     codes = kwargs.pop('codes', None)
     tmin = kwargs.pop('tmin', tmin_g)
     tmax = kwargs.pop('tmax', tmax_g)
@@ -86,7 +88,7 @@ def run(parser, args):
                     for entries in zip(*slabels)]
 
                 label = 'kind: %s' % kind
-                sc = max(len(label), sum(scs)) + 1
+                sc = max(18, len(label), sum(scs)) + 1
                 si = (sx-sc) - 2
                 sl = si // 2
                 sr = si - sl

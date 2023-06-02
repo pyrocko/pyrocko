@@ -33,6 +33,14 @@ logger = logging.getLogger('psq.base')
 guts_prefix = 'squirrel'
 
 
+def nonef(f, xs):
+    xs_ = [x for x in xs if x is not None]
+    if xs_:
+        return f(xs_)
+    else:
+        return None
+
+
 def make_task(*args):
     return progress.task(*args, logger=logger)
 
@@ -1156,7 +1164,7 @@ class Squirrel(Selection):
                 '''
                 cursor.executemany(sql_subst(sql_delete), delete)
 
-    def get_time_span(self, kinds=None):
+    def get_time_span(self, kinds=None, tight=False, dummy_limits=True):
         '''
         Get time interval over all content in selection.
 
@@ -1203,18 +1211,32 @@ class Squirrel(Selection):
         else:
             kind_ids = model.to_kind_ids(kinds)
 
+        tmins = []
+        tmaxs = []
         for kind_id in kind_ids:
             for tmin_seconds, tmin_offset in self._conn.execute(
                     sql_min, (kind_id, kind_id)):
-                tmin = model.tjoin(tmin_seconds, tmin_offset)
-                if tmin is not None and (gtmin is None or tmin < gtmin):
-                    gtmin = tmin
+                tmins.append(model.tjoin(tmin_seconds, tmin_offset))
 
             for (tmax_seconds, tmax_offset) in self._conn.execute(
                     sql_max, (kind_id, kind_id)):
-                tmax = model.tjoin(tmax_seconds, tmax_offset)
-                if tmax is not None and (gtmax is None or tmax > gtmax):
-                    gtmax = tmax
+                tmaxs.append(model.tjoin(tmax_seconds, tmax_offset))
+
+        tmins = [tmin if tmin != model.g_tmin else None for tmin in tmins]
+        tmaxs = [tmax if tmax != model.g_tmax else None for tmax in tmaxs]
+
+        if tight:
+            gtmin = nonef(min, tmins)
+            gtmax = nonef(max, tmaxs)
+        else:
+            gtmin = None if None in tmins else nonef(min, tmins)
+            gtmax = None if None in tmaxs else nonef(max, tmaxs)
+
+        if dummy_limits:
+            if gtmin is None:
+                gtmin = model.g_tmin
+            if gtmax is None:
+                gtmax = model.g_tmax
 
         return gtmin, gtmax
 
