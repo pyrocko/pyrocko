@@ -31,6 +31,15 @@ def make_task(*args):
     return progress.task(*args, logger=logger)
 
 
+def parse_rename_rule_from_string(s):
+    s = s.strip()
+    if re.match(r'^([^:,]*:[^:,]*,?)+', s):
+        return dict(
+            x.split(':') for x in s.strip(',').split(','))
+    else:
+        return s
+
+
 class JackseisError(ToolError):
     pass
 
@@ -222,9 +231,58 @@ class Converter(HasPaths):
                  'Add outer loop with given GROUPING. Choices: %s'
                  % ', '.join(TraversalChoice.choices))
 
+        p.add_argument(
+            '--rename-network',
+            dest='rename_network',
+            metavar='REPLACEMENT',
+            help="""
+Replace network code. REPLACEMENT can be a string for direct replacement, a
+mapping for selective replacement, or a regular expression for tricky
+replacements. Examples: Direct replacement: ```XX``` - set all network codes to
+```XX```. Mapping: ```AA:XX,BB:YY``` - replace ```AA``` with ```XX``` and
+```BB``` with ```YY```. Regular expression: ```/A(\\d)/X\\1/``` - replace
+```A1``` with ```X1``` and ```A2``` with ```X2``` etc.
+""".strip())
+
+        p.add_argument(
+            '--rename-station',
+            dest='rename_station',
+            metavar='REPLACEMENT',
+            help='Replace station code. See ``--rename-network``.')
+
+        p.add_argument(
+            '--rename-location',
+            dest='rename_location',
+            metavar='REPLACEMENT',
+            help='Replace location code. See ``--rename-network``.')
+
+        p.add_argument(
+            '--rename-channel',
+            dest='rename_channel',
+            metavar='REPLACEMENT',
+            help='Replace channel code. See ``--rename-network``.')
+
+        p.add_argument(
+            '--rename-extra',
+            dest='rename_extra',
+            metavar='REPLACEMENT',
+            help='Replace extra code. See ``--rename-network``. Note: the '
+                 '```extra``` code is not available in Mini-SEED.')
+
     @classmethod
     def from_arguments(cls, args):
         kwargs = args.squirrel_query
+
+        rename = {}
+        for (k, v) in [
+                ('network', args.rename_network),
+                ('station', args.rename_station),
+                ('location', args.rename_location),
+                ('channel', args.rename_channel),
+                ('extra', args.rename_extra)]:
+
+            if v is not None:
+                rename[k] = parse_rename_rule_from_string(v)
 
         obj = cls(
             downsample=args.downsample,
@@ -237,6 +295,7 @@ class Converter(HasPaths):
             out_mseed_steim=args.out_mseed_steim,
             out_meta_path=args.out_meta_path,
             traversal=args.traversal,
+            rename=rename if rename else None,
             **kwargs)
 
         obj.validate()
