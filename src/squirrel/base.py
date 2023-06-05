@@ -2269,7 +2269,7 @@ class Squirrel(Selection):
                 target_deltat=target_deltat)
 
         self_tmin, self_tmax = self.get_time_span(
-            ['waveform', 'waveform_promise'])
+            ['waveform', 'waveform_promise'], tight=True)
 
         if None in (self_tmin, self_tmax):
             logger.warning(
@@ -2474,7 +2474,7 @@ class Squirrel(Selection):
             WAVEFORM, obj, tmin, tmax, time, codes)
 
         self_tmin, self_tmax = self.get_time_span(
-            ['waveform', 'waveform_promise'])
+            ['waveform', 'waveform_promise'], tight=True)
 
         if None in (self_tmin, self_tmax):
             logger.warning(
