@@ -295,7 +295,7 @@ replacements. Examples: Direct replacement: ```XX``` - set all network codes to
             out_mseed_steim=args.out_mseed_steim,
             out_meta_path=args.out_meta_path,
             traversal=args.traversal,
-            rename=rename if rename else None,
+            rename=rename,
             **kwargs)
 
         obj.validate()
