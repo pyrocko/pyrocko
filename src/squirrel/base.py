@@ -1253,7 +1253,8 @@ class Squirrel(Selection):
             ``True`` if any of the queried content kinds is available
             in the selection.
         '''
-        self_tmin, self_tmax = self.get_time_span(kinds)
+        self_tmin, self_tmax = self.get_time_span(
+            kinds, tight=True, dummy_limits=False)
 
         return None not in (self_tmin, self_tmax)
 
