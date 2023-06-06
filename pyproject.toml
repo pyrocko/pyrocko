@@ -46,6 +46,7 @@ dependencies = [
 gui = [
     "PyQt5",
     "PyQtWebEngine",
+    "vtk",
 ]
 
 [project.urls]
