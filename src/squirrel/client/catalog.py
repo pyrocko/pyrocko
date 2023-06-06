@@ -144,7 +144,7 @@ class CatalogSource(Source):
             if constraint is not None:
                 tmin, tmax = constraint.tmin, constraint.tmax
 
-            tmin_sq, tmax_sq = squirrel.get_time_span()
+            tmin_sq, tmax_sq = squirrel.get_time_span(dummy_limits=False)
 
             if tmin is None:
                 tmin = tmin_sq

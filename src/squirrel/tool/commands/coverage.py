@@ -47,7 +47,7 @@ def run(parser, args):
     kwargs = args.squirrel_query
     kinds = kwargs.pop('kind', sq.supported_content_kinds())
 
-    tmin_g, tmax_g = squirrel.get_time_span(kinds, tight=True)
+    tmin_g, tmax_g = squirrel.get_time_span(kinds)
 
     sx, _ = get_terminal_size()
 

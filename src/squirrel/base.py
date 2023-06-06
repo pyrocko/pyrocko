@@ -1164,7 +1164,7 @@ class Squirrel(Selection):
                 '''
                 cursor.executemany(sql_subst(sql_delete), delete)
 
-    def get_time_span(self, kinds=None, tight=False, dummy_limits=True):
+    def get_time_span(self, kinds=None, tight=True, dummy_limits=True):
         '''
         Get time interval over all content in selection.
 
@@ -1254,7 +1254,7 @@ class Squirrel(Selection):
             in the selection.
         '''
         self_tmin, self_tmax = self.get_time_span(
-            kinds, tight=True, dummy_limits=False)
+            kinds, dummy_limits=False)
 
         return None not in (self_tmin, self_tmax)
 
@@ -2270,7 +2270,7 @@ class Squirrel(Selection):
                 target_deltat=target_deltat)
 
         self_tmin, self_tmax = self.get_time_span(
-            ['waveform', 'waveform_promise'], tight=True)
+            ['waveform', 'waveform_promise'])
 
         if None in (self_tmin, self_tmax):
             logger.warning(
@@ -2475,7 +2475,7 @@ class Squirrel(Selection):
             WAVEFORM, obj, tmin, tmax, time, codes)
 
         self_tmin, self_tmax = self.get_time_span(
-            ['waveform', 'waveform_promise'], tight=True)
+            ['waveform', 'waveform_promise'])
 
         if None in (self_tmin, self_tmax):
             logger.warning(
