@@ -274,11 +274,14 @@ class Selection(object):
         if isinstance(paths, str):
             paths = [paths]
 
+        paths = util.short_to_list(200, paths)
+
+        if isinstance(paths, list) and len(paths) == 0:
+            return
+
         if show_progress:
             task = make_task('Gathering file names')
             paths = task(paths)
-
-        paths = util.short_to_list(200, paths)
 
         db = self.get_database()
         with self.transaction('add files') as cursor:

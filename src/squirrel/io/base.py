@@ -231,6 +231,9 @@ def iload(
             # e.g. during loading of content, when the content has not been
             # modified.
             paths = util.short_to_list(100, paths)
+            if isinstance(paths, list) and len(paths) == 0:
+                return
+
             if not (isinstance(paths, list) and len(paths) < 100
                     and not skip_unchanged):
 
@@ -263,8 +266,16 @@ def iload(
     else:
         it = (((format, path), []) for path in paths)
 
+    it = util.short_to_list(100, iter(it))
+
     try:
         n_files_total = len(it)
+        if n_files_total == 0:
+            if transaction:
+                transaction.commit()
+                transaction.close()
+            return
+
     except TypeError:
         n_files_total = None
 
