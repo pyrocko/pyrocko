@@ -489,7 +489,8 @@ replacements. Examples: Direct replacement: ```XX``` - set all network codes to
                     for tr in traces:
                         try:
                             tr.downsample_to(
-                                target_deltat, snap=True, demean=False)
+                                target_deltat, snap=True, demean=False,
+                                allow_upsample_max=4)
 
                             out_traces.append(tr)
 
