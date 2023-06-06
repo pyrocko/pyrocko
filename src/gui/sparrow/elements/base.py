@@ -77,7 +77,7 @@ class Element(TalkieConnectionOwner):
         return title_label
 
     def get_title_control_remove(self):
-        button = common.MyDockWidgetTitleBarButton('\u00d7')
+        button = common.MyDockWidgetTitleBarButton('\u2716')
         button.setStatusTip('Remove Element')
         button.clicked.connect(self.remove)
         return button

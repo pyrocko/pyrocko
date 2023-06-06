@@ -321,7 +321,7 @@ class MyDockWidgetTitleBar(qw.QFrame):
 
         self._title_label = title_label
 
-        button_hide = MyDockWidgetTitleBarButton('-')
+        button_hide = MyDockWidgetTitleBarButton('\u2501')
         button_hide.setStatusTip('Hide Panel')
 
         layout = qw.QGridLayout()
