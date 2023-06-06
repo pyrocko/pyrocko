@@ -11,6 +11,14 @@ class NotAvailable(SquirrelError):
     pass
 
 
+class Duplicate(SquirrelError):
+    pass
+
+
+class Inconsistencies(SquirrelError):
+    pass
+
+
 class ConversionError(SquirrelError):
     pass
 

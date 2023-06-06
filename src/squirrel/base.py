@@ -1855,8 +1855,19 @@ class Squirrel(Selection):
 
         %(query_args)s
 
+        :param model:
+            Select data model for returned objects. Choices: ``'squirrel'``,
+            ``'stationxml'``, ``'stationxml+'``. See return value description.
+        :type model:
+            str
+
         :returns:
-            List of :py:class:`~pyrocko.squirrel.model.Response` objects.
+            List of :py:class:`~pyrocko.squirrel.model.Response` if ``model ==
+            'squirrel'`` or list of :py:class:`~pyrocko.io.fdsn.FDSNStationXML`
+            if ``model == 'stationxml'`` or list of
+            (:py:class:`~pyrocko.squirrel.model.Response`,
+            :py:class:`~pyrocko.io.fdsn.FDSNStationXML`) if ``model ==
+            'stationxml+'``.
 
         See :py:meth:`iter_nuts` for details on time span matching.
         '''
@@ -1872,19 +1883,41 @@ class Squirrel(Selection):
     @filldocs
     def get_response(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None,
-            model='squirrel'):
+            model='squirrel', on_duplicate='raise'):
 
         '''
         Get instrument response matching given constraints.
 
         %(query_args)s
 
+        :param model:
+            Select data model for returned object. Choices: ``'squirrel'``,
+            ``'stationxml'``, ``'stationxml+'``. See return value description.
+        :type model:
+            str
+
+        :param on_duplicate:
+            Determines how duplicates/multiple matching responses are handled.
+            Choices: ``'raise'`` - raise
+            :py:exc:`~pyrocko.squirrel.error.Duplicate`, ``'warn'`` - emit a
+            warning and return first match, ``'ignore'`` - silently return
+            first match.
+        :type on_duplicate:
+            str
+
         :returns:
-            :py:class:`~pyrocko.squirrel.model.Response` object.
+            :py:class:`~pyrocko.squirrel.model.Response` if
+            ``model == 'squirrel'`` or
+            :py:class:`~pyrocko.io.fdsn.FDSNStationXML` if ``model ==
+            'stationxml'`` or
+            (:py:class:`~pyrocko.squirrel.model.Response`,
+            :py:class:`~pyrocko.io.fdsn.FDSNStationXML`) if ``model ==
+            'stationxml+'``.
 
         Same as :py:meth:`get_responses` but returning exactly one response.
-        Raises :py:exc:`~pyrocko.squirrel.error.NotAvailable` if zero or more
-        than one is available.
+        Raises :py:exc:`~pyrocko.squirrel.error.NotAvailable` if none is
+        available. Duplicates are handled according to the ``on_duplicate``
+        argument.
 
         See :py:meth:`iter_nuts` for details on time span matching.
         '''
@@ -1903,21 +1936,38 @@ class Squirrel(Selection):
                     RESPONSE, obj, tmin, tmax, time, codes))
 
         elif len(responses) > 1:
-            if model_ == 'squirrel':
-                resps_sq = responses
-            elif model_ == 'stationxml+':
-                resps_sq = [resp[0] for resp in responses]
+
+            if on_duplicate in ('raise', 'warn'):
+                if model_ == 'squirrel':
+                    resps_sq = responses
+                elif model_ == 'stationxml+':
+                    resps_sq = [resp[0] for resp in responses]
+                else:
+                    raise ValueError('Invalid response model: %s' % model)
+
+                rinfo = ':\n' + '\n'.join(
+                    '  ' + resp.summary for resp in resps_sq)
+
+                message = \
+                    'Multiple instrument responses matching given ' \
+                    'constraints (%s)%s%s' % (
+                        self._get_selection_args_str(
+                            RESPONSE, obj, tmin, tmax, time, codes),
+                        ' -> using first' if on_duplicate == 'warn' else '',
+                        rinfo)
+
+            if on_duplicate == 'raise':
+                raise error.Duplicate(message)
+
+            elif on_duplicate == 'warn':
+                logger.warning(message)
+
+            elif on_duplicate == 'ignore':
+                pass
+
             else:
-                raise ValueError('Invalid response model: %s' % model)
-
-            rinfo = ':\n' + '\n'.join(
-                '  ' + resp.summary for resp in resps_sq)
-
-            raise error.NotAvailable(
-                'Multiple instrument responses matching given constraints '
-                '(%s)%s' % (
-                    self._get_selection_args_str(
-                        RESPONSE, obj, tmin, tmax, time, codes), rinfo))
+                ValueError(
+                    'Invalid argument for on_duplicate: %s' % on_duplicate)
 
         if model == 'stationxml':
             return responses[0][1]
@@ -2848,6 +2898,44 @@ class Squirrel(Selection):
         tmin, tmax, codes = self._get_selection_args(
             CHANNEL, obj, tmin, tmax, time, codes)
 
+        def tts(t):
+            if t is None:
+                return '<none>'
+            else:
+                return util.tts(t, format='%Y-%m-%d %H:%M:%S')
+
+        if on_error == 'ignore':
+            def handle_error(exc):
+                pass
+
+        elif on_error == 'warn':
+            def handle_error(exc):
+                logger.warning(str(exc))
+
+        elif on_error == 'raise':
+            def handle_error(exc):
+                raise exc
+
+        def use_first(node_type_name, codes, k, group):
+            if on_error == 'warn':
+                logger.warning(
+                    'Duplicates for %s %s, %s - %s -> using first' % (
+                        node_type_name,
+                        '.'.join(codes),
+                        tts(k[0]), tts(k[1])))
+
+            return group[0]
+
+        def deduplicate(node_type_name, codes, nodes):
+            groups = defaultdict(list)
+            for node in nodes:
+                k = (node.start_date, node.end_date)
+                groups[k].append(node)
+
+            return [
+                use_first(node_type_name, codes, k, group)
+                for (k, group) in groups.items()]
+
         filtering = CodesPatternFiltering(codes=codes)
 
         nslcs = list(set(
@@ -2871,19 +2959,17 @@ class Squirrel(Selection):
                     codes=(net, sta, '*'),
                     model='stationxml')
 
+                if on_error != 'raise':
+                    stations = deduplicate(
+                        'Station', (net, sta), stations)
+
                 errors = sx.check_overlaps(
                     'Station', (net, sta), stations)
 
                 if errors:
-                    e_message = 'Inconsistencies found:\n  %s' \
-                        % '\n  '.join(errors)
-
-                    if on_error == 'ignore':
-                        pass
-                    elif on_error == 'warn':
-                        logger.warning(e_message)
-                    else:
-                        raise sx.Inconsistencies(e_message)
+                    handle_error(error.Duplicate(
+                        'Overlapping/duplicate station info:\n  %s'
+                        % '\n  '.join(errors)))
 
                 network.station_list.extend(stations)
 
@@ -2898,36 +2984,27 @@ class Squirrel(Selection):
                             codes=(net, sta, loc, cha),
                             model='stationxml')
 
+                        if on_error != 'raise':
+                            channels = deduplicate(
+                                'Channel', (net, sta, loc, cha), channels)
+
                         errors = sx.check_overlaps(
                             'Channel', (net, sta, loc, cha), channels)
 
                         if errors:
-                            e_message = 'Inconsistencies found:\n  %s' \
-                                % '\n  '.join(errors)
-
-                            if on_error == 'ignore':
-                                pass
-                            elif on_error == 'warn':
-                                logger.warning(e_message)
-                            else:
-                                raise sx.Inconsistencies(e_message)
+                            handle_error(error.Duplicate(
+                                'Overlapping/duplicate channel info:\n  %s'
+                                % '\n  '.join(errors)))
 
                         for channel in channels:
                             station = sx.find_containing(stations, channel)
                             if station is not None:
                                 station.channel_list.append(channel)
                             else:
-                                e_message = \
-                                    'No station or station epoch found ' \
+                                handle_error(error.NotAvailable(
+                                    'No station or station epoch found '
                                     'for channel: %s' % '.'.join(
-                                        (net, sta, loc, cha))
-
-                                if on_error == 'ignore':
-                                    pass
-                                elif on_error == 'warn':
-                                    logger.warning(e_message)
-                                else:
-                                    raise sx.Inconsistencies(e_message)
+                                        (net, sta, loc, cha))))
 
                                 continue
 
@@ -2939,16 +3016,11 @@ class Squirrel(Selection):
                                     codes=(net, sta, loc, cha),
                                     tmin=channel.start_date,
                                     tmax=channel.end_date,
-                                    model='stationxml+')
+                                    model='stationxml+',
+                                    on_duplicate=on_error)
 
                             except error.NotAvailable as e:
-                                if on_error == 'ignore':
-                                    pass
-                                elif on_error == 'warn':
-                                    logger.warning(e)
-                                else:
-                                    raise
-
+                                handle_error(e)
                                 continue
 
                             if not (
@@ -2957,17 +3029,10 @@ class Squirrel(Selection):
                                     and sx.eq_open(
                                         channel.end_date, response_sq.tmax)):
 
-                                e_message = \
-                                    'Response time span does not match ' \
+                                handle_error(error.Inconsistencies(
+                                    'Response time span does not match '
                                     'channel time span: %s' % '.'.join(
-                                        (net, sta, loc, cha))
-
-                                if on_error == 'ignore':
-                                    pass
-                                elif on_error == 'warn':
-                                    logger.warning(e_message)
-                                else:
-                                    raise sx.Inconsistencies(e_message)
+                                        (net, sta, loc, cha))))
 
                             channel.response = response_sx
 

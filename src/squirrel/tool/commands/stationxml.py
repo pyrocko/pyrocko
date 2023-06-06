@@ -63,7 +63,9 @@ def run(parser, args):
     squirrel = args.make_squirrel()
 
     sx = squirrel.get_stationxml(
-        **args.squirrel_query, level=args.level, on_error=args.on_error)
+        **args.squirrel_query,
+        level=args.level,
+        on_error=args.on_error)
 
     if args.out_format == 'xml':
         print(sx.dump_xml())

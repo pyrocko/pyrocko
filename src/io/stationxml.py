@@ -269,7 +269,7 @@ def check_resp(resp, value, frequency, limit_db, prelude, context):
 
 def tts(t):
     if t is None:
-        return '?'
+        return '<none>'
     else:
         return util.tts(t, format='%Y-%m-%d %H:%M:%S')
 
@@ -1441,7 +1441,7 @@ class Response(Object):
                     check_resp(
                         trial, sval, sfreq, 0.1,
                         'Instrument sensitivity value inconsistent with '
-                        'sensitivity computed from complete response',
+                        'sensitivity computed from complete response.',
                         context))
 
                 delivery.payload.append(response.FrequencyResponseCheckpoint(
