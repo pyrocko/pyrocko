@@ -30,7 +30,7 @@ fi
 ORIGPATH="$PATH"
 
 CONDA_URL="https://repo.anaconda.com/miniconda"
-CONDA_PREFIX="$HOME/miniconda3"
+CONDA_PREFIX="/tmp/miniconda3"
 CONDA_INSTALLER="miniconda3.sh"
 
 export PATH="$CONDA_PREFIX/bin:$ORIGPATH"
@@ -71,9 +71,9 @@ else
     conda config --set anaconda_upload no
 fi
 
-conda-build --python 3.7 build
-conda-build --python 3.8 build
-conda-build --python 3.9 build
+conda-build --python 3.7 --numpy 1.18 build
+conda-build --python 3.8 --numpy 1.18 build
+conda-build --python 3.9 --numpy 1.21 build
 conda-build --python 3.10 --numpy 1.21 build
 conda-build --python 3.11 --numpy 1.23 build
 
