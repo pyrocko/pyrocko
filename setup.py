@@ -77,8 +77,10 @@ local_modifications = %s
 version = %s
 long_version = %s  # noqa
 installed_date = %s
+src_path = %s
 ''' % tuple([repr(x) for x in (
-        sha1, local_modifications, version, combi, datestr)])
+        sha1, local_modifications, version, combi, datestr,
+        op.dirname(op.abspath(__file__)))])
 
     info_path = op.join('src', 'info.py')
     if os.path.exists(info_path):

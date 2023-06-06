@@ -110,7 +110,8 @@ def find_pyrocko_installations():
             dpath = op.dirname(op.abspath(pyrocko.__file__))
             if dpath not in seen:
                 x = (pyrocko.installed_date, dpath,
-                     pyrocko.long_version)
+                     pyrocko.long_version,
+                     pyrocko.src_path if hasattr(pyrocko, 'src_path') else '?')
 
                 found.append(x)
             seen.add(dpath)
@@ -133,7 +134,7 @@ def str_installations(found):
     dates = sorted([xx[0] for xx in found])
     i = 1
 
-    for (installed_date, installed_path, long_version) in found:
+    for (installed_date, installed_path, long_version, src_path) in found:
         oldnew = ''
         if len(dates) >= 2:
             if installed_date == dates[0]:
@@ -146,12 +147,14 @@ def str_installations(found):
   date installed: %s%s
   version: %s
   path: %s
+  src path: %s
 ''' % (
             i, '(used)' if i == 1 else '(not used)',
             installed_date,
             oldnew,
             long_version,
-            installed_path))
+            installed_path,
+            src_path))
 
         i += 1
 
