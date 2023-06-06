@@ -434,6 +434,8 @@ class Plot(object):
 
         current = self._get_mpl_view_limits()
         last = self._last_mpl_view_limits
+        if last is None:
+            return
 
         for iy, ix, axes in self.iaxes():
             acurrent = current[iy][ix]
