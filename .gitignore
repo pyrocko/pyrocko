@@ -14,6 +14,7 @@ __pycache__/
 *.swp
 *.so
 
+.ctags
 .cache/
 /tags
 /scratch/
