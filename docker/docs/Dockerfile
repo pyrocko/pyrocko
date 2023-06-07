@@ -26,3 +26,6 @@ RUN apt-get install -y \
 RUN apt-get install -y \
         python3-pyqt5 python3-pyqt5.qtopengl python3-pyqt5.qtsvg \
         python3-pyqt5.qtwebengine python3-pyqt5.qtwebkit
+RUN apt-get install -y python3-vtk9 \
+    || apt-get install -y python3-vtk8 \
+    || apt-get install -y python3-vtk7

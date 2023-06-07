@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# run 'docker system prune -a' for a clean start
+
 set -e
 
 rm -rf pyrocko-test-data
