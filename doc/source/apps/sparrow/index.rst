@@ -71,6 +71,11 @@ First flaps
 
 Instructions and help are shown in the status bar at the bottom of the window.
 
+**Tutorial**
+
+On first startup, a tutorial is shown. The tutorial can also be activated
+from the *Help* menu.
+
 **Navigation**
 
 There are two navigation modes, *normal* and *fixed*. In *normal* mode the
@@ -112,14 +117,14 @@ Two useful elements are:
 
 Further elements allow display of
 
-* subtitles,
-* time counters,
-* station locations,
-* InSAR displacements,
-* source models,
-* faults,
+* subtitles
+* time counters
+* station locations
+* InSAR displacements
+* source models
+* faults
 * volcanoes
-* ...
+* and more...
 
 If you would like to implement a new element and need some pointers to get
 started, have a chat with us in the `Sparrow channel

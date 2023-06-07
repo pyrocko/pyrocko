@@ -32,6 +32,7 @@ installed from source:
    * `requests <http://docs.python-requests.org/en/master/>`_
 
 * Optional Python modules:
+   * `VTK <https://vtk.org>`_ (with Python bindings, required for the :program:`Sparrow` app)
    * `Jinja2 <http://jinja.pocoo.org/>`_ (required for the :ref:`fomosto report <fomosto_report>` subcommand)
    * `pytest <https://pytest.org>`_ (to run the unittests)
    * `coverage <https://pypi.python.org/pypi/coverage>`_ (unittest coverage report)
