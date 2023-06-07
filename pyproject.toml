@@ -3,7 +3,7 @@ requires = ["setuptools", "wheel", "oldest-supported-numpy"]
 
 [project]
 name = "pyrocko"
-version = "2023.03.27"
+version = "2023.06.07"
 authors = [
     {name = "The Pyrocko Developers", email = "info@pyrocko.org"},
 ]

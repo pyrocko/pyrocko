@@ -8,6 +8,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 *empty*
 
+## v2023.06.07
+
+### Added
+- The Sparrow.
+- Squirrel:
+    - `squirrel jackseis`: add `--rename-*` options to change nslc codes.
+    - `squirrel jackseis`: support more downsamling ratios.
+      travel-time.
+    - Can now avoid getting redundant waveforms (LH, BH, HH) with channel
+      priorities and sample rate ranges. Supported in `squirrel summon` and
+      `Squirrel.get_waveforms`, etc.
+- `gf.Store.t`: allow getting stored attributes like takeoff-angle along with
+- Automap: support custom grd files.
+- Reader for Silixa's HDF5 iDAS files.
+
+### Changed
+- Squirrel:
+    - allow threads
+    - more consistent format of outputs from `squirrel nuts`,
+      `squirrel response`, etc.
+    - `squirrel stationxml`: improved robustness against duplicate entries,
+      allow ignoring some errors.
+
+### Fixed
+- Squirrel:
+    - fixed error leading to overlaps in FDSN waveform downloads.
+    - add protection against huge downloads when remote FDSN reports
+      incorrect sample rate in meta-data.
+
 ## v2023.03.27
 
 ### Added
