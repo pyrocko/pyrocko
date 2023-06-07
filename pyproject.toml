@@ -70,6 +70,24 @@ snuffler = "pyrocko.apps.snuffler:main"
 sparrow = "pyrocko.apps.sparrow:main"
 drum = "pyrocko.apps.drum:main"
 
+# 2023-06-07: "Support for `[tool.setuptools]` in `pyproject.toml` is still
+# *beta*", # therfore package-data is handled in setup.py atm.
+# [tool.setuptools.package-data]
+# "pyrocko" = [
+#     'data/*.png',
+#     'data/*.html',
+#     'data/earthmodels/*.nd',
+#     'data/colortables/*.cpt',
+#     'data/tectonics/*.txt',
+#     'data/fomosto_report/gfreport.*',
+#     'gui/snuffler/snufflings/map/*.kml',
+#     'gui/snuffler/snufflings/map/*.html',
+#     'gui/snuffler/snufflings/map/*.js',
+# ]
+# '*' = [
+#     'README.md'
+# ]
+
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "--tb=short"

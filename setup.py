@@ -115,17 +115,6 @@ def make_prerequisites():
                  '"%s"' % ' '.join(cmd))
 
 
-def get_readme_paths():
-    paths = []
-
-    for (path, dirnames, filenames) in os.walk(
-            op.join(op.dirname(__file__), 'src')):
-        paths.extend(
-            [op.join(*(op.split(path)[1:] + (fn,))) for fn in filenames if
-             fn == 'README.md'])
-    return paths
-
-
 def get_build_include(lib_name):
     return op.join(op.dirname(op.abspath(__file__)), lib_name)
 
@@ -353,6 +342,11 @@ subpacknames = [
     'pyrocko.squirrel.tool',
     'pyrocko.squirrel.tool.commands',
     'pyrocko.squirrel.operators',
+    'pyrocko.data',
+    'pyrocko.data.colortables',
+    'pyrocko.data.earthmodels',
+    'pyrocko.data.tectonics',
+    'pyrocko.data.fomosto_report',
 ]
 
 cmdclass = {
@@ -496,8 +490,8 @@ if not have_pep621_support:
             'Topic :: Scientific/Engineering :: Physics',
             'Topic :: Scientific/Engineering :: Visualization',
             'Topic :: Scientific/Engineering :: Information Analysis',
-            'Topic :: Software Development :: Libraries :: Application Frameworks',  # noqa
-            ],
+            'Topic :: Software Development :: Libraries :: Application '
+            'Frameworks'],
         keywords=[
             'seismology, waveform analysis, earthquake modelling, geophysics,'
             ' geophysical inversion'],
@@ -534,36 +528,27 @@ if not have_pep621_support:
 else:
     metadata = {}
 
-
 setup(
     cmdclass=cmdclass,
     name=packname,
     version=version,
-
     packages=[packname] + subpacknames,
-
     package_dir={'pyrocko': 'src'},
-
     ext_package=packname,
-
-
     ext_modules=ext_modules,
-
-    scripts=[
-        'src/apps/gmtpy-epstopdf',
-    ],
-
+    scripts=['src/apps/gmtpy-epstopdf'],
+    include_package_data=False,
     package_data={
-        packname: ['data/*.png',
-                   'data/*.html',
-                   'data/earthmodels/*.nd',
-                   'data/colortables/*.cpt',
-                   'data/tectonics/*.txt',
-                   'data/fomosto_report/gfreport.*',
-                   'gui/snuffler/snufflings/map/*.kml',
-                   'gui/snuffler/snufflings/map/*.html',
-                   'gui/snuffler/snufflings/map/*.js',
-                   ] + get_readme_paths()},
-
+        packname: [
+            'data/*.png',
+            'data/*.html',
+            'data/earthmodels/*.nd',
+            'data/colortables/*.cpt',
+            'data/tectonics/*.txt',
+            'data/fomosto_report/gfreport.*',
+            'gui/snuffler/snufflings/map/*.kml',
+            'gui/snuffler/snufflings/map/*.html',
+            'gui/snuffler/snufflings/map/*.js'],
+        '': ['README.md']},
     **metadata,
 )
