@@ -1683,7 +1683,7 @@ class Coverage(Object):
         srate = self.sample_rate
         return (
             ('%s' % str(self.codes)),
-            '%.3g' % srate if srate else '')
+            '%.4g' % srate if srate else '')
 
     @property
     def total(self):
