@@ -37,7 +37,6 @@ def detect_pyrocko_stations(first512):
                 return True
 
             except Exception:
-                raise
                 return False
 
     return False
