@@ -632,7 +632,8 @@ def amplitudes(mt, azimuths, takeoff_angles):
     azimuths = num.asarray(azimuths, dtype=float)
     takeoff_angles = num.asarray(takeoff_angles, dtype=float)
     assert azimuths.size == takeoff_angles.size
-    rtps = num.vstack((num.ones(azimuths.size), takeoff_angles, azimuths)).T
+    rtps = num.vstack(
+        (num.ones(azimuths.size), takeoff_angles*d2r, azimuths*d2r)).T
     vecs = numpy_rtp2xyz(rtps)
     return amplitudes_ned(mt, vecs)
 
