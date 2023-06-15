@@ -629,6 +629,19 @@ def amplitudes_ned(mt, vecs):
 
 
 def amplitudes(mt, azimuths, takeoff_angles):
+    '''
+    Get beachball amplitude values for selected azimuths and takeoff angles.
+
+    :param azimuths:
+        Azimuths, measured clockwise from north [deg].
+    :type azimuths:
+        :py:class:`~numpy.ndarray`
+
+    :param takeoff_angles:
+        Takeoff angles, measured from downward vertical [deg].
+    :type takeoff_angles:
+        :py:class:`~numpy.ndarray`
+    '''
     azimuths = num.asarray(azimuths, dtype=float)
     takeoff_angles = num.asarray(takeoff_angles, dtype=float)
     assert azimuths.size == takeoff_angles.size

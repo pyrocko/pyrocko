@@ -183,7 +183,8 @@ The function to plot focal spheres
 coordinates. Here we use this function to place additional symbols on the plot.
 The take-off angles needed can be computed with some help of the
 :mod:`pyrocko.cake` module. Azimuth and distance computations are done with
-functions from :mod:`pyrocko.orthodrome`.
+functions from :mod:`pyrocko.orthodrome`. Polarities are obtained with
+:func:`pyrocko.plot.beachball.amplitudes`.
 
 Download :download:`beachball_example04.py </../../examples/beachball_example04.py>`
 
