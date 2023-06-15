@@ -93,6 +93,23 @@ class Spectrogram(Snuffling):
         self.nf_max = 500
         self.iframe = 0
 
+    def panel_visibility_changed(self, visible):
+        viewer = self.get_viewer()
+        if visible:
+            viewer.pile_has_changed_signal.connect(self.adjust_controls)
+            self.adjust_controls()
+
+        else:
+            viewer.pile_has_changed_signal.disconnect(self.adjust_controls)
+
+    def adjust_controls(self):
+        viewer = self.get_viewer()
+        dtmin, dtmax = viewer.content_deltat_range()
+        maxfreq = 0.5/dtmin
+        minfreq = (0.5/dtmax)*0.001
+        self.set_parameter_range('fmin', minfreq, maxfreq)
+        self.set_parameter_range('fmax', minfreq, maxfreq)
+
     def get_taper(self, name, n):
 
         taper_key = (name, n)
@@ -119,7 +136,7 @@ class Spectrogram(Snuffling):
             ifmin = 0
 
         if self.fmax is not None:
-            ifmax = int(math.floor(self.fmax / df)) + 1
+            ifmax = min(int(math.floor(self.fmax / df)) + 1, nf)
         else:
             ifmax = nf
 

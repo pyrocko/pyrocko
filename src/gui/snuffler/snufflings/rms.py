@@ -51,6 +51,23 @@ class RootMeanSquareSnuffling(Snuffling):
 
         self.set_live_update(False)
 
+    def panel_visibility_changed(self, visible):
+        viewer = self.get_viewer()
+        if visible:
+            viewer.pile_has_changed_signal.connect(self.adjust_controls)
+            self.adjust_controls()
+
+        else:
+            viewer.pile_has_changed_signal.disconnect(self.adjust_controls)
+
+    def adjust_controls(self):
+        viewer = self.get_viewer()
+        dtmin, dtmax = viewer.content_deltat_range()
+        maxfreq = 0.5/dtmin
+        minfreq = (0.5/dtmax)*0.001
+        self.set_parameter_range('lowpass', minfreq, maxfreq)
+        self.set_parameter_range('highpass', minfreq, maxfreq)
+
     def copy_passband(self):
         viewer = self.get_viewer()
         self.set_parameter('lowpass', viewer.lowpass)
