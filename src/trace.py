@@ -671,10 +671,12 @@ class Trace(Object):
 
         return obj
 
-    def downsample(self, ndecimate, snap=False, initials=None, demean=False,
-                   ftype='fir-remez'):
+    def downsample(
+            self, ndecimate, snap=False, demean=False, ftype='fir-remez',
+            cut=False):
+
         '''
-        Downsample trace by a given integer factor.
+        Downsample (decimate) trace by a given integer factor.
 
         Antialiasing filter details:
 
@@ -691,53 +693,60 @@ class Trace(Object):
             :width: 60%
             :alt: Comparison of the downsampling filters.
 
-        :param ndecimate: decimation factor, avoid values larger than 8
-        :param snap: whether to put the new sampling instances closest to
-            multiples of the sampling rate.
-        :param initials: ``None``, ``True``, or initial conditions for the
-            anti-aliasing filter, obtained from a previous run. In the latter
-            two cases the final state of the filter is returned instead of
-            ``None``.
-        :param demean: whether to demean the signal before filtering.
-        :param ftype: which FIR filter to use, choose from
-            ``'iir'``, ``'fir'``, ``'fir-remez'``. Default is ``'fir-remez'``.
+        See also :py:meth:`Trace.downsample_to`.
+
+        :param ndecimate:
+            Decimation factor, avoid values larger than 8.
+        :type ndecimate:
+            int
+
+        :param snap:
+            Whether to put the new sampling instants closest to multiples of
+            the sampling rate (according to absolute time).
+        :type snap:
+            bool
+
+        :param demean:
+            Whether to demean the signal before filtering.
+        :type demean:
+            bool
+
+        :param ftype:
+            Which FIR filter to use, choose from ``'iir'``, ``'fir'``,
+            ``'fir-remez'``. Default is ``'fir-remez'``.
+
+        :param cut:
+            Whether to cut off samples in the beginning of the trace which
+            are polluted by artifacts of the anti-aliasing filter.
+        :type cut:
+            bool
         '''
         newdeltat = self.deltat*ndecimate
+        b, a, n = util.decimate_coeffs(ndecimate, None, ftype)
         if snap:
-            ilag = int(round(
-                (math.ceil(self.tmin / newdeltat) * newdeltat - self.tmin)
-                / self.deltat))
+            ilag = int(round((math.ceil(
+                (self.tmin+(n//2 if cut else 0)*self.deltat) /
+                newdeltat) * newdeltat - self.tmin) / self.deltat))
         else:
-            ilag = 0
+            ilag = (n//2 if cut else 0)
 
-        if snap and ilag > 0 and ilag < self.ydata.size:
-            data = self.ydata.astype(num.float64)
-            self.tmin += ilag*self.deltat
-        else:
-            data = self.ydata.astype(num.float64)
-
-        if demean:
-            data -= num.mean(data)
-
+        data = self.ydata.astype(num.float64)
         if data.size != 0:
-            result = util.decimate(
-                data, ndecimate, ftype=ftype, zi=initials, ioff=ilag)
+            if demean:
+                data -= num.mean(data)
+            y = signal.lfilter(b, a, data)
+            self.ydata = y[n//2+ilag::ndecimate].copy()
         else:
-            result = data
+            self.ydata = data
 
-        if initials is None:
-            self.ydata, finals = result, None
-        else:
-            self.ydata, finals = result
-
+        self.tmin += ilag * self.deltat
         self.deltat = reuse(self.deltat*ndecimate)
         self.tmax = self.tmin+(len(self.ydata)-1)*self.deltat
         self._update_ids()
 
-        return finals
-
-    def downsample_to(self, deltat, snap=False, allow_upsample_max=1,
-                      initials=None, demean=False, ftype='fir-remez'):
+    def downsample_to(
+            self, deltat, snap=False, allow_upsample_max=1, demean=False,
+            ftype='fir-remez', cut=False):
 
         '''
         Downsample to given sampling rate.
@@ -751,35 +760,55 @@ class Trace(Object):
         If the requested ratio is not supported, an exception of type
         :py:exc:`pyrocko.util.UnavailableDecimation` is raised.
 
-        :param deltat: desired sampling interval in [s]
-        :param allow_upsample_max: maximum upsampling of the signal to achieve
-            the desired deltat. Default is ``1``.
-        :param snap: whether to put the new sampling instances closest to
-            multiples of the sampling rate.
-        :param initials: ``None``, ``True``, or initial conditions for the
-            anti-aliasing filter, obtained from a previous run. In the latter
-            two cases the final state of the filter is returned instead of
-            ``None``.
-        :param demean: whether to demean the signal before filtering.
-        :param ftype: which FIR filter to use, choose from
-            ``'iir'``, ``'fir'``, ``'fir-remez'``. Default is ``'fir-remez'``.
-            See also: :meth:`Trace.downample`
+        The downsampled trace will be shorter than the input trace because the
+        anti-aliasing filter introduces edge effects. If `cut` is selected,
+        additionally, polluted samples in the beginning of the trace are
+        removed. The approximate amount of cutoff which will be produced by a
+        given downsampling configuration can be estimated with
+        :py:func:`downsample_tpad`.
+
+        See also: :meth:`Trace.downample`
+
+        :param deltat:
+            Desired sampling interval in [s].
+        :type deltat:
+            float
+
+        :param allow_upsample_max:
+            Maximum allowed upsampling factor of the signal to achieve the
+            desired sampling interval. Default is ``1``.
+        :type allow_upsample_max:
+            int
+
+        :param snap:
+            Whether to put the new sampling instants closest to multiples of
+            the sampling rate (according to absolute time).
+        :type snap:
+            bool
+
+        :param demean:
+            Whether to demean the signal before filtering.
+        :type demean:
+            bool
+
+        :param ftype:
+            Which FIR filter to use, choose from ``'iir'``, ``'fir'``,
+            ``'fir-remez'``. Default is ``'fir-remez'``.
+
+        :param cut:
+            Whether to cut off samples in the beginning of the trace which
+            are polluted by artifacts of the anti-aliasing filter.
+        :type demean:
+            bool
         '''
 
-        ratio = deltat/self.deltat
-        rratio = round(ratio)
+        upsratio, deci_seq = _configure_downsampling(
+            self.deltat, deltat, allow_upsample_max)
 
-        ok = False
-        for upsratio in range(1, allow_upsample_max+1):
-            dratio = (upsratio/self.deltat) / (1./deltat)
-            if abs(dratio - round(dratio)) / dratio < 0.0001 and \
-                    util.decitab(int(round(dratio))):
-
-                ok = True
-                break
-
-        if not ok:
-            raise util.UnavailableDecimation('ratio = %g' % ratio)
+        if demean:
+            self.drop_growbuffer()
+            self.ydata = self.ydata.astype(num.float64)
+            self.ydata -= num.mean(self.ydata)
 
         if upsratio > 1:
             self.drop_growbuffer()
@@ -793,22 +822,9 @@ class Trace(Object):
                     + float(upsratio-i)/upsratio * ydata[1:]
             self.deltat = self.deltat/upsratio
 
-            ratio = deltat/self.deltat
-            rratio = round(ratio)
-
-        deci_seq = util.decitab(int(rratio))
-        finals = []
         for i, ndecimate in enumerate(deci_seq):
-            if ndecimate != 1:
-                xinitials = None
-                if initials is not None:
-                    xinitials = initials[i]
-                finals.append(self.downsample(
-                    ndecimate, snap=snap, initials=xinitials, demean=demean,
-                    ftype=ftype))
-
-        if initials is not None:
-            return finals
+            self.downsample(
+                ndecimate, snap=snap, demean=False, ftype=ftype, cut=cut)
 
     def resample(self, deltat):
         '''
@@ -2015,6 +2031,58 @@ def snuffle(traces, **kwargs):
         trf = pile.MemTracesFile(None, traces)
         p.add_file(trf)
     return snuffler.snuffle(p, **kwargs)
+
+
+def downsample_tpad(
+        deltat_in, deltat_out, allow_upsample_max=1, ftype='fir-remez'):
+    '''
+    Get approximate amount of cutoff which will be produced by downsampling.
+
+    The  :py:meth:`Trace.downsample_to` method removes some samples at the
+    beginning and end of the trace which is downsampled. This function
+    estimates the approximate length [s] which will be cut off for a given set
+    of parameters supplied to :py:meth:`Trace.downsample_to`.
+
+    :param deltat_in:
+        Input sampling interval [s].
+    :type deltat_in:
+        float
+
+    :param deltat_out:
+        Output samling interval [s].
+    :type deltat_out:
+        float
+
+    :returns:
+        Approximate length [s] which will be cut off.
+
+    See :py:meth:`Trace.downsample_to` for details.
+    '''
+
+    upsratio, deci_seq = _configure_downsampling(
+        deltat_in, deltat_out, allow_upsample_max)
+
+    tpad = 0.0
+    deltat = deltat_in / upsratio
+    for deci in deci_seq:
+        b, a, n = util.decimate_coeffs(deci, None, ftype)
+        # n//2 for the antialiasing
+        # +deci for possible snap to multiples
+        # +1 for rounding errors
+        tpad += (n//2 + deci + 1) * deltat
+        deltat = deltat * deci
+
+    return tpad
+
+
+def _configure_downsampling(deltat_in, deltat_out, allow_upsample_max):
+    for upsratio in range(1, allow_upsample_max+1):
+        dratio = (upsratio/deltat_in) / (1./deltat_out)
+        deci_seq = util.decitab(int(round(dratio)))
+        if abs(dratio - round(dratio)) / dratio < 0.0001 and deci_seq:
+            return upsratio, [deci for deci in deci_seq if deci != 1]
+
+    raise util.UnavailableDecimation('ratio = %g' % (deltat_out / deltat_in))
 
 
 class InfiniteResponse(Exception):

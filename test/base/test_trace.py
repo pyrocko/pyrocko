@@ -301,50 +301,78 @@ class TraceTestCase(unittest.TestCase):
             for i in range(1, 6):
                 data.append((f*float(1.), f*float(i), False))
 
-        for (dt1, dt2, test_fail) in data:
+        all_traces = []
+        for cut in [True, False]:
+            for (dt1, dt2, test_fail) in data:
 
-            for toff in [
-                    num.random.random() * dt1 + num.random.random() * dt2]:
+                for toff in [
+                        num.random.random() * dt1 + num.random.random() * dt2]:
 
-                n = 1024
-                xdata = num.arange(n, dtype=float)
-                ydata = num.exp(-((xdata-n/2)/10.)**2)
+                    n = 1024
+                    xdata = num.arange(n, dtype=float)
+                    ydata = num.exp(-((xdata-n/2)/10.)**2)
 
-                for orig_snap in (True, False):
-                    t = trace.Trace(
-                        ydata=ydata,
-                        tmin=sometime+toff,
-                        deltat=dt1,
-                        location='1')
+                    for orig_snap in (True, False):
+                        t = trace.Trace(
+                            ydata=ydata,
+                            tmin=sometime+toff,
+                            deltat=dt1,
+                            location='1')
 
-                    if orig_snap:
-                        t.snap()
+                        if orig_snap:
+                            t.snap()
 
-                    t2 = t.copy()
-                    if test_fail:
-                        with self.assertRaises(trace.UnavailableDecimation):
-                            t2.downsample_to(dt2, allow_upsample_max=1)
-
-                    for snap in (True, False):
                         t2 = t.copy()
-                        t2.set_codes(location='2')
-                        t2.downsample_to(dt2, allow_upsample_max=10, snap=snap)
+                        if test_fail:
+                            with self.assertRaises(
+                                    trace.UnavailableDecimation):
+                                t2.downsample_to(
+                                    dt2,
+                                    allow_upsample_max=1,
+                                    cut=cut)
 
-                        # print(
-                        #     "%20.4f %6s %10.4f %10.4f %20.4f %20.4f %6s" % (
-                        #         toff, snap,
-                        #         t.deltat, t2.deltat,
-                        #         t.tmin, t2.tmin,
-                        #         is_multiple(t2.tmin, t2.deltat, 1e-3)))
+                        for snap in (True, False):
+                            t2 = t.copy()
+                            t2.set_codes(location='2')
+                            t2.downsample_to(
+                                dt2,
+                                allow_upsample_max=10,
+                                snap=snap,
+                                cut=cut)
 
-                        if snap and orig_snap:
-                            assert is_multiple(t2.tmin, t2.deltat, 1e-3)
-                        elif snap and not orig_snap:
-                            assert abs(
-                                int(round(t2.tmin / t2.deltat)) *
-                                t2.deltat - t2.tmin) <= 0.51*t.deltat
+                            tpad = trace.downsample_tpad(
+                                t.deltat, dt2, allow_upsample_max=10)
 
-            # trace.snuffle([t, t2])
+                            tcut_before = t2.tmin - t.tmin
+                            tcut_after = t.tmax - t2.tmax
+
+                            if not cut:
+                                if not snap:
+                                    assert tcut_before == 0
+                                else:
+                                    assert tcut_before < 3 * dt2
+                            else:
+                                assert 0. <= tcut_before <= tpad
+
+                            assert 0. <= tcut_after <= tpad
+
+                            if snap and orig_snap:
+                                assert is_multiple(t2.tmin, t2.deltat, 1e-3)
+                            elif snap and not orig_snap:
+                                assert abs(
+                                    int(round(t2.tmin / t2.deltat)) *
+                                    t2.deltat - t2.tmin) <= 0.51*t.deltat
+
+                            tcopy = t.copy()
+                            tcopy.set_station('%03i' % (len(all_traces)//2))
+                            tcopy.set_location('original')
+                            t2copy = t2.copy()
+                            t2copy.set_station('%03i' % (len(all_traces)//2))
+                            t2copy.set_location('downsampled')
+                            all_traces.append(tcopy)
+                            all_traces.append(t2copy)
+
+        # trace.snuffle(all_traces)
 
     def testFiltering(self):
         tmin = sometime
