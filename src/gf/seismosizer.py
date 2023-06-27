@@ -2731,6 +2731,44 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
             tractions = self.tractions
         return tractions.get_tractions(self.nx, self.ny, self.patches)
 
+    def get_scaled_tractions(self, store):
+        '''
+        Get traction vectors rescaled to given slip.
+
+        Opposing to :py:meth:`get_tractions` traction vectors
+        (:py:class:`~pyrocko.gf.tractions.DirectedTractions`) are rescaled to
+        the given :py:attr:`slip` before returning. If no :py:attr:`slip` and
+        :py:attr:`rake` are provided, the given  :py:attr:`tractions` are
+        returned without scaling.
+
+        :param store:
+            Green's function database (needs to cover whole region of the
+            source).
+        :type store:
+            :py:class:`~pyrocko.gf.store.Store`
+
+        :returns:
+            Traction vectors per patch.
+        :rtype:
+            :py:class:`~numpy.ndarray`: ``(n_patches, 3)``.
+        '''
+        tractions = self.tractions
+        factor = 1.
+
+        if self.rake is not None and self.slip is not None:
+            if num.isnan(self.rake):
+                raise ValueError('Rake must be a real number, not NaN.')
+
+            self.discretize_patches(store)
+            slip_0t = max(num.linalg.norm(
+                self.get_slip(scale_slip=False),
+                axis=1))
+
+            factor = self.slip / slip_0t
+            tractions = DirectedTractions(rake=self.rake)
+
+        return tractions.get_tractions(self.nx, self.ny, self.patches) * factor
+
     def base_key(self):
         return SourceWithDerivedMagnitude.base_key(self) + (
             self.slip,
