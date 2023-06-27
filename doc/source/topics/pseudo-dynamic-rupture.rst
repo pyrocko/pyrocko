@@ -8,6 +8,11 @@ Introduction
 
 Physics-based, dynamic rupture models, which rely on few parameters only, are needed for realistic forward modelling and to reduce the effort and non-uniqueness of the inversion. The :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture` is a simplified, quasi-dynamic, semi-analytical rupture model suited for wavefield and static displacement simulation and earthquake source inversion. The rupture model builds on the class of self-similar crack models. On one hand it is approximative as it neglects inertia and so far the details of frictional effects and treats the rupture front growth in a simplified way.  On the other hand, it is complete as the slip fulfils the boundary condition on the broken plane for every instantaneous rupture front geometry and applied stress.
 
+Additional resources
+====================
+
+* `The pseudo dynamic rupture model <https://data.pyrocko.org/presentations/pdr_intro/>`_ (introduction and practical examples)
+
 Theoretical foundation
 ======================
 
