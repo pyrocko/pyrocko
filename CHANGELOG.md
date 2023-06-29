@@ -6,7 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
-*empty*
+### Added
+- Beachball example: explain syntetic polarity calulation.
+- Squirrel: support `now` in command line time arguments.
+
+### Changed
+- Disallow automatic downloads in `squirrel snuffler`.
+- Allow ignoring some errors when getting pyrocko stations.
+- Squirrel: improve behaviour when downloading close to real time data.
+
+### Fixed
+- Snuffler: improve robustness against broken snufflings.
+- Fix broken beachball.amplitudes which used incorrect units rad instead of 
+  deg.
+- Snufflings rms, spectrogram, stalta: filter ranges now adapt to data sampling
+  rates.
+- `squirrel snuffler`: fix crash due to incorrect pile emulation.
+- Squirrel: Fix crash when chopping over sequence without any waveforms.
+- Smartplot: fix tick label placement issues.
+
 
 ## v2023.06.07
 
