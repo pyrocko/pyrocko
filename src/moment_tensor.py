@@ -308,7 +308,7 @@ def matrix_to_euler(rotmat):
     if num.linalg.norm(enodes) < 1e-10:
         enodes = exs
     enodess = num.dot(rotmat, enodes)
-    cos_alpha = float((num.dot(ez.T, ezs)))
+    cos_alpha = float(num.dot(ez.T, ezs)[0, 0])
     if cos_alpha > 1.:
         cos_alpha = 1.
 
