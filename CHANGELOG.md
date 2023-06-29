@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+*empty*
+
+## v2023.06.29
+
 ### Added
 - Beachball example: explain syntetic polarity calulation.
 - Squirrel: support `now` in command line time arguments.
