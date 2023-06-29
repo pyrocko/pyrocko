@@ -22,11 +22,11 @@ Variant 1: allow pip to resolve dependencies
 
 .. code-block:: bash
 
-    pip install pyrocko
+    pip install pyrocko[gui]   # for full install
 
-    # and, (only) if you want to use Snuffler:
+    # or
 
-    pip install --only-binary :all: PyQt5 PyQtWebEngine
+    pip install pyrocko        # without dependencies for the GUI apps
 
 **Advantages:**
 
@@ -35,7 +35,7 @@ Variant 1: allow pip to resolve dependencies
 **Disadvantages:**
 
 - Dependencies installed by pip may shadow native system packages.
-- May turn your system into a big mess.
+- May turn your system into a big mess
 
 
 Variant 2: use your system's package manager to install dependencies
@@ -47,14 +47,20 @@ install Pyrocko:
 
 .. code-block:: bash
 
-    # first use apt-get/yum/pacman to install prerequisites (see above), then:
+    # First use apt-get/yum/pacman to install prerequisites (see above), then:
     pip install --no-deps pyrocko
+
+    # On some systems it is now neccessary to additionally set the flag
+    # --break-system-packages when installing like this system-wide. Don't
+    # forget to also set --no-deps, or you will really break system packages.
 
 **Advantages:**
 
-- Prevents package dependency conflicts.
+- Using the well-tested and carefully built system packages is usually more
+  stable and less error-prone (and arguably also more secure) than using a pip
+  managed venv where the dependencies have been built by various different
+  maintainers in completely different build environments.
 
 **Disadvantages:**
 
 - Need root access.
-- A bit more work to set up.
