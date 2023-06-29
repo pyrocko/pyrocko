@@ -138,7 +138,7 @@ class Array(Object):
                     val = num.frombuffer(
                         data, dtype=serialize_dtype).astype(dtype)
 
-                    if val.size != num.product(shape):
+                    if val.size != num.prod(shape):
                         raise ValidationError('size/shape mismatch')
 
                     val = val.reshape(shape)

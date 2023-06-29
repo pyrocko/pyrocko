@@ -2062,7 +2062,7 @@ class ConfigTypeA(Config):
                             vicinity_eps).astype(int) + 1
         self.effective_maxs = self.mins + self.deltas * (self.ns - 1)
         self.deltat = 1.0/self.sample_rate
-        self.nrecords = num.product(self.ns) * self.ncomponents
+        self.nrecords = num.prod(self.ns) * self.ncomponents
         self.coords = tuple(num.linspace(mi, ma, n) for
                             (mi, ma, n) in
                             zip(self.mins, self.effective_maxs, self.ns)) + \
@@ -2327,7 +2327,7 @@ class ConfigTypeB(Config):
                             vicinity_eps).astype(int) + 1
         self.effective_maxs = self.mins + self.deltas * (self.ns - 1)
         self.deltat = 1.0/self.sample_rate
-        self.nrecords = num.product(self.ns) * self.ncomponents
+        self.nrecords = num.prod(self.ns) * self.ncomponents
         self.coords = tuple(num.linspace(mi, ma, n) for
                             (mi, ma, n) in
                             zip(self.mins, self.effective_maxs, self.ns)) + \
@@ -2655,7 +2655,7 @@ class ConfigTypeC(Config):
                             vicinity_eps).astype(int) + 1
         self.effective_maxs = self.mins + self.deltas * (self.ns - 1)
         self.deltat = 1.0/self.sample_rate
-        self.nrecords = num.product(self.ns) * self.ncomponents
+        self.nrecords = num.prod(self.ns) * self.ncomponents
 
         self.coords = tuple(
             num.linspace(mi, ma, n) for (mi, ma, n) in

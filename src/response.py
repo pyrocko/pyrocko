@@ -796,7 +796,7 @@ class MultiplyResponse(FrequencyResponse):
         Get factor if this is a flat response.
         '''
         if self.is_scalar():
-            return num.product(resp.get_scalar() for resp in self.responses)
+            return num.prod(resp.get_scalar() for resp in self.responses)
         else:
             raise IsNotScalar()
 

@@ -423,12 +423,12 @@ class SPTree(object):
                     self.cells_to_continue.append(cell)
 
                 cell.bad = True
-                self.fraction_bad += num.product(1.0/2**cell.depths)
+                self.fraction_bad += num.prod(1.0/2**cell.depths)
                 self.nbad += 1
 
     def _deepen_cell(self, cell):
         if cell.bad:
-            self.fraction_bad -= num.product(1.0/2**cell.depths)
+            self.fraction_bad -= num.prod(1.0/2**cell.depths)
             self.nbad -= 1
             cell.bad = False
 
