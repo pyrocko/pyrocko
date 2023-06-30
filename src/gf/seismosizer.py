@@ -2612,7 +2612,7 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
 
     tractions = TractionField.T(
         optional=True,
-        help='Traction field the rupture plane is exposed to. See the'
+        help='Traction field the rupture plane is exposed to. See the '
              ':py:mod:`pyrocko.gf.tractions` module for more details. '
              'If ``tractions=None`` and ``rake`` is given'
              ' :py:class:`~pyrocko.gf.tractions.DirectedTractions` will'
@@ -4069,6 +4069,158 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
             moment_tensor=mt,
             magnitude=mt.magnitude,
             duration=t_max)
+
+    def get_coulomb_failure_stress(
+            self,
+            receiver_points,
+            friction,
+            pressure,
+            strike,
+            dip,
+            rake,
+            time=None,
+            *args,
+            **kwargs):
+        '''
+        Calculate Coulomb failure stress change CFS.
+
+        The function obtains the Coulomb failure stress change :math:`\\Delta
+        \\sigma_C` at arbitrary receiver points with a commonly oriented
+        receiver plane assuming:
+
+        .. math::
+
+            \\Delta \\sigma_C = \\sigma_S - \\mu (\\sigma_N - \\Delta p)
+
+        with the shear stress :math:`\\sigma_S`, the coefficient of friction
+        :math:`\\mu`, the normal stress :math:`\\sigma_N`, and the pore fluid
+        pressure change :math:`\\Delta p`. Each receiver point is characterized
+        by its geographical coordinates, and depth. The required receiver plane
+        orientation is defined by ``strike``, ``dip``, and ``rake``. The
+        Coulomb failure stress change is calculated for a given time after
+        rupture origin time.
+
+        :param receiver_points:
+            Location of the receiver points in Northing, Easting, and depth in
+            [m].
+        :type receiver_points:
+            :py:class:`~numpy.ndarray`: ``(n_receiver, 3)``
+
+        :param friction:
+            Coefficient of friction.
+        :type friction:
+            float
+
+        :param pressure:
+            Pore pressure change in [Pa].
+        :type pressure:
+            float
+
+        :param strike:
+            Strike of the receiver plane in [deg].
+        :type strike:
+            float
+
+        :param dip:
+            Dip of the receiver plane in [deg].
+        :type dip:
+            float
+
+        :param rake:
+            Rake of the receiver plane in [deg].
+        :type rake:
+            float
+
+        :param time:
+            Time after origin [s], for which the resulting :math:`\\Delta
+            \\Sigma_c` is computed. If not given, :math:`\\Delta \\Sigma_c` is
+            derived based on the final static slip.
+        :type time:
+            optional, float > 0.
+
+        :returns:
+            The Coulomb failure stress change :math:`\\Delta \\Sigma_c` at each
+            receiver point in [Pa].
+        :rtype:
+            :py:class:`~numpy.ndarray`: ``(n_receiver,)``
+        '''
+        # dislocation at given time
+        source_slip = self.get_slip(time=time, scale_slip=True)
+
+        # source planes
+        source_patches = num.array([
+            src.source_patch() for src in self.patches])
+
+        # earth model
+        lambda_mean = num.mean([src.lamb for src in self.patches])
+        mu_mean = num.mean([src.shearmod for src in self.patches])
+
+        # Dislocation and spatial derivatives from okada in NED
+        results = okada_ext.okada(
+            source_patches,
+            source_slip,
+            receiver_points,
+            lambda_mean,
+            mu_mean,
+            rotate_sdn=False,  # TODO Check
+            stack_sources=0,  # TODO Check
+            *args, **kwargs)
+
+        # resolve stress tensor (sum!)
+        diag_ind = [0, 4, 8]
+        kron = num.zeros(9)
+        kron[diag_ind] = 1.
+        kron = kron[num.newaxis, num.newaxis, :]
+
+        eps = 0.5 * (
+            results[:, :, 3:] +
+            results[:, :, (3, 6, 9, 4, 7, 10, 5, 8, 11)])
+
+        dilatation \
+            = eps[:, :, diag_ind].sum(axis=-1)[:, :, num.newaxis]
+
+        stress = kron*lambda_mean*dilatation + 2.*mu_mean*eps
+
+        # superposed stress of all sources at receiver locations
+        stress_sum = num.sum(stress, axis=0)
+
+        # get shear and normal stress from stress tensor
+        strike_rad = d2r * strike
+        dip_rad = d2r * dip
+        rake_rad = d2r * rake
+
+        n_rec = receiver_points.shape[0]
+        stress_normal = num.zeros(n_rec)
+        tau = num.zeros(n_rec)
+
+        # Get vectors in receiver fault normal (ns), strike (rst) and
+        # dip (rdi) direction
+        ns = num.zeros(3)
+        rst = num.zeros(3)
+        rdi = num.zeros(3)
+
+        ns[0] = num.sin(dip_rad) * num.cos(strike_rad + 0.5 * num.pi)
+        ns[1] = num.sin(dip_rad) * num.sin(strike_rad + 0.5 * num.pi)
+        ns[2] = -num.cos(dip_rad)
+
+        rst[0] = num.cos(strike_rad)
+        rst[1] = num.sin(strike_rad)
+        rst[2] = 0.0
+
+        rdi[0] = num.cos(dip_rad) * num.cos(strike_rad + 0.5 * num.pi)
+        rdi[1] = num.cos(dip_rad) * num.sin(strike_rad + 0.5 * num.pi)
+        rdi[2] = num.sin(dip_rad)
+
+        ts = rst * num.cos(rake_rad) - rdi * num.sin(rake_rad)
+
+        stress_normal = num.sum(
+            num.tile(ns, 3) * stress_sum * num.repeat(ns, 3), axis=1)
+
+        tau = num.sum(
+            num.tile(ts, 3) * stress_sum * num.repeat(ns, 3), axis=1)
+
+        # calculate cfs using formula above and return
+        return tau + friction * (stress_normal + pressure)
 
 
 class DoubleDCSource(SourceWithMagnitude):
