@@ -939,6 +939,12 @@ static okada_error_t dc3d_flexi(
     */
 
     rot_u(uokada, rotmat, u);
+
+    /*
+     * Optional rotation of displacement and strain vector/tensor into
+     * strike-dip-normal (sdn) coordinate system
+    */
+
     if (rot_sdn == 1) {
         euler_to_matrix((dip + 180.)*D2R, strike*D2R, 0.,  rotmat);
         rot_u(u, rotmat, u);
