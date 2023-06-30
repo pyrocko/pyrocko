@@ -30,6 +30,10 @@ class OutOfBounds(Exception):
 
 
 class Cell(object):
+    __slots__ = (
+        "tree", "index", "depths", "bad", "children", "xbounds", "deepen",
+        "a", "b", "f")
+
     def __init__(self, tree, index, f=None):
         self.tree = tree
         self.index = index
@@ -69,54 +73,49 @@ class Cell(object):
                         x <= cell.xbounds[:, 1])):
                     return cell.interpolate(x)
 
+        if all_(num.isfinite(self.f)):
+            ws = (x[:, num.newaxis] - self.a)/self.b
+            wn = num.multiply.reduce(
+                num.array(num.ix_(*ws), dtype=object))
+            return num.sum(self.f * wn)
         else:
-            if all_(num.isfinite(self.f)):
-                ws = (x[:, num.newaxis] - self.a)/self.b
-                wn = num.multiply.reduce(
-                    num.array(num.ix_(*ws), dtype=object))
-                return num.sum(self.f * wn)
-            else:
-                return None
+            return None
 
     def interpolate_many(self, x):
+        ndim = self.tree.ndim
+        ndim_range = tuple(range(ndim))
         if self.children:
-            result = num.empty(x.shape[0], dtype=float)
-            result[:] = None
+            result = num.full(x.shape[0], fill_value=num.nan)
             for cell in self.children:
                 indices = num.where(
-                    self.tree.ndim == num.sum(and_(
+                    ndim == num.sum(and_(
                         cell.xbounds[:, 0] <= x,
                         x <= cell.xbounds[:, 1]), axis=-1))[0]
 
                 if indices.size != 0:
                     result[indices] = cell.interpolate_many(x[indices])
-
             return result
 
+        if all_(num.isfinite(self.f)):
+            ws = (x[..., num.newaxis] - self.a)/self.b
+            npoints = ws.shape[0]
+            ws_pimped = [ws[:, i, :] for i in ndim_range]
+            for i in ndim_range:
+                s = [npoints] + [1] * ndim
+                s[1+i] = 2
+                ws_pimped[i].shape = tuple(s)
+
+            wn = ws_pimped[0]
+            for idim in ndim_range[1:]:
+                wn = wn * ws_pimped[idim]
+
+            result = wn * self.f
+            for i in ndim_range:
+                result = num.sum(result, axis=-1)
+
+            return result
         else:
-            if all_(num.isfinite(self.f)):
-                ws = (x[..., num.newaxis] - self.a)/self.b
-                npoints = ws.shape[0]
-                ndim = self.tree.ndim
-                ws_pimped = [ws[:, i, :] for i in range(ndim)]
-                for i in range(ndim):
-                    s = [npoints] + [1] * ndim
-                    s[1+i] = 2
-                    ws_pimped[i].shape = tuple(s)
-
-                wn = ws_pimped[0]
-                for idim in range(1, ndim):
-                    wn = wn * ws_pimped[idim]
-
-                result = wn * self.f
-                for i in range(ndim):
-                    result = num.sum(result, axis=-1)
-
-                return result
-            else:
-                result = num.empty(x.shape[0], dtype=float)
-                result[:] = None
-                return result
+            return num.full(x.shape[0], fill_value=num.nan)
 
     def slice(self, x):
         x = num.array(x, dtype=float)
