@@ -82,12 +82,12 @@ def random_rotation(x=None):
     '''
     Get random rotation matrix.
 
-    A random rotation matrix, drawn from a uniform distrubution in the space
+    A random rotation matrix, drawn from a uniform distribution in the space
     of rotations is returned, after Avro 1992 - "Fast random rotation
     matrices".
 
     :param x: three (uniform random) numbers in the range [0, 1[ used as input
-        to the distribution tranformation. If ``None``, random numbers are
+        to the distribution transformation. If ``None``, random numbers are
         used. Can be used to create grids of random rotations with uniform
         density in rotation space.
     '''
@@ -297,7 +297,7 @@ def euler_to_matrix(alpha, beta, gamma):
 
 def matrix_to_euler(rotmat):
     '''
-    Get eulerian angle triplet from rotation matrix.
+    Get Eulerian angle triplet from rotation matrix.
     '''
 
     ex = cvec(1., 0., 0.)
@@ -324,9 +324,9 @@ def matrix_to_euler(rotmat):
 
 def unique_euler(alpha, beta, gamma):
     '''
-    Uniquify eulerian angle triplet.
+    Uniquify Eulerian angle triplet.
 
-    Put eulerian angle triplet into ranges compatible with
+    Put Eulerian angle triplet into ranges compatible with
     ``(dip, strike, -rake)`` conventions in seismology::
 
         alpha (dip)   : [0, pi/2]
@@ -539,7 +539,7 @@ class MomentTensor(Object):
         Create random moment tensor
 
         Moment tensors produced by this function appear uniformly distributed
-        when shown in a Hudson's diagram. The rotations used are unifomly
+        when shown in a Hudson's diagram. The rotations used are uniformly
         distributed in the space of rotations.
         '''
         return MomentTensor(
@@ -757,7 +757,7 @@ class MomentTensor(Object):
 
     def eigenvals(self):
         '''
-        Get the eigenvalues of the moment tensor in accending order.
+        Get the eigenvalues of the moment tensor in ascending order.
 
         :returns: ``(ep, en, et)``
         '''
