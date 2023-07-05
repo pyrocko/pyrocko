@@ -469,6 +469,34 @@ def pt_axes_to_strike_dip_rake(p_axis, t_axis):
     return (beta, alpha, -gamma)
 
 
+def ned_to_rta(ned):
+    '''
+    Convert north-east-down coordinate vectors to radial-takeoff-azimuth.
+
+    Output coordinate system has coordinates radial, takeoff angle [deg]
+    (downward is zero), and azimuth [deg] (northward is zero).
+
+    :param ned:
+        Coordinate vector or array of coordinate vectors (north, east, down).
+    :type ned:
+        :py:class:`numpy.ndarray` of shape ``(N, 3)`` or ``(3,)``
+
+    :returns:
+        Coordinate vector or array of coordinate vectors (radial, takeoff,
+        azimuth)
+    :rtype:
+        :py:class:`numpy.ndarray` of shape ``(N, 3)`` or ``(3,)``
+    '''
+    if ned.ndim == 1:
+        return ned_to_rta(ned[num.newaxis, :])[0]
+
+    rta = num.empty_like(ned)
+    rta[:, 0] = num.sqrt(num.sum(ned**2, axis=1))
+    rta[:, 1] = num.arccos(ned[:, 2]) * r2d
+    rta[:, 2] = num.arctan2(ned[:, 1], ned[:, 0]) * r2d
+    return rta
+
+
 class MomentTensor(Object):
 
     '''
@@ -740,18 +768,42 @@ class MomentTensor(Object):
     def p_axis(self):
         '''
         Get direction of p axis.
+
+        Use :py:func:`ned_to_rta` to get takeoff angle and azimuth of the
+        returned vectors.
+
+        :returns:
+            Direction of P (pressure) axis as a (north, east, down) vector.
+        :rtype:
+            :py:class:`numpy.ndarray` of shape ``(3,)``
         '''
         return (self._m_eigenvecs.T)[0]
 
     def t_axis(self):
         '''
         Get direction of t axis.
+
+        Use :py:func:`ned_to_rta` to get takeoff angle and azimuth of the
+        returned vectors.
+
+        :returns:
+            Direction of T (tension) axis as a (north, east, down) vector.
+        :rtype:
+            :py:class:`numpy.ndarray` of shape ``(3,)``
         '''
         return (self._m_eigenvecs.T)[2]
 
     def null_axis(self):
         '''
-        Get diretion of the null axis.
+        Get direction of the null axis.
+
+        Use :py:func:`ned_to_rta` to get takeoff angle and azimuth of the
+        returned vectors.
+
+        :returns:
+            Direction of null (B) axis as a (north, east, down) vector.
+        :rtype:
+            :py:class:`numpy.ndarray` of shape ``(3,)``
         '''
         return self._m_eigenvecs.T[1]
 

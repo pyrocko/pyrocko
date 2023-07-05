@@ -6,7 +6,7 @@ import numpy as num
 
 from pyrocko.moment_tensor import \
     magnitude_to_moment, moment_to_magnitude, MomentTensor, r2d, symmat6, \
-    dynecm, kagan_angle, rotation_from_angle_and_axis, random_axis
+    dynecm, kagan_angle, rotation_from_angle_and_axis, random_axis, ned_to_rta
 
 from pyrocko import util, guts
 
@@ -169,6 +169,21 @@ class MomentTensorTestCase(unittest.TestCase):
             t_axis = mt1.t_axis()
             mt2 = MomentTensor(p_axis=p_axis, t_axis=t_axis)
             assert num.all((mt1.m() - mt2.m()) < 1e-6)
+
+    def test_ned_to_rta(self):
+        def avec(t):
+            return num.array(t, dtype=float)
+
+        for ned, rta_expect in [
+                ((1, 0, 0), (1, 90, 0)),
+                ((0, 1, 0), (1, 90, 90)),
+                ((0, 0, 1), (1, 0, 0))]:
+
+            ned = avec(ned)
+            rta_expect = avec(rta_expect)
+
+            rta = ned_to_rta(ned)
+            assert num.all(num.abs(rta - rta_expect) < 0.0001)
 
 
 if __name__ == '__main__':
