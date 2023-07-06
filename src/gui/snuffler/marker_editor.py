@@ -133,7 +133,7 @@ class MarkerItemDelegate(qw.QStyledItemDelegate):
                 a, b, c, d = option.rect.getRect()
                 painter.save()
                 painter.setRenderHint(qg.QPainter.Antialiasing)
-                painter.drawPixmap(a+d/2., b, d, d, pixmap)
+                painter.drawPixmap(int(round(a+d/2.)), b, d, d, pixmap)
                 painter.restore()
 
         else:
