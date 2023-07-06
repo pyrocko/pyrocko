@@ -1710,7 +1710,7 @@ class Station(BaseNode):
     latitude = Latitude.T(xmltagname='Latitude')
     longitude = Longitude.T(xmltagname='Longitude')
     elevation = Distance.T(xmltagname='Elevation')
-    site = Site.T(optional=True, xmltagname='Site')
+    site = Site.T(default=Site.D(name=''), xmltagname='Site')
     vault = Unicode.T(optional=True, xmltagname='Vault')
     geology = Unicode.T(optional=True, xmltagname='Geology')
     equipment_list = List.T(Equipment.T(xmltagname='Equipment'))
@@ -1858,6 +1858,11 @@ class FDSNStationXML(Object):
 
     xmltagname = 'FDSNStationXML'
     guessable_xmlns = [guts_xmlns]
+
+    def __init__(self, *args, **kwargs):
+        Object.__init__(self, *args, **kwargs)
+        if self.created is None:
+            self.created = time.time()
 
     def get_pyrocko_stations(self, nslcs=None, nsls=None,
                              time=None, timespan=None,
