@@ -37,6 +37,10 @@ guts_prefix = 'pf'
 logger = logging.getLogger('pyrocko.trace')
 
 
+g_tapered_coeffs_cache = {}
+g_one_response = FrequencyResponse()
+
+
 @squirrel_content
 class Trace(Object):
 
@@ -174,8 +178,21 @@ class Trace(Object):
             '%g' % (1.0/self.deltat))
 
     @property
+    def summary_stats_entries(self):
+        return tuple('%13.7g' % v for v in (
+            self.ydata.min(),
+            self.ydata.max(),
+            self.ydata.mean(),
+            self.ydata.std()))
+
+    @property
     def summary(self):
         return util.fmt_summary(self.summary_entries, (10, 20, 55, 0))
+
+    @property
+    def summary_stats(self):
+        return self.summary + ' | ' + util.fmt_summary(
+            self.summary_stats_entries, (12, 12, 12, 12))
 
     def __getstate__(self):
         return (self.network, self.station, self.location, self.channel,
@@ -949,7 +966,7 @@ class Trace(Object):
             corner, 'Corner frequency of lowpass', nyquist_warn,
             nyquist_exception)
 
-        (b, a) = _get_cached_filter_coefs(
+        (b, a) = _get_cached_filter_coeffs(
             order, [corner*2.0*self.deltat], btype='low')
 
         if len(a) != order+1 or len(b) != order+1:
@@ -980,7 +997,7 @@ class Trace(Object):
             corner, 'Corner frequency of highpass', nyquist_warn,
             nyquist_exception)
 
-        (b, a) = _get_cached_filter_coefs(
+        (b, a) = _get_cached_filter_coeffs(
             order, [corner*2.0*self.deltat], btype='high')
 
         data = self.ydata.astype(num.float64)
@@ -1007,7 +1024,7 @@ class Trace(Object):
 
         self.nyquist_check(corner_hp, 'Lower corner frequency of bandpass')
         self.nyquist_check(corner_lp, 'Higher corner frequency of bandpass')
-        (b, a) = _get_cached_filter_coefs(
+        (b, a) = _get_cached_filter_coeffs(
             order,
             [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)],
             btype='band')
@@ -1030,7 +1047,7 @@ class Trace(Object):
 
         self.nyquist_check(corner_hp, 'Lower corner frequency of bandstop')
         self.nyquist_check(corner_lp, 'Higher corner frequency of bandstop')
-        (b, a) = _get_cached_filter_coefs(
+        (b, a) = _get_cached_filter_coeffs(
             order,
             [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)],
             btype='bandstop')
@@ -1597,7 +1614,7 @@ class Trace(Object):
         '''
 
         if transfer_function is None:
-            transfer_function = FrequencyResponse()
+            transfer_function = g_one_response
 
         if self.tmax - self.tmin <= tfade*2.:
             raise TraceTooShort(
@@ -1632,7 +1649,7 @@ class Trace(Object):
         else:
             ndata = self.ydata.size
             ntrans = nextpow2(ndata*1.2)
-            coefs = self._get_tapered_coefs(
+            coeffs = self._get_tapered_coeffs(
                 ntrans, freqlimits, transfer_function, invert=invert)
 
             data = self.ydata
@@ -1648,7 +1665,7 @@ class Trace(Object):
                     ndata, self.deltat)
 
             fdata = num.fft.rfft(data_pad)
-            fdata *= coefs
+            fdata *= coeffs
             ddata = num.fft.irfft(fdata)
             output = self.copy()
             output.ydata = ddata[:ndata]
@@ -1821,7 +1838,7 @@ class Trace(Object):
                 return num.exp(-((omega-omega0)
                                  / (self.a*omega0))**2)
 
-        freqs, coefs = self.spectrum()
+        freqs, coeffs = self.spectrum()
         n = self.data_len()
         nfilt = len(filter_freqs)
         signal_tf = num.zeros((nfilt, n))
@@ -1831,7 +1848,7 @@ class Trace(Object):
             weights = taper.evaluate(freqs)
             nhalf = freqs.size
             analytic_spec = num.zeros(n, dtype=complex)
-            analytic_spec[:nhalf] = coefs*weights
+            analytic_spec[:nhalf] = coeffs*weights
 
             enorm = num.abs(analytic_spec[:nhalf])**2
             enorm /= num.sum(enorm)
@@ -1850,28 +1867,32 @@ class Trace(Object):
 
         return centroid_freqs, signal_tf
 
-    def _get_tapered_coefs(
+    def _get_tapered_coeffs(
             self, ntrans, freqlimits, transfer_function, invert=False):
+
+        cache_key = (
+            ntrans, self.deltat, freqlimits, transfer_function.uuid, invert)
+
+        if cache_key in g_tapered_coeffs_cache:
+            return g_tapered_coeffs_cache[cache_key]
 
         deltaf = 1./(self.deltat*ntrans)
         nfreqs = ntrans//2 + 1
         transfer = num.ones(nfreqs, dtype=complex)
         hi = snapper(nfreqs, deltaf)
         if freqlimits is not None:
-            a, b, c, d = freqlimits
-            freqs = num.arange(hi(d)-hi(a), dtype=float)*deltaf \
-                + hi(a)*deltaf
-
+            kmin, kmax = hi(freqlimits[0]), hi(freqlimits[3])
+            freqs = num.arange(kmin, kmax)*deltaf
+            coeffs = transfer_function.evaluate(freqs)
             if invert:
-                coeffs = transfer_function.evaluate(freqs)
                 if num.any(coeffs == 0.0):
                     raise InfiniteResponse('%s.%s.%s.%s' % self.nslc_id)
 
-                transfer[hi(a):hi(d)] = 1.0 / transfer_function.evaluate(freqs)
+                transfer[kmin:kmax] = 1.0 / coeffs
             else:
-                transfer[hi(a):hi(d)] = transfer_function.evaluate(freqs)
+                transfer[kmin:kmax] = coeffs
 
-            tapered_transfer = costaper(a, b, c, d, nfreqs, deltaf)*transfer
+            tapered_transfer = costaper(*freqlimits, nfreqs, deltaf) * transfer
         else:
             if invert:
                 raise Exception(
@@ -1882,6 +1903,8 @@ class Trace(Object):
             tapered_transfer = transfer_function.evaluate(freqs)
 
         tapered_transfer[0] = 0.0  # don't introduce static offsets
+
+        g_tapered_coeffs_cache[cache_key] = tapered_transfer
         return tapered_transfer
 
     def fill_template(self, template, **additional):
@@ -2958,7 +2981,7 @@ class GaussTaper(Taper):
 cached_coefficients = {}
 
 
-def _get_cached_filter_coefs(order, corners, btype):
+def _get_cached_filter_coeffs(order, corners, btype):
     ck = (order, tuple(corners), btype)
     if ck not in cached_coefficients:
         if len(corners) == 0:
