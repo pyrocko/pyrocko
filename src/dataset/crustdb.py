@@ -336,7 +336,7 @@ class CrustDB(object):
         '''
         dmin, dmax = depth_range
         uid = '.'.join(map(repr, (dmin, dmax, ddepth, phase)))
-        sdepth = num.linspace(dmin, dmax, (dmax - dmin) / ddepth)
+        sdepth = num.linspace(dmin, dmax, int((dmax - dmin) / ddepth))
         ndepth = sdepth.size
 
         if uid not in self._velocity_matrix_cache:
@@ -416,7 +416,7 @@ class CrustDB(object):
         return num.histogram2d(v_mat.flatten(), d_vec,
                                range=(vel_range, depth_range),
                                bins=[nvbins, ndbins],
-                               normed=False)
+                               density=False)
 
     def meanVelocity(self, depth_range=(0., 60000.), ddepth=100., phase='p'):
         '''
@@ -454,7 +454,7 @@ class CrustDB(object):
         '''
         import scipy.stats
 
-        sdepth, v_mat = self.velocityMatrix(depth_range, ddepth)
+        sdepth, v_mat = self.velocityMatrix(depth_range, ddepth, phase=phase)
         v_mode, v_counts = scipy.stats.mstats.mode(v_mat, axis=0)
         return sdepth, v_mode.flatten(), v_counts.flatten()
 
@@ -592,14 +592,14 @@ class CrustDB(object):
 
         if plot_mode:
             sdepth, vel_mode, _ = self.modeVelocity(depth_range=depth_range,
-                                                    ddepth=ddepth)
+                                                    ddepth=ddepth, phase=phase)
             ax.plot(vel_mode[sdepth < dmax] + ddepth/2,
                     sdepth[sdepth < dmax],
                     alpha=.8, color='w', label='Mode')
 
         if plot_mean:
             sdepth, vel_mean, _ = self.meanVelocity(depth_range=depth_range,
-                                                    ddepth=ddepth)
+                                                    ddepth=ddepth, phase=phase)
             ax.plot(vel_mean[sdepth < dmax] + ddepth/2,
                     sdepth[sdepth < dmax],
                     alpha=.8, color='w', linestyle='--', label='Mean')
@@ -607,7 +607,7 @@ class CrustDB(object):
         if plot_median:
             sdepth, vel_median, _ = self.medianVelocity(
                                         depth_range=depth_range,
-                                        ddepth=ddepth)
+                                        ddepth=ddepth, phase=phase)
             ax.plot(vel_median[sdepth < dmax] + ddepth/2,
                     sdepth[sdepth < dmax],
                     alpha=.8, color='w', linestyle=':', label='Median')
