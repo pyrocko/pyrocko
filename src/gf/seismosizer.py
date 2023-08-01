@@ -4125,7 +4125,6 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
             rotate_sdn=False,  # TODO Check
             stack_sources=0,  # TODO Check
             *args, **kwargs)
-        # shape (n_sources, n_receivers, n_components)
 
         # resolve stress tensor (sum!)
         diag_ind = [0, 4, 8]
@@ -4141,11 +4140,9 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
             = eps[:, :, diag_ind].sum(axis=-1)[:, :, num.newaxis]
 
         stress = kron*lambda_mean*dilatation + 2.*mu_mean*eps
-        # stress shape (n_sources, n_receivers, n_stress_components)
 
         # superposed stress of all sources at receiver locations
         stress_sum = num.sum(stress, axis=0)
-        # stress_sum shape: (n_receivers, n_stress_components)
 
         # get shear and normal stress from stress tensor
         st0 = d2r * strike
@@ -4156,33 +4153,29 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
         stress_normal = num.zeros(n_rec)
         tau = num.zeros(n_rec)
 
-        # TODO speed up and remove for loop
-        for irec in range(n_rec):
-            ns = num.zeros(3)
-            rst = num.zeros(3)
-            rdi = num.zeros(3)
+        ns = num.zeros(3)
+        rst = num.zeros(3)
+        rdi = num.zeros(3)
 
-            ns[0] = num.sin(di0) * num.cos(st0 + 0.5 * num.pi)
-            ns[1] = num.sin(di0) * num.sin(st0 + 0.5 * num.pi)
-            ns[2] = -num.cos(di0)
+        ns[0] = num.sin(di0) * num.cos(st0 + 0.5 * num.pi)
+        ns[1] = num.sin(di0) * num.sin(st0 + 0.5 * num.pi)
+        ns[2] = -num.cos(di0)
 
-            rst[0] = num.cos(st0)
-            rst[1] = num.sin(st0)
-            rst[2] = 0.0
+        rst[0] = num.cos(st0)
+        rst[1] = num.sin(st0)
+        rst[2] = 0.0
 
-            rdi[0] = num.cos(di0) * num.cos(st0 + 0.5 * num.pi)
-            rdi[1] = num.cos(di0) * num.sin(st0 + 0.5 * num.pi)
-            rdi[2] = num.sin(di0)
+        rdi[0] = num.cos(di0) * num.cos(st0 + 0.5 * num.pi)
+        rdi[1] = num.cos(di0) * num.sin(st0 + 0.5 * num.pi)
+        rdi[2] = num.sin(di0)
 
-            ts = rst * num.cos(ra0) - rdi * num.sin(ra0)
+        ts = rst * num.cos(ra0) - rdi * num.sin(ra0)
 
-            # TODO speed up and remove for loops
-            for j in range(3):
-                for i in range(3):
-                    # TODO Check
-                    stress_normal[irec] += \
-                        ns[i] * stress_sum[irec, j*3 + i] * ns[j]
-                    tau[irec] += ts[i] * stress_sum[irec, j*3 + i] * ns[j]
+        stress_normal = num.sum(
+            num.tile(ns, 3) * stress_sum * num.repeat(ns, 3), axis=1)
+
+        tau = num.sum(
+            num.tile(ts, 3) * stress_sum * num.repeat(ns, 3), axis=1)
 
         # calculate cfs using formula above and return
         return tau + friction * (stress_normal + pressure)

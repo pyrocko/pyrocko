@@ -206,6 +206,126 @@ class GFSourceTypesTestCase(unittest.TestCase):
             plt.colorbar(im, label='Opening [m] after %.2f s' % deltat)
             plt.show()
 
+    @unittest.skipUnless(*have_store('iceland_reg_v2'))
+    def test_pseudo_dynamic_rupture_cfs(self):
+        from pyrocko.modelling import okada_ext
+        store_id = 'iceland_reg_v2'
+
+        engine = gf.get_engine()
+        store = engine.get_store(store_id)
+
+        source = gf.PseudoDynamicRupture(
+            length=20000., width=10000., depth=2000.,
+            anchor='top', gamma=0.8, dip=45., strike=60.,
+            slip=1., rake=0.,
+            nx=5, ny=3, smooth_rupture=False,
+            decimation_factor=1000)
+
+        source.discretize_patches(store)
+
+        target_strike = -92.
+        target_dip = 73.
+        target_rake = -8.
+
+        nnorths = 50
+        neasts = 50
+        norths = num.linspace(-50., 50., nnorths) * 1e3
+        easts = num.linspace(-50., 50., neasts) * 1e3
+        depth_target = 10e3
+
+        receiver_points = num.zeros((nnorths * neasts, 3))
+        receiver_points[:, 0] = num.repeat(norths, neasts)
+        receiver_points[:, 1] = num.tile(easts, nnorths)
+        receiver_points[:, 2] = num.ones(nnorths * neasts) * depth_target
+
+        friction = 0.6
+        pressure = 0.
+
+        cfs_init = source.get_coulomb_failure_stress(
+            receiver_points, friction=friction, pressure=pressure,
+            strike=target_strike, dip=target_dip, rake=target_rake,
+            nthreads=1)
+
+        # Calculate CFS from scratch
+        source_slip = source.get_slip(time=None, scale_slip=True)
+
+        # source planes
+        source_patches = num.array([
+            src.source_patch() for src in source.patches])
+
+        # earth model
+        lambda_mean = num.mean([src.lamb for src in source.patches])
+        mu_mean = num.mean([src.shearmod for src in source.patches])
+
+        # Dislocation and spatial derivatives from okada in NED
+        results = okada_ext.okada(
+            source_patches,
+            source_slip,
+            receiver_points,
+            lambda_mean,
+            mu_mean,
+            rotate_sdn=False,
+            stack_sources=0)
+
+        # resolve stress tensor (sum!)
+        diag_ind = [0, 4, 8]
+        kron = num.zeros(9)
+        kron[diag_ind] = 1.
+        kron = kron[num.newaxis, num.newaxis, :]
+
+        eps = 0.5 * (
+            results[:, :, 3:] +
+            results[:, :, (3, 6, 9, 4, 7, 10, 5, 8, 11)])
+
+        dilatation \
+            = eps[:, :, diag_ind].sum(axis=-1)[:, :, num.newaxis]
+
+        stress = kron*lambda_mean*dilatation + 2.*mu_mean*eps
+        # stress shape (n_sources, n_receivers, n_stress_components)
+
+        # superposed stress of all sources at receiver locations
+        stress_sum = num.sum(stress, axis=0)
+        # stress_sum shape: (n_receivers, n_stress_components)
+
+        # get shear and normal stress from stress tensor
+        st0 = d2r * target_strike
+        di0 = d2r * target_dip
+        ra0 = d2r * target_rake
+
+        n_rec = receiver_points.shape[0]
+        stress_normal = num.zeros(n_rec)
+        tau = num.zeros(n_rec)
+
+        for irec in range(n_rec):
+            ns = num.zeros(3)
+            rst = num.zeros(3)
+            rdi = num.zeros(3)
+
+            ns[0] = num.sin(di0) * num.cos(st0 + 0.5 * num.pi)
+            ns[1] = num.sin(di0) * num.sin(st0 + 0.5 * num.pi)
+            ns[2] = -num.cos(di0)
+
+            rst[0] = num.cos(st0)
+            rst[1] = num.sin(st0)
+            rst[2] = 0.0
+
+            rdi[0] = num.cos(di0) * num.cos(st0 + 0.5 * num.pi)
+            rdi[1] = num.cos(di0) * num.sin(st0 + 0.5 * num.pi)
+            rdi[2] = num.sin(di0)
+
+            ts = rst * num.cos(ra0) - rdi * num.sin(ra0)
+
+            for j in range(3):
+                for i in range(3):
+                    stress_normal[irec] += \
+                        ns[i] * stress_sum[irec, j*3 + i] * ns[j]
+                    tau[irec] += ts[i] * stress_sum[irec, j*3 + i] * ns[j]
+
+        # calculate cfs using formula above and return
+        cfs_comp = tau + friction * (stress_normal + pressure)
+
+        num.testing.assert_allclose(cfs_init, cfs_comp, atol=1.)
+
     def test_pseudo_dynamic_rupture_outline(self):
         length = 20000.
         width = 10000.
