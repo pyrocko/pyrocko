@@ -4145,31 +4145,33 @@ class PseudoDynamicRupture(SourceWithDerivedMagnitude):
         stress_sum = num.sum(stress, axis=0)
 
         # get shear and normal stress from stress tensor
-        st0 = d2r * strike
-        di0 = d2r * dip
-        ra0 = d2r * rake
+        strike_rad = d2r * strike
+        dip_rad = d2r * dip
+        rake_rad = d2r * rake
 
         n_rec = receiver_points.shape[0]
         stress_normal = num.zeros(n_rec)
         tau = num.zeros(n_rec)
 
+        # Get vectors in receiver fault normal (ns), strike (rst) and
+        # dip (rdi) direction
         ns = num.zeros(3)
         rst = num.zeros(3)
         rdi = num.zeros(3)
 
-        ns[0] = num.sin(di0) * num.cos(st0 + 0.5 * num.pi)
-        ns[1] = num.sin(di0) * num.sin(st0 + 0.5 * num.pi)
-        ns[2] = -num.cos(di0)
+        ns[0] = num.sin(dip_rad) * num.cos(strike_rad + 0.5 * num.pi)
+        ns[1] = num.sin(dip_rad) * num.sin(strike_rad + 0.5 * num.pi)
+        ns[2] = -num.cos(dip_rad)
 
-        rst[0] = num.cos(st0)
-        rst[1] = num.sin(st0)
+        rst[0] = num.cos(strike_rad)
+        rst[1] = num.sin(strike_rad)
         rst[2] = 0.0
 
-        rdi[0] = num.cos(di0) * num.cos(st0 + 0.5 * num.pi)
-        rdi[1] = num.cos(di0) * num.sin(st0 + 0.5 * num.pi)
-        rdi[2] = num.sin(di0)
+        rdi[0] = num.cos(dip_rad) * num.cos(strike_rad + 0.5 * num.pi)
+        rdi[1] = num.cos(dip_rad) * num.sin(strike_rad + 0.5 * num.pi)
+        rdi[2] = num.sin(dip_rad)
 
-        ts = rst * num.cos(ra0) - rdi * num.sin(ra0)
+        ts = rst * num.cos(rake_rad) - rdi * num.sin(rake_rad)
 
         stress_normal = num.sum(
             num.tile(ns, 3) * stress_sum * num.repeat(ns, 3), axis=1)
