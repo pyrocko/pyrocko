@@ -71,12 +71,15 @@ class SourceGenerator(LocationGenerator):
             for ievent in range(self.nevents):
                 sources[ievent].name = 'scenario_ev%03d' % (ievent + 1)
 
-        for ievent in range(self.nevents):
-            src = self.get_source(ievent)
-            src.name = 'scenario_ev%03d' % (ievent + 1)
-            sources.append(src)
+            return sources
 
-        return sources
+        else:
+            for ievent in range(self.nevents):
+                src = self.get_source(ievent)
+                src.name = 'scenario_ev%03d' % (ievent + 1)
+                sources.append(src)
+
+            return sources
 
     def ensure_data(self, path):
         fn_sources = op.join(path, 'sources.yml')
