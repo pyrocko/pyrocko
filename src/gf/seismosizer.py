@@ -1127,6 +1127,46 @@ class ResonatorSTF(STF):
                 self.duration, self.frequency)
 
 
+class TremorSTF(STF):
+    '''
+    Oszillating source time function.
+
+    .. math ::
+
+        f(t) = 0 for t < -tau/2 or t > tau/2
+        f(t) = cos(pi/tau*t) * sin(2 * pi * f * t)
+
+    '''
+
+    duration = Float.T(
+        default=0.0,
+        help='Tremor duration [s]')
+
+    frequency = Float.T(
+        default=1.0,
+        help='Frequency [Hz]')
+
+    def discretize_t(self, deltat, tref):
+        tmin_stf = tref - 0.5 * self.duration
+        tmax_stf = tref + 0.5 * self.duration
+        tmin = math.floor(tmin_stf / deltat) * deltat
+        tmax = math.ceil(tmax_stf / deltat) * deltat
+        times = util.arange2(tmin, tmax, deltat)
+        mask = num.logical_and(
+            tref - 0.5 * self.duration < times,
+            times < tref + 0.5 * self.duration)
+
+        amplitudes = num.zeros_like(times)
+        amplitudes[mask] = num.cos(num.pi/self.duration*(times[mask] - tref)) \
+            * num.sin(2.0 * num.pi * self.frequency * (times[mask] - tref))
+
+        return times, amplitudes
+
+    def base_key(self):
+        return (type(self).__name__,
+                self.duration, self.frequency)
+
+
 class STFMode(StringChoice):
     choices = ['pre', 'post']
 
@@ -5657,6 +5697,7 @@ stf_classes = [
     TriangularSTF,
     HalfSinusoidSTF,
     ResonatorSTF,
+    TremorSTF,
 ]
 
 __all__ = '''
