@@ -3864,7 +3864,7 @@ class LayeredModel(object):
                     newmod.append(element)
         return newmod
 
-    def perturb(self, rstate=None, keep_vp_vs=False, **kwargs):
+    def perturb(self, rstate=None, keep_vp_vs=False, zmax=None, **kwargs):
         '''
         Create a perturbed variant of the earth model.
 
@@ -3887,84 +3887,68 @@ class LayeredModel(object):
 
             perturbed_model = model.perturb(ph=.1, pvp=.05, prho=.1)
         '''
-        _pargs = set(['ph', 'pvp', 'pvs', 'prho', 'pqs', 'pqp'])
-        earthmod = copy.deepcopy(self)
 
         if rstate is None:
             rstate = num.random.RandomState()
 
-        layers = earthmod.layers()
-        discont = earthmod.discontinuities()
-        prev_layer = None
-
-        def get_change_ratios():
-            values = dict.fromkeys([p[1:] for p in _pargs], 0.)
-
-            for param, pval in kwargs.items():
-                if param not in _pargs:
-                    continue
-                values[param[1:]] = float(rstate.uniform(-pval, pval, size=1))
-            return values
-
-        # skip Surface
-        while True:
-            disc = next(discont)
-            if isinstance(disc, Surface):
-                break
-
-        while True:
+        def factor(k):
             try:
-                layer = next(layers)
-                m = layer.material(None)
-                h = layer.zbot - layer.ztop
-            except StopIteration:
-                break
+                pval = kwargs[k]
+                return rstate.uniform(1.0-pval, 1.0+pval)
+            except KeyError:
+                return 1.0
 
-            if not isinstance(layer, HomogeneousLayer):
-                raise NotImplementedError(
-                    'Can only perturbate homogeneous layers!')
+        def perturb_material(mat):
+            mat_new = copy.deepcopy(mat)
+            for param in kwargs:
+                if param != 'ph':
+                    value = getattr(mat, param[1:])
+                    setattr(mat_new, param[1:], value*factor(param))
 
-            changes = get_change_ratios()
+            if keep_vp_vs:
+                mat_new.vs = mat_new.vp * (mat.vs / mat.vp)
 
-            # Changing thickness
-            dh = h * changes['h']
-            changes['h'] = dh
+            return mat_new
 
-            layer.resize(depth_max=layer.zbot + dh,
-                         depth_min=prev_layer.zbot if prev_layer else None)
+        model_new = LayeredModel()
+        elements = list(self.elements())
+        assert isinstance(elements[0], Surface)
+        z = elements[0].z
+        mat = None
+        for element in elements:
+            element_new = copy.deepcopy(element)
+            if isinstance(element_new, Discontinuity):
+                element_new.z = z
 
-            try:
-                disc = next(discont)
-                disc.change_depth(disc.z + dh)
-            except StopIteration:
-                pass
+            elif isinstance(element_new, Layer):
+                element_new.ztop = z
+                if zmax is None or element.zbot < zmax:
+                    z += (element_new.zbot-element_new.ztop) * factor('ph')
+                else:
+                    z += (element_new.zbot-element_new.ztop)
+                element_new.zbot = z
 
-            # Setting material parameters
-            for param, change_ratio in changes.items():
-                if param == 'h':
-                    continue
+                if mat is None or element.mtop != mat:
+                    mat = element.mtop
+                    if zmax is None or element.ztop < zmax:
+                        mat_new = perturb_material(mat)
+                    else:
+                        mat_new = copy.deepcopy(mat)
 
-                value = m.__getattribute__(param)
-                changes[param] = value * change_ratio
+                element_new.mtop = mat_new
 
-            if keep_vp_vs and changes['vp'] != 0.:
-                changes['vs'] = (m.vp + changes['vp']) / m.vp_vs_ratio() - m.vs
+                if element.mbot != mat:
+                    mat = element.mbot
+                    if zmax is None or element.zbot < zmax:
+                        mat_new = perturb_material(mat)
+                    else:
+                        mat_new = copy.deepcopy(mat)
 
-            for param, change in changes.items():
-                if param == 'h':
-                    continue
-                value = m.__getattribute__(param)
-                m.__setattr__(param, value + change)
+                element_new.mbot = mat_new
 
-            logger.info(
-                'perturbating earthmodel: {}'.format(
-                    ' '.join(['{param}: {change:{len}.2f}'.format(
-                              param=p, change=c, len=8)
-                              for p, c in changes.items()])))
+            model_new.append(element_new)
 
-            prev_layer = layer
-
-        return earthmod
+        return model_new
 
     def require_homogeneous(self):
         elements = list(self.elements())
