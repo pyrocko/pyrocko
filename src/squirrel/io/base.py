@@ -298,7 +298,8 @@ def iload(
                 task.update(n_files, condition)
 
             n_files += 1
-            if database and transaction:
+            # cannot release when iterating a selection (see above)
+            if database and transaction and not selection:
                 tnow = time.time()
                 if tnow - tcommit > 20. or n_files % 1000 == 0:
                     transaction.commit()
