@@ -801,6 +801,18 @@ class TraceTestCase(unittest.TestCase):
         assert numeq(y, z, 1e-6)
         assert taper.time_span() == taper2.time_span()
 
+    def test_costaper(self):
+        from pyrocko import signal_ext
+        x0 = 0.25
+        dx = 0.01
+        for i in range(100):
+            y1 = num.ones(50)
+            y2 = y1.copy()
+            a, b, c, d = sorted(num.random.random(4))
+            signal_ext.apply_costaper(a, b, c, d, y1, x0, dx)
+            trace.apply_costaper(a, b, c, d, y2, x0, dx)
+            assert numeq(y1, y2, 0.01)
+
     def test_pickle(self):
         y = num.random.random(10000)
         t1 = trace.Trace(tmin=0, ydata=y, deltat=0.01)

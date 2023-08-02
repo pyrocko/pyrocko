@@ -17,7 +17,7 @@ from collections import defaultdict
 import numpy as num
 from scipy import signal
 
-from pyrocko import util, orthodrome, pchain, model
+from pyrocko import util, orthodrome, pchain, model, signal_ext
 from pyrocko.util import reuse
 from pyrocko.guts import Object, Float, Int, String, List, \
     StringChoice, Timestamp
@@ -891,8 +891,6 @@ class Trace(Object):
         that by the approximations used.
         '''
 
-        from pyrocko import signal_ext
-
         i_control = num.array([0, self.ydata.size-1], dtype=num.int64)
         t_control = num.array([tmin_new, tmax_new], dtype=float)
 
@@ -1251,7 +1249,6 @@ class Trace(Object):
             xself = self.copy()
 
         if interpolate:
-            from pyrocko import signal_ext
             n = xself.data_len()
             ydata_new = num.empty(n, dtype=float)
             i_control = num.array([0, n-1], dtype=num.int64)
@@ -2838,7 +2835,13 @@ class CosTaper(Taper):
         Taper.__init__(self, a=a, b=b, c=c, d=d)
 
     def __call__(self, y, x0, dx):
-        apply_costaper(self.a, self.b, self.c, self.d, y, x0, dx)
+
+        if y.dtype == num.dtype(float):
+            _apply_costaper = signal_ext.apply_costaper
+        else:
+            _apply_costaper = apply_costaper
+
+        _apply_costaper(self.a, self.b, self.c, self.d, y, x0, dx)
 
     def span(self, y, x0, dx):
         return span_costaper(self.a, self.b, self.c, self.d, y, x0, dx)
@@ -3179,13 +3182,14 @@ def snapper(nmax, delta, snapfun=math.ceil):
 
 
 def apply_costaper(a, b, c, d, y, x0, dx):
-    hi = snapper_w_offset(y.size, x0, dx)
-    y[:hi(a)] = 0.
-    y[hi(a):hi(b)] *= 0.5 \
-        - 0.5*num.cos((dx*num.arange(hi(a), hi(b))-(a-x0))/(b-a)*num.pi)
-    y[hi(c):hi(d)] *= 0.5 \
-        + 0.5*num.cos((dx*num.arange(hi(c), hi(d))-(c-x0))/(d-c)*num.pi)
-    y[hi(d):] = 0.
+    abcd = num.array((a, b, c, d), dtype=float)
+    ja, jb, jc, jd = num.clip(num.ceil((abcd-x0)/dx).astype(int), 0, y.size)
+    y[:ja] = 0.
+    y[ja:jb] *= 0.5 \
+        - 0.5*num.cos((dx*num.arange(ja, jb)-(a-x0))/(b-a)*num.pi)
+    y[jc:jd] *= 0.5 \
+        + 0.5*num.cos((dx*num.arange(jc, jd)-(c-x0))/(d-c)*num.pi)
+    y[jd:] = 0.
 
 
 def span_costaper(a, b, c, d, y, x0, dx):

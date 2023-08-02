@@ -205,7 +205,7 @@ static PyObject* w_antidrift(PyObject *m, PyObject *args) {
     PyObject *arr_indices_control, *arr_t_control, *arr_samples_in;
     PyObject *arr_samples_out;
 
-    struct module_state *st = GETSTATE(m);    
+    struct module_state *st = GETSTATE(m);
 
     if (!PyArg_ParseTuple(args, "OOOddO",
                 &arr_indices_control,
@@ -257,10 +257,57 @@ static PyObject* w_antidrift(PyObject *m, PyObject *args) {
     return Py_None;
 }
 
+
+static PyObject* w_apply_costaper(PyObject *m, PyObject *args) {
+    double xa, xb, xc, xd, x0, dx;
+    int64_t iy, ny, ia, ib, ic, id;
+    double *y;
+    PyObject *y_arr;
+
+    struct module_state *st = GETSTATE(m);
+
+    if (!PyArg_ParseTuple(args, "ddddOdd",
+                &xa, &xb, &xc, &xd, &y_arr, &x0, &dx)) {
+
+        PyErr_SetString(st->error,
+            "usage apply_costaper(xa, xb, xc, xd, y, x0, dx)");
+        return NULL;
+    }
+
+    if (!good_array(y_arr, NPY_DOUBLE)) {
+        return NULL;
+    }
+    ny = PyArray_SIZE((PyArrayObject*)y_arr);
+    y = (double*)PyArray_DATA((PyArrayObject*)y_arr);
+
+    ia = (int64_t)ceil((xa-x0)/dx);
+    ib = (int64_t)ceil((xb-x0)/dx);
+    ic = (int64_t)ceil((xc-x0)/dx);
+    id = (int64_t)ceil((xd-x0)/dx);
+
+    for (iy=0; iy<imin(ny, ia); iy++) {
+        y[iy] = 0.0;
+    }
+    for (iy=imax(0, ia); iy<imin(ny, ib); iy++) {
+        y[iy] *= 0.5 - 0.5*cos((x0+iy*dx-xa)/(xb-xa)*M_PI);
+    }
+    for (iy=imax(0, ic); iy<imin(ny, id); iy++) {
+        y[iy] *= 0.5 + 0.5*cos((x0+iy*dx-xc)/(xd-xc)*M_PI);
+    }
+    for (iy=imax(0, id); iy<ny; iy++) {
+        y[iy] = 0.0;
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+
 static PyMethodDef signal_ext_methods[] = {
     {"antidrift",  w_antidrift, METH_VARARGS,
         "correct time drift using sinc interpolation" },
-
+    {"apply_costaper",  w_apply_costaper, METH_VARARGS,
+        "apply cosine taper" },
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
