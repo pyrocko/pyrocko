@@ -79,7 +79,17 @@ class Cell(object):
                 num.array(num.ix_(*ws), dtype=object))
             return num.sum(self.f * wn)
         else:
-            return None
+            if all_(num.isfinite(self.f)):
+                ws = (x[:, num.newaxis] - self.a)/self.b
+                wn2 = self.tree.ones_cell.copy()
+                for ws_ in num.ix_(*ws):
+                    wn2 *= ws_
+
+                # wn = num.multiply.reduce(
+                #     num.array(num.ix_(*ws), dtype=object))
+                return num.sum(self.f * wn2)
+            else:
+                return None
 
     def interpolate_many(self, x):
         ndim = self.tree.ndim
@@ -294,6 +304,8 @@ class SPTree(object):
 
         else:
             self._load(filename)
+
+        self.ones_cell = num.ones((2,) * self.ndim, dtype=float)
 
     def status(self):
         perc = (1.0-self.fraction_bad)*100
@@ -520,6 +532,7 @@ def nditer_outer(x):
 
 
 if __name__ == '__main__':
+    import time
     logging.basicConfig(level=logging.INFO)
 
     def f(x):
@@ -532,6 +545,19 @@ if __name__ == '__main__':
         return None
 
     tree = SPTree(f, 0.01, [[0., 1.], [0., 1.], [0., 1.]], [0.025, 0.05, 0.1])
+
+    x = num.array([0.35, 0.25, 0.15])
+    n = 10000
+    xs = num.random.random((n, 3))
+    t0 = time.time()
+    vs = tree.interpolate_many(xs)
+    t1 = time.time()
+    for i in range(n):
+        v = tree.interpolate(xs[i])
+        assert vs[i] == v or (v is None and num.isnan(vs[i]))
+    t2 = time.time()
+
+    print(t1 - t0, t2 - t1)
 
     import tempfile
     import os
