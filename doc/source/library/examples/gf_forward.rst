@@ -40,7 +40,24 @@ Download :download:`gf_forward_pseudo_rupture_waveforms.py </../../examples/gf_f
     :alt: Synthetic seismogram calculated through pyrocko.gf using :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture`
 
     Synthetic seismogram calculated through :class:`pyrocko.gf` using the
-    :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture`. 
+    :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture`.
+
+
+Calculate Coulomb Failure Stress (CFS) changes using the Pseudo Dynamic Rupture
+--------------------------------------------------------------------------------
+
+Download :download:`gf_forward_pseudo_rupture_cfs.py </../../examples/gf_forward_pseudo_rupture_cfs.py>`
+
+.. literalinclude :: /../../examples/gf_forward_pseudo_rupture_cfs.py
+    :language: python
+
+.. figure :: /static/gf_forward_pseudo_rupture_cfs.png
+    :align: center
+    :width: 90%
+    :alt: Coulomb Failure Stress change calculated through pyrocko.gf using :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture`
+
+    Coulomb Failure Stress change calculated through :class:`pyrocko.gf` using
+    the :py:class:`~pyrocko.gf.seismosizer.PseudoDynamicRupture`.
 
 
 Calculate spatial surface displacement from a local GF store
