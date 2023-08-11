@@ -130,7 +130,8 @@ axes.set_title(
 cbar = fig.colorbar(mesh, ax=axes)
 cbar.set_label(r'$\Delta$ CFS [MPa]')
 cbar_ticks = [-1., -0.5, -0.25, -0.1, 0., 0.1, 0.25, 0.5, 1.]
-cbar.set_ticks(cbar_ticks, labels=[f'{tick:.2f}' for tick in cbar_ticks])
+cbar.set_ticks(cbar_ticks)
+cbar.set_ticklabels([f'{tick:.2f}' for tick in cbar_ticks])
 
 fig.savefig('gf_forward_pseudo_rupture_cfs.png')
 
