@@ -6,7 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
-*empty*
+### Added
+- Pseudo dynamic rupture:
+    - Coulomb failure stress modelling.
+    - New method to get slip- or moment-scaled tractions.
 
 ## v2023.06.29
 
