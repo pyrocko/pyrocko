@@ -307,7 +307,7 @@ static eikonal_error_t update_neighbor(
     if (d >= 0) {
         tnew = 1.0/ndim_eff * (s1+sqrt(d));
     } else {
-        // Should rarely get here if problem is well behaved. It might not be 
+        // Should rarely get here if problem is well behaved. It might not be
         // neccessary to return an error. Needs testing.
         retval = CHECK_RESULTS;
         tnew = tref + delta/speeds[index];
@@ -339,12 +339,12 @@ static eikonal_error_t update_neighbors(
 
         if (1 <= ix) {
             retval_temp = update_neighbor(
-                index-stride, speeds, ndim, shape, delta, times, 
+                index-stride, speeds, ndim, shape, delta, times,
                 backpointers, heap, times[index]);
 
             retval = retval != SUCCESS ? retval : retval_temp;
         }
-        if (ix+1 < shape[idim]) { 
+        if (ix+1 < shape[idim]) {
             retval_temp = update_neighbor(
                 index+stride, speeds, ndim, shape, delta, times,
                 backpointers, heap, times[index]);
@@ -406,7 +406,7 @@ static eikonal_error_t eikonal_solver_fmm_cartesian(
     for (index=0; index<n; index++) {
         if (backpointers[index] == ALIVE) {
             retval_temp = update_neighbors(
-                index, speeds, ndim, shape, delta, times, 
+                index, speeds, ndim, shape, delta, times,
                 backpointers, heap);
 
             retval = retval != SUCCESS ? retval : retval_temp;
@@ -422,7 +422,7 @@ static eikonal_error_t eikonal_solver_fmm_cartesian(
         backpointers[index] = ALIVE;
 
         retval_temp = update_neighbors(
-            index, speeds, ndim, shape, delta, times, 
+            index, speeds, ndim, shape, delta, times,
             backpointers, heap);
 
         retval = retval != SUCCESS ? retval : retval_temp;
@@ -487,9 +487,10 @@ static PyObject* w_eikonal_solver_fmm_cartesian(
         size_t_shape[i] = shape[i];
     }
 
+    Py_BEGIN_ALLOW_THREADS
     err = eikonal_solver_fmm_cartesian(
         speeds, (size_t)ndim, size_t_shape, delta, times);
-
+    Py_END_ALLOW_THREADS
     if (SUCCESS != err) {
         PyErr_SetString(st->error, eikonal_error_names[err]);
         return NULL;
