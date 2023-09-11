@@ -2092,7 +2092,7 @@ def clone(x, pool=None):
         pool = {}
 
     if id(x) in pool:
-        x_copy = pool[id(x)]
+        x_copy = pool[id(x)][1]
 
     else:
         if isinstance(x, SObject):
@@ -2119,7 +2119,7 @@ def clone(x, pool=None):
         else:
             x_copy = copy.deepcopy(x)
 
-    pool[id(x)] = x_copy
+    pool[id(x)] = (x, x_copy)
     return x_copy
 
 
