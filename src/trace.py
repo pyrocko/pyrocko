@@ -3133,7 +3133,7 @@ def numpy_correlate_emulate(a, b, mode='valid'):
     kmin = int(kmin)
     kmax = int(kmax)
     klen = kmax - kmin + 1
-    c = num.zeros(klen, dtype=num.find_common_type((b.dtype, a.dtype), ()))
+    c = num.zeros(klen, dtype=num.promote_types(b.dtype, a.dtype))
     for k in range(kmin, kmin+klen):
         imin = max(0, -k)
         ilen = min(b.size, a.size-k) - imin

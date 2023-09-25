@@ -193,7 +193,7 @@ class Location(Object):
         lat = float(lat)
         lon = float(lon)
         elat, elon = self.effective_latlon
-        n, e = orthodrome.latlon_to_ne_numpy(lat, lon, elat, elon)
+        n, e = orthodrome.latlon_to_ne(lat, lon, elat, elon)
         self.lat = lat
         self.lon = lon
         self.north_shift = float(n)
