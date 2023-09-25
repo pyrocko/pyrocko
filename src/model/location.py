@@ -185,7 +185,7 @@ class Location(Object):
         else:
             slat, slon = self.effective_latlon
             rlat, rlon = get_effective_latlon(other)
-            azi, bazi = orthodrome.azibazi_numpy(slat, slon, rlat, rlon)
+            azi, bazi = orthodrome.azibazi(slat, slon, rlat, rlon)
 
         return float(azi), float(bazi)
 
