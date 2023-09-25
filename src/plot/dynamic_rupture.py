@@ -16,7 +16,7 @@ import inspect
 import numpy as num
 from scipy.interpolate import RegularGridInterpolator as scrgi
 
-from matplotlib import cm, pyplot as plt, patheffects
+from matplotlib import pyplot as plt, patheffects, colormaps
 from matplotlib.ticker import FuncFormatter
 
 from pyrocko import orthodrome as pod
@@ -103,7 +103,7 @@ def _mplcmap_to_gmtcpt_code(mplcmap, steps=256):
         str
     '''
 
-    cmap = cm.get_cmap(mplcmap)
+    cmap = colormaps[mplcmap]
 
     rgbas = [cmap(i) for i in num.linspace(0, 255, steps).astype(num.int64)]
 
@@ -1406,10 +1406,6 @@ class RuptureView(Object):
             cont = self._axes.contour(
                 x, y, data, clevel, *args,
                 linewidths=1.5, **kwargs)
-
-            plt.setp(cont.collections, path_effects=[
-                patheffects.withStroke(linewidth=2.0, foreground='beige'),
-                patheffects.Normal()])
 
             clabels = self._axes.clabel(
                 cont, clevel[::2], *args,

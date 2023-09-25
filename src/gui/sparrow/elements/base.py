@@ -7,6 +7,7 @@ import os
 import base64
 
 import numpy as num
+from matplotlib import colormaps
 
 from pyrocko.plot import automap
 from pyrocko.guts import String, Float, StringChoice, Bool
@@ -36,8 +37,7 @@ mpl_cmap_blacklist = [
 
 def get_mpl_cmap_choices():
     try:
-        from matplotlib import colormaps as mpl_cmaps
-        mpl_cmap_choices = list(mpl_cmaps.keys())
+        mpl_cmap_choices = list(colormaps.keys())
 
         for cmap_name in mpl_cmap_blacklist:
             try:
@@ -220,8 +220,7 @@ class CPTHandler(Element):
                     try:
                         cpt = automap.read_cpt(topo.cpt(s))
                     except Exception:
-                        from matplotlib import pyplot as plt
-                        cmap = plt.cm.get_cmap(s)
+                        cmap = colormaps[s]
                         cpt = automap.CPT.from_numpy(cmap(range(256))[:, :-1])
 
                     self._cpts.update([(s, cpt)])

@@ -367,6 +367,7 @@ def plot_directivity(
                 ax.plot(x+.5, y+.5, 'x', ms=6, mew=2, mec='darkred', mfc='red',
                         transform=ax.transAxes, zorder=10)
 
+    ax.grid(False)
     mesh = ax.pcolormesh(
         azimuths * d2r, times, data,
         cmap=cmw.cmap, norm=cmw.norm, shading='gouraud', zorder=0)

@@ -12,7 +12,7 @@ import enum
 import calendar
 import signal
 
-from matplotlib.cm import get_cmap
+from matplotlib import colormaps
 from matplotlib.colors import Normalize
 
 from .qt_compat import qc, qg, qw
@@ -196,7 +196,7 @@ def get_colormap_qimage(cmap_name, vmin=None, vmax=None):
     norm.vmax = vmax
 
     return qg.QImage(
-        get_cmap(cmap_name)(
+        colormaps[cmap_name](
             norm(num.linspace(0., 1., NCOLORS)),
             alpha=None, bytes=True),
         NCOLORS, 1, qg.QImage.Format_RGBX8888)

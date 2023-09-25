@@ -3052,12 +3052,11 @@ cached_coefficients = {}
 def _get_cached_filter_coeffs(order, corners, btype):
     ck = (order, tuple(corners), btype)
     if ck not in cached_coefficients:
-        if len(corners) == 0:
-            cached_coefficients[ck] = signal.butter(
-                order, corners[0], btype=btype)
-        else:
-            cached_coefficients[ck] = signal.butter(
-                order, corners, btype=btype)
+        if len(corners) == 1:
+            corners = corners[0]
+
+        cached_coefficients[ck] = signal.butter(
+            order, corners, btype=btype)
 
     return cached_coefficients[ck]
 

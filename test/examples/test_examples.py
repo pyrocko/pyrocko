@@ -97,6 +97,7 @@ example_files = [
 def _make_function(test_name, fn):
     def f(self):
         import importlib.util as imp2
+        from matplotlib import pyplot as plt
 
         basename = os.path.basename(fn)
 
@@ -147,6 +148,7 @@ def _make_function(test_name, fn):
                 raise e
 
             finally:
+                plt.close('all')
                 if test_name in sys.modules:
                     del sys.modules[test_name]
 
