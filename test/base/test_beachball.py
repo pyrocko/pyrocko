@@ -34,6 +34,7 @@ class BeachballTestCase(unittest.TestCase):
     def compare_beachball(self, mt, show=False, **kwargs):
         from matplotlib import pyplot as plt
         from matplotlib import image
+        plt.close('all')
         plt.switch_backend('Agg')
 
         plotargs = dict(
