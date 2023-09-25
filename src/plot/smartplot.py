@@ -25,6 +25,13 @@ guts_prefix = 'pf'
 inch = 2.54
 
 
+def get_callbacks(obj):
+    try:
+        return obj.callbacks
+    except AttributeError:
+        return obj._callbacks
+
+
 class SmartplotAxes(Axes):
 
     if matplotlib.__version__.split('.') < '3.6'.split('.'):
@@ -45,6 +52,10 @@ class SmartplotAxes(Axes):
                 callbacks = self.callbacks
                 Axes.clear(self)
                 self.callbacks = callbacks
+            elif hasattr(self, '_callbacks'):
+                callbacks = self._callbacks
+                Axes.clear(self)
+                self._callbacks = callbacks
             else:
                 Axes.clear(self)
 
@@ -348,7 +359,13 @@ class Plot(object):
         self._cid_resize = fig.canvas.mpl_connect(
             'resize_event', self.resize_handler)
 
-        self._connect(fig, 'dpi_changed', self.dpi_changed_handler)
+        try:
+            self._connect(fig, 'dpi_changed', self.dpi_changed_handler)
+        except ValueError:
+            # 'dpi_changed' event has been removed in MPL 3.8.
+            # canvas 'resize_event'  may be sufficient but needs to be checked.
+            # https://matplotlib.org/stable/api/prev_api_changes/api_changes_3.8.0.html#text-get-rotation
+            pass
 
         self._lim_changed_depth = 0
 
@@ -407,12 +424,12 @@ class Plot(object):
             axes_.set_autoscale_on(False)
 
     def _connect(self, obj, sig, handler):
-        cid = obj.callbacks.connect(sig, handler)
+        cid = get_callbacks(obj).connect(sig, handler)
         self._disconnect_data.append((obj, cid))
 
     def _disconnect_all(self):
         for obj, cid in self._disconnect_data:
-            obj.callbacks.disconnect(cid)
+            get_callbacks(obj).disconnect(cid)
 
         self._fig.canvas.mpl_disconnect(self._cid_resize)
 
