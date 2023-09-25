@@ -11,6 +11,13 @@ d2r = num.pi / 180.
 r2d = 1.0 / d2r
 
 
+def get_callbacks(obj):
+    try:
+        return obj.callbacks
+    except AttributeError:
+        return obj._callbacks
+
+
 def get_tr(traces, f):
     for tr in traces:
         if f(tr):
@@ -400,7 +407,10 @@ Scale*.
             fig.my_disconnect()
 
         cid_resize = fig.canvas.mpl_connect('resize_event', resize_handler)
-        cid_dpi = fig.callbacks.connect('dpi_changed', resize_handler)
+        try:
+            cid_dpi = get_callbacks(fig).connect('dpi_changed', resize_handler)
+        except (AttributeError, ValueError):
+            pass  # not available anymore in MPL >= 3.8
 
         def disconnect():
             fig.canvas.mpl_disconnect(cid_resize)
