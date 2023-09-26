@@ -15,4 +15,7 @@ docker build fat-nest -t pyrocko-fat-nest
 
 docker build docs -t pyrocko-docs
 docker build util -t pyrocko-util
-docker build pyrocko -t pyrocko
+
++rm -rf pyrocko/pyrocko.git
++git clone --bare .. pyrocko/pyrocko.git
+ docker build pyrocko -t pyrocko

@@ -34,7 +34,7 @@ steps:
   image: pyrocko-docs
   pull: never
   commands:
-  - pip3 install --no-deps --no-build-isolation --force-reinstall . && cd doc && make html
+  - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages . && cd doc && make html
   - python3 -m pyrocko.print_version short > build/html/version.txt
 
 - name: stage
@@ -116,7 +116,7 @@ steps:
   pull: never
   commands:
   - ln -sf /pyrocko-test-data test/data
-  - pip3 install --no-deps --no-build-isolation --force-reinstall .
+  - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
   - python3 -m coverage run --parallel-mode -m pytest -v test/base
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
@@ -125,7 +125,7 @@ steps:
   pull: never
   commands:
   - ln -sf /pyrocko-test-data test/data
-  - pip3 install --no-deps --no-build-isolation --force-reinstall .
+  - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
   - python3 -m coverage run --parallel-mode -m pytest -v test/base
   - for x in .coverage.* ; do mv $x $${x#.} ; done
   environment:
@@ -174,7 +174,7 @@ steps:
   pull: never
   commands:
   - ln -sf /pyrocko-test-data test/data
-  - pip3 install --no-deps --no-build-isolation --force-reinstall .
+  - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
   - python3 -m coverage run --parallel-mode -m pytest -v test/gf
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
@@ -183,7 +183,7 @@ steps:
   pull: never
   commands:
   - ln -sf /pyrocko-test-data test/data
-  - pip3 install --no-deps --no-build-isolation --force-reinstall .
+  - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
   - python3 -m coverage run --parallel-mode -m pytest -v test/gf
   - for x in .coverage.* ; do mv $x $${x#.} ; done
   environment:
@@ -235,7 +235,7 @@ steps:
   - mkdir -p test/example_run_dir_local
   - ln -sf /pyrocko-test-data/gf_stores/* test/example_run_dir
   - ln -sf /pyrocko-test-data/gf_stores/* test/example_run_dir_local
-  - pip3 install --no-deps --no-build-isolation --force-reinstall .
+  - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
   - python3 -m coverage run --parallel-mode -m pytest -v test/examples
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
@@ -248,7 +248,7 @@ steps:
   - mkdir -p test/example_run_dir_local
   - ln -sf /pyrocko-test-data/gf_stores/* test/example_run_dir
   - ln -sf /pyrocko-test-data/gf_stores/* test/example_run_dir_local
-  - pip3 install --no-deps --no-build-isolation --force-reinstall .
+  - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
   - python3 -m coverage run --parallel-mode -m pytest -v test/examples
   - for x in .coverage.* ; do mv $x $${x#.} ; done
   environment:
@@ -296,8 +296,7 @@ steps:
   pull: never
   commands:
   - ln -sf /pyrocko-test-data test/data
-  - pip3 install --no-deps --no-build-isolation --force-reinstall .
-  - pip3 install vtk --upgrade  # newer vtk seems to speed up tests a lot
+  - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
   - xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
@@ -306,8 +305,7 @@ steps:
   pull: never
   commands:
   - ln -sf /pyrocko-test-data test/data
-  - pip3 install --no-deps --no-build-isolation --force-reinstall .
-  - pip3 install vtk --upgrade  # newer vtk seems to speed up tests a lot
+  - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
   - xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
   - for x in .coverage.* ; do mv $x $${x#.} ; done
   environment:
@@ -360,7 +358,7 @@ steps:
   image: pyrocko-nest
   pull: never
   commands:
-  - pip3 install --no-deps --no-build-isolation --force-reinstall .
+  - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
   - wget -r -nH --cut-dirs=2 --no-parent --reject="index.html*" https://data.pyrocko.org/builds/${DRONE_COMMIT}/coverage/data/
   - python3 -m coverage combine coverage/data/coverage.*
   - python3 -m coverage html
@@ -639,9 +637,9 @@ steps:
       - release
       - deploy-pip
   commands:
-  - pip3 install -f dist pyrocko --no-index --no-deps
-  - pip3 install -f dist pyrocko
-  - pip3 install --only-binary=PyQt5 PyQt5 jinja2 pytest
+  - pip3 install -f dist pyrocko --no-index --no-deps --break-system-packages
+  - pip3 install -f dist pyrocko --break-system-packages
+  - pip3 install --only-binary=PyQt5 PyQt5 jinja2 pytest --break-system-packages
   - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v
 
 - name: test-mixed
@@ -654,7 +652,7 @@ steps:
       - deploy-pip
   commands:
   - ln -sf /pyrocko-test-data test/data
-  - pip3 install -f dist --no-index --no-deps pyrocko
+  - pip3 install -f dist --no-index --no-deps pyrocko --break-system-packages
   - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v
 
 - name: stage

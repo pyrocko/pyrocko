@@ -1,5 +1,5 @@
 FROM pyrocko-nest
-
+COPY pyrocko.git /pyrocko.git
 WORKDIR /src
-RUN git clone https://git.pyrocko.org/pyrocko/pyrocko.git \
-    && cd pyrocko && python3 install.py user --yes
+RUN git clone /pyrocko-orig pyrocko \
+    && cd pyrocko && pip3 install --no-deps --break-system-packages .

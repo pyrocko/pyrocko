@@ -4,12 +4,11 @@ RUN apt-get update -y
 RUN apt-get upgrade -y
 
 # env requirements
-RUN apt-get install -y python3-pip
-RUN pip3 install twine
+RUN apt-get install -y python3-pip twine
 RUN apt-get install -y wget
 
 # linter requirements
-RUN pip3 install flake8
+RUN apt-get install -y flake8
 
 # build requirements
 RUN apt-get install -y make git
@@ -40,13 +39,13 @@ RUN apt-get install -y \
 # optional runtime requirements obspy, kite
 RUN apt-get install -y \
         python3-geojson python3-pyqtgraph \
-    && pip3 install --no-deps \
+    && pip3 install --break-system-packages --no-deps \
         utm git+https://github.com/pyrocko/kite
 
 # optional runtime requirements obspy
 RUN apt-get install -y \
         python3-sqlalchemy python3-lxml python3-greenlet \
-    && pip3 install --no-deps \
+    && pip3 install --break-system-packages --no-deps \
         obspy==1.3   # 2023-01-16: 1.4 has too high numpy requirement for debian:stable
 
 # additional runtime requirements for gmt
