@@ -7,9 +7,8 @@ import os
 import base64
 
 import numpy as num
-from matplotlib import colormaps
 
-from pyrocko.plot import automap
+from pyrocko.plot import automap, mpl_get_cmap_names, mpl_get_cmap
 from pyrocko.guts import String, Float, StringChoice, Bool
 from pyrocko.plot import AutoScaler, AutoScaleMode
 from pyrocko.dataset import topo
@@ -36,22 +35,15 @@ mpl_cmap_blacklist = [
 
 
 def get_mpl_cmap_choices():
-    try:
-        mpl_cmap_choices = list(colormaps.keys())
+    names = mpl_get_cmap_names()
+    for cmap_name in mpl_cmap_blacklist:
+        try:
+            names.remove(cmap_name)
+            names.remove("%s_r" % cmap_name)
+        except ValueError:
+            pass
 
-        for cmap_name in mpl_cmap_blacklist:
-            try:
-                mpl_cmap_choices.remove(cmap_name)
-                mpl_cmap_choices.remove("%s_r" % cmap_name)
-            except ValueError:
-                pass
-
-    except ImportError:
-        mpl_cmap_choices = [
-            'seismic', 'seismic_r', 'jet', 'hot_r', 'gist_earth_r']
-
-    mpl_cmap_choices.sort()
-    return mpl_cmap_choices
+    return names
 
 
 def random_id():
@@ -220,7 +212,7 @@ class CPTHandler(Element):
                     try:
                         cpt = automap.read_cpt(topo.cpt(s))
                     except Exception:
-                        cmap = colormaps[s]
+                        cmap = mpl_get_cmap(s)
                         cpt = automap.CPT.from_numpy(cmap(range(256))[:, :-1])
 
                     self._cpts.update([(s, cpt)])

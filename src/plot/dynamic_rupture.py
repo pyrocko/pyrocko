@@ -16,12 +16,13 @@ import inspect
 import numpy as num
 from scipy.interpolate import RegularGridInterpolator as scrgi
 
-from matplotlib import pyplot as plt, patheffects, colormaps
+from matplotlib import pyplot as plt, patheffects
 from matplotlib.ticker import FuncFormatter
 
 from pyrocko import orthodrome as pod
 from pyrocko.guts import Object
-from pyrocko.plot import mpl_init, mpl_papersize, mpl_color, AutoScaler, gmtpy
+from pyrocko.plot import mpl_init, mpl_papersize, mpl_color, AutoScaler, \
+    gmtpy, mpl_get_cmap
 from pyrocko.plot.automap import Map, NoTopo
 from pyrocko.gf import PseudoDynamicRupture
 from pyrocko.gf.seismosizer import map_anchor
@@ -103,7 +104,7 @@ def _mplcmap_to_gmtcpt_code(mplcmap, steps=256):
         str
     '''
 
-    cmap = colormaps[mplcmap]
+    cmap = mpl_get_cmap(mplcmap)
 
     rgbas = [cmap(i) for i in num.linspace(0, 255, steps).astype(num.int64)]
 

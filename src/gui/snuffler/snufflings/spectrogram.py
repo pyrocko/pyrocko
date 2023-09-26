@@ -2,7 +2,6 @@ import math
 import logging
 import numpy as num
 from matplotlib.colors import LinearSegmentedColormap
-from matplotlib import colormaps
 
 from pyrocko import plot, trace
 from ..snuffling import Snuffling, Param, Choice
@@ -37,7 +36,7 @@ def get_cmap(name):
     if name in name_to_cmap:
         return name_to_cmap[name]
     else:
-        return colormaps[name]
+        return plot.mpl_get_cmap(name)
 
 
 def downsample_plan(n, n_max):

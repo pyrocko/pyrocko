@@ -4,10 +4,10 @@ import time
 import numpy as num
 from scipy import signal
 
-from matplotlib import colormaps
 from matplotlib.colors import Normalize
 
 from pyrocko.trace import t2ind
+from pyrocko.plot import mpl_get_cmap
 from ..qt_compat import qg
 
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ class TraceWaterfall:
         if cmap == self._current_cmap:
             return
         logger.debug('setting colormap to %s', cmap)
-        self.cmap = colormaps[cmap]
+        self.cmap = mpl_get_cmap(cmap)
         self._current_cmap = cmap
 
     def set_common_scale(self, _common_scale):

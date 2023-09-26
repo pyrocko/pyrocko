@@ -512,6 +512,39 @@ def mpl_init(fontsize=10):
     return plt
 
 
+def mpl_get_cmap_names():
+    '''
+    Compatibility function to get named MPL colormap names.
+    '''
+
+    try:
+        from matplotlib import colormaps
+        names = list(colormaps.keys())
+    except ImportError:
+        from matplotlib.cm import _cmap_registry
+        names = list(_cmap_registry.keys())
+
+    names.sort()
+    return names
+
+
+def mpl_get_cmap(name):
+    '''
+    Compatibility function to get named MPL colormap.
+
+    The function matplotlib.cm.get_cmap has been removed in MPL 3.8 but the
+    suggested replacement is not available in slightly older versions of MPL,
+    e.g. 3.3 (default on Debian 11).
+    '''
+
+    try:
+        from matplotlib import colormaps
+        return colormaps[name]
+    except ImportError:
+        from matplotlib import cm
+        return cm.get_cmap(name)
+
+
 def mpl_margins(
         fig,
         left=1.0, top=1.0, right=1.0, bottom=1.0,
