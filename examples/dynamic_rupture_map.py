@@ -80,7 +80,7 @@ m.save('traction_map.png')
 # contour at 3 s is displayed together with nucleation point.
 m = dynamic_rupture.RuptureMap(**map_kwargs)
 m.draw_dislocation(time=3, cmap='summer')
-m.draw_dislocation_vector(time=3, S='i15.', I='x20')
+m.draw_dislocation_vector(time=3, S='i5p', I='x20')
 m.draw_time_contour(store, clevel=[3])
 m.draw_dislocation_contour(time=3, clevel=[0.15])
 m.draw_nucleation_point()
