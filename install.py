@@ -7,6 +7,23 @@ import argparse
 import shlex
 import subprocess
 import textwrap
+import sysconfig
+
+
+def is_virtual_environment():
+    return sys.base_prefix != sys.prefix or hasattr(sys, "real_prefix")
+
+
+def externally_managed_path():
+    # https://peps.python.org/pep-0668/
+    return os.path.join(
+        sysconfig.get_path('stdlib', sysconfig.get_default_scheme()),
+        'EXTERNALLY-MANAGED')
+
+
+def is_externally_managed():
+    return not is_virtual_environment() \
+        and os.path.exists(externally_managed_path())
 
 
 def wrap(s):
@@ -282,14 +299,19 @@ def cmd_user(parser, args):
 
 def cmd_system(parser, args):
     python = sys.executable or 'python3'
-    do_command([
+    pip_cmd = [
         'sudo', python, '-m', 'pip', 'install',
         '--no-deps',
         '--no-build-isolation',
         '--force-reinstall',
-        '--upgrade',
-        '.'],
-        force=args.yes, quiet=args.quiet)
+        '--upgrade']
+
+    if is_externally_managed():
+        pip_cmd.append('--break-system-packages')
+
+    pip_cmd.append('.')
+
+    do_command(pip_cmd, force=args.yes, quiet=args.quiet)
 
 
 def print_help(parser, args):
