@@ -1034,6 +1034,136 @@ steps:
 ---
 
 kind: pipeline
+type: docker
+name: package-deb-10
+
+steps:
+- name: build
+  image: build-deb-10
+  pull: never
+  commands:
+  - maintenance/deb/build.sh 1
+
+- name: stage
+  image: pyrocko-util
+  pull: never
+  commands:
+  - maintenance/drone-rsync.sh deb-packages/ ${DRONE_COMMIT}/deb/10/
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
+
+---
+
+kind: pipeline
+type: docker
+name: package-deb-11
+
+steps:
+- name: build
+  image: build-deb-11
+  pull: never
+  commands:
+  - maintenance/deb/build.sh 1
+
+- name: stage
+  image: pyrocko-util
+  pull: never
+  commands:
+  - maintenance/drone-rsync.sh deb-packages/ ${DRONE_COMMIT}/deb/11
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
+
+---
+
+kind: pipeline
+type: docker
+name: package-deb-12
+
+steps:
+- name: build
+  image: build-deb-12
+  pull: never
+  commands:
+  - maintenance/deb/build.sh 1
+
+- name: stage
+  image: pyrocko-util
+  pull: never
+  commands:
+  - maintenance/drone-rsync.sh deb-packages/ ${DRONE_COMMIT}/deb/12
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
+
+---
+
+kind: pipeline
+type: docker
+name: package-deb-20.04
+
+steps:
+- name: build
+  image: build-deb-20.04
+  pull: never
+  commands:
+  - maintenance/deb/build.sh 1
+
+- name: stage
+  image: pyrocko-util
+  pull: never
+  commands:
+  - maintenance/drone-rsync.sh deb-packages/ ${DRONE_COMMIT}/deb/20.04
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
+
+---
+
+kind: pipeline
+type: docker
+name: package-deb-22.04
+
+steps:
+- name: build
+  image: build-deb-22.04
+  pull: never
+  commands:
+  - maintenance/deb/build.sh 1
+
+- name: stage
+  image: pyrocko-util
+  pull: never
+  commands:
+  - maintenance/drone-rsync.sh deb-packages/ ${DRONE_COMMIT}/deb/22.04
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
+
+---
+
+kind: pipeline
 type: exec
 name: app-osx
 
@@ -1085,6 +1215,11 @@ depends_on:
 - package-conda-osx-64
 - package-conda-osx-arm64
 - package-conda-windows
+- package-deb-10
+- package-deb-11
+- package-deb-12
+- package-deb-20.04
+- package-deb-22.04
 - app-osx
 
 trigger:

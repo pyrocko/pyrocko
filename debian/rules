@@ -1,0 +1,8 @@
+#!/usr/bin/make -f
+export PYBUILD_NAME=pyrocko
+export PYBUILD_VERBOSE=0
+export DH_VERBOSE=0
+export DEB_BUILD_OPTIONS=nocheck
+
+%:
+	dh $@ --with python3 --buildsystem pybuild

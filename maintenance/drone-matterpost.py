@@ -53,6 +53,7 @@ def to_message():
             ('docs', 'https://data.pyrocko.org/builds/%s/docs/'),
             ('coverage', 'https://data.pyrocko.org/builds/%s/coverage/index.html'),  # noqa
             ('wheels', 'https://data.pyrocko.org/builds/%s/wheels/'),
+            ('deb', 'https://data.pyrocko.org/builds/%s/deb/'),
             ('apps', 'https://data.pyrocko.org/builds/%s/apps/')]:
 
         link = link % env['commit']
