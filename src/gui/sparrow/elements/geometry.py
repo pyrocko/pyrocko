@@ -51,6 +51,8 @@ class GeometryElement(base.Element):
         self._pipe = None
         self._cbar_pipe = None
         self._outlines_pipe = []
+        self._time_label = None
+        self._time_slider = None
 
         self.cpt_handler = base.CPTHandler()
 
@@ -443,13 +445,17 @@ class GeometryElement(base.Element):
                 values = state.geometry.get_property(state.display_parameter)
 
                 if values.ndim == 2:
-                    self._time_label.setVisible(True)
-                    self._time_slider.setVisible(True)
+                    if self._time_label:
+                        self._time_label.setVisible(True)
+                    if self._time_slider:
+                        self._time_slider.setVisible(True)
                     self._opacity_label.setVisible(True)
                     self._opacity_slider.setVisible(True)
                 else:
-                    self._time_label.setVisible(False)
-                    self._time_slider.setVisible(False)
+                    if self._time_label:
+                        self._time_label.setVisible(False)
+                    if self._time_slider:
+                        self._time_slider.setVisible(False)
                     self._opacity_label.setVisible(False)
                     self._opacity_slider.setVisible(False)
 
