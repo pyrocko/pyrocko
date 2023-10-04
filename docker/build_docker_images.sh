@@ -23,3 +23,7 @@ docker build pyrocko -t pyrocko
 for x in build-deb-* ; do
     docker build $x -t $x
 done
+
+for x in test-deb-* ; do
+    docker build $x -t $x
+done

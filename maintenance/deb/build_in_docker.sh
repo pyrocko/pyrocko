@@ -10,5 +10,5 @@ if [ -z "$revision" ] || [ -z "$debianversion" ]; then
     exit 1
 fi
 
-docker run -ti -v .:/src -w /src  build-deb-$debianversion  maintenance/deb/build.sh $revision
-mv deb-packages deb-packages-$debianversion
+docker run -v .:/src -w /src  build-deb-$debianversion  maintenance/deb/build.sh $revision $debianversion
+docker run -v .:/src -w /src  test-deb-$debianversion  maintenance/deb/test.sh $revision $debianversion

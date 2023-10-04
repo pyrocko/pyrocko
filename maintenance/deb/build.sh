@@ -3,8 +3,10 @@
 set -e
 
 revision=$1
-if [ -z "$revision" ]; then
-    echo "usage: build.sh <revision>"
+debianversion=$2
+
+if [ -z "$revision" ] || [ -z "$debianversion" ]; then
+    echo "usage: build.sh <revision> <debianversion>"
     exit 1
 fi
 
@@ -17,7 +19,8 @@ echo "Archive: $archive"
 echo "Version: $version"
 
 debmake -r $revision -a $archive -b":python3" -i debuild
-mkdir -p deb-packages
-mv pyrocko_$version* deb-packages
-mv pyrocko-dbgsym_$version* deb-packages
-mv pyrocko-$version.tar.gz deb-packages
+targetdir=deb-packages-$debianversion
+mkdir -p $targetdir
+mv pyrocko_$version* $targetdir
+mv pyrocko-dbgsym_$version* $targetdir
+mv pyrocko-$version.tar.gz $targetdir

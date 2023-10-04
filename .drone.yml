@@ -1042,13 +1042,13 @@ steps:
   image: build-deb-10
   pull: never
   commands:
-  - maintenance/deb/build.sh 1
+  - maintenance/deb/build.sh 1 10
 
 - name: stage
   image: pyrocko-util
   pull: never
   commands:
-  - maintenance/drone-rsync.sh deb-packages/ ${DRONE_COMMIT}/deb/10/
+  - maintenance/drone-rsync.sh deb-packages-10 ${DRONE_COMMIT}/deb/10/
   environment:
     RSYNC_HOST:
       from_secret: rsync-host
@@ -1068,13 +1068,13 @@ steps:
   image: build-deb-11
   pull: never
   commands:
-  - maintenance/deb/build.sh 1
+  - maintenance/deb/build.sh 1 11
 
 - name: stage
   image: pyrocko-util
   pull: never
   commands:
-  - maintenance/drone-rsync.sh deb-packages/ ${DRONE_COMMIT}/deb/11
+  - maintenance/drone-rsync.sh deb-packages-11 ${DRONE_COMMIT}/deb/11
   environment:
     RSYNC_HOST:
       from_secret: rsync-host
@@ -1094,13 +1094,13 @@ steps:
   image: build-deb-12
   pull: never
   commands:
-  - maintenance/deb/build.sh 1
+  - maintenance/deb/build.sh 1 12
 
 - name: stage
   image: pyrocko-util
   pull: never
   commands:
-  - maintenance/drone-rsync.sh deb-packages/ ${DRONE_COMMIT}/deb/12
+  - maintenance/drone-rsync.sh deb-packages-12 ${DRONE_COMMIT}/deb/12
   environment:
     RSYNC_HOST:
       from_secret: rsync-host
@@ -1120,13 +1120,13 @@ steps:
   image: build-deb-20.04
   pull: never
   commands:
-  - maintenance/deb/build.sh 1
+  - maintenance/deb/build.sh 1 20.04
 
 - name: stage
   image: pyrocko-util
   pull: never
   commands:
-  - maintenance/drone-rsync.sh deb-packages/ ${DRONE_COMMIT}/deb/20.04
+  - maintenance/drone-rsync.sh deb-packages-20.04 ${DRONE_COMMIT}/deb/20.04
   environment:
     RSYNC_HOST:
       from_secret: rsync-host
@@ -1146,13 +1146,13 @@ steps:
   image: build-deb-22.04
   pull: never
   commands:
-  - maintenance/deb/build.sh 1
+  - maintenance/deb/build.sh 1 22.04
 
 - name: stage
   image: pyrocko-util
   pull: never
   commands:
-  - maintenance/drone-rsync.sh deb-packages/ ${DRONE_COMMIT}/deb/22.04
+  - maintenance/drone-rsync.sh deb-packages-22.04 ${DRONE_COMMIT}/deb/22.04
   environment:
     RSYNC_HOST:
       from_secret: rsync-host
