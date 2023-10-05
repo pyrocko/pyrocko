@@ -521,7 +521,11 @@ def mpl_get_cmap_names():
         from matplotlib import colormaps
         names = list(colormaps.keys())
     except ImportError:
-        from matplotlib.cm import _cmap_registry
+        try:
+            from matplotlib.cm import _cmap_registry
+        except ImportError:
+            from matplotlib.cm import cmap_d as _cmap_registry
+
         names = list(_cmap_registry.keys())
 
     names.sort()
