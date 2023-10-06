@@ -38,17 +38,9 @@ need_sys_argv_examples = {
     ]
 }
 
-# these tests fail to mmap on some systems (ubuntu 18.04) when example_run_dir
-# is in virtualbox shared folder
-need_run_dir_local = ['plot_radiation_pattern.py']
 
-
-def tutorial_run_dir():
-    return op.join(project_dir, 'test', 'example_run_dir')
-
-
-def tutorial_run_dir_local():
-    return op.join(project_dir, 'test', 'example_run_dir_local')
+def example_run_dir():
+    return op.join(common.test_data_dir(), 'example_run_dir')
 
 
 def noop(*args, **kwargs):
@@ -106,10 +98,7 @@ def _make_function(test_name, fn):
             try:
                 sys_argv_original, sys.argv = sys.argv, argv
 
-                if basename in need_run_dir_local:
-                    run_dir = tutorial_run_dir_local()
-                else:
-                    run_dir = tutorial_run_dir()
+                run_dir = example_run_dir()
 
                 util.ensuredir(run_dir)
                 os.chdir(run_dir)

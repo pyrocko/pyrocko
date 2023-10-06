@@ -647,7 +647,6 @@ class SquirrelTestCase(unittest.TestCase):
         deltat = 1./200.
         n = int(round(d / deltat))
         tempdir = os.path.join(self.tempdir, 'test_long_coverage')
-        tempdir = 'test_long_coverage'
 
         for iday in range(3):
             ydata = num.random.randint(-2**31, 2**31-1, n, dtype=num.int32)

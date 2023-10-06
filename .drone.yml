@@ -115,18 +115,16 @@ steps:
   image: pyrocko-fat-nest
   pull: never
   commands:
-  - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
-  - python3 -m coverage run --parallel-mode -m pytest -v test/base
+  - PYROCKO_TEST_DATA=/pyrocko-test-data python3 -m coverage run --parallel-mode -m pytest -v test/base
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
 - name: test-base-hptime
   image: pyrocko-fat-nest
   pull: never
   commands:
-  - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
-  - python3 -m coverage run --parallel-mode -m pytest -v test/base
+  - PYROCKO_TEST_DATA=/pyrocko-test-data python3 -m coverage run --parallel-mode -m pytest -v test/base
   - for x in .coverage.* ; do mv $x $${x#.} ; done
   environment:
     PYROCKO_USE_HIGH_PRECISION_TIME: 1
@@ -173,18 +171,16 @@ steps:
   image: pyrocko-fat-nest
   pull: never
   commands:
-  - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
-  - python3 -m coverage run --parallel-mode -m pytest -v test/gf
+  - PYROCKO_TEST_DATA=/pyrocko-test-data python3 -m coverage run --parallel-mode -m pytest -v test/gf
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
 - name: test-gf-hptime
   image: pyrocko-fat-nest
   pull: never
   commands:
-  - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
-  - python3 -m coverage run --parallel-mode -m pytest -v test/gf
+  - PYROCKO_TEST_DATA=/pyrocko-test-data python3 -m coverage run --parallel-mode -m pytest -v test/gf
   - for x in .coverage.* ; do mv $x $${x#.} ; done
   environment:
     PYROCKO_USE_HIGH_PRECISION_TIME: 1
@@ -230,26 +226,20 @@ steps:
   image: pyrocko-fat-nest
   pull: never
   commands:
-  - ln -sf /pyrocko-test-data test/data
-  - mkdir -p test/example_run_dir
-  - mkdir -p test/example_run_dir_local
-  - ln -sf /pyrocko-test-data/gf_stores/* test/example_run_dir
-  - ln -sf /pyrocko-test-data/gf_stores/* test/example_run_dir_local
+  - mkdir -p /pyrocko-test-data/example_run_dir
+  - ln -sf /pyrocko-test-data/gf_stores/* /pyrocko-test-data/example_run_dir
   - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
-  - python3 -m coverage run --parallel-mode -m pytest -v test/examples
+  - PYROCKO_TEST_DATA=/pyrocko-test-data python3 -m coverage run --parallel-mode -m pytest -v test/examples
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
 - name: test-examples-hptime
   image: pyrocko-fat-nest
   pull: never
   commands:
-  - ln -sf /pyrocko-test-data test/data
-  - mkdir -p test/example_run_dir
-  - mkdir -p test/example_run_dir_local
-  - ln -sf /pyrocko-test-data/gf_stores/* test/example_run_dir
-  - ln -sf /pyrocko-test-data/gf_stores/* test/example_run_dir_local
+  - mkdir -p /pyrocko-test-data/example_run_dir
+  - ln -sf /pyrocko-test-data/gf_stores/* /pyrocko-test-data/example_run_dir
   - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
-  - python3 -m coverage run --parallel-mode -m pytest -v test/examples
+  - PYROCKO_TEST_DATA=/pyrocko-test-data python3 -m coverage run --parallel-mode -m pytest -v test/examples
   - for x in .coverage.* ; do mv $x $${x#.} ; done
   environment:
     PYROCKO_USE_HIGH_PRECISION_TIME: 1
@@ -295,18 +285,16 @@ steps:
   image: pyrocko-fat-nest
   pull: never
   commands:
-  - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
-  - xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
+  - PYROCKO_TEST_DATA=/pyrocko-test-data xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
 - name: test-gui-hptime
   image: pyrocko-fat-nest
   pull: never
   commands:
-  - ln -sf /pyrocko-test-data test/data
   - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
-  - xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
+  - PYROCKO_TEST_DATA=/pyrocko-test-data xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
   - for x in .coverage.* ; do mv $x $${x#.} ; done
   environment:
     PYROCKO_USE_HIGH_PRECISION_TIME: 1
@@ -651,9 +639,8 @@ steps:
       - release
       - deploy-pip
   commands:
-  - ln -sf /pyrocko-test-data test/data
   - pip3 install -f dist --no-index --no-deps pyrocko --break-system-packages
-  - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v
+  - PYROCKO_TEST_DATA=/pyrocko-test-data xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v
 
 - name: stage
   image: pyrocko-util
@@ -1035,20 +1022,20 @@ steps:
 
 kind: pipeline
 type: docker
-name: package-deb-10
+name: package-deb-debian-10
 
 steps:
 - name: build
-  image: build-deb-10
+  image: pyrocko-build-deb-debian-10
   pull: never
   commands:
-  - maintenance/deb/build.sh 1 10
+  - maintenance/deb/build.sh 1 debian-10
 
 - name: stage
   image: pyrocko-util
   pull: never
   commands:
-  - maintenance/drone-rsync.sh deb-packages-10 ${DRONE_COMMIT}/deb/10/
+  - maintenance/drone-rsync.sh deb-packages-debian-10 ${DRONE_COMMIT}/deb/debian-10
   environment:
     RSYNC_HOST:
       from_secret: rsync-host
@@ -1061,20 +1048,20 @@ steps:
 
 kind: pipeline
 type: docker
-name: package-deb-11
+name: package-deb-debian-11
 
 steps:
 - name: build
-  image: build-deb-11
+  image: pyrocko-build-deb-debian-11
   pull: never
   commands:
-  - maintenance/deb/build.sh 1 11
+  - maintenance/deb/build.sh 1 debian-11
 
 - name: stage
   image: pyrocko-util
   pull: never
   commands:
-  - maintenance/drone-rsync.sh deb-packages-11 ${DRONE_COMMIT}/deb/11
+  - maintenance/drone-rsync.sh deb-packages-debian-11 ${DRONE_COMMIT}/deb/debian-11
   environment:
     RSYNC_HOST:
       from_secret: rsync-host
@@ -1087,20 +1074,20 @@ steps:
 
 kind: pipeline
 type: docker
-name: package-deb-12
+name: package-deb-debian-12
 
 steps:
 - name: build
-  image: build-deb-12
+  image: pyrocko-build-deb-debian-12
   pull: never
   commands:
-  - maintenance/deb/build.sh 1 12
+  - maintenance/deb/build.sh 1 debian-12
 
 - name: stage
   image: pyrocko-util
   pull: never
   commands:
-  - maintenance/drone-rsync.sh deb-packages-12 ${DRONE_COMMIT}/deb/12
+  - maintenance/drone-rsync.sh deb-packages-debian-12 ${DRONE_COMMIT}/deb/debian-12
   environment:
     RSYNC_HOST:
       from_secret: rsync-host
@@ -1113,20 +1100,20 @@ steps:
 
 kind: pipeline
 type: docker
-name: package-deb-20.04
+name: package-deb-ubuntu-20.04
 
 steps:
 - name: build
-  image: build-deb-20.04
+  image: pyrocko-build-deb-ubuntu-20.04
   pull: never
   commands:
-  - maintenance/deb/build.sh 1 20.04
+  - maintenance/deb/build.sh 1 ubuntu-20.04
 
 - name: stage
   image: pyrocko-util
   pull: never
   commands:
-  - maintenance/drone-rsync.sh deb-packages-20.04 ${DRONE_COMMIT}/deb/20.04
+  - maintenance/drone-rsync.sh deb-packages-ubuntu-20.04 ${DRONE_COMMIT}/deb/ubuntu-20.04
   environment:
     RSYNC_HOST:
       from_secret: rsync-host
@@ -1139,20 +1126,20 @@ steps:
 
 kind: pipeline
 type: docker
-name: package-deb-22.04
+name: package-deb-ubuntu-22.04
 
 steps:
 - name: build
-  image: build-deb-22.04
+  image: pyrocko-build-deb-ubuntu-22.04
   pull: never
   commands:
-  - maintenance/deb/build.sh 1 22.04
+  - maintenance/deb/build.sh 1 ubuntu-22.04
 
 - name: stage
   image: pyrocko-util
   pull: never
   commands:
-  - maintenance/drone-rsync.sh deb-packages-22.04 ${DRONE_COMMIT}/deb/22.04
+  - maintenance/drone-rsync.sh deb-packages-ubuntu-22.04 ${DRONE_COMMIT}/deb/ubuntu-22.04
   environment:
     RSYNC_HOST:
       from_secret: rsync-host
@@ -1215,11 +1202,11 @@ depends_on:
 - package-conda-osx-64
 - package-conda-osx-arm64
 - package-conda-windows
-- package-deb-10
-- package-deb-11
-- package-deb-12
-- package-deb-20.04
-- package-deb-22.04
+- package-deb-debian-10
+- package-deb-debian-11
+- package-deb-debian-12
+- package-deb-ubuntu-20.04
+- package-deb-ubuntu-22.04
 - app-osx
 
 trigger:

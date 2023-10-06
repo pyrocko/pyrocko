@@ -1,4 +1,5 @@
 FROM debian:stable
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update -y
 RUN apt-get upgrade -y
@@ -10,11 +11,13 @@ RUN apt-get install -y python3-pip
 RUN apt-get install -y make git
 RUN apt-get install -y python3-dev python3-setuptools python3-numpy-dev
 
+RUN rm -f /usr/lib/python*/EXTERNALLY-MANAGED
+
 # docs requirements
 RUN apt-get install -y \
     texlive-fonts-recommended texlive-latex-extra \
     texlive-latex-recommended python3-sphinx
-RUN pip3 install --break-system-packages sphinx-qt-documentation \
+RUN pip3 install sphinx-qt-documentation \
     git+https://git.pyrocko.org/pyrocko/sphinx-sleekcat-theme.git
 
 # base runtime requirements

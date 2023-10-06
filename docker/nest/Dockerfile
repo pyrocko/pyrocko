@@ -1,4 +1,7 @@
-FROM debian:stable
+ARG base_image
+
+FROM $base_image
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update -y
 RUN apt-get upgrade -y
@@ -13,6 +16,8 @@ RUN apt-get install -y flake8
 # build requirements
 RUN apt-get install -y make git
 RUN apt-get install -y python3-dev python3-setuptools python3-numpy-dev
+
+RUN rm -f /usr/lib/python*/EXTERNALLY-MANAGED
 
 # testing requirements
 RUN apt-get install -y xvfb libgles2-mesa
@@ -36,16 +41,17 @@ RUN apt-get install -y python3-vtk9 \
 RUN apt-get install -y \
         python3-jinja2 python3-pybtex
 
+
 # optional runtime requirements obspy, kite
 RUN apt-get install -y \
         python3-geojson python3-pyqtgraph \
-    && pip3 install --break-system-packages --no-deps \
+    && pip3 install --no-deps \
         utm git+https://github.com/pyrocko/kite
 
 # optional runtime requirements obspy
 RUN apt-get install -y \
         python3-sqlalchemy python3-lxml python3-greenlet \
-    && pip3 install --break-system-packages --no-deps \
+    && pip3 install --no-deps \
         obspy==1.3   # 2023-01-16: 1.4 has too high numpy requirement for debian:stable
 
 # additional runtime requirements for gmt

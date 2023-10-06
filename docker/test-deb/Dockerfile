@@ -1,4 +1,6 @@
 ARG base_image
 FROM $base_image
 ENV DEBIAN_FRONTEND=noninteractive
-COPY pyrocko-test-data /pyrocko-test-data
+
+RUN apt-get update -y
+RUN apt-get upgrade -y

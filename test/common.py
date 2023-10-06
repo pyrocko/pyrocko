@@ -38,7 +38,7 @@ D = 3600.*24.
 def get_gf_engine():
     from pyrocko import gf
     return gf.get_engine(
-        [os.path.join(os.path.dirname(__file__), 'data', 'gf_stores')])
+        [os.path.join(test_data_dir(), 'gf_stores')])
 
 
 def have_gf_store(store_id):
@@ -63,8 +63,14 @@ def matplotlib_show():
     return bool(int(os.environ.get('MPL_SHOW', False)))
 
 
+def test_data_dir():
+    return os.environ.get(
+        'PYROCKO_TEST_DATA',
+        os.path.join(os.path.split(__file__)[0], 'data'))
+
+
 def test_data_file_no_download(fn):
-    return os.path.join(os.path.split(__file__)[0], 'data', fn)
+    return os.path.join(test_data_dir(), fn)
 
 
 def make_dataset(dir=None, nstations=10, nchannels=3, tlen=10*D, deltat=0.01,
