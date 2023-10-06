@@ -182,7 +182,7 @@ if __name__ == '__main__':
     util.setup_logging(__name__)
 
     if len(sys.argv) < 2:
-        sys.exit('usage: python -m pyrocko.station.enhanced_sacpz <sacpz> ...')
+        sys.exit('usage: python -m pyrocko.io.enhanced_sacpz <sacpz> ...')
 
     sxml_in = make_stationxml(iload(sys.argv[1:]))
     print(sxml_in.dump_xml())
