@@ -1529,7 +1529,13 @@ class RangeEdit(qw.QFrame):
         for i in range(h):
             bitmap[h-1-i, :] = histogram > i
 
-        bitmap = num.packbits(bitmap, axis=1, bitorder='little')
+        try:
+            bitmap = num.packbits(bitmap, axis=1, bitorder='little')
+        except TypeError:
+            # numpy < 1.17.0 has no bitorder and default behaviour is 'big'
+            bitmap = num.packbits(
+                num.flip(bitmap.reshape((h*nbins//8, 8)), axis=1),
+                axis=1)
 
         return qg.QBitmap.fromData(
             qc.QSize(nbins, h),
