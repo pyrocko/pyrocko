@@ -513,6 +513,7 @@ class TrimeshPipe(object):
             self._opacity = opacity
 
     def set_vertices(self, vertices):
+        vertices = num.ascontiguousarray(vertices, dtype=num.float64)
         self.polydata.GetPoints().SetData(numpy_to_vtk(vertices))
 
     def set_values(self, values):
