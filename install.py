@@ -16,14 +16,23 @@ def is_virtual_environment():
 
 def externally_managed_path():
     # https://peps.python.org/pep-0668/
+
+    try:
+        scheme = sysconfig.get_default_scheme()
+    except AttributeError:
+        scheme = sysconfig._get_default_scheme()
+
     return os.path.join(
-        sysconfig.get_path('stdlib', sysconfig.get_default_scheme()),
+        sysconfig.get_path('stdlib', scheme),
         'EXTERNALLY-MANAGED')
 
 
 def is_externally_managed():
-    return not is_virtual_environment() \
-        and os.path.exists(externally_managed_path())
+    try:
+        return not is_virtual_environment() \
+            and os.path.exists(externally_managed_path())
+    except Exception:
+        return False
 
 
 def wrap(s):
