@@ -769,8 +769,21 @@ class PileViewerMenuBar(qw.QMenuBar):
     ...
 
 
-class PileViewerMenu(qw.QMenu):
-    ...
+class PileViewerMenuBarButton(qw.QPushButton):
+
+    def __init__(self, text, *args, **kwargs):
+        qw.QPushButton.__init__(self, text, *args, **kwargs)
+        self.setFlat(True)
+        self.setSizePolicy(
+            qw.QSizePolicy.Preferred, qw.QSizePolicy.Preferred)
+        self.setContentsMargins(0, 0, 0, 0)
+        s = self.fontMetrics().boundingRect(text)
+        self.setMaximumHeight(s.height() + 3)
+        self.setMaximumWidth(max(s.height() + 3, s.width() + 10))
+
+    def sizeHint(self):
+        s = qw.QPushButton.sizeHint(self)
+        return qc.QSize(max(s.height(), s.width()), s.height())
 
 
 def MakePileViewerMainClass(base):
@@ -778,6 +791,7 @@ def MakePileViewerMainClass(base):
     class PileViewerMain(base):
 
         want_input = qc.pyqtSignal()
+        toggle_input = qc.pyqtSignal()
         about_to_close = qc.pyqtSignal()
         pile_has_changed_signal = qc.pyqtSignal()
         tracks_range_changed = qc.pyqtSignal(int, int, int)
@@ -838,7 +852,7 @@ def MakePileViewerMainClass(base):
             self.setMinimumSize(300, 200)
             self.setFocusPolicy(qc.Qt.ClickFocus)
 
-            self.menu = menu or PileViewerMenu(self)
+            self.menu = menu
 
             file_menu = self.menu.addMenu('&File')
             view_menu = self.menu.addMenu('&View')
@@ -1157,6 +1171,37 @@ def MakePileViewerMainClass(base):
             help_menu.addAction(
                 'About',
                 self.about)
+
+            toolbar = qw.QFrame(self.menu)
+            toolbar_layout = qw.QHBoxLayout()
+            toolbar_layout.setContentsMargins(1, 1, 1, 1)
+            toolbar.setLayout(toolbar_layout)
+
+            def tracks_plus(*args):
+                self.zoom_tracks(0., 1.)
+
+            button = PileViewerMenuBarButton('+')
+            button.clicked.connect(tracks_plus)
+            button.setToolTip('Show more traces.')
+            toolbar_layout.addWidget(button)
+
+            def tracks_minus(*args):
+                self.zoom_tracks(0., -1.)
+
+            button = PileViewerMenuBarButton('-')
+            button.clicked.connect(tracks_minus)
+            button.setToolTip('Show fewer traces.')
+            toolbar_layout.addWidget(button)
+
+            def toggle_input(*args):
+                self.toggle_input.emit()
+
+            button = PileViewerMenuBarButton(':')
+            button.setToolTip('Show command line.')
+            button.clicked.connect(toggle_input)
+            toolbar_layout.addWidget(button)
+
+            self.menu.setCornerWidget(toolbar)
 
             self.time_projection = Projection()
             self.set_time_range(self.pile.get_tmin(), self.pile.get_tmax())
@@ -4412,6 +4457,8 @@ class PileViewer(qw.QFrame):
 
         self.viewer.want_input.connect(
             self.inputline_show)
+        self.viewer.toggle_input.connect(
+            self.inputline_toggle)
         self.viewer.tracks_range_changed.connect(
             self.tracks_range_changed)
         self.viewer.pile_has_changed_signal.connect(
@@ -4490,6 +4537,12 @@ class PileViewer(qw.QFrame):
         self.viewer.setFocus(qc.Qt.OtherFocusReason)
         self.hist_ind = len(self.history)
         self.input_area.hide()
+
+    def inputline_toggle(self):
+        if self.input_area.isVisible():
+            self.inputline_aborted()
+        else:
+            self.inputline_show()
 
     def save_inputline_history(self):
         '''
