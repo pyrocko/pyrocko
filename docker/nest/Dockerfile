@@ -48,11 +48,12 @@ RUN apt-get install -y \
     && pip3 install --no-deps \
         utm git+https://github.com/pyrocko/kite
 
-# optional runtime requirements obspy
-RUN apt-get install -y \
+ARG base_image
+RUN [ "$base_image" != "debian:10" ] \
+    && [ "$base_image" != "ubuntu:20.04" ] \
+    && ( apt-get install -y \
         python3-sqlalchemy python3-lxml python3-greenlet \
-    && pip3 install --no-deps \
-        obspy==1.3   # 2023-01-16: 1.4 has too high numpy requirement for debian:stable
+    && pip3 install --no-deps obspy==1.3 || exit 1 ) || :  # 2023-01-16: 1.4 has too high numpy requirement for debian:stabl
 
 # additional runtime requirements for gmt
 RUN apt-get install -y \
