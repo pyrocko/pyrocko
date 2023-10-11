@@ -8,7 +8,15 @@ import numpy as num
 import vtk
 
 from vtk.util.numpy_support import \
-    numpy_to_vtk as numpy_to_vtk_, get_vtk_array_type
+    numpy_to_vtk as numpy_to_vtk_, get_vtk_array_type, get_vtk_to_numpy_typemap
+
+try:
+    get_vtk_to_numpy_typemap()
+except AttributeError:
+    # monkeypatch numpy to prevent error, e.g. vtk=9.0.1 and numpy=1.26.0
+    num.bool = bool
+
+
 from vtk.util import vtkAlgorithm as va
 
 from pyrocko import geometry, cake, orthodrome as od
