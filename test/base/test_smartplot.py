@@ -93,7 +93,7 @@ class SmartPlotTestCase(unittest.TestCase):
         self.save_and_compare(p, 'basic')
 
     def get_rng(self):
-        return num.random.default_rng(20021977)
+        return num.random.RandomState(20021977)
 
     def test_pair(self):
         p = smartplot.Plot(['x', 'x'], ['y'])
@@ -104,7 +104,7 @@ class SmartPlotTestCase(unittest.TestCase):
         p(0, 0).plot(x, y, 'o')
         y = rng.normal(size=n)
         p(1, 0).plot(x, y, 'o')
-        self.save_and_compare(p, 'pair')
+        self.save_and_compare(p, 'pair_v2')
 
 
 if __name__ == '__main__':
