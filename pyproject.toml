@@ -52,7 +52,7 @@ gui = [
 [project.urls]
 homepage = "https://pyrocko.org"
 documentation = "https://pyrocko.org/docs"
-repository = "https://git.pyrocko.org"
+repository = "https://git.pyrocko.org/pyrocko/pyrocko"
 changelog = "https://git.pyrocko.org/pyrocko/pyrocko/src/branch/master/CHANGELOG.md"
 
 [project.entry-points.console_scripts]
