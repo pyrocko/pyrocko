@@ -10,6 +10,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Pseudo dynamic rupture:
     - Coulomb failure stress modelling.
     - New method to get slip- or moment-scaled tractions.
+- GF:
+    - New source time function: TremorSTF
+- Squirrel:
+    - `squirrel jackseis`: support restitution
+    - `squirerl jackseis`: new `--dump-config` option
+
+### Removed
+- Removed `squirrel jackseis-classic` subcommand. All features are now
+  available in `squirrel jackseis`.
+
+### Changed
+- Cake: new implementation for LayeredModel.perturb
+- Improved library reference manual.
+
+### Fixed
+- Fixed various compatibility issues.
+- Fixed various bugs.
 
 ## v2023.06.29
 
@@ -24,7 +41,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 - Snuffler: improve robustness against broken snufflings.
-- Fix broken beachball.amplitudes which used incorrect units rad instead of 
+- Fix broken beachball.amplitudes which used incorrect units rad instead of
   deg.
 - Snufflings rms, spectrogram, stalta: filter ranges now adapt to data sampling
   rates.
