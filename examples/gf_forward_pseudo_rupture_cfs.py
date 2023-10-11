@@ -94,7 +94,7 @@ mesh = axes.pcolormesh(
     cmap='RdBu_r',
     shading='gouraud',
     norm=colors.SymLogNorm(
-        linthresh=0.03, linscale=0.03, vmin=-1., vmax=1., base=10))
+        linthresh=0.03, linscale=0.03, vmin=-1., vmax=1.))
 
 # Plot the source plane as grey shaded area
 fn, fe = source.outline(cs='xy').T
