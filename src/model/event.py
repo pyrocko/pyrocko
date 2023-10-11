@@ -509,7 +509,7 @@ def dump_events(events, filename=None, stream=None, format='basic'):
     elif format == 'yaml':
         from pyrocko import guts
         events = [ev for ev in events if isinstance(ev, Event)]
-        guts.dump_all(object=events, filename=filename, stream=None)
+        guts.dump_all(events, filename=filename, stream=None)
 
     else:
         from pyrocko.io.io_common import FileSaveError
