@@ -6,7 +6,7 @@ name: flake8
 
 steps:
 - name: flake8
-  image: pyrocko-nest
+  image: pyrocko-nest-debian-12
   pull: never
   commands:
   - flake8 src test examples setup.py
@@ -112,7 +112,7 @@ trigger:
 steps:
 
 - name: test-base
-  image: pyrocko-fat-nest
+  image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
   - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
@@ -120,7 +120,7 @@ steps:
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
 - name: test-base-hptime
-  image: pyrocko-fat-nest
+  image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
   - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
@@ -168,7 +168,7 @@ trigger:
 
 steps:
 - name: test-gf
-  image: pyrocko-fat-nest
+  image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
   - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
@@ -176,7 +176,7 @@ steps:
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
 - name: test-gf-hptime
-  image: pyrocko-fat-nest
+  image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
   - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
@@ -223,7 +223,7 @@ trigger:
 
 steps:
 - name: test-examples
-  image: pyrocko-fat-nest
+  image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
   - mkdir -p /pyrocko-test-data/example_run_dir
@@ -233,7 +233,7 @@ steps:
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
 - name: test-examples-hptime
-  image: pyrocko-fat-nest
+  image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
   - mkdir -p /pyrocko-test-data/example_run_dir
@@ -282,7 +282,7 @@ trigger:
 
 steps:
 - name: test-gui
-  image: pyrocko-fat-nest
+  image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
   - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
@@ -290,7 +290,7 @@ steps:
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
 - name: test-gui-hptime
-  image: pyrocko-fat-nest
+  image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
   - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
@@ -343,7 +343,7 @@ trigger:
 
 steps:
 - name: build
-  image: pyrocko-nest
+  image: pyrocko-nest-debian-12
   pull: never
   commands:
   - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
@@ -545,7 +545,7 @@ trigger:
 steps:
 
 - name: build
-  image: pyrocko-nest
+  image: pyrocko-nest-debian-12
   pull: never
   commands:
   - python3 setup.py sdist
@@ -564,7 +564,7 @@ steps:
       from_secret: rsync-key
 
 - name: upload-testing
-  image: pyrocko-nest
+  image: pyrocko-nest-debian-12
   pull: never
   when:
     branch:
@@ -580,7 +580,7 @@ steps:
       from_secret: pypi-password
 
 - name: upload
-  image: pyrocko-nest
+  image: pyrocko-nest-debian-12
   pull: never
   when:
     branch:
@@ -631,7 +631,7 @@ steps:
   - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v
 
 - name: test-mixed
-  image: pyrocko-fat-nest
+  image: pyrocko-fat-nest-debian-12
   pull: never
   when:
     branch:
@@ -656,7 +656,7 @@ steps:
       from_secret: rsync-key
 
 - name: upload-testing
-  image: pyrocko-nest
+  image: pyrocko-nest-debian-12
   pull: never
   when:
     branch:
@@ -672,7 +672,7 @@ steps:
       from_secret: pypi-password
 
 - name: upload
-  image: pyrocko-nest
+  image: pyrocko-nest-debian-12
   pull: never
   when:
     branch:
@@ -1216,7 +1216,7 @@ trigger:
 
 steps:
 - name: post
-  image: pyrocko-nest
+  image: pyrocko-nest-debian-12
   pull: never
   commands:
   - maintenance/drone-matterpost.py
