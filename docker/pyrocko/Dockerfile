@@ -1,4 +1,4 @@
-FROM pyrocko-nest
+FROM pyrocko-nest-debian-12
 ENV DEBIAN_FRONTEND=noninteractive
 COPY pyrocko.git /pyrocko.git
 WORKDIR /src

@@ -34,7 +34,7 @@ steps:
   image: pyrocko-docs
   pull: never
   commands:
-  - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages . && cd doc && make html
+  - pip3 install --no-deps --no-build-isolation . && cd doc && make html
   - python3 -m pyrocko.print_version short > build/html/version.txt
 
 - name: stage
@@ -115,17 +115,30 @@ steps:
   image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
-  - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
-  - PYROCKO_TEST_DATA=/pyrocko-test-data python3 -m coverage run --parallel-mode -m pytest -v test/base
+  - pip3 install --no-deps --no-build-isolation .
+  - python3 -m coverage run --parallel-mode -m pytest -v test/base
   - for x in .coverage.* ; do mv $x $${x#.} ; done
+
+- name: test-base-debian-11
+  image: pyrocko-fat-nest-debian-11
+  pull: never
+  commands:
+  - pip3 install --no-deps --no-build-isolation .
+  - python3 -m pytest -v test/base
+
+- name: test-base-debian-10
+  image: pyrocko-fat-nest-debian-10
+  pull: never
+  commands:
+  - pip3 install --no-deps --no-build-isolation .
+  - python3 -m pytest -v test/base
 
 - name: test-base-hptime
   image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
-  - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
-  - PYROCKO_TEST_DATA=/pyrocko-test-data python3 -m coverage run --parallel-mode -m pytest -v test/base
-  - for x in .coverage.* ; do mv $x $${x#.} ; done
+  - pip3 install --no-deps --no-build-isolation .
+  - python3 -m pytest -v test/base
   environment:
     PYROCKO_USE_HIGH_PRECISION_TIME: 1
   when:
@@ -145,7 +158,11 @@ steps:
       from_secret: rsync-user
     RSYNC_KEY:
       from_secret: rsync-key
-
+  depends_on:
+  - test-base
+  - test-base-debian-11
+  - test-base-debian-10
+  - test-base-hptime
 
 ---
 
@@ -171,16 +188,30 @@ steps:
   image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
-  - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
-  - PYROCKO_TEST_DATA=/pyrocko-test-data python3 -m coverage run --parallel-mode -m pytest -v test/gf
+  - pip3 install --no-deps --no-build-isolation .
+  - python3 -m coverage run --parallel-mode -m pytest -v test/gf
   - for x in .coverage.* ; do mv $x $${x#.} ; done
+
+- name: test-gf-debian-11
+  image: pyrocko-fat-nest-debian-11
+  pull: never
+  commands:
+  - pip3 install --no-deps --no-build-isolation .
+  - python3 -m pytest -v test/gf
+
+- name: test-gf-debian-10
+  image: pyrocko-fat-nest-debian-10
+  pull: never
+  commands:
+  - pip3 install --no-deps --no-build-isolation .
+  - python3 -m pytest -v test/gf
 
 - name: test-gf-hptime
   image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
-  - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
-  - PYROCKO_TEST_DATA=/pyrocko-test-data python3 -m coverage run --parallel-mode -m pytest -v test/gf
+  - pip3 install --no-deps --no-build-isolation .
+  - python3 -m coverage run --parallel-mode -m pytest -v test/gf
   - for x in .coverage.* ; do mv $x $${x#.} ; done
   environment:
     PYROCKO_USE_HIGH_PRECISION_TIME: 1
@@ -201,6 +232,11 @@ steps:
       from_secret: rsync-user
     RSYNC_KEY:
       from_secret: rsync-key
+  depends_on:
+  - test-gf
+  - test-gf-debian-11
+  - test-gf-debian-10
+  - test-gf-hptime
 
 ---
 
@@ -228,9 +264,27 @@ steps:
   commands:
   - mkdir -p /pyrocko-test-data/example_run_dir
   - ln -sf /pyrocko-test-data/gf_stores/* /pyrocko-test-data/example_run_dir
-  - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
-  - PYROCKO_TEST_DATA=/pyrocko-test-data python3 -m coverage run --parallel-mode -m pytest -v test/examples
+  - pip3 install --no-deps --no-build-isolation .
+  - python3 -m coverage run --parallel-mode -m pytest -v test/examples
   - for x in .coverage.* ; do mv $x $${x#.} ; done
+
+- name: test-examples-debian-11
+  image: pyrocko-fat-nest-debian-11
+  pull: never
+  commands:
+  - mkdir -p /pyrocko-test-data/example_run_dir
+  - ln -sf /pyrocko-test-data/gf_stores/* /pyrocko-test-data/example_run_dir
+  - pip3 install --no-deps --no-build-isolation .
+  - python3 -m pytest -v test/examples
+
+- name: test-examples-debian-10
+  image: pyrocko-fat-nest-debian-10
+  pull: never
+  commands:
+  - mkdir -p /pyrocko-test-data/example_run_dir
+  - ln -sf /pyrocko-test-data/gf_stores/* /pyrocko-test-data/example_run_dir
+  - pip3 install --no-deps --no-build-isolation .
+  - python3 -m pytest -v test/examples
 
 - name: test-examples-hptime
   image: pyrocko-fat-nest-debian-12
@@ -238,8 +292,8 @@ steps:
   commands:
   - mkdir -p /pyrocko-test-data/example_run_dir
   - ln -sf /pyrocko-test-data/gf_stores/* /pyrocko-test-data/example_run_dir
-  - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
-  - PYROCKO_TEST_DATA=/pyrocko-test-data python3 -m coverage run --parallel-mode -m pytest -v test/examples
+  - pip3 install --no-deps --no-build-isolation .
+  - python3 -m coverage run --parallel-mode -m pytest -v test/examples
   - for x in .coverage.* ; do mv $x $${x#.} ; done
   environment:
     PYROCKO_USE_HIGH_PRECISION_TIME: 1
@@ -260,6 +314,11 @@ steps:
       from_secret: rsync-user
     RSYNC_KEY:
       from_secret: rsync-key
+  depends_on:
+  - test-examples
+  - test-examples-debian-11
+  - test-examples-debian-10
+  - test-examples-hptime
 
 ---
 
@@ -285,16 +344,30 @@ steps:
   image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
-  - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
-  - PYROCKO_TEST_DATA=/pyrocko-test-data xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
+  - pip3 install --no-deps --no-build-isolation .
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
   - for x in .coverage.* ; do mv $x $${x#.} ; done
+
+- name: test-gui-debian-11
+  image: pyrocko-fat-nest-debian-11
+  pull: never
+  commands:
+  - pip3 install --no-deps --no-build-isolation .
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
+
+- name: test-gui-debian-10
+  image: pyrocko-fat-nest-debian-10
+  pull: never
+  commands:
+  - pip3 install --no-deps --no-build-isolation .
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
 
 - name: test-gui-hptime
   image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
-  - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
-  - PYROCKO_TEST_DATA=/pyrocko-test-data xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
+  - pip3 install --no-deps --no-build-isolation .
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
   - for x in .coverage.* ; do mv $x $${x#.} ; done
   environment:
     PYROCKO_USE_HIGH_PRECISION_TIME: 1
@@ -315,6 +388,11 @@ steps:
       from_secret: rsync-user
     RSYNC_KEY:
       from_secret: rsync-key
+  depends_on:
+  - test-gui
+  - test-gui-debian-11
+  - test-gui-debian-10
+  - test-gui-hptime
 
 ---
 
@@ -346,7 +424,7 @@ steps:
   image: pyrocko-nest-debian-12
   pull: never
   commands:
-  - pip3 install --no-deps --no-build-isolation --force-reinstall --break-system-packages .
+  - pip3 install --no-deps --no-build-isolation .
   - wget -r -nH --cut-dirs=2 --no-parent --reject="index.html*" https://data.pyrocko.org/builds/${DRONE_COMMIT}/coverage/data/
   - python3 -m coverage combine coverage/data/coverage.*
   - python3 -m coverage html
@@ -640,7 +718,7 @@ steps:
       - deploy-pip
   commands:
   - pip3 install -f dist --no-index --no-deps pyrocko --break-system-packages
-  - PYROCKO_TEST_DATA=/pyrocko-test-data xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v
 
 - name: stage
   image: pyrocko-util
