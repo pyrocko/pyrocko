@@ -5,7 +5,6 @@
 
 from subprocess import check_call, CalledProcessError
 
-import os
 import os.path as op
 import re
 import logging
@@ -112,6 +111,10 @@ def _mplcmap_to_gmtcpt_code(mplcmap, steps=256):
         c[0] * 255, c[1] * 255, c[2] * 255) for c in rgbas])
 
 
+def make_cpt_path(gmt, base_cmap):
+    return gmt.tempfilename('my_%s.cpt' % base_cmap)
+
+
 def make_colormap(
         gmt,
         vmin,
@@ -185,35 +188,8 @@ def make_colormap(
         T='%g/%g/%g' % (
             vmin - margin, vmax + margin, incr),
         Z=True,
-        out_filename='my_%s.cpt' % cmap,
+        out_filename=make_cpt_path(gmt, cmap),
         suppress_defaults=True)
-
-
-def clear_temp(gridfiles=[], cpts=[]):
-    '''
-    Clear all temporary needed grid and colormap cpt files.
-
-    :param gridfiles:
-        List of all "...grd" files, which shall be deleted.
-    :type gridfiles:
-        list
-
-    :param cpts:
-        Cmaps, whose corresponding "my_<cmap>.cpt" file shall be deleted.
-    :type cpts:
-        list
-    '''
-
-    for fil in gridfiles:
-        try:
-            os.remove(fil)
-        except OSError:
-            continue
-    for fil in cpts:
-        try:
-            os.remove('my_%s.cpt' % fil)
-        except OSError:
-            continue
 
 
 def xy_to_latlon(source, x, y):
@@ -780,7 +756,7 @@ class RuptureMap(Map):
 
         self.gmt.grdimage(
             gridfile,
-            C='my_%s.cpt' % cmap,
+            C=make_cpt_path(self.gmt, cmap),
             E='200',
             Q=True,
             n='+t0.0',
@@ -898,7 +874,7 @@ class RuptureMap(Map):
         if label:
             kwargs['B'] = 'af+l%s' % label
 
-        kwargs['C'] = 'my_%s.cpt' % cmap
+        kwargs['C'] = make_cpt_path(self.gmt, cmap)
         a_str = cbar_anchor[anchor]
 
         w = self.width / 3.
@@ -970,17 +946,14 @@ class RuptureMap(Map):
 
         clim = kwargs.pop('clim', (plot_data.min(), plot_data.max()))
 
-        cpt = []
-        if not op.exists('my_%s.cpt' % kwargs['cmap']):
+        cpt_path = make_cpt_path(self.gmt, kwargs['cmap'])
+        if not op.exists(cpt_path):
             make_colormap(self.gmt, clim[0], clim[1],
                           cmap=kwargs['cmap'], space=False)
-            cpt = [kwargs['cmap']]
 
-        tmp_grd_file = 'tmpdata.grd'
+        tmp_grd_file = self.gmt.tempfilename('tmpdata.grd')
         self.patch_data_to_grid(plot_data, tmp_grd_file)
         self.draw_image(tmp_grd_file, **kwargs)
-
-        clear_temp(gridfiles=[tmp_grd_file], cpts=cpt)
 
     def draw_patch_parameter(self, attribute, **kwargs):
         '''
@@ -1053,12 +1026,10 @@ class RuptureMap(Map):
         kwargs['L'] = kwargs.get('L', '0/%g' % (num.max(times) + 1.))
         kwargs['G'] = kwargs.get('G', 'n2/3c')
 
-        tmp_grd_file = 'tmpdata.grd'
+        tmp_grd_file = self.gmt.tempfilename('tmpdata.grd')
         self.xy_data_to_grid(points_xy[:, 0], points_xy[:, 1],
                              times, tmp_grd_file)
         self.draw_contour(tmp_grd_file, **kwargs)
-
-        clear_temp(gridfiles=[tmp_grd_file], cpts=[])
 
     def draw_points(self, lats, lons, symbol='point', size=None, **kwargs):
         '''
@@ -1207,11 +1178,9 @@ class RuptureMap(Map):
         kwargs['unit'] = kwargs.get('unit', ' m')
         kwargs['G'] = kwargs.get('G', 'n2/3c')
 
-        tmp_grd_file = 'tmpdata.grd'
+        tmp_grd_file = self.gmt.tempfilename('tmpdata.grd')
         self.patch_data_to_grid(data, tmp_grd_file)
         self.draw_contour(tmp_grd_file, **kwargs)
-
-        clear_temp(gridfiles=[tmp_grd_file], cpts=[])
 
     def draw_dislocation_vector(self, time=None, **kwargs):
         '''
@@ -1244,8 +1213,6 @@ class RuptureMap(Map):
         self.draw_vector(
             tmp_grd_files[1], tmp_grd_files[0],
             **kwargs)
-
-        clear_temp(gridfiles=tmp_grd_files, cpts=[])
 
     def draw_top_edge(self, **kwargs):
         '''
@@ -2117,7 +2084,6 @@ def rupture_movie(
 
 __all__ = [
     'make_colormap',
-    'clear_temp',
     'xy_to_latlon',
     'xy_to_lw',
     'SourceError',
