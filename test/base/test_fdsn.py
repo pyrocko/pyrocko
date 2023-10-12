@@ -47,16 +47,22 @@ class FDSNTestCase(unittest.TestCase):
 
             assert ok
 
-            pstations = x.get_pyrocko_stations()
+            with self.assertRaises(stationxml.Inconsistencies):
+                x.get_pyrocko_stations(inconsistencies='raise')
+
+            pstations = x.get_pyrocko_stations(inconsistencies='warn')
             assert len(pstations) in (3, 4)
             for s in x.get_pyrocko_stations():
                 assert len(s.get_channels()) == 3
 
-            assert len(x.get_pyrocko_stations(
-                time=stt('2010-01-15 10:00:00'))) == 1
+            pstations1 = x.get_pyrocko_stations(
+                time=stt('2010-01-15 10:00:00'),
+                inconsistencies='raise')
 
-            new = stationxml.FDSNStationXML.from_pyrocko_stations(pstations)
-            assert len(new.get_pyrocko_stations()) in (3, 4)
+            assert len(pstations1) == 1
+
+            new = stationxml.FDSNStationXML.from_pyrocko_stations(pstations1)
+            assert len(new.get_pyrocko_stations()) == 1
             for s in new.get_pyrocko_stations():
                 assert len(s.get_channels()) == 3
 
@@ -67,10 +73,13 @@ class FDSNTestCase(unittest.TestCase):
             fsx = fdsn.station(site=site,
                                network='GE',
                                station='EIL',
+                               channel='BH?',
                                level='channel')
 
-            assert len(fsx.get_pyrocko_stations(
-                time=stt('2010-01-15 10:00:00'))) == 1
+            pstations = fsx.get_pyrocko_stations(
+                time=stt('2010-01-15 10:00:00'))
+
+            assert len(pstations) == 1
 
     @common.require_internet
     @common.skip_on_download_error

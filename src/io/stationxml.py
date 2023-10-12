@@ -15,6 +15,7 @@ import datetime
 import calendar
 import math
 import copy
+from collections import defaultdict
 
 import numpy as num
 
@@ -1892,7 +1893,9 @@ class FDSNStationXML(Object):
         elif timespan is not None:
             tt = timespan
 
+        ns_have = set()
         pstations = []
+        sensor_to_channels = defaultdict(list)
         for network in self.network_list:
             if not network.spans(*tt):
                 continue
@@ -1927,18 +1930,49 @@ class FDSNStationXML(Object):
                         if nsls is not None and nsl not in nsls:
                             continue
 
-                        pstations.append(
-                            pyrocko_station_from_channels(
-                                nsl,
-                                channels,
-                                inconsistencies=inconsistencies))
+                        for channel in channels:
+                            k = nsl, channel.code[:-1], \
+                                channel.start_date, channel.end_date
+                            sensor_to_channels[k].append(channel)
+
                 else:
+                    ns = (network.code, station.code)
+                    if ns in ns_have:
+                        message = 'Duplicate station ' \
+                            '(multiple epochs match): %s.%s ' % ns
+
+                        if inconsistencies == 'raise':
+                            raise Inconsistencies(message)
+                        else:
+                            logger.warning(message)
+
+                    ns_have.add(ns)
+
                     pstations.append(pyrocko.model.Station(
                         network.code, station.code, '*',
                         lat=station.latitude.value,
                         lon=station.longitude.value,
                         elevation=value_or_none(station.elevation),
                         name=station.description or ''))
+
+        sensor_have = set()
+        for (nsl, bi, _, _), channels in sensor_to_channels.items():
+            if (nsl, bi) in sensor_have:
+                message = 'Duplicate station ' \
+                    '(multiple epochs match): %s.%s.%s' % nsl
+
+                if inconsistencies == 'raise':
+                    raise Inconsistencies(message)
+                else:
+                    logger.warning(message)
+
+            sensor_have.add((nsl, bi))
+
+            pstations.append(
+                pyrocko_station_from_channels(
+                    nsl,
+                    channels,
+                    inconsistencies=inconsistencies))
 
         return pstations
 
@@ -1954,7 +1988,6 @@ class FDSNStationXML(Object):
             instances.
         :param add_flat_responses_from: unit, 'M', 'M/S' or 'M/S**2'
         '''
-        from collections import defaultdict
         network_dict = defaultdict(list)
 
         if add_flat_responses_from:
