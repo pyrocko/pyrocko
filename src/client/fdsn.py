@@ -215,8 +215,11 @@ def _request(
         post=False,
         user=None,
         passwd=None,
-        timeout=g_timeout,
+        timeout=None,
         **kwargs):
+
+    if timeout is None:
+        timeout = g_timeout
 
     url_values = urlencode(kwargs)
     if url_values:
@@ -363,7 +366,7 @@ def station(
         site=g_default_site,
         url=g_url,
         majorversion=1,
-        timeout=g_timeout,
+        timeout=None,
         check=True,
         selection=None,
         parsed=True,
@@ -475,7 +478,7 @@ def dataselect(
         site=g_default_site,
         url=g_url,
         majorversion=1,
-        timeout=g_timeout,
+        timeout=None,
         check=True,
         user=None,
         passwd=None,
@@ -566,7 +569,7 @@ def event(
         site=g_default_site,
         url=g_url,
         majorversion=1,
-        timeout=g_timeout,
+        timeout=None,
         check=True,
         user=None,
         passwd=None,
@@ -655,7 +658,7 @@ def availability(
         site=g_default_site,
         url=g_url,
         majorversion=1,
-        timeout=g_timeout,
+        timeout=None,
         check=True,
         user=None,
         passwd=None,
@@ -748,7 +751,7 @@ def check_params(
         site=g_default_site,
         url=g_url,
         majorversion=1,
-        timeout=g_timeout,
+        timeout=None,
         method='query',
         **kwargs):
 
@@ -801,7 +804,7 @@ def supported_params_wadl(
         site=g_default_site,
         url=g_url,
         majorversion=1,
-        timeout=g_timeout,
+        timeout=None,
         method='query'):
 
     '''
@@ -853,7 +856,7 @@ def wadl(
         site=g_default_site,
         url=g_url,
         majorversion=1,
-        timeout=g_timeout):
+        timeout=None):
 
     '''
     Retrieve self-description of a specific FDSN service.
@@ -897,7 +900,7 @@ def cached_wadl(
         site=g_default_site,
         url=g_url,
         majorversion=1,
-        timeout=g_timeout):
+        timeout=None):
 
     '''
     Get self-description of a specific FDSN service.
