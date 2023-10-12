@@ -939,9 +939,12 @@ class PolesZeros(BaseFilter):
 
     pz_transfer_function_type = PzTransferFunction.T(
         xmltagname='PzTransferFunctionType')
-    normalization_factor = Float.T(default=1.0,
-                                   xmltagname='NormalizationFactor')
-    normalization_frequency = Frequency.T(xmltagname='NormalizationFrequency')
+    normalization_factor = Float.T(
+        default=1.0,
+        xmltagname='NormalizationFactor')
+    normalization_frequency = Frequency.T(
+        optional=True,  # but required by standard
+        xmltagname='NormalizationFrequency')
     zero_list = List.T(PoleZero.T(xmltagname='Zero'))
     pole_list = List.T(PoleZero.T(xmltagname='Pole'))
 
@@ -998,7 +1001,7 @@ class PolesZeros(BaseFilter):
                 poles=[p.value()*factor for p in self.pole_list],
                 deltat=deltat or 0.0)
 
-        if not self.normalization_frequency.value:
+        if not self.normalization_frequency:
             log.append((
                 'warning',
                 'Cannot check pole-zero normalization factor: '
@@ -1219,7 +1222,9 @@ class ResponseStage(Object):
                 responses.extend(pz_resps)
 
                 # emulate incorrect? evalresp behaviour
-                if pzs.normalization_frequency != normalization_frequency \
+                if pzs.normalization_frequency is not None and \
+                        pzs.normalization_frequency.value \
+                        != normalization_frequency \
                         and normalization_frequency != 0.0:
 
                     try:
