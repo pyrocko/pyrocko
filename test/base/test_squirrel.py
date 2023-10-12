@@ -49,8 +49,17 @@ class SquirrelTestCase(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        for d in cls.tempdirs:
-            shutil.rmtree(d)
+        for i in range(10):
+            try:
+                for d in cls.tempdirs:
+                    if os.path.exists(d):
+                        shutil.rmtree(d)
+
+                break
+
+            except Exception:
+                # trying to prevent random fails on windows
+                time.sleep(1)
 
     def test_nslce_codes(self):
 
