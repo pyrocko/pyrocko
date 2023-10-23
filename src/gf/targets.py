@@ -16,7 +16,6 @@ from pyrocko.guts import Timestamp, Tuple, String, Float, Object,\
 from pyrocko.guts_array import Array
 from pyrocko.model import gnss
 from pyrocko.orthodrome import distance_accurate50m_numpy
-from pyrocko.util import num_full_like, num_full
 
 d2r = num.pi / 180.
 
@@ -269,8 +268,8 @@ class StaticTarget(meta.MultiLocation):
         return targets
 
     def distance_to(self, source):
-        src_lats = num_full_like(self.lats, fill_value=source.lat)
-        src_lons = num_full_like(self.lons, fill_value=source.lon)
+        src_lats = num.full_like(self.lats, fill_value=source.lat)
+        src_lons = num.full_like(self.lons, fill_value=source.lon)
 
         target_coords = self.get_latlon()
         target_lats = target_coords[:, 0]
@@ -341,8 +340,8 @@ class KiteSceneTarget(SatelliteTarget):
         size = scene.displacement.size
 
         if scene.frame.spacing == 'meter':
-            lats = num_full(size, scene.frame.llLat)
-            lons = num_full(size, scene.frame.llLon)
+            lats = num.full(size, scene.frame.llLat)
+            lons = num.full(size, scene.frame.llLon)
             north_shifts = scene.frame.gridN.data.flatten()
             east_shifts = scene.frame.gridE.data.flatten()
 

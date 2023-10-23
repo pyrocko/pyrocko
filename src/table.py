@@ -13,7 +13,6 @@ from pyrocko.guts import Object, String, Unicode, List, Int, SObject, Any
 from pyrocko.guts_array import Array
 from pyrocko import geometry, cake
 from pyrocko import orthodrome as od
-from pyrocko.util import num_full
 
 
 guts_prefix = 'pf'
@@ -88,9 +87,9 @@ class Header(SubHeader):
     def default_array(self, nrows):
         val = self.dtype(self.default)
         if not self.sub_headers:
-            return num_full((nrows,), val, dtype=self.dtype)
+            return num.full((nrows,), val, dtype=self.dtype)
         else:
-            return num_full((nrows, self.get_ncols()), val, dtype=self.dtype)
+            return num.full((nrows, self.get_ncols()), val, dtype=self.dtype)
 
 
 def anything_to_header(args):

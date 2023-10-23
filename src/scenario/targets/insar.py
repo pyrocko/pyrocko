@@ -16,7 +16,6 @@ from pyrocko import gf, util
 from pyrocko import orthodrome as od
 from pyrocko.guts import Float, Timestamp, Tuple, StringChoice, Bool, Object,\
     String
-from pyrocko.util import num_full
 
 from .base import TargetGenerator, NoiseGenerator
 from ..base import get_gsshg
@@ -266,8 +265,8 @@ class ScenePatch(Object):
 
         return self.SatelliteGeneratorTarget(
             scene_patch=self,
-            lats=num_full(ncoords, fill_value=llLat),
-            lons=num_full(ncoords, fill_value=llLon),
+            lats=num.full(ncoords, fill_value=llLat),
+            lons=num.full(ncoords, fill_value=llLon),
             east_shifts=east_shifts,
             north_shifts=north_shifts,
             theta=theta,

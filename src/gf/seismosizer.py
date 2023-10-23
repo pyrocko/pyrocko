@@ -4744,7 +4744,7 @@ class PorePressureLineSource(Source):
         points[:, 2] = self.depth + a * sd
 
         return meta.DiscretizedPorePressureSource(
-            times=util.num_full(n, self.time),
+            times=num.full(n, self.time),
             lat=self.lat,
             lon=self.lon,
             north_shifts=points[:, 0],

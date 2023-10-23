@@ -13,7 +13,6 @@ from matplotlib.transforms import Transform
 from matplotlib.colors import LinearSegmentedColormap
 
 from pyrocko import moment_tensor as mtm
-from pyrocko.util import num_full
 
 logger = logging.getLogger('pyrocko.plot.beachball')
 
@@ -680,7 +679,7 @@ def mts2amps(
     vecs2[:, 1] = num.repeat(y, nx)
 
     ii_ok = vecs2[:, 0]**2 + vecs2[:, 1]**2 <= 1.0
-    amps = num_full(nx * ny, num.nan, dtype=num.float64)
+    amps = num.full(nx * ny, num.nan, dtype=num.float64)
 
     amps[ii_ok] = 0.
     vecs3_ok = inverse_project(vecs2[ii_ok, :], projection)

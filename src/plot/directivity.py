@@ -13,7 +13,6 @@ from matplotlib.ticker import FuncFormatter
 from pyrocko.plot import beachball
 from pyrocko.gf.meta import Timing
 from pyrocko.gf import LocalEngine, Target, RectangularSource, map_anchor
-from pyrocko.util import num_full_like
 
 
 km = 1e3
@@ -391,7 +390,7 @@ def plot_directivity(
             phase.offset_is_percent = False
 
             time = store.t(phase, source, ref_target)
-            times = num_full_like(theta, time)
+            times = num.full_like(theta, time)
 
             ax.plot(theta, times, color='k', alpha=.3, lw=1., ls='--')
 

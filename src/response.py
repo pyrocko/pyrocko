@@ -15,7 +15,7 @@ import uuid
 import numpy as num
 from scipy import signal
 
-from pyrocko import util, evalresp
+from pyrocko import evalresp
 from pyrocko.guts import Object, Float, Int, String, Complex, Tuple, List, \
     StringChoice, Bool
 from pyrocko.guts_array import Array
@@ -176,7 +176,7 @@ class Gain(FrequencyResponse):
     constant = Complex.T(default=1.0+0j)
 
     def evaluate(self, freqs):
-        return util.num_full_like(freqs, self.constant, dtype=complex)
+        return num.full_like(freqs, self.constant, dtype=complex)
 
     def is_scalar(self):
         return True
@@ -729,7 +729,7 @@ class DigitalFilterResponse(FrequencyResponse):
 
     def evaluate(self, freqs):
         if self.is_scalar():
-            return util.num_full_like(freqs, self.get_scalar(), dtype=complex)
+            return num.full_like(freqs, self.get_scalar(), dtype=complex)
 
         self.check_sampling_rate()
 
@@ -909,7 +909,7 @@ class InvalidResponse(FrequencyResponse):
             logger.warning('Invalid response: %s' % self.message)
             self.have_warned = True
 
-        return util.num_full_like(freqs, None, dtype=num.complex)
+        return num.full_like(freqs, None, dtype=num.complex)
 
     @property
     def summary(self):

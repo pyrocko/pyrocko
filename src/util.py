@@ -158,6 +158,8 @@ except ImportError:
 logger = logging.getLogger('pyrocko.util')
 
 
+# fallbacks num_full and num_full_like are not needed anymore but
+# kept here because downstream code may still use these.
 try:
     num_full = num.full
 except AttributeError:
