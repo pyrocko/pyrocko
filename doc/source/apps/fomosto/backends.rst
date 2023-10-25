@@ -45,7 +45,7 @@ Use this backend for local and regional setups, or when different source and
 receiver structures should be considered. It can also be used to compute single
 force excitation Green's functions.
 
-The current version of QSEIS is ``2006b`` (at the time of writing, 2017-01-25),
+The current version of QSEIS is ``2006b`` (at the time of writing, 2023-10-25),
 and can be downloaded from https://git.pyrocko.org/pyrocko/fomosto-qseis .
 
 After downloading and installing, to initialize a Green's function store
