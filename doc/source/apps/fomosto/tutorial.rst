@@ -116,9 +116,9 @@ Installation is done for each code inside the uncompressed folder by (More infor
 
 In this example, we will use QSEIS as the modelling code.
 
-To initialize an empty Green's function store to be built with QSEIS 2006a run::
+To initialize an empty Green's function store to be built with QSEIS 2006b run::
 
-    $ fomosto init qseis.2006a my_first_gfs
+    $ fomosto init qseis.2006b my_first_gfs
 
 to use a different backend, e.g. QSSP 2010, run::
 
