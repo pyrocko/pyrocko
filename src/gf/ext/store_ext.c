@@ -1092,7 +1092,7 @@ static store_error_t store_calc_timeseries(
             nthreads = omp_get_num_procs();
         else if (nthreads > omp_get_num_procs()) {
             nthreads = omp_get_num_procs();
-            printf("store_calc_static - Warning: Desired nthreads exceeds number of physical processors, falling to %d threads\n", nthreads);
+            printf("store_calc_timeseries - Warning: Desired nthreads exceeds number of physical processors, falling to %d threads\n", nthreads);
         }
 
         #pragma omp parallel \
