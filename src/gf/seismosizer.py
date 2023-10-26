@@ -5575,6 +5575,10 @@ class LocalEngine(Engine):
         help='default store ID to be used when a request does not provide '
              'one')
 
+    nthreads = Int.T(
+        default=1,
+        help='default number of threads to utilize')
+
     def __init__(self, **kwargs):
         use_env = kwargs.pop('use_env', False)
         use_config = kwargs.pop('use_config', False)
@@ -5757,7 +5761,7 @@ class LocalEngine(Engine):
         return cache[source, store]
 
     def base_seismograms(self, source, targets, components, dsource_cache,
-                         nthreads=0):
+                         nthreads=None):
 
         target = targets[0]
 
@@ -5804,7 +5808,7 @@ class LocalEngine(Engine):
             itmin=itmin, nsamples=nsamples,
             interpolation=target.interpolation,
             optimization=target.optimization,
-            nthreads=nthreads)
+            nthreads=nthreads if nthreads is not None else 1)
 
         for i, base_seismogram in enumerate(base_seismograms):
             base_seismograms[i] = store.make_same_span(base_seismogram)
@@ -5956,9 +5960,12 @@ class LocalEngine(Engine):
         calc_timeseries = kwargs.pop('calc_timeseries', True)
 
         nprocs = kwargs.pop('nprocs', None)
-        nthreads = kwargs.pop('nthreads', 1)
         if nprocs is not None:
-            nthreads = nprocs
+            raise BadRequest(
+                'The `nprocs` keyword argument to process is no longer '
+                'available. Please use `nthreads`.')
+
+        nthreads = kwargs.pop('nthreads', self.nthreads)
 
         if request is None:
             request = Request(**kwargs)
