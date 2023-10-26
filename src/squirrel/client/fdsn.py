@@ -44,7 +44,7 @@ logger = logging.getLogger('psq.client.fdsn')
 
 sites_not_supporting = {
     'startbefore': ['geonet'],
-    'includerestricted': ['geonet']}
+    'includerestricted': ['geonet', 'ncedc', 'scedc']}
 
 
 def make_task(*args):
