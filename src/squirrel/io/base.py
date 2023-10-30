@@ -15,12 +15,14 @@ from pyrocko.io.io_common import FileLoadError
 from pyrocko.progress import progress
 
 from .backends import \
-    mseed, sac, datacube, stationxml, textfiles, virtual, yaml, tdms_idas
+    mseed, sac, datacube, stationxml, textfiles, virtual, yaml, tdms_idas, \
+    spickle
 
 from ..model import to_kind_ids
 
 backend_modules = [
-    mseed, sac, datacube, stationxml, textfiles, virtual, yaml, tdms_idas]
+    mseed, sac, datacube, stationxml, textfiles, virtual, yaml, tdms_idas,
+    spickle]
 
 
 logger = logging.getLogger('psq.io')

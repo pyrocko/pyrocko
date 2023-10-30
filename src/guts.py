@@ -11,8 +11,10 @@ import datetime
 import calendar
 import re
 import sys
+import os
 import types
 import copy
+import logging
 import os.path as op
 from collections import defaultdict
 from base64 import b64decode, b64encode
@@ -33,6 +35,8 @@ except ImportError:
 from .util import time_to_str, str_to_time, TimeStrError, hpfloat, \
     get_time_float
 
+
+logger = logging.getLogger('pyrocko.guts')
 
 ALLOW_INCLUDE = False
 
@@ -2176,6 +2180,7 @@ def _iload_all_xml(
         ns_ignore=False):
 
     from xml.parsers.expat import ParserCreate
+    from pyrocko.progress import progress
 
     parser = ParserCreate('UTF-8', namespace_separator=' ')
 
@@ -2191,14 +2196,31 @@ def _iload_all_xml(
     parser.StartNamespaceDeclHandler = handler.start_namespace
     parser.EndNamespaceDeclHandler = handler.end_namespace
 
-    while True:
-        data = stream.read(bufsize)
-        parser.Parse(data, bool(not data))
-        for element in handler.get_queued_elements():
-            yield element
+    try:
+        nbytes = os.fstat(stream.fileno()).st_size - stream.tell()
+    except Exception:
+        nbytes = None
 
-        if not data:
-            break
+    ibytes = 0
+    task = progress.task('Parsing XML', nbytes, logger=logger)
+    try:
+        while True:
+            data = stream.read(bufsize)
+            ibytes += len(data)
+            parser.Parse(data, bool(not data))
+            for element in handler.get_queued_elements():
+                yield element
+
+            task.update(ibytes)
+
+            if not data:
+                break
+
+    except Exception:
+        task.fail()
+
+    finally:
+        task.done()
 
 
 def _load_all_xml(*args, **kwargs):
@@ -2688,6 +2710,60 @@ def load_all_xml(stream, **kwargs):
 def iload_all_xml(stream, **kwargs):
     kwargs.pop('filename', None)
     return _iload_all_xml(stream, **kwargs)
+
+
+def _dump_all_spickle(objects, stream):
+    import pickle
+    header = b'SPICKLE'.ljust(512)
+    stream.write(header, )
+    for obj in objects:
+        pickle.dump(obj, stream)
+
+
+def _iload_all_spickle(stream):
+    for obj, _ in _iload_all_spickle_internal(stream):
+        yield obj
+
+
+def _load_one_spickle_internal(stream):
+    import pickle
+    fpos = stream.tell()
+    return pickle.load(stream), fpos
+
+
+def _iload_all_spickle_internal(stream, offset=None):
+    if offset is not None:
+        stream.seek(offset, 0)
+    else:
+        header = stream.read(512)
+        if not header.startswith(b'SPICKLE'):
+            raise ValueError('Not a SPICKLE file.')
+
+    while True:
+        try:
+            yield _load_one_spickle_internal(stream)
+        except EOFError:
+            break
+
+
+def _load_all_spickle(stream):
+    return list(_iload_all_spickle(stream))
+
+
+@expand_stream_args('w')
+def dump_all_spickle(objects, stream, **kwargs):
+    return _dump_all_spickle(objects, stream)
+
+
+@expand_stream_args('r')
+def iload_all_spickle(stream, **kwargs):
+    _iload_all_spickle(stream)
+
+
+@expand_stream_args('r')
+def load_all_spickle(stream, **kwargs):
+    kwargs.pop('filename', None)
+    return _load_all_spickle(stream, **kwargs)
 
 
 __all__ = guts_types + [

@@ -1903,7 +1903,8 @@ class FDSNStationXML(Object):
 
     def get_pyrocko_stations(self, nslcs=None, nsls=None,
                              time=None, timespan=None,
-                             inconsistencies='warn'):
+                             inconsistencies='warn',
+                             sloppy=False):
 
         assert inconsistencies in ('raise', 'warn')
 
@@ -1957,8 +1958,10 @@ class FDSNStationXML(Object):
                             continue
 
                         for channel in channels:
-                            k = nsl, channel.code[:-1], \
-                                channel.start_date, channel.end_date
+                            k = (nsl, channel.code[:-1])
+                            if not sloppy:
+                                k += (channel.start_date, channel.end_date)
+
                             sensor_to_channels[k].append(channel)
 
                 else:
@@ -1982,7 +1985,8 @@ class FDSNStationXML(Object):
                         name=station.description or ''))
 
         sensor_have = set()
-        for (nsl, bi, _, _), channels in sensor_to_channels.items():
+        for k, channels in sensor_to_channels.items():
+            (nsl, bi) = k[:2]
             if (nsl, bi) in sensor_have:
                 message = 'Duplicate station ' \
                     '(multiple epochs match): %s.%s.%s' % nsl

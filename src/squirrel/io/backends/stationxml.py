@@ -33,15 +33,18 @@ def detect(first512):
 
 def iload(format, file_path, segment, content):
     assert format == 'stationxml'
+    from pyrocko.io import stationxml
+    sx = stationxml.load_xml(filename=file_path)
+    yield from iload_stationxml(sx, 0, content)
+
+
+def iload_stationxml(sx, segment, content):
+    inut = 0
 
     far_future = time.time() + 20*Y
 
     from pyrocko.io import stationxml
     value_or_none = stationxml.value_or_none
-
-    sx = stationxml.load_xml(filename=file_path)
-
-    inut = 0
 
     for network in sx.network_list:
         for station in network.station_list:
@@ -54,7 +57,7 @@ def iload(format, file_path, segment, content):
                 tmax = None
 
             station_nut = model.make_station_nut(
-                file_segment=0,
+                file_segment=segment,
                 file_element=inut,
                 codes=model.CodesNSL(net, sta, '*'),
                 tmin=tmin,
@@ -96,7 +99,7 @@ def iload(format, file_path, segment, content):
                         deltat = 1.0 / out_rate_resp
 
                 nut = model.make_channel_nut(
-                    file_segment=0,
+                    file_segment=segment,
                     file_element=inut,
                     codes=model.CodesNSLCE(net, sta, loc, cha, ''),
                     tmin=tmin,
@@ -125,7 +128,7 @@ def iload(format, file_path, segment, content):
                 if channel.response:
 
                     nut = model.make_response_nut(
-                        file_segment=0,
+                        file_segment=segment,
                         file_element=inut,
                         codes=model.CodesNSLCE(net, sta, loc, cha, ''),
                         tmin=tmin,

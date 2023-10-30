@@ -34,7 +34,7 @@ from pyrocko.progress import progress
 from pyrocko import has_paths
 
 from pyrocko.guts import Object, String, Timestamp, List, Tuple, Int, Dict, \
-    Duration, Bool, clone
+    Duration, Bool, clone, dump_all_spickle
 
 guts_prefix = 'squirrel'
 
@@ -460,7 +460,9 @@ class FDSNSource(Source, has_paths.HasPaths):
                 fn = self._get_channels_path()
                 util.ensuredirs(fn)
                 fn_temp = fn + '.%i.temp' % os.getpid()
-                channel_sx.dump_xml(filename=fn_temp)
+
+                dump_all_spickle([channel_sx], filename=fn_temp)
+                # channel_sx.dump_xml(filename=fn_temp)
 
                 status = move_or_keep(fn_temp, fn)
 
@@ -853,7 +855,9 @@ class FDSNSource(Source, has_paths.HasPaths):
                     fn_temp = fn + '.%i.temp' % os.getpid()
 
                     util.ensuredirs(fn_temp)
-                    response_sx.dump_xml(filename=fn_temp)
+
+                    dump_all_spickle([response_sx], filename=fn_temp)
+                    # response_sx.dump_xml(filename=fn_temp)
 
                     status_this = move_or_keep(fn_temp, fn)
 
