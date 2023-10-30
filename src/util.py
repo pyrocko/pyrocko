@@ -1617,6 +1617,10 @@ def str_to_time_fillup(s):
 
     if s == 'now':
         return time.time()
+    elif s == 'today':
+        return today()
+    elif s == 'tomorrow':
+        return tomorrow()
 
     if len(s) in (4, 7, 10, 13, 16):
         s += '0000-01-01 00:00:00'[len(s):]
