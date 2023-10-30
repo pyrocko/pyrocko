@@ -222,7 +222,7 @@ class Task(object):
 
     def log(self, s):
         if self._logger is not None:
-            self._logger.info(s)
+            self._logger.debug(s)
 
     def get_group_time_start(self):
         if self._group:
