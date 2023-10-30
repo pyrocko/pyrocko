@@ -3,6 +3,7 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
+import math
 import numpy as num
 import os
 
@@ -238,6 +239,14 @@ in your pyrocko config file located at `$HOME/.pyrocko/config.pf`.
             self.set_parameter('strike', strike)
             self.set_parameter('dip', dip)
             self.set_parameter('rake', slip_rake)
+            m6 = event.moment_tensor.m6()
+            m9 = moment_tensor.symmat6(*m6)
+            m0_unscaled = math.sqrt(num.sum(num.array(m9)**2)) / math.sqrt(2.)
+            m9 /= m0_unscaled
+            rel_m6 = moment_tensor.to6(m9)
+            for m, val in zip('rmnn rmee rmdd rmne rmnd rmed'.split(), rel_m6):
+                self.set_parameter(m, val)
+
         else:
             self.warn(
                 'No source mechanism available for event %s. '
@@ -295,7 +304,7 @@ class DCSource(Seismosizer):
         self.add_parameter(
             Param('Rake', 'rake', 0., -180., 180.))
         self.add_parameter(
-            Param('STF duration', 'stf_duration', 0., 0., 20.))
+            Param('STF duration', 'stf_duration', 0., 0., 50.))
         self.add_parameter(
             Choice('STF type', 'stf_type', self.stf_types[0], self.stf_types))
 
@@ -313,6 +322,79 @@ class DCSource(Seismosizer):
             strike=self.strike,
             dip=self.dip,
             rake=self.rake,
+            stf=self.get_stf())
+
+
+class MTSource(Seismosizer):
+
+    def setup(self):
+        '''Customization of the snuffling.'''
+
+        self.set_name('Seismosizer: MTSource')
+        self.add_parameter(
+            Param('Time', 'time', 0.0, -50., 50.))
+        # self.add_parameter(
+        #     Param('Latitude', 'lat', 0.0, -90., 90.))
+        # self.add_parameter(
+        #     Param('Longitude', 'lon', 0.0, -180., 180.))
+        self.add_parameter(
+            Param('North shift', 'north_km', 0.0, -50., 50.))
+        self.add_parameter(
+            Param('East shift', 'east_km', 0.0, -50., 50.))
+        self.add_parameter(
+            Param('Depth', 'depth_km', 10.0, -100.0, 600.0))
+        self.add_parameter(
+            Param('Magnitude', 'magnitude', 5.0, -1.0, 9.0))
+        self.add_parameter(
+            Param('rel Mnn', 'rmnn', .0, -1.41421, 1.41421))
+        self.add_parameter(
+            Param('rel Mee', 'rmee', .0, -1.41421, 1.41421))
+        self.add_parameter(
+            Param('rel Mdd', 'rmdd', .0, -1.41421, 1.41421))
+        self.add_parameter(
+            Param('rel Mne', 'rmne', 1., -1.0, 1.0))
+        self.add_parameter(
+            Param('rel Mnd', 'rmnd', .0, -1.0, 1.0))
+        self.add_parameter(
+            Param('rel Med', 'rmed', .0, -1.0, 1.0))
+        self.add_parameter(
+            Param('STF duration', 'stf_duration', 0., 0., 50.))
+        self.add_parameter(
+            Choice('STF type', 'stf_type', self.stf_types[0], self.stf_types))
+
+        self.add_trigger('Normalize M', self.normalize)
+
+        Seismosizer.setup(self)
+
+    def normalize(self):
+        for m, val in zip(
+                'rmnn rmee rmdd rmne rmnd rmed'.split(),
+                self.get_normalized_m6()):
+            self.set_parameter(m, val)
+
+    def get_normalized_m6(self):
+        rm6 = num.array(
+            [self.rmnn, self.rmee, self.rmdd, self.rmne, self.rmnd, self.rmed],
+            dtype=float)
+
+        m9 = moment_tensor.symmat6(*rm6)
+        m0_unscaled = math.sqrt(num.sum(num.array(m9)**2)) / math.sqrt(2.)
+        m9 /= m0_unscaled
+        return moment_tensor.to6(m9)
+
+    def get_m6(self):
+        m0 = moment_tensor.magnitude_to_moment(self.magnitude)
+        return self.get_normalized_m6() * m0
+
+    def get_source(self, event):
+        return gf.MTSource(
+            time=event.time+self.time,
+            lat=event.lat,
+            lon=event.lon,
+            north_shift=self.north_km*km,
+            east_shift=self.east_km*km,
+            depth=self.depth_km*km,
+            m6=self.get_m6(),
             stf=self.get_stf())
 
 
@@ -503,6 +585,7 @@ def __snufflings__():
     '''Returns a list of snufflings to be exported by this module.'''
     return [
         DCSource(),
+        MTSource(),
         SFSource(),
         RectangularSource(),
         PseudoDynamicRuptureSource()]
