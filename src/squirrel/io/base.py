@@ -18,7 +18,7 @@ from .backends import \
     mseed, sac, datacube, stationxml, textfiles, virtual, yaml, tdms_idas, \
     spickle
 
-from ..model import to_kind_ids
+from ..model import to_kind_ids, EMPTY, Nut
 
 backend_modules = [
     mseed, sac, datacube, stationxml, textfiles, virtual, yaml, tdms_idas,
@@ -372,6 +372,15 @@ def iload(
                     n_load += 1
                     yield nut
 
+                if segment is None and len(nuts) == 0:
+                    nuts.append(
+                        Nut(
+                            file_path=path,
+                            file_format=format_this,
+                            file_mtime=mtime,
+                            file_size=size,
+                            kind_id=EMPTY))
+
                 if database and nuts != old_nuts:
                     if old_nuts or modified:
                         logger.debug(
@@ -385,6 +394,15 @@ def iload(
                             nut.file_format = format_this
                             nut.file_mtime = mtime
                             nut.file_size = size
+
+                        if len(nuts) == 0:
+                            nuts.append(
+                                Nut(
+                                    file_path=path,
+                                    file_format=format_this,
+                                    file_mtime=mtime,
+                                    file_size=size,
+                                    kind_id=EMPTY))
 
                     if not transaction:
                         transaction = database.transaction(

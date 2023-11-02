@@ -381,7 +381,8 @@ g_content_kinds = [
     'channel',
     'response',
     'event',
-    'waveform_promise']
+    'waveform_promise',
+    'empty']
 
 
 g_codes_classes = [
@@ -391,7 +392,8 @@ g_codes_classes = [
     CodesNSLCE,
     CodesNSLCE,
     CodesX,
-    CodesNSLCE]
+    CodesNSLCE,
+    CodesX]
 
 g_codes_classes_ndot = {
     0: CodesX,
@@ -443,7 +445,7 @@ def codes_patterns_for_kind(kind_id, codes):
 
 g_content_kind_ids = (
     UNDEFINED, WAVEFORM, STATION, CHANNEL, RESPONSE, EVENT,
-    WAVEFORM_PROMISE) = range(len(g_content_kinds))
+    WAVEFORM_PROMISE, EMPTY) = range(len(g_content_kinds))
 
 
 g_tmin, g_tmax = util.get_working_system_time_range()[:2]
