@@ -370,7 +370,8 @@ class FDSNSource(Source, has_paths.HasPaths):
 
         responses_path = self._get_responses_path()
         if os.path.exists(responses_path):
-            squirrel.add(responses_path, kinds=['response'])
+            squirrel.add(
+                responses_path, kinds=['response'], exclude=r'\.temp$')
 
         self._hotfix_module = None
 
@@ -751,7 +752,7 @@ class FDSNSource(Source, has_paths.HasPaths):
                         elog.append(now, order, 'aborted', str(e))
                         error_permanent(order)
 
-                except util.HTTPError as e:
+                except (util.HTTPError, fdsn.DownloadError) as e:
                     now = time.time()
                     for order in orders_now:
                         elog.append(now, order, 'http error', str(e))
