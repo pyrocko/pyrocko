@@ -527,6 +527,9 @@ class FDSNSource(Source, has_paths.HasPaths):
         except fdsn.EmptyResult:
             return stationxml.FDSNStationXML(source='dummy-empty-result')
 
+        except fdsn.DownloadError as e:
+            raise SquirrelError(str(e))
+
     def _load_constraint(self):
         fn = self._get_constraint_path()
         if op.exists(fn):
@@ -802,6 +805,9 @@ class FDSNSource(Source, has_paths.HasPaths):
 
         except fdsn.EmptyResult:
             return stationxml.FDSNStationXML(source='dummy-empty-result')
+
+        except fdsn.DownloadError as e:
+            raise SquirrelError(str(e))
 
     def update_response_inventory(self, squirrel, constraint):
         cpath = os.path.abspath(self._get_channels_path())
