@@ -1532,7 +1532,8 @@ class Response(Object):
     def get_pyrocko_response(
             self, context, fake_input_units=None, stages=(0, 1)):
 
-        fake_input_units = sanitize_units(fake_input_units)
+        if fake_input_units is not None:
+            fake_input_units = sanitize_units(fake_input_units)
 
         delivery = Delivery()
         if self.stage_list:
