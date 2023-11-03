@@ -276,7 +276,8 @@ class Location(Object):
     @property
     def coords5(self):
         return num.array([
-            self.lat, self.lon, self.north_shift, self.east_shift, self.depth])
+            self.lat, self.lon, self.north_shift, self.east_shift,
+            -self.elevation + self.depth])
 
     def location(self):
         return Location(
