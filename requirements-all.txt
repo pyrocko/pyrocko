@@ -7,6 +7,7 @@ pyyaml
 matplotlib
 requests
 uuid-backport; python_version<'3.14'
+pyproj
 pytest
 jinja2
 pybtex
