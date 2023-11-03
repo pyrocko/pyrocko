@@ -527,6 +527,7 @@ if not have_pep621_support:
             'matplotlib',
             'requests',
             'tornado',
+            'pyproj',
         ],
 
         extras_require={
