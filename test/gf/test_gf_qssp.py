@@ -49,7 +49,9 @@ class QSSPTestCase(unittest.TestCase):
         'qssp.2017' in qssp.have_backend(), 'backend qssp.2017 not available')
     def test_qssp_build_2017_rotational(self):
         qssp.init(self.tmpdir, '2017', config_params=dict(
-            stored_quantity='rotation',
+            stored_quantity='rotation_displacement',
+            component_scheme='rotational8',
+            ncomponents=8,
             source_depth_max=10e3,
             distance_min=500e3,
             distance_max=600e3))
@@ -69,7 +71,7 @@ class QSSPTestCase(unittest.TestCase):
             magnitude=6.0)
 
         targets = [gf.Target(
-            quantity='rotation',
+            quantity='rotation_displacement',
             codes=('', 'ROT', '', comp),
             lat=0.,
             lon=0.,
@@ -82,7 +84,9 @@ class QSSPTestCase(unittest.TestCase):
         'qssp.2020' in qssp.have_backend(), 'backend qssp.2020 not available')
     def test_qssp_build_2020_rotational(self):
         qssp.init(self.tmpdir, '2020', config_params=dict(
-            stored_quantity='rotation',
+            stored_quantity='rotation_displacement',
+            component_scheme='rotational8',
+            ncomponents=8,
             source_depth_max=10e3,
             distance_min=500e3,
             distance_max=600e3))
@@ -102,7 +106,7 @@ class QSSPTestCase(unittest.TestCase):
             magnitude=6.0)
 
         targets = [gf.Target(
-            quantity='rotation',
+            quantity='rotation_displacement',
             codes=('', 'ROT', '', comp),
             lat=0.,
             lon=0.,
