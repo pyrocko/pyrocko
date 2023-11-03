@@ -525,6 +525,7 @@ if not have_pep621_support:
             'pyyaml',
             'matplotlib',
             'requests',
+            'pyproj',
         ],
 
         extras_require={
