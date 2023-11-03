@@ -1590,6 +1590,9 @@ for config_type_class in gf.config_type_classes:
                     @unittest.skipIf(
                         scheme.startswith('poro'),
                         'todo: test poro')
+                    @unittest.skipIf(
+                        scheme == 'rotational8',
+                        'rotational8 scheme not yet supported by ahfullgreen')
                     def test_homogeneous_scenario(self):
                         return self._test_homogeneous_scenario(
                             config_type_class,
