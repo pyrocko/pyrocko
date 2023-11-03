@@ -2218,6 +2218,7 @@ def _iload_all_xml(
 
     except Exception:
         task.fail()
+        raise
 
     finally:
         task.done()
