@@ -8,7 +8,6 @@ Some basic geodetic functions.
 '''
 
 import math
-from functools import wraps
 
 import numpy as num
 from matplotlib.path import Path
@@ -1055,68 +1054,119 @@ def latlon_to_ne_numpy(lat0, lon0, lat, lon):
     return n, e
 
 
-_wgs84 = None
+def _geodesic_broadcast(func, *args):
+    args = float_array_broadcast(*args)
+    shape = args[0].shape
+    results = func(*[num.ascontiguousarray(x).ravel() for x in args])
+    return tuple(x.reshape(shape) for x in results)
 
 
-def get_wgs84():
-    global _wgs84
-    if _wgs84 is None:
-        from geographiclib.geodesic import Geodesic
-        _wgs84 = Geodesic.WGS84
-
-    return _wgs84
+def _flip_azimuth(azi):
+    return num.where(azi > 0., azi - 180., azi + 180.)
 
 
-def amap(n):
-
-    def wrap(f):
-        if n == 1:
-            @wraps(f)
-            def func(*args):
-                it = num.nditer(args + (None,))
-                for ops in it:
-                    ops[-1][...] = f(*ops[:-1])
-
-                return it.operands[-1]
-        elif n == 2:
-            @wraps(f)
-            def func(*args):
-                it = num.nditer(args + (None, None))
-                for ops in it:
-                    ops[-2][...], ops[-1][...] = f(*ops[:-2])
-
-                return it.operands[-2], it.operands[-1]
-        else:
-            raise ValueError('Cannot wrap %s' % f.__qualname__)
-
-        return func
-    return wrap
+def _geodesic_direct(lat1, lon1, azi1, dist):
+    from pyrocko import orthodrome_ext
+    return _geodesic_broadcast(
+        orthodrome_ext.geodesic_direct_numpy, lat1, lon1, azi1, dist)
 
 
-@amap(2)
-def ne_to_latlon2(lat0, lon0, north_m, east_m):
-    wgs84 = get_wgs84()
-    az = num.arctan2(east_m, north_m)*r2d
+def _geodesic_inverse(lat1, lon1, lat2, lon2):
+    from pyrocko import orthodrome_ext
+    return _geodesic_broadcast(
+        orthodrome_ext.geodesic_inverse_numpy, lat1, lon1, lat2, lon2)
+
+
+def ne_to_latlon_geodesic(lat0, lon0, north_m, east_m):
+    '''
+    Transform local cartesian coordinates to latitude and longitude.
+
+    Geodesic computation on the WGS84 ellipsoid, using the algorithms of
+    Karney (2013) from GeographicLib. Accurate to a few nanometers.
+
+    :param lat0: Latitude of the origin [deg].
+    :param lon0: Longitude of the origin [deg].
+    :param north_m: Northing [m].
+    :param east_m: Easting [m].
+    :type lat0, lon0, north_m, east_m: :py:class:`float` or
+        :py:class:`~numpy.ndarray` (broadcast against each other)
+
+    :returns: ``(lat, lon)``, latitudes and longitudes [deg].
+    '''
+    north_m, east_m = float_array_broadcast(north_m, east_m)
+    azi = num.arctan2(east_m, north_m)*r2d
     dist = num.sqrt(east_m**2 + north_m**2)
-    x = wgs84.Direct(lat0, lon0, az, dist)
-    return x['lat2'], x['lon2']
+    lat, lon, _ = _geodesic_direct(lat0, lon0, azi, dist)
+    return lat, lon
 
 
-@amap(2)
-def latlon_to_ne2(lat0, lon0, lat1, lon1):
-    wgs84 = get_wgs84()
-    x = wgs84.Inverse(lat0, lon0, lat1, lon1)
-    dist = x['s12']
-    az = x['azi1']
-    n = num.cos(az*d2r)*dist
-    e = num.sin(az*d2r)*dist
+def latlon_to_ne_geodesic(lat0, lon0, lat1, lon1):
+    '''
+    Transform latitude and longitude to local cartesian coordinates.
+
+    Northing and easting are derived from the geodesic distance and the
+    azimuth at the origin. Geodesic computation on the WGS84 ellipsoid, using
+    the algorithms of Karney (2013) from GeographicLib.
+
+    :param lat0: Latitude of the origin [deg].
+    :param lon0: Longitude of the origin [deg].
+    :param lat1: Latitude of the point(s) [deg].
+    :param lon1: Longitude of the point(s) [deg].
+    :type lat0, lon0, lat1, lon1: :py:class:`float` or
+        :py:class:`~numpy.ndarray` (broadcast against each other)
+
+    :returns: ``(north_m, east_m)``, northing and easting [m].
+    '''
+    dist, azi, _ = _geodesic_inverse(lat0, lon0, lat1, lon1)
+    n = num.cos(azi*d2r)*dist
+    e = num.sin(azi*d2r)*dist
     return n, e
 
 
-@amap(1)
-def distance_accurate15nm(lat1, lon1, lat2, lon2):
-    wgs84 = get_wgs84()
-    return wgs84.Inverse(lat1, lon1, lat2, lon2)['s12']
+def distance_geodesic(lat1, lon1, lat2, lon2):
+    '''
+    Calculate geodesic distance between points on the WGS84 ellipsoid.
+
+    Uses the algorithms of Karney (2013) from GeographicLib. Accurate to a
+    few nanometers.
+
+    :param lat1: Latitude of point(s) 1 [deg].
+    :param lon1: Longitude of point(s) 1 [deg].
+    :param lat2: Latitude of point(s) 2 [deg].
+    :param lon2: Longitude of point(s) 2 [deg].
+    :type lat1, lon1, lat2, lon2: :py:class:`float` or
+        :py:class:`~numpy.ndarray` (broadcast against each other)
+
+    :returns: Distance [m].
+    '''
+    return _geodesic_inverse(lat1, lon1, lat2, lon2)[0]
+
+
+def azibazi_geodesic(lat1, lon1, lat2, lon2):
+    '''
+    Calculate azimuth and backazimuth of geodesics on the WGS84 ellipsoid.
+
+    Uses the algorithms of Karney (2013) from GeographicLib.
+
+    :param lat1: Latitude of point(s) 1 [deg].
+    :param lon1: Longitude of point(s) 1 [deg].
+    :param lat2: Latitude of point(s) 2 [deg].
+    :param lon2: Longitude of point(s) 2 [deg].
+    :type lat1, lon1, lat2, lon2: :py:class:`float` or
+        :py:class:`~numpy.ndarray` (broadcast against each other)
+
+    :returns: ``(azi, bazi)``, azimuth at point 1 towards point 2 and
+        backazimuth at point 2 towards point 1 [deg], in the range
+        ``(-180, 180]``.
+    '''
+    _, azi, azi2 = _geodesic_inverse(lat1, lon1, lat2, lon2)
+    return azi, _flip_azimuth(azi2)
+
+
+# Names of the previous, geographiclib based implementation.
+ne_to_latlon2 = ne_to_latlon_geodesic
+latlon_to_ne2 = latlon_to_ne_geodesic
+distance_accurate15nm = distance_geodesic
 
 
 def positive_region(region):

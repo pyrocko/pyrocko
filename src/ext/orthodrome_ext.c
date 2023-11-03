@@ -16,6 +16,8 @@
 #endif
 #include <math.h>
 
+#include "geodesic.h"
+
 #ifndef max
     #define max(a, b) \
        ({ __typeof__ (a) _a = (a); \
@@ -37,6 +39,9 @@
 #define EARTH_OBLATENESS 1./298.257223563
 #define EARTHRADIUS_EQ 6378140.0
 #define EARTHRADIUS 6371000.0
+
+#define WGS84_A 6378137.0
+#define WGS84_F (1./298.257223563)
 
 struct module_state {
     PyObject *error;
@@ -233,6 +238,24 @@ static void distance_accurate50m_array(float64_t *alats, float64_t *alons, float
     }
 }
 
+static void geodesic_direct_array(float64_t *lats1, float64_t *lons1, float64_t *azis1, float64_t *dists, npy_intp size, float64_t *lats2, float64_t *lons2, float64_t *azis2) {
+    npy_intp i;
+    struct geod_geodesic g;
+    geod_init(&g, WGS84_A, WGS84_F);
+    for (i = 0; i < size; i++) {
+        geod_direct(&g, lats1[i], lons1[i], azis1[i], dists[i], &lats2[i], &lons2[i], &azis2[i]);
+    }
+}
+
+static void geodesic_inverse_array(float64_t *lats1, float64_t *lons1, float64_t *lats2, float64_t *lons2, npy_intp size, float64_t *dists, float64_t *azis1, float64_t *azis2) {
+    npy_intp i;
+    struct geod_geodesic g;
+    geod_init(&g, WGS84_A, WGS84_F);
+    for (i = 0; i < size; i++) {
+        geod_inverse(&g, lats1[i], lons1[i], lats2[i], lons2[i], &dists[i], &azis1[i], &azis2[i]);
+    }
+}
+
 /*
 Wrapper shizzle
 */
@@ -372,6 +395,69 @@ static PyObject * w_azibazi_numpy(PyObject *m, PyObject *args) {
     return Py_BuildValue("NN", (PyObject *) azis_arr, (PyObject *) bazis_arr);
 }
 
+typedef void (*geodesic_array_func)(float64_t*, float64_t*, float64_t*, float64_t*, npy_intp, float64_t*, float64_t*, float64_t*);
+
+static PyObject* geodesic_numpy(PyObject *args, geodesic_array_func func, const char *usage) {
+    PyObject *in_arrs[4];
+    PyArrayObject *c_in_arrs[4], *out_arrs[3];
+    npy_intp size[1];
+    int i;
+
+    if (! PyArg_ParseTuple(args, "OOOO", &in_arrs[0], &in_arrs[1], &in_arrs[2], &in_arrs[3])) {
+        PyErr_SetString(PyExc_ValueError, usage);
+        return NULL;
+    }
+
+    if (!good_array(in_arrs[0], NPY_FLOAT64, -1, -1, (npy_intp *) -1)) {
+        return NULL;
+    }
+
+    size[0] = PyArray_SIZE((PyArrayObject*) in_arrs[0]);
+
+    for (i = 1; i < 4; i++) {
+        if (!good_array(in_arrs[i], NPY_FLOAT64, size[0], -1, (npy_intp *) -1)) {
+            return NULL;
+        }
+    }
+
+    for (i = 0; i < 4; i++) {
+        c_in_arrs[i] = PyArray_GETCONTIGUOUS((PyArrayObject*) in_arrs[i]);
+    }
+
+    for (i = 0; i < 3; i++) {
+        out_arrs[i] = (PyArrayObject*) PyArray_EMPTY(1, size, NPY_FLOAT64, 0);
+    }
+
+    Py_BEGIN_ALLOW_THREADS
+    func(
+        PyArray_DATA(c_in_arrs[0]), PyArray_DATA(c_in_arrs[1]),
+        PyArray_DATA(c_in_arrs[2]), PyArray_DATA(c_in_arrs[3]),
+        size[0],
+        PyArray_DATA(out_arrs[0]), PyArray_DATA(out_arrs[1]),
+        PyArray_DATA(out_arrs[2]));
+    Py_END_ALLOW_THREADS
+
+    for (i = 0; i < 4; i++) {
+        Py_DECREF(c_in_arrs[i]);
+    }
+
+    return Py_BuildValue("NNN", (PyObject *) out_arrs[0], (PyObject *) out_arrs[1], (PyObject *) out_arrs[2]);
+}
+
+static PyObject* w_geodesic_direct_numpy(PyObject *m, PyObject *args) {
+    (void) m;
+    return geodesic_numpy(
+        args, geodesic_direct_array,
+        "usage: geodesic_direct_numpy(lats1, lons1, azis1, dists) -> (lats2, lons2, azis2)");
+}
+
+static PyObject* w_geodesic_inverse_numpy(PyObject *m, PyObject *args) {
+    (void) m;
+    return geodesic_numpy(
+        args, geodesic_inverse_array,
+        "usage: geodesic_inverse_numpy(lats1, lons1, lats2, lons2) -> (dists, azis1, azis2)");
+}
+
 static PyMethodDef orthodrome_ext_methods[] = {
     {"distance_accurate50m", (PyCFunction) w_distance_accurate50m, METH_VARARGS,
 "Calculate great circle distance between pair of points on ellipsoidal earth.\n\n\
@@ -419,6 +505,32 @@ static PyMethodDef orthodrome_ext_methods[] = {
 :type blat: :py:class:`numpy.ndarray`\n\
 :param blon: Longitudes of points 2\n\
 :type blon: :py:class:`numpy.ndarray`" },
+
+    {"geodesic_direct_numpy", (PyCFunction) w_geodesic_direct_numpy, METH_VARARGS,
+"Solve direct geodesic problem on the WGS84 ellipsoid (array version).\n\n\
+Uses the algorithms of Karney (2013) from GeographicLib.\n\n\
+:param lats1: Latitudes of start points [deg].\n\
+:type lats1: :py:class:`numpy.ndarray`\n\
+:param lons1: Longitudes of start points [deg].\n\
+:type lons1: :py:class:`numpy.ndarray`\n\
+:param azis1: Azimuths at start points [deg].\n\
+:type azis1: :py:class:`numpy.ndarray`\n\
+:param dists: Distances along the geodesics [m].\n\
+:type dists: :py:class:`numpy.ndarray`\n\
+:returns: ``(lats2, lons2, azis2)``, latitudes, longitudes and forward azimuths at end points [deg]." },
+
+    {"geodesic_inverse_numpy", (PyCFunction) w_geodesic_inverse_numpy, METH_VARARGS,
+"Solve inverse geodesic problem on the WGS84 ellipsoid (array version).\n\n\
+Uses the algorithms of Karney (2013) from GeographicLib.\n\n\
+:param lats1: Latitudes of points 1 [deg].\n\
+:type lats1: :py:class:`numpy.ndarray`\n\
+:param lons1: Longitudes of points 1 [deg].\n\
+:type lons1: :py:class:`numpy.ndarray`\n\
+:param lats2: Latitudes of points 2 [deg].\n\
+:type lats2: :py:class:`numpy.ndarray`\n\
+:param lons2: Longitudes of points 2 [deg].\n\
+:type lons2: :py:class:`numpy.ndarray`\n\
+:returns: ``(dists, azis1, azis2)``, distances [m], azimuths at points 1 and forward azimuths at points 2 [deg]." },
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };

@@ -434,9 +434,12 @@ ext_modules = [
 
     Extension(
         'orthodrome_ext',
-        include_dirs=[get_numpy_include()],
+        include_dirs=[get_numpy_include(),
+                      op.join('src', 'ext', 'geographiclib-c-2.2')],
+        define_macros=[('GEOD_DLL', '')],
         extra_compile_args=extra_compile_args,
-        sources=[op.join('src', 'ext', 'orthodrome_ext.c')]),
+        sources=[op.join('src', 'ext', 'orthodrome_ext.c'),
+                 op.join('src', 'ext', 'geographiclib-c-2.2', 'geodesic.c')]),
 
     Extension(
         'parstack_ext',

@@ -63,15 +63,6 @@ def dark(color, factor=0.5):
     return tuple(c*factor for c in color)
 
 
-def have_geographiclib():
-    try:
-        from geographiclib.geodesic import Geodesic  # noqa
-        return True
-
-    except ImportError:
-        return False
-
-
 class OrthodromeTestCase(unittest.TestCase):
 
     @classmethod
@@ -306,10 +297,10 @@ class OrthodromeTestCase(unittest.TestCase):
         b1.set_origin(lat=9., lon=11)
         b2 = Dummy(b0.lat, b0.lon, b0.depth)
 
-        dist_ab = orthodrome.distance_accurate50m(
+        dist_ab = orthodrome.distance_geodesic(
             a0.lat, a0.lon, b0.lat, b0.lon)
 
-        azi_ab, bazi_ab = orthodrome.azibazi(
+        azi_ab, bazi_ab = orthodrome.azibazi_geodesic(
             a0.lat, a0.lon, b0.lat, b0.lon)
 
         def g_to_e(*args):
@@ -320,8 +311,8 @@ class OrthodromeTestCase(unittest.TestCase):
 
         dist_3d_compare = math.sqrt(num.sum((a_vec - b_vec)**2))
 
-        north_shift_compare, east_shift_compare = orthodrome.latlon_to_ne(
-            a0.lat, a0.lon, b0.lat, b0.lon)
+        north_shift_compare, east_shift_compare = \
+            orthodrome.latlon_to_ne_geodesic(a0.lat, a0.lon, b0.lat, b0.lon)
 
         for a in [a0, a1]:
             for b in [b0, b1, b2]:
@@ -349,7 +340,6 @@ class OrthodromeTestCase(unittest.TestCase):
         assert orthodrome.wrap(10, -10, 10) == -10
         assert orthodrome.wrap(10.001, -10, 10) == -9.999
 
-    @unittest.skip('needs inspection')
     def test_local_distances(self):
 
         for reflat, reflon in [
@@ -361,16 +351,75 @@ class OrthodromeTestCase(unittest.TestCase):
                 (0.0, -180.0),
                 (90.0, 180.0)]:
 
-            north, east = serialgrid(num.linspace(-10*km, 10*km, 21),
-                                     num.linspace(-10*km, 10*km, 21))
+            north, east = serialgrid(
+                num.linspace(-10*km, 10*km, 21),
+                num.linspace(-10*km, 10*km, 21))
 
-            lat, lon = orthodrome.ne_to_latlon2(reflat, reflon, north, east)
-            north2, east2 = orthodrome.latlon_to_ne2(reflat, reflon, lat, lon)
+            lat, lon = orthodrome.ne_to_latlon_geodesic(
+                reflat, reflon, north, east)
+            north2, east2 = orthodrome.latlon_to_ne_geodesic(
+                reflat, reflon, lat, lon)
             dist1 = num.sqrt(north**2 + east**2)
             dist2 = num.sqrt(north2**2 + east2**2)
-            dist3 = orthodrome.distance_accurate15nm(reflat, reflon, lat, lon)
+            dist3 = orthodrome.distance_geodesic(reflat, reflon, lat, lon)
             assert num.all(num.abs(dist1-dist2) < 0.0001)
             assert num.all(num.abs(dist1-dist3) < 0.0001)
+
+    def test_geodesic(self):
+        # Test cases from GeographicLib's geodtest.c:
+        # (lat1, lon1, azi1, lat2, lon2, azi2, s12)
+        cases = num.array([
+            (35.60777, -139.44815, 111.09874842956033,
+             -11.17491, -69.95921, 129.28927088970877,
+             8935244.56048183),
+            (55.52454, 106.05087, 22.0200598809828,
+             77.03196, 197.18234, 109.11204111067151,
+             4105086.171392441),
+            (-21.97856, 142.59065, -32.44456876433189,
+             41.84138, 98.56635, -41.84359951440466,
+             8394328.894657671),
+            (-66.99028, 112.2363, 173.73491240878403,
+             -12.70631, 285.90344, 2.512956620913668,
+             11150344.231208025),
+            (-17.42761, 173.34268, -159.03355766119293,
+             -15.84784, 5.93557, -20.78748465153699,
+             16076603.163118068),
+            (32.84994, 48.28919, 150.492927788122,
+             -56.28556, 202.29132, 48.11344939981676,
+             16727068.943816446)])
+
+        lat1, lon1, azi1, lat2, lon2, azi2, s12 = cases.T
+
+        def wrap180(x):
+            return (x + 180.) % 360. - 180.
+
+        dist = orthodrome.distance_geodesic(lat1, lon1, lat2, lon2)
+        assert_allclose(dist, s12, atol=1e-8, rtol=0.)
+
+        azi, bazi = orthodrome.azibazi_geodesic(lat1, lon1, lat2, lon2)
+        assert_allclose(azi, azi1, atol=1e-13, rtol=0.)
+        assert_allclose(
+            wrap180(bazi - azi2 - 180.), 0., atol=1e-13, rtol=0.)
+
+        north = num.cos(azi1*d2r) * s12
+        east = num.sin(azi1*d2r) * s12
+        lat, lon = orthodrome.ne_to_latlon_geodesic(lat1, lon1, north, east)
+        assert_allclose(lat, lat2, atol=1e-9, rtol=0.)
+        assert_allclose(wrap180(lon - lon2), 0., atol=1e-9, rtol=0.)
+
+        north2, east2 = orthodrome.latlon_to_ne_geodesic(
+            lat1, lon1, lat2, lon2)
+        assert_allclose(north2, north, atol=1e-6, rtol=0.)
+        assert_allclose(east2, east, atol=1e-6, rtol=0.)
+
+        # scalars and broadcasting
+        assert_allclose(
+            orthodrome.distance_geodesic(lat1[0], lon1[0], lat2[0], lon2[0]),
+            s12[0], atol=1e-8, rtol=0.)
+
+        dist = orthodrome.distance_geodesic(
+            lat1[0], lon1[0], lat2[num.newaxis, :], lon2[num.newaxis, :])
+        assert dist.shape == (1, cases.shape[0])
 
     def test_midpoint(self):
         center_lons = num.linspace(0., 180., 5)
@@ -404,7 +453,6 @@ class OrthodromeTestCase(unittest.TestCase):
                                 '(maximum error)\n tested lat/lon: %s/%s' %
                                 (lat, lon))
 
-    @unittest.skipUnless(have_geographiclib(), 'geographiclib not available')
     def test_geodetic_to_ecef(self):
         orthodrome.geodetic_to_ecef(23., 0., 0.)
 
@@ -419,7 +467,6 @@ class OrthodromeTestCase(unittest.TestCase):
         for p in points:
             assert_ae(orthodrome.geodetic_to_ecef(*p[0]), p[1])
 
-    @unittest.skipUnless(have_geographiclib(), 'geographiclib not available')
     def test_ecef_to_geodetic(self):
         ncoords = 5
         lats = num.random.uniform(-90., 90, size=ncoords)
@@ -558,7 +605,7 @@ class OrthodromeTestCase(unittest.TestCase):
 
 
 def serialgrid(x, y):
-    return num.repeat(x, y.size), num.tile(y, x.size)
+    return [v.flatten() for v in num.meshgrid(x, y, indexing='ij')]
 
 
 def plot_erroneous_ne_to_latlon():

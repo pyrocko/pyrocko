@@ -4,6 +4,7 @@ recursive-include libmseed *.h *.c
 recursive-include evalresp-3.3.0 *.h *.c
 recursive-include src *.md
 recursive-include src/ext/pyavl-1.12 *
+recursive-include src/ext/geographiclib-c-2.2 *
 recursive-include debian *
 include maintenance/readme-pip.rst
 include *.md *.tar.gz *.cfg *.patch

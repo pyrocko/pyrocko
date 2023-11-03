@@ -67,6 +67,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   remote/forwarded access.
 
 ### Changed
+- Distances, azimuths and offsets between stations, events and other
+  locations are now computed exactly on the WGS84 ellipsoid, instead of with
+  approximations accurate to tens of meters. Results change slightly.
 - `squirrel jackseis`: chopped output traces are now clipped exactly to
   the requested time span, instead of being extended to the full
   processing block.
