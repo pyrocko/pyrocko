@@ -1676,12 +1676,15 @@ class Coverage(Object):
     Information about times covered by a waveform or other time series data.
     '''
     kind_id = Int.T(
-        help='Content type.')
+        help='Content type.',
+        optional=True)
     pattern = Codes.T(
         help='The codes pattern in the request, which caused this entry to '
-             'match.')
+             'match.',
+        optional=True)
     codes = Codes.T(
-        help='NSLCE or NSL codes identifier of the time series.')
+        help='NSLCE or NSL codes identifier of the time series.',
+        optional=True)
     deltat = Float.T(
         help='Sampling interval [s]',
         optional=True)
@@ -1696,7 +1699,8 @@ class Coverage(Object):
         help='List of change points, with entries of the form '
              '``(time, count)``, where a ``count`` of zero indicates start of '
              'a gap, a value of 1 start of normal data coverage and a higher '
-             'value duplicate or redundant data coverage.')
+             'value duplicate or redundant data coverage.',
+        optional=True)
 
     @classmethod
     def from_values(cls, args):
@@ -1722,11 +1726,11 @@ class Coverage(Object):
 
         return (
             self.__class__.__name__,
-            to_kind(self.kind_id),
-            str(self.codes),
+            to_kind(self.kind_id) if self.kind_id is not None else 'none',
+            str(self.codes) if self.codes is not None else 'none',
             ts,
             '%10.3g' % srate if srate else '',
-            '%i' % len(self.changes),
+            '%i' % len(self.changes) if self.changes is not None else 'none',
             '%s' % duration_to_str(total) if total else 'none')
 
     @property
@@ -1760,6 +1764,9 @@ class Coverage(Object):
         return total_t
 
     def iter_spans(self):
+        if self.changes is None:
+            return
+
         last = None
         for (t, count) in self.changes:
             if last is not None:
@@ -1770,6 +1777,9 @@ class Coverage(Object):
             last = (t, count)
 
     def iter_uncovered_by(self, other):
+        if None in (self.changes, other.changes):
+            return
+
         a = self
         b = other
         ia = ib = -1
@@ -1812,6 +1822,66 @@ class Coverage(Object):
         if group:
             yield (group[0][0], group[-1][1])
 
+    def changes_as_arrays(self):
+        if self.changes is None:
+            return None, None
+
+        time_float = util.get_time_float()
+        times = num.array([t for (t, _) in self.changes], dtype=time_float)
+        counts = num.array([c for (_, c) in self.changes], dtype=int)
+        return times, counts
+
+
+def same_or_none(xs):
+    xs = list(xs)
+    if not xs:
+        return None
+
+    if all(x == xs[0] for x in xs):
+        return xs[0]
+    else:
+        return None
+
+
+def join_coverages(coverages):
+    assert len(coverages) > 0
+
+    tmin = min(coverage.tmin for coverage in coverages)
+    tmax = max(coverage.tmax for coverage in coverages)
+
+    kind_id = same_or_none(coverage.kind_id for coverage in coverages)
+    deltat = same_or_none(coverage.deltat for coverage in coverages)
+
+    if any(coverage.changes is None for coverage in coverages):
+        changes = None
+    else:
+        all_times = []
+        all_diff_counts = []
+        for coverage in coverages:
+            times, counts = coverage.changes_as_arrays()
+            diff_counts = counts.copy()
+            diff_counts[0] = counts[0]
+            diff_counts[1:] = counts[1:] - counts[:-1]
+            all_diff_counts.append(diff_counts)
+            all_times.append(times)
+
+        times = num.concatenate(all_times)
+        diff_counts = num.concatenate(all_diff_counts)
+        iorder = num.argsort(times)
+        times = times[iorder]
+        diff_counts = diff_counts[iorder]
+        counts = num.cumsum(diff_counts)
+        changes = list(zip(times, counts))
+
+    coverage = Coverage(
+        kind_id=kind_id,
+        tmin=tmin,
+        tmax=tmax,
+        deltat=deltat,
+        changes=changes)
+
+    return coverage
+
 
 __all__ = [
     'UNDEFINED',
@@ -1843,5 +1913,6 @@ __all__ = [
     'Response',
     'Nut',
     'Coverage',
+    'join_coverages',
     'WaveformPromise',
 ]
