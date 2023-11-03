@@ -45,6 +45,7 @@ dependencies = [
     "matplotlib",
     "requests",
     "tornado",
+    "pyproj",
 ]
 
 [project.optional-dependencies]

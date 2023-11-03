@@ -26,6 +26,7 @@ requirements:
     - pyqt <6
     - pyyaml
     - requests
+    - pyproj
     - jinja2
 
 build:
