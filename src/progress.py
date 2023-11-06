@@ -11,7 +11,7 @@ import sys
 import time
 import logging
 
-from .get_terminal_size import get_terminal_size
+from shutil import get_terminal_size
 
 logger = logging.getLogger('pyrocko.progress')
 

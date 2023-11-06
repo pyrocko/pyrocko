@@ -8,10 +8,10 @@ Implementation of :app:`squirrel coverage`.
 '''
 
 import time
+from shutil import get_terminal_size
 
 from pyrocko import util
 from pyrocko.plot import terminal
-from pyrocko.get_terminal_size import get_terminal_size
 from pyrocko.squirrel.error import ToolError
 
 from ..common import ldq

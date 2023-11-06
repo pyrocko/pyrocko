@@ -146,7 +146,7 @@ def bar(view_tmin, view_tmax, changes, tmin, tmax, sx):
 
 
 if __name__ == '__main__':
-    from ..get_terminal_size import get_terminal_size
+    from shutil import get_terminal_size
     sx, _ = get_terminal_size()
 
     view_tmin = 0.
