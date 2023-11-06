@@ -54,6 +54,9 @@ def get_catalog(name):
     elif name == 'gcmt':
         from pyrocko.client.globalcmt import GlobalCMT
         return GlobalCMT()
+    elif name == 'isc':
+        from pyrocko.client.isc import ISC
+        return ISC()
     else:
         raise NoSuchCatalog(name)
 
