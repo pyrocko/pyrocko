@@ -2105,6 +2105,20 @@ def match_nslcs(patterns, nslcs):
     return matching
 
 
+def glob_filter(patterns, names):
+    '''
+    Select names matching any of the given patterns.
+    '''
+
+    if not patterns:
+        return names
+
+    rpattern = re.compile(r'|'.join(
+        fnmatch.translate(pattern) for pattern in patterns))
+
+    return [name for name in names if rpattern.match(name)]
+
+
 class Timeout(Exception):
     pass
 

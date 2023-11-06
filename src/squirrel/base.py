@@ -787,8 +787,9 @@ class Squirrel(Selection):
         Read dataset description from file and add its contents.
 
         :param ds:
-            Path to dataset description file or dataset description object
-            . See :py:mod:`~pyrocko.squirrel.dataset`.
+            Path to dataset description file, dataset description object
+            or name of a built-in dataset. See
+            :py:mod:`~pyrocko.squirrel.dataset`.
         :type ds:
             :py:class:`str` or :py:class:`~pyrocko.squirrel.dataset.Dataset`
 
