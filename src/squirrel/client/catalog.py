@@ -169,7 +169,7 @@ class CatalogSource(Source):
                 return
 
             if tmin >= tmax:
-                return
+                tmax = tmin
 
             tnow = time.time()
             modified = False
@@ -177,16 +177,22 @@ class CatalogSource(Source):
             if tmax > tnow:
                 tmax = tnow
 
-            if not self._chain:
-                self._chain = [Link(tmin, tmax, tnow)]
+            chain = []
+            this_tmin = tmin
+            for link in self._chain:
+                if this_tmin < link.tmin and tmax > this_tmin:
+                    chain.append(Link(this_tmin, min(tmax, link.tmin), tnow))
+                    modified = True
+
+                chain.append(link)
+                this_tmin = link.tmax
+
+            if this_tmin < tmax:
+                chain.append(Link(this_tmin, tmax, tnow))
                 modified = True
-            else:
-                if tmin < self._chain[0].tmin:
-                    self._chain[0:0] = [Link(tmin, self._chain[0].tmin, tnow)]
-                    modified = True
-                if self._chain[-1].tmax < tmax:
-                    self._chain.append(Link(self._chain[-1].tmax, tmax, tnow))
-                    modified = True
+
+            if modified:
+                self._chain = chain
 
             chain = []
             remove = []
