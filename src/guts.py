@@ -2180,7 +2180,7 @@ def _iload_all_xml(
         ns_ignore=False):
 
     from xml.parsers.expat import ParserCreate
-    from pyrocko.progress import progress
+    from pyrocko import progress
 
     parser = ParserCreate('UTF-8', namespace_separator=' ')
 

@@ -13,26 +13,6 @@ class ProgressTestCase(unittest.TestCase):
     def demo_terminal_status_window(self):
         self.test_terminal_status_window(slow=True)
 
-    def test_terminal_status_window(self, slow=False):
-        util.setup_logging('test_progress', 'info')
-
-        frames = []
-        for iframe in range(11):
-            lines = []
-            for iline in range(5-abs(iframe-5)):
-                lines.append(str(iframe) * (iframe % 4))
-
-            frames.append(lines)
-
-        with progress.TerminalStatusViewer() as t:
-            for iframe, lines in enumerate(frames):
-                logger.info('frame %i' % iframe)
-                t.draw(lines)
-                if slow:
-                    time.sleep(1.0)
-                else:
-                    time.sleep(0.1)
-
     def demo_progress(self):
         util.setup_logging('test_progress', 'info')
         self.test_progress(slow=True)

@@ -30,7 +30,7 @@ from pyrocko.client import fdsn
 from pyrocko import util, trace, io
 from pyrocko.io.io_common import FileLoadError
 from pyrocko.io import stationxml
-from pyrocko.progress import progress
+from pyrocko import progress
 from pyrocko import has_paths
 
 from pyrocko.guts import Object, String, Timestamp, List, Tuple, Int, Dict, \

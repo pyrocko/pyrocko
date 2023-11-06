@@ -516,17 +516,20 @@ def squirrel_from_selection_arguments(args):
 
     squirrel = base.Squirrel(persistent=args.persistent)
 
-    if args.paths:
-        squirrel.add(
-            args.paths,
-            check=args.check,
-            format=args.format,
-            kinds=args.kinds_add or None,
-            include=args.include,
-            exclude=args.exclude)
+    with progress.view():
+        if args.paths:
+            squirrel.add(
+                args.paths,
+                check=args.check,
+                format=args.format,
+                kinds=args.kinds_add or None,
+                include=args.include,
+                exclude=args.exclude)
 
-    for dataset_path in args.datasets:
-        squirrel.add_dataset(dataset_path, check=args.check)
+        with progress.task('add datasets', logger=logger) as task:
+            for dataset_path in task(args.datasets):
+                squirrel.add_dataset(
+                    dataset_path, check=args.check)
 
     return squirrel
 

@@ -748,7 +748,7 @@ class BetterHelpFormatter(optparse.IndentedHelpFormatter):
 
 class ProgressBar:
     def __init__(self, label, n):
-        from pyrocko.progress import progress
+        from pyrocko import progress
         self._context = progress.view()
         self._context.__enter__()
         self._task = progress.task(label, n)

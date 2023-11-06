@@ -11,7 +11,7 @@ import math
 import logging
 
 from pyrocko.squirrel.error import SquirrelError
-from pyrocko.progress import progress
+from pyrocko import progress
 
 logger = logging.getLogger('psq.cli.summon')
 

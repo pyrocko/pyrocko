@@ -12,7 +12,7 @@ import logging
 
 from pyrocko import util
 from pyrocko.io.io_common import FileLoadError
-from pyrocko.progress import progress
+from pyrocko import progress
 
 from .backends import \
     mseed, sac, datacube, stationxml, textfiles, virtual, yaml, tdms_idas, \

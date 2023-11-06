@@ -15,7 +15,7 @@ import os.path as op
 import numpy as num
 
 from pyrocko import io, trace, util
-from pyrocko.progress import progress
+from pyrocko import progress
 from pyrocko.has_paths import Path, HasPaths
 from pyrocko.guts import Dict, String, Choice, Float, List, Timestamp, \
     StringChoice, IntChoice, Defer, load_all, clone

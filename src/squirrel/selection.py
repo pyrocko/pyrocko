@@ -14,7 +14,7 @@ import logging
 
 from pyrocko import util
 from pyrocko.io.io_common import FileLoadError
-from pyrocko.progress import progress
+from pyrocko import progress
 
 from . import error, io, model
 from .database import Database, get_database, execute_get1, abspath

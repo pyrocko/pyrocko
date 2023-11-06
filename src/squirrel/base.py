@@ -18,7 +18,7 @@ from collections import defaultdict
 
 from pyrocko.guts import Object, Int, List, Tuple, String, Timestamp, Dict
 from pyrocko import util, trace
-from pyrocko.progress import progress
+from pyrocko import progress
 from pyrocko.plot import nice_time_tick_inc_approx_secs
 
 from . import model, io, cache, dataset
@@ -615,18 +615,17 @@ class Squirrel(Selection):
 
         kind_mask = model.to_kind_mask(kinds)
 
-        with progress.view():
-            Selection.add(
-                self, util.iter_select_files(
-                    paths,
-                    show_progress=False,
-                    include=include,
-                    exclude=exclude,
-                    pass_through=lambda path: path.startswith('virtual:')
-                ), kind_mask, format)
+        Selection.add(
+            self, util.iter_select_files(
+                paths,
+                show_progress=False,
+                include=include,
+                exclude=exclude,
+                pass_through=lambda path: path.startswith('virtual:')
+            ), kind_mask, format)
 
-            self._load(check)
-            self._update_nuts()
+        self._load(check)
+        self._update_nuts()
 
     def reload(self):
         '''
