@@ -1518,7 +1518,8 @@ class Squirrel(Selection):
         if constraint is None:
             constraint = client.Constraint(**kwargs)
 
-        for source in self._sources:
+        task = make_task('Updating sources')
+        for source in task(self._sources):
             source.update_channel_inventory(self, constraint)
             source.update_event_inventory(self, constraint)
 
