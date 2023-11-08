@@ -27,7 +27,7 @@
     #define min(a, b) \
        ({ __typeof__ (a) _a = (a); \
           __typeof__ (b) _b = (b); \
-         _a < _b ? _a : _b; })  
+         _a < _b ? _a : _b; })
 #endif
 
 
@@ -96,7 +96,7 @@ static float64_t wrap(float64_t x, float64_t mi, float64_t ma) {
 
 
 static float64_t cosdelta(float64_t alat, float64_t alon, float64_t blat, float64_t blon) {
-    return min(1., sin(alat*D2R) * sin(blat*D2R) + 
+    return min(1., sin(alat*D2R) * sin(blat*D2R) +
             cos(alat*D2R) * cos(blat*D2R) * cos(D2R* (blon - alon)));
 }
 
@@ -268,8 +268,9 @@ static PyObject* w_distance_accurate50m(PyObject *m, PyObject *args) {
         PyErr_SetString(PyExc_ValueError, "Lat Lon ranges are invalid.");
         return NULL;
     };
-
+    Py_BEGIN_ALLOW_THREADS
     distance_accurate50m(alat, alon, blat, blon, &dist);
+    Py_END_ALLOW_THREADS
     return Py_BuildValue("d", dist);
 }
 
@@ -309,7 +310,9 @@ static PyObject* w_distance_accurate50m_numpy(PyObject *m, PyObject *args) {
 
     dists_arr = (PyArrayObject*) PyArray_EMPTY(1, size, NPY_FLOAT64, 0);
 
+    Py_BEGIN_ALLOW_THREADS
     distance_accurate50m_array(alats, alons, blats, blons, size[0], PyArray_DATA(dists_arr));
+    Py_END_ALLOW_THREADS
 
     Py_DECREF(c_alats_arr);
     Py_DECREF(c_alons_arr);
@@ -348,7 +351,7 @@ static PyObject * w_azibazi_numpy(PyObject *m, PyObject *args) {
     c_alons_arr = PyArray_GETCONTIGUOUS((PyArrayObject*) alons_arr);
     c_blats_arr = PyArray_GETCONTIGUOUS((PyArrayObject*) blats_arr);
     c_blons_arr = PyArray_GETCONTIGUOUS((PyArrayObject*) blons_arr);
-    
+
     alats = PyArray_DATA(c_alats_arr);
     alons = PyArray_DATA(c_alons_arr);
     blats = PyArray_DATA(c_blats_arr);
@@ -357,7 +360,9 @@ static PyObject * w_azibazi_numpy(PyObject *m, PyObject *args) {
     azis_arr = (PyArrayObject*) PyArray_EMPTY(1, size, NPY_FLOAT64, 0);
     bazis_arr = (PyArrayObject*) PyArray_EMPTY(1, size, NPY_FLOAT64, 0);
 
+    Py_BEGIN_ALLOW_THREADS
     azibazi_array(alats, alons, blats, blons, size[0], PyArray_DATA(azis_arr), PyArray_DATA(bazis_arr));
+    Py_END_ALLOW_THREADS
 
     Py_DECREF(c_alats_arr);
     Py_DECREF(c_alons_arr);

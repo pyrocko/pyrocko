@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <float.h>
 
-#define CHUNKSIZE 10
+#define CHUNKSIZE 8
 #define NBLOCK 64
 
 #define BAD_ARRAY 1
@@ -130,7 +130,6 @@ int parstackf(
     int32_t imin, istart, ishift;
     size_t iarray, nsamp, i;
     float weight;
-    int chunk;
     float *temp;
     float m;
 
@@ -145,9 +144,6 @@ int parstackf(
     imin = offsetout;
     nsamp = lengthout;
 
-    chunk = CHUNKSIZE;
-
-    Py_BEGIN_ALLOW_THREADS
     if (method == 0) {
 	#if defined(_OPENMP)
         #pragma omp parallel private(ishift, iarray, i, istart, weight) num_threads(nparallel)
@@ -155,7 +151,7 @@ int parstackf(
         {
 
 	#if defined(_OPENMP)
-        #pragma omp for schedule(dynamic, chunk) nowait
+        #pragma omp for schedule(dynamic, 1) nowait
 	#endif
         for (ishift=0; ishift<(int32_t)nshifts; ishift++) {
             for (iarray=0; iarray<narrays; iarray++) {
@@ -181,7 +177,7 @@ int parstackf(
         {
         temp = (float*)calloc(nsamp, sizeof(float));
 	#if defined(_OPENMP)
-        #pragma omp for schedule(dynamic,chunk) nowait
+        #pragma omp for schedule(dynamic, 1) nowait
 	#endif
         for (ishift=0; ishift<(int32_t)nshifts; ishift++) {
             for (i=0; i<nsamp; i++) {
@@ -209,7 +205,6 @@ int parstackf(
         free(temp);
         }
     }
-    Py_END_ALLOW_THREADS
     return SUCCESS;
 }
 
@@ -248,7 +243,6 @@ int parstack(
 
     chunk = CHUNKSIZE;
 
-    Py_BEGIN_ALLOW_THREADS
     if (method == 0) {
 	#if defined(_OPENMP)
         #pragma omp parallel private(ishift, iarray, i, istart, weight) num_threads(nparallel)
@@ -310,7 +304,6 @@ int parstack(
         free(temp);
         }
     }
-    Py_END_ALLOW_THREADS
     return SUCCESS;
 }
 
@@ -320,8 +313,6 @@ int argmax(double *arrayin, uint32_t *arrayout, size_t nx, size_t ny, int nparal
     size_t ix, iy, ix_offset, imax[NBLOCK];
     double vmax[NBLOCK];
 	(void) nparallel;
-
-    Py_BEGIN_ALLOW_THREADS
 
     #if defined(_OPENMP)
         #pragma omp parallel private(iy, ix_offset, imax, vmax) num_threads(nparallel)
@@ -349,7 +340,6 @@ int argmax(double *arrayin, uint32_t *arrayout, size_t nx, size_t ny, int nparal
         }
     }
     }
-    Py_END_ALLOW_THREADS
 
     return SUCCESS;
 }
@@ -496,6 +486,7 @@ static PyObject* w_parstack(PyObject *module, PyObject *args, PyObject *kwds){
     }
     cresult = PyArray_DATA((PyArrayObject*)result);
 
+    Py_BEGIN_ALLOW_THREADS
     if (dtype == NPY_FLOAT) {
         err = parstackf(narrays, (float **) carrays, coffsets, clengths, nshifts, cshifts,
                     PyArray_DATA((PyArrayObject*)weights), method, lengthout, offsetout, (float *) cresult, nparallel);
@@ -503,6 +494,7 @@ static PyObject* w_parstack(PyObject *module, PyObject *args, PyObject *kwds){
         err = parstack(narrays, (double**) carrays, coffsets, clengths, nshifts, cshifts,
                     PyArray_DATA((PyArrayObject*)weights), method, lengthout, offsetout, (double *) cresult, nparallel);
     }
+    Py_END_ALLOW_THREADS
 
 
 
@@ -564,9 +556,9 @@ static PyObject* w_argmax(PyObject *module, PyObject *args, PyObject *kwds) {
     for (i=0; i<(size_t)shapeout[0]; i++){
         cresult[i] = 0;
     }
-
+    Py_BEGIN_ALLOW_THREADS
     err = argmax(carrayin, cresult, (size_t)shape[1], (size_t)shape[0], nparallel);
-
+    Py_END_ALLOW_THREADS
     if(err != 0){
         Py_DECREF(result);
         return NULL;

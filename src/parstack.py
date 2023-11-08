@@ -17,18 +17,18 @@ try:
 except NameError:
     pass
 
+import multiprocessing
+
+nparallel = multiprocessing.cpu_count()
 
 def parstack(arrays, offsets, shifts, weights, method,
              lengthout=-1,
              offsetout=0,
              result=None,
-             nparallel=None,
+             nparallel=nparallel,
              dtype=num.float64,
              impl='openmp'):
 
-    if nparallel is None:
-        import multiprocessing
-        nparallel = multiprocessing.cpu_count()
 
     narrays = offsets.size
     assert len(arrays) == narrays

@@ -453,9 +453,6 @@ static PyObject* w_eikonal_solver_fmm_cartesian(
     };
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOd", kwlist, &speeds_arr, &times_arr, &delta)) {
-        PyErr_SetString(
-            st->error,
-            "usage: eikonal_solver_fmm_cartesian(speeds, times, delta)");
         return NULL;
     }
 
