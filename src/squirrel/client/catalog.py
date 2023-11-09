@@ -15,7 +15,7 @@ try:
 except ImportError:
     import pickle
 
-from pyrocko import util
+from pyrocko import util, progress
 from pyrocko.guts import String, Dict, Duration, dump_all
 
 from .base import Source
@@ -246,49 +246,55 @@ class CatalogSource(Source):
         tpack_min = tmin
 
         events = []
-        while t < tmax:
-            tmin_query = t
-            tmax_query = min(t + self._tquery, tmax)
+        with progress.task(
+                'Querying %s' % self.catalog, 100, logger=logger) as task:
 
-            events_new = self._query(tmin_query, tmax_query)
-            nevents_new = len(events_new)
-            events.extend(events_new)
-            while len(events) > int(self._nevents_chunk_hint * 1.5):
-                tpack_max = events[self._nevents_chunk_hint].time
-                yield self._pack(
-                    events[:self._nevents_chunk_hint],
-                    tpack_min, tpack_max, tmodified)
+            while t < tmax:
+                tmin_query = t
+                tmax_query = min(t + self._tquery, tmax)
 
-                tpack_min = tpack_max
-                events[:self._nevents_query_hint] = []
+                events_new = self._query(tmin_query, tmax_query)
+                nevents_new = len(events_new)
+                events.extend(events_new)
+                while len(events) > int(self._nevents_chunk_hint * 1.5):
+                    tpack_max = events[self._nevents_chunk_hint].time
+                    yield self._pack(
+                        events[:self._nevents_chunk_hint],
+                        tpack_min, tpack_max, tmodified)
 
-            t += self._tquery
+                    tpack_min = tpack_max
+                    events[:self._nevents_query_hint] = []
 
-            if tmax_query != tmax:
-                if nevents_new < 5:
-                    self._tquery *= 10.0
+                t += self._tquery
 
-                elif not (nwant // 2 < nevents_new < nwant * 2):
-                    self._tquery /= float(nevents_new) / float(nwant)
+                if tmax_query != tmax:
+                    if nevents_new < 5:
+                        self._tquery *= 10.0
 
-                self._tquery = max(tlim[0], min(self._tquery, tlim[1]))
+                    elif not (nwant // 2 < nevents_new < nwant * 2):
+                        self._tquery /= float(nevents_new) / float(nwant)
 
-        if self._force_query_age_max is not None:
-            tsplit = tmodified - self._force_query_age_max
-            if tpack_min < tsplit < tmax:
-                events_older = []
-                events_newer = []
-                for ev in events:
-                    if ev.time < tsplit:
-                        events_older.append(ev)
-                    else:
-                        events_newer.append(ev)
+                    self._tquery = max(tlim[0], min(self._tquery, tlim[1]))
+                task.update(int(round(100. * (t-tmin)/(tmax-tmin))))
 
-                yield self._pack(events_older, tpack_min, tsplit, tmodified)
-                yield self._pack(events_newer, tsplit, tmax, tmodified)
-                return
+            if self._force_query_age_max is not None:
+                tsplit = tmodified - self._force_query_age_max
+                if tpack_min < tsplit < tmax:
+                    events_older = []
+                    events_newer = []
+                    for ev in events:
+                        if ev.time < tsplit:
+                            events_older.append(ev)
+                        else:
+                            events_newer.append(ev)
 
-        yield self._pack(events, tpack_min, tmax, tmodified)
+                    yield self._pack(
+                        events_older, tpack_min, tsplit, tmodified)
+                    yield self._pack(
+                        events_newer, tsplit, tmax, tmodified)
+                    return
+
+            yield self._pack(events, tpack_min, tmax, tmodified)
 
     def _pack(self, events, tmin, tmax, tmodified):
         if events:
