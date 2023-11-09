@@ -27,6 +27,7 @@ requirements:
     - scipy
     - matplotlib
     - pyqt
+    - pyqtwebengine
     - pyyaml
     - requests
     - jinja2
