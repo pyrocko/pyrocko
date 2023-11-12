@@ -345,6 +345,43 @@ int argmax(double *arrayin, uint32_t *arrayout, size_t nx, size_t ny, int nparal
 }
 
 
+int fargmax(float *arrayin, uint32_t *arrayout, size_t nx, size_t ny, int nparallel){
+
+    size_t ix, iy, ix_offset, imax[NBLOCK];
+    float vmax[NBLOCK];
+	(void) nparallel;
+
+    #if defined(_OPENMP)
+        #pragma omp parallel private(iy, ix_offset, imax, vmax) num_threads(nparallel)
+    #endif
+        {
+
+    #if defined(_OPENMP)
+        #pragma omp for schedule(dynamic, 1) nowait
+    #endif
+    for (ix=0; ix<nx; ix+=NBLOCK){
+        for (ix_offset=0; ix_offset<smin(NBLOCK, nx-ix); ix_offset++) {
+            imax[ix_offset] = 0;
+            vmax[ix_offset] = DBL_MIN;
+        }
+        for (iy=0; iy<ny; iy++){
+            for (ix_offset=0; ix_offset<smin(NBLOCK, nx-ix); ix_offset++) {
+                if (arrayin[iy*nx + ix + ix_offset] > vmax[ix_offset]) {
+                    vmax[ix_offset] = arrayin[iy*nx + ix + ix_offset];
+                    imax[ix_offset] = iy;
+                }
+            }
+        }
+        for (ix_offset=0; ix_offset<smin(NBLOCK, nx-ix); ix_offset++) {
+            arrayout[ix+ix_offset] = (uint32_t)imax[ix_offset];
+        }
+    }
+    }
+
+    return SUCCESS;
+}
+
+
 int bad_array(PyObject* o, int type_num, char* name) {
     if (!PyArray_Check(o)) {
         PyErr_Format(PyExc_ValueError, "%s not a NumPy array", name);
@@ -352,12 +389,12 @@ int bad_array(PyObject* o, int type_num, char* name) {
     }
 
     if (!PyArray_ISCARRAY((PyArrayObject*)o)) {
-        PyErr_Format(PyExc_ValueError, "%s array is not contiguous or not well behaved", name);
+        PyErr_Format(PyExc_ValueError, "%s is not contiguous or not well behaved", name);
         return BAD_ALIGNMENT;
     }
 
     if (PyArray_TYPE((PyArrayObject*)o) != type_num) {
-        PyErr_Format(PyExc_ValueError, "%s array of unexpected dtype", name);
+        PyErr_Format(PyExc_ValueError, "%s of unexpected dtype", name);
         return BAD_DTYPE;
     }
 
@@ -531,7 +568,15 @@ static PyObject* w_argmax(PyObject *module, PyObject *args, PyObject *kwds) {
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|i", kwlist, &arrayin, &nparallel))
         return NULL;
 
-    if (bad_array(arrayin, NPY_DOUBLE, "array")) return NULL;
+    int dtype = PyArray_TYPE((PyArrayObject*)arrayin);
+    if (dtype != NPY_FLOAT && dtype != NPY_DOUBLE) {
+        PyErr_SetString(PyExc_ValueError, "Bad dtype, only float64 and float32 is supported.");
+        return NULL;
+    }
+
+    if (bad_array(arrayin, dtype, "array")) {
+        return NULL;
+    };
 
     shape = PyArray_DIMS((PyArrayObject*)arrayin);
     ndim = PyArray_NDIM((PyArrayObject*)arrayin);
@@ -557,7 +602,11 @@ static PyObject* w_argmax(PyObject *module, PyObject *args, PyObject *kwds) {
         cresult[i] = 0;
     }
     Py_BEGIN_ALLOW_THREADS
-    err = argmax(carrayin, cresult, (size_t)shape[1], (size_t)shape[0], nparallel);
+    if (dtype == NPY_FLOAT) {
+        err = fargmax((float *)carrayin, cresult, (size_t)shape[1], (size_t)shape[0], nparallel);
+    } else if (dtype == NPY_DOUBLE) {
+        err = argmax(carrayin, cresult, (size_t)shape[1], (size_t)shape[0], nparallel);
+    }
     Py_END_ALLOW_THREADS
     if(err != 0){
         Py_DECREF(result);
