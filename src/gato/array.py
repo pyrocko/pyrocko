@@ -143,30 +143,29 @@ g_sensor_arrays = [
         sources=[_make_fdsn_source('iris', codes)])
 
     for (name, codes) in [
-        ('yka', ['CN.YKA*.*.*']),
-        ('esk', ['IM.EKB?.*.*', 'IM.EKR*.*.*']),
-        ('esk1', ['IM.EKA?.*.*']),
-        ('ilar', ['IM.IL*.*.*']),
-        ('imar', ['IM.IM0?.*.*']),
-        ('nia', ['IM.I56H?.*.*']),
-        ('pfia', ['IM.I57H?.*.*', 'IM.I57L?.*.*']),
-        ('hia', ['IM.I59H?.*.*']),
-        ('ia-bermuda', ['IM.I51H?.*.*']),
-        ('ia-fairmanks', ['IM.I53H?.*.*']),
-        ('dgha-land', ['IM.I52H?.*.*']),
-        ('bma', ['IM.BM0?.*.*']),
-        ('bca', ['IM.BC0?.*.*']),
-        ('nvar', ['IM.NV*.*.*']),
-        ('pdar', ['IM.PD0*.*.*', 'IM.PD1*.*.*']),
-        ('txar', ['IM.TX*.*.*']),
-        ('pilbara', ['AU.PSA*.*.*']),
-        ('alice-springs', ['AU.AS*.*.*']),
-        ('dghas', ['IM.H08S?.*.*']),
-        ('dghan', ['IM.H08N?.*.*']),
-        ('tdc', ['IM.H09N?.*.*', 'IM.I49H?.*.*']),
-        ('ia-narrogin', ['IM.I04H?.*.*']),
-        ('cocos-island', ['IM.I06H?.*.*']),
-        ('warramunga', ['IM.I07H?.*.*'])
+        ('h-dghan', ['IM.H08N?.*.?DH']),
+        ('h-dghas', ['IM.H08S?.*.?DH']),
+        ('i-bermuda', ['IM.I51H?.*.?DF']),
+        ('i-cocos-island', ['IM.I06H?.*.?DF']),
+        ('i-dgha-land', ['IM.I52H?.*.?DF']),
+        ('i-fairbanks', ['IM.I53H?.*.?DF']),
+        ('i-hia', ['IM.I59H?.*.?DF']),
+        ('i-narrogin', ['IM.I04H?.*.?DF']),
+        ('i-nia', ['IM.I56H?.*.?DF']),
+        ('i-pfia', ['IM.I57H?.*.?DF', 'IM.I57L?.*.?DF']),
+        ('i-tdc', ['IM.H09N?.*.?DF', 'IM.I49H?.*.?DF']),
+        ('i-warramunga', ['IM.I07H?.*.?DF']),
+        ('s-alice-springs', ['AU.AS*.*.?H?']),
+        ('s-bca', ['IM.BC0?.*.?H?']),
+        ('s-bma', ['IM.BM0?.*.?H?']),
+        ('s-esk', ['IM.EKB?.*.?H?', 'IM.EKR*.*.?H?']),
+        ('s-ilar', ['IM.IL*.*.?H?']),
+        ('s-imar', ['IM.IM0?.*.?H?']),
+        ('s-nvar', ['IM.NV*.*.?H?']),
+        ('s-pdar', ['IM.PD0*.*.?H?', 'IM.PD1*.*.?H?']),
+        ('s-pilbara', ['AU.PSA*.*.?H?']),
+        ('s-txar', ['IM.TX*.*.?H?']),
+        ('s-yka', ['CN.YKA*.*.?H?']),
     ]
 ] + [
     SensorArrayFromFDSN(
@@ -175,9 +174,8 @@ g_sensor_arrays = [
         sources=[_make_fdsn_source('geofon', codes)])
 
     for (name, codes) in [
-        ('rohrbach', ['6A.V*.*.*']),
-        ('anta-offshore', ['GR.I27L?.*.*']),
-        ('anta-onshore', ['AW.VNA*.*.*']),
+        ('s-rohrbach', ['6A.V*.*.?H?']),
+        ('s-anta-onshore', ['AW.VNA*.*.?H?']),
     ]
 ] + [
     SensorArrayFromFDSN(
@@ -186,12 +184,12 @@ g_sensor_arrays = [
         sources=[_make_fdsn_source('bgr', codes)])
 
     for (name, codes) in [
-        ('geres', [
-            'GR.GEA?.*.*',
-            'GR.GEB?.*.*',
-            'GR.GEC?.*.*',
-            'GR.GED?.*.*']),
-        ('grf', ['GR.GR??.*.*']),
+        ('s-geres', [
+            'GR.GEA?.*.?H?',
+            'GR.GEB?.*.?H?',
+            'GR.GEC?.*.?H?',
+            'GR.GED?.*.?H?']),
+        ('s-grf', ['GR.GR??.*.?H?']),
     ]
 ]
 
