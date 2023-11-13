@@ -30,9 +30,16 @@ def get_matching_builtin_array_names(name_patterns):
 
 def get_matching_builtin_arrays(name_patterns):
     arrays = get_named_arrays()
-    return [
-        (name, arrays[name])
-        for name in get_matching_builtin_array_names(name_patterns)]
+    return sorted((
+        arrays[name]
+        for name in get_matching_builtin_array_names(name_patterns)),
+        key=lambda array: (array.type, array.name))
+
+
+def get_matching_builtin_arrays_dict(name_patterns):
+    return dict(
+        (array.name, array)
+        for array in get_matching_builtin_arrays(name_patterns))
 
 
 class List(SquirrelCommand):
@@ -46,26 +53,24 @@ class List(SquirrelCommand):
     def setup(self, parser):
         add_argument_array_names(parser, '*')
 
-    def run(self, parser, args):
-        for (name, array) in get_matching_builtin_arrays(args.array_names):
-            print('%-25s %s' % (name, array.comment or ''))
+        style_choices = ['summary', 'yaml', 'name']
 
-
-class Show(SquirrelCommand):
-
-    def make_subparser(self, subparsers):
-        return subparsers.add_parser(
-            'show',
-            help='Print array setup.',
-            description='Print array setup.')
-
-    def setup(self, parser):
-        add_argument_array_names(parser, '+')
+        parser.add_argument(
+            '--style',
+            dest='style',
+            choices=style_choices,
+            default='summary',
+            help='Set style of presentation. Choices: %s' % ldq(style_choices))
 
     def run(self, parser, args):
-        for (name, array) in get_matching_builtin_arrays(args.array_names):
-            print('# %s' % name)
-            print(array)
+        for array in get_matching_builtin_arrays(args.array_names):
+            if args.style == 'name':
+                print(array.name)
+            elif args.style == 'summary':
+                print(array.summary2)
+            else:
+                print('#', array.summary2)
+                print(array)
 
 
 class Info(SquirrelCommand):
@@ -77,7 +82,7 @@ class Info(SquirrelCommand):
             description='Print information about array.')
 
     def setup(self, parser):
-        add_argument_array_names(parser, '+')
+        add_argument_array_names(parser, '*')
 
         style_choices = ['summary', 'yaml']
 
@@ -92,7 +97,7 @@ class Info(SquirrelCommand):
 
     def run(self, parser, args):
 
-        arrays = dict(get_matching_builtin_arrays(args.array_names))
+        arrays = get_matching_builtin_arrays_dict(args.array_names)
         names = sorted(arrays.keys())
 
         sq = Squirrel()
@@ -101,12 +106,22 @@ class Info(SquirrelCommand):
         with progress.view():
             sq.update()
 
+        print('#', ' | '.join([
+            'name',
+            'type',
+            'num. sites',
+            'num. channels',
+            'start date',
+            'end date',
+            'interstation distances min, 10%, 50%, 90%, max [km]',
+            'channel group: num. sites']))
+
         for name, array in arrays.items():
             info = array.get_info(sq, **args.squirrel_query)
             if args.style == 'summary':
-                print(info.summary)
+                print(' | '.join((array.summary, info.summary)))
             elif args.style == 'yaml':
-                print('# ' + info.summary)
+                print('#', ' | '.join((array.summary, info.summary)))
                 print(info)
 
 
@@ -134,7 +149,7 @@ class Sensors(SquirrelCommand):
 
     def run(self, parser, args):
 
-        arrays = dict(get_matching_builtin_arrays(args.array_names))
+        arrays = get_matching_builtin_arrays_dict(args.array_names)
         names = sorted(arrays.keys())
 
         sq = Squirrel()
@@ -160,7 +175,7 @@ def make_subparser(subparsers):
     return subparsers.add_parser(
         'array',
         help=headline,
-        subcommands=[List(), Show(), Info(), Sensors()],
+        subcommands=[List(), Info(), Sensors()],
         description=headline + '''
 
 Manage seismic array setups: add, remove, show.

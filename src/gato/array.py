@@ -3,7 +3,8 @@ from collections import defaultdict
 import numpy as num
 
 from pyrocko import util
-from pyrocko.guts import Object, String, List, Timestamp, Dict, Tuple, Float
+from pyrocko.guts import Object, String, List, Timestamp, Dict, Tuple, Float, \
+    StringChoice
 from pyrocko.model.location import Location
 from pyrocko.squirrel import CodesNSLCE, FDSNSource, Dataset, CodesNSL, Sensor
 
@@ -19,7 +20,6 @@ def time_or_none_to_str(t):
 
 
 class SensorArrayInfo(Object):
-    name = String.T(optional=True)
     codes = List.T(CodesNSLCE.T())
     tmin = Timestamp.T(optional=True)
     tmax = Timestamp.T(optional=True)
@@ -32,9 +32,8 @@ class SensorArrayInfo(Object):
     @property
     def summary(self):
         return ' | '.join((
-            self.name.ljust(15),
             '%2i' % len(self.codes_nsl),
-            '%2i' % len(self.codes),
+            '%3i' % len(self.codes),
             time_or_none_to_str(self.tmin).ljust(10),
             time_or_none_to_str(self.tmax).ljust(10),
             ', '.join('%5.1f' % (v/km) for v in self.distances_stats)
@@ -51,10 +50,28 @@ class SensorArrayInfo(Object):
         pass
 
 
+class SensorArrayType(StringChoice):
+    choices = [
+        'seismic',
+        'infrasound',
+        'hydrophone',
+    ]
+
+
 class SensorArray(Object):
     name = String.T(optional=True)
     codes = List.T(CodesNSLCE.T())
+    type = SensorArrayType.T(optional=True)
     comment = String.T(optional=True)
+
+    @property
+    def summary(self):
+        return ' | '.join(('%-17s' % self.name, self.type[:1]))
+
+    @property
+    def summary2(self):
+        return ' | '.join(
+            ('%-17s' % self.name, self.type[:1], self.comment or ''))
 
     def get_info(self, sq, channels=None, time=None, tmin=None, tmax=None):
         if isinstance(channels, str):
@@ -114,7 +131,6 @@ class SensorArray(Object):
             (k, sorted(v)) for (k, v) in nsl_by_chas.items())
 
         return SensorArrayInfo(
-            name=self.name,
             codes=sorted(codes),
             codes_nsl_by_channels=codes_nsl_by_channels,
             tmin=tmin,
@@ -139,57 +155,77 @@ def _make_fdsn_source(site, codes):
 g_sensor_arrays = [
     SensorArrayFromFDSN(
         name=name,
+        type=typ,
         codes=to_codes(codes),
+        comment=comment,
         sources=[_make_fdsn_source('iris', codes)])
 
-    for (name, codes) in [
-        ('h-dghan', ['IM.H08N?.*.?DH']),
-        ('h-dghas', ['IM.H08S?.*.?DH']),
-        ('i-bermuda', ['IM.I51H?.*.?DF']),
-        ('i-cocos-island', ['IM.I06H?.*.?DF']),
-        ('i-dgha-land', ['IM.I52H?.*.?DF']),
-        ('i-fairbanks', ['IM.I53H?.*.?DF']),
-        ('i-hia', ['IM.I59H?.*.?DF']),
-        ('i-narrogin', ['IM.I04H?.*.?DF']),
-        ('i-nia', ['IM.I56H?.*.?DF']),
-        ('i-pfia', ['IM.I57H?.*.?DF', 'IM.I57L?.*.?DF']),
-        ('i-tdc', ['IM.H09N?.*.?DF', 'IM.I49H?.*.?DF']),
-        ('i-warramunga', ['IM.I07H?.*.?DF']),
-        ('s-alice-springs', ['AU.AS*.*.?H?']),
-        ('s-bca', ['IM.BC0?.*.?H?']),
-        ('s-bma', ['IM.BM0?.*.?H?']),
-        ('s-esk', ['IM.EKB?.*.?H?', 'IM.EKR*.*.?H?']),
-        ('s-ilar', ['IM.IL*.*.?H?']),
-        ('s-imar', ['IM.IM0?.*.?H?']),
-        ('s-nvar', ['IM.NV*.*.?H?']),
-        ('s-pdar', ['IM.PD0*.*.?H?', 'IM.PD1*.*.?H?']),
-        ('s-pilbara', ['AU.PSA*.*.?H?']),
-        ('s-txar', ['IM.TX*.*.?H?']),
-        ('s-yka', ['CN.YKA*.*.?H?']),
+    for (typ, name, codes, comment) in [
+        ('hydrophone', 'dghan', ['IM.H08N?.*.?DH'], ''),
+        ('hydrophone', 'dghas', ['IM.H08S?.*.?DH'], ''),
+        ('infrasound', 'bermuda', ['IM.I51H?.*.?DF'], ''),
+        ('infrasound', 'cocos-island', ['IM.I06H?.*.?DF'], ''),
+        ('infrasound', 'dgha-land', ['IM.I52H?.*.?DF'], ''),
+        ('infrasound', 'fairbanks', ['IM.I53H?.*.?DF'], ''),
+        ('infrasound', 'hia', ['IM.I59H?.*.?DF'], ''),
+        ('infrasound', 'narrogin', ['IM.I04H?.*.?DF'], ''),
+        ('infrasound', 'nia', ['IM.I56H?.*.?DF'], ''),
+        ('infrasound', 'pfia', ['IM.I57H?.*.?DF', 'IM.I57L?.*.?DF'], ''),
+        ('infrasound', 'tdc', ['IM.H09N?.*.?DF', 'IM.I49H?.*.?DF'], ''),
+        ('infrasound', 'warramunga', ['IM.I07H?.*.?DF'], ''),
+        ('seismic', 'alice-springs', ['AU.AS*.*.?H?'],
+         'Alice Springs, Australia'),
+        ('seismic', 'bca', ['IM.BC0?.*.?H?'],
+         'Beaver Creek, Alaska, USA'),
+        ('seismic', 'bma', ['IM.BM0?.*.?H?'],
+         'Burnt Mountain, Alaska, USA'),
+        ('seismic', 'esk', ['IM.EKB?.*.?H?', 'IM.EKR*.*.?H?'],
+         'Eskdalemuir, Scotland'),
+        ('seismic', 'ilar', ['IM.IL*.*.?H?'],
+         'Eielson, Alaska, USA'),
+        ('seismic', 'imar', ['IM.IM0?.*.?H?'],
+         'Indian Mountain, Alaska, USA'),
+        ('seismic', 'nvar', ['IM.NV*.*.?H?'],
+         'Mina, Nevada, USA'),
+        ('seismic', 'pdar', ['IM.PD0*.*.?H?', 'IM.PD1*.*.?H?'],
+         'Wyoming, USA'),
+        ('seismic', 'psar', ['AU.PSA*.*.?H?'],
+         'Pilbara, northwestern Australia'),
+        ('seismic', 'txar', ['IM.TX*.*.?H?'],
+         'Lajitas, Texas, USA'),
+        ('seismic', 'yka', ['CN.YKA*.*.?H?'],
+         'Yellowknife, Northwest Territories, Canada,'),
     ]
 ] + [
     SensorArrayFromFDSN(
         name=name,
+        type='seismic',
         codes=to_codes(codes),
-        sources=[_make_fdsn_source('geofon', codes)])
+        sources=[_make_fdsn_source('geofon', codes)],
+        comment=comment)
 
-    for (name, codes) in [
-        ('s-rohrbach', ['6A.V*.*.?H?']),
-        ('s-anta-onshore', ['AW.VNA*.*.?H?']),
+    for (name, codes, comment) in [
+        ('rohrbach', ['6A.V*.*.?H?'],
+         'Rohrbach/Vogtland, German-Czech border region'),
+        ('neumayer', ['AW.VNA*.*.?H?'],
+         'Station Neumayer Watz, Antarctica'),
     ]
 ] + [
     SensorArrayFromFDSN(
         name=name,
+        type='seismic',
         codes=to_codes(codes),
-        sources=[_make_fdsn_source('bgr', codes)])
+        sources=[_make_fdsn_source('bgr', codes)],
+        comment=comment)
 
-    for (name, codes) in [
-        ('s-geres', [
+    for (name, codes, comment) in [
+        ('geres', [
             'GR.GEA?.*.?H?',
             'GR.GEB?.*.?H?',
             'GR.GEC?.*.?H?',
-            'GR.GED?.*.?H?']),
-        ('s-grf', ['GR.GR??.*.?H?']),
+            'GR.GED?.*.?H?'],
+         'GERESS, Germany'),
+        ('grf', ['GR.GR??.*.?H?'], 'Gräfenberg, Germany'),
     ]
 ]
 
