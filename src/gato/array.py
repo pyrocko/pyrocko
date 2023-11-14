@@ -30,16 +30,41 @@ class SensorArrayInfo(Object):
     sensors = List.T(Sensor.T())
 
     @property
+    def n_codes_nsl(self):
+        return len(self.codes_nsl)
+
+    @property
+    def n_codes(self):
+        return len(self.codes)
+
+    @property
+    def str_codes_nsl_by_channels(self):
+        return ', '.join(
+            '%s: %i' % (','.join(k), len(v))
+            for (k, v) in self.codes_nsl_by_channels.items())
+
+    @property
+    def str_distances_stats(self):
+        return ', '.join('%5.1f' % (v/km) for v in self.distances_stats) \
+            if self.distances_stats else ''
+
+    @property
+    def str_tmin(self):
+        return time_or_none_to_str(self.tmin)
+
+    @property
+    def str_tmax(self):
+        return time_or_none_to_str(self.tmax)
+
+    @property
     def summary(self):
         return ' | '.join((
-            '%2i' % len(self.codes_nsl),
-            '%3i' % len(self.codes),
+            '%3i' % self.n_codes_nsl,
+            '%3i' % self.n_codes,
             time_or_none_to_str(self.tmin).ljust(10),
             time_or_none_to_str(self.tmax).ljust(10),
-            ', '.join('%5.1f' % (v/km) for v in self.distances_stats)
-            if self.distances_stats is not None else ' ' * 33,
-            ', '.join('%s: %i' % (','.join(k), len(v))
-                      for (k, v) in self.codes_nsl_by_channels.items())))
+            '%-33s' % self.str_distances_stats,
+            self.str_codes_nsl_by_channels))
 
     @property
     def codes_nsl(self):
