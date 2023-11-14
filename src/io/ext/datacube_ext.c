@@ -1217,7 +1217,9 @@ static PyObject* w_datacube_load(PyObject *m, PyObject *args) {
         }
     }
 
+    Py_BEGIN_ALLOW_THREADS
     err = datacube_load(&reader);
+    Py_END_ALLOW_THREADS
     if (err != SUCCESS) {
         PyErr_SetString(st->error, datacube_error_names[err]);
         uselocale(oldloc);

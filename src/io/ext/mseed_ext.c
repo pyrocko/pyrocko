@@ -5,6 +5,7 @@
   COPYING which is included with pyrocko. */
 
 #define NPY_NO_DEPRECATED_API 7
+#define GIL_THRESHOLD 1048576
 
 #include "Python.h"
 #include "numpy/arrayobject.h"
@@ -91,6 +92,7 @@ mseed_get_traces(PyObject *m, PyObject *args, PyObject *kwds)
     MSTrace *mst = NULL;
     int retcode;
     npy_intp array_dims[1] = {0};
+    npy_intp size_bytes;
     PyObject *array = NULL;
     PyObject *out_traces = NULL;
     PyObject *out_trace = NULL;
@@ -139,7 +141,7 @@ mseed_get_traces(PyObject *m, PyObject *args, PyObject *kwds)
 
     /* get data from mseed file */
     Py_BEGIN_ALLOW_THREADS
-        retcode = pyrocko_ms_readtraces(&mstg, filename, (unpackdata == Py_True), &offset, segment_size);
+    retcode = pyrocko_ms_readtraces(&mstg, filename, (unpackdata == Py_True), &offset, segment_size);
     Py_END_ALLOW_THREADS
 
         if (retcode < 0)
@@ -211,7 +213,15 @@ mseed_get_traces(PyObject *m, PyObject *args, PyObject *kwds)
                 return NULL;
             }
             array = PyArray_SimpleNew(1, array_dims, numpytype);
-            memcpy(PyArray_DATA((PyArrayObject *)array), mst->datasamples, mst->numsamples * ms_samplesize(mst->sampletype));
+            size_bytes = PyArray_NBYTES(array);
+
+            if (size_bytes >= GIL_THRESHOLD) {
+                Py_BEGIN_ALLOW_THREADS
+                memcpy(PyArray_DATA((PyArrayObject *)array), mst->datasamples, mst->numsamples * ms_samplesize(mst->sampletype));
+                Py_END_ALLOW_THREADS
+            } else {
+                memcpy(PyArray_DATA((PyArrayObject *)array), mst->datasamples, mst->numsamples * ms_samplesize(mst->sampletype));
+            }
         }
         else
         {
@@ -243,8 +253,9 @@ mseed_get_traces(PyObject *m, PyObject *args, PyObject *kwds)
 
 static int tuple2mst(PyObject *in_trace, MSTrace *mst, int *msdetype, int steim)
 {
-    int numpytype;
+    int numpytype, ret;
     size_t length;
+    npy_intp size_bytes;
     char *network, *station, *location, *channel, *dataquality;
     PyObject *array = NULL;
     PyArrayObject *contiguous_array = NULL;
@@ -319,13 +330,21 @@ static int tuple2mst(PyObject *in_trace, MSTrace *mst, int *msdetype, int steim)
         return EXIT_FAILURE;
     }
     contiguous_array = PyArray_GETCONTIGUOUS((PyArrayObject *)array);
-
+    size_bytes = PyArray_NBYTES(contiguous_array);
     length = PyArray_SIZE(contiguous_array);
     mst->numsamples = length;
     mst->samplecnt = length;
 
-    mst->datasamples = calloc(length, ms_samplesize(mst->sampletype));
-    if (memcpy(mst->datasamples, PyArray_DATA(contiguous_array), length * PyArray_ITEMSIZE(contiguous_array)) == NULL)
+    if (size_bytes >= GIL_THRESHOLD) {
+        Py_BEGIN_ALLOW_THREADS
+        mst->datasamples = calloc(length, ms_samplesize(mst->sampletype));
+        ret = memcpy(mst->datasamples, PyArray_DATA(contiguous_array), length * PyArray_ITEMSIZE(contiguous_array));
+        Py_END_ALLOW_THREADS
+    } else {
+        mst->datasamples = calloc(length, ms_samplesize(mst->sampletype));
+        ret = memcpy(mst->datasamples, PyArray_DATA(contiguous_array), length * PyArray_ITEMSIZE(contiguous_array));
+    }
+    if (ret == NULL)
     {
         Py_DECREF(contiguous_array);
         PyErr_SetString(PyExc_MemoryError, "Could not copy memory.");
@@ -410,8 +429,8 @@ mseed_store_traces(PyObject *m, PyObject *args, PyObject *kwds)
         }
 
         Py_BEGIN_ALLOW_THREADS
-            mst_pack(mst, &write_mseed_file, outfile, record_length, msdetype,
-                     1, &psamples, 1, 0, NULL);
+        mst_pack(mst, &write_mseed_file, outfile, record_length, msdetype,
+                    1, &psamples, 1, 0, NULL);
         mst_free(&mst);
         Py_END_ALLOW_THREADS
 
@@ -507,8 +526,8 @@ mseed_bytes(PyObject *m, PyObject *args, PyObject *kwds)
         }
 
         Py_BEGIN_ALLOW_THREADS
-            mst_pack(mst, &copy_memory, (void *)&mem_info, record_length, msdetype,
-                     1, &psamples, 1, 0, NULL);
+        mst_pack(mst, &copy_memory, (void *)&mem_info, record_length, msdetype,
+                    1, &psamples, 1, 0, NULL);
         mst_free(&mst);
         Py_END_ALLOW_THREADS
 
