@@ -29,7 +29,6 @@ def parstack(arrays, offsets, shifts, weights, method,
              nparallel=nparallel,
              dtype=num.float64,
              impl='openmp'):
-
     narrays = offsets.size
     assert len(arrays) == narrays
     nshifts = shifts.size // narrays
