@@ -234,7 +234,7 @@ g_sensor_arrays = [
     for (name, codes, comment) in [
         ('rohrbach', ['6A.V*.*.?H?'],
          'Rohrbach/Vogtland, German-Czech border region'),
-        ('neumayer', ['AW.VNA*.*.?H?'],
+        ('neumayer', ['AW.VNA??.*.?H?', 'AW.VNA2.*.?H?'],
          'Station Neumayer Watz, Antarctica'),
     ]
 ] + [

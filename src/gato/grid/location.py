@@ -16,13 +16,14 @@ from ..error import GatoError
 guts_prefix = 'gato'
 
 d2r = num.pi / 180.
+NA = num.newaxis
 
 
 def distances_3d(grid_a, grid_b):
     a = grid_a.get_nodes('ecef')
     b = grid_b.get_nodes('ecef')
     return num.sqrt(
-        num.sum((a[:, num.newaxis, :] - b[num.newaxis, :, :])**2, 2))
+        num.sum((a[:, NA, :] - b[NA, :, :])**2, 2))
 
 
 def distances_surface(grid_a, grid_b):
@@ -30,10 +31,21 @@ def distances_surface(grid_a, grid_b):
     b = grid_b.get_nodes('latlondepth')
 
     return od.distance_proj(
-        a[:, num.newaxis, 0],
-        a[:, num.newaxis, 1],
-        b[num.newaxis, :, 0],
-        b[num.newaxis, :, 1])
+        a[:, NA, 0],
+        a[:, NA, 1],
+        b[NA, :, 0],
+        b[NA, :, 1])
+
+
+def distances_projected(normal_ecef, grid_a, grid_b):
+    a = grid_a.get_nodes('ecef')
+    b = grid_b.get_nodes('ecef')
+
+    a_proj = a - num.dot(a, normal_ecef)[:, NA] * normal_ecef[NA, :]
+    b_proj = b - num.dot(b, normal_ecef)[:, NA] * normal_ecef[NA, :]
+
+    return num.sqrt(
+        num.sum((a_proj[:, NA, :] - b_proj[NA, :, :])**2, 2))
 
 
 class LocationGrid(Grid):
@@ -293,8 +305,9 @@ class UnstructuredLocationGrid(LocationGrid):
         lld = self._get_latlondepth()
         lat, lon = od.geographic_midpoint(
             lats=lld[:, 0], lons=lld[:, 1])
-        depth = num.mean(lld[:, 2])
-        return Location(lat=lat, lon=lon, depth=depth)
+        depth = num.mean(self.coordinates[:, 4])
+        elevation = num.mean(self.coordinates[:, 5])
+        return Location(lat=lat, lon=lon, depth=depth, elevation=elevation)
 
     def get_effective_origin(self):
         if self.origin is not None:
@@ -371,6 +384,8 @@ class UnstructuredLocationGrid(LocationGrid):
 
 __all__ = [
     'distances_3d',
+    'distances_surface',
+    'distances_projected',
     'CartesianLocationGrid',
     'UnstructuredLocationGrid',
 ]

@@ -71,6 +71,16 @@ class CartesianSlownessGrid(SlownessGrid):
         default='both',
         help='Flag to indicate how grid inconsistencies are handled.')
 
+    @classmethod
+    def from_smax_2d(cls, s_max, s_delta):
+        return cls(
+            sx_min=-s_max,
+            sx_max=s_max,
+            sx_delta=s_delta,
+            sy_min=-s_max,
+            sy_max=s_max,
+            sy_delta=s_delta)
+
     def update(self):
         self.clear_cached()
         self._x = grid_coordinates(
@@ -151,7 +161,15 @@ class CartesianSlownessGrid(SlownessGrid):
         else:
             raise GatoError(
                 'Coordinate system not supported for %s: %s' % (
-                    self.__class__.__name__, system))
+                    self.__class__.__name__ + '.get_nodes', system))
+
+    def get_coords(self, system):
+        if system == 'xyz':
+            return self._x, self._y, self._z
+        else:
+            raise GatoError(
+                'Coordinate system not supported for %s: %s' % (
+                    self.__class__.__name__ + '.get_coords', system))
 
 
 class SphericalSlownessGrid(SlownessGrid):
