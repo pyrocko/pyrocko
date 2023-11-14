@@ -164,7 +164,7 @@ g_sensor_arrays = [
         ('hydrophone', 'dghan', ['IM.H08N?.*.?DH'], ''),
         ('hydrophone', 'dghas', ['IM.H08S?.*.?DH'], ''),
         ('infrasound', 'bermuda', ['IM.I51H?.*.?DF'], ''),
-        ('infrasound', 'cocos-island', ['IM.I06H?.*.?DF'], ''),
+        ('infrasound', 'cocos', ['IM.I06H?.*.?DF'], ''),
         ('infrasound', 'dgha-land', ['IM.I52H?.*.?DF'], ''),
         ('infrasound', 'fairbanks', ['IM.I53H?.*.?DF'], ''),
         ('infrasound', 'hia', ['IM.I59H?.*.?DF'], ''),
@@ -173,7 +173,7 @@ g_sensor_arrays = [
         ('infrasound', 'pfia', ['IM.I57H?.*.?DF', 'IM.I57L?.*.?DF'], ''),
         ('infrasound', 'tdc', ['IM.H09N?.*.?DF', 'IM.I49H?.*.?DF'], ''),
         ('infrasound', 'warramunga', ['IM.I07H?.*.?DF'], ''),
-        ('seismic', 'alice-springs', ['AU.AS*.*.?H?'],
+        ('seismic', 'alice', ['AU.AS*.*.?H?'],
          'Alice Springs, Australia'),
         ('seismic', 'bca', ['IM.BC0?.*.?H?'],
          'Beaver Creek, Alaska, USA'),
@@ -195,6 +195,8 @@ g_sensor_arrays = [
          'Lajitas, Texas, USA'),
         ('seismic', 'yka', ['CN.YKA*.*.?H?'],
          'Yellowknife, Northwest Territories, Canada,'),
+        ('seismic', 'knet', ['KN.*.*.?H?'],
+         'Kyrgyzstan'),
     ]
 ] + [
     SensorArrayFromFDSN(
@@ -225,7 +227,36 @@ g_sensor_arrays = [
             'GR.GEC?.*.?H?',
             'GR.GED?.*.?H?'],
          'GERESS, Germany'),
-        ('grf', ['GR.GR??.*.?H?'], 'Gräfenberg, Germany'),
+        ('grf', ['GR.GR??.*.?H?'], 'Gräfenberg, Germany')]
+] + [
+    SensorArrayFromFDSN(
+        name=name,
+        type='seismic',
+        codes=to_codes(codes),
+        sources=[_make_fdsn_source('norsar', codes)],
+        comment=comment)
+
+    for (name, codes, comment) in [
+        ('norsar', [
+            'NO.NA*.*.*',
+            'NO.NB*.*.*',
+            'NO.NC*.*.*', ],
+         'Central Norway'),
+        ('arces', [
+            'NO.ARA*.*.*',
+            'NO.ARB*.*.*',
+            'NO.ARC*.*.*',
+            'NO.ARD*.*.*',
+            'NO.ARE*.*.*'],
+         'Northern Norway'),
+        ('spits', [
+            'NO.SPA*.*.*',
+            'NO.SPB*.*.*'],
+         'Spitsbergen, Norway'),
+        ('bear', ['NO.BEA?.*.*'],
+         'Bear Island, Norway'),
+        ('hspa', ['NO.HSPA?.*.*'],
+         'Hornsund, Spitsbergen, Norway'),
     ]
 ]
 
