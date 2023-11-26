@@ -245,9 +245,10 @@ static PyObject* w_antidrift(PyObject *m, PyObject *args) {
     n_out = PyArray_SIZE((PyArrayObject*)arr_samples_out);
     samples_out = (double*)PyArray_DATA((PyArrayObject*)arr_samples_out);
 
+    Py_BEGIN_ALLOW_THREADS
     err = antidrift(n_control, indices_control, t_control, n_in, samples_in,
             n_out, tmin_out, deltat_out, samples_out);
-
+    Py_END_ALLOW_THREADS
     if (err != 0) {
         PyErr_SetString(st->error, signal_error_names[err]);
         return NULL;
