@@ -609,7 +609,7 @@ def get_extended_timing_context(fn):
     return ipos, t, fix, nsvs, header, 0, nsamples_base
 
 
-def iload(fn, load_data=True, interpolation='sinc'):
+def iload(fn, load_data=True, interpolation='sinc', yield_gps_tags=False):
     from pyrocko import datacube_ext
     from pyrocko import signal_ext
 
@@ -719,14 +719,20 @@ def iload(fn, load_data=True, interpolation='sinc'):
                     tr_cut = tr.chop(tmin_cut, tmax_cut, inplace=False)
                     tr_cut.shift(
                         util.utc_gps_offset(0.5*(tr_cut.tmin+tr_cut.tmax)))
-                    yield tr_cut
+                    if yield_gps_tags:
+                        yield tr_cut, gps_tags
+                    else:
+                        yield tr_cut
 
                 except trace.NoData:
                     pass
 
         else:
             tr.shift(util.utc_gps_offset(0.5*(tr.tmin+tr.tmax)))
-            yield tr
+            if yield_gps_tags:
+                yield tr, gps_tags
+            else:
+                yield tr
 
 
 header_keys = {
