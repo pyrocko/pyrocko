@@ -1064,9 +1064,10 @@ static PyObject* transfer_arrays(reader_t *reader) {
                 return NULL;
             }
 
+            Py_BEGIN_ALLOW_THREADS
             memcpy(PyArray_DATA((PyArrayObject*)array), reader->arrays[i].elements,
                    reader->arrays[i].fill*sizeof(int32_t));
-
+            Py_END_ALLOW_THREADS
             free(reader->arrays[i].elements);
             reader->arrays[i].elements = NULL;
             PyList_Append(list, array);

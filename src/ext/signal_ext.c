@@ -3,6 +3,10 @@
 #include "Python.h"
 #include "numpy/arrayobject.h"
 
+#if defined(_OPENMP)
+    #include <omp.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -62,12 +66,19 @@ static int good_array(const PyObject* o, int typenum) {
     return 1;
 }
 
+
+#ifdef _OPENMP
+#pragma omp declare simd
+#endif
 static double blackman_nutall(int i, int n) {
     return 0.3635819 - 0.4891775*cos((2.*M_PI*i)/(n-1))
               + 0.1365995*cos((4.*M_PI*i)/(n-1))
               - 0.0106411*cos((6.*M_PI*i)/(n-1));
 }
 
+#ifdef _OPENMP
+#pragma omp declare simd
+#endif
 static double sinc(double x) {
     if (x == 0.0) {
         return 1.0;
@@ -138,12 +149,20 @@ static signal_error_t antidrift(
     for (ientry=0; ientry<nentries; ientry++) {
         gamma = (ientry/(nentries-1.0)) - 0.5;
         sum = 0.0;
+
+        #ifdef _OPENMP
+        #pragma omp simd
+        #endif
         for (icoeff=0; icoeff<ncoeffs; icoeff++) {
             coeffs[ientry*ncoeffs + icoeff] = sinc(gamma-(icoeff-ncoeffs/2)) *
                                               blackman_nutall(icoeff, ncoeffs);
 
             sum += coeffs[ientry*ncoeffs + icoeff];
         }
+
+        #ifdef _OPENMP
+        #pragma omp simd
+        #endif
         for (icoeff=0; icoeff<ncoeffs; icoeff++) {
             coeffs[ientry*ncoeffs + icoeff] /= sum;
         }
@@ -167,6 +186,9 @@ static signal_error_t antidrift(
         icoeff_lo = imax(-i_in + ncoeffs / 2, 0);
         icoeff_hi = imin(ncoeffs, n_in - i_in + ncoeffs / 2);
 
+        #ifdef _OPENMP
+        #pragma omp simd
+        #endif
         for (icoeff=icoeff_lo; icoeff<icoeff_hi; icoeff++) {
             samples_out[i] += samples_in[i_in + icoeff - ncoeffs/2] *
                               coeffs[ientry*ncoeffs + icoeff];
