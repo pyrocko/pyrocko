@@ -286,19 +286,19 @@ class Pile(object):
                 return
             tmax = self.tmax - tpad
 
-        if tinc is None:
-            tinc = tmax - tmin
-
         if not self.is_relevant(tmin-tpad, tmax+tpad):
             return
 
         nut_selector = trace_callback_to_nut_callback(trace_selector)
 
-        eps = tinc * 1e-6
-        if tinc != 0.0:
-            nwin = int(((tmax - eps) - tmin) / tinc) + 1
-        else:
+        if tinc is None:
+            tinc = tmax - tmin
             nwin = 1
+        elif tinc == 0.0:
+            nwin = 1
+        else:
+            eps = 1e-6
+            nwin = max(1, int((tmax - tmin) / tinc - eps) + 1)
 
         for iwin in range(nwin):
             wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)

@@ -2613,19 +2613,20 @@ class Squirrel(Selection):
             tmin = tmin if tmin is not None else self_tmin + tpad
             tmax = tmax if tmax is not None else self_tmax - tpad
 
-        tinc = tinc if tinc is not None else tmax - tmin
+        if tinc is None:
+            tinc = tmax - tmin
+            nwin = 1
+        elif tinc == 0.0:
+            nwin = 1
+        else:
+            eps = 1e-6
+            nwin = max(1, int((tmax - tmin) / tinc - eps) + 1)
 
         try:
             if accessor_id is None:
                 accessor_id = 'chopper%i' % self._n_choppers_active
 
             self._n_choppers_active += 1
-
-            eps = tinc * 1e-6
-            if tinc != 0.0:
-                nwin = int(((tmax - eps) - tmin) / tinc) + 1
-            else:
-                nwin = 1
 
             if grouping is None:
                 codes_list = [codes]
