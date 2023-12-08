@@ -29,6 +29,7 @@ from pyrocko import util            # noqa
 from pyrocko import model           # noqa
 from pyrocko import config          # noqa
 from pyrocko import io              # noqa
+from pyrocko.gui import util as gui_util
 
 from . import pile_viewer     # noqa
 
@@ -686,9 +687,11 @@ class SnufflerWindow(qw.QMainWindow):
 
         self.get_view().setFocus(qc.Qt.OtherFocusReason)
 
-        sb = self.statusBar()
-        sb.clearMessage()
-        sb.showMessage('Welcome to Snuffler! Press <?> for help.')
+        self.status_messages = gui_util.StatusMessages()
+        self.statusBar().addPermanentWidget(self.status_messages)
+
+        self.status_messages.set(
+                'welcome', 'Welcome to Snuffler! Press ? for help.')
 
         snuffler_config = self.pile_viewer.viewer.config
 

@@ -836,7 +836,6 @@ def MakePileViewerMainClass(base):
             self.visible_marker_kinds = self.all_marker_kinds
             self.active_event_marker = None
             self.ignore_releases = 0
-            self.message = None
             self.reloaded = False
             self.pile_has_changed = False
             self.config = pyrocko.config.config('snuffler')
@@ -1256,7 +1255,6 @@ def MakePileViewerMainClass(base):
 
             self.old_data_ranges = {}
 
-            self.error_messages = {}
             self.return_tag = None
             self.wheel_pos = 60
 
@@ -2174,13 +2172,13 @@ def MakePileViewerMainClass(base):
                     needupdate = True
                     marker.set_alerted(state)
                     if state:
-                        self.message = marker.hoover_message()
-
-            if not haveone:
-                self.message = None
+                        self.window().status_messages.set(
+                            'marker', marker.hoover_message())
 
             if needupdate:
                 self.update()
+
+            self.update_status()
 
         def event(self, event):
             ''
@@ -3903,16 +3901,12 @@ def MakePileViewerMainClass(base):
             if self.highpass and self.lowpass \
                     and self.highpass >= self.lowpass:
 
-                self.message = 'Corner frequency of highpass larger than ' \
-                               'corner frequency of lowpass! I will now ' \
-                               'deactivate the highpass.'
-
-                self.update_status()
+                self.window().status_messages.set(
+                    'filter_error',
+                    'Corner frequency of highpass greater than '
+                    'corner frequency of lowpass. Highpass deactivated.')
             else:
-                oldmess = self.message
-                self.message = None
-                if oldmess is not None:
-                    self.update_status()
+                self.window().status_messages.clear('filter_error')
 
         def gain_change(self, value, ignore):
             self.gain = value
@@ -4046,35 +4040,32 @@ def MakePileViewerMainClass(base):
 
         def update_status(self):
 
-            if self.message is None:
-                point = self.mapFromGlobal(qg.QCursor.pos())
+            point = self.mapFromGlobal(qg.QCursor.pos())
 
-                mouse_t = self.time_projection.rev(point.x())
-                if not is_working_time(mouse_t):
-                    return
+            mouse_t = self.time_projection.rev(point.x())
+            if not is_working_time(mouse_t):
+                return
 
-                if self.floating_marker:
-                    tmi, tma = (
-                        self.floating_marker.tmin,
-                        self.floating_marker.tmax)
+            if self.floating_marker:
+                tmi, tma = (
+                    self.floating_marker.tmin,
+                    self.floating_marker.tmax)
 
-                    tt, ms = gmtime_x(tmi)
+                tt, ms = gmtime_x(tmi)
 
-                    if tmi == tma:
-                        message = mystrftime(
-                            fmt='Pick: %Y-%m-%d %H:%M:%S .%r',
-                            tt=tt, milliseconds=ms)
-                    else:
-                        srange = '%g s' % (tma-tmi)
-                        message = mystrftime(
-                            fmt='Start: %Y-%m-%d %H:%M:%S .%r Length: '+srange,
-                            tt=tt, milliseconds=ms)
+                if tmi == tma:
+                    message = mystrftime(
+                        fmt='Pick: %Y-%m-%d %H:%M:%S .%r',
+                        tt=tt, milliseconds=ms)
                 else:
-                    tt, ms = gmtime_x(mouse_t)
-
-                    message = mystrftime(fmt=None, tt=tt, milliseconds=ms)
+                    srange = '%g s' % (tma-tmi)
+                    message = mystrftime(
+                        fmt='Start: %Y-%m-%d %H:%M:%S .%r Length: '+srange,
+                        tt=tt, milliseconds=ms)
             else:
-                message = self.message
+                tt, ms = gmtime_x(mouse_t)
+
+                message = mystrftime(fmt=None, tt=tt, milliseconds=ms)
 
             sb = self.window().statusBar()
             sb.clearMessage()
@@ -4157,13 +4148,6 @@ def MakePileViewerMainClass(base):
 
             for snuffling in list(self.snufflings):
                 self.remove_snuffling(snuffling)
-
-        def set_error_message(self, key, value):
-            if value is None:
-                if key in self.error_messages:
-                    del self.error_messages[key]
-            else:
-                self.error_messages[key] = value
 
         def inputline_changed(self, text):
             pass

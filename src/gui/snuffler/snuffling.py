@@ -443,7 +443,7 @@ class Snuffling(object):
         logger.warning('%s: %s' % (self._name, message))
         self.show_message('warning', message)
 
-    def fail(self, message):
+    def fail(self, message, action='error'):
         '''
         Show an error message box and raise :py:exc:`SnufflingCallFailed`
         exception.
@@ -451,7 +451,19 @@ class Snuffling(object):
         :param message: specifying the error
         '''
 
-        self.error(message)
+        if action == 'error':
+            self.error(message)
+        elif action == 'warn':
+            self.warn(message)
+        elif action == 'log':
+            logger.error('%s: %s' % (self._name, message))
+        elif action == 'status':
+            logger.warn('%s: %s' % (self._name, message))
+            viewer = self.get_viewer().window()
+            if viewer:
+                viewer.window().status_messages.set(
+                    'snuffling', message)
+
         raise SnufflingCallFailed(message)
 
     def pylab(self, name=None, get='axes', figure_cls=None):
@@ -1692,6 +1704,11 @@ class Snuffling(object):
         self._markers = []
 
     def check_call(self, method):
+
+        viewer = self.get_viewer()
+        if viewer:
+            sb = viewer.window().statusBar()
+            sb.clearMessage()
 
         if method in self._call_in_progress:
             self.show_message('error', 'Previous action still in progress.')

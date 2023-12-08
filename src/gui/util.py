@@ -1933,3 +1933,51 @@ class RangeEdit(qw.QFrame):
 
             self.update()
             self.tcursorChanged.emit()
+
+
+class StatusMessages(qw.QLabel):
+    def __init__(self):
+        qw.QLabel.__init__(self)
+        self._messages = {}
+        self._timers = {}
+
+    def set(self, key, text, timeout=5.0):
+        self._messages[key] = text
+        timer = qc.QTimer()
+        timer.setSingleShot(True)
+        timer.setInterval(int(timeout*1000))
+
+        def clear():
+            self.clear(key)
+
+        timer.timeout.connect(clear)
+        timer.start()
+        if key in self._timers:
+            self._timers[key].stop()
+
+        self._timers[key] = timer
+        self.update_label()
+
+    def clear(self, key):
+        try:
+            del self._messages[key]
+        except KeyError:
+            pass
+        try:
+            del self._timers[key]
+        except KeyError:
+            pass
+
+        self.update_label()
+
+    def update_label(self):
+        messages = []
+        for key, text in self._messages.items():
+            messages.append(text)
+
+        if messages:
+            message = '\u29BF ' + ' - '.join(messages)
+        else:
+            message = ''
+
+        self.setText(message)

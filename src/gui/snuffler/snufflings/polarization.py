@@ -319,7 +319,8 @@ window). The currently used scaling factor can be frozen by checking
                         tr.chop(tmin - tpad, tmax + tpad)
                         tr_chop = tr.chop(tmin, tmax, inplace=False)
                     except trace.NoData:
-                        self.fail('No data. Time length too short?')
+                        self.fail(
+                            'No data. Time length too short?', action='status')
 
                     y = tr.get_ydata()
                     tr.set_ydata(y - num.mean(tr_chop.get_ydata()))
@@ -644,6 +645,8 @@ window). The currently used scaling factor can be frozen by checking
                     (0, 2, axes_02, trs_rot_chopped),
                     (1, 2, axes_12, trs_rot_chopped)]:
 
+                if amax == 0.0:
+                    amax = 1.0
                 axes.set_xlim(-amax*1.05, amax*1.05)
                 axes.set_ylim(-amax*1.05, amax*1.05)
 
