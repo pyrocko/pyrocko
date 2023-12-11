@@ -258,7 +258,32 @@ g_sensor_arrays = [
         ('hspa', ['NO.HSPA?.*.*'],
          'Hornsund, Spitsbergen, Norway'),
     ]
+] + [
+    SensorArrayFromFDSN(
+        name=name,
+        type='seismic',
+        codes=to_codes(codes),
+        sources=[_make_fdsn_source('up', codes)],
+        comment=comment)
+
+    for (name, codes, comment) in [
+        ('eger-s1', [
+            '6A.LWS00.*.*',
+            '6A.LWSA?.*.*',
+            'SX.LWSB?.*.*',
+            'SX.LWSC?.*.*'],
+         'ICDP EGER S1, Landwuest, German-Czech border region'),
+        ('eger-s1-borehole', [
+            '6A.LWS00.*.*'],
+         'Borehole array of ICDP EGER S1, Landwuest, German-Czech border region'),  # noqa
+        ('eger-s1-surface', [
+            '6A.LWSA?.*.*',
+            'SX.LWSB?.*.*',
+            'SX.LWSC?.*.*'],
+         'Surface array of ICDP EGER S1, Landwuest, German-Czech border region'),  # noqa
+    ]
 ]
+
 
 g_sensor_arrays_dict = dict(
     (array.name, array) for array in g_sensor_arrays)

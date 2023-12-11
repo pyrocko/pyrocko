@@ -50,17 +50,25 @@ def make_builtin_datasets():
                     site, magnitude_min))
 
     for site, network, cha in [
-            ('bgr', 'gr', 'lh')]:
-        name = 'fdsn-%s-%s-%s' % (site, network, cha)
-        cha = cha.upper() + '?'
-        network = network.upper()
+            ('bgr', 'gr', 'lh'),
+            ('up', None, None)]:
+        name = 'fdsn-' + '-'.join(
+            x for x in (site, network, cha) if x is not None)
+
+        query_args = {}
+        comments = ['FDSN: %s' % site]
+
+        if network is not None:
+            query_args['network'] = network.upper()
+            comments.append('network: %s' % query_args['network'])
+
+        if cha is not None:
+            query_args['channel'] = cha.upper() + '?'
+            comments.append('channels: %s' % query_args['channel'])
+
         datasets[name] = Dataset(
-            sources=[
-                FDSNSource(
-                    site=site,
-                    query_args=dict(network=network, channel=cha))],
-            comment='FDSN: %s, network: %s, '
-                    'channels: %s' % (site, network, cha))
+            sources=[FDSNSource(site=site, query_args=query_args)],
+            comment=', '.join(comments))
 
     from pyrocko import gato
     datasets['gato-named-arrays'] = gato.get_named_arrays_dataset()
