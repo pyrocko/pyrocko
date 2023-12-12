@@ -104,11 +104,16 @@ class ArrayInventory(qc.QAbstractTableModel, talkie.TalkieConnectionOwner):
 
         win = get_app().get_main_window()
         channels = win.state.constraints.channels
+        tmin = win.state.constraints.tmin_effective
+        tmax = win.state.constraints.tmax_effective
 
         for i in range(len(self.arrays)):
             self.array_infos[i] = self.arrays[i].get_info(
                 win.squirrel,
-                channels=channels or None)
+                channels=channels or None,
+                tmin=tmin,
+                tmax=tmax)
+
             istart = self.index(3, i)
             istop = self.index(len(self.columns)-1, i)
             self.dataChanged.emit(istart, istop)
@@ -267,6 +272,7 @@ class ArrayBrowser(qw.QSplitter, talkie.TalkieConnectionOwner):
         plots_frame = qw.QFrame()
         self.addWidget(plots_frame)
         layout = qw.QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
         plots_frame.setLayout(layout)
 
         self._geometry_items = []

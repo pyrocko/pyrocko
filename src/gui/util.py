@@ -119,7 +119,8 @@ class PyrockoQApplication(qw.QApplication):
             if path != sys.argv[0]:
                 wins = self.get_main_windows()
                 if wins:
-                    wins[0].get_view().load_soon([path])
+                    if hasattr(wins[0], 'get_view'):
+                        wins[0].get_view().load_soon([path])
 
             return True
         else:
@@ -1479,7 +1480,7 @@ class RangeEdit(qw.QFrame):
         self.setMouseTracking(True)
         poli = qw.QSizePolicy(
             qw.QSizePolicy.Expanding,
-            qw.QSizePolicy.Fixed)
+            qw.QSizePolicy.Expanding)
 
         self.setSizePolicy(poli)
         self.setMinimumSize(100, 3*24)
@@ -1637,8 +1638,12 @@ class RangeEdit(qw.QFrame):
             x = int(round(upper_projection(self._tcursor)))
             painter.drawLine(x, upper_rect.top(), x, upper_rect.bottom())
             if focus_rect and self.tduration and lower_projection:
-                x = int(round(lower_projection(self._tcursor)))
-                painter.drawLine(x, lower_rect.top(), x, lower_rect.bottom())
+                x2 = int(round(lower_projection(self._tcursor)))
+                if lower_rect.left() < x2 and x2 < lower_rect.right():
+                    painter.drawLine(
+                        x, upper_rect.bottom(), x2, lower_rect.top())
+                    painter.drawLine(
+                        x2, lower_rect.top(), x2, lower_rect.bottom())
 
         if self._hover_point and lower_rect.contains(self._hover_point) \
                 and not self.tduration and not self._track_start:

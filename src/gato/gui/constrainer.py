@@ -13,13 +13,14 @@ from pyrocko.gui.state import state_bind_lineedit, state_bind
 guts_prefix = 'gato'
 
 
+@talkie.has_computed
 class ConstraintsState(talkie.TalkieRoot):
     tmin = Timestamp.T(optional=True)
     tmax = Timestamp.T(optional=True)
     tduration = Duration.T(optional=True)
     tposition = Float.T(default=0.0)
-    channels = List.T(String.T())
     tcursor = Timestamp.T(optional=True)
+    channels = List.T(String.T())
 
     @talkie.computed(['tmin', 'tmax', 'tduration', 'tposition'])
     def tmin_effective(self):
@@ -65,26 +66,27 @@ class Constrainer(qw.QFrame, talkie.TalkieConnectionOwner):
 
     def controls_time(self):
         frame = qw.QFrame(self)
-        frame.setSizePolicy(
-            qw.QSizePolicy.Minimum, qw.QSizePolicy.Fixed)
 
         layout = qw.QGridLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+
         frame.setLayout(layout)
 
-        layout.addWidget(qw.QLabel('Min'), 0, 0)
         le_tmin = qw.QLineEdit()
-        layout.addWidget(le_tmin, 0, 1)
+        le_tmin.setSizePolicy(
+            qw.QSizePolicy.Preferred, qw.QSizePolicy.Fixed)
+        layout.addWidget(le_tmin, 0, 0)
 
-        layout.addWidget(qw.QLabel('Max'), 1, 0)
         le_tmax = qw.QLineEdit()
-        layout.addWidget(le_tmax, 1, 1)
+        le_tmax.setSizePolicy(
+            qw.QSizePolicy.Preferred, qw.QSizePolicy.Fixed)
+        layout.addWidget(le_tmax, 0, 2)
 
         label_tcursor = qw.QLabel()
-
         label_tcursor.setSizePolicy(
-            qw.QSizePolicy.Minimum, qw.QSizePolicy.Fixed)
+            qw.QSizePolicy.Preferred, qw.QSizePolicy.Fixed)
 
-        layout.addWidget(label_tcursor, 2, 1)
+        layout.addWidget(label_tcursor, 2, 0)
         self._label_tcursor = label_tcursor
 
         self.state_bind(
@@ -134,11 +136,13 @@ class Constrainer(qw.QFrame, talkie.TalkieConnectionOwner):
 
         range_edit.tcursorChanged.connect(handle_tcursor_changed)
 
-        layout.addWidget(range_edit, 0, 2, 3, 1)
+        layout.addWidget(range_edit, 0, 1, 3, 1)
 
-        layout.addWidget(qw.QLabel('Focus'), 0, 3)
         le_focus = qw.QLineEdit()
-        layout.addWidget(le_focus, 0, 4)
+        le_focus.setSizePolicy(
+            qw.QSizePolicy.Preferred, qw.QSizePolicy.Fixed)
+
+        layout.addWidget(le_focus, 2, 2)
 
         def focus_to_lineedit(state, widget):
             if state.tduration is None:
@@ -174,15 +178,19 @@ class Constrainer(qw.QFrame, talkie.TalkieConnectionOwner):
         label_effective_tmax = qw.QLabel()
 
         label_effective_tmin.setSizePolicy(
-            qw.QSizePolicy.Minimum, qw.QSizePolicy.Fixed)
+            qw.QSizePolicy.Preferred, qw.QSizePolicy.Fixed)
         label_effective_tmax.setSizePolicy(
-            qw.QSizePolicy.Minimum, qw.QSizePolicy.Fixed)
+            qw.QSizePolicy.Preferred, qw.QSizePolicy.Fixed)
+
         label_effective_tmin.setMinimumSize(
             qg.QFontMetrics(label_effective_tmin.font()).width(
                 '0000-00-00 00:00:00.000  '), 0)
+        label_effective_tmax.setMinimumSize(
+            qg.QFontMetrics(label_effective_tmax.font()).width(
+                '0000-00-00 00:00:00.000  '), 0)
 
-        layout.addWidget(label_effective_tmin, 1, 4)
-        layout.addWidget(label_effective_tmax, 2, 4)
+        layout.addWidget(label_effective_tmin, 1, 0)
+        layout.addWidget(label_effective_tmax, 1, 2)
 
         for var in ['tmin', 'tmax', 'tduration', 'tposition']:
             self.talkie_connect(

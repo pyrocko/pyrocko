@@ -46,7 +46,9 @@ class GatoWindow(qw.QMainWindow, TalkieConnectionOwner):
         self.setup_menubar()
 
         self.talkie_connect(
-            constrainer.state, 'channels', self.constraints_changed)
+            constrainer.state,
+            ['channels', 'tmin_effective', 'tmax_effective'],
+            self.constraints_changed)
 
         main_layout = qw.QVBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
