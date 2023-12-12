@@ -10,8 +10,9 @@ Implementation of :app:`gato array`.
 from pyrocko import progress
 from pyrocko.util import glob_filter
 from pyrocko.squirrel import SquirrelCommand, Squirrel
-from pyrocko.gato.array import get_named_arrays, get_named_arrays_dataset
-from pyrocko.squirrel.tool.common import ldq
+from pyrocko.gato.array import \
+    get_named_arrays, get_named_arrays_dataset, SensorArray, SensorArrayType
+from pyrocko.squirrel.tool.common import dq, ldq
 
 
 def add_argument_array_names(parser, nargs):
@@ -168,6 +169,59 @@ class Sensors(SquirrelCommand):
                     print(sensor)
 
 
+class Create(SquirrelCommand):
+
+    def make_subparser(self, subparsers):
+        return subparsers.add_parser(
+            'create',
+            help='New array definition based on available metadata.',
+            description='''New array definition based on available metadata.
+
+Create a named selection of sensors to be used as a Gato array from
+available station metadata.
+''')
+
+    def setup(self, parser):
+
+        parser.add_argument(
+            '--name',
+            dest='name',
+            help='Set array name.')
+
+        array_types = SensorArrayType.choices
+        parser.add_argument(
+            '--type',
+            metavar='TYPE',
+            default='seismic',
+            choices=array_types,
+            help='Set array type. Default: %s. Choices: %s' % (
+                dq('seismic'),
+                ldq(array_types)))
+
+        parser.add_argument(
+            '--comment',
+            dest='comment',
+            help='Set comment.')
+
+        parser.add_squirrel_selection_arguments()
+        parser.add_squirrel_query_arguments()
+
+    def run(self, parser, args):
+        sq = args.make_squirrel()
+        sensors = sq.get_sensors(**args.squirrel_query)
+        codes = set()
+        for sensor in sensors:
+            codes.add(sensor.codes)
+
+        array = SensorArray(
+            name=args.name,
+            codes=sorted(codes),
+            type=args.type,
+            comment=args.comment)
+
+        print(array)
+
+
 headline = 'Manage arrays setups.'
 
 
@@ -175,10 +229,10 @@ def make_subparser(subparsers):
     return subparsers.add_parser(
         'array',
         help=headline,
-        subcommands=[List(), Info(), Sensors()],
+        subcommands=[List(), Info(), Sensors(), Create()],
         description=headline + '''
 
-Manage seismic array setups: add, remove, show.
+Manage seismic array setups.
 ''')
 
 
