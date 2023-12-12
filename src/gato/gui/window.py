@@ -114,7 +114,7 @@ class GatoWindow(qw.QMainWindow, TalkieConnectionOwner):
 
         gui_util.call_later(self.setup_squirrel_delayed, 200)
 
-    def add_name_arrays_dataset(self):
+    def add_named_arrays_dataset(self):
         if not self.have_named_arrays_dataset:
             self.squirrel.add_dataset(gato.get_named_arrays_dataset())
             gui_util.call_later(self.setup_squirrel_delayed, 200)

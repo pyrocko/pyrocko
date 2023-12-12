@@ -13,6 +13,9 @@ from pyrocko.gui import talkie
 from pyrocko.gui.state import state_bind, state_bind_combobox
 from pyrocko import gato
 from pyrocko.gato import plot
+from . import common
+
+guts_prefix = 'gato'
 
 logger = logging.getLogger('gato.gui.browser')
 
@@ -301,41 +304,74 @@ class ArrayBrowser(qw.QSplitter, talkie.TalkieConnectionOwner):
             array for array in gato.get_named_arrays().values()
             if type is None or array.type == type]
 
+    def add_arrays_check(self, arrays):
+        names_have = set(array.name for array in self.state.arrays)
+        arrays_add = []
+        for array in arrays:
+            if array.name in names_have:
+                logger.warning(
+                    'Duplicate insert: array with name %s already '
+                    'exists.' % array.name)
+            else:
+                arrays_add.append(array)
+                names_have.add(array.name)
+
+        self.state.arrays.extend(arrays_add)
+        if arrays_add:
+            self.state.current_array_name = arrays_add[0].name
+
     def add_menu_entries(self, menu):
 
-        def add_arrays_function(arrays):
+        def add_array_from_available_sensors():
+            sq = get_app().get_main_window().squirrel
+            sensors = sq.get_sensors()
+            codes = set()
+            for sensor in sensors:
+                codes.add(sensor.codes)
+
+            array = gato.SensorArray(
+                name='Ad hoc array',
+                codes=sorted(codes))
+
+            self.add_arrays_check([array])
+
+        def add_arrays_from_file():
+            fns, _ = qw.QFileDialog.getOpenFileNames(
+                get_app().get_main_window(),
+                'Select one or more files containing Gato array definitions.',
+                options=common.qfiledialog_options)
+
+            if fns:
+                arrays = []
+                for fn in fns:
+                    arrays.extend(gato.load(fn, want=gato.SensorArray))
+
+                if arrays:
+                    self.add_arrays_check(arrays)
+
+        def make_add_arrays(arrays):
 
             def add_arrays():
                 win = get_app().get_main_window()
-                win.add_name_arrays_dataset()
-
-                names_have = set(array.name for array in self.state.arrays)
-                arrays_add = []
-                for array in arrays:
-                    if array.name in names_have:
-                        logger.warning(
-                            'Duplicate insert: array with name %s already '
-                            'exists.' % array.name)
-                    else:
-                        arrays_add.append(array)
-                        names_have.add(array.name)
-
-                self.state.arrays.extend(arrays_add)
-                if arrays_add:
-                    self.state.current_array_name = arrays_add[0].name
+                win.add_named_arrays_dataset()
+                self.add_arrays_check(arrays)
 
             return add_arrays
 
-        submenu = menu.addMenu('Add Builtin Arrays')
+        menu1 = menu.addMenu('Add Arrays')
+        menu1.addAction('From Available', add_array_from_available_sensors)
+        menu1.addAction('From File', add_arrays_from_file)
+
+        menu2 = menu1.addMenu('Builtin')
 
         for title, type in [
                 ('Seismic', 'seismic'),
                 ('Infrasound', 'infrasound'),
                 ('Hydrophone', 'hydrophone')]:
 
-            subsubmenu = submenu.addMenu(title)
+            menu3 = menu2.addMenu(title)
             arrays = self.builtin_arrays(type)
-            subsubmenu.addAction('All', add_arrays_function(arrays))
-            subsubmenu.addSeparator()
+            menu3.addAction('All', make_add_arrays(arrays))
+            menu3.addSeparator()
             for array in arrays:
-                subsubmenu.addAction(array.name, add_arrays_function([array]))
+                menu3.addAction(array.name, make_add_arrays([array]))
