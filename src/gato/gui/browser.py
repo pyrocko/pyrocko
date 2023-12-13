@@ -181,6 +181,9 @@ class ArrayBrowserState(talkie.TalkieRoot):
 
 class ArrayBrowser(qw.QSplitter, talkie.TalkieConnectionOwner):
 
+    current_array_changed = qc.pyqtSignal()
+    current_array_info_changed = qc.pyqtSignal()
+
     def __init__(self, state, **kwargs):
         qw.QSplitter.__init__(self, qc.Qt.Vertical)
         talkie.TalkieConnectionOwner.__init__(self)
@@ -279,6 +282,9 @@ class ArrayBrowser(qw.QSplitter, talkie.TalkieConnectionOwner):
         layout.addWidget(geometry)
         layout.addWidget(arf)
 
+        self.current_array = None
+        self.current_array_info = None
+
         self.talkie_connect(
             self.state, ['current_array_name'], self.update_current_array)
 
@@ -296,6 +302,9 @@ class ArrayBrowser(qw.QSplitter, talkie.TalkieConnectionOwner):
         self.current_array, self.current_array_info = \
             self.inventory.get_array_and_info_by_name(
                 self.state.current_array_name)
+
+        self.current_array_changed.emit()
+        self.current_array_info_changed.emit()
 
         self.update_plots()
 

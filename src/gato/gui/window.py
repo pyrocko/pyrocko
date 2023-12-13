@@ -42,6 +42,8 @@ class GatoWindow(qw.QMainWindow, TalkieConnectionOwner):
 
         self.browser = browser = ArrayBrowser(self.state.browser)
         self.squirrel_changed.connect(browser.update_array_infos_later)
+        self.browser.current_array_changed.connect(
+            constrainer.update_current_array)
 
         self.setup_menubar()
 

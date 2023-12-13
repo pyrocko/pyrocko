@@ -1495,12 +1495,17 @@ class RangeEdit(qw.QFrame):
         self._tcursor = None
         self._hover_point = None
 
-        self._provider = None
         self.tmin, self.tmax = None, None
         self.tduration, self.tposition = None, 0.
 
+        self._data_provider = None
+        self._coverage_provider = None
+
     def set_data_provider(self, provider):
-        self._provider = provider
+        self._data_provider = provider
+
+    def set_coverage_provider(self, provider):
+        self._coverage_provider = provider
 
     def set_data_name(self, name):
         self._data_name = name
@@ -1510,9 +1515,9 @@ class RangeEdit(qw.QFrame):
         return self._size_hint
 
     def get_data_range(self):
-        if self._provider:
+        if self._data_provider:
             vals = []
-            for data in self._provider.iter_data(self._data_name):
+            for data in self._data_provider.iter_data(self._data_name):
                 vals.append(data.min())
                 vals.append(data.max())
 
@@ -1527,8 +1532,8 @@ class RangeEdit(qw.QFrame):
         tmin_w, tmax_w = projection.get_in_range()
         nbins = int(umax_w - umin_w)
         counts = num.zeros(nbins, dtype=int)
-        if self._provider:
-            for data in self._provider.iter_data(self._data_name):
+        if self._data_provider:
+            for data in self._data_provider.iter_data(self._data_name):
                 ibins = ((data - tmin_w) * (nbins / (tmax_w - tmin_w))) \
                     .astype(int)
                 num.clip(ibins, 0, nbins-1, ibins)
@@ -1552,13 +1557,65 @@ class RangeEdit(qw.QFrame):
             bitmap.tobytes(),
             qg.QImage.Format_MonoLSB)
 
-    def draw_time_ticks(self, painter, projection, rect):
+    def draw_coverage(self, painter, projection, rect):
+        if not self._coverage_provider:
+            return
+
+        tmin, tmax = projection.get_in_range()
+        coverages = self._coverage_provider.get_coverage(tmin, tmax)
+        times = []
+        for coverage in coverages:
+            times.append(coverage.tmin)
+            times.append(coverage.tmax)
+
+        if not times:
+            return
+
+        tmin = min(times)
+        tmax = max(times)
+
+        s_tmin = projection(tmin)
+        s_tmax = projection(tmax)
+
+        ymin, ymax = projection.get_out_range()
+
+        bar = qc.QRect(
+            max(rect.left() - 2, int(s_tmin)),
+            rect.top() + 5,
+            min(rect.right() + 2, int(s_tmax))
+            - max(rect.left() - 2, int(s_tmin)),
+            rect.height() - 11)
 
         palette = self.palette()
         alpha_brush = palette.highlight()
         color = alpha_brush.color()
-        # color.setAlpha(60)
-        painter.setPen(qg.QPen(color))
+        frame_pen = qg.QPen(color)
+
+        color.setAlpha(60)
+        alpha_brush.setColor(color)
+
+        painter.setPen(frame_pen)
+        painter.setBrush(alpha_brush)
+
+        painter.drawRect(bar)
+
+        for xtime in sorted(set(times)):
+            s_time = int(projection(xtime))
+            if rect.left() <= s_time and s_time <= rect.right():
+                painter.drawLine(
+                    s_time,
+                    rect.top() + 5,
+                    s_time,
+                    rect.bottom() - 5)
+
+    def draw_time_ticks(self, painter, projection, rect):
+
+        palette = self.palette()
+        xpen_alpha_color = palette.color(qg.QPalette.ButtonText)
+        xpen_alpha_color.setAlpha(100)
+        xpen_alpha = qg.QPen(xpen_alpha_color)
+
+        painter.setPen(qg.QPen(xpen_alpha))
 
         tmin, tmax = projection.get_in_range()
         tinc, tinc_unit = plot.nice_time_tick_inc((tmax - tmin) / 7.)
@@ -1566,8 +1623,8 @@ class RangeEdit(qw.QFrame):
 
         for tick_time in tick_times:
             x = int(round(projection(tick_time)))
-            painter.drawLine(
-                x, rect.top(), x, rect.top() + rect.height() // 5)
+            painter.drawLine(x, rect.top(), x, rect.top() + 2)
+            painter.drawLine(x, rect.bottom(), x, rect.bottom() - 2)
 
     def drawit(self, painter):
 
@@ -1583,8 +1640,11 @@ class RangeEdit(qw.QFrame):
         fill_brush = palette.brush(qg.QPalette.Button)
         painter.fillRect(upper_rect, fill_brush)
 
+        xpen_alpha_color = palette.color(qg.QPalette.ButtonText)
+        xpen_alpha_color.setAlpha(100)
+        xpen_alpha = qg.QPen(xpen_alpha_color)
+
         if focus_rect:
-            painter.setBrush(palette.light())
             poly = qg.QPolygon(8)
             poly.setPoint(
                 0, lower_rect.x(), lower_rect.y())
@@ -1604,6 +1664,9 @@ class RangeEdit(qw.QFrame):
                 6, focus_rect.x(), upper_rect.y())
             poly.setPoint(
                 7, focus_rect.x(), upper_rect.y() + upper_rect.height())
+
+            painter.setBrush(palette.light())
+            painter.setPen(xpen_alpha)
             painter.drawPolygon(poly)
         else:
             fill_brush = palette.light()
@@ -1628,6 +1691,10 @@ class RangeEdit(qw.QFrame):
                 0, lower_rect.y(),
                 self.get_histogram(lower_projection, lower_rect.height()))
 
+        self.draw_coverage(painter, upper_projection, upper_rect)
+        if focus_rect and self.tduration:
+            self.draw_coverage(painter, lower_projection, lower_rect)
+
         # frame_pen = qg.QPen(palette.color(qg.QPalette.ButtonText))
         # painter.setPen(frame_pen)
         # painter.drawRect(upper_rect)
@@ -1635,6 +1702,8 @@ class RangeEdit(qw.QFrame):
         #     painter.drawRect(lower_rect)
 
         if self._tcursor is not None:
+            painter.setPen(xpen)
+
             x = int(round(upper_projection(self._tcursor)))
             painter.drawLine(x, upper_rect.top(), x, upper_rect.bottom())
             if focus_rect and self.tduration and lower_projection:

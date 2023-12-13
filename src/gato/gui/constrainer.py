@@ -106,7 +106,7 @@ class Constrainer(qw.QFrame, talkie.TalkieConnectionOwner):
         range_edit = gui_util.RangeEdit()
         # range_edit.rangeEditPressed.connect(self.disable_capture)
         # range_edit.rangeEditReleased.connect(self.enable_capture)
-        # range_edit.set_data_provider(self)
+        range_edit.set_coverage_provider(self)
         # range_edit.set_data_name('time')
 
         xblock = [False]
@@ -137,6 +137,7 @@ class Constrainer(qw.QFrame, talkie.TalkieConnectionOwner):
         range_edit.tcursorChanged.connect(handle_tcursor_changed)
 
         layout.addWidget(range_edit, 0, 1, 3, 1)
+        self.range_edit = range_edit
 
         le_focus = qw.QLineEdit()
         le_focus.setSizePolicy(
@@ -204,6 +205,18 @@ class Constrainer(qw.QFrame, talkie.TalkieConnectionOwner):
 
         return frame
 
+    def get_coverage(self, tmin, tmax):
+        sq = self.window().squirrel
+        if not sq:
+            return []
+        browser = self.window().browser
+        array = browser.current_array
+        if not array:
+            return []
+
+        return sq.get_coverage(
+            'channel', tmin=tmin, tmax=tmax, codes=array.codes)
+
     def update_effective_time_labels(self, *args):
         tmin = self.state.tmin_effective
         tmax = self.state.tmax_effective
@@ -218,3 +231,6 @@ class Constrainer(qw.QFrame, talkie.TalkieConnectionOwner):
         tcursor = self.state.tcursor
         stcursor = gui_util.time_or_none_to_str(tcursor)
         self._label_tcursor.setText(stcursor)
+
+    def update_current_array(self, *args):
+        self.range_edit.update()
