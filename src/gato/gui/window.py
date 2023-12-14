@@ -33,6 +33,7 @@ class GatoWindow(qw.QMainWindow, TalkieConnectionOwner):
         self.instant_close = instant_close
         self.setWindowTitle('Gato')
 
+        self.squirrel = None
         self.status_viewer = None
         self.have_named_arrays_dataset = False
 

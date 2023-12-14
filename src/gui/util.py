@@ -1402,7 +1402,7 @@ try:
     g_initial_time_range.append(
         calendar.timegm((1950, 1, 1, 0, 0, 0)))
 except Exception:
-    g_initial_time_range.append(g_working_system_time_range[0])
+    g_initial_time_range.append(Ng_working_system_time_range[0])
 
 try:
     g_initial_time_range.append(
@@ -1500,6 +1500,10 @@ class RangeEdit(qw.QFrame):
 
         self._data_provider = None
         self._coverage_provider = None
+        self._global_limit = g_working_system_time_range
+
+    def set_global_limit(self, tmin, tmax):
+        self._global_limit = tmin, tmax
 
     def set_data_provider(self, provider):
         self._data_provider = provider
@@ -1702,7 +1706,7 @@ class RangeEdit(qw.QFrame):
         #     painter.drawRect(lower_rect)
 
         if self._tcursor is not None:
-            painter.setPen(xpen)
+            painter.setPen(xpen_alpha)
 
             x = int(round(upper_projection(self._tcursor)))
             painter.drawLine(x, upper_rect.top(), x, upper_rect.bottom())
@@ -1785,6 +1789,12 @@ class RangeEdit(qw.QFrame):
         elif tmin == tmax:
             tmin -= 0.5
             tmax += 0.5
+
+        if tmin is not None:
+            tmin = max(tmin, self._global_limit[0])
+
+        if tmax is not None:
+            tmax = min(tmax, self._global_limit[1])
 
         self.tmin = tmin
         self.tmax = tmax

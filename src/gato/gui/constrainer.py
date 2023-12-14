@@ -3,9 +3,11 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
+import time
 
 from pyrocko.guts import String, Timestamp, List, str_duration, \
     parse_duration, Duration, Float
+from pyrocko import util
 from pyrocko.gui.qt_compat import qw, qg
 from pyrocko.gui import talkie, util as gui_util
 from pyrocko.gui.state import state_bind_lineedit, state_bind
@@ -104,6 +106,15 @@ class Constrainer(qw.QFrame, talkie.TalkieConnectionOwner):
         self.tmax_lineedit = le_tmax
 
         range_edit = gui_util.RangeEdit()
+
+        range_edit.set_global_limit(
+            max(
+                util.str_to_time_fillup('1900'),
+                util.g_working_system_time_range[0]),
+            min(
+                util.year_start(time.time() + 2 * 365 * 24 * 3600.),
+                util.g_working_system_time_range[1]))
+
         # range_edit.rangeEditPressed.connect(self.disable_capture)
         # range_edit.rangeEditReleased.connect(self.enable_capture)
         range_edit.set_coverage_provider(self)
