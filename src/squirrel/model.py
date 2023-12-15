@@ -1814,23 +1814,19 @@ def join_coverages(coverages):
     else:
         all_times = []
         all_diff_counts = []
-        count_start = 0
         for coverage in coverages:
             times, counts = coverage.changes_as_arrays()
             diff_counts = counts.copy()
-            diff_counts[0] = 0
+            diff_counts[0] = counts[0]
             diff_counts[1:] = counts[1:] - counts[:-1]
             all_diff_counts.append(diff_counts)
             all_times.append(times)
-            if coverage.tmin == tmin:
-                count_start += counts[0]
 
         times = num.concatenate(all_times)
         diff_counts = num.concatenate(all_diff_counts)
         iorder = num.argsort(times)
         times = times[iorder]
         diff_counts = diff_counts[iorder]
-        diff_counts[0] += count_start
         counts = num.cumsum(diff_counts)
         changes = list(zip(times, counts))
 

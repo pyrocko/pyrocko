@@ -192,12 +192,13 @@ def rint(x):
 
 
 def make_QPolygonF(xdata, ydata):
-    assert len(xdata) == len(ydata)
-    qpoints = qg.QPolygonF(len(ydata))
+    assert xdata.size == ydata.size
+    n = xdata.size
+    qpoints = qg.QPolygonF(n)
     vptr = qpoints.data()
-    vptr.setsize(len(ydata)*8*2)
+    vptr.setsize(n*8*2)
     aa = num.ndarray(
-        shape=(len(ydata), 2),
+        shape=(n, 2),
         dtype=num.float64,
         buffer=memoryview(vptr))
     aa.setflags(write=True)
@@ -1395,7 +1396,7 @@ class Projection(object):
     def clipped(self, x):
         umin, umax = self.ur
         xmin, xmax = self.xr
-        return min(umax, max(umin, umin + (x-xmin)*((umax-umin)/(xmax-xmin))))
+        return min(umax-1, max(umin, umin + (x-xmin)*((umax-umin)/(xmax-xmin))))
 
     def rev(self, u):
         umin, umax = self.ur
@@ -1477,6 +1478,56 @@ def tmax_effective(tmin, tmax, tduration, tposition):
         return tmin + (tmax - tmin) * tposition + tduration
 
 
+def xywh(rect):
+    return rect.x(), rect.y(), rect.width(), rect.height()
+
+
+def farr(*vals):
+    return num.array(vals, dtype=float)
+
+
+def flank(a, b, n):
+    cos = num.cos(num.linspace(0, num.pi, n))
+    return a + (b-a) * 0.5 * (1.0 - num.sign(cos) * num.abs(cos)**0.25)
+
+
+def yflank(a, b, n):
+    flank = num.zeros(n*2)
+    flank[:n] = a + 0.5 * (b-a) * num.sin(
+        num.linspace(0., num.pi/2., n))
+    flank[-n:] = b - 0.5 * (b-a) * num.sin(
+        num.linspace(num.pi/2., 0., n))
+    return flank
+
+
+def xflank(a, b, r, n):
+    flank = num.zeros(n*2)
+    flank[:n] = a + num.sign(b-a) * min(r, 0.5*abs(b-a)) * (1 - num.cos(
+        num.linspace(0., num.pi/2., n)))
+    flank[-n:] = b - num.sign(b-a) * min(r, 0.5*abs(b-a)) * (1 - num.cos(
+        num.linspace(num.pi/2., 0., n)))
+    return flank
+
+
+def make_rect_merge_poly(focus_rect, lower_rect):
+    lx, ly, lw, lh = xywh(lower_rect)
+    fx, fy, fw, fh = xywh(focus_rect)
+    n = 20
+    r = 0.5 * (ly - (fy+fh))
+
+    return make_QPolygonF(
+        num.concatenate([
+            farr(lx, lx, lx+lw-1, lx+lw-1),
+            xflank(lx+lw-1, fx+fw, r, n),
+            farr(fx+fw, fx+fw, fx, fx),
+            xflank(fx, lx, r, n)]),
+        num.concatenate([
+            farr(ly, ly+lh-1, ly+lh-1, ly),
+            yflank(ly, fy+fh, n),
+            farr(fy+fh, fy, fy, fy+fh),
+            yflank(fy+fh, ly, n)]))
+
+
 class RangeEdit(qw.QFrame):
 
     rangeChanged = qc.pyqtSignal()
@@ -1513,7 +1564,7 @@ class RangeEdit(qw.QFrame):
 
         self._data_provider = None
         self._coverage_provider = None
-        self._range_limit = g_working_system_time_range
+        self._range_limit = g_working_system_time_range[:2]
 
     def set_range_limit(self, tmin, tmax):
         self._range_limit = tmin, tmax
@@ -1624,7 +1675,7 @@ class RangeEdit(qw.QFrame):
             pcount = 0
             for tb, count in coverage.changes:
                 if t is not None and tb > t:
-                    if pcount > 0:
+                    if pcount > 0 and (tb-t) > 0:
                         drawbox(
                             t, tb,
                             box_styles_coverage[to_kind(coverage.kind_id)][
@@ -1634,7 +1685,7 @@ class RangeEdit(qw.QFrame):
                 t = tb
                 pcount = count
 
-    def draw_time_ticks(self, painter, projection, rect):
+    def draw_time_ticks(self, painter, projection, rect, where):
 
         palette = self.palette()
         xpen_alpha_color = palette.color(qg.QPalette.ButtonText)
@@ -1649,8 +1700,10 @@ class RangeEdit(qw.QFrame):
 
         for tick_time in tick_times:
             x = int(round(projection(tick_time)))
-            painter.drawLine(x, rect.top(), x, rect.top() + 2)
-            painter.drawLine(x, rect.bottom(), x, rect.bottom() - 2)
+            if where in ('top', 'both'):
+                painter.drawLine(x, rect.top(), x, rect.top() + 2)
+            if where in ('bottom', 'both'):
+                painter.drawLine(x, rect.bottom(), x, rect.bottom() - 2)
 
     def drawit(self, painter):
 
@@ -1671,26 +1724,7 @@ class RangeEdit(qw.QFrame):
         xpen_alpha = qg.QPen(xpen_alpha_color)
 
         if focus_rect:
-            poly = qg.QPolygon(8)
-            poly.setPoint(
-                0, lower_rect.x(), lower_rect.y())
-            poly.setPoint(
-                1, lower_rect.x(), lower_rect.y()+lower_rect.height())
-            poly.setPoint(
-                2, lower_rect.x() + lower_rect.width(),
-                lower_rect.y() + lower_rect.height())
-            poly.setPoint(
-                3, lower_rect.x() + lower_rect.width(), lower_rect.y())
-            poly.setPoint(
-                4, focus_rect.x() + focus_rect.width(),
-                upper_rect.y() + upper_rect.height())
-            poly.setPoint(
-                5, focus_rect.x() + focus_rect.width(), upper_rect.y())
-            poly.setPoint(
-                6, focus_rect.x(), upper_rect.y())
-            poly.setPoint(
-                7, focus_rect.x(), upper_rect.y() + upper_rect.height())
-
+            poly = make_rect_merge_poly(focus_rect, lower_rect)
             painter.setBrush(palette.light())
             painter.setPen(xpen_alpha)
             painter.drawPolygon(poly)
@@ -1702,9 +1736,11 @@ class RangeEdit(qw.QFrame):
         # poly = four_way_arrow((self.width() / 2.0, self.height() / 2.0), 2.)
         # painter.drawPolygon(poly)
 
-        self.draw_time_ticks(painter, upper_projection, upper_rect)
+        self.draw_time_ticks(
+            painter, upper_projection, upper_rect, 'top')
         if focus_rect and self.tduration:
-            self.draw_time_ticks(painter, lower_projection, lower_rect)
+            self.draw_time_ticks(
+                painter, lower_projection, lower_rect, 'bottom')
 
         xpen = qg.QPen(palette.color(qg.QPalette.ButtonText))
         painter.setPen(xpen)
@@ -1735,8 +1771,8 @@ class RangeEdit(qw.QFrame):
             if focus_rect and self.tduration and lower_projection:
                 x2 = int(round(lower_projection(self._tcursor)))
                 if lower_rect.left() < x2 and x2 < lower_rect.right():
-                    painter.drawLine(
-                        x, upper_rect.bottom(), x2, lower_rect.top())
+                    # painter.drawLine(
+                    #     x, upper_rect.bottom(), x2, lower_rect.top())
                     painter.drawLine(
                         x2, lower_rect.top(), x2, lower_rect.bottom())
 
@@ -1799,10 +1835,10 @@ class RangeEdit(qw.QFrame):
         if None in (tmin_eff, tmax_eff):
             return None
 
-        umin = rint(projection(tmin_eff))
-        umax = rint(projection(tmax_eff))
+        umin = rint(projection.clipped(tmin_eff))
+        umax = rint(projection.clipped(tmax_eff))
 
-        return qc.QRect(umin, vmin, umax-umin+1, vmax-vmin)
+        return qc.QRect(umin, vmin, max(1, umax-umin), vmax-vmin)
 
     def set_range(self, tmin, tmax, preserve_span=False):
         if None in (tmin, tmax):
