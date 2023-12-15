@@ -110,6 +110,9 @@ class ArrayResponseFunctionPlot(Plot, talkie.TalkieConnectionOwner):
         self.fig.canvas.draw()
 
     def draw(self, resolution='low'):
+        if not gui_util.get_app().slow_operations_enabled():
+            resolution = 'low'
+
         while self._items:
             self._items.pop().remove()
 

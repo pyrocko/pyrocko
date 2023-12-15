@@ -21,6 +21,7 @@ from .snuffler.marker import Marker, PhaseMarker, EventMarker  # noqa
 from .snuffler.marker import MarkerParseError, MarkerOneNSLCRequired  # noqa
 from .snuffler.marker import load_markers, save_markers  # noqa
 from pyrocko import plot, util
+from pyrocko.squirrel import join_coverages
 
 
 logger = logging.getLogger('pyrocko.gui.util')
@@ -80,6 +81,7 @@ class PyrockoQApplication(qw.QApplication):
     def __init__(self):
         qw.QApplication.__init__(self, [])
         self._main_window = None
+        self._slow_operations_disabled = 0
 
     def install_sigint_handler(self):
         self._old_signal_handler = signal.signal(
@@ -157,6 +159,17 @@ class PyrockoQApplication(qw.QApplication):
                 win.instant_close = True
 
             self.closeAllWindows()
+
+    def disable_slow_operations(self):
+        self._slow_operations_disabled += 1
+
+    def enable_slow_operations(self):
+        self._slow_operations_disabled -= 1
+        if self._slow_operations_disabled < 0:
+            self._slow_operations_disabled = 0
+
+    def slow_operations_enabled(self):
+        return self._slow_operations_disabled == 0
 
 
 app = None
@@ -1402,7 +1415,7 @@ try:
     g_initial_time_range.append(
         calendar.timegm((1950, 1, 1, 0, 0, 0)))
 except Exception:
-    g_initial_time_range.append(Ng_working_system_time_range[0])
+    g_initial_time_range.append(g_working_system_time_range[0])
 
 try:
     g_initial_time_range.append(
@@ -1500,10 +1513,10 @@ class RangeEdit(qw.QFrame):
 
         self._data_provider = None
         self._coverage_provider = None
-        self._global_limit = g_working_system_time_range
+        self._range_limit = g_working_system_time_range
 
-    def set_global_limit(self, tmin, tmax):
-        self._global_limit = tmin, tmax
+    def set_range_limit(self, tmin, tmax):
+        self._range_limit = tmin, tmax
 
     def set_data_provider(self, provider):
         self._data_provider = provider
@@ -1562,33 +1575,23 @@ class RangeEdit(qw.QFrame):
             qg.QImage.Format_MonoLSB)
 
     def draw_coverage(self, painter, projection, rect):
+        from pyrocko.gui.pile_viewer import box_styles_coverage
+        from pyrocko.squirrel import to_kind
+
         if not self._coverage_provider:
             return
 
         tmin, tmax = projection.get_in_range()
         coverages = self._coverage_provider.get_coverage(tmin, tmax)
-        times = []
-        for coverage in coverages:
-            times.append(coverage.tmin)
-            times.append(coverage.tmax)
-
-        if not times:
+        if not coverages:
             return
 
-        tmin = min(times)
-        tmax = max(times)
+        coverage = join_coverages(coverages)
 
-        s_tmin = projection(tmin)
-        s_tmax = projection(tmax)
+        tmin = coverage.tmin
+        tmax = coverage.tmax
 
         ymin, ymax = projection.get_out_range()
-
-        bar = qc.QRect(
-            max(rect.left() - 2, int(s_tmin)),
-            rect.top() + 5,
-            min(rect.right() + 2, int(s_tmax))
-            - max(rect.left() - 2, int(s_tmin)),
-            rect.height() - 11)
 
         palette = self.palette()
         alpha_brush = palette.highlight()
@@ -1601,16 +1604,35 @@ class RangeEdit(qw.QFrame):
         painter.setPen(frame_pen)
         painter.setBrush(alpha_brush)
 
-        painter.drawRect(bar)
+        def drawbox(tmin, tmax, style):
+            dtmin = projection.clipped(tmin)
+            dtmax = projection.clipped(tmax)
+            dvmin = rect.top() + 5
+            dvmax = rect.bottom() - 6
 
-        for xtime in sorted(set(times)):
-            s_time = int(projection(xtime))
-            if rect.left() <= s_time and s_time <= rect.right():
-                painter.drawLine(
-                    s_time,
-                    rect.top() + 5,
-                    s_time,
-                    rect.bottom() - 5)
+            bar_rect = qc.QRectF(dtmin, dvmin, float(dtmax-dtmin), dvmax-dvmin)
+            painter.setBrush(style.fill_brush)
+            painter.setPen(style.frame_pen)
+            painter.drawRect(bar_rect)
+
+        if coverage.changes is None:
+            drawbox(
+                coverage.tmin, coverage.tmax,
+                box_styles_coverage[to_kind(coverage.kind_id)][0])
+        else:
+            t = None
+            pcount = 0
+            for tb, count in coverage.changes:
+                if t is not None and tb > t:
+                    if pcount > 0:
+                        drawbox(
+                            t, tb,
+                            box_styles_coverage[to_kind(coverage.kind_id)][
+                                min(len(box_styles_coverage)-1,
+                                    pcount)])
+
+                t = tb
+                pcount = count
 
     def draw_time_ticks(self, painter, projection, rect):
 
@@ -1782,7 +1804,7 @@ class RangeEdit(qw.QFrame):
 
         return qc.QRect(umin, vmin, umax-umin+1, vmax-vmin)
 
-    def set_range(self, tmin, tmax):
+    def set_range(self, tmin, tmax, preserve_span=False):
         if None in (tmin, tmax):
             tmin = None
             tmax = None
@@ -1790,11 +1812,19 @@ class RangeEdit(qw.QFrame):
             tmin -= 0.5
             tmax += 0.5
 
-        if tmin is not None:
-            tmin = max(tmin, self._global_limit[0])
+        tmin_lim, tmax_lim = self._range_limit
 
-        if tmax is not None:
-            tmax = min(tmax, self._global_limit[1])
+        if tmin is not None and tmin < tmin_lim:
+            if preserve_span:
+                tmax = min(tmax + (tmin_lim-tmin), tmax_lim)
+
+            tmin = tmin_lim
+
+        if tmax is not None and tmax_lim < tmax:
+            if preserve_span:
+                tmin = max(tmin - (tmax - tmax_lim), tmin_lim)
+
+            tmax = tmax_lim
 
         self.tmin = tmin
         self.tmax = tmax
@@ -1937,7 +1967,7 @@ class RangeEdit(qw.QFrame):
                 tmin = tmin0 - dt - dtr*xfrac
                 tmax = tmax0 - dt + dtr*(1.-xfrac)
 
-                self.set_range(tmin, tmax)
+                self.set_range(tmin, tmax, preserve_span=True)
 
                 tduration, tposition = self._track_focus
                 if tduration is not None:

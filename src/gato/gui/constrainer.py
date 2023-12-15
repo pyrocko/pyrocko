@@ -107,7 +107,7 @@ class Constrainer(qw.QFrame, talkie.TalkieConnectionOwner):
 
         range_edit = gui_util.RangeEdit()
 
-        range_edit.set_global_limit(
+        range_edit.set_range_limit(
             max(
                 util.str_to_time_fillup('1900'),
                 util.g_working_system_time_range[0]),
@@ -115,8 +115,10 @@ class Constrainer(qw.QFrame, talkie.TalkieConnectionOwner):
                 util.year_start(time.time() + 2 * 365 * 24 * 3600.),
                 util.g_working_system_time_range[1]))
 
-        # range_edit.rangeEditPressed.connect(self.disable_capture)
-        # range_edit.rangeEditReleased.connect(self.enable_capture)
+        range_edit.rangeEditPressed.connect(
+            gui_util.get_app().disable_slow_operations)
+        range_edit.rangeEditReleased.connect(
+            gui_util.get_app().enable_slow_operations)
         range_edit.set_coverage_provider(self)
         # range_edit.set_data_name('time')
 
@@ -232,8 +234,15 @@ class Constrainer(qw.QFrame, talkie.TalkieConnectionOwner):
         tmin = self.state.tmin_effective
         tmax = self.state.tmax_effective
 
-        stmin = gui_util.time_or_none_to_str(tmin)
-        stmax = gui_util.time_or_none_to_str(tmax)
+        if tmin == self.state.tmin:
+            stmin = ''
+        else:
+            stmin = gui_util.time_or_none_to_str(tmin)
+
+        if tmax == self.state.tmax:
+            stmax = ''
+        else:
+            stmax = gui_util.time_or_none_to_str(tmax)
 
         self._label_effective_tmin.setText(stmin)
         self._label_effective_tmax.setText(stmax)
