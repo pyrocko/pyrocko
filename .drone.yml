@@ -145,6 +145,8 @@ steps:
     branch:
     - hptime
     - candidate
+  depends_on:
+  - test-base
 
 - name: stage
   image: pyrocko-util
@@ -159,7 +161,6 @@ steps:
     RSYNC_KEY:
       from_secret: rsync-key
   depends_on:
-  - test-base
   - test-base-debian-11
   - test-base-debian-10
   - test-base-hptime
@@ -219,6 +220,8 @@ steps:
     branch:
     - hptime
     - candidate
+  depends_on:
+  - test-gf
 
 - name: stage
   image: pyrocko-util
@@ -233,7 +236,6 @@ steps:
     RSYNC_KEY:
       from_secret: rsync-key
   depends_on:
-  - test-gf
   - test-gf-debian-11
   - test-gf-debian-10
   - test-gf-hptime
@@ -301,6 +303,8 @@ steps:
     branch:
     - hptime
     - candidate
+  depends_on:
+  - test-examples
 
 - name: stage
   image: pyrocko-util
@@ -315,7 +319,6 @@ steps:
     RSYNC_KEY:
       from_secret: rsync-key
   depends_on:
-  - test-examples
   - test-examples-debian-11
   - test-examples-debian-10
   - test-examples-hptime
@@ -375,6 +378,8 @@ steps:
     branch:
     - hptime
     - candidate
+  depends_on:
+  - test-gui
 
 - name: stage
   image: pyrocko-util
@@ -389,7 +394,6 @@ steps:
     RSYNC_KEY:
       from_secret: rsync-key
   depends_on:
-  - test-gui
   - test-gui-debian-11
   - test-gui-debian-10
   - test-gui-hptime
