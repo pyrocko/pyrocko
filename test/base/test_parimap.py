@@ -117,7 +117,7 @@ class ParimapTestCase(unittest.TestCase):
                     exc2 = e2
 
                 assert res1 == res2, str((res1, res2))
-                assert type(exc1) == type(exc2)
+                assert type(exc1) is type(exc2)
                 assert end1 == end2
 
                 if end1 or end2:

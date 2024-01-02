@@ -21,6 +21,7 @@ import multiprocessing
 
 nparallel = multiprocessing.cpu_count()
 
+
 def parstack(arrays, offsets, shifts, weights, method,
              lengthout=-1,
              offsetout=0,
@@ -28,7 +29,6 @@ def parstack(arrays, offsets, shifts, weights, method,
              nparallel=nparallel,
              dtype=num.float64,
              impl='openmp'):
-
 
     narrays = offsets.size
     assert len(arrays) == narrays

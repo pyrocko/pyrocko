@@ -1097,7 +1097,7 @@ class PhaseDef(object):
 
     def headwave_knee(self):
         for el in self:
-            if type(el) == Knee and el.headwave:
+            if type(el) is Knee and el.headwave:
                 return el
         return None
 
@@ -1113,7 +1113,7 @@ class PhaseDef(object):
 
         x = []
         for el in self:
-            if type(el) == Leg:
+            if type(el) is Leg:
                 if el.departure == UP:
                     x.append(smode(el.mode).lower())
                 else:
@@ -1125,7 +1125,7 @@ class PhaseDef(object):
                 if el.depthmin is not None:
                     x.append('>'+strdepth(el.depthmin))
 
-            elif type(el) == Knee:
+            elif type(el) is Knee:
                 if el.reflection and not el.at_surface():
                     if el.direction == DOWN:
                         x.append('v')
@@ -1136,7 +1136,7 @@ class PhaseDef(object):
                 if not el.at_surface():
                     x.append(strdepth(el.depth))
 
-            elif type(el) == Head:
+            elif type(el) is Head:
                 x.append('_')
                 x.append(strdepth(el.depth))
 
@@ -2044,7 +2044,7 @@ class RayElement(object):
     '''
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.__dict__ == other.__dict__
+        return type(self) is type(other) and self.__dict__ == other.__dict__
 
     def is_straight(self):
         return isinstance(self, Straight)

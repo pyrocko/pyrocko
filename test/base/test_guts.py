@@ -1196,7 +1196,7 @@ xmlns:f="https://www.w3schools.com/furniture">
 
             a2 = load_string(a.dump())
             s2 = ('\n'.join(a2.dump().splitlines()[1:]))
-            assert type(a2.s) == cls
+            assert type(a2.s) is cls
 
             assert s2 == '''
 s: hello

@@ -234,7 +234,7 @@ def wrap(s, width=80, indent=4):
 
 
 def same(x, eps=0.0):
-    if any(type(x[0]) != type(r) for r in x):
+    if any(type(x[0]) is not type(r) for r in x):
         return False
 
     if isinstance(x[0], float):

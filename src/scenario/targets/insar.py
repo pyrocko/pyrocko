@@ -14,7 +14,7 @@ from os import path as op
 from datetime import datetime
 from pyrocko import gf, util
 from pyrocko import orthodrome as od
-from pyrocko.guts import Float, Timestamp, Tuple, StringChoice, Bool, Object,\
+from pyrocko.guts import Float, Timestamp, Tuple, StringChoice, Bool, Object, \
     String
 
 from .base import TargetGenerator, NoiseGenerator

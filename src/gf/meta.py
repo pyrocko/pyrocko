@@ -1004,7 +1004,7 @@ class DiscretizedSource(Object):
 
         first = sources[0]
 
-        if not all(type(s) == type(first) for s in sources):
+        if not all(type(s) is type(first) for s in sources):
             raise Exception('DiscretizedSource.combine must be called with '
                             'sources of same type.')
 

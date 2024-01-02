@@ -195,7 +195,7 @@ class QSeisSConfigFull(QSeisSConfig):
                 [''] + [x.string_for_config() for x in xx])
 
         assert self.earthmodel_1d is not None
-        assert self.slowness_window is not None or self.calc_slowness_window,\
+        assert self.slowness_window is not None or self.calc_slowness_window, \
             "'slowness window' undefined and 'calc_slowness_window'=0"
 
         d = self.__dict__.copy()

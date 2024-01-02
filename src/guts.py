@@ -566,7 +566,7 @@ class TBase(object):
             return val
 
         is_derived = isinstance(val, self._cls)
-        is_exact = type(val) == self._cls
+        is_exact = type(val) is self._cls
 
         not_ok = not self.strict and not is_derived or \
             self.strict and not is_exact
@@ -592,7 +592,7 @@ class TBase(object):
 
         for cls in clss:
             try:
-                if type(val) != cls and isinstance(val, cls):
+                if type(val) is not cls and isinstance(val, cls):
                     validator = val.T.instance
 
             except AttributeError:
@@ -1875,7 +1875,7 @@ class Choice(Object):
             t = None
             for tc in self.choices:
                 is_derived = isinstance(val, tc._cls)
-                is_exact = type(val) == tc._cls
+                is_exact = type(val) is tc._cls
                 if not (not tc.strict and not is_derived or
                         tc.strict and not is_exact):
 
@@ -1914,7 +1914,7 @@ class Choice(Object):
 
             for cls in clss:
                 try:
-                    if type(val) != cls and isinstance(val, cls):
+                    if type(val) is not cls and isinstance(val, cls):
                         validator = val.T.instance
 
                 except AttributeError:

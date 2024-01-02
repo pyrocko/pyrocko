@@ -23,7 +23,7 @@ QuakeML Manual for details.
 '''
 
 import logging
-from pyrocko.guts import StringPattern, StringChoice, String, Float, Int,\
+from pyrocko.guts import StringPattern, StringChoice, String, Float, Int, \
     Timestamp, Object, List, StringUnion, Bool, Unicode
 from pyrocko.model import event
 from pyrocko.gui.snuffler import marker

@@ -143,7 +143,7 @@ class VelocityProfile(Object):
         self._step_d[-1] = self._step_d[-2] + THICKNESS_HALFSPACE
 
     @property
-    def publication_year__(self):
+    def publication_year__(self):  # noqa
         return pubYear(self.publication_reference)
 
     def interpolateProfile(self, depths, phase='p', stepped=True):

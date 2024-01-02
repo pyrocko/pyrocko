@@ -1,6 +1,6 @@
 import matplotlib
 import matplotlib.pyplot as plt
-from pyrocko.gf.seismosizer import BoxcarSTF, TriangularSTF, HalfSinusoidSTF,\
+from pyrocko.gf.seismosizer import BoxcarSTF, TriangularSTF, HalfSinusoidSTF, \
     SmoothRampSTF, ResonatorSTF
 
 font = {'size': 22}

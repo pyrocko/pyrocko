@@ -1821,7 +1821,6 @@ def iter_select_files(
         progress_beg('selecting files...')
 
     ngood = 0
-    check_include = None
     if include is not None:
         rinclude = re.compile(include)
 
@@ -1835,13 +1834,16 @@ def iter_select_files(
 
             infos = Anon(**m.groupdict())
             return selector(infos)
+    else:
+        check_include = None
 
-    check_exclude = None
     if exclude is not None:
         rexclude = re.compile(exclude)
 
         def check_exclude(path):
             return not bool(rexclude.search(path))
+    else:
+        check_exclude = None
 
     if check_include and check_exclude:
 

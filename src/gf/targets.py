@@ -11,7 +11,7 @@ import numpy as num
 import math
 
 from . import meta
-from pyrocko.guts import Timestamp, Tuple, String, Float, Object,\
+from pyrocko.guts import Timestamp, Tuple, String, Float, Object, \
                           StringChoice, Int
 from pyrocko.guts_array import Array
 from pyrocko.model import gnss
