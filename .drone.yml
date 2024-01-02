@@ -654,9 +654,9 @@ steps:
   - bash maintenance/pip/upload_wheels.sh testing
   environment:
     PYPI_USERNAME:
-      from_secret: pypi-username
+      from_secret: pypitest-username
     PYPI_PASSWORD:
-      from_secret: pypi-password
+      from_secret: pypitest-password
 
 - name: upload
   image: pyrocko-nest-debian-12
@@ -746,9 +746,9 @@ steps:
   - bash maintenance/pip/upload_wheels.sh testing
   environment:
     PYPI_USERNAME:
-      from_secret: pypi-username
+      from_secret: pypitest-username
     PYPI_PASSWORD:
-      from_secret: pypi-password
+      from_secret: pypitest-password
 
 - name: upload
   image: pyrocko-nest-debian-12
@@ -818,9 +818,9 @@ steps:
   - bash maintenance/pip/upload_wheels.sh testing
   environment:
     PYPI_USERNAME:
-      from_secret: pypi-username
+      from_secret: pypitest-username
     PYPI_PASSWORD:
-      from_secret: pypi-password
+      from_secret: pypitest-password
 
 - name: upload
   when:
@@ -891,9 +891,9 @@ steps:
   environment:
     TWINE: "/usr/local/bin/python3.11 -m twine"
     PYPI_USERNAME:
-      from_secret: pypi-username
+      from_secret: pypitest-username
     PYPI_PASSWORD:
-      from_secret: pypi-password
+      from_secret: pypitest-password
 
 - name: upload
   when:
