@@ -1,12 +1,12 @@
 import unittest
 import shutil
 import os
-import asyncore
+import sys
 import threading
 import logging
 import tempfile
 
-from pyrocko.gf import server, LocalEngine, ws, store
+from pyrocko.gf import LocalEngine, store, ws
 from pyrocko import util
 from pyrocko.fomosto import ahfullgreen
 
@@ -14,6 +14,7 @@ op = os.path
 logger = logging.getLogger('pyrocko.test.test_gf_ws')
 
 
+@unittest.skipIf(sys.version_info[:2] >= (3, 12), 'requires Python < 3.12')
 class GFWSTestCase(unittest.TestCase):
 
     @classmethod
@@ -38,6 +39,7 @@ class GFWSTestCase(unittest.TestCase):
         shutil.rmtree(cls.dl_dir)
 
     def test_local_server(self):
+        from pyrocko.gf import server
 
         class ServerThread(threading.Thread):
             def __init__(self, serve_dir):
@@ -48,6 +50,7 @@ class GFWSTestCase(unittest.TestCase):
                     'localhost', 32483, server.SeismosizerHandler, self.engine)
 
             def run(self):
+                import asyncore
                 asyncore.loop(1., use_poll=True)
 
         t_ws = ServerThread(self.serve_dir)
