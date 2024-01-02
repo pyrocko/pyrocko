@@ -39,8 +39,6 @@ from pyrocko.guts import Object, String, Timestamp, List, Tuple, Int, Dict, \
 
 guts_prefix = 'squirrel'
 
-fdsn.g_timeout = 60.
-
 logger = logging.getLogger('psq.client.fdsn')
 
 g_sites_not_supporting = {
