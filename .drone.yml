@@ -469,7 +469,8 @@ steps:
   commands:
   - C:\Windows\System32\cleanmgr.exe /dC
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\Lib\\site-packages\\pyrocko
-  - conda create --name test_env_${DRONE_BUILD_NUMBER} --yes pytest
+  # 2024-01-02, python downgrade required because vtk package not available yet for 3.12:
+  - conda create --name test_env_${DRONE_BUILD_NUMBER} --yes 'python<3.12' pytest
   - conda run --no-capture-output --name test_env_${DRONE_BUILD_NUMBER} python install.py deps conda --yes
   - conda run --no-capture-output --name test_env_${DRONE_BUILD_NUMBER} python install.py user --yes
   - New-Item -Path test\\data -ItemType SymbolicLink -Value C:\\vagrant\\test-data
