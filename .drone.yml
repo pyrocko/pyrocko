@@ -1054,6 +1054,56 @@ steps:
     status:
     - failure
     - success
+---
+
+kind: pipeline
+type: exec
+name: package-conda-osx-64-test
+
+trigger:
+  branch:
+    - candidate
+    - packaging
+    - release
+    - conda
+    - deploy-conda
+
+platform:
+  os: darwin
+  arch: arm64
+
+steps:
+- name: build-test
+  commands:
+  - cd maintenance/conda
+  - miniconda3_intel/bin/conda run --no-capture-output -n base bash build_packages.sh dryrun
+  when:
+    branch:
+      - candidate
+      - packaging
+      - conda
+
+- name: build-test-upload
+  commands:
+  - cd maintenance/conda
+  - miniconda3_intel/bin/conda run --no-capture-output -n base bash build_packages.sh upload
+  environment:
+    CONDA_USERNAME:
+      from_secret: conda-username
+    CONDA_PASSWORD:
+      from_secret: conda-password
+  when:
+    branch:
+      - release
+      - deploy-conda
+
+- name: cleanup
+  commands:
+  - conda build purge
+  when:
+    status:
+    - failure
+    - success
 
 ---
 
@@ -1284,6 +1334,7 @@ depends_on:
 - package-conda-linux
 - package-conda-osx-64
 - package-conda-osx-arm64
+- package-conda-osx-64-test
 - package-conda-windows
 - package-deb-debian-10
 - package-deb-debian-11
