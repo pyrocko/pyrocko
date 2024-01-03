@@ -963,52 +963,7 @@ steps:
 
 kind: pipeline
 type: exec
-name: package-conda-osx-64
-
-trigger:
-  branch:
-    - candidate
-    - packaging
-    - release
-    - conda
-    - deploy-conda
-
-platform:
-  os: linux
-  arch: amd64
-
-steps:
-- name: build-test
-  commands:
-  - ln -sf /data/local/home/pyrocko-testing/.vagrant.d $HOME/.vagrant.d
-  - cd maintenance/conda/boxes/osx
-  - ./outside.sh dryrun
-  when:
-    branch:
-      - candidate
-      - packaging
-      - conda
-
-- name: build-test-upload
-  commands:
-  - ln -sf /data/local/home/pyrocko-testing/.vagrant.d $HOME/.vagrant.d
-  - cd maintenance/conda/boxes/osx
-  - ./outside.sh upload
-  environment:
-    CONDA_USERNAME:
-      from_secret: conda-username
-    CONDA_PASSWORD:
-      from_secret: conda-password
-  when:
-    branch:
-      - release
-      - deploy-conda
-
----
-
-kind: pipeline
-type: exec
-name: package-conda-osx-arm64
+name: package-conda-osx-64-arm64
 
 trigger:
   branch:
@@ -1023,20 +978,49 @@ platform:
   arch: arm64
 
 steps:
-- name: build-test
+
+- name: build-test-arm64
   commands:
   - cd maintenance/conda
-  - conda run --no-capture-output -n base bash build_packages_osx_arm64.sh dryrun
+  - cp /Users/drone/.conda/conda_build_config.yaml .
+  - /Users/drone/miniconda3_arm64/bin/conda run --no-capture-output -n base bash build_packages_osx_arm64.sh dryrun
   when:
     branch:
       - candidate
       - packaging
       - conda
 
-- name: build-test-upload
+- name: build-test-64
   commands:
   - cd maintenance/conda
-  - conda run --no-capture-output -n base bash build_packages_osx_arm64.sh upload
+  - cp /Users/drone/.conda/conda_build_config.yaml .
+  - /Users/drone/miniconda3_x86_64/bin/conda run --no-capture-output -n base bash build_packages_osx_64.sh dryrun
+  when:
+    branch:
+      - candidate
+      - packaging
+      - conda
+
+- name: build-test-upload-arm64
+  commands:
+  - cd maintenance/conda
+  - cp /Users/drone/.conda/conda_build_config.yaml .
+  - /Users/drone/miniconda3_arm64/bin/conda run --no-capture-output -n base bash build_packages_osx_arm64.sh upload
+  environment:
+    CONDA_USERNAME:
+      from_secret: conda-username
+    CONDA_PASSWORD:
+      from_secret: conda-password
+  when:
+    branch:
+      - release
+      - deploy-conda
+
+- name: build-test-upload-64
+  commands:
+  - cd maintenance/conda
+  - cp /Users/drone/.conda/conda_build_config.yaml .
+  - /Users/drone/miniconda3_x86_64/bin/conda run --no-capture-output -n base bash build_packages_osx_64.sh upload
   environment:
     CONDA_USERNAME:
       from_secret: conda-username
@@ -1049,7 +1033,8 @@ steps:
 
 - name: cleanup
   commands:
-  - conda build purge
+  - /Users/drone/miniconda3_arm64/bin/conda build purge-all
+  - /Users/drone/miniconda3_x86_64/bin/conda build purge-all
   when:
     status:
     - failure
@@ -1099,7 +1084,12 @@ steps:
 
 - name: cleanup
   commands:
+  - conda build purge-all
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Windows\\Temp\\pyrocko*
+  when:
+    status:
+    - failure
+    - success
 
 ---
 
@@ -1283,7 +1273,7 @@ depends_on:
 - package-pip-windows
 - package-conda-linux
 - package-conda-osx-64
-- package-conda-osx-arm64
+- package-conda-osx-64-arm64
 - package-conda-windows
 - package-deb-debian-10
 - package-deb-debian-11
