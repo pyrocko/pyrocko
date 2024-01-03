@@ -10,12 +10,7 @@ if [ ! -d libmseed ]; then
     patch -s -p0 < libmseed-2.19.6-fix-blkt-395-bswap.patch
 fi
 
-if [ ! -d evalresp-3.3.0/lib ]; then
+if [ ! -d evalresp-3.3.0 ]; then
     rm -rf evalresp-3.3.0
     tar -xzf evalresp-3.3.0.tar.gz
-    cd evalresp-3.3.0
-    ./configure --prefix="`pwd`" --libdir="`pwd`/lib" CFLAGS=-fPIC
-    make
-    make install
-    cd ..
 fi
