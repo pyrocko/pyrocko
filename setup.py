@@ -103,6 +103,11 @@ libmseed_sources = [op.join('libmseed', entry) for entry in [
     'parseutils.c', 'selection.c', 'tracelist.c', 'traceutils.c',
     'unpack.c', 'unpackdata.c']]
 
+evalresp_sources = [op.join('evalresp-3.3.0', entry) for entry in [
+    'alloc_fctns.c', 'error_fctns.c', 'evr_spline.c', 'file_ops.c',
+    'print_fctns.c', 'regexp.c', 'resp_fctns.c', 'calc_fctns.c',
+    'evresp.c', 'parse_fctns.c', 'regerror.c', 'regsub.c', 'string_fctns.c']]
+
 
 def make_prerequisites():
     from subprocess import check_call
@@ -473,12 +478,11 @@ ext_modules_non_windows = [
     Extension(
         'evalresp_ext',
         include_dirs=[get_numpy_include(),
-                      get_build_include('evalresp-3.3.0/include/')],
-        library_dirs=[get_build_include('evalresp-3.3.0/lib/')],
-        libraries=['evresp'],
-        extra_compile_args=extra_compile_args + [
-            '-I%s' % get_build_include('evalresp-3.3.0/include')],
-        sources=[op.join('src', 'ext', 'evalresp_ext.c')])]
+                      get_build_include('evalresp-3.3.0')],
+        extra_compile_args=extra_compile_args + (
+            ['-D_CRT_SECURE_NO_WARNINGS', '-DWIN32'] if
+            is_windows else ['-fno-strict-aliasing']),
+        sources=[op.join('src', 'ext', 'evalresp_ext.c')] + evalresp_sources)]
 
 if not is_windows:
     ext_modules.extend(ext_modules_non_windows)
