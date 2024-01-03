@@ -9,6 +9,7 @@
 #include "Python.h"
 #include "numpy/arrayobject.h"
 
+#include <limits.h>
 #include <libmseed.h>
 #include <assert.h>
 
@@ -19,8 +20,13 @@ struct module_state
 
 #define GETSTATE(m) ((struct module_state *)PyModule_GetState(m))
 
+#ifndef OFF_MAX
 #define OFF_MAX ~((off_t)1 << (sizeof(off_t) * 8 - 1))
+#endif
+
+#ifndef OFF_MIN
 #define OFF_MIN ((off_t)1 << (sizeof(off_t) * 8 - 1))
+#endif
 
 /*********************************************************************
  * ms_readtraces:

@@ -1091,6 +1091,7 @@ static store_error_t store_calc_timeseries(
     float64_t ws_this[NCOMPONENTS_MAX*NSUMMANDS_MAX];
     uint64_t irecord_bases[VICINITY_NIP_MAX];
     float64_t weights_ip[VICINITY_NIP_MAX];
+    (void) nthreads;
 
     nsummands_max = cscheme->nsummands_max;
     nip = mscheme->vicinity_nip;

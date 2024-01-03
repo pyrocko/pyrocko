@@ -964,14 +964,14 @@ datacube_error_t datacube_load(reader_t *reader) {
         } else if (blocktype == 12) {
             err = datacube_read_diagnostics_block(reader);
         } else if (blocktype == 0) {
-            fprintf(stderr, "skipping block type %i at offset %zi\n", blocktype, datacube_tell(reader));
+            fprintf(stderr, "skipping block type %d at offset %lld\n", blocktype, (long long int)datacube_tell(reader));
             err = BAD_GPS_BLOCK;
 
         } else if (blocktype == 3) {
-            fprintf(stderr, "skipping block type %i at offset %zi\n", blocktype, datacube_tell(reader));
+            fprintf(stderr, "skipping block type %d at offset %lld\n", blocktype, (long long int)datacube_tell(reader));
             datacube_read_unknown_block_3(reader);
         } else {
-            fprintf(stderr, "unknown block type %i at offset %zi\n", blocktype, datacube_tell(reader));
+            fprintf(stderr, "unknown block type %d at offset %lld\n", blocktype, (long long int)datacube_tell(reader));
             return UNKNOWN_BLOCK_TYPE;
         }
         if (err == READ_FAILED) {

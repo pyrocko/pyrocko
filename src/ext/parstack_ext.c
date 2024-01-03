@@ -226,7 +226,9 @@ int parstack(
     int32_t imin, istart, ishift;
     size_t iarray, nsamp, i;
     double weight;
-    int chunk;
+#if defined(_OPENMP)
+    int chunk = CHUNKSIZE;
+#endif
     double *temp;
     double m;
 
@@ -240,8 +242,6 @@ int parstack(
 
     imin = offsetout;
     nsamp = lengthout;
-
-    chunk = CHUNKSIZE;
 
     if (method == 0) {
 	#if defined(_OPENMP)
@@ -604,7 +604,7 @@ static PyObject* w_argmax(PyObject *module, PyObject *args, PyObject *kwds) {
     Py_BEGIN_ALLOW_THREADS
     if (dtype == NPY_FLOAT) {
         err = fargmax((float *)carrayin, cresult, (size_t)shape[1], (size_t)shape[0], nparallel);
-    } else if (dtype == NPY_DOUBLE) {
+    } else {  /* if (dtype == NPY_DOUBLE) { */
         err = argmax(carrayin, cresult, (size_t)shape[1], (size_t)shape[0], nparallel);
     }
     Py_END_ALLOW_THREADS
