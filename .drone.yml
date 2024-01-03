@@ -1008,7 +1008,7 @@ steps:
 
 kind: pipeline
 type: exec
-name: package-conda-osx-arm64
+name: package-conda-osx-64-arm64
 
 trigger:
   branch:
@@ -1027,55 +1027,6 @@ steps:
   commands:
   - cd maintenance/conda
   - conda run --no-capture-output -n base bash build_packages_osx_arm64.sh dryrun
-  when:
-    branch:
-      - candidate
-      - packaging
-      - conda
-
-- name: build-test-upload
-  commands:
-  - cd maintenance/conda
-  - conda run --no-capture-output -n base bash build_packages_osx_arm64.sh upload
-  environment:
-    CONDA_USERNAME:
-      from_secret: conda-username
-    CONDA_PASSWORD:
-      from_secret: conda-password
-  when:
-    branch:
-      - release
-      - deploy-conda
-
-- name: cleanup
-  commands:
-  - conda build purge
-  when:
-    status:
-    - failure
-    - success
----
-
-kind: pipeline
-type: exec
-name: package-conda-osx-64-test
-
-trigger:
-  branch:
-    - candidate
-    - packaging
-    - release
-    - conda
-    - deploy-conda
-
-platform:
-  os: darwin
-  arch: arm64
-
-steps:
-- name: build-test
-  commands:
-  - cd maintenance/conda
   - /Users/drone/miniconda3_intel/bin/conda run --no-capture-output -n base bash build_packages.sh dryrun
   when:
     branch:
@@ -1086,6 +1037,7 @@ steps:
 - name: build-test-upload
   commands:
   - cd maintenance/conda
+  - conda run --no-capture-output -n base bash build_packages_osx_arm64.sh upload
   - /Users/drone/miniconda3_intel/bin/conda run --no-capture-output -n base bash build_packages.sh upload
   environment:
     CONDA_USERNAME:
@@ -1333,8 +1285,7 @@ depends_on:
 - package-pip-windows
 - package-conda-linux
 - package-conda-osx-64
-- package-conda-osx-arm64
-- package-conda-osx-64-test
+- package-conda-osx-64-arm64
 - package-conda-windows
 - package-deb-debian-10
 - package-deb-debian-11
