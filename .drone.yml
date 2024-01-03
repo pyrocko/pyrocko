@@ -1023,22 +1023,45 @@ platform:
   arch: arm64
 
 steps:
-- name: build-test
+
+- name: build-test-64
   commands:
   - cd maintenance/conda
-  - conda run --no-capture-output -n base bash build_packages_osx_arm64.sh dryrun
-  - /Users/drone/miniconda3_intel/bin/conda run --no-capture-output -n base bash build_packages.sh dryrun
+  - /Users/drone/miniconda3_intel/bin/conda run --no-capture-output -n base bash build_packages_osx_64.sh dryrun
   when:
     branch:
       - candidate
       - packaging
       - conda
 
-- name: build-test-upload
+- name: build-test-arm64
+  commands:
+  - cd maintenance/conda
+  - conda run --no-capture-output -n base bash build_packages_osx_arm64.sh dryrun
+  when:
+    branch:
+      - candidate
+      - packaging
+      - conda
+
+- name: build-test-upload-arm64
   commands:
   - cd maintenance/conda
   - conda run --no-capture-output -n base bash build_packages_osx_arm64.sh upload
-  - /Users/drone/miniconda3_intel/bin/conda run --no-capture-output -n base bash build_packages.sh upload
+  environment:
+    CONDA_USERNAME:
+      from_secret: conda-username
+    CONDA_PASSWORD:
+      from_secret: conda-password
+  when:
+    branch:
+      - release
+      - deploy-conda
+
+- name: build-test-upload-64
+  commands:
+  - cd maintenance/conda
+  - /Users/drone/miniconda3_intel/bin/conda run --no-capture-output -n base bash build_packages_osx_64.sh upload
   environment:
     CONDA_USERNAME:
       from_secret: conda-username
