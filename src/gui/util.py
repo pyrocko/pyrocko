@@ -1259,10 +1259,10 @@ class WebKitFrame(qw.QFrame):
     '''
 
     def __init__(self, url=None, parent=None):
-        try:
-            from PyQt5.QtWebEngineWidgets import QWebEngineView as WebView
-        except ImportError:
-            from PyQt5.QtWebKitWidgets import QWebView as WebView
+        from pyrocko.deps import require
+        require('PyQt5.QtWebEngine')
+        from PyQt5.QtWebEngineWidgets import QWebEngineView as WebView
+
         qw.QFrame.__init__(self, parent)
         layout = qw.QGridLayout()
         layout.setContentsMargins(0, 0, 0, 0)

@@ -522,7 +522,7 @@ if not have_pep621_support:
         ],
 
         extras_require={
-            'gui_scripts': ['PyQt5', 'PyQtWebEngine', 'vtk'],
+            'gui_scripts': ['PyQt5', 'vtk'],
         },
 
         entry_points={

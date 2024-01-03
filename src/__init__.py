@@ -71,7 +71,6 @@ def snuffle(*args, **kwargs):
     from pyrocko import deps
 
     deps.require('PyQt5.Qt')
-    deps.require('PyQt5.QtWebEngine')
 
     from pyrocko.gui.snuffler import snuffler
     return snuffler.snuffle(*args, **kwargs)

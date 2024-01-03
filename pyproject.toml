@@ -45,7 +45,6 @@ dependencies = [
 [project.optional-dependencies]
 gui = [
     "PyQt5",
-    "PyQtWebEngine",
     "vtk",
 ]
 
