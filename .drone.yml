@@ -1027,7 +1027,7 @@ steps:
 - name: build-test-64
   commands:
   - cd maintenance/conda
-  - /Users/drone/miniconda3_intel/bin/conda run --no-capture-output -n base bash build_packages_osx_64.sh dryrun
+  - /Users/drone/miniconda3_x86_64/bin/conda run --no-capture-output -n base bash build_packages_osx_64.sh dryrun
   when:
     branch:
       - candidate
@@ -1061,7 +1061,7 @@ steps:
 - name: build-test-upload-64
   commands:
   - cd maintenance/conda
-  - /Users/drone/miniconda3_intel/bin/conda run --no-capture-output -n base bash build_packages_osx_64.sh upload
+  - /Users/drone/miniconda3_x86_64/bin/conda run --no-capture-output -n base bash build_packages_osx_64.sh upload
   environment:
     CONDA_USERNAME:
       from_secret: conda-username
