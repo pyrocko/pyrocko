@@ -6,7 +6,7 @@ package:
   version: {{ proj.get('version') }}
 
 source:
-  path: ../../..
+  git_url: ../../..
 
 requirements:
   build:
