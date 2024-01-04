@@ -1272,7 +1272,6 @@ depends_on:
 - package-pip-manylinux2014
 - package-pip-windows
 - package-conda-linux
-- package-conda-osx-64
 - package-conda-osx-64-arm64
 - package-conda-windows
 - package-deb-debian-10
