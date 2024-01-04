@@ -1024,23 +1024,22 @@ platform:
 
 steps:
 
-- name: build-test-64
+- name: build-test-arm64
   commands:
-  - echo $HOME
   - cd maintenance/conda
   - cp /Users/drone/.conda/conda_build_config.yaml .
-  - /Users/drone/miniconda3_x86_64/bin/conda run --no-capture-output -n base bash build_packages_osx_64.sh dryrun
+  - /Users/drone/miniconda3_arm64/bin/conda run --no-capture-output -n base bash build_packages_osx_arm64.sh dryrun
   when:
     branch:
       - candidate
       - packaging
       - conda
 
-- name: build-test-arm64
+- name: build-test-64
   commands:
   - cd maintenance/conda
   - cp /Users/drone/.conda/conda_build_config.yaml .
-  - conda run --no-capture-output -n base bash build_packages_osx_arm64.sh dryrun
+  - /Users/drone/miniconda3_x86_64/bin/conda run --no-capture-output -n base bash build_packages_osx_64.sh dryrun
   when:
     branch:
       - candidate
@@ -1051,7 +1050,7 @@ steps:
   commands:
   - cd maintenance/conda
   - cp /Users/drone/.conda/conda_build_config.yaml .
-  - conda run --no-capture-output -n base bash build_packages_osx_arm64.sh upload
+  - /Users/drone/miniconda3_arm64/bin/conda run --no-capture-output -n base bash build_packages_osx_arm64.sh upload
   environment:
     CONDA_USERNAME:
       from_secret: conda-username
@@ -1079,7 +1078,8 @@ steps:
 
 - name: cleanup
   commands:
-  - conda build purge
+  - /Users/drone/miniconda3_arm64/bin/conda build purge-all
+  - /Users/drone/miniconda3_x86_64/bin/conda build purge-all
   when:
     status:
     - failure
@@ -1129,7 +1129,12 @@ steps:
 
 - name: cleanup
   commands:
+  - conda build purge-all
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Windows\\Temp\\pyrocko*
+  when:
+    status:
+    - failure
+    - success
 
 ---
 
