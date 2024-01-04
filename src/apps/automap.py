@@ -170,12 +170,12 @@ def main(args=None):
         util.setup_logging(program_name, 'info')
 
     if options.download_etopo1:
-        import pyrocko.dataset.topo.etopo1
-        pyrocko.dataset.topo.etopo1.download()
+        from pyrocko.dataset.topo import _etopo1
+        _etopo1.download()
 
     if options.download_srtmgl3:
-        import pyrocko.dataset.topo.srtmgl3
-        pyrocko.dataset.topo.srtmgl3.download()
+        from pyrocko.dataset.topo import _srtmgl3
+        _srtmgl3.download()
 
     if options.make_decimated:
         import pyrocko.dataset.topo
