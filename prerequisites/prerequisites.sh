@@ -13,4 +13,5 @@ fi
 if [ ! -d evalresp-3.3.0 ]; then
     rm -rf evalresp-3.3.0
     tar -xzf evalresp-3.3.0.tar.gz
+    patch -s -p0 < evalresp-3.3.0-fprintf-fmtstr.patch
 fi
