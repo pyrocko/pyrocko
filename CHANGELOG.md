@@ -6,7 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
-*empty*
+### Added
+- Support for rotational GFs.
+- Seismosizer snuffling: add MT source type
+- Date/time parsing now accepts 'today' and 'tomorrow' where
+  `str_to_time_fillup` is used.
+- Squirrel FDSNSource now supports restriction to concrete list of NSLC codes.
+- Squirrel catalog client: add ISC catalog support
+- Squirrel: add support for named datasets
+
+### Changed
+- Improved progress indicators.
+- Release GIL in a few more computation functions.
+- Squirrel FDSN clients now store metadata in pickle format rather than
+  StationXML for speedup.
+
+### Fixed
+- Improved extraction of station information in Pyrocko format from StationXML,
+  for situations where the channels of a sensor are split into multiple station
+  objects.
+- Fixed broken timeout handling in FDSN clients.
+- Fixed inconsistencies in StationXML / squirrel unit definitions.
+- Various small bug fixes.
 
 ## v2023.10.11
 
