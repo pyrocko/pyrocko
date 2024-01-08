@@ -40,12 +40,12 @@ else
     conda config --set anaconda_upload no
 fi
 
-conda-build --python 3.7 --numpy 1.18 build
-conda-build --python 3.8 --numpy 1.18 build
-conda-build --python 3.9 --numpy 1.21 build
-conda-build --python 3.10 --numpy 1.21 build
-conda-build --python 3.11 --numpy 1.23 build
-conda-build --python 3.12 --numpy 1.26 build
+conda-build --python 3.7 --numpy 1.18 build_windows
+conda-build --python 3.8 --numpy 1.18 build_windows
+conda-build --python 3.9 --numpy 1.21 build_windows
+conda-build --python 3.10 --numpy 1.21 build_windows
+conda-build --python 3.11 --numpy 1.23 build_windows
+conda-build --python 3.12 --numpy 1.26 build_windows
 
 if [ "$ACTION" == "upload" ] ; then
     trap - EXIT
