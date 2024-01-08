@@ -1,0 +1,58 @@
+{% set pyproject = load_file_data("../../../pyproject.toml", from_recipe_dir=True)  %}
+{% set proj = pyproject.get('project') %}
+
+package:
+  name: {{ proj.get('name') }}
+  version: {{ proj.get('version') }}
+
+source:
+  path: ../../..
+
+requirements:
+  build:
+    - python
+    - {{ compiler('c') }}
+    - numpy
+    - setuptools
+    - m2-patch  # [win]
+    - m2-bash  # [win]
+    - m2-tar  # [win]
+    - m2-gzip  # [win]
+  host:
+    - python
+    - numpy
+  run:
+    - python
+    - numpy
+    - scipy
+    - matplotlib
+    - pyqt
+    - pyyaml
+    - requests
+    - jinja2
+
+build:
+  script: {{PYTHON}} -m pip install --no-deps --no-build-isolation .
+  entry_points:
+  {% for module, entrypoints in proj.get('entry-points').items() %}
+  {% for name, path in entrypoints.items() %}
+    - {{ name }} = {{ path }}
+  {% endfor %}
+  {% endfor %}
+
+test:
+  source_files:
+    - test
+  requires:
+    - pytest
+  imports:
+    - pyrocko
+  commands:
+    - python -m pytest test/base/test_util.py test/base/test_guts.py test/base/test_eikonal.py
+
+about:
+  home: https://pyrocko.org
+  license: GPL3
+  license-family: GPL
+  summary: A versatile seismology toolkit for Python.
+  doc_url: https://pyrocko.org/docs
