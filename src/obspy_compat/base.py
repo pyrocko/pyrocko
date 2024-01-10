@@ -27,11 +27,6 @@ to Pyrocko and ObsPy classes.
 
 -- *With best wishes to the ObsPy Team from the Pyrocko Developers!*
 
-.. note::
-
-    This is an experimental module, the interface may still be changed.
-    Feedback and discussion welcome!
-
 '''
 
 
