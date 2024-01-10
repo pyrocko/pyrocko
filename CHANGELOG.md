@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+*empty*
+
+## v2024.01.10
+
 ### Added
 - Support for rotational GFs.
 - Seismosizer snuffling: add MT source type
