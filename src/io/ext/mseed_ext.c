@@ -213,7 +213,7 @@ mseed_get_traces(PyObject *m, PyObject *args, PyObject *kwds)
                 return NULL;
             }
             array = PyArray_SimpleNew(1, array_dims, numpytype);
-            size_bytes = PyArray_NBYTES(array);
+            size_bytes = PyArray_NBYTES((PyArrayObject *)array);
 
             if (size_bytes >= GIL_THRESHOLD) {
                 Py_BEGIN_ALLOW_THREADS
@@ -253,7 +253,8 @@ mseed_get_traces(PyObject *m, PyObject *args, PyObject *kwds)
 
 static int tuple2mst(PyObject *in_trace, MSTrace *mst, int *msdetype, int steim)
 {
-    int numpytype, ret;
+    int numpytype;
+    void *ret;
     size_t length;
     npy_intp size_bytes;
     char *network, *station, *location, *channel, *dataquality;
