@@ -2583,8 +2583,8 @@ class Squirrel(Selection):
             :py:class:`~pyrocko.squirrel.operators.base.Grouping`
 
         :yields:
-            A list of :py:class:`~pyrocko.trace.Trace` objects for every
-            extracted time window.
+            For each extracted time window or waveform group a
+            :py:class:`Batch` object is yielded.
 
         See :py:meth:`iter_nuts` for details on time span matching.
         '''
