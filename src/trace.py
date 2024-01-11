@@ -2165,6 +2165,52 @@ def make_traces_compatible(
         enforce_global_snap=True,
         warn_snap=False):
 
+    '''
+    Homogenize sampling rate, time span, sampling instants, and data type.
+
+    This function takes a group of traces and tries to make them compatible in
+    terms of data type and sampling rate, time span, and sampling instants of
+    time.
+
+    If necessary, traces are (in order):
+
+    - casted to the same data type.
+    - downsampled to a common sampling rate, using decimation cascades.
+    - resampled to common sampling instants in time, using Sinc interpolation.
+    - cut to the same time span. The longest time span covered by all traces is
+      used.
+
+    :param traces:
+        Input waveforms.
+    :type traces:
+        :py:class:`list` of :py:class:`Trace`
+
+    :param dtype:
+        Force traces to be casted to the given data type. If not specified, the
+        traces are cast to :py:class:`float`.
+    :type dtype:
+        :py:class:`numpy.dtype`
+
+    :param deltat:
+        Sampling interval [s]. If not specified, the longest sampling interval
+        among the input traces is chosen.
+    :type deltat:
+        float
+
+    :param enforce_global_snap:
+        If ``True``, choose sampling instants to be even multiples of the
+        sampling rate in system time. When set to ``False`` traces are still
+        resampled to common time instants (if necessary), but they may be
+        offset to the system time sampling rate multiples.
+    :type enforce_global_snap:
+        bool
+
+    :param warn_snap:
+        If set to ``True`` warn, when resampling has to be performed.
+    :type warn_snap:
+        bool
+    '''
+
     eps_snap = 1e-3
 
     if not traces:

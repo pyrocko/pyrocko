@@ -557,32 +557,51 @@ class PsCmpArray(PsCmpObservation):
 
 class PsCmpRectangularSource(Location, gf.seismosizer.Cloneable):
     '''
-    Rectangular Source for the input geometry of the active fault.
+    Rectangular source for the input geometry of the active fault.
 
-    Input parameters have to be in:
-    [deg] for reference point (lat, lon) and angles (rake, strike, dip)
-    [m] shifting with respect to reference position
-    [m] for fault dimensions and source depth. The default shift of the
-    origin (:py:attr`pos_s`, :py:attr:`pos_d`) with respect to the reference
-        coordinates
-    (lat, lon) is zero, which implies that the reference is the center of
-        the fault plane!
-    The calculation point is always the center of the fault-plane!
-    Setting :py:attr`pos_s` or :py:attr`pos_d` moves the fault point with
-        respect to the origin along strike and dip direction, respectively!
+    The default shift of the origin (:gattr:`pos_s`, :gattr:`pos_d`) with
+    respect to the reference coordinates
+    (:gattr:`~pyrocko.model.location.Location.lat`,
+    :gattr:`~pyrocko.model.location.Location.lon`) is zero, which implies that
+    the reference is the center of the fault plane! The calculation point is
+    always the center of the fault-plane. Setting :gattr:`pos_s` or
+    :gattr:`pos_d` moves the fault point with respect to the origin along
+    strike and dip direction, respectively.
     '''
-    length = Float.T(default=6.0 * km)
-    width = Float.T(default=5.0 * km)
-    strike = Float.T(default=0.0)
-    dip = Float.T(default=90.0)
-    rake = Float.T(default=0.0)
-    torigin = Float.T(default=0.0)
 
-    slip = Float.T(optional=True, default=1.0)
-
-    pos_s = Float.T(optional=True, default=None)
-    pos_d = Float.T(optional=True, default=None)
-    opening = Float.T(default=0.0)
+    length = Float.T(
+        default=6.0 * km,
+        help='Fault length [m].')
+    width = Float.T(
+        default=5.0 * km,
+        help='Fault width [m].')
+    strike = Float.T(
+        default=0.0,
+        help='Fault strike, clockwise from north [deg].')
+    dip = Float.T(
+        default=90.0,
+        help='Fault dip, downward from horizontal [deg].')
+    rake = Float.T(
+        default=0.0,
+        help='Rake angle, counter-clock wise from right-horizontal [deg].')
+    torigin = Float.T(
+        default=0.0,
+        help='Origin time [s].')
+    slip = Float.T(
+        optional=True,
+        default=1.0,
+        help='Slip amount [m]')
+    pos_s = Float.T(
+        optional=True,
+        default=None,
+        help='Origin offset along strike [m].')
+    pos_d = Float.T(
+        optional=True,
+        default=None,
+        help='Origin offset along dip [m].')
+    opening = Float.T(
+        default=0.0,
+        help='Fault opening [m].')
 
     def update(self, **kwargs):
         '''
@@ -1334,15 +1353,20 @@ in the directory {dir}'''.format(
     def get_results(self, component='displ'):
         '''
         Get the resulting components from the stored directory.
-        Be careful: The z-component is downward positive!
 
-        :param component: string, the component to retrieve from the
-        result directory, may be:
-            "displ": displacement, n x 3 array
-            "stress": stresses n x 6 array
-            "tilt': tilts n x 3 array,
-            "gravity': gravity n x 2 array
-            "all": all the above together
+        .. note::
+
+            The z-component is downward positive.
+
+        :param component:
+            The component to retrieve from the result directory. Choices:
+            ``"displ"`` -- displacement, n x 3 array,
+            ``"stress"`` -- stresses n x 6 array,
+            ``"tilt'`` -- tilts n x 3 array,
+            ``"gravity'`` -- gravity n x 2 array,
+            ``"all"`` -- all the above together.
+        :type param:
+            str
         '''
         assert self.config.snapshots is not None
         fns = self.config.get_output_filenames(self.tempdir)

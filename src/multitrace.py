@@ -1,3 +1,13 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+
+'''
+Multi-component waveform data model.
+'''
+
+
 import numpy as num
 
 from . import trace
@@ -7,10 +17,37 @@ from .squirrel.model import CodesNSLCE
 
 
 class MultiTrace(Object):
-    codes = List.T(CodesNSLCE.T())
-    data = Array.T(shape=(None, None))
-    tmin = Timestamp.T(default=Timestamp.D('1970-01-01 00:00:00'))
-    deltat = Float.T(default=1.0)
+    '''
+    Container for multi-component waveforms with common time span and sampling.
+
+    Instances of this class can be used to efficiently represent
+    multi-component waveforms of a single sensor or of a sensor array. The data
+    samples are stored in a single 2D array where the first index runs over
+    components and the second index over time. Metadata contains sampling rate,
+    start-time and :py:class:`~pyrocko.squirrel.model.CodesNSLCE` identifiers
+    for the contained traces.
+
+    :param traces:
+        If given, construct multi-trace from given single-component waveforms
+        (see :py:func:`~pyrocko.trace.get_traces_data_as_array`) and ignore
+        any other arguments.
+    :type traces:
+        :py:class:`list` of :py:class:`~pyrocko.trace.Trace`
+    '''
+
+    codes = List.T(
+        CodesNSLCE.T(),
+        help='List of codes identifying the components.')
+    data = Array.T(
+        shape=(None, None),
+        help='Array containing the data samples indexed as '
+             '``(icomponent, isample)``.')
+    tmin = Timestamp.T(
+        default=Timestamp.D('1970-01-01 00:00:00'),
+        help='Start time.')
+    deltat = Float.T(
+        default=1.0,
+        help='Sampling interval [s]')
 
     def __init__(
             self,
@@ -21,7 +58,6 @@ class MultiTrace(Object):
             deltat=None):
 
         if traces is not None:
-
             if len(traces) == 0:
                 data = num.zeros((0, 0))
             else:
@@ -49,16 +85,39 @@ class MultiTrace(Object):
         Object.__init__(self, codes=codes, data=data, tmin=tmin, deltat=deltat)
 
     def __len__(self):
+        '''
+        Get number of components.
+        '''
         return self.ntraces
 
     def __getitem__(self, i):
+        '''
+        Get single component waveform (shared data).
+
+        :param i:
+            Component index.
+        :type i:
+            int
+        '''
         return self.get_trace(i)
 
     @property
     def tmax(self):
+        '''
+        End time (time of last sample, read-only).
+        '''
         return self.tmin + (self.nsamples - 1) * self.deltat
 
     def get_trace(self, i):
+        '''
+        Get single component waveform (shared data).
+
+        :param i:
+            Component index.
+        :type i:
+            int
+        '''
+
         network, station, location, channel, extra = self.codes[i]
         return trace.Trace(
             network=network,
@@ -71,4 +130,7 @@ class MultiTrace(Object):
             ydata=self.data[i, :])
 
     def snuffle(self):
+        '''
+        Show in Snuffler.
+        '''
         trace.snuffle(list(self))
