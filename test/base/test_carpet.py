@@ -3,11 +3,11 @@ import unittest
 
 import numpy as num
 
-from pyrocko import trace, multitrace
+from pyrocko import trace, carpet
 from pyrocko import util
 
 
-class MultiTraceTestCase(unittest.TestCase):
+class CarpetTestCase(unittest.TestCase):
 
     def random_traces(
             self,
@@ -49,7 +49,7 @@ class MultiTraceTestCase(unittest.TestCase):
         tlen_range = [200., 300.]
         traces = self.random_traces(n=100, tmin=tmin, tlen_range=tlen_range)
         traces = trace.make_traces_compatible(traces)
-        mt = multitrace.MultiTrace(traces)
+        mt = carpet.Carpet(traces)
         assert mt.tmin <= tmin
         assert mt.tmax >= tmin + tlen_range[0]
         # mt.snuffle()
