@@ -1434,7 +1434,7 @@ class Trace(Object):
                 / ((float(nlong)/float(nshort)) - 1)
 
         if scalingmethod == 3:
-            ydata = num.maximum(self.ydata, 0.)
+            ydata = num.maximum(ydata, 0.)
 
         self.set_ydata(ydata)
 
