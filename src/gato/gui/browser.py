@@ -359,7 +359,7 @@ class ArrayBrowser(qw.QSplitter, talkie.TalkieConnectionOwner):
             if fns:
                 arrays = []
                 for fn in fns:
-                    arrays.extend(gato.load(fn, want=gato.SensorArray))
+                    arrays.extend(gato.load_all(fn, want=gato.SensorArray))
 
                 if arrays:
                     self.add_arrays_check(arrays)

@@ -7,41 +7,18 @@
 Implementation of :app:`gato beam`.
 '''
 import os
-from pyrocko import progress
-from pyrocko.util import glob_filter
-from pyrocko.squirrel import SquirrelCommand, Squirrel
-from pyrocko.gato.array import get_named_arrays, get_named_arrays_dataset
-from pyrocko.squirrel.tool.common import ldq
-from pyrocko.guts import Object, Float, Int, String, Bool, load
+import numpy as num
+from pyrocko.squirrel import SquirrelCommand
+from pyrocko.gato.array import SensorArray
+from pyrocko.gato.io import load
+from pyrocko.gato.grid.slowness import SlownessGrid
+from pyrocko.gato.grid.location import UnstructuredLocationGrid
+from pyrocko.gato.delay import GenericDelayTable
+from pyrocko.gato.delay.plane_wave import PlaneWaveDM
+from pyrocko.guts import Object, Float, Bool
+
 guts_prefix = 'gato'
 
-
-def add_argument_array_names(parser, nargs):
-    parser.add_argument(
-        dest='array_names',
-        nargs=nargs,
-        metavar='NAMES',
-        help='List only arrays with names matching given (glob-style) '
-             'patterns.')
-
-
-def get_matching_builtin_array_names(name_patterns):
-    arrays = get_named_arrays()
-    return sorted(glob_filter(name_patterns, arrays.keys()))
-
-
-def get_matching_builtin_arrays(name_patterns):
-    arrays = get_named_arrays()
-    return [
-        (name, arrays[name])
-        for name in get_matching_builtin_array_names(name_patterns)]
-
-def add_argument_configuration(parser, nargs):
-    parser.add_argument(
-        dest='configuration',
-        nargs=nargs,
-        metavar='CONFIG',
-        help='filename or keyword like "teleseismic", "regional", or "local"')
 
 class ProcOpts(Object):
 
@@ -54,18 +31,15 @@ class ProcOpts(Object):
     transfer_f3 = Float.T(default=100.)
     transfer_f4 = Float.T(default=200.)
     # window options
-    winlen = Float.T(default=60.)
+    tinc = Float.T(default=60.)
     winstep = Float.T(default=30.)
     # stack option
     stacklen = Float.T(default=86400.)
     # preprocessing options:
     taper = Float.T(default=0.2)
     prewhiten = Bool.T(default=False)
+    slowness_grid = SlownessGrid.T()
     # to be continued ...
-
-    def __init__(self, **kwargs):
-        # call the guts initilizer
-        Object.__init__(self, **kwargs)
 
 
 def get_matching_configuration(name_patterns):
@@ -83,6 +57,7 @@ def get_matching_configuration(name_patterns):
         config = None
     return config
 
+
 def read_config_from_file(path):
     # parse yaml file
     print("==================", path)
@@ -95,98 +70,86 @@ class DelayAndSumTD(SquirrelCommand):
 
     def make_subparser(self, subparsers):
         return subparsers.add_parser(
-            'time_domain',
-            help='computes delay and sum operation in time domain',
-            description='time domain delay and sum')
+            'time-domain',
+            help='Compute delay and sum operation in time domain.',
+            description='Compute delay and sum operation in time domain.')
 
     def setup(self, parser):
-        add_argument_array_names(parser, '+')
-
-        style_choices = ['summary', 'yaml']
+        parser.add_squirrel_selection_arguments()
+        parser.add_squirrel_query_arguments(without=['kinds'])
 
         parser.add_argument(
-            '--style',
-            dest='style',
-            choices=style_choices,
-            default='summary',
-            help='Set style of presentation. Choices: %s' % ldq(style_choices))
+            dest='array_name',
+            metavar='NAME',
+            help='TODO: array name or file name')
 
-        parser.add_squirrel_query_arguments(without=['codes', 'kinds'])
-
-        # now add another option that defines a resonable 
-        # set of processing options - use parser command 'config'
-        # and presets of 'teleseismic', 'regional', 'local' or
-        # input via configuration file (?)
-        add_argument_configuration(parser, '+')
+        parser.add_argument(
+            dest='config_name',
+            metavar='CONFIG',
+            help='TODO: processing conf name or file name')
 
     def run(self, parser, args):
 
-        arrays = dict(get_matching_builtin_arrays(args.array_names))
-        names = sorted(arrays.keys())
+        # TODO: allow builtin names and filenames
+        array = load(args.array_name, want=SensorArray)
+        config = load(args.config_name, want=ProcOpts)
 
-        config = get_matching_configuration(args.configuration)
+        sq = args.make_squirrel()
+        print(sq)
+
+        info = array.get_info(sq, **args.squirrel_query)
+
+        receiver_grid = UnstructuredLocationGrid.from_locations(
+            info.sensors, ignore_position_duplicates=False)
+
+        gdt = GenericDelayTable(
+            source_grid=config.slowness_grid,
+            receiver_grid=receiver_grid,
+            method=PlaneWaveDM())
+
+        print(gdt)
+        print(receiver_grid.coordinates)
+
+        delays = gdt.get_delays()
+
+        tpad = num.max(num.abs(delays))
+        tpad += 2.0 / config.transfer_f2
+
+        for batch in sq.chopper_waveforms(
+                tinc=config.tinc, tpad=tpad, **args.squirrel_query):
+            pass
+
+        print(array)
         print(config)
-
-        sq = Squirrel()
-        sq.add_dataset(get_named_arrays_dataset(names))
-
-        with progress.view():
-            sq.update()
-
-        for name, array in arrays.items():
-            info = array.get_info(sq, **args.squirrel_query)
-            if args.style == 'summary':
-                print(info.summary)
-            elif args.style == 'yaml':
-                print('# ' + info.summary)
-                print(info)
-
-
 
 
 class DelayAndSumFD(SquirrelCommand):
 
     def make_subparser(self, subparsers):
         return subparsers.add_parser(
-            'frequency_domain',
-            help='computes delay and sum operation in frequency domain',
-            description='frequency domain delay and sum')
+            'frequency-domain',
+            help='Compute delay and sum operation in frequency domain.',
+            description='Compute delay and sum operation in frequency domain.')
 
     def setup(self, parser):
-        add_argument_array_names(parser, '+')
-
-        style_choices = ['summary', 'yaml']
+        parser.add_squirrel_selection_arguments()
+        parser.add_squirrel_query_arguments(without=['kinds'])
 
         parser.add_argument(
-            '--style',
-            dest='style',
-            choices=style_choices,
-            default='summary',
-            help='Set style of presentation. Choices: %s' % ldq(style_choices))
+            dest='array_name',
+            metavar='NAME',
+            help='TODO: array name or file name')
 
-        parser.add_squirrel_query_arguments(without=['codes', 'kinds'])
+        parser.add_argument(
+            dest='config_name',
+            metavar='CONFIG',
+            help='TODO: processing conf name or file name')
 
     def run(self, parser, args):
-
-        arrays = dict(get_matching_builtin_arrays(args.array_names))
-        names = sorted(arrays.keys())
-
-        sq = Squirrel()
-        sq.add_dataset(get_named_arrays_dataset(names))
-
-        with progress.view():
-            sq.update()
-
-        for name, array in arrays.items():
-            info = array.get_info(sq, **args.squirrel_query)
-            if args.style == 'summary':
-                print(info.summary)
-            elif args.style == 'yaml':
-                print('# ' + info.summary)
-                print(info)
+        pass
 
 
-headline = 'Manage arrays setups.'
+headline = 'Run beamforming.'
 
 
 def make_subparser(subparsers):
@@ -196,7 +159,7 @@ def make_subparser(subparsers):
         subcommands=[DelayAndSumTD(), DelayAndSumFD()],
         description=headline + '''
 
-Manage seismic array setups: add, remove, show.
+Apply beamforming algorithm in time or frequency domain.
 ''')
 
 
