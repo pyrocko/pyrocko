@@ -7,6 +7,7 @@
 Squirrel main classes.
 '''
 
+import re
 import sys
 import os
 import time
@@ -98,10 +99,6 @@ def gaps(avail, tmin, tmax):
 
 def order_key(order):
     return (order.codes, order.tmin, order.tmax)
-
-
-def _is_exact(pat):
-    return not ('*' in pat or '?' in pat or ']' in pat or '[' in pat)
 
 
 def prefix_tree(tups):
@@ -882,11 +879,7 @@ class Squirrel(Selection):
         if pats is None:
             return
 
-        pats_exact = []
-        pats_nonexact = []
-        for pat in pats:
-            spat = pat.safe_str
-            (pats_exact if _is_exact(spat) else pats_nonexact).append(spat)
+        pats_exact, pats_nonexact = model.classify_patterns(pats)
 
         codes_cond = []
         if pats_exact:
@@ -2456,11 +2449,27 @@ class Squirrel(Selection):
         codes_have = set()
         for channel in channel_priorities:
             assert len(channel) == 2
+
             if codes is not None:
-                codes_now = [
-                    codes_.replace(channel=channel+'?') for codes_ in codes]
+                re_channel = re.compile(
+                    r'^([' + channel[0] + r'?][' + channel[1] + r'?]|\*)')
+
+                codes_now = []
+                for codes_ in codes:
+                    if codes_.channel == '*':
+                        channel_now, n = channel + '?', 1
+                    else:
+                        channel_now, n = re_channel.subn(
+                            channel, codes_.channel)
+
+                    if n == 1:
+                        codes_now.append(codes_.replace(channel=channel_now))
+
             else:
                 codes_now = model.CodesNSLCE('*', '*', '*', channel+'?')
+
+            if not codes_now:
+                continue
 
             codes_exclude_now = list(set(
                 codes_.replace(channel=channel+codes_.channel[-1])
