@@ -6,7 +6,8 @@ from pyrocko import util
 from pyrocko.guts import Object, String, List, Timestamp, Dict, Tuple, Float, \
     StringChoice
 from pyrocko.model.location import Location
-from pyrocko.squirrel import CodesNSLCE, FDSNSource, Dataset, CodesNSL, Sensor
+from pyrocko.squirrel import CodesNSLCE, FDSNSource, Dataset, CodesNSL, \
+    Sensor, CodesMatcher, codes_patterns_for_kind, CHANNEL
 
 from pyrocko.has_paths import HasPaths, Path
 from .grid.location import UnstructuredLocationGrid, distances_3d
@@ -98,28 +99,25 @@ class SensorArray(Object):
         return ' | '.join(
             ('%-17s' % self.name, self.type[:1], self.comment or ''))
 
-    def get_info(self, sq, channels=None, time=None, tmin=None, tmax=None):
-        if isinstance(channels, str):
-            channels = [channels]
+    def get_info(self, sq, codes=None, time=None, tmin=None, tmax=None):
 
-        codes_query = set()
-        if channels is not None:
-            for c in self.codes:
-                for cha in channels:
-                    codes_query.add(c.replace(channel=cha))
+        sensors = sq.get_sensors(
+                codes=self.codes, time=time, tmin=tmin, tmax=tmax)
 
-            codes_query = sorted(codes_query)
-        else:
-            codes_query = self.codes
+        if codes is not None:
+            codes = codes_patterns_for_kind(CHANNEL, codes)
+            matcher = CodesMatcher(codes)
+            for sensor in sensors:
+                sensor.channels = [
+                    channel for channel in sensor.channels
+                    if matcher.match(channel.codes)]
+
+            sensors = [sensor for sensor in sensors if sensor.channels]
 
         tmins = []
         tmaxs = []
         codes = set()
         nsl_by_chas = defaultdict(set)
-
-        sensors = sq.get_sensors(
-                codes=codes_query, time=time, tmin=tmin, tmax=tmax)
-
         for sensor in sensors:
             for channel in sensor.channels:
                 codes.add(channel.codes)

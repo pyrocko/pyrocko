@@ -117,7 +117,8 @@ class DelayAndSumTD(SquirrelCommand):
 
         for batch in sq.chopper_waveforms(
                 tinc=config.tinc, tpad=tpad, **args.squirrel_query):
-            pass
+            mtrace = batch.as_multitrace()
+            print(mtrace.summary)
 
         print(array)
         print(config)
