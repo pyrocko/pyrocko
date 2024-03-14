@@ -32,7 +32,7 @@ from pyrocko.guts import Object, SObject, String, Timestamp, Float, Int, \
 from pyrocko.model import squirrel_content, Location
 from pyrocko.response import FrequencyResponse, MultiplyResponse, \
     IntegrationResponse, DifferentiationResponse, simplify_responses, \
-    FrequencyResponseCheckpoint
+    FrequencyResponseCheckpoint, Gain
 
 from .error import ConversionError, SquirrelError
 
@@ -1138,7 +1138,16 @@ class Response(Object):
     def summary(self):
         return util.fmt_summary(self.summary_entries, (10, 20, 55, 3, 35, 0))
 
-    def get_effective(self, input_quantity=None, stages=(None, None)):
+    def get_effective(
+            self,
+            input_quantity=None,
+            stages=(None, None),
+            mode='complete',
+            gain_frequency=None):
+
+        assert mode in ('complete', 'sensor')
+        assert not (mode == 'sensor' and gain_frequency is None)
+
         cache_key = (input_quantity, stages)
         if cache_key in self._effective_responses_cache:
             return self._effective_responses_cache[cache_key]
@@ -1148,8 +1157,20 @@ class Response(Object):
         except ConversionError as e:
             raise ConversionError(str(e) + ' (%s)' % self.summary)
 
-        elements.extend(
-            stage.get_effective() for stage in self.stages[slice(*stages)])
+        for istage, stage in enumerate(self.stages):
+            if (stages[0] is None or stages[0] <= istage) \
+                    and (stages[1] is None or istage < stages[1]):
+
+                is_sensor = istage == 0 or stage.stage_type == 'sensor'
+
+                if mode == 'complete' or (mode == 'sensor' and is_sensor):
+                    elements.append(stage.get_effective())
+                else:
+                    resp = stage.get_effective()
+                    gain = Gain(constant=resp.evaluate1(gain_frequency))
+                    # maybe check derivative if response is flat enough?
+                    # or check frequency band?
+                    elements.append(gain)
 
         if input_quantity is None \
                 or input_quantity == self.input_quantity:

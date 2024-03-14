@@ -112,6 +112,10 @@ class TraversalChoice(StringChoice):
         'channel': ChannelGrouping()}
 
 
+class InstrumentCorrectionMode(StringChoice):
+    choices = ['complete', 'sensor']
+
+
 class Converter(HasPaths):
 
     in_dataset = Dataset.T(optional=True)
@@ -137,6 +141,8 @@ class Converter(HasPaths):
     fcut_factor = Float.T(optional=True)
     fmin_cut = Float.T(optional=True)
     fmax_cut = Float.T(optional=True)
+    instrument_correction_mode = InstrumentCorrectionMode.T(
+        default='complete')
 
     rotate_to_enz = Bool.T(default=False)
 
@@ -217,6 +223,28 @@ flanks and which is flat between ``FMIN`` and ``FMAX``. The flanks of the taper
 drop to zero at ``FMINCUT`` and ``FMAXCUT``. If ``CUTFACTOR`` is given,
 ``FMINCUT`` and ``FMAXCUT`` are set to ``FMIN/CUTFACTOR`` and
 ``FMAX*CUTFACTOR`` respectively. ``CUTFACTOR`` defaults to 2.
+'''.strip())
+
+        p.add_argument(
+            '--instrument-correction-mode',
+            dest='instrument_correction_mode',
+            choices=['complete', 'sensor'],
+            default='complete',
+            help='''
+Select mode of the instrument correction when performing a restition with
+``--quantity``. This option selects which stages of the instrument response
+should be considered completely, i.e. including their frequency dependence, and
+which stages should be considered by only considering their overall gain
+factor. Choices: ``complete`` -- all stages are considered completely
+(default). ``sensor`` -- only the first stage of the insrument response is
+treated completely. The first stage of the instrument response conventionally
+represents the characteristics of the sensor and is usually given in poles and
+zeros representation. The frequency response of the FIR filters of the
+digitizer's downsampling stages are not considered in ``sensor`` mode. Instead,
+replacement gain factors are computed by evaluating the frequency response of
+the respective stages at the lower frequency bound of the restitution ``FMIN``
+(see ``--band``). The assumption here is, that the decimation FIR filters are
+flat at this frequency and representative for the whole pass band.
 '''.strip())
 
         p.add_argument(
@@ -382,6 +410,7 @@ replacements. Examples: Direct replacement: ```XX``` - set all network codes to
         obj = cls(
             downsample=args.downsample,
             quantity=args.quantity,
+            instrument_correction_mode=args.instrument_correction_mode,
             rotate_to_enz=args.rotate_to_enz,
             out_format=args.out_format,
             out_path=args.out_path,
@@ -568,6 +597,7 @@ replacements. Examples: Direct replacement: ```XX``` - set all network codes to
                 frequency_taper_tpad = 0.0
 
             quantity = chain.get('quantity')
+            ic_mode = chain.get('instrument_correction_mode')
 
             do_transfer = \
                 quantity is not None or frequency_taper is not None
@@ -625,7 +655,9 @@ replacements. Examples: Direct replacement: ```XX``` - set all network codes to
                         try:
                             if quantity is not None:
                                 resp = sq.get_response(tr).get_effective(
-                                    input_quantity=quantity)
+                                    input_quantity=quantity,
+                                    mode=ic_mode,
+                                    gain_frequency=frequency_taper[1])
                             else:
                                 resp = None
 
