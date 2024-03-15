@@ -112,8 +112,8 @@ class Sensors(SquirrelCommand):
     def make_subparser(self, subparsers):
         return subparsers.add_parser(
             'sensors',
-            help='Print information sensors of an array.',
-            description='Print information sensors of an array.')
+            help='Print information about sensors of an array.',
+            description='Print information about sensors of an array.')
 
     def setup(self, parser):
         add_array_selection_arguments(parser)
@@ -205,7 +205,7 @@ available station metadata.
         print(array)
 
 
-headline = 'Manage arrays setups.'
+headline = 'Manage array setups.'
 
 
 def make_subparser(subparsers):
@@ -215,7 +215,8 @@ def make_subparser(subparsers):
         subcommands=[List(), Info(), Sensors(), Create()],
         description=headline + '''
 
-Manage seismic array setups.
+Inspect array configurations, list builtin and custom arrays and define new
+array setups.
 ''')
 
 
