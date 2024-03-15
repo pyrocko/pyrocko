@@ -175,11 +175,29 @@ class Batch(object):
         self.ngroups = ngroups
         self.traces = traces
 
-    def as_multitrace(self):
+    def as_multitrace(
+            self,
+            codes=None,
+            dtype=None,
+            deltat=None,
+            enforce_global_snap=True,
+            warn_snap=False):
+
         from pyrocko import multitrace
 
+        traces = trace.make_traces_compatible(
+            self.traces,
+            dtype=dtype,
+            deltat=deltat,
+            enforce_global_snap=enforce_global_snap,
+            warn_snap=warn_snap)
+
+        if codes is not None:
+            d = dict((tr.codes, tr) for tr in traces)
+            traces = [d.get(_codes, None) for _codes in codes]
+
         data, codes, tmin, deltat = trace.merge_traces_data_as_array(
-            self.traces, tmin=self.tmin-self.tpad, tmax=self.tmax+self.tpad)
+            traces, tmin=self.tmin-self.tpad, tmax=self.tmax+self.tpad)
 
         return multitrace.MultiTrace(
             data=data,

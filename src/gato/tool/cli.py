@@ -11,6 +11,7 @@ import logging
 from pyrocko.squirrel import run
 from .commands import command_modules
 
+
 logger = logging.getLogger('gato.cli')
 
 g_program_name = 'gato'

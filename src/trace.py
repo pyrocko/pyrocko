@@ -2180,16 +2180,20 @@ def _ensure_aligned(traces):
     toffsets = num.abs(num.round(tmins / deltat) * deltat - tmins)
     is_aligned = toffsets < deltat * eps
     if not all(is_aligned):
+        info = '\n  start times:\n' + '\n'.join(
+            '    %s: %s %g' % (tr.codes, util.time_to_str(tr.tmin), tr.deltat)
+            for tr in traces)
+
         raise UnalignedTraces(
             'Samples of some traces are not aligned: %s' % (
                 ', '.join(str(tr.codes) for tr in [
                     traces[i] for i in num.where(
-                        num.logical_not(is_aligned))[0]])))
+                        num.logical_not(is_aligned))[0]])) + info)
 
     return None
 
 
-def merge_traces_data_as_array(traces, tmin=None, tmax=None):
+def merge_traces_data_as_array(traces, tmin=None, tmax=None, codes=None):
     from numpy.ma import masked_array
 
     if not traces:
@@ -2197,7 +2201,13 @@ def merge_traces_data_as_array(traces, tmin=None, tmax=None):
 
     _ensure_aligned(traces)
 
-    codes = sorted(set(tr.codes for tr in traces))
+    if codes is None:
+        codes = sorted(set(tr.codes for tr in traces))
+    else:
+        _codes = set(codes)
+        assert len(_codes) == len(codes)
+        traces = [tr for tr in traces if tr.codes in _codes]
+
     codes_to_i = dict((codes, i) for (i, codes) in enumerate(codes))
 
     if tmax is None:
@@ -2303,6 +2313,9 @@ def make_traces_compatible(
             tr_copy.set_ydata(tr.ydata.astype(dtype))
             traces[itr] = tr_copy
 
+    if dtype is None:
+        dtype = dtypes[0]
+
     deltats = [tr.deltat for tr in traces]
     if not _all_same(deltats) or deltat is not None:
         if deltat is None:
@@ -2317,6 +2330,9 @@ def make_traces_compatible(
                 tr_copy = tr.copy()
                 tr_copy.downsample_to(deltat, snap=True, cut=True)
                 traces[itr] = tr_copy
+
+    if deltat is None:
+        deltat = deltats[0]
 
     tmins = num.array([tr.tmin for tr in traces])
     is_aligned = num.abs(num.round(tmins / deltat) * deltat - tmins) \
@@ -2343,6 +2359,9 @@ def make_traces_compatible(
                     tr_copy.shift(-tref)
 
                 tr_copy.snap(interpolate=True)
+                if tr_copy.ydata.dtype is not dtype:
+                    tr_copy.set_ydata(tr_copy.ydata.astype(dtype))
+
                 if tref != 0.0:
                     tr_copy.shift(tref)
 

@@ -8,39 +8,16 @@ Implementation of :app:`gato array`.
 '''
 
 from pyrocko import progress
-from pyrocko.util import glob_filter
+
 from pyrocko.squirrel import SquirrelCommand, Squirrel
-from pyrocko.gato.array import \
-    get_named_arrays, get_named_arrays_dataset, SensorArray, SensorArrayType
 from pyrocko.squirrel.tool.common import dq, ldq
 
-
-def add_argument_array_names(parser, nargs):
-    parser.add_argument(
-        dest='array_names',
-        nargs=nargs,
-        metavar='NAMES',
-        help='List only arrays with names matching given (glob-style) '
-             'patterns.')
+from pyrocko.gato.array import \
+    get_named_arrays_dataset, SensorArray, SensorArrayType
 
 
-def get_matching_builtin_array_names(name_patterns):
-    arrays = get_named_arrays()
-    return sorted(glob_filter(name_patterns, arrays.keys()))
-
-
-def get_matching_builtin_arrays(name_patterns):
-    arrays = get_named_arrays()
-    return sorted((
-        arrays[name]
-        for name in get_matching_builtin_array_names(name_patterns)),
-        key=lambda array: (array.type, array.name))
-
-
-def get_matching_builtin_arrays_dict(name_patterns):
-    return dict(
-        (array.name, array)
-        for array in get_matching_builtin_arrays(name_patterns))
+from pyrocko.gato.tool.common import add_array_selection_arguments, \
+    get_matching_arrays
 
 
 class List(SquirrelCommand):
@@ -52,7 +29,7 @@ class List(SquirrelCommand):
             description='List array setups.')
 
     def setup(self, parser):
-        add_argument_array_names(parser, '*')
+        add_array_selection_arguments(parser)
 
         style_choices = ['summary', 'yaml', 'name']
 
@@ -64,7 +41,10 @@ class List(SquirrelCommand):
             help='Set style of presentation. Choices: %s' % ldq(style_choices))
 
     def run(self, parser, args):
-        for array in get_matching_builtin_arrays(args.array_names):
+        arrays = get_matching_arrays(
+            args.array_names, args.array_paths, args.use_builtin_arrays)
+
+        for array in arrays.values():
             if args.style == 'name':
                 print(array.name)
             elif args.style == 'summary':
@@ -83,7 +63,7 @@ class Info(SquirrelCommand):
             description='Print information about array.')
 
     def setup(self, parser):
-        add_argument_array_names(parser, '*')
+        add_array_selection_arguments(parser)
 
         style_choices = ['summary', 'yaml']
 
@@ -98,7 +78,8 @@ class Info(SquirrelCommand):
 
     def run(self, parser, args):
 
-        arrays = get_matching_builtin_arrays_dict(args.array_names)
+        arrays = get_matching_arrays(
+            args.array_names, args.array_paths, args.use_builtin_arrays)
         names = sorted(arrays.keys())
 
         sq = Squirrel()
@@ -135,7 +116,7 @@ class Sensors(SquirrelCommand):
             description='Print information sensors of an array.')
 
     def setup(self, parser):
-        add_argument_array_names(parser, '+')
+        add_array_selection_arguments(parser)
 
         style_choices = ['summary', 'yaml']
 
@@ -150,7 +131,9 @@ class Sensors(SquirrelCommand):
 
     def run(self, parser, args):
 
-        arrays = get_matching_builtin_arrays_dict(args.array_names)
+        arrays = get_matching_arrays(
+            args.array_names, args.array_paths, args.use_builtin_arrays)
+
         names = sorted(arrays.keys())
 
         sq = Squirrel()

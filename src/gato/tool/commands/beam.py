@@ -7,15 +7,21 @@
 Implementation of :app:`gato beam`.
 '''
 import os
+import sys
 import numpy as num
+
 from pyrocko.squirrel import SquirrelCommand
-from pyrocko.gato.array import SensorArray
+from pyrocko.guts import Object, Float, Bool
+
+from pyrocko.gato.error import GatoToolError
+from pyrocko.gato.array import SensorArrayAndInfoContext
 from pyrocko.gato.io import load
 from pyrocko.gato.grid.slowness import SlownessGrid
 from pyrocko.gato.grid.location import UnstructuredLocationGrid
 from pyrocko.gato.delay import GenericDelayTable
 from pyrocko.gato.delay.plane_wave import PlaneWaveDM
-from pyrocko.guts import Object, Float, Bool
+from pyrocko.gato.tool.common import add_array_selection_arguments, \
+    get_matching_arrays
 
 guts_prefix = 'gato'
 
@@ -75,13 +81,10 @@ class DelayAndSumTD(SquirrelCommand):
             description='Compute delay and sum operation in time domain.')
 
     def setup(self, parser):
+        add_array_selection_arguments(parser)
+
         parser.add_squirrel_selection_arguments()
         parser.add_squirrel_query_arguments(without=['kinds'])
-
-        parser.add_argument(
-            dest='array_name',
-            metavar='NAME',
-            help='TODO: array name or file name')
 
         parser.add_argument(
             dest='config_name',
@@ -91,37 +94,73 @@ class DelayAndSumTD(SquirrelCommand):
     def run(self, parser, args):
 
         # TODO: allow builtin names and filenames
-        array = load(args.array_name, want=SensorArray)
+
+        arrays = get_matching_arrays(
+            args.array_names, args.array_paths, args.use_builtin_arrays)
+
         config = load(args.config_name, want=ProcOpts)
 
         sq = args.make_squirrel()
+
+        downloads_enabled = False
+
+        sq.downloads_enabled = downloads_enabled
         print(sq)
 
-        info = array.get_info(sq, **args.squirrel_query)
+        tmin_data, tmax_data = sq.get_time_span(
+            kinds=['waveform', 'waveform_promise'] if downloads_enabled
+            else ['waveform'],
+            dummy_limits=False)
 
-        receiver_grid = UnstructuredLocationGrid.from_locations(
-            info.sensors, ignore_position_duplicates=False)
+        squirrel_query = dict(args.squirrel_query)
 
-        gdt = GenericDelayTable(
-            source_grid=config.slowness_grid,
-            receiver_grid=receiver_grid,
-            method=PlaneWaveDM())
+        if squirrel_query.get('tmin', None) is None:
+            squirrel_query['tmin'] = tmin_data
 
-        print(gdt)
-        print(receiver_grid.coordinates)
+        if squirrel_query.get('tmax', None) is None:
+            squirrel_query['tmax'] = tmax_data
 
-        delays = gdt.get_delays()
+        for array in arrays.values():
+            info = array.get_info(sq, **squirrel_query)
 
-        tpad = num.max(num.abs(delays))
-        tpad += 2.0 / config.transfer_f2
+            if info.n_codes == 0:
+                raise GatoToolError(
+                    'No sensors match given combination of array definition '
+                    'and available metadata. Context:\n'
+                    + str(SensorArrayAndInfoContext(array=array, info=info)))
 
-        for batch in sq.chopper_waveforms(
-                tinc=config.tinc, tpad=tpad, **args.squirrel_query):
-            mtrace = batch.as_multitrace()
-            print(mtrace.summary)
+            receiver_grid = UnstructuredLocationGrid.from_locations(
+                info.sensors, ignore_position_duplicates=False)
 
-        print(array)
-        print(config)
+            gdt = GenericDelayTable(
+                source_grid=config.slowness_grid,
+                receiver_grid=receiver_grid,
+                method=PlaneWaveDM())
+
+            print(gdt)
+            print(receiver_grid.coordinates)
+
+            delays = gdt.get_delays()
+
+            tpad_overlap = 0.
+            tpad_delay = num.max(num.abs(delays))
+            tpad_restitution = 2.0 / config.transfer_f2
+
+            tpad = tpad_overlap + tpad_delay + tpad_restitution
+
+            # overlap_fraction = 2*tpad / tinc
+            for batch in sq.chopper_waveforms(
+                    snap_window=True,
+                    tinc=config.tinc,
+                    tpad=tpad,
+                    **args.squirrel_query):
+
+                mtrace = batch.as_multitrace(codes=info.codes)
+                mtrace.snuffle()
+                sys.exit()
+
+            print(array)
+            print(config)
 
 
 class DelayAndSumFD(SquirrelCommand):

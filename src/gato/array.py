@@ -20,6 +20,13 @@ def time_or_none_to_str(t):
     return util.time_to_str(t, '%Y-%m-%d') if t else '...'
 
 
+class CodesTimeQueryArgs(Object):
+    codes = List.T(CodesNSLCE.T())
+    time = Timestamp.T(optional=True)
+    tmin = Timestamp.T(optional=True)
+    tmax = Timestamp.T(optional=True)
+
+
 class SensorArrayInfo(Object):
     codes = List.T(CodesNSLCE.T())
     tmin = Timestamp.T(optional=True)
@@ -29,6 +36,7 @@ class SensorArrayInfo(Object):
     codes_nsl__ = List.T(CodesNSL.T())
     codes_nsl_by_channels = Dict.T(Tuple.T(String.T()), List.T(CodesNSL.T()))
     sensors = List.T(Sensor.T())
+    request_query_args = CodesTimeQueryArgs.T()
 
     @property
     def n_codes_nsl(self):
@@ -85,10 +93,20 @@ class SensorArrayType(StringChoice):
 
 
 class SensorArray(Object):
-    name = String.T(optional=True)
+    name = String.T()
     codes = List.T(CodesNSLCE.T())
     type = SensorArrayType.T(optional=True)
     comment = String.T(optional=True)
+
+    def __init__(self, **kwargs):
+        Object.__init__(self, **kwargs)
+        self._defined_in = 'unknown'
+
+    def set_defined_in(self, defined_in):
+        self._defined_in = defined_in
+
+    def get_defined_in(self):
+        return self._defined_in
 
     @property
     def summary(self):
@@ -101,8 +119,14 @@ class SensorArray(Object):
 
     def get_info(self, sq, codes=None, time=None, tmin=None, tmax=None):
 
+        # First, get all sensors matching the array definition in the given
+        # time constraints, then remove channels which do not match the codes
+        # constraints.
+
         sensors = sq.get_sensors(
                 codes=self.codes, time=time, tmin=tmin, tmax=tmax)
+
+        sensors.sort(key=lambda sensor: sensor.codes)
 
         if codes is not None:
             codes = codes_patterns_for_kind(CHANNEL, codes)
@@ -113,6 +137,9 @@ class SensorArray(Object):
                     if matcher.match(channel.codes)]
 
             sensors = [sensor for sensor in sensors if sensor.channels]
+
+        request_query_args = CodesTimeQueryArgs(
+            codes=codes, time=time, tmin=tmin, tmax=tmax)
 
         tmins = []
         tmaxs = []
@@ -160,7 +187,8 @@ class SensorArray(Object):
             tmax=tmax,
             distances_stats=distances_stats,
             center=center,
-            sensors=sensors)
+            sensors=sensors,
+            request_query_args=request_query_args)
 
 
 class SensorArrayFromFDSN(SensorArray):
@@ -177,7 +205,7 @@ def _make_fdsn_source(site, codes):
 
 g_sensor_arrays = [
     SensorArrayFromFDSN(
-        name=name,
+        name=':' + name,
         type=typ,
         codes=to_codes(codes),
         comment=comment,
@@ -223,7 +251,7 @@ g_sensor_arrays = [
     ]
 ] + [
     SensorArrayFromFDSN(
-        name=name,
+        name=':' + name,
         type='seismic',
         codes=to_codes(codes),
         sources=[_make_fdsn_source('geofon', codes)],
@@ -237,7 +265,7 @@ g_sensor_arrays = [
     ]
 ] + [
     SensorArrayFromFDSN(
-        name=name,
+        name=':' + name,
         type='seismic',
         codes=to_codes(codes),
         sources=[_make_fdsn_source('bgr', codes)],
@@ -253,7 +281,7 @@ g_sensor_arrays = [
         ('grf', ['GR.GR??.*.?H?'], 'Gräfenberg, Germany')]
 ] + [
     SensorArrayFromFDSN(
-        name=name,
+        name=':' + name,
         type='seismic',
         codes=to_codes(codes),
         sources=[_make_fdsn_source('norsar', codes)],
@@ -283,7 +311,7 @@ g_sensor_arrays = [
     ]
 ] + [
     SensorArrayFromFDSN(
-        name=name,
+        name=':' + name,
         type='seismic',
         codes=to_codes(codes),
         sources=[_make_fdsn_source('up', codes)],
@@ -307,6 +335,8 @@ g_sensor_arrays = [
     ]
 ]
 
+for array in g_sensor_arrays:
+    array.set_defined_in('builtin')
 
 g_sensor_arrays_dict = dict(
     (array.name, array) for array in g_sensor_arrays)
@@ -315,6 +345,11 @@ g_sensor_arrays_dict = dict(
 class SensorArrayFromFile(SensorArray, HasPaths):
     name = String.T()
     stations_path = Path.T()
+
+
+class SensorArrayAndInfoContext(Object):
+    array = SensorArray.T()
+    info = SensorArrayInfo.T()
 
 
 def get_named_arrays_dataset(names=None):
@@ -351,6 +386,7 @@ __all__ = [
     'SensorArrayInfo',
     'SensorArray',
     'SensorArrayFromFDSN',
+    'SensorArrayAndInfoContext',
     'get_named_arrays_dataset',
     'get_named_arrays',
     'get_named_array',

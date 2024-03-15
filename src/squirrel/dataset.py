@@ -41,7 +41,7 @@ def make_builtin_datasets():
     for site in ['isc', 'geofon', 'gcmt']:
         for magnitude_min in [4.0, 5.0, 6.0, 7.0]:
             name = 'events-%s-m%g' % (site, magnitude_min)
-            datasets[name] = Dataset(
+            datasets[':' + name] = Dataset(
                 sources=[
                     CatalogSource(
                         catalog=site,
@@ -66,15 +66,16 @@ def make_builtin_datasets():
             query_args['channel'] = cha.upper() + '?'
             comments.append('channels: %s' % query_args['channel'])
 
-        datasets[name] = Dataset(
+        datasets[':' + name] = Dataset(
             sources=[FDSNSource(site=site, query_args=query_args)],
             comment=', '.join(comments))
 
     from pyrocko import gato
-    datasets['gato-named-arrays'] = gato.get_named_arrays_dataset()
+    datasets[':' + 'gato-named-arrays'] = gato.get_named_arrays_dataset()
     arrays = gato.get_named_arrays()
     for aname in sorted(arrays.keys()):
-        datasets['gato-%s' % aname] = gato.get_named_arrays_dataset(aname)
+        datasets[':' + 'gato-%s' % aname[1:]] \
+            = gato.get_named_arrays_dataset(aname)
 
     return datasets
 
@@ -113,7 +114,7 @@ def read_dataset(path):
     '''
 
     if path.startswith(':'):
-        name = path[1:]
+        name = path
         datasets = get_builtin_datasets()
         try:
             return datasets[name]
