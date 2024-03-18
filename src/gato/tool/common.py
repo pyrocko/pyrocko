@@ -48,6 +48,7 @@ def get_matching_arrays(name_patterns, array_paths, use_builtin_arrays):
     for array_path in array_paths:
         for array in load_all(array_path, want=SensorArray):
             array.set_defined_in(array_path)
+
             if array.name in arrays:
                 raise GatoToolError(
                     'Duplicate array name: %s\n'
@@ -56,6 +57,11 @@ def get_matching_arrays(name_patterns, array_paths, use_builtin_arrays):
                         array.name,
                         arrays[array.name].get_defined_in(),
                         array.get_defined_in()))
+
+            if array.name.startswith(':'):
+                raise GatoToolError(
+                    'Invalid array name: "%s". Names starting with ":" are '
+                    'reserved for built-in arrays.' % array.name)
 
             arrays[array.name] = array
 

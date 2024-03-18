@@ -14,7 +14,9 @@ from pyrocko.squirrel import SquirrelCommand
 from pyrocko.guts import Object, Float, Bool
 
 from pyrocko.gato.error import GatoToolError
-from pyrocko.gato.array import SensorArrayAndInfoContext
+from pyrocko.gato.array import SensorArrayAndInfoContext, \
+    get_named_arrays_dataset
+
 from pyrocko.gato.io import load
 from pyrocko.gato.grid.slowness import SlownessGrid
 from pyrocko.gato.grid.location import UnstructuredLocationGrid
@@ -93,19 +95,21 @@ class DelayAndSumTD(SquirrelCommand):
 
     def run(self, parser, args):
 
-        # TODO: allow builtin names and filenames
-
         arrays = get_matching_arrays(
             args.array_names, args.array_paths, args.use_builtin_arrays)
 
         config = load(args.config_name, want=ProcOpts)
 
         sq = args.make_squirrel()
+        sq.add_dataset(get_named_arrays_dataset(sorted(arrays.keys())))
 
         downloads_enabled = False
-
         sq.downloads_enabled = downloads_enabled
-        print(sq)
+
+        if not sq.have_waveforms(**args.squirrel_query):
+            raise GatoToolError(
+                'No waveforms available for given dataset configuration and '
+                'query constraints.')
 
         tmin_data, tmax_data = sq.get_time_span(
             kinds=['waveform', 'waveform_promise'] if downloads_enabled

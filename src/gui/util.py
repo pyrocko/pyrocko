@@ -192,8 +192,8 @@ def rint(x):
 
 
 def make_QPolygonF(xdata, ydata):
-    assert xdata.size == ydata.size
-    n = xdata.size
+    assert len(xdata) == len(ydata)
+    n = len(xdata)
     qpoints = qg.QPolygonF(n)
     vptr = qpoints.data()
     vptr.setsize(n*8*2)

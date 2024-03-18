@@ -2329,6 +2329,9 @@ def make_traces_compatible(
             if tr.deltat != deltat:
                 tr_copy = tr.copy()
                 tr_copy.downsample_to(deltat, snap=True, cut=True)
+                if tr_copy.ydata.dtype is not dtype:
+                    tr_copy.set_ydata(tr_copy.ydata.astype(dtype))
+
                 traces[itr] = tr_copy
 
     if deltat is None:
