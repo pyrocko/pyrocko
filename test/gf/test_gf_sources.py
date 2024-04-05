@@ -18,10 +18,12 @@ def numeq(a, b, eps):
 
 
 def default_source(S, **kwargs):
-    if S is not gf.CombiSource:
-        return S(**kwargs)
-    else:
+    if S is gf.CombiSource:
         return S([gf.MTSource(**kwargs)])
+    elif S is gf.CombiSFSource:
+        return S([gf.SFSource(**kwargs)])
+    else:
+        return S(**kwargs)
 
 
 class GFSourcesTestCase(unittest.TestCase):
@@ -60,7 +62,7 @@ class GFSourcesTestCase(unittest.TestCase):
             return x.__class__.__name__
 
         for S in gf.source_classes:
-            if S is gf.CombiSource:
+            if S in (gf.CombiSource, gf.CombiSFSource):
                 continue
 
             stf = gf.TriangularSTF(effective_duration=2.0)
