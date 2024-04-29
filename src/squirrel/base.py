@@ -3023,14 +3023,16 @@ class Squirrel(Selection):
         from pyrocko.io import stationxml as sx
 
         networks = []
-        for net, stas in prefix_tree(nslcs):
+        task_networks = make_task('StationXML: add networks')
+        for net, stas in task_networks(prefix_tree(nslcs)):
             network = sx.Network(code=net)
             networks.append(network)
 
             if level not in ('station', 'channel', 'response'):
                 continue
 
-            for sta, locs in stas:
+            task_stations = make_task('StationXML: add stations')
+            for sta, locs in task_stations(stas):
                 stations = self.get_stations(
                     tmin=tmin,
                     tmax=tmax,
