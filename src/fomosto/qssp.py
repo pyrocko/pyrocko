@@ -55,7 +55,9 @@ qssp_components = {
     3: '_disp_e _disp_n _disp_z'.split(),
     4: '_gravitation_e _gravitation_n _gravitation_z '
        '_acce_e _acce_n _acce_z'.split(),
-    5: '_rota_e _rota_n _rota_z'.split()
+    5: '_rota_e _rota_n _rota_z'.split(),
+    6: '_strain_nn _strain_ee _strain_zz _strain_en _strain_nz '
+       '_strain_ez'.split(),
 }
 
 
@@ -218,6 +220,8 @@ class QSSPConfigFull(QSSPConfig):
         if self.qssp_version in ('2017', '2020'):
             if self.stored_quantity == 'rotation_displacement':
                 fmt = 5
+            elif self.stored_quantity == 'strain':
+                fmt = 6
             else:
                 fmt = 3
         elif self.qssp_version == 'ppeg2017':
@@ -269,10 +273,16 @@ class QSSPConfigFull(QSSPConfig):
         d['n_model_lines'] = nlines
         d['model_lines'] = model_str
         if self.stored_quantity == 'rotation_displacement':
-            d['output_rotation'] = 1
             d['output_displacement'] = 0
+            d['output_strain'] = 0
+            d['output_rotation'] = 1
+        elif self.stored_quantity == 'strain':
+            d['output_displacement'] = 0
+            d['output_strain'] = 1
+            d['output_rotation'] = 0
         else:
             d['output_displacement'] = 1
+            d['output_strain'] = 0
             d['output_rotation'] = 0
 
         if len(self.sources) == 0 or isinstance(self.sources[0], QSSPSourceMT):
@@ -465,7 +475,7 @@ class QSSPConfigFull(QSSPConfig):
 # disp | velo | acce | strain | strain_rate | stress | stress_rate | rotation | rot_rate | gravitation | gravity
 #---------------------------------------------------------------------------------------------------------------
 # 1      1      1      1        1             1        1             1          1          1             1
-  %(output_displacement)i      0      0      0        0             0        0             %(output_rotation)i          0          0             0
+  %(output_displacement)i      0      0      %(output_strain)i        0             0        0             %(output_rotation)i          0          0             0
 
   '%(output_filename)s'
   %(output_time_window)e
@@ -641,7 +651,7 @@ class Interrupted(gf.store.StoreError):
 
 class QSSPRunner(object):
 
-    def __init__(self, tmp=None, keep_tmp=False):
+    def __init__(self, tmp=None, keep_tmp=True):
 
         self.tempdir = mkdtemp(prefix='qssprun-', dir=tmp)
         self.keep_tmp = keep_tmp
@@ -780,13 +790,54 @@ qssp has been invoked as "%s"'''.lstrip() % (
 class QSSPGFBuilder(gf.builder.Builder):
     nsteps = 2
 
-    def __init__(self, store_dir, step, shared, block_size=None, tmp=None,
+    def __init__(self, store_dir, step, shared, block_size=None, tmp='tmp',
                  force=False):
 
         self.store = gf.store.Store(store_dir, 'w')
         baseconf = self.store.get_extra('qssp')
         if baseconf.qssp_version in ('2017', '2020'):
-            if self.store.config.component_scheme == 'rotational8':
+            if self.store.config.component_scheme == 'strain20':
+                self.gfmapping = [
+                    (MomentTensor(m=symmat6(1, 0, 0, 0, 0, 0)),
+                     {
+                         '_strain_nn': (0, 1),
+                         '_strain_ee': (4, 1),
+                         '_strain_zz': (8, 1),
+                         '_strain_nz': (14, 1),
+                     }),
+                    (MomentTensor(m=symmat6(0, 0, 0, 1, 0, 0)),
+                     {
+                         '_strain_en': (12, 1),
+                         '_strain_ez': (18, 1),
+                     }),
+                    (MomentTensor(m=symmat6(0, 1, 0, 0, 0, 0)),
+                     {
+                         '_strain_nn': (3, 1),
+                         '_strain_ee': (7, 1),
+                         '_strain_zz': (11, 1),
+                         '_strain_nz': (17, 1),
+                     }),
+                    (MomentTensor(m=symmat6(0, 0, 0, 0, 0, 1)),
+                     {
+                         '_strain_en': (13, 1),
+                         '_strain_ez': (19, 1),
+                     }),
+                    (MomentTensor(m=symmat6(0, 0, 1, 0, 0, 0)),
+                     {
+                         '_strain_nn': (2, 1),
+                         '_strain_ee': (6, 1),
+                         '_strain_zz': (10, 1),
+                         '_strain_nz': (16, 1),
+                     }),
+                    (MomentTensor(m=symmat6(0, 0, 0, 0, 1, 0)),
+                     {
+                         '_strain_nn': (1, 1),
+                         '_strain_ee': (5, 1),
+                         '_strain_zz': (9, 1),
+                         '_strain_nz': (15, 1),
+                     }),
+                ]
+            elif self.store.config.component_scheme == 'rotational8':
                 self.gfmapping = [
                     (MomentTensor(m=symmat6(1, 0, 0, 1, 0, 0)),
                      {'_rota_n': (0, -1), '_rota_e': (2, -1),
@@ -925,6 +976,7 @@ class QSSPGFBuilder(gf.builder.Builder):
         stored_quantity = self.store.config.effective_stored_quantity
 
         if (component_scheme, stored_quantity) not in [
+                ('strain20', 'strain'),
                 ('rotational8', 'rotation_displacement'),
                 ('elastic10', 'displacement'),
                 ('elastic8', 'displacement')]:

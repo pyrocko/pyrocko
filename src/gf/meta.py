@@ -208,6 +208,13 @@ component_scheme_descriptions = [
         provided_components=[
             'n', 'e', 'd']),
     ComponentSchemeDescription(
+        name='strain20',
+        source_terms=['mnn', 'mee', 'mdd', 'mne', 'mnd', 'med'],
+        ncomponents=20,
+        default_stored_quantity='strain',
+        provided_components=[
+            'nn', 'ee', 'dd', 'ne', 'nd', 'ed']),
+    ComponentSchemeDescription(
         name='poroelastic10',
         source_terms=['pore_pressure'],
         ncomponents=10,
@@ -1089,6 +1096,7 @@ class DiscretizedExplosionSource(DiscretizedSource):
         'elastic8',
         'elastic10',
         'rotational8',
+        'strain20',
     )
 
     def get_source_terms(self, scheme):
@@ -1097,7 +1105,7 @@ class DiscretizedExplosionSource(DiscretizedSource):
         if scheme == 'elastic2':
             return self.m0s[:, num.newaxis].copy()
 
-        elif scheme in ('elastic8', 'elastic10', 'rotational8'):
+        elif scheme in ('elastic8', 'elastic10', 'rotational8', 'strain20'):
             m6s = num.zeros((self.m0s.size, 6))
             m6s[:, 0:3] = self.m0s[:, num.newaxis]
             return m6s
@@ -1310,6 +1318,7 @@ class DiscretizedMTSource(DiscretizedSource):
         'elastic10',
         'elastic18',
         'rotational8',
+        'strain20',
     )
 
     def get_source_terms(self, scheme):
@@ -2095,7 +2104,7 @@ class ConfigTypeA(Config):
 
     provided_schemes = [
         'elastic2', 'elastic5', 'elastic8', 'elastic10', 'poroelastic10',
-        'rotational8']
+        'rotational8', 'strain20']
 
     def get_surface_distance(self, args):
         return args[1]
@@ -2358,7 +2367,7 @@ class ConfigTypeB(Config):
 
     provided_schemes = [
         'elastic2', 'elastic5', 'elastic8', 'elastic10', 'poroelastic10',
-        'rotational8']
+        'rotational8', 'strain20']
 
     def get_distance(self, args):
         return math.sqrt((args[1] - args[0])**2 + args[2]**2)

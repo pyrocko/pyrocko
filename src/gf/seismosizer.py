@@ -5669,6 +5669,40 @@ class VectorRule(Rule):
         return data
 
 
+class TensorRule(Rule):
+
+    def __init__(self, quantity, differentiate=0, integrate=0):
+        self.components = [
+            quantity + '.' + c for c in ['nn', 'ee', 'dd', 'ne', 'nd', 'ed']]
+        self.differentiate = differentiate
+        self.mapping = dict(
+            (comp, gf_comp) for (comp, gf_comp) in zip(
+                'NN EE DD NE ND ED'.split(),
+                self.components))
+        self.integrate = integrate
+
+    def required_components(self, target):
+        if target.azimuth is not None or target.dip is not None:
+            raise NotImplementedError(
+                'Post-processing rotations is not implemented for tensor '
+                'quanities.')
+
+        return (self.mapping[target.codes[-1][-2:]],)
+
+    def apply_(self, target, base_seismogram):
+        comp = self.mapping[target.codes[-1][-2:]]
+        data = base_seismogram[comp].data
+
+        if self.differentiate:
+            deltat = base_seismogram[comp].deltat
+            data = util.diff_fd(self.differentiate, 4, deltat, data)
+
+        if self.integrate:
+            raise NotImplementedError('Integration is not implemented yet.')
+
+        return data
+
+
 class HorizontalVectorRule(Rule):
 
     def __init__(self, quantity, differentiate=0, integrate=0):
@@ -5756,6 +5790,7 @@ channel_rules = {
     'pore_pressure': [ScalarRule('pore_pressure')],
     'vertical_tilt': [HorizontalVectorRule('vertical_tilt')],
     'darcy_velocity': [VectorRule('darcy_velocity')],
+    'strain': [TensorRule('strain')],
 }
 
 static_rules = {
@@ -6123,14 +6158,10 @@ class LocalEngine(Engine):
             quantity = target.effective_quantity()
             available_rules = channel_rules
 
-        try:
-            for rule in available_rules[quantity]:
-                cneeded = rule.required_components(target)
-                if all(c in cprovided for c in cneeded):
-                    return rule
-
-        except KeyError:
-            pass
+        for rule in available_rules.get(quantity, []):
+            cneeded = rule.required_components(target)
+            if all(c in cprovided for c in cneeded):
+                return rule
 
         raise BadRequest(
             'No rule to calculate "%s" with GFs from store "%s" '
