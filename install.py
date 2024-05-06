@@ -278,6 +278,16 @@ def cmd_deps_system(parser, args):
             pass
 
     if not distribution:
+        try:
+            with open('/etc/issue', 'r') as f:
+                x = f.read()
+                if x and x.lower().find('ubuntu') != -1:
+                    distribution = 'ubuntu'
+
+        except Exception:
+            pass
+
+    if not distribution:
         sys.exit(
             'Cannot determine platform for automatic prerequisite '
             'installation.')
