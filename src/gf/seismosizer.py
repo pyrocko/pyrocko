@@ -118,6 +118,10 @@ class ConversionError(Exception):
     pass
 
 
+class STFError(SeismosizerError):
+    pass
+
+
 class NoSuchStore(BadRequest):
 
     def __init__(self, store_id=None, dirs=None):
@@ -1169,6 +1173,88 @@ class TremorSTF(STF):
     def base_key(self):
         return (type(self).__name__,
                 self.duration, self.frequency)
+
+
+class SimpleLandslideSTF(STF):
+
+    '''
+    Doublepulse land-slide STF which respects conservation of momentum.
+    '''
+
+    duration_acceleration = Float.T(
+        default=1.0,
+        help='Duratian of the acceleration phase [s].')
+
+    duration_deceleration = Float.T(
+        default=1.0,
+        help='Duration of the deceleration phase [s].')
+
+    mute_acceleration = Bool.T(
+        default=False,
+        help='set acceleration to zero (for testing)')
+
+    mute_deceleration = Bool.T(
+        default=False,
+        help='set acceleration to zero (for testing)')
+
+    def discretize_t(self, deltat, tref):
+
+        d_acc = self.duration_acceleration
+        d_dec = self.duration_deceleration
+
+        tmin_stf = tref
+        tmax_stf = tref + d_acc + d_dec
+        tmin = math.floor(tmin_stf / deltat) * deltat
+        tmax = math.ceil(tmax_stf / deltat) * deltat
+        times = util.arange2(tmin, tmax, deltat, epsilon=1e-3)
+
+        mask_acc = num.logical_and(
+            tref <= times,
+            times < tref + d_acc)
+
+        mask_dec = num.logical_and(
+            tref + d_acc <= times,
+            times < tref + d_acc + d_dec)
+
+        n_acc = num.sum(mask_acc)
+        if n_acc < 1:
+            raise STFError(
+                'SimpleLandslideSTF: `duration_acceleration` must be longer '
+                'than sampling interval.')
+
+        n_dec = num.sum(mask_dec)
+        if n_dec < 1:
+            raise STFError(
+                'SimpleLandslideSTF: `duration_deceleration` must be longer '
+                'than sampling interval.')
+
+        amplitudes = num.zeros_like(times)
+
+        amplitudes[mask_acc] = - num.sin(
+            (times[mask_acc] - tref) / d_acc * num.pi)
+
+        amplitudes[mask_dec] = num.sin(
+            (times[mask_dec] - (tref + d_acc)) / d_dec * num.pi)
+
+        sum_acc = num.abs(num.sum(amplitudes[mask_acc]))
+        if sum_acc != 0.0:
+            amplitudes[mask_acc] /= sum_acc
+        else:
+            amplitudes[mask_acc] = 1.0 / n_acc
+
+        sum_dec = num.abs(num.sum(amplitudes[mask_dec]))
+        if sum_dec != 0.0:
+            amplitudes[mask_dec] /= sum_dec
+        else:
+            amplitudes[mask_dec] = 1.0 / n_dec
+
+        if self.mute_acceleration:
+            amplitudes[mask_acc] = 0.0
+
+        if self.mute_deceleration:
+            amplitudes[mask_dec] = 0.0
+
+        return times, amplitudes
 
 
 class STFMode(StringChoice):
@@ -4724,6 +4810,138 @@ class SFSource(Source):
         return super(SFSource, cls).from_pyrocko_event(ev, **d)
 
 
+class SimpleLandslideSource(Source):
+    '''
+    A single force landslide source respecting conservation of momentum.
+
+    The landslide is modelled point-like in space but with individual source
+    time functions for each force component. The source time functions
+    :py:class:`SimpleLandslideSTF` impose the constraint that everything is at
+    rest before and after the event but are allowed to have different
+    acceleration and deceleration durations. It should thus be suitable as a
+    first order approximation of a rock fall or landslide.
+    For realistic landslides, the horizontal accelerations and decelerations
+    can be delayed with respect to the vertical ones but cannot precede them.
+
+    Supported GF schemes: `'elastic5'`.
+    '''
+
+    discretized_source_class = meta.DiscretizedSFSource
+
+    stf_mode = STFMode.T(
+        default='pre',
+        help='SimpleLandslideSource only works with `stf_mode == "pre"`.')
+
+    impulse_n = Float.T(
+        default=0.,
+        help='northward component of impulse [Ns]')
+
+    impulse_e = Float.T(
+        default=0.,
+        help='eastward component of impulse [Ns]')
+
+    impulse_d = Float.T(
+        default=0.,
+        help='downward component of impulse [Ns]')
+
+    azimuth = Float.T(
+        default=0.,
+        help='azimuth direction of the mass movement [deg]')
+
+    stf_v = SimpleLandslideSTF.T(
+        default=SimpleLandslideSTF.D(),
+        help='source time function for vertical force component')
+
+    stf_h = SimpleLandslideSTF.T(
+        default=SimpleLandslideSTF.D(),
+        help='source time function for horizontal force component')
+
+    anchor_stf = StringChoice.T(
+        choices=['onset', 'centroid'],
+        default='onset',
+        help='``"onset"``: STFs start at origin time ``"centroid"``: STFs all '
+             'start at the same time but so that the centroid is at the given '
+             'origin time.')
+
+    def __init__(self, **kwargs):
+        Source.__init__(self, **kwargs)
+
+    def base_key(self):
+        return Source.base_key(self) + (
+            self.impulse_n, self.impulse_e, self.impulse_d) \
+            + self.stf_v.base_key() + self.stf_h.base_key()
+
+    def get_factor(self):
+        return 1.0
+
+    def discretize_basesource(self, store, target=None):
+        if self.stf_mode != 'pre':
+            raise Exception(
+                'SimpleLandslideSource: '
+                'Only works with `stf_mode == "pre"`.')
+
+        if self.stf is not None:
+            raise Exception(
+                'SimpleLandslideSource: '
+                'Setting `stf` is not supported: use `stf_v` and `stf_h`.')
+
+        if self.anchor_stf == 'centroid':
+            duration_acc = num.array([
+                self.stf_h.duration_acceleration,
+                self.stf_h.duration_acceleration,
+                self.stf_v.duration_acceleration], dtype=float)
+
+            impulse = num.array([
+                self.impulse_n,
+                self.impulse_e,
+                self.impulse_d], dtype=float)
+
+            tshift_centroid = \
+                - num.sum(duration_acc * impulse**2) \
+                / num.sum(impulse**2)
+
+        elif self.anchor_stf == 'onset':
+            tshift_centroid = 0.0
+
+        times, amplitudes = self.stf_v.discretize_t(
+            store.config.deltat,
+            self.time + tshift_centroid)
+
+        forces_v = num.zeros((times.size, 3))
+        forces_v[:, 2] = amplitudes * self.impulse_d
+
+        dsource_v = meta.DiscretizedSFSource(
+                forces=forces_v,
+                **self._dparams_base_repeated(times))
+
+        times, amplitudes = self.stf_h.discretize_t(
+            store.config.deltat,
+            self.time + tshift_centroid)
+
+        forces_h = num.zeros((times.size, 3))
+        forces_h[:, 0] = \
+            amplitudes * self.impulse_n
+        forces_h[:, 1] = \
+            amplitudes * self.impulse_e
+
+        dsource_h = meta.DiscretizedSFSource(
+                forces=forces_h,
+                **self._dparams_base_repeated(times))
+
+        return meta.DiscretizedSFSource.combine([dsource_v, dsource_h])
+
+    def pyrocko_event(self, store=None, target=None, **kwargs):
+        return Source.pyrocko_event(
+            self, store, target,
+            **kwargs)
+
+    @classmethod
+    def from_pyrocko_event(cls, ev, **kwargs):
+        d = {}
+        d.update(kwargs)
+        return super(SimpleLandslideSource, cls).from_pyrocko_event(ev, **d)
+
+
 class PorePressurePointSource(Source):
     '''
     Excess pore pressure point source.
@@ -5977,6 +6195,7 @@ source_classes = [
     CombiSource,
     CombiSFSource,
     SFSource,
+    SimpleLandslideSource,
     PorePressurePointSource,
     PorePressureLineSource,
 ]
@@ -5988,12 +6207,14 @@ stf_classes = [
     HalfSinusoidSTF,
     ResonatorSTF,
     TremorSTF,
+    SimpleLandslideSTF,
 ]
 
 __all__ = '''
 Cloneable
 NoDefaultStoreSet
 SeismosizerError
+STFError
 BadRequest
 NoSuchStore
 DerivedMagnitudeError
