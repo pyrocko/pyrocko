@@ -3546,7 +3546,7 @@ def MakePileViewerMainClass(base):
             tpad = 0.
             for f in [self.highpass, self.lowpass]:
                 if f is not None:
-                    tpad = max(tpad, 1.0/f)
+                    tpad = max(tpad, 2.0/f)
 
             for snuffling in self.snufflings:
                 if snuffling._post_process_hook_enabled \
@@ -3594,7 +3594,7 @@ def MakePileViewerMainClass(base):
             ads = self.menuitem_allowdownsampling.isChecked()
 
             tpad = self.get_adequate_tpad()
-            tpad = max(tpad, tsee)
+            tpad = min(tpad, tsee*3)
 
             # state vector to decide if cached traces can be used
             vec = (
