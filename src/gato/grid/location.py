@@ -223,6 +223,14 @@ class CartesianLocationGrid(LocationGrid):
                 'Coordinate system not supported for %s: %s' % (
                     self.__class__.__name__, system))
 
+    def plot(self, values):
+        import matplotlib.pyplot as plt
+
+        values = values.reshape(self.shape)
+        # xyz = self.get_nodes('xyz')
+        plt.pcolormesh(self._y, self._x, values[0, :, :])
+        plt.show()
+
 
 class UnstructuredLocationGrid(LocationGrid):
     '''
