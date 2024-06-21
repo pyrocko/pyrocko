@@ -18,7 +18,8 @@ from pyrocko.gato.array import SensorArrayAndInfoContext, \
     get_named_arrays_dataset
 
 from pyrocko.gato.io import load
-from pyrocko.gato.grid.slowness import SlownessGrid
+
+from pyrocko.gato.grid.base import Grid
 from pyrocko.gato.grid.location import UnstructuredLocationGrid
 from pyrocko.gato.delay import GenericDelayTable
 from pyrocko.gato.delay.plane_wave import PlaneWaveDM
@@ -46,7 +47,7 @@ class ProcOpts(Object):
     # preprocessing options:
     taper = Float.T(default=0.2)
     prewhiten = Bool.T(default=False)
-    slowness_grid = SlownessGrid.T()
+    slowness_grid = Grid.T()
     # to be continued ...
 
 
@@ -160,6 +161,7 @@ class DelayAndSumTD(SquirrelCommand):
                     **args.squirrel_query):
 
                 mtrace = batch.as_multitrace(codes=info.codes)
+                # delta_frequency, ntrans, spectrum =  mtrace.get_spectrum()
                 mtrace.snuffle()
                 sys.exit()
 

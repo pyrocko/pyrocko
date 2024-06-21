@@ -10,6 +10,8 @@ from pyrocko.guts_array import Array
 
 from pyrocko.gato.grid.base import Grid
 
+NA = num.newaxis
+
 
 class DelayMethod(Object):
     '''Base class for time-delay calculators.'''
@@ -69,6 +71,10 @@ class GenericDelayTable(Object):
             self._delays = delays
 
         return self._delays
+
+    def get_delay_spectra(self, frequencies):
+        delays = self.get_delays()
+        return num.exp(2.0j*num.pi*frequencies[NA, NA, :]*delays[:, :, NA])
 
 
 __all__ = [
