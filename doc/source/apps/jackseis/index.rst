@@ -1,6 +1,11 @@
 Jackseis - *manipulate seismic waveform archives*
 =================================================
 
+.. note::
+
+   This document describes the legacy version of Jackseis. Please consider using
+   the newer :app:`Squirrel-based version of Jackseis <squirrel jackseis>`.
+
 .. highlight:: sh
 
 Jackseis is a simple tool to convert seismic waveform archive datasets. It can

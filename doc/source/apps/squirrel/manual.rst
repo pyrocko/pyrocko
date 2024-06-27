@@ -21,6 +21,9 @@ It offers functionality to
 * manage separate (isolated, local) environments for different projects.
 * manage persistent selections to speed up access to very large datasets.
 
+Please read the :doc:`Tutorial <tutorial>` to get started with the ``squirrel``
+command line tool.
+
 Command reference
 -----------------
 
@@ -61,3 +64,52 @@ Options shared between subcommands are grouped into three categories:
   (``--tmin``, ``--tmax``, ``--time``), channel/station code pattern
   (``--codes``), and content kinds (``--kinds``).
 
+Examples
+--------
+
+Renaming waveform channel codes
+...............................
+
+I have waveforms with channels named ``p0``, ``p1`` and ``p2``. I would like to
+rename them to ``HHZ``, ``HHN``, and ``HHE``, respectively::
+
+  squirrel jackseis --add data/old --out-sds-path data/new --rename-channel 'p0:HHZ,p1:HHN,p2:HHE'
+
+This will create a new directory hierarchy in SDS layout under ``data/new``
+with the modified waveforms.
+
+For further possibilities, look for ``--rename-channel`` in the output of
+``squirrel jackseis --help``.
+
+Set network code on a set of waveforms
+......................................
+
+I have waveforms where the network code is partially missing and partially
+incorrect. I would like to set it for all waveforms to XX::
+
+  squirrel jackseis --add data/old --out-sds-path data/new --rename-network XX
+
+Convert raw waveforms to instrument-corrected ground velocity
+.............................................................
+
+I would like to convert raw waveforms to ground velocity in m/s. I have
+continuous waveforms and I don't want to have any gaps in the output::
+
+  squirrel jackseis --add data/raw meta/stations.xml --out-sds-path data/velocity \
+     --quantity velocity --band 0.1,10
+
+This will restitute the seismograms to ground velocity in the frequency band
+0.1 to 10 Hz. It uses :py:meth:`pyrocko.trace.Trace.transfer` under the hood.
+The frequency taper involved is flat between 0.1 and 10 Hz and decays to zero
+at 0.1/2 and 10*2 Hz.
+
+Reducing memory consumption when converting data with ``squirrel jackseis``
+...........................................................................
+
+Data is processed in time blocks matching the time increment given with
+``--tinc`` (plus padding). All available data in the current block is loaded
+into memory. This may lead to excessive memory usage when lots of channels are
+available in the dataset.
+
+Add ``--traversal sensor`` to process the dataset sensor by sensor. It will run
+a loop over time for each sensor in the dataset and thus use less memory.
