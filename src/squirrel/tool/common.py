@@ -197,6 +197,19 @@ class SquirrelArgumentParser(PyrockoArgumentParser):
         self._have_selection_arguments = False
         self._have_query_arguments = False
 
+        kwargs['epilog'] = kwargs.get('epilog', '''
+
+---
+
+Manual: https://pyrocko.org/docs/current/apps/squirrel
+
+Tutorial: https://pyrocko.org/docs/current/apps/squirrel/tutorial.html
+
+Examples: https://pyrocko.org/docs/current/apps/squirrel/manual.html#examples
+
+🐿️
+''')
+
         kwargs['add_help'] = False
         PyrockoArgumentParser.__init__(self, *args, **kwargs)
         add_standard_arguments(self)
