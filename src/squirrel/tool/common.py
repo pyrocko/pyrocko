@@ -199,7 +199,8 @@ class SquirrelArgumentParser(PyrockoArgumentParser):
 
         kwargs['epilog'] = kwargs.get('epilog', '''
 
----
+
+----
 
 Manual: https://pyrocko.org/docs/current/apps/squirrel
 

@@ -22,6 +22,7 @@ on over to :doc:`Examples: Squirrel powered data access
 </library/examples/squirrel/index>`.
 
 .. contents :: Content
+  :local:
   :depth: 4
 
 

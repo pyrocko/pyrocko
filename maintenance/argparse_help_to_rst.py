@@ -147,6 +147,8 @@ def format_subcommand(program, part):
             program, arg,
             description,
             program.replace(' ', '_') + '_' + arg))
+
+    lines.append('')
     return lines
 
 

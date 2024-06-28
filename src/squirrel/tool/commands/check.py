@@ -23,11 +23,11 @@ def make_subparser(subparsers):
         description=headline + '''
 
 A report listing potential dataset/metadata problems for a given data
-collection is printed to standard output. The following problems are detected:
+collection is printed to standard output. The following problems are detected.
 
 %s
 ''' % '\n'.join(
-            '  [%s]: %s' % (k, v)
+            '    [%s]: %s' % (k, v)
             for (k, v) in SquirrelCheckProblemType.types.items()))
 
 

@@ -67,6 +67,47 @@ Options shared between subcommands are grouped into three categories:
 Examples
 --------
 
+.. contents :: Content
+  :local:
+  :depth: 4
+
+Check data integrity
+....................
+
+I am not sure if my Mini-SEED waveforms and StationXML metadata are properly
+organized and if the station epochs are correctly specified. How do I check the
+integrity of my dataset?
+
+::
+
+  squirrel check --add data/raw meta/stations.xml
+
+Data inventory
+..............
+
+My professor gave me a huge collection of waveforms and metadata. How can
+I get an overview on the available data?
+
+Get overview on time spans of waveforms, channels, stations, responses::
+
+  squirrel coverage --add data/
+
+List available codes::
+
+  squirrel codes --add data/
+
+List some details about all data entities of kind ``channel``::
+
+  squirrel nuts --add data/ --kind channel --style summary
+
+List all files containing waveforms from station XYZ::
+
+  squirrel files --add data/ --codes '*.XYZ.*.*' --kind waveform
+
+List all data entities matching a given time span::
+
+  squirrel nuts --add data/ --tmin '2020-02-22 10:00' --tmax '2020-02-23 05:00'
+
 Renaming waveform channel codes
 ...............................
 
@@ -113,3 +154,18 @@ available in the dataset.
 
 Add ``--traversal sensor`` to process the dataset sensor by sensor. It will run
 a loop over time for each sensor in the dataset and thus use less memory.
+
+Convert DiGOS/Omnirecs DATA-CUBE recordings to MiniSEED
+.......................................................
+
+I want to convert some continuous DATA-CUBE recordings into Mini-SEED format.
+The output should be in SDS structure::
+
+  squirrel jackseis --add data/data-cube --out-sds-path data/mseed --rename-network XX
+
+This will resample the data with sinc interpolation using the GPS information
+in the raw data. Add ``-rename-station ...``, ``--rename-channel ...`` as
+needed.
+
+**Note:** Always give the complete recording directory as input as the GPS
+information from neighboring files may be used for an optimal time correction
