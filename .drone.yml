@@ -126,13 +126,6 @@ steps:
   - pip3 install --no-deps --no-build-isolation .
   - python3 -m pytest -v test/base
 
-- name: test-base-debian-10
-  image: pyrocko-fat-nest-debian-10
-  pull: never
-  commands:
-  - pip3 install --no-deps --no-build-isolation .
-  - python3 -m pytest -v test/base
-
 - name: test-base-hptime
   image: pyrocko-fat-nest-debian-12
   pull: never
@@ -162,7 +155,6 @@ steps:
       from_secret: rsync-key
   depends_on:
   - test-base-debian-11
-  - test-base-debian-10
   - test-base-hptime
 
 ---
@@ -200,13 +192,6 @@ steps:
   - pip3 install --no-deps --no-build-isolation .
   - python3 -m pytest -v test/gf
 
-- name: test-gf-debian-10
-  image: pyrocko-fat-nest-debian-10
-  pull: never
-  commands:
-  - pip3 install --no-deps --no-build-isolation .
-  - python3 -m pytest -v test/gf
-
 - name: test-gf-hptime
   image: pyrocko-fat-nest-debian-12
   pull: never
@@ -237,7 +222,6 @@ steps:
       from_secret: rsync-key
   depends_on:
   - test-gf-debian-11
-  - test-gf-debian-10
   - test-gf-hptime
 
 ---
@@ -279,15 +263,6 @@ steps:
   - pip3 install --no-deps --no-build-isolation .
   - python3 -m pytest -v test/examples
 
-- name: test-examples-debian-10
-  image: pyrocko-fat-nest-debian-10
-  pull: never
-  commands:
-  - mkdir -p /pyrocko-test-data/example_run_dir
-  - ln -sf /pyrocko-test-data/gf_stores/* /pyrocko-test-data/example_run_dir
-  - pip3 install --no-deps --no-build-isolation .
-  - python3 -m pytest -v test/examples
-
 - name: test-examples-hptime
   image: pyrocko-fat-nest-debian-12
   pull: never
@@ -320,7 +295,6 @@ steps:
       from_secret: rsync-key
   depends_on:
   - test-examples-debian-11
-  - test-examples-debian-10
   - test-examples-hptime
 
 ---
@@ -358,13 +332,6 @@ steps:
   - pip3 install --no-deps --no-build-isolation .
   - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
 
-- name: test-gui-debian-10
-  image: pyrocko-fat-nest-debian-10
-  pull: never
-  commands:
-  - pip3 install --no-deps --no-build-isolation .
-  - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
-
 - name: test-gui-hptime
   image: pyrocko-fat-nest-debian-12
   pull: never
@@ -395,7 +362,6 @@ steps:
       from_secret: rsync-key
   depends_on:
   - test-gui-debian-11
-  - test-gui-debian-10
   - test-gui-hptime
 
 ---
@@ -1108,32 +1074,6 @@ steps:
 
 kind: pipeline
 type: docker
-name: package-deb-debian-10
-
-steps:
-- name: build
-  image: pyrocko-build-deb-debian-10
-  pull: never
-  commands:
-  - maintenance/deb/build.sh 1 debian-10
-
-- name: stage
-  image: pyrocko-util
-  pull: never
-  commands:
-  - maintenance/drone-rsync.sh deb-packages-debian-10 ${DRONE_COMMIT}/deb/debian-10
-  environment:
-    RSYNC_HOST:
-      from_secret: rsync-host
-    RSYNC_USER:
-      from_secret: rsync-user
-    RSYNC_KEY:
-      from_secret: rsync-key
-
----
-
-kind: pipeline
-type: docker
 name: package-deb-debian-11
 
 steps:
@@ -1287,7 +1227,6 @@ depends_on:
 - package-conda-linux
 - package-conda-osx-64-arm64
 - package-conda-windows
-- package-deb-debian-10
 - package-deb-debian-11
 - package-deb-debian-12
 - package-deb-ubuntu-20.04
