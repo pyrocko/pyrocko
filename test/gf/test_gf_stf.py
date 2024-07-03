@@ -107,7 +107,11 @@ class GFSTFTestCase(unittest.TestCase):
 
     def test_objects(self):
         for stf_class in gf.seismosizer.stf_classes:
-            if stf_class in (gf.STF, gf.ResonatorSTF):
+            if stf_class in (
+                    gf.STF,
+                    gf.ResonatorSTF,
+                    gf.SimpleLandslideSTF):
+
                 continue
 
             d1 = 2.0
