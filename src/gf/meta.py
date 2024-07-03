@@ -1050,7 +1050,7 @@ class DiscretizedSource(Object):
         if norm != 0.0:
             w = moments / num.sum(moments)
         else:
-            w = num.ones(moments.size)
+            w = num.ones(moments.size) / moments.size
 
         if self.lats is not None and self.lons is not None:
             lats, lons = self.effective_latlons
@@ -1280,7 +1280,7 @@ class DiscretizedSFSource(DiscretizedSource):
         return super(DiscretizedSFSource, cls).combine(sources, **kwargs)
 
     def moments(self):
-        return num.sum(self.forces**2, axis=1)
+        return num.sqrt(num.sum(self.forces**2, axis=1))
 
     def centroid(self):
         from pyrocko.gf.seismosizer import SFSource

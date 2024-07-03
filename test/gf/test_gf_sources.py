@@ -270,11 +270,16 @@ class GFSourcesTestCase(unittest.TestCase):
             if not hasattr(S, 'discretize_basesource'):
                 continue
 
-            if S.T.classname == 'PseudoDynamicRupture':
+            if S is gf.PseudoDynamicRupture:
                 continue
 
             for t in [0.0, util.str_to_time('2014-01-01 10:00:00')]:
-                source = default_source(S, time=t)
+                params = dict(time=t)
+                if S is gf.SimpleLandslideSource:
+                    params['anchor_stf'] = 'centroid'
+                    params['impulse_d'] = 1.0
+
+                source = default_source(S, **params)
                 dsource = source.discretize_basesource(
                     store, target=dummy_target)
                 cent = dsource.centroid()
