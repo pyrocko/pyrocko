@@ -8,7 +8,7 @@ RUN apt-get update -y && apt-get upgrade -y
 RUN apt-get install -y \
     python3-pip twine wget flake8 make git \
     python3-dev python3-setuptools python3-numpy-dev \
-    xvfb libgles2-mesa \
+    xvfb libgles2-mesa-dev \
     python3-coverage python3-pytest \
     python3-numpy python3-scipy python3-matplotlib \
     python3-requests python3-future \

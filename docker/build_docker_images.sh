@@ -21,7 +21,7 @@ for version in 11 12 ; do
     docker build test-deb -t pyrocko-test-deb-debian-$version --build-arg base_image=debian:$version
 done
 
-for version in 20.04 22.04 ; do
+for version in 20.04 22.04 24.04 ; do
     docker build nest -t pyrocko-nest-ubuntu-$version --build-arg base_image=ubuntu:$version
     docker build fat-nest -t pyrocko-fat-nest-ubuntu-$version --build-arg base_image=pyrocko-nest-ubuntu-$version
     docker build build-deb -t pyrocko-build-deb-ubuntu-$version --build-arg base_image=ubuntu:$version
