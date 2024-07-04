@@ -23,7 +23,7 @@ installed from source:
    * `wheel <https://pypi.org/project/wheel/>`_
 
 * Try to use normal system packages for these Python modules:
-   * `Python <http://www.python.org/>`_ (>= 3.7, with development headers)
+   * `Python <http://www.python.org/>`_ (>= 3.8, with development headers)
    * `NumPy <http://numpy.scipy.org/>`_ (>= 1.16, with development headers)
    * `SciPy <http://scipy.org/>`_ (>= 1.0)
    * `matplotlib <http://matplotlib.sourceforge.net/>`_ (with Qt5 backend)

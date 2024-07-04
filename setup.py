@@ -516,7 +516,7 @@ if not have_pep621_support:
         keywords=[
             'seismology, waveform analysis, earthquake modelling, geophysics,'
             ' geophysical inversion'],
-        python_requires='>=3.7, <4',
+        python_requires='>=3.8, <4',
         install_requires=[
             'numpy>=1.16',
             'scipy>=1.0',

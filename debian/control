@@ -5,7 +5,7 @@ Maintainer: Sebastian Heimann <sebastian.heimann@uni-potsdam.de>
 Build-Depends: debhelper-compat (= 12), dh-python, python3-all, python3-dev, python3-numpy, git, python3-setuptools, debmake
 Standards-Version: 4.5.0
 Homepage: https://pyrocko.org/
-X-Python3-Version: >= 3.7
+X-Python3-Version: >= 3.8
 
 Package: pyrocko
 Architecture: amd64
