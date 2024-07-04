@@ -1172,6 +1172,32 @@ steps:
 ---
 
 kind: pipeline
+type: docker
+name: package-deb-ubuntu-24.04
+
+steps:
+- name: build
+  image: pyrocko-build-deb-ubuntu-24.04
+  pull: never
+  commands:
+  - maintenance/deb/build.sh 1 ubuntu-24.04
+
+- name: stage
+  image: pyrocko-util
+  pull: never
+  commands:
+  - maintenance/drone-rsync.sh deb-packages-ubuntu-24.04 ${DRONE_COMMIT}/deb/ubuntu-24.04
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
+
+---
+
+kind: pipeline
 type: exec
 name: app-osx
 
@@ -1226,6 +1252,7 @@ depends_on:
 - package-deb-debian-12
 - package-deb-ubuntu-20.04
 - package-deb-ubuntu-22.04
+- package-deb-ubuntu-24.04
 - app-osx
 
 trigger:

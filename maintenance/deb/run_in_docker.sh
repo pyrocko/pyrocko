@@ -4,7 +4,7 @@ set -e
 
 revision=$1
 debianversion=$2
-debianversion_all="debian-11,debian-12,ubuntu-20.04,ubuntu-22.04"
+debianversion_all="debian-11,debian-12,ubuntu-20.04,ubuntu-22.04,ubuntu-24.04"
 
 if [ -z "$revision" ] || [ -z "$debianversion" ]; then
     echo "usage: run_in_docker.sh <revision> <debianversion>"
