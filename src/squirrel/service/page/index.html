@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+        <title>Squirrel</title>
+        <link
+            rel="apple-touch-icon"
+            sizes="180x180"
+            href="images/apple-touch-icon.png"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="32x32"
+            href="images/favicon-32x32.png"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="16x16"
+            href="images/favicon-16x16.png"
+        />
+        <link rel="manifest" href="site.webmanifest" />
+
+        <link href="css/bootstrap.min.css" rel="stylesheet" />
+        <link href="css/local.css" rel="stylesheet" />
+        <script src="js/d3.v7.min.js"></script>
+    </head>
+
+    <body>
+        <div id="app">
+            <div v-if="!connection.connected" class="curtain">DISCONNECTED</div>
+            <div class="connection-monitor">
+                <div v-if="connection.connected">
+                    Connected: {{ connection.connected.duration }} | Requests:
+                    {{
+                        connection.serverInfo
+                            ? connection.serverInfo.n_requests
+                            : ''
+                    }}
+                </div>
+                <div v-else>Disconnected</div>
+            </div>
+
+            <!--<div id="map" class="map-container"></div>-->
+            <div id="timeline" class="map-container"></div>
+        </div>
+    </body>
+
+    <script type="module">
+        import { createApp, ref, onMounted } from './js/vue.esm-browser.js'
+
+        import { squirrelMap } from './js/squirrel-map.js'
+        import { squirrelTimeline } from './js/squirrel-timeline.js'
+        import { squirrelConnection } from './js/squirrel-connection.js'
+
+        createApp({
+            setup() {
+                let connection = ref(squirrelConnection())
+                let map = squirrelMap()
+                let timeline = squirrelTimeline()
+
+                onMounted(() => {
+                    // d3.select('#map').call(map)
+                    // map.addBasemap().addSensors()
+                    d3.select('#timeline').call(timeline)
+                })
+
+                return { connection }
+            },
+        }).mount('#app')
+    </script>
+</html>
