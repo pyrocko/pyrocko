@@ -795,6 +795,7 @@ def MakePileViewerMainClass(base):
         about_to_close = qc.pyqtSignal()
         pile_has_changed_signal = qc.pyqtSignal()
         tracks_range_changed = qc.pyqtSignal(int, int, int)
+        frequency_filter_changed = qc.pyqtSignal(float, float)
 
         begin_markers_add = qc.pyqtSignal(int, int)
         end_markers_add = qc.pyqtSignal()
@@ -3890,12 +3891,16 @@ def MakePileViewerMainClass(base):
             self.passband_check()
             self.tf_cache = {}
             self.update()
+            self.frequency_filter_changed.emit(
+                self.lowpass or 0.0, self.highpass or 0.0)
 
         def highpass_change(self, value, ignore=None):
             self.highpass = value
             self.passband_check()
             self.tf_cache = {}
             self.update()
+            self.frequency_filter_changed.emit(
+                self.lowpass or 0.0, self.highpass or 0.0)
 
         def passband_check(self):
             if self.highpass and self.lowpass \
