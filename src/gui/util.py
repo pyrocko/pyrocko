@@ -837,8 +837,8 @@ class ColorbarSlider(qw.QWidget):
             return
         rect = qc.QRect(self._window)
         width = rect.width()
-        rect.setLeft(width * self.clip_min)
-        rect.setRight(width * self.clip_max)
+        rect.setLeft(int(width * self.clip_min))
+        rect.setRight(int(width * self.clip_max))
         return rect
 
     def set_clip(self, clip_min, clip_max):

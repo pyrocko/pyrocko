@@ -15,13 +15,13 @@ from pyrocko.io.io_common import FileLoadError
 from pyrocko import progress
 
 from .backends import \
-    mseed, sac, datacube, stationxml, textfiles, virtual, yaml, tdms_idas, \
+    mseed, sac, hdf5_optodas, datacube, stationxml, textfiles, virtual, yaml, tdms_idas, \
     spickle
 
 from ..model import to_kind_ids, EMPTY, Nut
 
 backend_modules = [
-    mseed, sac, datacube, stationxml, textfiles, virtual, yaml, tdms_idas,
+    mseed, sac, hdf5_optodas, datacube, stationxml, textfiles, virtual, yaml, tdms_idas,
     spickle]
 
 
