@@ -3,11 +3,20 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Generator
+if TYPE_CHECKING:
+    from ..base import Squirrel
+
+from collections import defaultdict
 import logging
 import re
 
-from ..model import QuantityType, CodesNSLCE, CodesMatcher
-from .. import error
+from pyrocko.model import Location
+
+from ..model import QuantityType, CodesNSLCE, CodesMatcher, CHANNEL, \
+    get_selection_args, Sensor
 
 from pyrocko.guts import Object, String, Duration, Float, clone, List
 
@@ -57,6 +66,16 @@ def _cglob_translate(creg):
     return reg
 
 
+def scodes(codes):
+    css = list(zip(*codes))
+    if sum(not all(c == cs[0] for c in cs) for cs in css) == 1:
+        return '.'.join(
+            cs[0] if all(c == cs[0] for c in cs) else '(%s)' % ','.join(cs)
+            for cs in css)
+    else:
+        return ', '.join(str(c) for c in codes)
+
+
 class Filtering(Object):
     '''
     Base class for :py:class:`pyrocko.squirrel.model.Nut` filters.
@@ -77,8 +96,7 @@ class RegexFiltering(Filtering):
         self._compiled_pattern = re.compile(self.pattern)
 
     def filter(self, it):
-        return [
-            x for x in it if self._compiled_pattern.fullmatch(x)]
+        return list(filter(self._compiled_pattern.fullmatch), it)
 
 
 class CodesPatternFiltering(Filtering):
@@ -94,12 +112,14 @@ class CodesPatternFiltering(Filtering):
         else:
             self._matcher = None
 
+    def match(self, codes):
+        return True if self._matcher is None else self._matcher.match(codes)
+
     def filter(self, it):
         if self._matcher is None:
             return list(it)
         else:
-            return [
-                x for x in it if self._matcher.match(x)]
+            return list(self._matcher.filter(it))
 
 
 class Grouping(Object):
@@ -199,8 +219,10 @@ class RegexTranslation(AddSuffixTranslation):
         self._compiled_pattern = re.compile(self.pattern)
 
     def translate(self, codes):
-        return codes.__class__(
-            self._compiled_pattern.sub(self.replacement, codes.safe_str))
+        return AddSuffixTranslation.translate(
+            self,
+            codes.__class__(
+                self._compiled_pattern.sub(self.replacement, codes.safe_str)))
 
 
 class ReplaceComponentTranslation(RegexTranslation):
@@ -212,17 +234,13 @@ class ReplaceComponentTranslation(RegexTranslation):
     replacement = String.T(default=r'\1{component}\2')
 
 
-def deregister(registry, group):
-    for codes in group[2]:
-        del registry[codes]
+class CodesMapping:
+    __slots__ = ['in_codes_set', 'in_codes', 'out_codes']
 
-
-def register(registry, operator, group):
-    for codes in group[2]:
-        if codes in registry:
-            logger.warning(
-                'duplicate operator output codes: %s' % codes)
-        registry[codes] = (operator, group)
+    def __init__(self):
+        self.in_codes_set = set()
+        self.in_codes = ()
+        self.out_codes = ()
 
 
 class Operator(Object):
@@ -231,98 +249,203 @@ class Operator(Object):
     grouping = Grouping.T(default=Grouping.D())
     translation = Translation.T(default=Translation.D())
 
+    kind_provides = ('channel', 'response', 'waveform')
+    kind_requires = ()
+
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
-        self._output_names_cache = {}
-        self._groups = {}
+        self._mappings = {}
         self._available = []
+        self._input = None
 
     @property
     def name(self):
         return self.__class__.__name__
 
-    def describe(self):
-        return self.name
+    def set_input(self, input: Operator | Squirrel) -> None:
+        self._input = input
 
-    def iter_mappings(self):
-        for k, group in self._groups.items():
-            yield (group[1], group[2])
+    def set_parameters(self, parameters: Parameters) -> None:
+        self._parameters = parameters
 
-    def iter_in_codes(self):
-        for k, group in self._groups.items():
-            yield group[1]
+    def describe(self) -> str:
+        return '%s\n  provides: %s\n  requires: %s\n%s' % (
+            self.name,
+            ', '.join(self.kind_provides),
+            ', '.join(self.kind_requires),
+            self._str_mappings)
 
-    def iter_out_codes(self):
-        for k, group in self._groups.items():
-            yield group[2]
+    @property
+    def _str_mappings(self) -> str:
+        return '\n'.join([
+            '  %s <- %s' % (
+                scodes(mapping.out_codes),
+                scodes(mapping.in_codes))
+            for mapping in self.iter_mappings()])
 
-    def update_mappings(self, available, registry=None):
-        available = list(available)
+    def translate_codes(self, in_codes: list[CodesNSLCE]) -> list[CodesNSLCE]:
+        return [self.translation.translate(codes) for codes in in_codes]
+
+    def iter_mappings(
+                self,
+                codes: list[CodesNSLCE] | None = None
+            ) -> Generator[CodesMapping]:
+        if codes:
+            cpf = CodesPatternFiltering(codes=codes)
+            for mapping in self._mappings.values():
+                if any(cpf.match(out_codes)
+                       for out_codes in mapping.out_codes):
+
+                    yield mapping
+
+        else:
+            yield from self._mappings.values()
+
+    def get_mappings(
+                self,
+                codes: list[CodesNSLCE] = None
+            ) -> list[CodesMapping]:
+
+        return list(self.iter_mappings(codes))
+
+    def get_mapping(
+                self,
+                codes: CodesNSLCE
+            ) -> CodesMapping:
+
+        return self._mappings[self.grouping.key(codes)]
+
+    def iter_codes(self) -> Generator[CodesNSLCE]:
+        for k, mapping in self._mappings.items():
+            yield from mapping.out_codes
+
+    def get_codes(self, kind: str = None) -> list[CodesNSLCE]:
+        assert kind is None or kind in self.kind_provides
+        return list(self.iter_codes())
+
+    def iter_in_codes(
+                self,
+                mappings: CodesMapping | None = None
+            ) -> Generator[CodesNSLCE]:
+
+        for mapping in (mappings or self._mappings).values():
+            yield from mapping.in_codes
+
+    def get_in_codes(
+                self,
+                mappings: CodesMapping | None = None
+            ) -> Generator[CodesNSLCE]:
+
+        in_codes = []
+        for mapping in mappings or self._mappings:
+            in_codes.extend(mapping.in_codes)
+
+        return sorted(in_codes)
+
+    def update_mappings(self) -> None:
+        available = None
+        for kind in self.kind_requires or [None]:
+            codes = set(self._input.get_codes(kind=kind))
+            if available is None:
+                available = codes
+            else:
+                available &= codes
+
+        available = sorted(available)
         removed, added = odiff(self._available, available)
 
         filt = self.filtering.filter
         gkey = self.grouping.key
-        groups = self._groups
+        mappings = self._mappings
 
         need_update = set()
 
         for codes in filt(removed):
             k = gkey(codes)
-            groups[k][0].remove(codes)
+            mappings[k].in_codes_set.remove(codes)
             need_update.add(k)
 
         for codes in filt(added):
             k = gkey(codes)
-            if k not in groups:
-                groups[k] = [set(), None, ()]
+            if k not in mappings:
+                mappings[k] = CodesMapping()
 
-            groups[k][0].add(codes)
+            mappings[k].in_codes_set.add(codes)
             need_update.add(k)
 
         for k in need_update:
-            group = groups[k]
-            if registry is not None:
-                deregister(registry, group)
-
-            group[1] = tuple(sorted(group[0]))
-            if not group[1]:
-                del groups[k]
+            mapping = mappings[k]
+            if not mapping.in_codes_set:
+                del mappings[k]
             else:
-                group[2] = self._out_codes(group[1])
-                if registry is not None:
-                    register(registry, self, group)
+                mapping.in_codes = tuple(sorted(mapping.in_codes_set))
+                mapping.out_codes = self.translate_codes(mapping.in_codes)
 
         self._available = available
 
-    def _out_codes(self, in_codes):
-        return [self.translation.translate(codes) for codes in in_codes]
+    def by_codes(self, xs):
+        by_codes = defaultdict(list)
+        for x in xs:
+            by_codes[x.codes].append(x)
 
-    def get_channels(self, squirrel, group, *args, **kwargs):
-        _, in_codes, out_codes = group
-        assert len(in_codes) == 1 and len(out_codes) == 1
-        channels = squirrel.get_channels(codes=in_codes[0], **kwargs)
-        channels_out = []
-        for channel in channels:
-            channel_out = clone(channel)
-            channel_out.codes = out_codes[0]
-            channels_out.append(channel_out)
+        return by_codes
 
-        return channels_out
+    def by_codes_unique(self, xs):
+        return dict(
+            (k, xs_group[0])
+            for (k, xs_group) in self.by_codes(xs).items()
+            if len(xs_group) == 1)
 
-    def get_waveforms(self, squirrel, group, **kwargs):
-        _, in_codes, out_codes = group
-        assert len(in_codes) == 1 and len(out_codes) == 1
+    def get_channels(
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None,
+            **kwargs):
 
-        trs = squirrel.get_waveforms(codes=in_codes[0], **kwargs)
-        for tr in trs:
-            tr.set_codes(*out_codes[0])
+        tmin, tmax, codes = get_selection_args(
+            CHANNEL, obj, tmin, tmax, time, codes)
 
-        return trs
+        mappings = self.get_mappings(codes)
+        in_codes = self.get_in_codes(mappings)
 
-    # def update_waveforms(self, squirrel, tmin, tmax, codes):
-    #     if codes is None:
-    #         for _, in_codes, out_codes in self._groups.values():
-    #             for codes in
+        channels_in = self._input.get_channels(
+            codes=in_codes, tmin=tmin, tmax=tmax, **kwargs)
+
+        codes_to_channel = self.by_codes_unique(channels_in)
+
+        channels = []
+        for mapping in mappings:
+            for in_codes, out_codes in zip(
+                    mapping.in_codes, mapping.out_codes):
+
+                channel_in = codes_to_channel[in_codes]
+                channel = clone(channel_in)
+                channel.codes = out_codes
+
+                channels.append(channel)
+
+        return channels
+
+    def get_time_padding(self):
+        return 0.0
+
+    def get_waveforms(
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None,
+            **kwargs):
+
+        tmin, tmax, codes = get_selection_args(
+            CHANNEL, obj, tmin, tmax, time, codes)
+
+        mappings = self.get_mappings(codes)
+        in_codes = self.get_in_codes(mappings)
+
+        tpad = self.get_time_padding()
+
+        tmin_raw = tmin - tpad
+        tmax_raw = tmax + tpad
+
+        trs = self._input.get_waveforms(
+            codes=in_codes, tmin=tmin_raw, tmax=tmax_raw, **kwargs)
+
+        return self.process_waveforms(trs, mappings, in_codes, tmin, tmax)
 
 
 class Parameters(Object):
@@ -340,59 +463,58 @@ class Restitution(Operator):
     translation = AddSuffixTranslation(suffix='R{quantity}')
     quantity = QuantityType.T(default='displacement')
 
+    kind_provides = ('channel', 'waveform')
+    kind_requires = ('response',)
+
     @property
     def name(self):
         return 'Restitution(%s)' % self.quantity[0]
 
-    def _out_codes(self, group):
+    def translate_codes(self, in_codes):
         return [
             codes.__class__(self.translation.translate(codes).safe_str.format(
                 quantity=self.quantity[0]))
-            for codes in group]
+            for codes in in_codes]
 
-    def get_tpad(self, params):
-        return params.time_taper_factor / params.frequency_min
+    def get_time_padding(self):
+        return self._parameters.time_taper_factor \
+            / self._parameters.frequency_min
 
-    def get_waveforms(
-            self, squirrel, codes, params, tmin, tmax, **kwargs):
+    def get_responses_mapping(self, in_codes, tmin, tmax):
+        responses = self._input.get_responses(
+            codes=in_codes,
+            tmin=tmin,
+            tmax=tmax)
 
-        self_, (_, in_codes, out_codes) = squirrel.get_operator_group(codes)
-        assert self is self_
-        assert len(in_codes) == 1 and len(out_codes) == 1
+        return self.by_codes_unique(responses)
 
-        tpad = self.get_tpad(params)
+    def process_waveforms(self, trs, mappings, in_codes, tmin, tmax):
 
-        tmin_raw = tmin - tpad
-        tmax_raw = tmax + tpad
+        tmin_trs = min(tr.tmin for tr in trs)
+        tmax_trs = max(tr.tmax for tr in trs)
 
-        trs = squirrel.get_waveforms(
-            codes=in_codes[0], tmin=tmin_raw, tmax=tmax_raw, **kwargs)
-
-        try:
-            resp = squirrel.get_response(
-                codes=in_codes[0],
-                tmin=tmin_raw,
-                tmax=tmax_raw).get_effective(self.quantity)
-
-        except error.NotAvailable:
-            return []
-
-        freqlimits = (
-            params.frequency_min / params.frequency_taper_factor,
-            params.frequency_min,
-            params.frequency_max,
-            params.frequency_max * params.frequency_taper_factor)
+        codes_to_response = self.get_responses_mapping(
+            in_codes, tmin_trs, tmax_trs)
 
         trs_rest = []
         for tr in trs:
+            resp = codes_to_response[tr.codes].get_effective(self.quantity)
+
+            parameters = self._parameters
+
+            freqlimits = (
+                parameters.frequency_min / parameters.frequency_taper_factor,
+                parameters.frequency_min,
+                parameters.frequency_max,
+                parameters.frequency_max * parameters.frequency_taper_factor)
+
             tr_rest = tr.transfer(
-                tfade=tpad,
+                tfade=self.get_time_padding(),
                 freqlimits=freqlimits,
                 transfer_function=resp,
                 invert=True)
 
-            tr_rest.set_codes(*out_codes[0])
-
+            tr_rest.set_codes(*self.get_mapping(tr.codes).out_codes[0])
             trs_rest.append(tr_rest)
 
         return trs_rest
@@ -407,29 +529,69 @@ class Transform(Operator):
     grouping = Grouping.T(default=SensorGrouping.D())
     translation = ReplaceComponentTranslation(suffix='T{system}')
 
-    def _out_codes(self, group):
+    kind_provides = ('channel', 'waveform')
+    kind_requires = ('channel',)
+
+    def translate_codes(self, in_codes):
+        proto = in_codes[0]
         return [
-            self.translation.translate(group[0]).format(
-                component=c, system=self.components.lower())
+            proto.__class__(
+                self.translation.translate(proto).safe_str.format(
+                    component=c, system=self.components.lower()))
             for c in self.components]
+
+    def get_channels_mapping(self, in_codes, tmin, tmax):
+        channels = self._input.get_channels(
+            codes=in_codes,
+            tmin=tmin,
+            tmax=tmax)
+
+        return self.by_codes_unique(channels)
+
+    def process_waveforms(self, trs, mappings, in_codes, tmin, tmax):
+
+        tmin_trs = min(tr.tmin for tr in trs)
+        tmax_trs = max(tr.tmax for tr in trs)
+
+        codes_to_channels = self.get_channels_mapping(
+            in_codes, tmin_trs, tmax_trs)
+
+        codes_to_traces = self.by_codes(trs)
+
+        trs_out = []
+        for mapping in mappings:
+            sensor = Sensor.from_channels_single([
+                codes_to_channels[in_codes]
+                for in_codes in mapping.in_codes])
+
+            trs_sensor = []
+            for in_codes in mapping.in_codes:
+                trs_sensor.extend(codes_to_traces[in_codes])
+
+            codes_mapping = dict(zip(self.components, mapping.out_codes))
+
+            trs_sensor_out = self.project(sensor, trs_sensor)
+            for tr in trs_sensor_out:
+                tr.set_codes(*codes_mapping[tr.channel[-1]])
+
+            trs_out.extend(trs_sensor_out)
+
+        return trs_out
 
 
 class ToENZ(Transform):
     components = 'ENZ'
 
-    def get_waveforms(
-            self, squirrel, in_codes, out_codes, params, tmin, tmax, **kwargs):
-
-        trs = squirrel.get_waveforms(
-            codes=in_codes, tmin=tmin, tmax=tmax, **kwargs)
-
-        for tr in trs:
-            print(tr)
+    def project(self, sensor, trs_sensor):
+        return sensor.project_to_enz(trs_sensor)
 
 
-class ToRTZ(Transform):
-    components = 'RTZ'
-    backazimuth = Float.T()
+class ToTRZ(Transform):
+    components = 'TRZ'
+    origin = Location.T()
+
+    def project(self, sensor, trs_sensor):
+        return sensor.project_to_trz(self.origin, trs_sensor)
 
 
 class ToLTQ(Transform):
@@ -461,6 +623,6 @@ __all__ = [
     'Restitution',
     'Shift',
     'ToENZ',
-    'ToRTZ',
+    'ToTRZ',
     'ToLTQ',
     'Composition']

@@ -26,4 +26,5 @@ def load_all(path, want=None):
 
 __all__ = [
     'load',
+    'load_all',
 ]
