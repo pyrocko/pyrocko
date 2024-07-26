@@ -4,14 +4,13 @@
 # ---|P------/S----------~Lg----------
 
 '''
-Implementation of :app:`gato beam`.
+Implementation of :app:`gato stack`.
 '''
-import os
 import sys
 import numpy as num
 
-from pyrocko.squirrel import SquirrelCommand
-from pyrocko.guts import Object, Float, Bool
+from pyrocko.squirrel import SquirrelCommand, QuantityType
+from pyrocko.guts import Object, Float, Bool, StringChoice
 
 from pyrocko.gato.error import GatoToolError
 from pyrocko.gato.array import SensorArrayAndInfoContext, \
@@ -29,50 +28,60 @@ from pyrocko.gato.tool.common import add_array_selection_arguments, \
 guts_prefix = 'gato'
 
 
-class ProcOpts(Object):
+class WindowChoice(StringChoice):
+    choices = ['boxcar', 'hanning']
 
-    # filter options
+
+class CharacteristicFunctionConfig(Object):
+    pass
+
+
+class PreProcessingConfig(Object):
+
+    downsample = Float.T(optional=True)
+
+    quantity = QuantityType.T(optional=True)
+    frequency_min = Float.T(optional=True)
+    frequency_max = Float.T(optional=True)
+    frequency_cut_factor = Float.T(optional=True)
+    frequency_cut_min = Float.T(optional=True)
+    frequency_cut_max = Float.T(optional=True)
+    # instrument_correction_mode = \
+    #     InstrumentCorrectionMode.T(default='complete')
+
+    rotate_to_enz = Bool.T(default=False)
+
     highpass = Float.T(optional=True)
     lowpass = Float.T(optional=True)
-    transfer_removal = Bool.T(default=False)
-    transfer_f1 = Float.T(default=0.001)
-    transfer_f2 = Float.T(default=0.01)
-    transfer_f3 = Float.T(default=100.)
-    transfer_f4 = Float.T(default=200.)
-    # window options
-    tinc = Float.T(default=60.)
-    winstep = Float.T(default=30.)
-    # stack option
-    stacklen = Float.T(default=86400.)
-    # preprocessing options:
-    taper = Float.T(default=0.2)
-    prewhiten = Bool.T(default=False)
-    slowness_grid = Grid.T()
-    # to be continued ...
+
+    characteristic_function = CharacteristicFunctionConfig.T(optional=True)
 
 
-def get_matching_configuration(name_patterns):
-
-    config_name = name_patterns[0]
-    if config_name == 'teleseismic':
-        config = 'teleseismic'
-    elif config_name == 'regional':
-        config = 'regional'
-    elif config_name == 'local':
-        config = 'local'
-    elif (os.path.exists(config_name) and os.path.isfile(config_name)):
-        config = read_config_from_file(config_name)
-    else:
-        config = None
-    return config
+def get_waveforms(self, sq, config, **kwargs):
+    pass
 
 
-def read_config_from_file(path):
-    # parse yaml file
-    print("==================", path)
-    procopts = None
-    procopts = load(filename=path)
-    return procopts
+def chopper_waveforms(self, sq, config, **kwargs):
+    pass
+
+
+def main():
+    pass
+
+    # sq.get_processed_waveforms(config, tmin=, tmax=)
+    # sq.kget_processed_waveforms(sq, config, tmin=, tmax=)
+    #
+
+
+class StackingConfig(Object):
+    time_increment = Float.T()
+    time_padding = Float.T()
+    source_grid = Grid.T()
+
+
+class PostProcessingConfig(Object):
+    time_smoothing = Float.T()
+    time_smoothing_window = WindowChoice.T()
 
 
 class DelayAndSumTD(SquirrelCommand):
@@ -90,16 +99,18 @@ class DelayAndSumTD(SquirrelCommand):
         parser.add_squirrel_query_arguments(without=['kinds'])
 
         parser.add_argument(
-            dest='config_name',
+            dest='config_paths',
+            nargs='+',
             metavar='CONFIG',
-            help='TODO: processing conf name or file name')
+            help='Configuration files for geometry and waveform '
+                 'preprocessing.')
 
     def run(self, parser, args):
 
         arrays = get_matching_arrays(
             args.array_names, args.array_paths, args.use_builtin_arrays)
 
-        config = load(args.config_name, want=ProcOpts)
+        config = load(args.config_path, want=None)
 
         sq = args.make_squirrel()
         sq.add_dataset(get_named_arrays_dataset(sorted(arrays.keys())))
@@ -138,7 +149,7 @@ class DelayAndSumTD(SquirrelCommand):
                 info.sensors, ignore_position_duplicates=False)
 
             gdt = GenericDelayTable(
-                source_grid=config.slowness_grid,
+                source_grid=config.source_grid,
                 receiver_grid=receiver_grid,
                 method=PlaneWaveDM())
 
@@ -169,44 +180,15 @@ class DelayAndSumTD(SquirrelCommand):
             print(config)
 
 
-class DelayAndSumFD(SquirrelCommand):
-
-    def make_subparser(self, subparsers):
-        return subparsers.add_parser(
-            'frequency-domain',
-            help='Compute delay and sum operation in frequency domain.',
-            description='Compute delay and sum operation in frequency domain.')
-
-    def setup(self, parser):
-        parser.add_squirrel_selection_arguments()
-        parser.add_squirrel_query_arguments(without=['kinds'])
-
-        parser.add_argument(
-            dest='array_name',
-            metavar='NAME',
-            help='TODO: array name or file name')
-
-        parser.add_argument(
-            dest='config_name',
-            metavar='CONFIG',
-            help='TODO: processing conf name or file name')
-
-    def run(self, parser, args):
-        pass
-
-
-headline = 'Run beamforming.'
+headline = 'Run stacking or beamforming algorithm.'
 
 
 def make_subparser(subparsers):
     return subparsers.add_parser(
-        'beam',
+        'stack',
         help=headline,
-        subcommands=[DelayAndSumTD(), DelayAndSumFD()],
-        description=headline + '''
-
-Apply beamforming algorithm in time or frequency domain.
-''')
+        subcommands=[DelayAndSumTD()],
+        description=headline)
 
 
 def setup(parser):

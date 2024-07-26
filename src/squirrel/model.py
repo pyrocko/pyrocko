@@ -406,6 +406,9 @@ class CodesMatcher:
 
         return any(rpat.match(scodes) for rpat in self._pats_nonexact)
 
+    def filter(self, it):
+        return filter(self.match, it)
+
 
 def match_codes_any(patterns, codes):
 
@@ -647,6 +650,25 @@ def tscale_to_kscale(tscale):
     return int(num.searchsorted(tscale_edges, tscale))
 
 
+def get_selection_args(
+        kind_id, obj=None, tmin=None, tmax=None, time=None, codes=None):
+
+    if codes is not None:
+        codes = codes_patterns_for_kind(kind_id, codes)
+
+    if time is not None:
+        tmin = time
+        tmax = time
+
+    if obj is not None:
+        tmin = tmin if tmin is not None else obj.tmin
+        tmax = tmax if tmax is not None else obj.tmax
+        codes = codes if codes is not None else codes_patterns_for_kind(
+            kind_id, obj.codes)
+
+    return tmin, tmax, codes
+
+
 @squirrel_content
 class Station(Location):
     '''
@@ -838,6 +860,16 @@ class Sensor(ChannelBase):
             cls(channels=channels,
                 **dict(zip(ChannelBase.T.propnames, args)))
             for args, channels in groups.items()]
+
+    @classmethod
+    def from_channels_single(cls, channels):
+        args = channels[0]._get_sensor_args()
+        for channel in channels:
+            assert args == channel._get_sensor_args()
+
+        return cls(
+            channels=channels,
+            **dict(zip(ChannelBase.T.propnames, args)))
 
     def channel_vectors(self):
         return num.vstack(
@@ -1864,11 +1896,13 @@ def same_or_none(xs):
         return None
 
 
-def join_coverages(coverages):
+def join_coverages(coverages, tbleed=0.0):
     assert len(coverages) > 0
 
-    tmin = min(coverage.tmin for coverage in coverages)
-    tmax = max(coverage.tmax for coverage in coverages)
+    tmin = min(coverage.tmin for coverage in coverages) + tbleed
+    tmax = max(coverage.tmax for coverage in coverages) - tbleed
+
+    assert tmax >= tmin
 
     kind_id = same_or_none(coverage.kind_id for coverage in coverages)
     deltat = same_or_none(coverage.deltat for coverage in coverages)
@@ -1884,6 +1918,10 @@ def join_coverages(coverages):
             diff_counts[0] = counts[0]
             diff_counts[1:] = counts[1:] - counts[:-1]
             all_diff_counts.append(diff_counts)
+            if tbleed != 0.0:
+                times[diff_counts > 0] += tbleed
+                times[diff_counts < 0] -= tbleed
+
             all_times.append(times)
 
         times = num.concatenate(all_times)
@@ -1936,4 +1974,5 @@ __all__ = [
     'Coverage',
     'join_coverages',
     'WaveformPromise',
+    'QuantityType',
 ]
