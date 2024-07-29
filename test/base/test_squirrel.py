@@ -935,24 +935,17 @@ class SquirrelTestCase(unittest.TestCase):
             sq.update_waveform_promises(tmin=tmin, tmax=tmax)
             sq.update_responses()
 
-            op_rest = squirrel.Restitution(quantity='displacement')
+            op_rest = squirrel.Restitution(
+                quantity='displacement',
+                frequency_min=0.002,
+                frequency_max=10.0)
+
             op_enz = squirrel.ToENZ()
-
             op_rest.set_input(sq)
-            op_rest.set_parameters(
-                squirrel.RestitutionParameters(
-                    frequency_min=0.002,
-                    frequency_max=10.0))
-
-            op_rest.update_mappings()
-
             op_enz.set_input(op_rest)
-
-            op_enz.update_mappings()
 
             op_enz2 = squirrel.ToENZ()
             op_enz2.set_input(sq)
-            op_enz2.update_mappings()
 
             print(op_rest.describe())
             print(op_enz.describe())
@@ -966,7 +959,8 @@ class SquirrelTestCase(unittest.TestCase):
 
             traces.extend(
                 op_rest.get_waveforms(
-                    tmin=tmin, tmax=tmax,
+                    tmin=tmin,
+                    tmax=tmax,
                     codes=('GR', '*', '', 'LH?', '*')))
 
             traces.extend(
@@ -976,14 +970,18 @@ class SquirrelTestCase(unittest.TestCase):
 
             op_trz = squirrel.ToTRZ(origin=pmodel.Location(lat=0., lon=0.))
             op_trz.set_input(sq)
-            op_trz.update_mappings()
             print(op_trz.describe())
+            for channel in op_trz.get_channels():
+                print(channel)
 
             trs_trz = op_trz.get_waveforms(
                 tmin=tmin, tmax=tmax)
 
             for tr in trs_trz:
                 print(tr.summary)
+
+            for coverage in op_enz.get_coverage('waveform'):
+                print(coverage)
 
         finally:
             shutil.rmtree(tempdir)

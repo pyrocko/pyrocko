@@ -349,6 +349,12 @@ class Squirrel(Selection):
         self._sources = []
         # self._operators = []
         # self._operator_registry = {}
+        self._mapping_counter = 0
+
+        def inc_mapping_counter(event):
+            self._Nonemapping_counter += 1
+
+        self.get_database().add_listener(inc_mapping_counter)
 
         self._pending_orders = []
 

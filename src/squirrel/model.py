@@ -1896,11 +1896,13 @@ def same_or_none(xs):
         return None
 
 
-def join_coverages(coverages):
+def join_coverages(coverages, tbleed=0.0):
     assert len(coverages) > 0
 
-    tmin = min(coverage.tmin for coverage in coverages)
-    tmax = max(coverage.tmax for coverage in coverages)
+    tmin = min(coverage.tmin for coverage in coverages) + tbleed
+    tmax = max(coverage.tmax for coverage in coverages) - tbleed
+
+    assert tmax >= tmin
 
     kind_id = same_or_none(coverage.kind_id for coverage in coverages)
     deltat = same_or_none(coverage.deltat for coverage in coverages)
@@ -1916,6 +1918,10 @@ def join_coverages(coverages):
             diff_counts[0] = counts[0]
             diff_counts[1:] = counts[1:] - counts[:-1]
             all_diff_counts.append(diff_counts)
+            if tbleed != 0.0:
+                times[diff_counts > 0] += tbleed
+                times[diff_counts < 0] -= tbleed
+
             all_times.append(times)
 
         times = num.concatenate(all_times)
