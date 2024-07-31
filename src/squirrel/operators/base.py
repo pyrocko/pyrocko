@@ -708,24 +708,28 @@ class Restitution(Operator):
         codes_to_response = self.get_in_responses(
             in_codes, tmin_trs, tmax_trs)
 
+        freqlimits = (
+            self.frequency_min / self.frequency_taper_factor,
+            self.frequency_min,
+            self.frequency_max,
+            self.frequency_max * self.frequency_taper_factor)
+
         traces_out = []
-        for tr in ichain(codes_to_traces.values()):
-            resp = codes_to_response[tr.codes].get_effective(self.quantity)
+        for mapping in mappings:
+            for in_codes, out_codes in zip(
+                    mapping.in_codes, mapping.out_codes):
 
-            freqlimits = (
-                self.frequency_min / self.frequency_taper_factor,
-                self.frequency_min,
-                self.frequency_max,
-                self.frequency_max * self.frequency_taper_factor)
+                resp = codes_to_response[in_codes].get_effective(self.quantity)
 
-            tr_rest = tr.transfer(
-                tfade=self.get_time_padding(),
-                freqlimits=freqlimits,
-                transfer_function=resp,
-                invert=True)
+                for tr in codes_to_traces[in_codes]:
+                    tr_rest = tr.transfer(
+                        tfade=self.get_time_padding(),
+                        freqlimits=freqlimits,
+                        transfer_function=resp,
+                        invert=True)
 
-            tr_rest.set_codes(*self.get_mapping(tr.codes).out_codes[0])
-            traces_out.append(tr_rest)
+                    tr_rest.set_codes(*out_codes)
+                    traces_out.append(tr_rest)
 
         return traces_out
 
