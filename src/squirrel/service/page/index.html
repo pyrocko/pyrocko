@@ -16,8 +16,11 @@
             <div class="connection-monitor">
                 <div v-if="connection.connected">
                     Connected: {{ connection.connected.duration }} | Requests:
-                    {{ connection.serverInfo ? connection.serverInfo.n_requests
-                    : ''}}
+                    {{
+                        connection.serverInfo
+                            ? connection.serverInfo.n_requests
+                            : ''
+                    }}
                 </div>
                 <div v-else>Disconnected</div>
             </div>
@@ -29,25 +32,21 @@
     </body>
 
     <script type="module">
-        import {
-            createApp,
-            ref,
-            onMounted,
-        } from "./js/vue.esm-browser.js";
+        import { createApp, ref, onMounted } from './js/vue.esm-browser.js'
 
-        import { squirrelMap } from "./js/squirrel-map.js";
-        import { squirrelConnection } from "./js/squirrel-connection.js";
+        import { squirrelMap } from './js/squirrel-map.js'
+        import { squirrelConnection } from './js/squirrel-connection.js'
 
         createApp({
             setup() {
-                let connection = ref(squirrelConnection());
+                let connection = ref(squirrelConnection())
 
                 onMounted(() => {
-                    squirrelMap();
-                });
+                    squirrelMap()
+                })
 
-                return { connection };
+                return { connection }
             },
-        }).mount("#app");
+        }).mount('#app')
     </script>
 </html>
