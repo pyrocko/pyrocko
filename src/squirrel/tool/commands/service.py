@@ -146,6 +146,9 @@ class SquirrelHandler(web.RequestHandler):
     def squirrel_get_events(self):
         return self._squirrel.get_events()
 
+    def squirrel_get_sensors(self):
+        return self._squirrel.get_sensors()
+
 
 def get_ip(host):
     if host == 'localhost':
