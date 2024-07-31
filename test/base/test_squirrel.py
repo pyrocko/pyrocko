@@ -913,7 +913,7 @@ class SquirrelTestCase(unittest.TestCase):
         finally:
             shutil.rmtree(tempdir)
 
-    @common.require_internet
+    #@common.require_internet
     def test_operators(self):
         # 1994 Bolivia earthquake
         tmin = util.str_to_time('1994-06-09 00:00:00')
@@ -981,6 +981,9 @@ class SquirrelTestCase(unittest.TestCase):
                 print(tr.summary)
 
             for coverage in op_enz.get_coverage('waveform'):
+                print(coverage)
+
+            for coverage in op_enz.get_coverage('waveform', codes='x.y.z.a'):
                 print(coverage)
 
         finally:
