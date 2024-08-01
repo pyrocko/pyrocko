@@ -580,8 +580,11 @@ setup(
             'gui/snuffler/snufflings/map/*.html',
             'gui/snuffler/snufflings/map/*.js',
             'squirrel/service/page/*.html',
+            'squirrel/service/page/*.ico',
+            'squirrel/service/page/*.webmanifest',
             'squirrel/service/page/js/*.js',
-            'squirrel/service/page/css/*.css'],
+            'squirrel/service/page/css/*.css',
+            'squirrel/service/page/images/*.png'],
         '': ['README.md']},
     **metadata,
 )

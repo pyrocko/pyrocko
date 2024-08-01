@@ -5,6 +5,25 @@
         <meta name="viewport" content="width=device-width, initial-scale=1" />
 
         <title>Squirrel</title>
+        <link
+            rel="apple-touch-icon"
+            sizes="180x180"
+            href="images/apple-touch-icon.png"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="32x32"
+            href="images/favicon-32x32.png"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="16x16"
+            href="images/favicon-16x16.png"
+        />
+        <link rel="manifest" href="site.webmanifest" />
+
         <link href="css/bootstrap.min.css" rel="stylesheet" />
         <link href="css/local.css" rel="stylesheet" />
         <script src="js/d3.v7.min.js"></script>
@@ -25,8 +44,7 @@
                 <div v-else>Disconnected</div>
             </div>
 
-            <div id="mapcontainer" class="map-container">
-                <svg class="map"></svg>
+            <div id="map" class="map-container">
             </div>
         </div>
     </body>
@@ -40,9 +58,14 @@
         createApp({
             setup() {
                 let connection = ref(squirrelConnection())
+                let map = squirrelMap()
 
                 onMounted(() => {
-                    squirrelMap()
+                    console.log()
+                    let mapElement = document.getElementById('map')
+                    const svg = d3.select(mapElement)
+
+                    map(svg)
                 })
 
                 return { connection }

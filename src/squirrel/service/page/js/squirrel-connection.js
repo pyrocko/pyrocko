@@ -51,7 +51,6 @@ const setupConnection = () => {
                 if (heartbeats.length > 10) {
                     heartbeats.splice(0, heartbeats.length - 10)
                 }
-                console.log('beat')
             }
         } catch (e) {
             heartbeats = []
@@ -93,9 +92,7 @@ let connection = null
 
 export const squirrelConnection = () => {
     if (connection === null) {
-        console.log('setting up')
         connection = setupConnection()
     }
-    console.log('get')
     return connection
 }

@@ -244,7 +244,9 @@ async def serve(
     app = web.Application(
         [
             (
-                r'/((?:css|js)/.*|index.html|)', web.StaticFileHandler,
+                r'/((?:css|js|images)/.*'
+                r'|index.html|site.webmanifest|favicon.ico|)',
+                web.StaticFileHandler,
                 dict(
                     path=static_path,
                     default_filename='index.html'
