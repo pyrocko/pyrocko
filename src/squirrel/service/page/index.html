@@ -44,8 +44,7 @@
                 <div v-else>Disconnected</div>
             </div>
 
-            <div id="map" class="map-container">
-            </div>
+            <div id="map" class="map-container"></div>
         </div>
     </body>
 
@@ -61,11 +60,9 @@
                 let map = squirrelMap()
 
                 onMounted(() => {
-                    console.log()
-                    let mapElement = document.getElementById('map')
-                    const svg = d3.select(mapElement)
+                    d3.select('#map').call(map)
+                    map.addBasemap().addSensors()
 
-                    map(svg)
                 })
 
                 return { connection }
