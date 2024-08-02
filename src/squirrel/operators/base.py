@@ -5,7 +5,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Generator, Sequence, Hashable, TypeVar
+from typing import TYPE_CHECKING, Generator, Sequence, Hashable, TypeVar, Union
+from typing import List as tList
+from typing import Tuple as tTuple
+
 if TYPE_CHECKING:
     from ..base import Squirrel
 
@@ -26,15 +29,15 @@ ichain = chain.from_iterable
 
 
 def lchain(it):
-    return list(ichain(it))
+    return tList(ichain(it))
 
 
 HasCodes = TypeVar('HasCodes')
 HasTimeAndCodes = TypeVar('HasTimeAndCodes')
 TimeFloat = TypeVar('TimeFloat')
 CodesConvertible \
-    = CodesNSLCE | list[CodesNSLCE] | str | list[str] | tuple[str] \
-    | list[tuple[str]]
+    = Union[CodesNSLCE, tList[CodesNSLCE], str, tList[str], tTuple[str], \
+    tList[tTuple[str]]]
 
 guts_prefix = 'squirrel.ops'
 
@@ -83,7 +86,7 @@ def _cglob_translate(creg):
 
 
 def scodes(codes):
-    css = list(zip(*codes))
+    css = tList(zip(*codes))
     if sum(not all(c == cs[0] for c in cs) for cs in css) == 1:
         return '.'.join(
             cs[0] if all(c == cs[0] for c in cs) else '(%s)' % ','.join(cs)
@@ -105,7 +108,7 @@ class Filtering(Object):
     '''
 
     def filter(self, it: Sequence[CodesNSLCE]) -> List[CodesNSLCE]:
-        return list(it)
+        return tList(it)
 
 
 class RegexFiltering(Filtering):
@@ -119,7 +122,7 @@ class RegexFiltering(Filtering):
         self._compiled_pattern = re.compile(self.pattern)
 
     def filter(self, it: Sequence[CodesNSLCE]) -> List[CodesNSLCE]:
-        return list(filter(self._compiled_pattern.fullmatch), it)
+        return tList(filter(self._compiled_pattern.fullmatch), it)
 
 
 class CodesPatternFiltering(Filtering):
@@ -140,9 +143,9 @@ class CodesPatternFiltering(Filtering):
 
     def filter(self, it: Sequence[CodesNSLCE]) -> List[CodesNSLCE]:
         if self._matcher is None:
-            return list(it)
+            return tList(it)
         else:
-            return list(self._matcher.filter(it))
+            return tList(self._matcher.filter(it))
 
 
 class Grouping(Object):
@@ -313,12 +316,12 @@ class Operator(Object):
                 scodes(mapping.in_codes))
             for mapping in self.iter_mappings()])
 
-    def translate_codes(self, in_codes: list[CodesNSLCE]) -> list[CodesNSLCE]:
+    def translate_codes(self, in_codes: tList[CodesNSLCE]) -> tList[CodesNSLCE]:
         return [self.translation.translate(codes) for codes in in_codes]
 
     def iter_mappings(
                 self,
-                codes: list[CodesNSLCE] | None = None
+                codes: tList[CodesNSLCE] | None = None
             ) -> Generator[CodesMapping]:
 
         self.update_mappings()
@@ -335,10 +338,10 @@ class Operator(Object):
 
     def get_mappings(
                 self,
-                codes: list[CodesNSLCE] = None
-            ) -> list[CodesMapping]:
+                codes: tList[CodesNSLCE] = None
+            ) -> tList[CodesMapping]:
 
-        return list(self.iter_mappings(codes))
+        return tList(self.iter_mappings(codes))
 
     def get_mapping(self, codes: CodesNSLCE) -> CodesMapping:
         return self._mappings[self.grouping.key(codes)]
@@ -350,13 +353,13 @@ class Operator(Object):
         for mapping in self._mappings.values():
             yield from mapping.out_codes
 
-    def get_codes(self, kind: str = None) -> list[CodesNSLCE]:
+    def get_codes(self, kind: str = None) -> tList[CodesNSLCE]:
         assert kind is None or kind in self.kind_provides
-        return list(self.iter_codes())
+        return tList(self.iter_codes())
 
     def iter_in_codes(
                 self,
-                mappings: list[CodesMapping] | None = None
+                mappings: tList[CodesMapping] | None = None
             ) -> Generator[CodesNSLCE]:
 
         self.update_mappings()
@@ -366,7 +369,7 @@ class Operator(Object):
 
     def get_in_codes(
                 self,
-                mappings: list[CodesMapping] | None = None
+                mappings: tList[CodesMapping] | None = None
             ) -> Generator[CodesNSLCE]:
 
         return sorted(self.iter_in_codes(mappings))
@@ -414,7 +417,7 @@ class Operator(Object):
             if not mapping.in_codes_set:
                 del mappings[k]
             else:
-                mapping.in_codes = tuple(sorted(mapping.in_codes_set))
+                mapping.in_codes = tTuple(sorted(mapping.in_codes_set))
                 mapping.out_codes = self.translate_codes(mapping.in_codes)
 
         self._available = available
@@ -422,8 +425,8 @@ class Operator(Object):
         if need_update:
             self._mapping_counter += 1
 
-    def by_codes(self, xs: HasCodes) -> dict[CodesNSLCE, list[HasCodes]]:
-        by_codes = defaultdict(list)
+    def by_codes(self, xs: HasCodes) -> dict[CodesNSLCE, tList[HasCodes]]:
+        by_codes = defaultdict(tList)
         for x in xs:
             by_codes[x.codes].append(x)
 
@@ -437,7 +440,7 @@ class Operator(Object):
 
     def get_in_channels(
                 self,
-                in_codes: list[CodesNSLCE],
+                in_codes: tList[CodesNSLCE],
                 tmin: TimeFloat,
                 tmax: TimeFloat,
             ) -> dict[CodesNSLCE, Channel]:
@@ -451,7 +454,7 @@ class Operator(Object):
 
     def get_in_responses(
                 self,
-                in_codes: list[CodesNSLCE],
+                in_codes: tList[CodesNSLCE],
                 tmin: TimeFloat,
                 tmax: TimeFloat,
             ) -> dict[CodesNSLCE, Response]:
@@ -465,7 +468,7 @@ class Operator(Object):
 
     def get_in_waveforms(
                 self,
-                in_codes: list[CodesNSLCE],
+                in_codes: tList[CodesNSLCE],
                 tmin: TimeFloat,
                 tmax: TimeFloat,
                 **kwargs,
@@ -479,7 +482,7 @@ class Operator(Object):
     def get_in_coverages(
                 self,
                 kind: str,
-                in_codes: list[CodesNSLCE],
+                in_codes: tList[CodesNSLCE],
                 tmin: TimeFloat,
                 tmax: TimeFloat,
                 **kwargs,
@@ -497,7 +500,7 @@ class Operator(Object):
                 tmax: TimeFloat = None,
                 time: TimeFloat = None,
                 codes: CodesConvertible = None,
-            ) -> list[Channel]:
+            ) -> tList[Channel]:
 
         tmin, tmax, codes = get_selection_args(
             CHANNEL, obj, tmin, tmax, time, codes)
@@ -515,7 +518,7 @@ class Operator(Object):
                 tmax: TimeFloat = None,
                 time: TimeFloat = None,
                 codes: CodesConvertible = None,
-            ) -> list[Response]:
+            ) -> tList[Response]:
 
         tmin, tmax, codes = get_selection_args(
             CHANNEL, obj, tmin, tmax, time, codes)
@@ -534,7 +537,7 @@ class Operator(Object):
                 time: TimeFloat = None,
                 codes: CodesConvertible = None,
                 **kwargs
-            ) -> list[Trace]:
+            ) -> tList[Trace]:
 
         tmin, tmax, codes = get_selection_args(
             CHANNEL, obj, tmin, tmax, time, codes)
@@ -559,7 +562,7 @@ class Operator(Object):
             tmin: TimeFloat = None,
             tmax: TimeFloat = None,
             codes: CodesConvertible = None,
-            limit=None) -> list[Coverage]:
+            limit=None) -> tList[Coverage]:
 
         tmin, tmax, codes = get_selection_args(
             CHANNEL, None, tmin, tmax, None, codes)
@@ -580,12 +583,12 @@ class Operator(Object):
 
     def process_channels(
                 self,
-                mappings: list[CodesMapping],
-                in_codes: list[CodesNSLCE],
+                mappings: tList[CodesMapping],
+                in_codes: tList[CodesNSLCE],
                 codes_to_channel: dict[CodesNSLCE, Channel],
                 tmin: TimeFloat = None,
                 tmax: TimeFloat = None,
-            ) -> list[Channel]:
+            ) -> tList[Channel]:
 
         channels = []
         for mapping in mappings:
@@ -602,12 +605,12 @@ class Operator(Object):
 
     def process_responses(
                 self,
-                mappings: list[CodesMapping],
-                in_codes: list[CodesNSLCE],
+                mappings: tList[CodesMapping],
+                in_codes: tList[CodesNSLCE],
                 codes_to_response: dict[CodesNSLCE, Response],
                 tmin: TimeFloat = None,
                 tmax: TimeFloat = None,
-            ) -> list[Response]:
+            ) -> tList[Response]:
 
         responses = []
         for mapping in mappings:
@@ -624,23 +627,23 @@ class Operator(Object):
 
     def process_waveforms(
                 self,
-                mappings: list[CodesMapping],
-                in_codes: list[CodesNSLCE],
+                mappings: tList[CodesMapping],
+                in_codes: tList[CodesNSLCE],
                 codes_to_traces: dict[CodesNSLCE, Trace],
                 tmin: TimeFloat = None,
                 tmax: TimeFloat = None,
-            ) -> list[Trace]:
+            ) -> tList[Trace]:
 
         return lchain(codes_to_traces.values())
 
     def process_coverage(
                 self,
-                mappings: list[CodesMapping],
-                in_codes: list[CodesNSLCE],
+                mappings: tList[CodesMapping],
+                in_codes: tList[CodesNSLCE],
                 codes_to_coverage: dict[CodesNSLCE, Coverage],
                 tmin: TimeFloat = None,
                 tmax: TimeFloat = None,
-            ) -> list[Trace]:
+            ) -> tList[Trace]:
 
         coverages = []
         for mapping in mappings:
@@ -684,7 +687,7 @@ class Restitution(Operator):
     def name(self) -> str:
         return 'Restitution(%s)' % self.quantity[0]
 
-    def translate_codes(self, in_codes: list[CodesNSLCE]) -> list[CodesNSLCE]:
+    def translate_codes(self, in_codes: tList[CodesNSLCE]) -> tList[CodesNSLCE]:
         return [
             codes.__class__(self.translation.translate(codes).safe_str.format(
                 quantity=self.quantity[0]))
@@ -696,12 +699,12 @@ class Restitution(Operator):
 
     def process_waveforms(
                 self,
-                mappings: list[CodesMapping],
-                in_codes: list[CodesNSLCE],
+                mappings: tList[CodesMapping],
+                in_codes: tList[CodesNSLCE],
                 codes_to_traces: dict[CodesNSLCE, Trace],
                 tmin: TimeFloat = None,
                 tmax: TimeFloat = None,
-            ) -> list[Trace]:
+            ) -> tList[Trace]:
 
         tmin_trs, tmax_trs = time_min_max(codes_to_traces)
 
@@ -751,7 +754,7 @@ class Transform(Operator):
     def kind_requires(self):
         return ('channel',)
 
-    def translate_codes(self, in_codes: list[CodesNSLCE]) -> list[CodesNSLCE]:
+    def translate_codes(self, in_codes: tList[CodesNSLCE]) -> tList[CodesNSLCE]:
         proto = in_codes[0]
         return [
             proto.__class__(
@@ -761,12 +764,12 @@ class Transform(Operator):
 
     def process_channels(
                 self,
-                mappings: list[CodesMapping],
-                in_codes: list[CodesNSLCE],
+                mappings: tList[CodesMapping],
+                in_codes: tList[CodesNSLCE],
                 codes_to_channel: dict[CodesNSLCE, Channel],
                 tmin: TimeFloat = None,
                 tmax: TimeFloat = None,
-            ) -> list[Channel]:
+            ) -> tList[Channel]:
 
         channels_out = []
         for mapping in mappings:
@@ -787,12 +790,12 @@ class Transform(Operator):
 
     def process_waveforms(
                 self,
-                mappings: list[CodesMapping],
-                in_codes: list[CodesNSLCE],
+                mappings: tList[CodesMapping],
+                in_codes: tList[CodesNSLCE],
                 codes_to_traces: dict[CodesNSLCE, Trace],
                 tmin: TimeFloat = None,
                 tmax: TimeFloat = None,
-            ) -> list[Trace]:
+            ) -> tList[Trace]:
 
         tmin_trs, tmax_trs = time_min_max(codes_to_traces)
 
