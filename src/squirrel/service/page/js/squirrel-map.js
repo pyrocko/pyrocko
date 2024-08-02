@@ -116,6 +116,13 @@ export const squirrelMap = () => {
             .attr('fill', 'none')
             .attr('stroke', colors['aluminium2'])
 
+        //map.append('g')
+        //    .append('path')
+        //    .datum(graticule.outline)
+        //    .attr('fill', '#0002')
+        //    .attr('stroke', colors['aluminium5'])
+        //
+
         projectBasemap()
     }
 
@@ -141,14 +148,16 @@ export const squirrelMap = () => {
         const projections = {
             ed: d3.geoAzimuthalEquidistant().clipAngle(180.0 - 1e-3),
             ea: d3.geoAzimuthalEqualArea().clipAngle(180.0 - 1),
+            g1: d3.geoEqualEarth(),
+            g2: d3.geoNaturalEarth1(),
         }
 
-        projection = projections.ea
+        projection = projections.g1
 
         resize()
 
         window.onresize = resize
-        map.on('click', (ev) => {rotate(projection.invert([ev.clientX, ev.clientY]))})
+        map.on('click', (ev) => {rotate(projection.invert(d3.pointer(ev)))})
         map.on('wheel', (ev) => {scaleDelta(ev.wheelDeltaY / 120.)})
     }
 
