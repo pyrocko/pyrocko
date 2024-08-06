@@ -38,7 +38,7 @@ export const squirrelTimeline = () => {
         resize()
         let boxes = [
             {
-                tmin: strToTime('1977-20-02 00:00:00'),
+                tmin: strToTime('1977-02-20 00:00:00'),
                 tmax: strToTime('2023-08-05 00:00:00'),
                 ymin: 0.0,
                 ymax: 1.0,

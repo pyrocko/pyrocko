@@ -15,8 +15,10 @@ export const timeToStr = (time) => {
 export const strToTime = (s) => {
     let reDateTime = /^(\d\d\d\d-\d\d-\d\d)([ T])(\d\d:\d\d:\d\d)(\.\d+)?Z?$/
     let m = s.match(reDateTime)
-    console.log('yy ' + m[4])
-    let subs = (m[4] ? +m[4] : 0.0)
-    console.log('xx ' + subs)
-    return Date.parse(m[1] + 'T' + m[3] + 'Z') / 1000.0 + subs
+    let sdatetime = m[1] + 'T' + m[3] + 'Z'
+    let msecs = Date.parse(sdatetime)
+    if (msecs == null || isNaN(msecs)) {
+        throw new Error('Invalid date: ' + sdatetime)
+    }
+    return msecs / 1000.0 + (m[4] ? +m[4] : 0.0)
 }

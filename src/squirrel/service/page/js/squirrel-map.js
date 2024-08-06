@@ -37,10 +37,6 @@ export const squirrelMap = () => {
     let projection
     let container
 
-    const createIfNeeded = (selection, type) => {
-        return selection.selectAll(type).data([null]).enter().append(type)
-    }
-
     const bounds = () => {
         return container.node().getBoundingClientRect()
     }
@@ -92,7 +88,7 @@ export const squirrelMap = () => {
     }
 
     const scaleDelta = (delta) => {
-        scale *= 1.0 + delta*0.2
+        scale *= 1.0 + delta * 0.2
         reProject()
     }
 
@@ -153,13 +149,17 @@ export const squirrelMap = () => {
             g2: d3.geoNaturalEarth1(),
         }
 
-        projection = projections.g1
+        projection = projections.ed
 
         resize()
 
         window.onresize = resize
-        map.on('click', (ev) => {rotate(projection.invert(d3.pointer(ev)))})
-        map.on('wheel', (ev) => {scaleDelta(ev.wheelDeltaY / 120.)})
+        map.on('click', (ev) => {
+            rotate(projection.invert(d3.pointer(ev)))
+        })
+        map.on('wheel', (ev) => {
+            scaleDelta(ev.wheelDeltaY / 120)
+        })
     }
 
     my.scale = function (_) {

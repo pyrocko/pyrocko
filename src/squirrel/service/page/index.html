@@ -44,8 +44,8 @@
                 <div v-else>Disconnected</div>
             </div>
 
-            <!--<div id="map" class="map-container"></div>-->
-            <div id="timeline" class="map-container"></div>
+            <div id="map" class="map-container"></div>
+            <!--<div id="timeline" class="map-container"></div>-->
         </div>
     </body>
 
@@ -59,14 +59,13 @@
         createApp({
             setup() {
                 let connection = ref(squirrelConnection())
-                //let map = squirrelMap()
-                let timeline = squirrelTimeline()
+                let map = squirrelMap()
+                // let timeline = squirrelTimeline()
 
                 onMounted(() => {
-                    //d3.select('#map').call(map)
-                    //map.addBasemap().addSensors()
-                    d3.select('#timeline').call(timeline)
-
+                    d3.select('#map').call(map)
+                    map.addBasemap().addSensors()
+                    // d3.select('#timeline').call(timeline)
                 })
 
                 return { connection }
