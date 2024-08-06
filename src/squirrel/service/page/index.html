@@ -44,7 +44,8 @@
                 <div v-else>Disconnected</div>
             </div>
 
-            <div id="map" class="map-container"></div>
+            <!--<div id="map" class="map-container"></div>-->
+            <div id="timeline" class="map-container"></div>
         </div>
     </body>
 
@@ -52,16 +53,19 @@
         import { createApp, ref, onMounted } from './js/vue.esm-browser.js'
 
         import { squirrelMap } from './js/squirrel-map.js'
+        import { squirrelTimeline } from './js/squirrel-timeline.js'
         import { squirrelConnection } from './js/squirrel-connection.js'
 
         createApp({
             setup() {
                 let connection = ref(squirrelConnection())
-                let map = squirrelMap()
+                //let map = squirrelMap()
+                let timeline = squirrelTimeline()
 
                 onMounted(() => {
-                    d3.select('#map').call(map)
-                    map.addBasemap().addSensors()
+                    //d3.select('#map').call(map)
+                    //map.addBasemap().addSensors()
+                    d3.select('#timeline').call(timeline)
 
                 })
 

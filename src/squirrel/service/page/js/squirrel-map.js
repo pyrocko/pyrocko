@@ -1,3 +1,4 @@
+import { createIfNeeded } from './squirrel-common.js'
 import { squirrelConnection } from './squirrel-connection.js'
 
 const colors = {
