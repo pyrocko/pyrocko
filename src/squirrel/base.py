@@ -2924,7 +2924,7 @@ class Squirrel(Selection):
             for nut in self.iter_nuts(
                     kind, tmin, tmin, kind_codes_ids=kind_codes_ids):
 
-                k = nut.codes, nut.deltat
+                k = nut.codes, nut.deltat or 0.0
                 if k not in counts_at_tmin:
                     counts_at_tmin[k] = 0
 
@@ -2993,7 +2993,7 @@ class Squirrel(Selection):
             if limit is not None and len(rows) == limit:
                 entry[-1] = None
             else:
-                counts = counts_at_tmin.get((codes_entry, deltat), 0)
+                counts = counts_at_tmin.get((codes_entry, deltat or 0.0), 0)
                 tlast = None
                 if tmin is not None:
                     entry[-1].append((tmin, counts))
