@@ -164,8 +164,20 @@ The output should be in SDS structure::
   squirrel jackseis --add data/data-cube --out-sds-path data/mseed --rename-network XX
 
 This will resample the data with sinc interpolation using the GPS information
-in the raw data. Add ``-rename-station ...``, ``--rename-channel ...`` as
+in the raw data. Add ``--rename-station ...``, ``--rename-channel ...`` as
 needed.
+
+Downsampling
+------------
+
+I want to create a downsampled variant of my dataset::
+
+  squirrel jackseis --add data/raw --out-sds-path data/raw-50hz --out-data-type int32 --downsample 10
+
+The output will be sampled at 10 Hz and the datatype in the Mini-SEEDs will be
+32-bit integers. Without the ``--out-data-type`` option, the the output would
+be in double-precision floating point format.
+
 
 **Note:** Always give the complete recording directory as input as the GPS
 information from neighboring files may be used for an optimal time correction
