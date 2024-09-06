@@ -697,7 +697,12 @@ def mpl_color(x):
     :py:exc:`InvalidColorDef` exception is raised when the convertion fails.
     '''
 
-    import matplotlib.colors
+    from pyrocko import color as pcolor
+
+    try:
+        pcolor.Color(x).rgba
+    except KeyError:
+        pass
 
     if x in tango_colors:
         return to01(tango_colors[x])
@@ -714,6 +719,7 @@ def mpl_color(x):
 
         except ValueError:
             try:
+                import matplotlib.colors
                 return matplotlib.colors.colorConverter.to_rgba(x)
             except Exception:
                 pass
