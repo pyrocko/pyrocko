@@ -1,7 +1,22 @@
 #define NPY_NO_DEPRECATED_API 7
 
+
 #include "Python.h"
 #include "numpy/arrayobject.h"
+
+#include <complex.h>
+
+/* NumPy 2.0.1 undefs I, we have to redefine it. */
+#if defined(_MSC_VER)
+  #define I _FCbuild(0.0f, 1.0f)
+#elif defined(_Imaginary_I)
+  #define I _Imaginary_I
+#elif defined(_Complex_I)
+  #define I _Complex_I
+#else
+  // non-POSIX, not MSVC
+  #error "Don't know how to define 'I'"
+#endif
 
 #ifdef _WIN32
     #define _USE_MATH_DEFINES
