@@ -2273,7 +2273,7 @@ static void make_weights_strain20(
 
     ioff = 0 * nsummands_max;
     ws[ioff + 0] = cb2 * f0;
-    ws[ioff + 1] = sb2 * f1;
+    ws[ioff + 1] = cb2 * f1;
     ws[ioff + 2] = cb2 * f2;
     ws[ioff + 3] = cb2 * f5;
     ws[ioff + 4] = sb2 * f0;
