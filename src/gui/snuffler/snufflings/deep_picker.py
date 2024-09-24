@@ -104,7 +104,7 @@ class DeepDetector(Snuffling):
                         choices=networks,
                     )
                 )
-        
+
         self.add_parameter(
             Choice(
                 'Training model',
@@ -113,7 +113,7 @@ class DeepDetector(Snuffling):
                 choices=detectionmethods,
             )
         )
-        
+
         self.add_parameter(
             Param(
                 'P threshold',
@@ -166,7 +166,8 @@ class DeepDetector(Snuffling):
 
     def get_model(self, network: str, model: str) -> Any:
         if sbm is None:
-            raise ImportError('SeisBench is not installed. Install to use this plugin.')
+            raise ImportError(
+                'SeisBench is not installed. Install to use this plugin.')
 
         if model in MODEL_CACHE:
             return MODEL_CACHE[(network, model)]
@@ -177,8 +178,9 @@ class DeepDetector(Snuffling):
             logger.info('CUDA not available, using CPU')
             pass
         seisbench_model.eval()
-        try:   
-            seisbench_model = torch.compile(seisbench_model, mode='max-autotune')
+        try:
+            seisbench_model = torch.compile(
+                seisbench_model, mode='max-autotune')
         except RuntimeError:
             logger.info('Torch compile failed')
             pass
@@ -237,7 +239,7 @@ class DeepDetector(Snuffling):
             progress='Calculating SeisBench detections...',
             responsive=True,
             style='batch',
-        ): 
+        ):
             traces = batch.traces
 
             if not traces:
@@ -319,17 +321,22 @@ class DeepDetector(Snuffling):
 
             self.add_markers(markers)
 
-        
-
     def adjust_thresholds(self) -> None:
         method = self.get_parameter_value('training_model')
         network = self.get_parameter_value('network')
         if method != self.old_method or network != self.old_network:
-            if (network == 'LFEDetect') & (method not in detectionmethods[-8:]):
-                logger.info('The selected model is not compatible with LFEDetect please select a model from the last 8 models in the list. Default is cascadia.')
+            if (network == 'LFEDetect') \
+                    and (method not in detectionmethods[-8:]):
+                logger.info(
+                    'The selected model is not compatible with LFEDetect '
+                    'please select a model from the last 8 models in the '
+                    'list. Default is cascadia.')
                 self.set_parameter('training_model', 'cascadia')
-            elif (network != 'LFEDetect') & (method in detectionmethods[-8:]):
-                logger.info('The selected model is not compatible with the selected network. Default is original.')
+            elif (network != 'LFEDetect') \
+                    and (method in detectionmethods[-8:]):
+                logger.info(
+                    'The selected model is not compatible with the selected '
+                    'network. Default is original.')
                 self.set_parameter('training_model', 'original')
             self.set_default_thresholds()
             self.old_method = method

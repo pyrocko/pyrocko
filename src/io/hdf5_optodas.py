@@ -10,8 +10,10 @@ except ImportError:
     simpledas = None
 
 
+def iload(
+        filename: str,
+        load_data: bool = True) -> Generator[Trace, Any, None]:
 
-def iload(filename: str, load_data: bool=True) -> Generator[Trace, Any, None]:
     if simpledas is None:
         raise ImportError(
             'simpledas is not available. '
@@ -23,7 +25,6 @@ def iload(filename: str, load_data: bool=True) -> Generator[Trace, Any, None]:
         time_data = simpledas.load_DAS_files(filename, chIndex=[0])
     else:
         time_data = trace_data
-
 
     deltat = (time_data.index[1] - time_data.index[0]).total_seconds()
     tmin = time_data.index[0].timestamp()

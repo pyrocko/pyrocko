@@ -12,7 +12,6 @@ from typing import Any, Generator
 
 from ... import model
 
-from pyrocko.io.io_common import get_stats, touch 
 
 SEGMENT_SIZE = 1024*1024
 
@@ -34,18 +33,16 @@ def detect(first512: bytes) -> bool:
         return None
 
 
-def iload(format: str, file_path: str, segment: int, content: tuple[str,...]) -> Generator[model.Nut, Any, None]:
+def iload(
+        format: str,
+        file_path: str,
+        segment: int,
+        content: tuple[str, ...]) -> Generator[model.Nut, Any, None]:
+
     assert format == 'hdf5_optodas'
     from pyrocko.io import hdf5_optodas
 
     load_data = 'waveform' in content
-
-    if segment is None:
-        offset = 0
-        nsegments = 0
-    else:
-        offset = segment
-        nsegments = 1
 
     file_segment = None
     itr = 0

@@ -552,10 +552,10 @@ def deco_part(mt, mt_type='full', view='top'):
 
 
 def rotate_singleforce(force, view='top'):
-    assert view in ('top',),\
+    assert view in ('top',), \
         'Allowed views are top'
 
-    assert view in ('top', 'north', 'south', 'east', 'west'),\
+    assert view in ('top', 'north', 'south', 'east', 'west'), \
         'Allowed views are top, north, south, east and west'
 
     if view == 'top':
