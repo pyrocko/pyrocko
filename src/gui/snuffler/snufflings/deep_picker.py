@@ -3,7 +3,7 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
-from typing import Any
+from typing import Any, Dict, Tuple
 import logging
 from pyrocko.trace import Trace, NoData
 from pyrocko import obspy_compat as compat
@@ -34,10 +34,10 @@ networks = (
 )
 
 
-MODEL_CACHE: dict[str, Any] = {}
+MODEL_CACHE: Dict[str, Any] = {}
 
 
-def get_blinding_samples(model: "sbm.WaveformModel") -> tuple[int, int]:
+def get_blinding_samples(model: "sbm.WaveformModel") -> Tuple[int, int]:
     try:
         return model.default_args["blinding"]
     except KeyError:
@@ -254,7 +254,7 @@ class DeepDetector(Snuffling):
                 traces = [self.apply_filter(tr, tpad_filter) for tr in traces]
 
             stream = Stream([compat.to_obspy_trace(tr) for tr in traces])
-            tr_starttimes: dict[str, float] = {}
+            tr_starttimes: Dict[str, float] = {}
             if self.scale_factor != 1:
                 for tr in stream:
                     tr.stats.sampling_rate /= self.scale_factor
