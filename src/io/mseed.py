@@ -168,8 +168,9 @@ def save(
             try:
                 trace.check_overlaps(
                     traces_thisfile,
-                    message='Traces to be stored would overlap.\n  File: %s'
+                    message='Traces to be stored have overlaps.\n  File: %s'
                     % fn)
+
             except trace.OverlappingTraces as e:
                 raise FileSaveError(str(e)) from e
 
@@ -189,7 +190,10 @@ def save(
                     if check_append_merge:
                         traces_infile = list(iload(fn, load_data=True))
                         traces_thisfile = trace.degapper(
-                            traces + traces_infile)
+                            sorted(
+                                traces + traces_infile,
+                                key=lambda tr: tr.full_id))
+
                         append_ = False
 
                     else:
