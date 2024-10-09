@@ -2590,7 +2590,13 @@ def degapper(
             if abs(dist - idist) > 0.05 and idist <= maxgap:
                 # logger.warning('Cannot degap traces with displaced sampling '
                 #                '(%s, %s, %s, %s)' % a.nslc_id)
+
+                if idist <= 0 and (maxlap is None or -maxlap < idist):
+                    # still cut off overlap (cut off on first trace)
+                    a.chop(a.tmin, max(a.tmin, b.tmin-b.deltat))
+
                 pass
+
             else:
                 if 1 < idist <= maxgap:
                     if not virtual:

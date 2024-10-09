@@ -449,6 +449,8 @@ class Composition(Operator):
 
 
 __all__ = [
+    'CodesConvertible',
+    'HasTimeAndCodes',
     'Grouping',
     'RegexGrouping',
     'NetworkGrouping',
