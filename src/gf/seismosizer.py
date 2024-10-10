@@ -1274,6 +1274,101 @@ class SimpleLandslideSTF(STF):
         return times, amplitudes
 
 
+class MultiTriangleSTF(STF):
+    '''
+    Sequence of overlapping triangles to represent arbitrarily shaped STFs.
+
+    Note: Integral of amplitudes is not automatically normalized. This must be
+    considered when interpreting the moment of a source using this STF.
+    '''
+
+    deltat = Float.T(
+        default=1.0,
+        help='Time interval between too control nodes.')
+
+    amplitudes = Array.T(
+        default=num.array([1.]),
+        dtype=num.float64,
+        serialize_as='list',
+        help='Amplitudes of the control nodes.')
+
+    anchor = Float.T(
+        default=0.0,
+        help='Anchor point with respect to source.time: ('
+             '-1.0: left -> first control node is at source.time ~ '
+             'hypocenter time, 0.0: center -> control nodes are layed out '
+             'symmetric around source.time, +1.0: right -> last control node '
+             'is at source.time')
+
+    differentiate = Bool.T(
+        default=False,
+        help='Output is the differentiated STF.')
+
+    def centroid_time(self, tref):
+        amplitudes = num.abs(self.amplitudes) \
+            / num.sum(num.abs(self.amplitudes))
+        times = num.arange(amplitudes.size) * self.deltat
+        return tref + sum(amplitudes * times) / num.sum(amplitudes) \
+            - (self.anchor + 1) * (self.amplitudes.size-1)/2 * self.deltat
+
+    @property
+    def effective_duration(self):
+        # only halfway correct
+        amplitudes = num.abs(self.amplitudes) \
+            / num.sum(num.abs(self.amplitudes))
+        times = num.arange(amplitudes.size) * self.deltat
+        t0 = sum(amplitudes * times) / num.sum(amplitudes)
+        return num.sqrt(num.sum((times - t0)**2 * amplitudes)) \
+            * 2. * num.sqrt(3.)
+
+    def discretize_t(self, deltat, tref):
+        control_deltat = self.deltat
+        ncontrol = self.amplitudes.size
+
+        duration = control_deltat * (ncontrol + 1)
+
+        t0 = tref - 0.5 * (1.0 + self.anchor) * control_deltat * (ncontrol - 1)
+
+        tmin_stf = t0 - control_deltat
+        tmax_stf = tmin_stf + duration
+        tmin = math.floor(tmin_stf / deltat) * deltat - 0.5*deltat
+        tmax = math.ceil(tmax_stf / deltat) * deltat + 0.5*deltat
+        times = util.arange2(tmin, tmax, deltat, epsilon=1e-3)
+
+        if not self.differentiate:
+            control_times = t0 + control_deltat * num.arange(ncontrol)
+            ct_ = control_times[:, num.newaxis]
+            ca_ = self.amplitudes[:, num.newaxis]
+            cd_ = control_deltat
+            t_ = times[num.newaxis, :]
+
+            amplitudes = num.sum(0.5 * ca_ * (
+                cd_
+                + 1. / cd_ * (num.clip(t_, ct_ - cd_, ct_) + cd_ - ct_)**2
+                - 1. / cd_ * (num.clip(t_, ct_, ct_ + cd_) - cd_ - ct_)**2),
+                axis=0)
+
+            times = times[:-1] + 0.5 * deltat
+            amplitudes = num.diff(amplitudes)
+
+        else:
+            control_times = t0 + control_deltat * (
+                num.arange(ncontrol + 2) - 1)
+            control_amplitudes = num.zeros(ncontrol + 2)
+            control_amplitudes[1:-1] = self.amplitudes
+            amplitudes = num.diff(num.interp(
+                times,
+                control_times,
+                control_amplitudes))
+
+            times = times[:-1] + 0.5 * deltat
+
+        return times, amplitudes
+
+    def normalize(self):
+        self.amplitudes /= (self.deltat * num.sum(num.abs(self.amplitudes)))
+
+
 class STFMode(StringChoice):
     choices = ['pre', 'post']
 
@@ -6311,6 +6406,7 @@ stf_classes = [
     ResonatorSTF,
     TremorSTF,
     SimpleLandslideSTF,
+    MultiTriangleSTF,
 ]
 
 __all__ = '''
