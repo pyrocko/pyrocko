@@ -2925,7 +2925,8 @@ class Squirrel(Selection):
 
     def get_codes_info(self, kind, codes=None):
         kind_id = to_kind_id(kind)
-        codes = codes_patterns_for_kind(kind_id, codes)
+        if codes is not None:
+            codes = codes_patterns_for_kind(kind_id, codes)
 
         codes_info_raw = list(self._iter_codes_info(kind=kind))
         codes_info = []
