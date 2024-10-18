@@ -1,3 +1,5 @@
+import { watch } from './vue.esm-browser.js'
+
 import {
     createIfNeeded,
     strToTime,
@@ -115,12 +117,11 @@ const projectionHelper = () => {
     return my
 }
 
-export const squirrelTimeline = () => {
+export const squirrelTimeline = (gates_) => {
     // parameters
-    let timeMin = strToTime('1900-01-01 00:00:00')
-    let timeMax = strToTime('2030-01-01 00:00:00')
-    let trackMin = 0
-    let trackMax = 15
+
+    let gates = gates_
+
     let marginTop = 100
     let marginBottom = 110
     let trackPadding = 5
@@ -161,7 +162,7 @@ export const squirrelTimeline = () => {
     }
 
     const updateProjection = () => {
-        x.domain([timeMin, timeMax]).range([0, getWidth()])
+        x.domain([gates.timeMin.value, gates.timeMax.value]).range([0, getWidth()])
         trackProjection.range([marginTop, getHeight() - marginBottom])
         pageRect.attr('x', 0)
         pageRect.attr('y', marginTop)
@@ -177,6 +178,8 @@ export const squirrelTimeline = () => {
         updateAxes()
         updateTracks(t)
     }
+
+    watch([gates.timeMin, gates.timeMax], update)
 
     const resizeHandler = () => {
         timeline.attr('width', getWidth()).attr('height', getHeight())
@@ -214,10 +217,9 @@ export const squirrelTimeline = () => {
             scale = mode == 'global' ? (scale = Math.exp(-dy * 5)) : 1.0
             dtr = (tmax0 - tmin0) * (scale - 1.0)
             dt = dx * (tmax0 - tmin0) * scale
-            timeMin = tmin0 - dt - dtr * xfrac
-            timeMax = tmax0 - dt + dtr * (1 - xfrac)
-
-            update()
+            let timeMin = tmin0 - dt - dtr * xfrac
+            let timeMax = tmax0 - dt + dtr * (1 - xfrac)
+            gates.setTimeSpan(timeMin, timeMax)
         }
     }
 
@@ -316,8 +318,8 @@ export const squirrelTimeline = () => {
         }
 
         let napprox = 5
-        let [tinc, tinc_units] = niceTimeTickInc((timeMax - timeMin) / napprox)
-        let [times, labels] = timeTickLabels(timeMin, timeMax, tinc, tinc_units)
+        let [tinc, tinc_units] = niceTimeTickInc((gates.timeMax.value - gates.timeMin.value) / napprox)
+        let [times, labels] = timeTickLabels(gates.timeMin.value, gates.timeMax.value, tinc, tinc_units)
         let ticks = times.map((t, i) => ({
             t: t,
             labels: ('' + labels[i]).split('\n').reverse(),
@@ -348,7 +350,7 @@ export const squirrelTimeline = () => {
             .data(
                 (axisId) =>
                     ticks
-                        .filter((tick) => tick.t > timeMin)
+                        .filter((tick) => tick.t > gates.timeMin.value)
                         .map((tick) => ({ axisId, tick })),
                 (d) => d.tick.t
             )
@@ -396,10 +398,10 @@ export const squirrelTimeline = () => {
             )
             .attr('x', (d) => x(d.tick.t))
             .attr('dx', (d) => '0.5em')
-            .attr('dx', (d) => (d.tick.t == timeMin ? '0.5em' : '0'))
+            .attr('dx', (d) => (d.tick.t == gates.timeMin.value ? '0.5em' : '0'))
             .style('font-size', fontSize + 'pt')
             .style('text-anchor', (d) =>
-                d.tick.t == timeMin ? 'left' : 'middle'
+                d.tick.t == gates.timeMin.value ? 'left' : 'middle'
             )
             .style('dominant-baseline', (d) =>
                 d.axisId == 0 ? 'text-before-edge' : 'no-change'
@@ -535,13 +537,16 @@ export const squirrelTimeline = () => {
             }
         }
 
-        let groupKey = (c) => {
+        let groupKeySensor = (c) => {
             const nslce = c.split('.')
             const sensor = nslce[3].substring(0, nslce[3].length - 1)
             return nslce.splice(0, 3) + [sensor]
         }
+        let groupKeyChannel = (c) => {
+            return c.split('.')
+        }
 
-        let groups = Map.groupBy(codes, (c) => groupKey(c))
+        let groups = Map.groupBy(codes, (c) => groupKeyChannel(c))
         tracks.length = 0
         let i = 0
         for (const [k, codes] of groups) {
@@ -584,15 +589,7 @@ export const squirrelTimeline = () => {
         window.onresize = resizeHandler
         resizeHandler()
         fetchCodes()
-        fetchCoverage('channel')
-    }
-
-    my.timeMin = function (_) {
-        arguments.length == 0 ? timeMin : ((timeMin = _), my)
-    }
-
-    my.timeMax = function (_) {
-        arguments.length == 0 ? timeMax : ((timeMax = _), my)
+        fetchCoverage('waveform')
     }
 
     return my

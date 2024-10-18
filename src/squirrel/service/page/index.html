@@ -55,12 +55,14 @@
         import { squirrelMap } from './js/squirrel-map.js'
         import { squirrelTimeline } from './js/squirrel-timeline.js'
         import { squirrelConnection } from './js/squirrel-connection.js'
+        import { squirrelGates } from './js/squirrel-gate.js'
 
         createApp({
             setup() {
                 let connection = ref(squirrelConnection())
+                let gates = squirrelGates()
+                let timeline = squirrelTimeline(gates)
                 let map = squirrelMap()
-                let timeline = squirrelTimeline()
 
                 onMounted(() => {
                     // d3.select('#map').call(map)
