@@ -34,6 +34,25 @@
             <div v-if="!connection.connected" class="curtain">DISCONNECTED</div>
             <div class="connection-monitor">
                 <div v-if="connection.connected">
+                    <div
+                        v-if="connection.latestError"
+                        style="background-color: #cccccccc; padding: 2em"
+                    >
+                        <pre><code>{{ connection.latestError }}</code></pre>
+                        <button
+                            class="btn btn-primary"
+                            @click="connection.latestError = ''"
+                        >
+                            Clear
+                        </button>
+                    </div>
+                    <ul>
+                        <li v-for="sensor in sensors">
+                            {{ sensor.codes }} - {{ sensor.lat }} -
+                            {{ sensor.lon }}
+                        </li>
+                    </ul>
+                    Version: {{ connection.serverInfo.pyrocko_version }} |
                     Connected: {{ connection.connected.duration }} | Requests:
                     {{
                         connection.serverInfo
@@ -44,8 +63,8 @@
                 <div v-else>Disconnected</div>
             </div>
 
-            <!--<div id="map" class="map-container"></div>-->
-            <div id="timeline" class="map-container"></div>
+            <div id="map" class="map-container"></div>
+            <!--<div id="timeline" class="map-container"></div>-->
         </div>
     </body>
 
@@ -59,18 +78,26 @@
 
         createApp({
             setup() {
+                const sensors = ref([])
+
                 let connection = ref(squirrelConnection())
                 let gates = squirrelGates()
                 let timeline = squirrelTimeline(gates)
                 let map = squirrelMap()
 
+                const fetchSensors = async () => {
+                    const connection = squirrelConnection()
+                    sensors.value = await connection.request('raw/get_sensors')
+                }
+
                 onMounted(() => {
-                    // d3.select('#map').call(map)
-                    // map.addBasemap().addSensors()
-                    d3.select('#timeline').call(timeline)
+                    fetchSensors()
+                    d3.select('#map').call(map)
+                    map.addBasemap().addSensors()
+                    // d3.select('#timeline').call(timeline)
                 })
 
-                return { connection }
+                return { connection, sensors }
             },
         }).mount('#app')
     </script>

@@ -1029,6 +1029,9 @@ class ToTRZ(Transform):
 __all__ = [
     'CodesConvertible',
     'HasTimeAndCodes',
+    'Filtering',
+    'RegexFiltering',
+    'CodesPatternFiltering',
     'Grouping',
     'RegexGrouping',
     'NetworkGrouping',

@@ -508,7 +508,7 @@ export const squirrelTimeline = (gates_) => {
 
     const fetchCoverage = async (kind) => {
         const connection = squirrelConnection()
-        coverages = await connection.request('get_coverage', { kind })
+        coverages = await connection.request('raw/get_coverage', { kind })
         for (let coverage of coverages) {
             coverage.id = await sha1(
                 [
@@ -530,7 +530,7 @@ export const squirrelTimeline = (gates_) => {
         const codes = new Set()
 
         for (const kind of ['waveform', 'channel', 'response']) {
-            for (const c of await connection.request('get_codes', {
+            for (const c of await connection.request('raw/get_codes', {
                 kind: kind,
             })) {
                 codes.add(c)

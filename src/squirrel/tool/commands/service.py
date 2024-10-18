@@ -22,8 +22,9 @@ from pyrocko import info
 from pyrocko import util
 from pyrocko import squirrel as squirrel_module
 from pyrocko.squirrel import model
-from pyrocko.guts import Object
+from pyrocko import guts
 from pyrocko.squirrel.error import ToolError, SquirrelError
+from pyrocko.squirrel import operators as ops
 
 logger = logging.getLogger('psq.cli.service')
 
@@ -44,6 +45,17 @@ def optional_time(x):
     return util.str_to_time_fillup(x) if x is not None else None
 
 
+def get_parameters_dict(body):
+    if not body:
+        return {}
+
+    parameters = json.loads(body)
+    if not isinstance(parameters, dict):
+        raise ValueError('Mapping required.')
+
+    return parameters
+
+
 def make_subparser(subparsers):
     return subparsers.add_parser(
         'service',
@@ -56,6 +68,7 @@ def make_subparser(subparsers):
 
 def setup(parser):
     parser.add_squirrel_selection_arguments()
+    parser.add_squirrel_query_arguments(without='kinds')
 
     parser.add_argument(
         '--port',
@@ -91,7 +104,7 @@ def setup(parser):
 
 class GutsJSONEncoder(json.JSONEncoder):
     def default(self, o):
-        if isinstance(o, Object):
+        if isinstance(o, guts.Object):
             d = dict(
                 (name, val) for (name, val) in o.T.inamevals_to_save(o))
             d['_T'] = o.T.tagname
@@ -104,73 +117,16 @@ class GutsJSONEncoder(json.JSONEncoder):
             return json.JSONEncoder.default(self, o)
 
 
-class SquirrelHandler(web.RequestHandler):
-    def __init__(self, *args, squirrel=None, server_info=None, **kwargs):
-        web.RequestHandler.__init__(self, *args, **kwargs)
+class SquirrelRequestHandler(web.RequestHandler):
+
+    def initialize(self, squirrel=None, server_info=None):
         self._squirrel = squirrel
         self._server_info = server_info
 
-    async def get(self, method_name):
-        if method_name == 'heartbeat':
-            logger.info('Client connected.')
-            self.set_header('Content-Type', 'application/octet-stream')
-            self.set_header('X-Accel-Buffering', 'no')
-            await self.flush()
-            try:
-                time_start = time.time()
-                while True:
-                    if g_shutdown:
-                        break
-
-                    self.write(
-                        json.dumps(dict(
-                            time_start=time_start,
-                            time_now=time.time())))
-
-                    try:
-                        await self.flush()
-                        await asyncio.sleep(1)
-                    except (asyncio.exceptions.CancelledError, Exception):
-                        break
-
-            finally:
-                logger.info('Client disconnected.')
-                self.finish()
-        else:
-            raise web.HTTPError(
-                400, reason='Invalid method: %s' % method_name)
-
-    def post(self, method_name):
+    def prepare(self):
         self._server_info['n_requests'] += 1
-        method = getattr(self, 'squirrel_' + method_name, None)
-        if method is None:
-            raise web.HTTPError(
-                400, reason='Invalid method: %s' % method_name)
-        else:
-            try:
-                print(self.request.body)
-                if self.request.body:
-                    parameters = json.loads(self.request.body)
-                    if not isinstance(parameters, dict):
-                        raise ValueError('Mapping required.')
-                else:
-                    parameters = {}
-
-            except Exception as e:
-                raise web.HTTPError(
-                    400, reason='Bad request: %s' % str(e))
-
-            try:
-                raw = method(parameters)
-            except SquirrelError as e:
-                raise web.HTTPError(
-                    400, reason='Squirrel error: %s' + str(e))
-
-            self.set_header('Content-Type', 'application/json')
-            self.write(json.dumps(raw, cls=GutsJSONEncoder))
 
     def get_cleaned(self, names, parameters):
-        print(parameters)
         if isinstance(names, str):
             names = names.split()
 
@@ -184,22 +140,147 @@ class SquirrelHandler(web.RequestHandler):
         except Exception as e:
             raise web.HTTPError(400, 'Bad request: %s' % str(e))
 
-    def squirrel_server_info(self, parameters):
+    def post(self, method_name, extra=()):
+        method = getattr(self, 'p_' + method_name, None)
+        if method is None:
+            raise web.HTTPError(
+                400, reason='Invalid method: %s' % method_name)
+        else:
+            try:
+                parameters = get_parameters_dict(self.request.body)
+
+            except Exception as e:
+                raise web.HTTPError(
+                    400, reason='Bad request: %s' % str(e))
+
+            try:
+                raw = method(parameters, *extra)
+            except SquirrelError as e:
+                raise web.HTTPError(
+                    400, reason='Squirrel error: %s' + str(e))
+
+            self.set_header('Content-Type', 'application/json')
+            self.write(json.dumps(raw, cls=GutsJSONEncoder))
+
+
+class SquirrelHeartbeatHandler(SquirrelRequestHandler):
+
+    async def get(self):
+        logger.info('Client connected.')
+        self.set_header('Content-Type', 'application/octet-stream')
+        self.set_header('X-Accel-Buffering', 'no')
+        await self.flush()
+        try:
+            time_start = time.time()
+            while True:
+                if g_shutdown:
+                    break
+
+                self.write(
+                    json.dumps(dict(
+                        time_start=time_start,
+                        time_now=time.time())))
+
+                try:
+                    await self.flush()
+                    await asyncio.sleep(1)
+                except (asyncio.exceptions.CancelledError, Exception):
+                    break
+
+        finally:
+            logger.info('Client disconnected.')
+            self.finish()
+
+
+class SquirrelInfoHandler(SquirrelRequestHandler):
+    def p_server(self, parameters):
         return self._server_info
 
-    def squirrel_get_events(self, parameters):
+
+class SquirrelRawHandler(SquirrelRequestHandler):
+
+    def p_get_events(self, parameters):
         return self._squirrel.get_events()
 
-    def squirrel_get_sensors(self, parameters):
+    def p_get_sensors(self, parameters):
         return self._squirrel.get_sensors()
 
-    def squirrel_get_coverage(self, parameters):
+    def p_get_coverage(self, parameters):
         kind, tmin, tmax = self.get_cleaned('kind tmin tmax', parameters)
         return self._squirrel.get_coverage(kind, tmin=tmin, tmax=tmax)
 
-    def squirrel_get_codes(self, parameters):
+    def p_get_codes(self, parameters):
         kind, = self.get_cleaned('kind', parameters)
         return [c.safe_str for c in self._squirrel.get_codes(kind=kind)]
+
+
+class Gate(guts.Object):
+
+    tmin = guts.Timestamp.T(optional=True)
+    tmax = guts.Timestamp.T(optional=True)
+    operators = guts.List.T(ops.Operator.T())
+
+    @classmethod
+    def from_query_arguments(cls, codes=None, tmin=None, tmax=None, time=None):
+        operator = ops.Operator(
+            filtering=ops.CodesPatternFiltering(codes=codes))
+
+        return cls(
+            tmin=tmin,
+            tmax=tmax,
+            operators=[operator])
+
+
+class SquirrelGatesHandler(SquirrelRequestHandler):
+    icurrent = 0
+
+    def next_name(self):
+        while True:
+            candidate = '%i' % self.icurrent
+            if '%i' % self.icurrent not in g_gates:
+                return candidate
+            self.icurrent += 1
+
+    def get(self, name=None):
+        if not name:
+            self.set_header('Content-Type', 'application/json')
+            self.write(json.dumps(sorted(g_gates.keys())))
+
+    def post(self, name=None):
+        if not name:
+            name = self.next_name()
+
+        parameters = get_parameters_dict(self.request.body)
+        g_gates[name] = Gate(self._squirrel, parameters)
+
+        self.set_header('Content-Type', 'application/json')
+        self.write(json.dumps(name))
+
+
+class SquirrelGateHandler(SquirrelRequestHandler):
+
+    def post(self, gate_name, method_name):
+        try:
+            gate = g_gates[gate_name]
+        except KeyError:
+            raise web.HTTPError(
+                400, reason='Squirrel error: no such gate: %s' % gate_name)
+
+        SquirrelRequestHandler.post(self, method_name, extra=(gate,))
+
+    def p_get_events(self, parameters, gate):
+        return gate.get_events()
+
+    def p_get_sensors(self, parameters, gate):
+        return gate.get_sensors()
+
+    def p_get_coverage(self, parameters, gate):
+        kind, tmin, tmax = self.get_cleaned('kind tmin tmax', parameters)
+        return gate.get_coverage(kind, tmin=tmin, tmax=tmax)
+
+    def p_get_codes(self, parameters, gate):
+        kind, = self.get_cleaned('kind', parameters)
+        return [c.safe_str for c in gate.get_codes(kind=kind)]
 
 
 def get_ip(host):
@@ -293,6 +374,11 @@ async def serve(
             pyrocko_long_version=info.long_version,
             pyrocko_src_path=info.src_path)
 
+    squirrel_handler_dict = dict(
+        squirrel=squirrel,
+        server_info=server_info,
+    )
+
     app = web.Application(
         [
             (
@@ -305,11 +391,29 @@ async def serve(
                 )
             ),
             (
-                r'/squirrel/([a-z0-9_]+)', SquirrelHandler,
-                dict(
-                    squirrel=squirrel,
-                    server_info=server_info,
-                )
+                r'/squirrel/heartbeat',
+                SquirrelHeartbeatHandler,
+                squirrel_handler_dict,
+            ),
+            (
+                r'/squirrel/info/([a-z0-9_]+)',
+                SquirrelInfoHandler,
+                squirrel_handler_dict,
+            ),
+            (
+                r'/squirrel/raw/([a-z0-9_]+)',
+                SquirrelRawHandler,
+                squirrel_handler_dict,
+            ),
+            (
+                r'/squirrel/gate(?:/([a-z0-9_]+|/?))',
+                SquirrelGatesHandler,
+                squirrel_handler_dict,
+            ),
+            (
+                r'/squirrel/gate/([a-z0-9_]+)/([a-z0-9_]+)',
+                SquirrelGateHandler,
+                squirrel_handler_dict,
             ),
         ],
         log_function=log_request,
@@ -342,6 +446,7 @@ async def serve(
 
 
 g_shutdown = False
+g_gates = {}
 
 
 async def shutdown(sig, loop):
@@ -381,6 +486,9 @@ def run(parser, args):
             static_path = dev_static_path
 
     squirrel = args.make_squirrel()
+
+    gate = Gate.from_query_arguments(**args.squirrel_query)
+    g_gates['default'] = gate
 
     loop = asyncio.get_event_loop()
     signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)

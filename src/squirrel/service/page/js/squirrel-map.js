@@ -95,7 +95,7 @@ export const squirrelMap = () => {
 
     const addSensors = async () => {
         const connection = squirrelConnection()
-        const locations = await connection.request('get_sensors')
+        const locations = await connection.request('raw/get_sensors')
 
         map.selectAll('circle')
             .data(locations)
@@ -119,7 +119,7 @@ export const squirrelMap = () => {
             g2: d3.geoNaturalEarth1(),
         }
 
-        projection = projections.ed
+        projection = projections.g2
 
         resize()
 

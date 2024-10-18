@@ -15,23 +15,31 @@ const fmtDuration = (d) => {
     )
 }
 
-export const squirrelRequest = async (method, args) => {
-    const response = await fetch('/squirrel/' + method, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(args),
-    })
-    return response.json()
-}
-
 const setupConnection = () => {
     let serverInfo = ref(null)
     let heartbeats = []
+    let latestError = ref(null)
+
+    const squirrelRequest = async (method, args) => {
+        const response = await fetch('/squirrel/' + method, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(args),
+        })
+        if (!response.ok) {
+            latestError.value = await response.text()
+            throw new Error(
+                `Response status: ${response.status}, Server response text:\n'''\n${latestError.value}'''`
+            )
+        }
+
+        return response.json()
+    }
 
     const getServerInfo = async () => {
-        serverInfo.value = await squirrelRequest('server_info')
+        serverInfo.value = await squirrelRequest('info/server')
     }
 
     let abortHeartbeat = null
@@ -85,7 +93,7 @@ const setupConnection = () => {
     getServerInfo()
     receiveHeartbeat()
 
-    return { connected, serverInfo, request: squirrelRequest }
+    return { connected, serverInfo, request: squirrelRequest, latestError }
 }
 
 let connection = null

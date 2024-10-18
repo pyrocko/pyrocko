@@ -12,9 +12,11 @@ export const squirrelGate = () => {
         const codes = Set()
 
         for (const kind of ['waveform', 'channel', 'response']) {
-            codes = Set(await connection.request('get_codes', {
-                kind: kind,
-            })) 
+            codes = Set(
+                await connection.request('raw/get_codes', {
+                    kind: kind,
+                })
+            )
         }
         return { codes }
     }
@@ -38,4 +40,5 @@ export const squirrelGates = () => {
         gates.value.push(squirrelGate())
     }
 
-    return { timeMin, timeMax, setTimeSpan }
+    return { timeMin, timeMax, setTimeSpan, addGate }
+}
