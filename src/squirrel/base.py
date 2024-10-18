@@ -2938,10 +2938,10 @@ class Squirrel(Selection):
         else:
             for codes_entry in codes:
                 pattern = to_codes(kind_id, codes_entry)
-                for _, codes_entry, deltat, kind_codes_id, _ in codes_info_raw:
-                    if model.match_codes(pattern, codes_entry):
+                for _, codes_cand, deltat, kind_codes_id, _ in codes_info_raw:
+                    if model.match_codes(pattern, codes_cand):
                         codes_info.append(
-                            (pattern, kind_codes_id, codes_entry, deltat))
+                            (pattern, kind_codes_id, codes_cand, deltat))
 
         return codes_info
 
