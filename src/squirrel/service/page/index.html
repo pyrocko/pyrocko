@@ -36,15 +36,17 @@
                 <div v-if="connection.connected">
                     <div
                         v-if="connection.latestError"
-                        style="background-color: #cccccccc; padding: 2em"
+                        style="background-color: #cccccccc; padding: 2em; margin: 1em; border: 1px solid #999999cc; border-radius: 0.5em; "
                     >
                         <pre><code>{{ connection.latestError }}</code></pre>
+                        <div>
                         <button
                             class="btn btn-primary"
                             @click="connection.latestError = ''"
                         >
                             Clear
                         </button>
+                        </div>
                     </div>
                     <ul>
                         <li v-for="sensor in sensors">
@@ -63,8 +65,8 @@
                 <div v-else>Disconnected</div>
             </div>
 
-            <div id="map" class="map-container"></div>
-            <!--<div id="timeline" class="map-container"></div>-->
+            <!--<div id="map" class="map-container"></div>-->
+            <div id="timeline" class="map-container"></div>
         </div>
     </body>
 
@@ -91,10 +93,10 @@
                 }
 
                 onMounted(() => {
-                    fetchSensors()
-                    d3.select('#map').call(map)
-                    map.addBasemap().addSensors()
-                    // d3.select('#timeline').call(timeline)
+                    //fetchSensors()
+                    //d3.select('#map').call(map)
+                    //map.addBasemap().addSensors()
+                    d3.select('#timeline').call(timeline)
                 })
 
                 return { connection, sensors }

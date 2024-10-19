@@ -777,6 +777,8 @@ class Operator(Object):
                 tmax: TimeFloat = None,
             ) -> tList[Trace]:
 
+        print(codes_to_coverage)
+
         coverages = []
         for mapping in mappings:
             coverages_group = [
