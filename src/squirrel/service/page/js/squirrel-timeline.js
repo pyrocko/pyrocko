@@ -162,7 +162,10 @@ export const squirrelTimeline = (gates_) => {
     }
 
     const updateProjection = () => {
-        x.domain([gates.timeMin.value, gates.timeMax.value]).range([0, getWidth()])
+        x.domain([gates.timeMin.value, gates.timeMax.value]).range([
+            0,
+            getWidth(),
+        ])
         trackProjection.range([marginTop, getHeight() - marginBottom])
         pageRect.attr('x', 0)
         pageRect.attr('y', marginTop)
@@ -180,6 +183,7 @@ export const squirrelTimeline = (gates_) => {
     }
 
     watch([gates.timeMin, gates.timeMax], update)
+    watch([gates.codes, gates.timeMax], updateCodes)
 
     const resizeHandler = () => {
         timeline.attr('width', getWidth()).attr('height', getHeight())
@@ -318,8 +322,15 @@ export const squirrelTimeline = (gates_) => {
         }
 
         let napprox = 5
-        let [tinc, tinc_units] = niceTimeTickInc((gates.timeMax.value - gates.timeMin.value) / napprox)
-        let [times, labels] = timeTickLabels(gates.timeMin.value, gates.timeMax.value, tinc, tinc_units)
+        let [tinc, tinc_units] = niceTimeTickInc(
+            (gates.timeMax.value - gates.timeMin.value) / napprox
+        )
+        let [times, labels] = timeTickLabels(
+            gates.timeMin.value,
+            gates.timeMax.value,
+            tinc,
+            tinc_units
+        )
         let ticks = times.map((t, i) => ({
             t: t,
             labels: ('' + labels[i]).split('\n').reverse(),
@@ -354,10 +365,13 @@ export const squirrelTimeline = (gates_) => {
                         .map((tick) => ({ axisId, tick })),
                 (d) => d.tick.t
             )
-            .join('line')
-            .attr('class', 'axis-tick')
-            .attr('stroke', colors['aluminium4'])
-            .attr('stroke-width', axisTickStrokeWidth)
+            .join((enter) =>
+                enter
+                    .append('line')
+                    .attr('class', 'axis-tick')
+                    .attr('stroke', colors['aluminium4'])
+                    .attr('stroke-width', axisTickStrokeWidth)
+            )
             .attr('y1', (d) => axisY(d.axisId))
             .attr(
                 'y2',
@@ -374,8 +388,9 @@ export const squirrelTimeline = (gates_) => {
                 (axisId) => ticks.map((tick) => ({ axisId, tick })),
                 (d) => d.tick.t
             )
-            .join('g')
-            .attr('class', 'axis-tick-label-group')
+            .join((enter) =>
+                enter.append('g').attr('class', 'axis-tick-label-group')
+            )
             .selectAll('.axis-tick-label')
             .data(
                 (etick) =>
@@ -386,8 +401,35 @@ export const squirrelTimeline = (gates_) => {
                     })),
                 (d) => d.ilabel
             )
-            .join('text')
-            .attr('class', 'axis-tick-label')
+            .join(
+                (enter) =>
+                    enter
+                        .append('text')
+                        .attr('class', 'axis-tick-label')
+                        .style('font-size', fontSize + 'pt')
+                        .call((enter) =>
+                            enter
+                                .filter((d) => d.tick.t != gates.timeMin.value)
+                                .style('opacity', 0)
+                                .transition()
+                                .duration(500)
+                                .style('opacity', 1)
+                        ),
+                (update) => update,
+                (exit) =>
+                    exit
+                        .style('fill', 'red')
+                        .transition()
+                        .duration(500)
+                        .remove()
+            )
+            .style('dominant-baseline', (d) =>
+                d.axisId == 0 ? 'text-before-edge' : 'no-change'
+            )
+            .text((d) => d.label)
+            .style('text-anchor', (d) =>
+                d.tick.t == gates.timeMin.value ? 'left' : 'middle'
+            )
             .attr(
                 'y',
                 (d) => axisY(d.axisId) + (d.axisId == 0 ? 1 : -1) * tickLength
@@ -398,15 +440,9 @@ export const squirrelTimeline = (gates_) => {
             )
             .attr('x', (d) => x(d.tick.t))
             .attr('dx', (d) => '0.5em')
-            .attr('dx', (d) => (d.tick.t == gates.timeMin.value ? '0.5em' : '0'))
-            .style('font-size', fontSize + 'pt')
-            .style('text-anchor', (d) =>
-                d.tick.t == gates.timeMin.value ? 'left' : 'middle'
+            .attr('dx', (d) =>
+                d.tick.t == gates.timeMin.value ? '0.5em' : '0'
             )
-            .style('dominant-baseline', (d) =>
-                d.axisId == 0 ? 'text-before-edge' : 'no-change'
-            )
-            .text((d) => d.label)
 
         axisGroups
     }
@@ -508,7 +544,9 @@ export const squirrelTimeline = (gates_) => {
 
     const fetchCoverage = async (kind) => {
         const connection = squirrelConnection()
-        coverages = await connection.request('gate/default/get_coverage', { kind })
+        coverages = await connection.request('gate/default/get_coverage', {
+            kind,
+        })
         for (let coverage of coverages) {
             coverage.id = await sha1(
                 [
@@ -525,18 +563,7 @@ export const squirrelTimeline = (gates_) => {
         update()
     }
 
-    const fetchCodes = async () => {
-        const connection = squirrelConnection()
-        const codes = new Set()
-
-        for (const kind of ['waveform', 'channel', 'response']) {
-            for (const c of await connection.request('gate/default/get_codes', {
-                kind: kind,
-            })) {
-                codes.add(c)
-            }
-        }
-
+    const updateCodes = async () => {
         let groupKeySensor = (c) => {
             const nslce = c.split('.')
             const sensor = nslce[3].substring(0, nslce[3].length - 1)
@@ -546,7 +573,7 @@ export const squirrelTimeline = (gates_) => {
             return c.split('.')
         }
 
-        let groups = Map.groupBy(codes, (c) => groupKeyChannel(c))
+        let groups = Map.groupBy(gates.codes, (c) => groupKeyChannel(c))
         tracks.length = 0
         let i = 0
         for (const [k, codes] of groups) {

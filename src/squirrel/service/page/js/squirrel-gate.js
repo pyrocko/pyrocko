@@ -1,4 +1,4 @@
-import { ref } from './vue.esm-browser.js'
+import { ref, computed } from './vue.esm-browser.js'
 
 import { strToTime } from './squirrel-common.js'
 
@@ -6,19 +6,17 @@ import { squirrelConnection } from './squirrel-connection.js'
 
 export const squirrelGate = () => {
     const codes = ref(Set())
+    const connection = squirrelConnection()
 
     const fetchCodes = async () => {
-        const connection = squirrelConnection()
-        const codes = Set()
-
         for (const kind of ['waveform', 'channel', 'response']) {
-            codes = Set(
-                await connection.request('raw/get_codes', {
-                    kind: kind,
-                })
-            )
+            for (const c of await connection.request('raw/get_codes', {
+                kind: kind,
+            })) {
+                codes.add(c)
+            }
         }
-        return { codes }
+        return codes
     }
 
     const update = async () => {
@@ -39,6 +37,16 @@ export const squirrelGates = () => {
     const addGate = () => {
         gates.value.push(squirrelGate())
     }
+
+    const codes = computed({
+        const codes = Set()
+        for (const gate of gates) {
+            for (const c of gate.codes) {
+                codes.add(c)
+            }
+        }
+        return codes
+    })
 
     return { timeMin, timeMax, setTimeSpan, addGate }
 }
