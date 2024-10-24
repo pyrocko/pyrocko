@@ -1,4 +1,4 @@
-import { watch } from './vue.esm-browser.js'
+import { watch } from '../vue.esm-browser.js'
 
 import {
     createIfNeeded,
@@ -7,8 +7,8 @@ import {
     niceTimeTickInc,
     timeTickLabels,
     tomorrow,
-} from './squirrel-common.js'
-import { squirrelConnection } from './squirrel-connection.js'
+} from './common.js'
+import { squirrelConnection } from './connection.js'
 
 const sha1 = async (str) => {
     const enc = new TextEncoder()
@@ -182,9 +182,6 @@ export const squirrelTimeline = (gates_) => {
         updateTracks(t)
     }
 
-    watch([gates.timeMin, gates.timeMax], update)
-    watch([gates.codes, gates.timeMax], updateCodes)
-
     const resizeHandler = () => {
         timeline.attr('width', getWidth()).attr('height', getHeight())
         update()
@@ -270,6 +267,7 @@ export const squirrelTimeline = (gates_) => {
     }
 
     const getBoxes = () => {
+        const coverages = gates.getCoverages()
         return coverages == null
             ? []
             : coverages.map(coverageToBox).filter((box) => box !== null)
@@ -299,15 +297,21 @@ export const squirrelTimeline = (gates_) => {
                             'height',
                             (box) => box.ymax - box.ymin - padding * 2
                         )
-                        .attr('y', (box) => box.ymin + padding),
+                        .attr('y', (box) => box.ymin + padding)
+                        .style('opacity', 0)
+                        .call((enter) =>
+                            enter.transition().duration(100).style('opacity', 1)
+                        ),
                 (update) =>
                     update
-                        .transition(t)
-                        .attr(
-                            'height',
-                            (box) => box.ymax - box.ymin - padding * 2
-                        )
-                        .attr('y', (box) => box.ymin + padding)
+                        .call((update) => update
+                            .transition(t)
+                            .attr(
+                                'height',
+                                (box) => box.ymax - box.ymin - padding * 2
+                            )
+                            .attr('y', (box) => box.ymin + padding)
+                        ),
             )
             .attr('x', (box) => x(box.tmin))
             .attr('width', (box) => x(box.tmax) - x(box.tmin))
@@ -415,13 +419,7 @@ export const squirrelTimeline = (gates_) => {
                                 .duration(500)
                                 .style('opacity', 1)
                         ),
-                (update) => update,
-                (exit) =>
-                    exit
-                        .style('fill', 'red')
-                        .transition()
-                        .duration(500)
-                        .remove()
+                (update) => update
             )
             .style('dominant-baseline', (d) =>
                 d.axisId == 0 ? 'text-before-edge' : 'no-change'
@@ -542,27 +540,6 @@ export const squirrelTimeline = (gates_) => {
             )
     }
 
-    const fetchCoverage = async (kind) => {
-        const connection = squirrelConnection()
-        coverages = await connection.request('gate/default/get_coverage', {
-            kind,
-        })
-        for (let coverage of coverages) {
-            coverage.id = await sha1(
-                [
-                    coverage.kind,
-                    coverage.tmin,
-                    coverage.tmax,
-                    coverage.codes,
-                ].join('+++')
-            )
-            coverage.codes = coverage.codes + '.'
-            coverage.tmin = strToTime(coverage.tmin)
-            coverage.tmax = strToTime(coverage.tmax)
-        }
-        update()
-    }
-
     const updateCodes = async () => {
         let groupKeySensor = (c) => {
             const nslce = c.split('.')
@@ -573,12 +550,12 @@ export const squirrelTimeline = (gates_) => {
             return c.split('.')
         }
 
-        let groups = Map.groupBy(gates.codes, (c) => groupKeyChannel(c))
+        let groups = Map.groupBy(gates.codes.value, (c) => groupKeyChannel(c))
         tracks.length = 0
         let i = 0
         for (const [k, codes] of groups) {
             tracks.push({
-                id: await sha1(codes.join('+++')),
+                id: codes.join('+++'),
                 index: i,
                 codes: codes,
             })
@@ -615,8 +592,9 @@ export const squirrelTimeline = (gates_) => {
 
         window.onresize = resizeHandler
         resizeHandler()
-        fetchCodes()
-        fetchCoverage('waveform')
+
+        watch([gates.timeMin, gates.timeMax], update)
+        watch([gates.codes], updateCodes)
     }
 
     return my

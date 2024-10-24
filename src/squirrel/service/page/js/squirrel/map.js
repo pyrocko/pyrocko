@@ -1,5 +1,5 @@
-import { createIfNeeded, colors } from './squirrel-common.js'
-import { squirrelConnection } from './squirrel-connection.js'
+import { createIfNeeded, colors } from './common.js'
+import { squirrelConnection } from './connection.js'
 
 export const squirrelMap = () => {
     let map

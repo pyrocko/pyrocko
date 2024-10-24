@@ -66,17 +66,17 @@
             </div>
 
             <!--<div id="map" class="map-container"></div>-->
-            <div id="timeline" class="map-container"></div>
+            <div id="timeline" class="timeline-container"></div>
         </div>
     </body>
 
     <script type="module">
         import { createApp, ref, onMounted } from './js/vue.esm-browser.js'
 
-        import { squirrelMap } from './js/squirrel-map.js'
-        import { squirrelTimeline } from './js/squirrel-timeline.js'
-        import { squirrelConnection } from './js/squirrel-connection.js'
-        import { squirrelGates } from './js/squirrel-gate.js'
+        import { squirrelMap } from './js/squirrel/map.js'
+        import { squirrelTimeline } from './js/squirrel/timeline.js'
+        import { squirrelConnection } from './js/squirrel/connection.js'
+        import { squirrelGates } from './js/squirrel/gate.js'
 
         createApp({
             setup() {
@@ -86,6 +86,8 @@
                 let gates = squirrelGates()
                 let timeline = squirrelTimeline(gates)
                 let map = squirrelMap()
+
+                gates.addGate()
 
                 const fetchSensors = async () => {
                     const connection = squirrelConnection()

@@ -1,4 +1,4 @@
-import { ref, computed } from './vue.esm-browser.js'
+import { ref, computed } from '../vue.esm-browser.js'
 
 const now = () => {
     return new Date().getTime()
