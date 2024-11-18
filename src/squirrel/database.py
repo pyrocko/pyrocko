@@ -304,23 +304,23 @@ class Cursor(sqlite3.Cursor):
 
     def execute(self, *args, **kwargs):
         with LOCK:
-            return sqlite3.Cursor.execute(self, *args, **kwargs)
+            return super().execute(*args, **kwargs)
 
     def executemany(self, *args, **kwargs):
         with LOCK:
-            return sqlite3.Cursor.executemany(self, *args, **kwargs)
+            return super().executemany(*args, **kwargs)
 
     def executescript(self, *args, **kwargs):
         with LOCK:
-            return sqlite3.Cursor.executescript(self, *args, **kwargs)
+            return super().executescript(*args, **kwargs)
 
     def fetchone(self, *args, **kwargs):
         with LOCK:
-            return sqlite3.Cursor.fetchone(self, *args, **kwargs)
+            return super().fetchone(*args, **kwargs)
 
     def fetchmany(self, *args, **kwargs):
         with LOCK:
-            return sqlite3.Cursor.fetchmany(self, *args, **kwargs)
+            return super().fetchmany(*args, **kwargs)
 
 
 class Connection(sqlite3.Connection):
@@ -724,7 +724,7 @@ class Database(object):
                   nut.tmax_seconds, nut.tmax_offset,
                   nut.kscale) for nut in nuts))
 
-    def undig(self, path, segment=None) -> list[Nut]:
+    def undig(self, path, segment=None):
 
         path = self.relpath(abspath(path))
 
@@ -746,14 +746,12 @@ class Database(object):
             FROM files
             INNER JOIN nuts ON files.file_id = nuts.file_id
             INNER JOIN kind_codes
-                ON nuts.kind_codes_id == kind_codes.kind_codes_id
+                ON nuts.kind_codes_id = kind_codes.kind_codes_id
+            WHERE files.path = :path
         '''
         if segment is not None:
-            sql += ' WHERE files.path == ? AND nuts.file_segment == ?'
-            args = (path, segment)
-        else:
-            sql += ' WHERE files.path == ?'
-            args = (path,)
+            sql += ' AND nuts.file_segment = :segment\n'
+        args = {"path": r"%s" % path, "segment": segment}
 
         return [Nut(values_nocheck=(self.abspath(row[0]),) + row[1:])
                 for row in self._conn.execute(sql, args)]
@@ -795,8 +793,7 @@ class Database(object):
         if path is not None:
             yield path, nuts
 
-    def undig_few(self, paths: list[str],
-                  format: str = 'detect', segment=None):
+    def undig_few(self, paths, format='detect', segment=None):
         for path in paths:
             nuts = self.undig(path, segment=segment)
             if nuts:
