@@ -14,7 +14,10 @@ import signal
 from tempfile import mkdtemp
 from subprocess import Popen, PIPE
 import os.path as op
-from scipy.integrate import cumtrapz
+try:
+    from scipy.integrate import cumulative_trapezoid
+except ImportError:
+    from scipy.integrate import cumtrapz as cumulative_trapezoid
 
 from pyrocko.moment_tensor import MomentTensor, symmat6
 from pyrocko.guts import Float, Int, Tuple, List, Bool, Object, String
@@ -750,7 +753,7 @@ in the directory %s'''.lstrip() % (
         for itrace, comp in enumerate(self.config.components):
             # qseis2d gives velocity-integrate to displacement
             # integration removes one sample, add it again in front
-            displ = cumtrapz(num.concatenate(
+            displ = cumulative_trapezoid(num.concatenate(
                 (num.zeros(1), data[:, itrace + 1])), dx=deltat)
 
             tr = trace.Trace(
