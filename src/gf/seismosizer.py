@@ -124,20 +124,28 @@ class STFError(SeismosizerError):
 
 class NoSuchStore(BadRequest):
 
-    def __init__(self, store_id=None, dirs=None):
+    def __init__(self, store_id, store_dirs, store_superdirs, store_ids_avail):
         BadRequest.__init__(self)
         self.store_id = store_id
-        self.dirs = dirs
+        self.store_dirs = store_dirs
+        self.store_superdirs = store_superdirs
+        self.store_ids_avail = store_ids_avail
 
     def __str__(self):
-        if self.store_id is not None:
-            rstr = 'no GF store with id "%s" found.' % self.store_id
-        else:
-            rstr = 'GF store not found.'
+        lines = ['No GF store with id "%s" found.' % self.store_id]
 
-        if self.dirs is not None:
-            rstr += ' Searched folders:\n  %s' % '\n  '.join(sorted(self.dirs))
-        return rstr
+        def add_entries(lines, name, entries):
+            lines.append('  %s:' % name)
+            if not entries:
+                lines.append('    *empty*')
+            else:
+                for entry in entries:
+                    lines.append('    - %s' % entry)
+
+        add_entries(lines, 'store_superdirs searched', self.store_superdirs)
+        add_entries(lines, 'store_dirs searched', self.store_dirs)
+        add_entries(lines, 'store IDs available', self.store_ids_avail)
+        return '\n'.join(lines)
 
 
 def ufloat(s):
@@ -5645,7 +5653,11 @@ class LocalEngine(Engine):
             self._scan_stores()
 
         if store_id not in self._id_to_store_dir:
-            raise NoSuchStore(store_id, self.iter_store_dirs())
+            raise NoSuchStore(
+                store_id,
+                self.store_dirs,
+                self.store_superdirs,
+                sorted(self._id_to_store_dir.keys()))
 
         return self._id_to_store_dir[store_id]
 
