@@ -1061,7 +1061,7 @@ GMT_FFT = auto
 GMT_HISTORY = true
 GMT_INTERPOLANT = akima
 GMT_TRIANGULATE = Shewchuk
-GMT_VERBOSE = compat
+GMT_VERBOSE = warning
 GMT_LANGUAGE = us
 #
 # I/O Parameters
