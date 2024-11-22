@@ -1,5 +1,10 @@
 [build-system]
-requires = ["setuptools", "wheel", "oldest-supported-numpy"]
+requires = [
+    "setuptools",
+    "wheel",
+    "oldest-supported-numpy; python_version<='3.11'",
+    "numpy>=2.0,<3; python_version>'3.11'",
+]
 
 [project]
 name = "pyrocko"
@@ -104,3 +109,23 @@ select = ["E", "F", "Q"]  # "B"
 docstring-quotes = "single"
 inline-quotes = "single"
 multiline-quotes = "single"
+
+[tool.coverage.report]
+exclude_lines = [
+    "def __repr__",
+    "def __str__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "raise ValueError",
+    "raise",
+    "if __name__ == .__main__.:",
+    "logger.error",
+    "if pyrocko.grumpy:",
+]
+
+[tool.coverage.paths]
+source = [
+    "src/",
+    "/usr/lib/*/pyrocko/",
+    "/usr/local/lib/*/pyrocko/",
+]
