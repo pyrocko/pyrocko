@@ -270,7 +270,7 @@ class PsGrnConfigFull(PsGrnConfig):
 #
 #    Note that all file or directory names should not be longer than 80
 #    characters. Directory and subdirectoy names must be separated and ended
-#    by / (unix) or \ (dos)! All file names should be given without extensions
+#    by / (unix) or \\ (dos)! All file names should be given without extensions
 #    that will be appended automatically by ".ep" for the explosion (inflation)
 #    source, ".ss" for the strike-slip source, ".ds" for the dip-slip source,
 #    and ".cl" for the compensated linear vector dipole source)
@@ -1110,7 +1110,7 @@ class PsCmpConfigFull(PsCmpConfig):
 #13. ...
 #
 #    Note that all file or directory names should not be longer than 80
-#    characters. Directories must be ended by / (unix) or \ (dos)!
+#    characters. Directories must be ended by / (unix) or \\ (dos)!
 #===============================================================================
  %(sw_los_displacement)i    %(str_los_vector)s
  %(sw_coulomb_stress)i    %(str_coulomb_master_field)s
@@ -1137,7 +1137,7 @@ class PsCmpConfigFull(PsCmpConfig):
 #    green(i), i=10-14
 #
 #    Note that all file or directory names should not be longer than 80
-#    characters. Directories must be ended by / (unix) or \ (dos)! The
+#    characters. Directories must be ended by / (unix) or \\ (dos)! The
 #    extensions of the file names will be automatically considered. They
 #    are ".ep", ".ss", ".ds" and ".cl" denoting the explosion (inflation)
 #    strike-slip, the dip-slip and the compensated linear vector dipole
@@ -1175,12 +1175,12 @@ class PsCmpConfigFull(PsCmpConfig):
 #                  /
 #                 /| strike
 #                +------------------------
-#                |\        p .            \ W
-#                :-\      i .              \ i
-#                |  \    l .                \ d
-#                :90 \  S .                  \ t
-#                |-dip\  .                    \ h
-#                :     \. | rake               \
+#                |\\        p .            \\ W
+#                :-\\      i .              \\ i
+#                |  \\    l .                \\ d
+#                :90 \\  S .                  \\ t
+#                |-dip\\  .                    \\ h
+#                :     \\. | rake               \\
 #                Z      -------------------------
 #                              L e n g t h
 #

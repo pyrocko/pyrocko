@@ -44,12 +44,15 @@ from PyQt5 import QtNetwork as qn  # noqa
 from PyQt5 import QtSvg as qsvg  # noqa
 from PyQt5 import QtPrintSupport as qprint  # noqa
 
+
 def getSaveFileName(*args, **kwargs):
-     return qw.QFileDialog.getSaveFileName(*args, **kwargs)[0]
+    return qw.QFileDialog.getSaveFileName(*args, **kwargs)[0]
+
 
 class QPixmapCache(qg.QPixmapCache):
     def cached(self, key):
         return self.find(key)
+
 
 try:
     vers = qc.QVersionNumber.fromString

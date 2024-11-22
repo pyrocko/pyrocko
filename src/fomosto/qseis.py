@@ -489,16 +489,16 @@ class QSeisConfigFull(QSeisConfig):
 #
 #                 north(x)
 #                  /
-#                 /\ strike
+#                 /\\ strike
 #                *----------------------->  east(y)
-#                |\                       \
-#                |-\                       \
-#                |  \     fault plane       \
-#                |90 \                       \
-#                |-dip\                       \
-#                |     \                       \
-#                |      \                       \
-#           downward(z)  \-----------------------\\
+#                |\\                       \\
+#                |-\\                       \\
+#                |  \\     fault plane       \\
+#                |90 \\                       \\
+#                |-dip\\                       \\
+#                |     \\                       \\
+#                |      \\                       \\
+#           downward(z)  \\-----------------------\\
 #
 # 2. switch for azimuth distribution of the stations (0 = uniform azimuth,
 #    else = irregular azimuth angles)
