@@ -66,7 +66,7 @@ class GFScenariosTestCase(unittest.TestCase):
         nstations = 10
 
         print('cache source channels par wallclock seismograms_per_second')
-        nprocs_max = multiprocessing.cpu_count()
+        nthreads_max = multiprocessing.cpu_count()
 
         for sourcetype, channels in [
                 ['point', 'Z'],
@@ -74,8 +74,8 @@ class GFScenariosTestCase(unittest.TestCase):
                 ['rect', 'Z'],
                 ['rect', 'NEZ']]:
 
-            for nprocs in [1, 2, 4, 8, 16, 32]:
-                if nprocs > nprocs_max:
+            for nthreads in [1, 2, 4, 8, 16, 32]:
+                if nthreads > nthreads_max:
                     continue
 
                 sources = []
@@ -134,17 +134,17 @@ class GFScenariosTestCase(unittest.TestCase):
                 ntraces = len(targets) * len(sources)
                 for temperature in ['cold', 'hot']:
                     t0 = time.time()
-                    resp = engine.process(sources, targets, nprocs=nprocs)
+                    resp = engine.process(sources, targets, nthreads=nthreads)
                     # print resp.stats
 
                     t1 = time.time()
                     duration = t1 - t0
                     sps = ntraces / duration
                     if temperature == 'hot':
-                        if nprocs == 1:
+                        if nthreads == 1:
                             sps_ref = sps
                         print('%-5s %-6s %-8s %3i %9.3f %12.1f %12.1f' % (
-                            temperature, sourcetype, channels, nprocs, t1-t0,
+                            temperature, sourcetype, channels, nthreads, t1-t0,
                             sps, sps/sps_ref))
 
                     del resp
@@ -214,14 +214,14 @@ class GFScenariosTestCase(unittest.TestCase):
         nsources = 10
 
         # nprocs_max = multiprocessing.cpu_count()
-        nprocs = 1
+        nthreads = 1
 
         try:
             seis = glue.start_seismosizer(
                 gfdb_path=op.join(store.store_dir, 'db'),
                 event=base_event,
                 stations=stations,
-                hosts=['localhost']*nprocs,
+                hosts=['localhost']*nthreads,
                 balance_method='123321',
                 effective_dt=0.5,
                 verbose=False)
@@ -284,7 +284,7 @@ class GFScenariosTestCase(unittest.TestCase):
 
                 for temperature in ['cold', 'hot']:
                     t0 = time.time()
-                    resp = engine.process(sources, targets, nprocs=nprocs)
+                    resp = engine.process(sources, targets, nthreads=nthreads)
                     t1 = time.time()
                     if temperature == 'hot':
                         dur_pyrocko = t1 - t0

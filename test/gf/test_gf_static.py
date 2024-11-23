@@ -203,17 +203,17 @@ mantle
 
         engine = gf.LocalEngine(store_dirs=[self.get_store_dir('pscmp')])
 
-        def process_target(nprocs):
+        def process_target(nthreads):
 
-            @benchmark.labeled('process-nearest_neighbor-np%d' % nprocs)
+            @benchmark.labeled('process-nearest_neighbor-np%d' % nthreads)
             def process_nearest_neighbor():
                 sattarget.interpolation = 'nearest_neighbor'
-                return engine.process(source, sattarget, nprocs=nprocs)
+                return engine.process(source, sattarget, nthreads=nthreads)
 
-            @benchmark.labeled('process-multilinear-np%d' % nprocs)
+            @benchmark.labeled('process-multilinear-np%d' % nthreads)
             def process_multilinear():
                 sattarget.interpolation = 'multilinear'
-                return engine.process(source, sattarget, nprocs=nprocs)
+                return engine.process(source, sattarget, nthreads=nthreads)
 
             return process_nearest_neighbor(), process_multilinear()
 
@@ -221,7 +221,7 @@ mantle
             return engine.process(source, [sattarget, static_target])
 
         for np in [1, 2, 4]:
-            nn, ml = process_target(nprocs=np)
+            nn, ml = process_target(nthreads=np)
 
         process_multiple_targets()
 
@@ -480,7 +480,7 @@ mantle
             interpolation=interpolation)
 
         engine = gf.LocalEngine(store_dirs=[self.get_store_dir('pscmp')])
-        res = engine.process(source, gnss_target, nprocs=2)
+        res = engine.process(source, gnss_target, nthreads=2)
 
         statics = res.static_results()
         for static in statics:
@@ -633,7 +633,7 @@ mantle
             tsnapshot=time.time())
 
         engine = gf.LocalEngine(store_dirs=[self.get_store_dir('pscmp')])
-        res = engine.process(source, [target_1, target_2], nprocs=0)\
+        res = engine.process(source, [target_1, target_2], nthreads=0)\
 
         statics_1, statics_2 = res.static_results()
         num.testing.assert_equal(
