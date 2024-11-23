@@ -762,6 +762,7 @@ steps:
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py310
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py311
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py312
+  - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py313
 
   - conda create -y -n py38 python=3.8 m2-tar m2-gzip m2-patch setuptools pip numpy=1.14
   - conda run --no-capture-output -n py38 python -m pip wheel -v -w dist "--only-binary=:all:" .
@@ -775,8 +776,11 @@ steps:
   - conda create -y -n py311 python=3.11 m2-tar m2-gzip m2-patch setuptools pip numpy=1.22
   - conda run --no-capture-output -n py311 python -m pip wheel -v -w dist "--only-binary=:all:" .
 
-  - conda create -y -n py312 python=3.12 m2-tar m2-gzip m2-patch setuptools pip numpy=1.26
+  - conda create -y -n py312 python=3.12 m2-tar m2-gzip m2-patch setuptools pip numpy>2
   - conda run --no-capture-output -n py312 python -m pip wheel -v -w dist "--only-binary=:all:" .
+
+  - conda create -y -n py313 python=3.13 m2-tar m2-gzip m2-patch setuptools pip numpy>2
+  - conda run --no-capture-output -n py313 python -m pip wheel -v -w dist "--only-binary=:all:" .
 
 - name: upload-testing
   when:
@@ -815,6 +819,7 @@ steps:
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py310
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py311
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py312
+  - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py313
 
 ---
 
@@ -835,6 +840,13 @@ platform:
   arch: arm64
 
 steps:
+- name: build-3.13
+  commands:
+  - mkdir -p wheels
+  - /usr/local/bin/python3.13 -m venv venv-3.13
+  - venv-3.13/bin/python -m pip install --upgrade pip
+  - venv-3.13/bin/python -m pip install wheel
+  - venv-3.13/bin/python -m pip wheel -v . -w dist "--only-binary=:all:"
 - name: build-3.12
   commands:
   - mkdir -p wheels

@@ -518,8 +518,8 @@ if not have_pep621_support:
             ' geophysical inversion'],
         python_requires='>=3.8, <4',
         install_requires=[
-            'numpy>=1.16',
-            'scipy>=1.0',
+            "numpy>=1.25,<3; python_version>'3.11'",
+            "numpy>=1.16,<2; python_version<='3.11'",
             'pyyaml',
             'matplotlib',
             'requests',

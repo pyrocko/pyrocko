@@ -1,4 +1,5 @@
-numpy>=1.16
+numpy>=1.25,<3; python_version>'3.11'
+numpy>=1.16,<2; python_version<='3.11'
 scipy>=1.0
 pyyaml
 matplotlib
