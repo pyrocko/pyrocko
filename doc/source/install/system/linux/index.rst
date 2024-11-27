@@ -41,7 +41,7 @@ User installation from source using system packages for the prerequisites
     cd ~/src/   # or wherever you keep your source packages
     git clone https://git.pyrocko.org/pyrocko/pyrocko.git pyrocko
     cd pyrocko
-    python -m venv --use-system-packages myenv
+    python -m venv --system-site-packages myenv
     source myenv/bin/activate
     python install.py deps system  # installs prerequisites using apt/yum/pacman
     python install.py user         # installs Pyrocko with pip, but uses system deps
