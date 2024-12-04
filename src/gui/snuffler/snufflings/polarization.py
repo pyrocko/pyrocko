@@ -256,7 +256,7 @@ window). The currently used scaling factor can be frozen by checking
 
         for scheme in [
                 ['E', 'N', 'Z'], ['1', '2', 'Z'], ['1', '2', '3'],
-                ['0', '1', '2'], ['R', 'T', 'Z'],
+                ['0', '1', '2'], ['R', 'T', 'Z'], ['L', 'Q', 'T'],
                 ['E', 'N'], ['1', '2'], ['0', '1']]:
 
             if sorted(comps) == sorted(scheme):

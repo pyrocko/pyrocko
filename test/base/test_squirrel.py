@@ -961,12 +961,13 @@ class SquirrelTestCase(unittest.TestCase):
         finally:
             shutil.rmtree(tempdir)
 
-    @common.require_internet
-    def test_restitution(self):
+    #@common.require_internet
+    def test_operators(self):
         # 1994 Bolivia earthquake
         tmin = util.str_to_time('1994-06-09 00:00:00')
         tmax = util.str_to_time('1994-06-09 03:00:00')
         database = squirrel.Database()
+        traces = []
         try:
             sq = squirrel.Squirrel(database=database)
             tempdir = os.path.join(self.tempdir, 'test_restitution')
@@ -974,7 +975,7 @@ class SquirrelTestCase(unittest.TestCase):
                 'bgr',
                 dict(
                     network='GR',
-                    station='BFO',
+                    station='BFO,MOX',
                     channel='LH?'),
                 cache_path=tempdir)
 
@@ -982,27 +983,56 @@ class SquirrelTestCase(unittest.TestCase):
             sq.update_waveform_promises(tmin=tmin, tmax=tmax)
             sq.update_responses()
 
-            sq.add_operator(squirrel.Restitution(quantity='displacement'))
-            sq.add_operator(squirrel.Restitution(quantity='velocity'))
-            sq.add_operator(squirrel.Restitution(quantity='acceleration'))
-            sq.update_operator_mappings()
+            op_rest = squirrel.Restitution(
+                quantity='displacement',
+                frequency_min=0.002,
+                frequency_max=10.0)
 
-            traces = []
-            for extra in ['Rd', 'Rv', 'Ra']:
-                traces.extend(
-                    sq.get_waveforms(
-                        tmin=tmin, tmax=tmax,
-                        codes=('GR', 'BFO', '', 'LHZ', extra),
-                        operator_params=squirrel.RestitutionParameters(
-                            frequency_min=0.002,
-                            frequency_max=10.0)))
+            op_enz = squirrel.ToENZ()
+            op_rest.set_input(sq)
+            op_enz.set_input(op_rest)
+
+            op_enz2 = squirrel.ToENZ()
+            op_enz2.set_input(sq)
+
+            print(op_rest.describe())
+            print(op_enz.describe())
+            print(op_enz2.describe())
+
+            for channel in op_rest.get_channels():
+                print(channel.summary)
+
+            for channel in op_enz.get_channels():
+                print(channel.summary)
 
             traces.extend(
-                sq.get_waveforms(
-                    tmin=tmin, tmax=tmax,
-                    codes=('GR', 'BFO', '', 'LHZ', '')))
+                op_rest.get_waveforms(
+                    tmin=tmin,
+                    tmax=tmax,
+                    codes=('GR', '*', '', 'LH?', '*')))
 
-            # trace.snuffle(traces)
+            traces.extend(
+                op_enz.get_waveforms(
+                    tmin=tmin, tmax=tmax,
+                    codes=('GR', '*', '', 'LH?', '*')))
+
+            op_trz = squirrel.ToTRZ(origin=pmodel.Location(lat=0., lon=0.))
+            op_trz.set_input(sq)
+            print(op_trz.describe())
+            for channel in op_trz.get_channels():
+                print(channel)
+
+            trs_trz = op_trz.get_waveforms(
+                tmin=tmin, tmax=tmax)
+
+            for tr in trs_trz:
+                print(tr.summary)
+
+            for coverage in op_enz.get_coverage('waveform'):
+                print(coverage)
+
+            for coverage in op_enz.get_coverage('waveform', codes='x.y.z.a'):
+                print(coverage)
 
         finally:
             shutil.rmtree(tempdir)
@@ -1320,6 +1350,93 @@ class SquirrelTestCase(unittest.TestCase):
             == C('GR.*.*.*.*')
         assert squirrel.merge_codes(codes, 'replace_deep') \
             == C('GR.A0?.*.BH?.*')
+
+    def test_operator_inputs(self):
+        tmin = util.str_to_time('2020-01-01 00:00:00')
+        traces = [
+            trace.Trace(
+                'N', sta, '', 'Z', tmin=tmin, deltat=1.0,
+                ydata=num.zeros(100))
+            for sta in ['A', 'B']]
+
+        sq = squirrel.Squirrel(database=squirrel.Database())
+        sq.add_volatile_waveforms(traces)
+
+        # Several inputs: raw Squirrel and another operator.
+        op_pre = squirrel.Operator()
+        op_pre.add_input(sq)
+
+        op = squirrel.Operator()
+        op.add_input(sq)
+        op.add_input(op_pre)
+
+        assert op.get_squirrel() is sq
+        counter = op.update_mappings()
+        assert op.update_mappings() == counter
+        assert len(op.get_codes()) == 2
+
+        # Grouping in chopper.
+        op_single = squirrel.Operator()
+        op_single.add_input(sq)
+        batches = list(op_single.chopper_waveforms(
+            tmin=tmin, tmax=tmin+100., group_by='{i.network}.{i.station}...'))
+
+        assert sorted(
+            tuple(tr.station for tr in batch.traces) for batch in batches) \
+            == [('A',), ('B',)]
+
+    def test_operator_default_processing(self):
+        from pyrocko.carpet import Carpet
+        from pyrocko.model.codes import CodesNSLCE
+        from pyrocko.squirrel.operators.base import CodesMapping
+
+        tmin = util.str_to_time('2020-01-01 00:00:00')
+        traces = [
+            trace.Trace(
+                'N', sta, '', 'Z', tmin=tmin, deltat=1.0,
+                ydata=num.arange(100, dtype=float))
+            for sta in ['A', 'B']]
+
+        sq = squirrel.Squirrel(database=squirrel.Database())
+        sq.add_volatile_waveforms(traces)
+
+        # Operator relying on the default process_waveforms() and
+        # process_carpets(), only renaming codes.
+        op = squirrel.Operator(
+            codes_projection=squirrel.CodesProjection(
+                template='{i.network}.{i.station}.{i.location}.{i.channel}'
+                         '.{i.extra}X'))
+        op.add_input(sq)
+
+        trs = op.get_waveforms(tmin=tmin, tmax=tmin+100.)
+        assert sorted(tr.codes for tr in trs) == [
+            CodesNSLCE('N', sta, '', 'Z', 'X') for sta in 'AB']
+
+        for tr in trs:
+            num.testing.assert_equal(tr.ydata, num.arange(100))
+
+        assert all(
+            tr.extra == ''
+            for tr in sq.get_waveforms(tmin=tmin, tmax=tmin+100.))
+
+        mapping = CodesMapping()
+        mapping.in_codes = (CodesNSLCE('N', 'A', '', 'Z', ''),)
+        mapping.out_codes = (CodesNSLCE('N', 'A', '', 'Z', 'X'),)
+
+        carpet_in = Carpet(
+            data=num.ones((3, 10)),
+            codes=mapping.in_codes[0],
+            tmin=tmin,
+            deltat=1.0)
+
+        carpets = op.process_carpets(
+            [mapping], list(mapping.in_codes),
+            {mapping.in_codes[0]: [carpet_in]})
+
+        assert len(carpets) == 1
+        assert carpets[0].codes == mapping.out_codes[0]
+        assert carpet_in.codes == mapping.in_codes[0]
+        assert carpets[0].data is carpet_in.data
 
 
 def do_chopper(params):
