@@ -407,6 +407,9 @@ class CodesMatcher:
 
         return any(rpat.match(scodes) for rpat in self._pats_nonexact)
 
+    def filter(self, it):
+        return filter(self.match, it)
+
 
 def match_codes_any(patterns, codes):
 
@@ -648,6 +651,25 @@ def tscale_to_kscale(tscale):
     return int(num.searchsorted(tscale_edges, tscale))
 
 
+def get_selection_args(
+        kind_id, obj=None, tmin=None, tmax=None, time=None, codes=None):
+
+    if codes is not None:
+        codes = codes_patterns_for_kind(kind_id, codes)
+
+    if time is not None:
+        tmin = time
+        tmax = time
+
+    if obj is not None:
+        tmin = tmin if tmin is not None else obj.tmin
+        tmax = tmax if tmax is not None else obj.tmax
+        codes = codes if codes is not None else codes_patterns_for_kind(
+            kind_id, obj.codes)
+
+    return tmin, tmax, codes
+
+
 @squirrel_content
 class Station(Location):
     '''
@@ -839,6 +861,16 @@ class Sensor(ChannelBase):
             cls(channels=channels,
                 **dict(zip(ChannelBase.T.propnames, args)))
             for args, channels in groups.items()]
+
+    @classmethod
+    def from_channels_single(cls, channels):
+        args = channels[0]._get_sensor_args()
+        for channel in channels:
+            assert args == channel._get_sensor_args()
+
+        return cls(
+            channels=channels,
+            **dict(zip(ChannelBase.T.propnames, args)))
 
     def channel_vectors(self):
         return num.vstack(
@@ -1955,4 +1987,5 @@ __all__ = [
     'Nut',
     'Coverage',
     'WaveformPromise',
+    'QuantityType',
 ]
