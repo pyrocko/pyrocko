@@ -35,7 +35,7 @@ from pyrocko.model.codes import CodesError, Codes, CodesNSLCE, CodesNSL, \
     CodesX, CodesMatcher, match_codes, match_codes_any, classify_patterns, \
     merge_codes # noqa
 
-from .error import ConversionError
+from .error import ConversionError, SensorAggregationError
 
 
 d2r = num.pi / 180.
@@ -285,6 +285,25 @@ def tscale_to_kscale(tscale):
     return int(num.searchsorted(tscale_edges, tscale))
 
 
+def get_selection_args(
+        kind_id, obj=None, tmin=None, tmax=None, time=None, codes=None):
+
+    if codes is not None:
+        codes = codes_patterns_for_kind(kind_id, codes)
+
+    if time is not None:
+        tmin = time
+        tmax = time
+
+    if obj is not None:
+        tmin = tmin if tmin is not None else obj.tmin
+        tmax = tmax if tmax is not None else obj.tmax
+        codes = codes if codes is not None else codes_patterns_for_kind(
+            kind_id, obj.codes)
+
+    return tmin, tmax, codes
+
+
 @squirrel_content
 class Station(Location):
     '''
@@ -460,6 +479,22 @@ def cut_intervals(channels):
     return channels_out
 
 
+class ProjectionError(Exception):
+    pass
+
+
+g_default_earthmodel = None
+
+
+def get_default_earthmodel():
+    from pyrocko import cake
+    global g_default_earthmodel
+    if g_default_earthmodel is None:
+        g_default_earthmodel = cake.load_model()
+
+    return g_default_earthmodel
+
+
 class Sensor(ChannelBase):
     '''
     Representation of a channel group.
@@ -485,6 +520,20 @@ class Sensor(ChannelBase):
             cls(channels=channels,
                 **dict(zip(ChannelBase.T.propnames, args)))
             for args, channels in groups.items()]
+
+    @classmethod
+    def from_channels_single(cls, channels):
+        args = channels[0]._get_sensor_args()
+        for channel in channels[1:]:
+            if args != channel._get_sensor_args():
+                raise SensorAggregationError(
+                    'Cannot create sensor from incompatible channels:'
+                    '\n  %s' % (
+                        '\n  '.join(channel.summary for channel in channels)))
+
+        return cls(
+            channels=channels,
+            **dict(zip(ChannelBase.T.propnames, args)))
 
     def channel_vectors(self):
         return num.vstack(
@@ -525,6 +574,87 @@ class Sensor(ChannelBase):
             [math.sin(azimuth*d2r), math.cos(azimuth*d2r), 0.],
             [0., 0., 1.]], dtype=float), 'TRZ')
 
+    def incidence_angle(
+            self,
+            source=None,
+            earthmodel=None,
+            phases=None,
+            distance=None,
+            source_depth=None):
+
+        from pyrocko import cake
+        if earthmodel is None:
+            earthmodel = get_default_earthmodel()
+
+        if len(phases) == 0:
+            phases = [cake.PhaseDef(x) for x in ['p', 'P']]
+
+        if distance is None:
+            if source is None:
+                raise ProjectionError(
+                    'Cannot determine incidence angle: '
+                    'Neither `source` nor `distance` given.')
+
+            distance = source.distance_to(self) * cake.m2d
+
+        if source_depth is None:
+            if source is None:
+                raise ProjectionError(
+                    'Cannot determine incidence angle: '
+                    'Neither `source` nor `source_depth` given.')
+
+            source_depth = source.depth
+
+        rays = earthmodel.arrivals(
+            [distance],
+            phases,
+            zstart=source_depth,
+            zstop=self.depth)
+
+        if len(rays) == 0:
+            raise ProjectionError(
+                'Cannot determine incidence angle: No rays connecting '
+                'source and sensor could be determined.')
+
+        return rays[0].incidence_angle()
+
+    def projection_to_lqt(
+            self,
+            source=None,
+            earthmodel=None,
+            phases=None,
+            distance=None,
+            source_depth=None,
+            azimuth=None,
+            incidence=None):
+
+        if azimuth is None:
+            if source is None:
+                raise ProjectionError(
+                    'Cannot determine azimuth angle: No `source` given.')
+
+            azimuth = source.azibazi_to(self)[1]
+
+        if incidence is None:
+            incidence = self.incidence_angle(
+                source=source,
+                earthmodel=earthmodel,
+                phases=phases,
+                distance=distance,
+                source_depth=source_depth)
+
+        # reference is Plesinger et al., 1986
+        iprime = incidence
+        ca = math.cos(azimuth*d2r)
+        sa = math.sin(azimuth*d2r)
+        ci = math.cos(iprime*d2r)
+        si = math.sin(iprime*d2r)
+
+        return self.projection_to(num.array([
+            [-si*sa, -si*ca, ci],  # noqa
+            [ ci*sa,  ci*ca, si],  # noqa
+            [   -ca,     sa, 0.]], dtype=float), 'LQT')  # noqa
+
     def project_to_enz(self, traces):
         from pyrocko import trace
 
@@ -537,6 +667,30 @@ class Sensor(ChannelBase):
 
         matrix, in_channels, out_channels = self.projection_to_trz(
             source, azimuth=azimuth)
+
+        return trace.project(traces, matrix, in_channels, out_channels)
+
+    def project_to_lqt(
+            self,
+            source,
+            traces,
+            earthmodel=None,
+            phases=None,
+            distance=None,
+            source_depth=None,
+            azimuth=None,
+            incidence=None):
+
+        from pyrocko import trace
+
+        matrix, in_channels, out_channels = self.projection_to_lqt(
+            source=source,
+            earthmodel=earthmodel,
+            phases=phases,
+            distance=distance,
+            source_depth=source_depth,
+            azimuth=azimuth,
+            incidence=incidence)
 
         return trace.project(traces, matrix, in_channels, out_channels)
 
@@ -1672,4 +1826,5 @@ __all__ = [
     'join_coverages',
     'make_rich_coverage',
     'WaveformPromise',
+    'QuantityType',
 ]
