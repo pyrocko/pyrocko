@@ -1494,6 +1494,10 @@ def iter_years(tmin, tmax):
         t = tend
 
 
+def yesterday():
+    return day_start(time.time() - 24*60*60)
+
+
 def today():
     return day_start(time.time())
 
@@ -1682,6 +1686,8 @@ def str_to_time_fillup(s):
 
     if s == 'now':
         return time.time()
+    elif s == 'yesterday':
+        return yesterday()
     elif s == 'today':
         return today()
     elif s == 'tomorrow':
