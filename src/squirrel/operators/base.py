@@ -579,7 +579,10 @@ class Operator(Object):
         trs = self.process_waveforms(
             mappings, in_codes, codes_to_traces, tmin, tmax)
 
-        return [tr for tr in trs if match_codes_any(codes, tr.codes)]
+        if codes is not None:
+            trs = [tr for tr in trs if match_codes_any(codes, tr.codes)]
+
+        return trs
 
     def get_squirrel(self):
         from ..base import Squirrel
