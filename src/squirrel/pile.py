@@ -388,6 +388,17 @@ class Pile(object):
             if nut_selector is None or nut_selector(nut):
                 yield trace.Trace(**nut.trace_kwargs)
 
+    def all(self, *args, **kwargs):
+        '''
+        Shortcut to aggregate :py:meth:`chopper` output into a single list.
+        '''
+
+        alltraces = []
+        for traces in self.chopper(*args, **kwargs):
+            alltraces.extend(traces)
+
+        return alltraces
+
     def gather_keys(self, gather, selector=None):
         codes_gather = trace_callback_to_codes_callback(gather)
         codes_selector = trace_callback_to_codes_callback(selector)
