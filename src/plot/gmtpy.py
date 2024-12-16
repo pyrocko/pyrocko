@@ -1936,7 +1936,7 @@ class ScaleGuru(Guru):
                 if not ax.limits or None in ax.limits:
                     if len(x) >= 1:
                         if in_range is not True:
-                            xmasked = num.where(in_range, x, num.NaN)
+                            xmasked = num.where(in_range, x, num.nan)
                             if percent_interval is None:
                                 range_this = (
                                     num.nanmin(xmasked),

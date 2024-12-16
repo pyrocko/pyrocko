@@ -942,7 +942,7 @@ def stored_attribute_table_plots(phase_ids, options, args, attribute):
     if isinstance(store.config, gf.ConfigTypeA):
         attribute_vals = num.empty(num_d)
         for phase_id in phase_ids:
-            attribute_vals[:] = num.NAN
+            attribute_vals[:] = num.nan
             for i, d in enumerate(distances):
                 if attribute == 'phase':
                     attribute_vals[i] = store.t(phase_id, (source_depth, d))
