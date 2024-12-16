@@ -194,7 +194,7 @@ class Array(Object):
                 return literal(b64encode(data).decode('utf-8'))
             elif self.serialize_as == 'list':
                 if self.dtype == complex:
-                    return [repr(x) for x in val]
+                    return [repr(complex(x)) for x in val]
                 else:
                     return val.tolist()
             elif self.serialize_as == 'npy':

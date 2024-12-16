@@ -1232,10 +1232,10 @@ class Complex(Object):
             return val
 
         def to_save(self, value):
-            return repr(value)
+            return repr(complex(value))
 
         def to_save_xml(self, value):
-            return repr(value)
+            return repr(complex(value))
 
 
 class Bool(Object):
