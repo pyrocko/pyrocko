@@ -28,7 +28,7 @@ if gui_toolkit == 'qt4':
 qt5_backend_available = 'Qt5Agg' in matplotlib.rcsetup.all_backends
 
 if not qt5_backend_available:
-    logger.warn(
+    logger.warning(
         'Matplotlib Qt5Agg backend is not available. Snufflings drawing '
         'matplotlib figures may not work properly.')
 

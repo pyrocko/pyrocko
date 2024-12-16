@@ -168,7 +168,7 @@ def eventextras_to_array(events, tab):
     if num.unique(n_extras).shape[0] > 1:
         msg = 'Not all events have equal number of extras.'
         if num.unique(n_extras).shape[0] == 2 and num.min(n_extras) == 0:
-            logger.warn(msg + ' Zero length lists are filled with NaNs.')
+            logger.warning(msg + ' Zero length lists are filled with NaNs.')
         else:
             raise IndexError(
                 msg + ' Several non-zero shapes detected. Please check.')

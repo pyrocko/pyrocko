@@ -401,7 +401,7 @@ class FDSNSource(Source, has_paths.HasPaths):
                     shutil.rmtree(waveforms_path_compat)
 
                 else:
-                    logger.warn(
+                    logger.warning(
                         'Waveform archive with old layout: %s\n💡 Use '
                         '`squirrel ... --upgrade-storage` or '
                         '`.add_dataset(..., upgrade=True)` '

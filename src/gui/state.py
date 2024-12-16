@@ -35,7 +35,7 @@ def state_bind(
                     update_state(widget, state)
                 gui_util.de_errorize(widget)
             except Exception as e:
-                logger.warn('Caught exception: %s' % e)
+                logger.warning('Caught exception: %s' % e)
                 gui_util.errorize(widget)
 
         return wrap_update_widget, wrap_update_state
