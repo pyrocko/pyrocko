@@ -1292,6 +1292,23 @@ class MultiTriangleSTF(STF):
              'symmetric around source.time, +1.0: right -> last control node '
              'is at source.time')
 
+    def centroid_time(self, tref):
+        amplitudes = num.abs(self.amplitudes) \
+            / num.sum(num.abs(self.amplitudes))
+        times = num.arange(amplitudes.size) * self.deltat
+        return tref + sum(amplitudes * times) / num.sum(amplitudes) \
+            - (self.anchor + 1) * (self.amplitudes.size-1)/2 * self.deltat
+
+    @property
+    def effective_duration(self):
+        # only halfway correct
+        amplitudes = num.abs(self.amplitudes) \
+            / num.sum(num.abs(self.amplitudes))
+        times = num.arange(amplitudes.size) * self.deltat
+        t0 = sum(amplitudes * times) / num.sum(amplitudes)
+        return num.sqrt(num.sum((times - t0)**2 * amplitudes)) \
+            * 2. * num.sqrt(3.)
+
     def discretize_t(self, deltat, tref):
         control_amplitudes = self.amplitudes
         control_deltat = self.deltat
@@ -1320,9 +1337,12 @@ class MultiTriangleSTF(STF):
             axis=0)
 
         times = times[:-1] + 0.5 * deltat
-        amplitudes = num.diff(amplitudes) / deltat
+        amplitudes = num.diff(amplitudes)
 
         return times, amplitudes
+
+    def normalize(self):
+        self.amplitudes /= (self.deltat * num.sum(num.abs(self.amplitudes)))
 
 
 class STFMode(StringChoice):
