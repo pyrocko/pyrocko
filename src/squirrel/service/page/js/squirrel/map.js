@@ -131,6 +131,8 @@ export const squirrelMap = () => {
         resizeHandler()
         window.addEventListener('resize', resizeHandler)
 
+        my.resizeHandler = resizeHandler
+
         map.on('click', (ev) => {
             rotate(projection.invert(d3.pointer(ev)))
         })
