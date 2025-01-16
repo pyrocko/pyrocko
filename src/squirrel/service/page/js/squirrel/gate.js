@@ -10,6 +10,7 @@ const TIME_MAX = tomorrow() + 5 * 365 * 24 * 60 * 60
 export const squirrelGate = (gate_id_) => {
     const gate_id = gate_id_
     const counter = ref(0)
+    const filter = ref('')
     const codes = shallowRef([])
     const channels = shallowRef([])
     const sensors = shallowRef([])
@@ -73,7 +74,7 @@ export const squirrelGate = (gate_id_) => {
         responses.value = await fetchResponses()
     }
 
-    return { codes, timeSpans, channels, sensors, responses, update, counter }
+    return { codes, timeSpans, channels, sensors, responses, update, counter, filter }
 }
 
 export const squirrelBlock = (block) => {
@@ -342,12 +343,14 @@ export const setupGates = () => {
     })
 
     const sensors = computed(() => {
+        console.log('inside setupGate() -> sensors')
         const sensors = []
         for (const gate of gates.value) {
             for (const sensor of gate.sensors) {
                 sensors.push(sensor)
             }
         }
+        console.log("setupGates received sensors:", sensors)
         return sensors
     })
 
@@ -359,6 +362,17 @@ export const setupGates = () => {
             }
         }
         return Array.from(codes)
+    })
+
+    //responses
+    const responses = computed(() => {
+        const responses = []
+        for (const gate of gates.value) {
+            for (const r of gate.responses) {
+                responses.push(r)
+            }
+        }
+        return responses
     })
 
     const timeSpans = computed(() => {
@@ -422,6 +436,7 @@ export const setupGates = () => {
         codes,
         channels,
         sensors,
+        responses,
         timeSpans,
         getCoverages,
         getCarpets,
@@ -433,6 +448,7 @@ let gates = null
 export const squirrelGates = () => {
     if (gates === null) {
         gates = setupGates()
+        console.log("gates === null, in squirrelGates now running setupGates()")
     }
     return gates
 }

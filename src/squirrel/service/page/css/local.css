@@ -77,3 +77,34 @@ svg text{
 .input-error, .input-error:focus {
     background-color: #eebbbb;
 }
+
+.close-btn {
+    background: transparent;
+    border: none;
+    color: rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    transition: color 0.2s ease, transform 0.1s ease;
+}
+
+.close-btn:hover {
+    color: rgba(0, 0, 0, 0.8);
+    transform: scale(1.2);
+}
+
+.add-tab-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #007bff;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.1s ease;
+}
+
+.add-tab-btn:hover {
+    background: rgba(0, 123, 255, 0.2);
+    color: #0056b3;
+    transform: scale(1.1);
+}
