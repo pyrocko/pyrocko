@@ -198,7 +198,6 @@ export const squirrelTimeline = () => {
     }
 
     const pointerDownHandler = (ev) => {
-        console.log('down')
         container.node().setPointerCapture(ev.pointerId)
         trackStart = {
             position: [ev.clientX, ev.clientY],
@@ -211,7 +210,6 @@ export const squirrelTimeline = () => {
     }
 
     const pointerMoveHandler = (ev) => {
-        console.log(ev)
         //if (ev.buttons == 0) {
         //    trackStart = null
         //    return
@@ -241,7 +239,6 @@ export const squirrelTimeline = () => {
     }
 
     const pointerUpHandler = (ev) => {
-        console.log('up')
         trackStart = null
     }
 
@@ -740,6 +737,6 @@ export const squirrelTimeline = () => {
         watch([gates.counter], update)
         watch([gates.codes], updateCodes)
     }
-
+    my.resizeHandler = resizeHandler
     return my
 }
