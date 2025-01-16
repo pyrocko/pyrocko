@@ -1,9 +1,14 @@
+<<<<<<< HEAD
 import { ref, computed, onMounted, watch } from '../vue.esm-browser.js'
+=======
+import { ref, computed, onMounted, nextTick } from '../vue.esm-browser.js'
+>>>>>>> 463c1112 (service-test: tabs + components-based architecture)
 import { squirrelMap } from '../squirrel/map.js'
 import { squirrelTimeline } from '../squirrel/timeline.js'
 import { squirrelGates } from '../squirrel/gate.js'
 import { squirrelConnection } from '../squirrel/connection.js'
 
+<<<<<<< HEAD
 const positiveOrNull = (s) => {
     if (s.trim() == '') {
         return null
@@ -23,11 +28,24 @@ export const componentTimeline = {
         const gates = squirrelGates()
 
         const timeline = squirrelTimeline()
+=======
+export const componentTimeline = {
+    setup() {
+
+        console.log('componentTimeline mounted')
+        const gates = squirrelGates()
+        const frequencyMin = ref(gates.frequencyMin)
+        const frequencyMax = ref(gates.frequencyMax)
+
+        const timeline = squirrelTimeline()
+        
+>>>>>>> 463c1112 (service-test: tabs + components-based architecture)
 
         onMounted(() => {
             d3.select('#timeline').call(timeline)
         })
 
+<<<<<<< HEAD
         const yMinInput = ref('')
         const yMaxInput = ref('')
         const yError = ref(null)
@@ -53,6 +71,9 @@ export const componentTimeline = {
         watch(yMaxInput, propagate)
 
         return { yMinInput, yMaxInput, yError }
+=======
+        return { frequencyMin, frequencyMax, timeline }
+>>>>>>> 463c1112 (service-test: tabs + components-based architecture)
     },
     template: `
         <div id="timeline" tabindex="0" class="vbox-main tab-pane">
@@ -60,10 +81,17 @@ export const componentTimeline = {
         <div class="container">
             <div class="form-group row">
                 <div class="col-2">
+<<<<<<< HEAD
                     <input type="text" class="form-control" :class="{ 'input-error': yError }" v-model="yMinInput" />
                 </div>
                 <div class="col-2">
                     <input type="text" class="form-control" :class="{ 'input-error': yError }" v-model="yMaxInput" />
+=======
+                    <input type="text" class="form-control" v-model="frequencyMin" />
+                </div>
+                <div class="col-2">
+                    <input type="text" class="form-control" v-model="frequencyMax" />
+>>>>>>> 463c1112 (service-test: tabs + components-based architecture)
                 </div>
             </div>
         </div>
@@ -73,10 +101,21 @@ export const componentTimeline = {
 export const componentMap = {
     setup() {
         let map = squirrelMap()
+<<<<<<< HEAD
         onMounted(() => {
             d3.select('#map').call(map)
             map.addBasemap()
         })
+=======
+        let resizeHandlerMap = map.resizeHandler
+        onMounted(() => {
+            d3.select('#map').call(map)
+            map.addBasemap().addSensors()
+        })
+
+        console.log('componentMap mounted')
+        return { resizeHandlerMap }
+>>>>>>> 463c1112 (service-test: tabs + components-based architecture)
     },
     template: `
       <div id="map" class="map-container vbox-main tab-pane"></div>
@@ -96,16 +135,32 @@ export const componentTable = {
         }
 
         const setOption = (option) => {
+<<<<<<< HEAD
             selectedOption.value = option
         }
 
         const gates = squirrelGates()
 
         const sensors = gates.sensors
+=======
+            console.log('Selected:', option)
+            selectedOption.value = option
+        }
+
+        const sensors = ref([])
+>>>>>>> 463c1112 (service-test: tabs + components-based architecture)
         const currentSort = ref('codes')
         const currentSortDir = ref('asc')
         const selectedOption = ref('Station')
 
+<<<<<<< HEAD
+=======
+        const fetchSensors = async () => {
+            const connection = squirrelConnection()
+            sensors.value = await connection.request('raw/get_sensors')
+        }
+
+>>>>>>> 463c1112 (service-test: tabs + components-based architecture)
         const sortedSensors = computed(() => {
             return [...sensors.value].sort((a, b) => {
                 let modifier = 1
@@ -118,6 +173,17 @@ export const componentTable = {
                 return 0
             })
         })
+<<<<<<< HEAD
+=======
+        onMounted(() => {
+        //   const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+        //   tooltipTriggerList.forEach((tooltipTriggerEl) => {
+        //     new bootstrap.Tooltip(tooltipTriggerEl)
+        //   })
+            fetchSensors()
+        })
+        console.log('componentTable mounted')
+>>>>>>> 463c1112 (service-test: tabs + components-based architecture)
         return {
             sortTable,
             setOption,

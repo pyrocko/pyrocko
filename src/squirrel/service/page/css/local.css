@@ -73,7 +73,10 @@ svg text{
    -ms-user-select: none;
    user-select: none;
 }
+<<<<<<< HEAD
 
 .input-error, .input-error:focus {
     background-color: #eebbbb;
 }
+=======
+>>>>>>> 463c1112 (service-test: tabs + components-based architecture)

@@ -191,6 +191,10 @@ export const squirrelBlock = (block) => {
     return my
 }
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 463c1112 (service-test: tabs + components-based architecture)
 export const setupGates = () => {
     const gates = ref([])
     const timeMin = ref(TIME_MIN)
@@ -431,7 +435,11 @@ export const setupGates = () => {
 let gates = null
 
 export const squirrelGates = () => {
+<<<<<<< HEAD
     if (gates === null) {
+=======
+    if (gates === null) { 
+>>>>>>> 463c1112 (service-test: tabs + components-based architecture)
         gates = setupGates()
     }
     return gates

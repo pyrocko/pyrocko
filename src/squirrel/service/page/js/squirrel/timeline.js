@@ -740,6 +740,6 @@ export const squirrelTimeline = () => {
         watch([gates.counter], update)
         watch([gates.codes], updateCodes)
     }
-
+    my.resizeHandler = resizeHandler
     return my
 }
