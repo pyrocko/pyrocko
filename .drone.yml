@@ -450,14 +450,10 @@ steps:
 - name: test-base
   commands:
   - conda run --no-capture-output --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/base
-  depends_on:
-  - install
 
 - name: test-gf
   commands:
   - conda run --no-capture-output --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/gf
-  depends_on:
-  - install
 
 - name: test-examples
   commands:
@@ -468,28 +464,17 @@ steps:
   - New-Item -Path test\\example_run_dir\\gf_abruzzo_nearfield_vmod_Ameri -ItemType SymbolicLink -Value C:\\vagrant\\test-data\\gf_stores\\gf_abruzzo_nearfield_vmod_Ameri
   - New-Item -Path test\\example_run_dir\\iceland_reg_v2 -ItemType SymbolicLink -Value C:\\vagrant\\test-data\\gf_stores\\iceland_reg_v2
   - conda run --no-capture-output --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/examples
-  depends_on:
-  - install
 
 - name: test-gui
   commands:
   - conda run --no-capture-output --name test_env_${DRONE_BUILD_NUMBER} python -m pytest -v test/gui/test_snuffler.py
-  depends_on:
-  - install
 
 - name: finalize
   commands: []
-  depends_on:
-  - test-base
-  - test-gf
-  - test-examples
-  - test-gui
 
 - name: cleanup
   commands:
   - conda env remove --name test_env_${DRONE_BUILD_NUMBER} --yes
-  depends_on:
-  - finalize
   when:
     status:
     - failure
