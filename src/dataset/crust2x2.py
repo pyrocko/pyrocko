@@ -137,7 +137,7 @@ class Crust2Profile(object):
         '''
 
         if ilayer == LBELOWCRUST:
-            thickness = num.Inf
+            thickness = num.inf
         else:
             thickness = self._thickness[ilayer]
 
