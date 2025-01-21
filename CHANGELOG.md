@@ -4,7 +4,7 @@ All notable changes to Pyrocko are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## Unreleased
+## v2025.01.21
 
 ### Added
 - GF: new sources: `CombiSFSource`, `SimpleLandslideSource`
@@ -19,11 +19,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   updating, merging). Loosened dependency on processing time increment.
 - NumPy 2 compatibility
 
-### Changed
-- Squirrel: various small fixes and performance improvements.
-
 ### Fixed
-- Fix error in `sta_lta_right`.
+- Fix error in `sta_lta_right`
+- Various small fixes and performance improvements
+- Improved compatibility
 
 ### Removed
 - Dropped python 3.7 support
