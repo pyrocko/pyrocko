@@ -416,6 +416,7 @@ class SpectrogramGroup(guts.Object):
 class MultiSpectrogramOperator(base.Operator):
 
     windowing = Pow2Windowing.T()
+    restitute = guts.Bool.T(default=True)
 
     @property
     def kind_requires(self):
@@ -487,14 +488,15 @@ class MultiSpectrogramOperator(base.Operator):
                 print('skipped')
                 continue
 
-            try:
-                resp = self._input \
-                    .get_response(codes=codes, tmin=tmin, tmax=tmax) \
-                    .get_effective('velocity')
+            if self.restitute:
+                try:
+                    resp = self._input \
+                        .get_response(codes=codes, tmin=tmin, tmax=tmax) \
+                        .get_effective('velocity')
 
-            except error.SquirrelError as e:
-                logger.error(e)
-                continue
+                except error.SquirrelError as e:
+                    logger.error(e)
+                    continue
 
             levels = []
             for ilevel in range(self.windowing.nlevels):
@@ -518,8 +520,9 @@ class MultiSpectrogramOperator(base.Operator):
 
                 frequencies = num.arange(nfrequencies) * frequency_delta
 
-                values[:, 1:] -= 2.0 * num.log(
-                    num.abs(resp.evaluate(frequencies[1:])))[num.newaxis, :]
+                if self.restitute:
+                    values[:, 1:] -= 2.0 * num.log(num.abs(resp.evaluate(
+                        frequencies[1:])))[num.newaxis, :]
 
                 levels.append(Spectrogram(
                     times=times,
