@@ -392,7 +392,7 @@ def get_ip(host):
                 s.close()
 
         except Exception:
-            ToolError(
+            raise ToolError(
                 'Could not determine default external IP address to bind to.')
 
     elif host == 'all':
