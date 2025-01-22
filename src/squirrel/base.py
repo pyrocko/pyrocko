@@ -182,7 +182,7 @@ class Batch(object):
             util.time_to_str(self.tmin),
             util.time_to_str(self.tmax))
 
-    def as_multitrace(
+    def as_carpet(
             self,
             codes=None,
             component_codes=None,
@@ -207,7 +207,7 @@ class Batch(object):
             tmax=self.tmax+self.tpad,
             codes=component_codes)
 
-        return multitrace.MultiTrace(
+        return multitrace.Carpet(
             data=data,
             codes=codes,
             component_codes=component_codes,
@@ -3383,6 +3383,7 @@ Sources:                       %s''' % (
 
 
 __all__ = [
+    'Batch',
     'Squirrel',
     'SquirrelStats',
 ]

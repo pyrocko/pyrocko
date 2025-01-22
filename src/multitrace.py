@@ -8,6 +8,7 @@ Multi-component waveform data model.
 '''
 
 import logging
+import re
 from functools import partialmethod
 from collections import defaultdict
 
@@ -27,7 +28,115 @@ from .squirrel.operators.base import ReplaceComponentTranslation
 logger = logging.getLogger('pyrocko.multitrace')
 
 
-class MultiTrace(Object):
+class CarpetStringFiller:
+
+    def __init__(self, carpet, additional={}):
+        self.carpet = carpet
+        self.codes = carpet.codes
+        self.additional = additional
+
+    def __getitem__(self, k):
+        if k in ('network', 'station', 'location', 'channel', 'extra'):
+            return getattr(self.codes, k)
+
+        method = getattr(self, 'get_' + k, None)
+        if method:
+            return method()
+
+        return self.additional[k]
+
+    def _filename_safe(self, s):
+        return re.sub(r'[^0-9A-Za-z_-]', '_', s)
+
+    def get_network_safe(self):
+        return self._filename_safe(self.codes.network)
+
+    def get_station_safe(self):
+        return self._filename_safe(self.codes.station)
+
+    def get_location_safe(self):
+        return self._filename_safe(self.codes.location)
+
+    def get_channel_safe(self):
+        return self._filename_safe(self.codes.channel)
+
+    def get_extra_safe(self):
+        return self._filename_safe(self.codes.extra)
+
+    def get_nslce_safe(self):
+        return self._filename_safe('.'.join(self.codes))
+
+    def get_nslc_safe(self):
+        return self._filename_safe('.'.join(self.codes[:4]))
+
+    def get_network_dsafe(self):
+        return self._filename_safe(self.codes.network) or '_'
+
+    def get_station_dsafe(self):
+        return self._filename_safe(self.codes.station) or '_'
+
+    def get_location_dsafe(self):
+        return self._filename_safe(self.codes.location) or '_'
+
+    def get_channel_dsafe(self):
+        return self._filename_safe(self.codes.channel) or '_'
+
+    def get_extra_dsafe(self):
+        return self._filename_safe(self.codes.extra) or '_'
+
+    def get_tmin(self):
+        return util.time_to_str(
+            self.carpet.tmin, format='%Y-%m-%d_%H-%M-%S')
+
+    def get_tmax(self):
+        return util.time_to_str(
+            self.carpet.tmax, format='%Y-%m-%d_%H-%M-%S')
+
+    def get_tmin_ms(self):
+        return util.time_to_str(
+            self.carpet.tmin, format='%Y-%m-%d_%H-%M-%S.3FRAC')
+
+    def get_tmax_ms(self):
+        return util.time_to_str(
+            self.carpet.tmax, format='%Y-%m-%d_%H-%M-%S.3FRAC')
+
+    def get_tmin_us(self):
+        return util.time_to_str(
+            self.carpet.tmin, format='%Y-%m-%d_%H-%M-%S.6FRAC')
+
+    def get_tmax_us(self):
+        return util.time_to_str(
+            self.carpet.tmax, format='%Y-%m-%d_%H-%M-%S.6FRAC')
+
+    def get_tmin_year(self):
+        return util.time_to_str(self.carpet.tmin, format='%Y')
+
+    def get_tmin_month(self):
+        return util.time_to_str(self.carpet.tmin, format='%m')
+
+    def get_tmin_day(self):
+        return util.time_to_str(self.carpet.tmin, format='%d')
+
+    def get_tmax_year(self):
+        return util.time_to_str(self.carpet.tmax, format='%Y')
+
+    def get_tmax_month(self):
+        return util.time_to_str(self.carpet.tmax, format='%m')
+
+    def get_tmax_day(self):
+        return util.time_to_str(self.carpet.tmax, format='%d')
+
+    def get_julianday(self):
+        return str(util.julian_day_of_year(self.carpet.tmin))
+
+    def get_tmin_jday(self):
+        return util.time_to_str(self.carpet.tmin, format='%j')
+
+    def get_tmax_jday(self):
+        return util.time_to_str(self.carpet.tmax, format='%j')
+
+
+class Carpet(Object):
     '''
     Container for multi-component waveforms with common time span and sampling.
 
@@ -51,7 +160,7 @@ class MultiTrace(Object):
 
     codes = CodesNSLCE.T(
         default=CodesNSLCE.D(),
-        help='Codes identifying the multitrace as a whole.')
+        help='Codes identifying the carpet as a whole.')
 
     component_codes = List.T(
         CodesNSLCE.T(),
@@ -92,7 +201,7 @@ class MultiTrace(Object):
             tmin=None,
             deltat=None):
 
-        util.experimental_feature_used('pyrocko.multitrace')
+        util.experimental_feature_used('pyrocko.carpet')
 
         if data is not None and not isinstance(data, num.ndarray):
             data = self.T.get_property('data').regularize_extra(data)
@@ -115,7 +224,7 @@ class MultiTrace(Object):
                 and data.shape[1] != nsamples:
 
             raise ValueError(
-                'MultiTrace construction: mismatch between expected number of '
+                'Carpet construction: mismatch between expected number of '
                 'samples and number of samples in data array.')
 
         self.ntraces, nsamples = data.shape
@@ -125,7 +234,7 @@ class MultiTrace(Object):
 
         if len(component_codes) != self.ntraces:
             raise ValueError(
-                'MultiTrace construction: mismatch between number of traces '
+                'Carpet construction: mismatch between number of traces '
                 'and number of component codes given.')
 
         if deltat is None:
@@ -197,6 +306,10 @@ class MultiTrace(Object):
         '''
         return self.get_trace(i)
 
+    def fill_template(self, template, **additional):
+        return template.format_map(
+            CarpetStringFiller(self, additional=additional))
+
     def copy(self, data='copy'):
         '''
         Create a copy
@@ -214,12 +327,26 @@ class MultiTrace(Object):
         else:
             assert isinstance(data, ma.MaskedArray)
 
-        return MultiTrace(
+        return Carpet(
             data=data,
             codes=self.codes,
             component_codes=list(self.component_codes),
             tmin=self.tmin,
             deltat=self.deltat)
+
+    def chop(self, tmin, tmax):
+        istart = int(round((tmin - self.tmin) / self.deltat))
+        iend = int(round((tmax - self.tmin) / self.deltat))
+
+        istart = max(0, istart)
+        iend = min(self.nsamples, iend)
+        return Carpet(
+            data=self.data[:, istart:iend],
+            codes=self.codes,
+            component_codes=self.component_codes,
+            tmin=self.tmin + istart * self.deltat,
+            deltat=self.deltat,
+            component_axes=self.component_axes)
 
     def chopper(self, tinc):
         nwindows = int(num.floor((self.tmax - self.tmin) / tinc)) + 1
@@ -227,12 +354,13 @@ class MultiTrace(Object):
         for iwindow in range(nwindows):
             istart = int(num.floor((iwindow * tinc) / self.deltat))
             iend = istart + nsamples
-            yield MultiTrace(
+            yield Carpet(
                 data=self.data[:, istart:iend],
                 codes=self.codes,
                 component_codes=self.component_codes,
                 tmin=self.tmin + istart * self.deltat,
-                deltat=self.deltat)
+                deltat=self.deltat,
+                component_axes=self.component_axes)
 
     @property
     def tmax(self):
@@ -283,7 +411,7 @@ class MultiTrace(Object):
 
     def get_component_axis(self, name=None):
         if name is None:
-            return num.arange(self.ncomponents)
+            return num.arange(self.ntraces)
         else:
             return self.component_axes[name]
 
@@ -295,7 +423,7 @@ class MultiTrace(Object):
             **kwargs):
 
         if component_axis is None:
-            ys = num.arange(self.ncomponents)
+            ys = num.arange(self.ntraces)
         else:
             ys = self.component_axes[component_axis]
 
@@ -308,7 +436,7 @@ class MultiTrace(Object):
     def plot(
             self,
             component_axis=None,
-            component_axis_scale='lin',
+            component_axis_scale='linear',
             fslice=slice(1, None),
             path=None, **kwargs):
 
@@ -646,7 +774,7 @@ class MultiTrace(Object):
         data3.mask |= data3.data == 0
         data3.data[data3.mask] = 1.0
 
-        energy = MultiTrace(
+        energy = Carpet(
             data=data3,
             codes=self.codes,
             component_codes=component_codes,
@@ -687,22 +815,22 @@ def correlate(a, b, mode='valid', normalization=None, use_fft=False):
         return trace.correlate(
             a, b, mode=mode, normalization=normalization, use_fft=use_fft)
 
-    elif isinstance(a, Trace) and isinstance(b, MultiTrace):
-        return MultiTrace([
+    elif isinstance(a, Trace) and isinstance(b, Carpet):
+        return Carpet([
             trace.correlate(
                 a, b_,
                 mode=mode, normalization=normalization, use_fft=use_fft)
             for b_ in b])
 
-    elif isinstance(a, MultiTrace) and isinstance(b, Trace):
-        return MultiTrace([
+    elif isinstance(a, Carpet) and isinstance(b, Trace):
+        return Carpet([
             trace.correlate(
                 a_, b,
                 mode=mode, normalization=normalization, use_fft=use_fft)
             for a_ in a])
 
-    elif isinstance(a, MultiTrace) and isinstance(b, MultiTrace):
-        return MultiTrace([
+    elif isinstance(a, Carpet) and isinstance(b, Carpet):
+        return Carpet([
             trace.correlate(
                 a_, b_,
                 mode=mode, normalization=normalization, use_fft=use_fft)

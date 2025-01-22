@@ -171,7 +171,7 @@ class DelayAndSumTD(SquirrelCommand):
                     tpad=tpad,
                     **args.squirrel_query):
 
-                mtrace = batch.as_multitrace(codes=info.codes)
+                mtrace = batch.as_carpet(codes=info.codes)
                 # delta_frequency, ntrans, spectrum =  mtrace.get_spectrum()
                 mtrace.snuffle()
                 sys.exit()
