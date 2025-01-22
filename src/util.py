@@ -605,6 +605,54 @@ def check_time_class(t, error='raise'):
             assert False
 
 
+def iter_windows(
+        tmin=None,
+        tmax=None,
+        tinc=None,
+        tpad=0.0,
+        snap_window=False,
+        tmin_content=None,
+        tmax_content=None):
+
+    from pyrocko.squirrel import Batch
+
+    if snap_window and tinc is not None:
+        tmin = tmin if tmin is not None else tmin_content
+        tmax = tmax if tmax is not None else tmax_content
+        tmin = math.floor(tmin / tinc) * tinc
+        tmax = math.ceil(tmax / tinc) * tinc
+    else:
+        tmin = tmin if tmin is not None else (
+            tmin_content + tpad if tmin_content is not None else None)
+        tmax = tmax if tmax is not None else (
+            tmax_content - tpad if tmax_content is not None else None)
+
+    if None in (tmin, tmax):
+        return
+
+    if tinc is None:
+        tinc = tmax - tmin
+        nwin = 1
+    elif tinc == 0.0:
+        nwin = 1
+    else:
+        eps = 1e-6
+        nwin = max(1, int((tmax - tmin) / tinc - eps) + 1)
+
+    for iwin in range(nwin):
+        wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)
+
+        yield Batch(
+            tmin=wmin,
+            tmax=wmax,
+            tpad=tpad,
+            i=iwin,
+            n=nwin,
+            igroup=0,
+            ngroups=1,
+            traces=[])
+
+
 class Stopwatch(object):
     '''
     Simple stopwatch to measure elapsed wall clock time.
@@ -1618,7 +1666,6 @@ def str_to_time_fillup(s):
     Allows e.g. `'2010-01-01 00:00:00'` as `'2010-01-01 00:00'`,
     `'2010-01-01 00'`, ..., or `'2010'`.
     '''
-
     s = s.strip().replace('T', ' ').replace('_', ' ')
 
     if s == 'now':
@@ -1632,7 +1679,6 @@ def str_to_time_fillup(s):
 
     if len(s) in (4, 7, 10, 13, 16):
         s += '0000-01-01 00:00:00'[len(s):]
-
     return str_to_time(s)
 
 
