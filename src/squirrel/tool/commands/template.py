@@ -57,6 +57,16 @@ sources:
   # downloaded for a different application).
   #shared_waveforms: true
 
+  # Read authentication token from file:
+  #auth_token_path: 'tokens/{site}.pgp'
+
+  # Plain text user credentials:
+  #auth_credentials: ['username', 'password']
+
+  # Path to user Python module to locally patch metadata errors while
+  # importing:
+  #hotfix_module_path: 'hotfix/{site}.py'
+
   # FDSN query arguments to make metadata queries.
   # See http://www.fdsn.org/webservices/fdsnws-station-1.1.pdf
   # Time span arguments should not be added here, because they are handled
