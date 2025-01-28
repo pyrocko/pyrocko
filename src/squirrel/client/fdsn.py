@@ -255,7 +255,7 @@ class FDSNSource(Source, has_paths.HasPaths):
              'refreshed. This only applies to station-metadata. Waveforms do '
              'not expire. If set to ``None`` neither type of data  expires.')
 
-    cache_path = String.T(
+    cache_path = has_paths.Path.T(
         optional=True,
         help='Directory path where any downloaded waveforms and station '
              'meta-data are to be kept. By default the Squirrel '
@@ -277,7 +277,7 @@ class FDSNSource(Source, has_paths.HasPaths):
         optional=True,
         help='Authentication token to be presented to the FDSN server.')
 
-    auth_token_path = String.T(
+    auth_token_path = has_paths.Path.T(
         optional=True,
         help='Path to file containing the authentication token to be '
              'presented to the FDSN server.')
