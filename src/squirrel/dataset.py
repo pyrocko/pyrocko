@@ -101,6 +101,13 @@ def make_builtin_datasets():
             comment='FDSN: %s, network: %s, '
                     'station: %s' % (site, net, sta))
 
+    from pyrocko import gato
+    datasets[':' + 'gato-named-arrays'] = gato.get_named_arrays_dataset()
+    arrays = gato.get_named_arrays()
+    for aname in sorted(arrays.keys()):
+        datasets[':' + 'gato-%s' % aname[1:]] \
+            = gato.get_named_arrays_dataset(aname)
+
     return datasets
 
 
