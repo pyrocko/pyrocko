@@ -3,6 +3,7 @@
 This following list includes contributors how have directly touched code or documentation of Pyrocko. 
 It is not a complete list, in the sense that many others have influenced the development of Pyrocko through discussion, bug reports and more.
 
+* Alexandra Tsiakalou
 * Andreas Steinberg
 * Anne Mutzek
 * Carina Juretzek
