@@ -16,6 +16,7 @@ It is not a complete list, in the sense that many others have influenced the dev
 * Malte Metz
 * Marius Isken
 * Marius Kriegerowski
+* Matthias Ohrnberger
 * Maximilian Dwars
 * Nima Nooshiri
 * Richard McGraw
