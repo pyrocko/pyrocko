@@ -15,7 +15,8 @@ from os import SEEK_SET
 from pyrocko.file import (File, numtype2type, NoDataAvailable,
                           size_record_header, FileError)
 from pyrocko.util import ensuredirs
-from pyrocko.carpet import Carpet, check_overlaps
+from pyrocko.carpet import (
+    Carpet, CarpetOverlapError, check_overlaps, deoverlap, join)
 from pyrocko.squirrel.model import CodesNSLCE
 from .io_common import FileLoadError, FileSaveError
 
@@ -242,7 +243,15 @@ def save(
         max_open_files=10,
         overwrite=True,
         append=False,
-        check_append=False):
+        check_append=False,
+        check_append_merge=False,
+        check_append_hook=None):
+
+    # check_append_hook only makes a decision about whether appending
+    # is permitted, so it is meaningless without append.
+    if not append:
+        check_append = False
+        check_append_hook = None
 
     paths = set()
     by_path = defaultdict(list)
@@ -252,25 +261,77 @@ def save(
 
     for path in sorted(by_path.keys()):
         carpets_thisfile = by_path[path]
+        force_overwrite = False
 
         if path not in paths:
             if os.path.exists(path):
-                if not (overwrite or append):
-                    raise FileSaveError('file exists: %s' % path)
+                # Same overwrite/append/check_append_hook(fn) logic as
+                # pyrocko.io.mseed.save(): a hook may veto appending to
+                # a given file; if it does, fall back to truncating it
+                # (if permitted) or fail outright.
+                if not overwrite:
+                    if not append or (
+                            append and check_append_hook
+                            and not check_append_hook(path)):
 
-                if check_append:
+                        raise FileSaveError('file exists: %s' % path)
+
+                else:
+                    if not append or (
+                            append and check_append_hook
+                            and not check_append_hook(path)):
+
+                        os.unlink(path)
+
+                if check_append and os.path.exists(path):
                     carpets_infile = list(
                         cp for (_, cp) in iload(path, load_data=False))
-                    check_overlaps(
-                        carpets_thisfile,
-                        carpets_infile,
-                        message='Carpets to be stored would overlap with '
-                                'carpet already stored in file.\n  File: %s'
-                                % path)
+                    try:
+                        check_overlaps(
+                            carpets_thisfile,
+                            carpets_infile,
+                            message='Carpets to be stored would overlap '
+                                    'with carpet already stored in file.'
+                                    '\n  File: %s' % path)
+
+                    except CarpetOverlapError as e:
+                        if not check_append_merge:
+                            # Wrapped in FileSaveError, like every other
+                            # save failure in this module (and like
+                            # pyrocko.io.mseed.save() does for
+                            # overlapping traces), so callers can catch
+                            # one exception type regardless of format.
+                            raise FileSaveError(str(e)) from e
+
+                        # Carpets already in the file need their data
+                        # loaded this time, to actually merge them with
+                        # the new ones rather than just checking codes
+                        # and time spans.
+                        carpets_infile = list(
+                            cp for (_, cp)
+                            in iload(path, load_data=True))
+
+                        # New carpets are listed first so they take
+                        # precedence over already-stored data where
+                        # they overlap.
+                        carpets_thisfile = join(deoverlap(
+                            list(carpets_thisfile) + carpets_infile,
+                            precedence='first'))
+
+                        # The merged result replaces the file's
+                        # contents entirely, so this has to be a
+                        # truncating write, not an append, even though
+                        # the caller asked to append.
+                        force_overwrite = True
 
             ensuredirs(path)
 
-        with open(path, ['wb', 'ab'][append or path in paths]) as f:
+        if force_overwrite:
+            mode = 'wb'
+        else:
+            mode = ['wb', 'ab'][append or path in paths]
+
+        with open(path, mode) as f:
             paths.add(path)
             tf = CarpetFileIO(f)
             tf.save(carpets_thisfile)
