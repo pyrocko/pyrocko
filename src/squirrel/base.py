@@ -29,7 +29,7 @@ from pyrocko.plot import nice_time_tick_inc_approx_secs
 from . import model, io, cache, dataset
 
 from .model import to_kind_id, WaveformOrder, to_kind, to_codes, \
-    STATION, CHANNEL, RESPONSE, EVENT, WAVEFORM, codes_patterns_list, \
+    STATION, CHANNEL, RESPONSE, EVENT, WAVEFORM, CARPET, codes_patterns_list, \
     codes_patterns_for_kind
 from .client import fdsn, catalog
 from .selection import Selection, filldocs
@@ -209,7 +209,7 @@ class Batch(object):
             enforce_global_snap=True,
             warn_snap=False):
 
-        from pyrocko import multitrace
+        from pyrocko.carpet import Carpet
 
         if codes is not None:
             codes = model.CodesNSLCE(codes)
@@ -232,7 +232,7 @@ class Batch(object):
             tmax=self.tmax+self.tpad,
             codes=component_codes)
 
-        return multitrace.Carpet(
+        return Carpet(
             data=data,
             codes=codes,
             component_codes=component_codes,
@@ -394,6 +394,7 @@ class Squirrel(Selection):
 
         self._content_caches = {
             'waveform': cache.ContentCache(),
+            'carpet': cache.ContentCache(),
             'default': cache.ContentCache()}
 
         self._cache_path = cache_path
@@ -3034,6 +3035,89 @@ class Squirrel(Selection):
             chopped = chopped_weeded
 
         return chopped
+
+    @filldocs
+    def get_carpets(
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None,
+            kind_codes_ids=None,
+            uncut=False, join=True, load_data=True, nsamples_limit=None,
+            accessor_id='default'):
+
+        '''
+        Get carpets matching given constraints.
+
+        %(query_args)s
+        '''
+        from pyrocko import carpet
+
+        tmin, tmax, codes = self._get_selection_args(
+            CARPET, obj, tmin, tmax, time, codes)
+
+        self_tmin, self_tmax = self.get_time_span(['carpet'])
+
+        if None in (self_tmin, self_tmax):
+            logger.warning(
+                'No carpets available.')
+            return []
+
+        tmin = tmin if tmin is not None else self_tmin
+        tmax = tmax if tmax is not None else self_tmax
+
+        sample_rate_max = None
+        if nsamples_limit is not None:
+            sample_rate_max = nsamples_limit / (tmax - tmin)
+
+        nuts = sorted(
+            self.iter_nuts(
+                'carpet', tmin, tmax, codes,
+                sample_rate_max=sample_rate_max,
+                kind_codes_ids=kind_codes_ids),
+            key=lambda nut: nut.dkey)
+
+        def rkey(nut):
+            return nut.codes.replace(
+                extra=re.sub(r'-L\d\d', '', nut.codes.extra))
+
+        def best_resolution(nuts):
+            by_resolution = util.group_by(rkey, nuts)
+            for group in by_resolution.values():
+                group.sort(key=lambda nut: nut.codes.extra)
+
+            return [
+                nut
+                for group in by_resolution.values()
+                for nut in group if nut.codes == group[0].codes]
+
+        if nsamples_limit is not None:
+            nuts = best_resolution(nuts)
+
+        if load_data:
+            carpets = [
+                self.get_content(nut, 'carpet', accessor_id) for nut in nuts]
+
+        else:
+            carpets = [
+                trace.Carpet(**nut.carpet_kwargs) for nut in nuts]
+
+        if uncut:
+            return carpets
+
+        chopped = []
+        for cp in carpets:
+            if not load_data and cp.data is not None:
+                cp = cp.copy(data='drop')
+
+            try:
+                chopped.append(
+                    cp.chop(tmin, tmax, snap=(math.ceil, math.ceil)))
+
+            except trace.NoData:
+                pass
+
+        if join:
+            return carpet.join(chopped)
+        else:
+            return chopped
 
     def _get_pyrocko_stations(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None,
