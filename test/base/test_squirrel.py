@@ -18,6 +18,7 @@ from pyrocko import squirrel, util, pile, io, trace, model as pmodel
 from pyrocko import progress
 from pyrocko.parimap import parimap
 from pyrocko.client import fdsn
+from pyrocko.carpet import OverlappingCarpets
 try:
     from StringIO import StringIO
 except ImportError:
@@ -1291,6 +1292,50 @@ class SquirrelTestCase(unittest.TestCase):
             == C('GR.*.*.*.*')
         assert squirrel.merge_codes(codes, 'replace_deep') \
             == C('GR.A0?.*.BH?.*')
+
+    def test_chopper_carpet(self):
+
+        database = squirrel.Database()
+        sq = squirrel.Squirrel(database=database)
+        sq.add(common.test_data_file('grf-nuke-2017.mseed'))
+        sq.add(common.test_data_file('grf-nuke-2017.stationxml'))
+
+        op = sq.default_preparator(
+            frequency_min=0.1,
+            frequency_max=5.)
+
+        tmin = util.str_to_time_fillup('2017-09-03')
+        tmax = util.str_to_time_fillup('2017-09-03 02')
+
+        storage = squirrel.get_storage_scheme('rugstore-medium')
+        datadir = tempfile.mkdtemp(dir=self.tempdir)
+        storage.set_base_path(datadir)
+
+        for batch in op.chopper_waveforms(
+                tmin=tmin,
+                tmax=tmax,
+                tinc=3600., snap_window=True):
+
+            carpet = batch.as_carpet()
+            carpet.codes = squirrel.merge_codes(
+                carpet.component_codes, 'replace_deep')
+            storage.save(carpet)
+
+        sq2 = squirrel.Squirrel(database=database)
+        sq2.add(datadir)
+        sq2.get_codes() == [squirrel.CodesNSLCE('GR.GR??..BH?.RvTenz')]
+
+        for batch in op.chopper_waveforms(
+                tmin=tmin,
+                tmax=tmax,
+                tinc=3600., snap_window=True):
+
+            carpet = batch.as_carpet()
+            carpet.codes = squirrel.merge_codes(
+                carpet.component_codes, 'replace_deep')
+
+            with self.assertRaises(OverlappingCarpets):
+                storage.save(carpet)
 
 
 def do_chopper(params):
