@@ -11,7 +11,8 @@ import math
 import os
 from collections import defaultdict
 
-from pyrocko import guts, util, trace, io
+from pyrocko import guts, util, trace, io, carpet
+from pyrocko.io import rug
 from pyrocko.plot import nice_time_tick_inc_approx_secs
 
 from . import error
@@ -171,8 +172,38 @@ class StorageScheme(guts.Object):
         return layout
 
     def save(
+            self, items, **kwargs):
+
+        if isinstance(items, (trace.Trace, carpet.Carpet)):
+            items = [items]
+
+        if self.format == 'rug':
+            if not all(isinstance(item, carpet.Carpet) for item in items):
+                raise error.SquirrelError(
+                    'Items to be stored with StorageScheme.save must be '
+                    'of type `Carpet` when "rug" format is selected.')
+
+            return self.save_carpets(
+                items, **kwargs)
+
+        else:
+            traces = []
+            for item in items:
+                if isinstance(item, carpet.Carpet):
+                    traces.extend(item.get_traces())
+                else:
+                    assert isinstance(item, trace.Trace)
+                    traces.append(item)
+
+            return self.save_traces(
+                traces, **kwargs)
+
+    def save_traces(
             self, traces, tmin=None, tmax=None, overwrite=False,
             check_append_hook=None, check_append_merge=False):
+
+        if isinstance(traces, trace.Trace):
+            traces = [traces]
 
         save_kwargs = dict(
             append=self.format in io.g_formats_supporting_append,
@@ -229,6 +260,59 @@ class StorageScheme(guts.Object):
 
         return sorted(file_names)
 
+    def save_carpets(
+            self, carpets, tmin=None, tmax=None, overwrite=False,
+            check_append_hook=None, check_append_merge=False):
+
+        if isinstance(carpets, carpet.Carpet):
+            carpets = [carpets]
+
+        by_deltat = defaultdict(list)
+        for cp in carpets:
+            by_deltat[cp.deltat].append(cp)
+
+        save_kwargs = dict(
+            append=True,
+            check_append=True,
+            overwrite=overwrite,
+            # check_append_hook=check_append_hook,
+            # check_append_merge=check_append_merge)
+        )
+
+        file_names = set()
+        for deltat, carpet_group in by_deltat.items():
+            layout = self.select_layout(deltat)
+            carpet_group.sort(key=lambda cp: cp.codes)
+            carpet_group = carpet.deoverlap(carpet_group)
+
+            if tmin is None:
+                tmin = min(cp.tmin for cp in carpet_group)
+
+            if tmax is None:
+                tmax = max(cp.tmax for cp in carpet_group) + deltat
+
+            for wmin, wmax in iter_windows(
+                    tmin,
+                    tmax,
+                    layout.time_increment,
+                    layout.time_increment_nonuniform):
+
+                carpet_window = []
+                for cp in carpet_group:
+                    carpet_window.append(cp.chop(wmin, wmax))
+
+                additional = layout.get_additional(wmin, wmax)
+
+                file_names.update(rug.save(
+                    carpet_window,
+                    layout.path_template
+                    if self._base_path is None
+                    else os.path.join(self._base_path, layout.path_template),
+                    additional=additional,
+                    **save_kwargs))
+
+        return sorted(file_names)
+
 
 _g_schemes_list = []
 _g_schemes_list.append(StorageScheme(
@@ -243,7 +327,7 @@ _g_schemes_list.append(StorageScheme(
             path_template=_translate_path_template(path_template))
         for (name, time_increment, time_increment_nonuniform, path_template)
         in [
-            ('second', 1.0, None, 'net/sta/loc.cha/year/month/day/hour/net.sta.loc.cha.year.month.day.hour.minute.second'),  # noqa
+            ('second', 1.0, None, 'net/sta/loc.cha/year/month/day/hour/net.sta.loc.cha.ext.year.month.day.hour.minute.second'),  # noqa
             ('minute', 60.0,  None,'net/sta/loc.cha/year/month/day/net.sta.loc.cha.ext.year.month.day.hour.minute'),  # noqa
             ('hour', 3600.0,  None,'net/sta/loc.cha/year/month/net.sta.loc.cha.ext.year.month.day.hour'),  # noqa
             ('day', 86400.0,  None,'net/sta/loc.cha/year/net.sta.loc.cha.ext.year.month.day'),  # noqa
@@ -251,6 +335,26 @@ _g_schemes_list.append(StorageScheme(
             ('year', 31536000.0, 'year', 'net/sta/loc.cha/net.sta.loc.cha.ext.year')]],  # noqa
     min_segments_per_file=1.5))
 
+_g_schemes_list.extend(StorageScheme(
+    name='rug-store-%i' % factor,
+    description='Storage scheme used to store carpets with typically %i '
+                'components as rug files.',
+    format='rug',
+    layouts=[
+        StorageSchemeLayout(
+            name=name,
+            time_increment=time_increment,
+            time_increment_nonuniform=time_increment_nonuniform,
+            path_template=_translate_path_template(path_template))
+        for (name, time_increment, time_increment_nonuniform, path_template)
+        in [
+            ('second', 1.0, None, 'net/sta/loc.cha/year/month/day/hour/net.sta.loc.cha.ext.year.month.day.hour.minute.second'),  # noqa
+            ('minute', 60.0,  None,'net/sta/loc.cha/year/month/day/net.sta.loc.cha.ext.year.month.day.hour.minute'),  # noqa
+            ('hour', 3600.0,  None,'net/sta/loc.cha/year/month/net.sta.loc.cha.ext.year.month.day.hour'),  # noqa
+            ('day', 86400.0,  None,'net/sta/loc.cha/year/net.sta.loc.cha.ext.year.month.day'),  # noqa
+            ('month', 2628000.0, 'month','net/sta/loc.cha/year/net.sta.loc.cha.ext.year.month'),  # noqa
+            ('year', 31536000.0, 'year', 'net/sta/loc.cha/net.sta.loc.cha.ext.year')]],  # noqa
+    min_segments_per_file=1.5/factor) for factor in [10, 100, 1000])
 
 _g_schemes_list.append(StorageScheme(
     name='sds',
@@ -270,10 +374,11 @@ _g_schemes_list.append(StorageScheme(
                 '%(network_safe)s.%(station)s.%(location)s.%(channel)s.D'
                 '.%(wmin_year)s.%(wmin_jday)s'))]))
 
+
 g_schemes = dict((scheme.name, scheme) for scheme in _g_schemes_list)
 
 
-def get_storage_scheme(name):
+def get_storage_scheme(name='default'):
     return guts.clone(g_schemes[name])
 
 
