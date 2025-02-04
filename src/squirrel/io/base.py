@@ -17,14 +17,14 @@ from pyrocko import progress
 
 from .backends import \
     mseed, sac, hdf5_optodas, datacube, stationxml, textfiles, virtual, yaml, \
-    tdms_idas, spickle
+    tdms_idas, spickle, rug
 
 from ..model import to_kind_ids, EMPTY, Nut
 from ..database import color_tid_pid
 
 backend_modules = [
     mseed, sac, hdf5_optodas, datacube, stationxml, textfiles, virtual, yaml,
-    tdms_idas, spickle]
+    tdms_idas, spickle, rug]
 
 logger = logging.getLogger('psq.io')
 
@@ -126,7 +126,14 @@ def supported_formats():
     return sorted(g_format_providers.keys())
 
 
-g_content_kinds = ['waveform', 'station', 'channel', 'response', 'event']
+g_content_kinds = [
+    'waveform',
+    'station',
+    'channel',
+    'response',
+    'event',
+    'carpet',
+]
 
 
 def supported_content_kinds():
