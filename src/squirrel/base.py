@@ -29,8 +29,8 @@ from pyrocko.plot import nice_time_tick_inc_approx_secs
 from . import model, io, cache, dataset
 
 from .model import to_kind_id, WaveformOrder, to_kind, to_codes, \
-    STATION, CHANNEL, RESPONSE, EVENT, WAVEFORM, codes_patterns_list, \
-    codes_patterns_for_kind
+    STATION, CHANNEL, RESPONSE, EVENT, WAVEFORM, CARPET, codes_patterns_list, \
+    codes_patterns_for_kind, merge_codes
 from .client import fdsn, catalog
 from .selection import Selection, filldocs
 from .database import abspath
@@ -144,10 +144,12 @@ def match_time_span(tmin, tmax, obj):
 
 class Batch(object):
     '''
-    Batch of waveforms from window-wise data extraction.
+    Batch of waveforms or carpets from window-wise data extraction.
 
     Encapsulates state and results yielded for each window in window-wise
-    waveform extraction with the :py:meth:`Squirrel.chopper_waveforms` method.
+    extraction with :py:meth:`Squirrel.chopper_waveforms` or
+    :py:meth:`Squirrel.chopper_carpets`, or the corresponding operator
+    methods.
 
     *Attributes:*
 
@@ -182,9 +184,16 @@ class Batch(object):
     .. py:attribute:: traces
 
         Extracted waveforms for this time window.
+
+    .. py:attribute:: carpets
+
+        Extracted carpets for this time window.
     '''
 
-    def __init__(self, tmin, tmax, tpad, i, n, igroup, ngroups, traces):
+    def __init__(
+            self, tmin, tmax, tpad, i, n, igroup, ngroups, traces,
+            carpets=None):
+
         self.tmin = tmin
         self.tmax = tmax
         self.tpad = tpad
@@ -193,12 +202,15 @@ class Batch(object):
         self.igroup = igroup
         self.ngroups = ngroups
         self.traces = traces
+        self.carpets = carpets if carpets is not None else []
 
     def __str__(self):
-        return 'Batch %i/%i, group %i/%i, %i traces, %s - %s' % (
-            self.i, self.n, self.igroup, self.ngroups, len(self.traces),
-            util.time_to_str(self.tmin),
-            util.time_to_str(self.tmax))
+        return 'Batch %i/%i, group %i/%i, %i traces, %i carpets, ' \
+            '%s - %s' % (
+                self.i, self.n, self.igroup, self.ngroups, len(self.traces),
+                len(self.carpets),
+                util.time_to_str(self.tmin),
+                util.time_to_str(self.tmax))
 
     def as_carpet(
             self,
@@ -209,7 +221,7 @@ class Batch(object):
             enforce_global_snap=True,
             warn_snap=False):
 
-        from pyrocko import multitrace
+        from pyrocko.carpet import Carpet
 
         if codes is not None:
             codes = model.CodesNSLCE(codes)
@@ -232,7 +244,10 @@ class Batch(object):
             tmax=self.tmax+self.tpad,
             codes=component_codes)
 
-        return multitrace.Carpet(
+        if codes is None:
+            codes = merge_codes(component_codes, 'replace_deep')
+
+        return Carpet(
             data=data,
             codes=codes,
             component_codes=component_codes,
@@ -347,6 +362,8 @@ class Squirrel(Selection):
         ~Squirrel.get_waveform_nuts
         ~Squirrel.get_waveforms
         ~Squirrel.chopper_waveforms
+        ~Squirrel.get_carpets
+        ~Squirrel.chopper_carpets
         ~Squirrel.get_coverage
         ~Squirrel.pile
         ~Squirrel.snuffle
@@ -394,6 +411,7 @@ class Squirrel(Selection):
 
         self._content_caches = {
             'waveform': cache.ContentCache(),
+            'carpet': cache.ContentCache(),
             'default': cache.ContentCache()}
 
         self._cache_path = cache_path
@@ -3049,6 +3067,169 @@ class Squirrel(Selection):
 
         return chopped
 
+    @filldocs
+    def get_carpets(
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None,
+            kind_codes_ids=None,
+            uncut=False, join=True, nsamples_limit=None,
+            accessor_id='default'):
+
+        '''
+        Get carpets matching given constraints.
+
+        %(query_args)s
+        '''
+        from pyrocko import carpet
+
+        tmin, tmax, codes = self._get_selection_args(
+            CARPET, obj, tmin, tmax, time, codes)
+
+        self_tmin, self_tmax = self.get_time_span(['carpet'])
+
+        if None in (self_tmin, self_tmax):
+            logger.warning(
+                'No carpets available.')
+            return []
+
+        tmin = tmin if tmin is not None else self_tmin
+        tmax = tmax if tmax is not None else self_tmax
+
+        sample_rate_max = None
+        if nsamples_limit is not None:
+            sample_rate_max = nsamples_limit / (tmax - tmin)
+
+        nuts = sorted(
+            self.iter_nuts(
+                'carpet', tmin, tmax, codes,
+                sample_rate_max=sample_rate_max,
+                kind_codes_ids=kind_codes_ids),
+            key=lambda nut: nut.dkey)
+
+        def rkey(nut):
+            return nut.codes.replace(
+                extra=re.sub(r'-L\d\d', '', nut.codes.extra))
+
+        def best_resolution(nuts):
+            by_resolution = util.group_by(rkey, nuts)
+            for group in by_resolution.values():
+                group.sort(key=lambda nut: nut.codes.extra)
+
+            return [
+                nut
+                for group in by_resolution.values()
+                for nut in group if nut.codes == group[0].codes]
+
+        if nsamples_limit is not None:
+            nuts = best_resolution(nuts)
+
+        carpets = [
+            self.get_content(nut, 'carpet', accessor_id) for nut in nuts]
+
+        if uncut:
+            return carpets
+
+        chopped = []
+        for cp in carpets:
+            try:
+                chopped.append(
+                    cp.chop(tmin, tmax, snap=(math.ceil, math.ceil)))
+
+            except trace.NoData:
+                pass
+
+        chopped.sort(key=lambda carpet: (carpet.codes, carpet.tmin))
+
+        if join:
+            return carpet.join(chopped)
+        else:
+            return chopped
+
+    @filldocs
+    def chopper_carpets(
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None,
+            tinc=None, tpad=0., snap_window=False, nsamples_limit=None,
+            accessor_id=None, clear_accessor=True):
+
+        '''
+        Iterate window-wise over carpets.
+
+        %(query_args)s
+
+        :param tinc:
+            Time increment (window shift time) (default uses ``tmax-tmin``).
+        :type tinc:
+            :py:func:`~pyrocko.util.get_time_float`
+
+        :param tpad:
+            Padding time appended on either side of the data window (window
+            overlap is ``2*tpad``).
+        :type tpad:
+            :py:func:`~pyrocko.util.get_time_float`
+
+        :param snap_window:
+            If ``True``, start time windows at multiples of tinc with respect
+            to system time zero.
+        :type snap_window:
+            bool
+
+        :param nsamples_limit:
+            See :py:meth:`get_carpets`.
+        :type nsamples_limit:
+            int
+
+        :param accessor_id:
+            Name of consumer on who's behalf data is accessed, see
+            :py:meth:`chopper_waveforms`.
+        :type accessor_id:
+            str
+
+        :param clear_accessor:
+            If ``True`` (default), :py:meth:`clear_accessor` is called when the
+            chopper finishes.
+        :type clear_accessor:
+            bool
+
+        :yields:
+            For each extracted time window a :py:class:`Batch` object, with
+            the window's carpets in :py:attr:`Batch.carpets`.
+        '''
+
+        tmin, tmax, codes = self._get_selection_args(
+            CARPET, obj, tmin, tmax, time, codes)
+
+        tmin_content, tmax_content = self.get_time_span(['carpet'])
+
+        try:
+            if accessor_id is None:
+                accessor_id = 'chopper%i' % self._n_choppers_active
+
+            self._n_choppers_active += 1
+
+            for batch in util.iter_windows(
+                    tmin=tmin,
+                    tmax=tmax,
+                    tinc=tinc,
+                    tpad=tpad,
+                    snap_window=snap_window,
+                    tmin_content=tmin_content,
+                    tmax_content=tmax_content):
+
+                batch.carpets = self.get_carpets(
+                    tmin=batch.tmin-tpad,
+                    tmax=batch.tmax+tpad,
+                    codes=codes,
+                    nsamples_limit=nsamples_limit,
+                    accessor_id=accessor_id)
+
+                self.advance_accessor(accessor_id, 'carpet')
+
+                yield batch
+
+        finally:
+            self._n_choppers_active -= 1
+            if clear_accessor:
+                self.clear_accessor(accessor_id, 'carpet')
+
     def _get_pyrocko_stations(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None,
             on_error='raise'):
@@ -3311,7 +3492,8 @@ class Squirrel(Selection):
             'channel',
             'response',
             'waveform',
-            'waveform_promise']
+            'waveform_promise',
+            'carpet']
 
         coverages_all = []
         for kind in kinds:

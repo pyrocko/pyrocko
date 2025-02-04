@@ -1336,8 +1336,9 @@ class BaseOperator(Object):
         :py:func:`pyrocko.util.iter_windows` for windowing parameters.
 
         :yields:
-            :py:class:`~pyrocko.squirrel.base.Batch` objects, with a
-            ``carpets`` attribute holding each window's carpets (see
+            :py:class:`~pyrocko.squirrel.base.Batch` objects, with each
+            window's carpets in
+            :py:attr:`~pyrocko.squirrel.base.Batch.carpets` (see
             :py:meth:`get_carpets`).
         '''
 
