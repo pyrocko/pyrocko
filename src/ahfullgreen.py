@@ -83,7 +83,7 @@ def make_seismogram(
             1.0, (omega[icut:] - omega_cut) / (omega_max - omega_cut)))
 
     if num.all(x == 0.0):
-        logger.warn(
+        logger.warning(
             'Source and receiver are at the same position -> setting GF for '
             'this combination to zero.')
     else:

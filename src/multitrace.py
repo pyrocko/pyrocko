@@ -17,7 +17,7 @@ import numpy.ma as ma
 from scipy import signal
 
 from . import trace, util
-from .trace import Trace, AboveNyquist, _get_cached_filter_coeffs
+from .trace import Trace, AboveNyquist, _get_cached_filter_coeffs, costaper
 from .guts import Object, Float, Timestamp, List, Int, Dict, String
 from .guts_array import Array
 from .squirrel import \
@@ -25,7 +25,11 @@ from .squirrel import \
 
 from .squirrel.operators.base import ReplaceComponentTranslation
 
+guts_prefix = 'pf'
+
 logger = logging.getLogger('pyrocko.multitrace')
+
+EMPTY_CODES = CodesNSLCE()
 
 
 class CarpetStringFiller:
@@ -174,6 +178,7 @@ class Carpet(Object):
     nsamples = Int.T(
         help='Number of samples.')
 
+    # TODO change and implement MaskedArray
     data = Array.T(
         optional=True,
         shape=(None, None),
@@ -206,6 +211,9 @@ class Carpet(Object):
         if data is not None and not isinstance(data, num.ndarray):
             data = self.T.get_property('data').regularize_extra(data)
 
+        if data is not None and not isinstance(data, ma.MaskedArray):
+            data = ma.MaskedArray(data)
+
         if traces is not None:
             if len(traces) == 0:
                 data = ma.zeros((0, 0))
@@ -227,12 +235,20 @@ class Carpet(Object):
                 'Carpet construction: mismatch between expected number of '
                 'samples and number of samples in data array.')
 
-        self.ntraces, nsamples = data.shape
+        if data is None:
+            if component_codes is None or nsamples is None:
+                raise ValueError(
+                    'Dataless Carpet must be constructed with '
+                    '`component_codes` ' 'and `nsamples` set.')
+
+            self.ncomponents = len(component_codes)
+        else:
+            self.ncomponents, nsamples = data.shape
 
         if component_codes is None:
-            component_codes = [CodesNSLCE()] * self.ntraces
+            component_codes = [CodesNSLCE()] * self.ncomponents
 
-        if len(component_codes) != self.ntraces:
+        if len(component_codes) != self.ncomponents:
             raise ValueError(
                 'Carpet construction: mismatch between number of traces '
                 'and number of component codes given.')
@@ -242,6 +258,9 @@ class Carpet(Object):
 
         if tmin is None:
             tmin = self.T.tmin.default()
+
+        if component_axes is None:
+            component_axes = {}
 
         Object.__init__(
             self,
@@ -255,27 +274,26 @@ class Carpet(Object):
 
     @property
     def summary_component_codes(self):
-        if self.component_codes:
-            if len(self.component_codes) == 1:
-                return str(self.component_codes[0])
-            elif len(self.component_codes) == 2:
-                return '%s, %s' % (
-                    self.component_codes[0],
-                    self.component_codes[-1])
-            else:
-                return '%s, ..., %s' % (
-                    self.component_codes[0],
-                    self.component_codes[-1])
+        if all(codes == EMPTY_CODES for codes in self.component_codes):
+            return ''
+        elif len(self.component_codes) == 1:
+            return str(self.component_codes[0])
+        elif len(self.component_codes) == 2:
+            return '%s, %s' % (
+                self.component_codes[0],
+                self.component_codes[-1])
         else:
-            return 'None'
+            return '%s, ..., %s' % (
+                self.component_codes[0],
+                self.component_codes[-1])
 
     @property
     def summary_entries(self):
         return (
             self.__class__.__name__,
-            str(self.data.shape[0]),
-            str(self.data.shape[1]),
-            str(self.data.dtype),
+            str(self.ncomponents),
+            str(self.nsamples),
+            str(self.data.dtype) if self.data is not None else '<unknown>',
             str(self.deltat),
             util.time_to_str(self.tmin),
             util.time_to_str(self.tmax),
@@ -293,7 +311,7 @@ class Carpet(Object):
         '''
         Get number of components.
         '''
-        return self.ntraces
+        return self.ncomponents
 
     def __getitem__(self, i):
         '''
@@ -316,14 +334,21 @@ class Carpet(Object):
 
         :param data:
             ``'copy'`` to deeply copy the data, or ``'reference'`` to create
-            a shallow copy, referencing the original data.
+            a shallow copy, referencing the original data, or ``'drop'`` to
+            create a dataless copy.
         :type data:
             str
         '''
 
         if isinstance(data, str):
-            assert data in ('copy', 'reference')
-            data = self.data.copy() if data == 'copy' else self.data
+            if data == 'drop':
+                data = None
+            elif data == 'copy':
+                data = self.data.copy()
+            elif data == 'reference':
+                data = self.data
+            else:
+                assert False
         else:
             assert isinstance(data, ma.MaskedArray)
 
@@ -411,7 +436,7 @@ class Carpet(Object):
 
     def get_component_axis(self, name=None):
         if name is None:
-            return num.arange(self.ntraces)
+            return num.arange(self.ncomponents)
         else:
             return self.component_axes[name]
 
@@ -423,7 +448,7 @@ class Carpet(Object):
             **kwargs):
 
         if component_axis is None:
-            ys = num.arange(self.ntraces)
+            ys = num.arange(self.ncomponents)
         else:
             ys = self.component_axes[component_axis]
 
@@ -687,6 +712,35 @@ class Carpet(Object):
 
         self.lfilter(b, a, demean=demean)
 
+    def fold(self, t, method=num.mean):
+        nfold = max(1, int(num.round(t / self.deltat)))
+
+        itmin = int(round(self.tmin / self.deltat))
+        itmax = itmin + self.nsamples
+
+        ibmin = (((itmin - 1) // nfold) + 1) * nfold
+        ibmax = ((itmax - 1) // nfold) * nfold
+
+        ibmin -= itmin
+        ibmax -= itmin
+
+        if ibmin >= ibmax:
+            raise trace.NoData()
+
+        data = self.data[:, ibmin:ibmax].reshape((
+            self.ncomponents,
+            (ibmax - ibmin) // nfold,
+            nfold))
+
+        data = method(data, axis=2)
+
+        return Carpet(
+            data=data,
+            codes=self.codes,
+            component_codes=self.component_codes,
+            tmin=self.tmin + self.deltat * (ibmin + nfold // 2),
+            deltat=nfold*self.deltat)
+
     def smooth(self, t, window=num.hanning):
         n = (int(num.round(t / self.deltat)) // 2) * 2 + 1
         taper = window(n)
@@ -702,6 +756,17 @@ class Carpet(Object):
         self.apply_via_fft(
             multiply_taper,
             ntrans_min=n)
+
+    def filter_frequency_cos_taper(self, f1, f2, f3, f4):
+
+        def multiply_taper(frequency_delta, ntrans, spectrum):
+            taper = costaper(
+                f1, f2, f3, f4, spectrum.shape[1], frequency_delta)
+            spectrum *= taper[num.newaxis, :]
+            return spectrum
+
+        self.apply_via_fft(
+            multiply_taper)
 
     def whiten(self, deltaf, window=num.hanning):
 
@@ -836,3 +901,38 @@ def correlate(a, b, mode='valid', normalization=None, use_fft=False):
                 mode=mode, normalization=normalization, use_fft=use_fft)
 
             for a_ in a for b_ in b])
+
+
+def join(carpets):
+    if not carpets:
+        return []
+    eps = 1e-4
+    carpets = sorted(carpets, key=lambda carpet: (carpet.codes, carpet.tmin))
+    groups = []
+    for current in carpets:
+        lastgroup = groups[-1] if groups else None
+        last = lastgroup[-1] if lastgroup else None
+        deltat = current.deltat
+        if (last
+                and last.deltat == deltat
+                and abs(last.tmax + deltat - current.tmin) < eps * deltat
+                and last.ncomponents == current.ncomponents
+                and all(
+                    a == b
+                    for (a, b)
+                    in zip(last.codes, current.codes))
+                and last.data.dtype == current.data.dtype):
+
+            lastgroup.append(current)
+        else:
+            groups.append([current])
+
+    carpets_out = []
+    for group in groups:
+        if len(group) > 1:
+            data = num.hstack([carpet.data for carpet in group])
+            carpets_out.append(group[0].copy(data=data))
+        else:
+            carpets_out.append(group[0])
+
+    return carpets_out

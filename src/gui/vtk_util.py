@@ -68,7 +68,7 @@ def vtk_set_prop_interpolation(prop, name):
         if hasattr(prop, 'SetInterpolationToPBR'):
             prop.SetInterpolationToPBR()
         else:
-            logger.warn(
+            logger.warning(
                 'PBR shading not available - update your VTK installation.')
 
 
@@ -183,7 +183,7 @@ class ScatterPipe(object):
                 self.prop.SetRenderPointsAsSpheres(symbol == 'sphere')
             except AttributeError:
                 if symbol == 'sphere':
-                    logger.warn(
+                    logger.warning(
                         'Cannot render points as sphere with this version of '
                         'VTK')
 

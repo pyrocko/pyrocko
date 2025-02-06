@@ -458,7 +458,7 @@ class Snuffling(object):
         elif action == 'log':
             logger.error('%s: %s' % (self._name, message))
         elif action == 'status':
-            logger.warn('%s: %s' % (self._name, message))
+            logger.warning('%s: %s' % (self._name, message))
             viewer = self.get_viewer().window()
             if viewer:
                 viewer.window().status_messages.set(

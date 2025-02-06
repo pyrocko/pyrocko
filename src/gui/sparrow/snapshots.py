@@ -481,7 +481,7 @@ class SnapshotsPanel(qw.QFrame):
         except CalledProcessError:
             pass
         except (TypeError, FileNotFoundError):
-            logger.warn(
+            logger.warning(
                 'Package ffmpeg needed for movie rendering. Please install it '
                 '(e.g. on linux distr. via sudo apt-get ffmpeg.) and retry.')
             return
@@ -836,7 +836,7 @@ def load_snapshots(path):
         if not isinstance(
                 items[i], (ViewerState, Snapshot, Transition)):
 
-            logger.warn(
+            logger.warning(
                 'Only Snapshot, Transition and ViewerState objects '
                 'are accepted. Object #%i from file %s ignored.'
                 % (i, path))

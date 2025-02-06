@@ -9,6 +9,7 @@ import {
     tomorrow,
 } from './common.js'
 import { squirrelConnection } from './connection.js'
+import { squirrelGates } from './gate.js'
 
 const sha1 = async (str) => {
     const enc = new TextEncoder()
@@ -117,10 +118,10 @@ const projectionHelper = () => {
     return my
 }
 
-export const squirrelTimeline = (gates_) => {
+export const squirrelTimeline = () => {
     // parameters
 
-    let gates = gates_
+    let gates = squirrelGates()
 
     let marginTop = 100
     let marginBottom = 110
@@ -161,7 +162,6 @@ export const squirrelTimeline = (gates_) => {
             0,
             bounds.width,
         ])
-        console.log("gates.timeMin.value, gates.timeMax.value", gates.timeMin.value, gates.timeMax.value)
         trackProjection.range([marginTop, bounds.height - marginBottom])
         pageRect.attr('x', 0)
         pageRect.attr('y', marginTop)
@@ -179,7 +179,6 @@ export const squirrelTimeline = (gates_) => {
     }
 
     const resizeHandler = () => {
-        console.log('resize timeline')
         bounds = containerBounds()
         timeline.attr('width', bounds.width).attr('height', bounds.height)
         update()
@@ -289,7 +288,6 @@ export const squirrelTimeline = (gates_) => {
             ymin: trackProjection.lower(track),
             ymax: trackProjection.upper(track),
         }
-        console.log("coverage.tmin:", coverage.tmin)
         return box
     }
 

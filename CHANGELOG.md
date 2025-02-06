@@ -4,9 +4,28 @@ All notable changes to Pyrocko are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## Unreleased
+## v2025.01.21
 
-*empty*
+### Added
+- GF: new sources: `CombiSFSource`, `SimpleLandslideSource`
+- Single force "beachball" plot.
+- `squirrel jackseis`: new options: `--rotate-to-enz` and
+  `--instrument-correction-mode`, `--append`
+- Snuffler: add SeisBench/PhaseNet autopicker Snuffling
+- `squirrel`: new subcommands: `squirrel dataset sources`, `squirrel catalog`.
+- Squirrel: new builtin datasets
+- Squirrel: improved waveform storage layouts
+- Squirrel: improved continuous waveform download behaviour (appending,
+  updating, merging). Loosened dependency on processing time increment.
+- NumPy 2 compatibility
+
+### Fixed
+- Fix error in `sta_lta_right`
+- Various small fixes and performance improvements
+- Improved compatibility
+
+### Removed
+- Dropped python 3.7 support
 
 ## v2024.01.10
 

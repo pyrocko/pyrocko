@@ -8,8 +8,9 @@ import numpy as num
 from pyrocko import orthodrome as od
 from pyrocko.moment_tensor import euler_to_matrix
 from pyrocko.model.location import Location
-from pyrocko.guts import Float
+from pyrocko.guts import Float, List
 from pyrocko.guts_array import Array
+from pyrocko.squirrel.model import CodesNSLCE
 from .base import Grid, GridSnap, grid_coordinates
 from ..error import GatoError
 
@@ -223,13 +224,24 @@ class CartesianLocationGrid(LocationGrid):
                 'Coordinate system not supported for %s: %s' % (
                     self.__class__.__name__, system))
 
-    def plot(self, values):
-        import matplotlib.pyplot as plt
+    def plot(self, values, axes=None, scale=1.0):
+
+        ned = self.get_nodes('ned')
+        plt = None
+        if axes is None:
+            import matplotlib.pyplot as plt
+            axes = plt.gca()
+
+        n, e, d = ned.T
 
         values = values.reshape(self.shape)
-        # xyz = self.get_nodes('xyz')
-        plt.pcolormesh(self._y, self._x, values[0, :, :])
-        plt.show()
+        n = n.reshape(self.shape)
+        e = e.reshape(self.shape)
+        d = d.reshape(self.shape)
+
+        axes.pcolormesh(e[0, :, :]/scale, n[0, :, :]/scale, values[0, :, :])
+        if plt:
+            plt.show()
 
 
 class UnstructuredLocationGrid(LocationGrid):
@@ -250,6 +262,10 @@ class UnstructuredLocationGrid(LocationGrid):
         shape=(None, 6),
         dtype=num.float64,
         serialize_as='npy')
+
+    codes = List.T(
+        CodesNSLCE.T(),
+        optional=True)
 
     @classmethod
     def from_locations(cls, locations, ignore_position_duplicates=False):
@@ -388,6 +404,25 @@ class UnstructuredLocationGrid(LocationGrid):
             raise GatoError(
                 'Coordinate system not supported for %s: %s' % (
                     self.__class__.__name__, system))
+
+    def plot(self, values=None, axes=None, scale=1.0):
+
+        ned = self.get_nodes('ned')
+        plt = None
+        if axes is None:
+            import matplotlib.pyplot as plt
+            axes = plt.gca()
+
+        n, e, d = ned.T
+
+        if values:
+            d = dict(c=values)
+        else:
+            d = dict(color='black')
+
+        axes.scatter(e/scale, n/scale, **d)
+        if plt:
+            plt.show()
 
 
 __all__ = [

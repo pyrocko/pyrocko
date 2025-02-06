@@ -569,7 +569,7 @@ class Task(object):
 
     def _render(self, style):
         if style == 'terminal':
-            return '%s%-23s %-11s %s%-4s  %s' % (
+            return '%s%-40s %-11s %s%-4s  %s' % (
                 self._str_state(),
                 self._name,
                 self._str_progress(),
@@ -578,7 +578,7 @@ class Task(object):
                 self._str_condition())
 
         elif style == 'log':
-            return '%s: %-23s %s%-4s  %s' % (
+            return '%s: %-40s %s%-4s  %s' % (
                 self._state,
                 self._name,
                 self._str_progress(),
@@ -588,7 +588,7 @@ class Task(object):
             return ''
 
     def __str__(self):
-        return '%s%-23s %s%-4s  %s' % (
+        return '%s%-40s %s%-4s  %s' % (
             self._str_state(),
             self._name,
             self._str_progress(),

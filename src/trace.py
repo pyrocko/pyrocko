@@ -2179,6 +2179,10 @@ def _ensure_aligned(traces):
 
 def merge_traces_data_as_array(traces, tmin=None, tmax=None, codes=None):
     from numpy.ma import masked_array
+    from pyrocko.squirrel.model import WAVEFORM, codes_patterns_for_kind
+
+    if codes is not None:
+        codes = codes_patterns_for_kind(WAVEFORM, codes)
 
     if not traces:
         raise ValueError('Need at least one trace.')
@@ -2191,6 +2195,8 @@ def merge_traces_data_as_array(traces, tmin=None, tmax=None, codes=None):
         _codes = set(codes)
         assert len(_codes) == len(codes)
         traces = [tr for tr in traces if tr.codes in _codes]
+        if not traces:
+            raise ValueError('Need at least one trace.')
 
     codes_to_i = dict((codes, i) for (i, codes) in enumerate(codes))
 

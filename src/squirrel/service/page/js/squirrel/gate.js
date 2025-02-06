@@ -1,4 +1,4 @@
-import { ref, computed, watch } from '../vue.esm-browser.js'
+import { ref, shallowRef, computed, watch } from '../vue.esm-browser.js'
 
 import { strToTime, timeToStr, tomorrow } from './common.js'
 
@@ -7,9 +7,13 @@ import { squirrelConnection } from './connection.js'
 const TIME_MIN = strToTime('1900-01-01 00:00:00')
 const TIME_MAX = tomorrow() + 5 * 365 * 24 * 60 * 60
 
-export const squirrelGate = () => {
+export const squirrelGate = (gate_id_) => {
+    const gate_id = gate_id_
     const counter = ref(0)
-    const codes = ref([])
+    const codes = shallowRef([])
+    const channels = shallowRef([])
+    const sensors = shallowRef([])
+    const responses = shallowRef([])
     const timeSpans = ref({
         waveform: null,
         channel: null,
@@ -18,10 +22,14 @@ export const squirrelGate = () => {
 
     const connection = squirrelConnection()
 
+    const gateRequest = (method, data) => {
+        return connection.request('gate/' + gate_id + '/' + method, data)
+    }
+
     const fetchCodes = async () => {
         const codes = new Set()
         for (const kind of ['waveform', 'channel', 'response']) {
-            for (const c of await connection.request('gate/default/get_codes', {
+            for (const c of await gateRequest('get_codes', {
                 kind: kind,
             })) {
                 codes.add(c)
@@ -30,33 +38,41 @@ export const squirrelGate = () => {
         return Array.from(codes)
     }
 
+    const fetchChannels = async () => {
+        return gateRequest('get_channels')
+    }
+
+    const fetchSensors = async () => {
+        return gateRequest('get_sensors')
+    }
+
+    const fetchResponses = async () => {
+        return gateRequest('get_responses')
+    }
+
     const fetchTimeSpans = async () => {
         const newTimeSpans = {}
         for (const kind of ['waveform', 'channel', 'response']) {
-            const span = await connection.request(
-                'gate/default/get_time_span',
-                { kind: kind }
-            )
+            const span = await gateRequest('get_time_span', { kind: kind })
             span.tmin = span.tmin != null ? strToTime(span.tmin) : TIME_MIN
             span.tmax =
                 span.tmax != null
                     ? Math.min(strToTime(span.tmax), tomorrow())
                     : tomorrow()
-            console.log('aaa', span.tmin, timeToStr(span.tmin))
             newTimeSpans[kind] = span
         }
-        console.log("newTimeSpans: ", newTimeSpans)
         return newTimeSpans
     }
 
     const update = async () => {
-        const newCodes = await fetchCodes()
-        codes.value = newCodes
-        const newTimeSpans = await fetchTimeSpans()
-        timeSpans.value = newTimeSpans
+        codes.value = await fetchCodes()
+        timeSpans.value = await fetchTimeSpans()
+        channels.value = await fetchChannels()
+        sensors.value = await fetchSensors()
+        responses.value = await fetchResponses()
     }
 
-    return { codes, timeSpans, update, counter }
+    return { codes, timeSpans, channels, sensors, responses, update, counter }
 }
 
 export const squirrelBlock = (block) => {
@@ -147,7 +163,9 @@ export const squirrelBlock = (block) => {
 
     return my
 }
-export const squirrelGates = () => {
+
+
+export const setupGates = () => {
     const gates = ref([])
     const timeMin = ref(TIME_MIN)
     const timeMax = ref(TIME_MAX)
@@ -159,7 +177,6 @@ export const squirrelGates = () => {
     let initialTimeSpanSet = false
 
     const makeTimeBlock = (tmin, tmax) => {
-        console.log('xxx', tmin, tmax, timeToStr(tmin), timeToStr(tmax))
         const iscale = Math.ceil(Math.log2(blockFactor * (tmax - tmin)))
         const tstep = Math.pow(2, iscale)
         const itime = Math.round((tmin + tmax) / tstep)
@@ -194,7 +211,6 @@ export const squirrelGates = () => {
     }
 
     const setTimeSpan = (tmin, tmax) => {
-        console.log('yyy')
         timeMin.value = Math.max(tmin, TIME_MIN)
         timeMax.value = Math.min(tmax, TIME_MAX)
         update()
@@ -215,7 +231,7 @@ export const squirrelGates = () => {
     const pageBackward = makePageMove(-1)
 
     const addGate = () => {
-        const gate = squirrelGate()
+        const gate = squirrelGate('default')
         gates.value.push(gate)
         gate.update()
     }
@@ -250,6 +266,26 @@ export const squirrelGates = () => {
         }
         return block.getImages()
     }
+
+    const channels = computed(() => {
+        const channels = []
+        for (const gate of gates.value) {
+            for (const channel of gate.channels.value) {
+                channels.push(channel)
+            }
+        }
+        return channels
+    })
+
+    const sensors = computed(() => {
+        const sensors = []
+        for (const gate of gates.value) {
+            for (const sensor of gate.sensors) {
+                sensors.push(sensor)
+            }
+        }
+        return sensors
+    })
 
     const codes = computed(() => {
         const codes = new Set()
@@ -287,17 +323,14 @@ export const squirrelGates = () => {
                 }
             }
         }
-        console.log('computed time spans', spans)
         return spans
     })
 
     watch([timeSpans], () => {
         if (!initialTimeSpanSet) {
-            console.log(timeSpans.value)
             const span = timeSpans.value['waveform']
             if (span !== null) {
                 const duration = span.tmax - span.tmin
-                console.log('zzz')
                 setTimeSpan(
                     span.tmin - duration * 0.025,
                     span.tmax + duration * 0.025
@@ -322,8 +355,19 @@ export const squirrelGates = () => {
         halfPageBackward,
         addGate,
         codes,
+        channels,
+        sensors,
         timeSpans,
         getCoverages,
         getImages,
     }
+}
+
+let gates = null
+
+export const squirrelGates = () => {
+    if (gates === null) { 
+        gates = setupGates()
+    }
+    return gates
 }

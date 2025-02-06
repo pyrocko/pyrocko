@@ -510,7 +510,7 @@ class Event(Location):
             self.name,
             util.time_to_str(self.time),
             '%-3s %3.1f' % (self.magnitude_type or '    ', self.magnitude)
-            if self.magnitude else 'M   ---',
+            if self.magnitude is not None else 'M   ---',
             self.region)
 
 
