@@ -14,10 +14,11 @@ export const squirrelGate = (gate_id_) => {
     const channels = shallowRef([])
     const sensors = shallowRef([])
     const responses = shallowRef([])
-    const timeSpans = ref({
+    const timeSpans = shallowRef({
         waveform: null,
         channel: null,
         response: null,
+        carpet: null,
     })
 
     const connection = squirrelConnection()
@@ -28,7 +29,7 @@ export const squirrelGate = (gate_id_) => {
 
     const fetchCodes = async () => {
         const codes = new Set()
-        for (const kind of ['waveform', 'channel', 'response']) {
+        for (const kind of ['waveform', 'channel', 'response', 'carpet']) {
             for (const c of await gateRequest('get_codes', {
                 kind: kind,
             })) {
@@ -52,7 +53,7 @@ export const squirrelGate = (gate_id_) => {
 
     const fetchTimeSpans = async () => {
         const newTimeSpans = {}
-        for (const kind of ['waveform', 'channel', 'response']) {
+        for (const kind of ['waveform', 'channel', 'response', 'carpet']) {
             const span = await gateRequest('get_time_span', { kind: kind })
             span.tmin = span.tmin != null ? strToTime(span.tmin) : TIME_MIN
             span.tmax =
@@ -81,7 +82,7 @@ export const squirrelBlock = (block) => {
     const connection = squirrelConnection()
     let lastTouched = -1
     let coverages = null
-    let spectrograms = null
+    let carpets = null
 
     const fetchCoverage = async (kind) => {
         const coverages = await connection.request(
@@ -94,7 +95,7 @@ export const squirrelBlock = (block) => {
         )
 
         for (const coverage of coverages) {
-            coverage.codes = coverage.codes + '.'
+            coverage.codes = coverage.codes
             coverage.id = [
                 coverage.kind,
                 coverage.tmin,
@@ -107,32 +108,31 @@ export const squirrelBlock = (block) => {
         return coverages
     }
 
-    const fetchSpectrograms = async (params) => {
-        const spectrograms = await connection.request(
-            'gate/default/get_spectrograms',
-            {
-                tmin: timeToStr(my.timeMin),
-                tmax: timeToStr(my.timeMax),
-                ...params,
-            }
-        )
-        for (const spectrogram of spectrograms) {
-            spectrogram.codes = spectrogram.codes + '.'
-            spectrogram.id = [
-                spectrogram.tmin,
-                spectrogram.tmax,
-                spectrogram.codes,
+    const fetchCarpets = async (params) => {
+        const carpets = await connection.request('gate/default/get_carpets', {
+            tmin: timeToStr(my.timeMin),
+            tmax: timeToStr(my.timeMax),
+            ...params,
+        })
+        for (const carpet of carpets) {
+            carpet.codes = carpet.codes
+            carpet.id = [
+                carpet.tmin,
+                carpet.tmax,
+                carpet.ymin,
+                carpet.ymax,
+                carpet.codes,
             ].join('+++')
-            spectrogram.tmin = strToTime(spectrogram.tmin)
-            spectrogram.tmax = strToTime(spectrogram.tmax)
+            carpet.tmin = strToTime(carpet.tmin)
+            carpet.tmax = strToTime(carpet.tmax)
         }
-        return spectrograms
+        return carpets
     }
 
     my.update = async (params) => {
-        coverages = await fetchCoverage('waveform')
+        coverages = await fetchCoverage('carpet')
         counter.value++
-        spectrograms = await fetchSpectrograms(params)
+        carpets = await fetchCarpets(params)
         counter.value++
     }
     my.touch = (counter) => {
@@ -147,8 +147,8 @@ export const squirrelBlock = (block) => {
         return coverages || []
     }
 
-    my.getImages = () => {
-        return spectrograms || []
+    my.getCarpets = () => {
+        return carpets || []
     }
 
     my.overlaps = (tmin, tmax) => {
@@ -156,25 +156,52 @@ export const squirrelBlock = (block) => {
     }
 
     my.ready = () => {
-        return coverages !== null && spectrograms !== null
+        return coverages !== null && carpets !== null
+    }
+
+    my.unwatch = null
+
+    my.destroy = () => {
+        if (my.unwatch !== null) {
+            my.unwatch()
+        }
+        my.unwatch = null
     }
 
     my.counter = counter
 
+    my.active = false
+    my.activeChanged = 0
+
+    my.setActive = (active) => {
+        if (my.active != active) {
+            my.active = active
+            my.activeChanged = Date.now()
+        }
+    }
+
+    my.activeOrZombieAge = () => {
+        return Date.now() - my.activeChanged
+    }
+
+    my.isActiveOrZombie = () => {
+        return my.active || my.activeOrZombieAge() < 1000
+    }
+
     return my
 }
-
 
 export const setupGates = () => {
     const gates = ref([])
     const timeMin = ref(TIME_MIN)
     const timeMax = ref(TIME_MAX)
-    const frequencyMin = ref(0.001)
-    const frequencyMax = ref(100.0)
+    const yMin = ref(null)
+    const yMax = ref(null)
     const blockFactor = 4
     const blocks = new Map()
     let counter = ref(0)
     let initialTimeSpanSet = false
+    let _relevantBlocks = []
 
     const makeTimeBlock = (tmin, tmax) => {
         const iscale = Math.ceil(Math.log2(blockFactor * (tmax - tmin)))
@@ -191,23 +218,50 @@ export const setupGates = () => {
 
     const blockKey = (block) => block.iScale + ',' + block.iTime
 
+    const dropOldBlocks = () => {
+        const kDelete = Array.from(blocks.values())
+            .toSorted((a, b) => b.getLastTouched() - a.getLastTouched())
+            .slice(5)
+            .map(blockKey)
+
+        for (const k of kDelete) {
+            blocks.delete(k)
+        }
+    }
+
+    const updateBlocks = () => {
+        const sorted = Array.from(blocks.values()).toSorted(
+            (a, b) => b.getLastTouched() - a.getLastTouched()
+        )
+
+        if (sorted.size == 0) {
+            return
+        }
+
+        const kNewest = blockKey(sorted[0])
+
+        for (const k of blocks.keys()) {
+            if (k == kNewest) {
+                blocks.get(k).update()
+            } else {
+                blocks.delete(k)
+            }
+        }
+    }
+
+    watch([yMin, yMax], updateBlocks)
+
     const update = () => {
         const block = makeTimeBlock(timeMin.value, timeMax.value)
         const k = blockKey(block)
         if (!blocks.has(k)) {
             blocks.set(k, block)
             watch([block.counter], () => counter.value++)
-            const updateBlock = () => {
-                block.update({
-                    fmin: frequencyMin.value,
-                    fmax: frequencyMax.value,
-                })
-            }
-            watch([frequencyMin, frequencyMax], updateBlock)
-            updateBlock()
+            block.update()
         }
         blocks.get(k).touch(counter.value)
         counter.value++
+        dropOldBlocks()
     }
 
     const setTimeSpan = (tmin, tmax) => {
@@ -237,34 +291,44 @@ export const setupGates = () => {
     }
 
     const getRelevantBlocks = () => {
-        return Array.from(blocks.values())
+        const relevant = Array.from(blocks.values())
             .toSorted((a, b) => b.getLastTouched() - a.getLastTouched())
             .filter(
                 (block) =>
                     block.overlaps(timeMin.value, timeMax.value) &&
                     block.ready()
             )
-    }
+        if (
+            relevant.length > 0 &&
+            (_relevantBlocks.length == 0 || relevant[0] !== _relevantBlocks[0])
+        ) {
+            _relevantBlocks.unshift(relevant[0])
+            if (_relevantBlocks.length > 4) {
+                _relevantBlocks.length = 4
+            }
+        }
+        _relevantBlocks = _relevantBlocks
+            .map((block, iblock) => (block.setActive(iblock == 0), block))
+            .filter((block) => block.isActiveOrZombie())
 
-    const getRelevantBlock = () => {
-        const relevant = getRelevantBlocks()
-        return relevant.length > 0 ? relevant[0] : null
+        return _relevantBlocks
     }
 
     const getCoverages = () => {
-        const block = getRelevantBlock()
-        if (block === null) {
-            return []
-        }
-        return block.getCoverages()
+        return getRelevantBlocks()
+            .slice(0, 1)
+            .flatMap((block) => block.getCoverages())
     }
 
-    const getImages = () => {
-        const block = getRelevantBlock()
-        if (block === null) {
-            return []
+    const getCarpets = () => {
+        const carpets = []
+        for (const block of getRelevantBlocks()) {
+            for (const carpet of block.getCarpets()) {
+                carpet.zombie = !block.active
+                carpets.push(carpet)
+            }
         }
-        return block.getImages()
+        return carpets
     }
 
     const channels = computed(() => {
@@ -302,10 +366,11 @@ export const setupGates = () => {
             channel: null,
             response: null,
             waveform: null,
+            carpet: null,
         }
         for (const gate of gates.value) {
-            for (const kind of ['channel', 'response', 'waveform']) {
-                const span = gate.timeSpans['waveform']
+            for (const kind of ['channel', 'response', 'waveform', 'carpet']) {
+                const span = gate.timeSpans[kind]
                 if (span !== null) {
                     if (spans[kind] === null) {
                         spans[kind] = span
@@ -328,8 +393,8 @@ export const setupGates = () => {
 
     watch([timeSpans], () => {
         if (!initialTimeSpanSet) {
-            const span = timeSpans.value['waveform']
-            if (span !== null) {
+            const span = timeSpans.value['carpet']
+            if (span != null) {
                 const duration = span.tmax - span.tmin
                 setTimeSpan(
                     span.tmin - duration * 0.025,
@@ -345,8 +410,8 @@ export const setupGates = () => {
     return {
         timeMin,
         timeMax,
-        frequencyMin,
-        frequencyMax,
+        yMin,
+        yMax,
         counter,
         setTimeSpan,
         pageForward,
@@ -359,14 +424,14 @@ export const setupGates = () => {
         sensors,
         timeSpans,
         getCoverages,
-        getImages,
+        getCarpets,
     }
 }
 
 let gates = null
 
 export const squirrelGates = () => {
-    if (gates === null) { 
+    if (gates === null) {
         gates = setupGates()
     }
     return gates

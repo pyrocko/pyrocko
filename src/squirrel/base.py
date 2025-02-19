@@ -2833,7 +2833,9 @@ class Squirrel(Selection):
     @filldocs
     def get_carpets(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None,
-            uncut=False, join=True, load_data=True, accessor_id='default'):
+            kind_codes_ids=None,
+            uncut=False, join=True, load_data=True, nsamples_limit=None,
+            accessor_id='default'):
 
         '''
         Get carpets matching given constraints.
@@ -2855,9 +2857,40 @@ class Squirrel(Selection):
         tmin = tmin if tmin is not None else self_tmin
         tmax = tmax if tmax is not None else self_tmax
 
+        sample_rate_max = None
+        if nsamples_limit is not None:
+            sample_rate_max = nsamples_limit / (tmax - tmin)
+
         nuts = sorted(
-            self.iter_nuts('carpet', tmin, tmax, codes),
+            self.iter_nuts(
+                'carpet', tmin, tmax, codes,
+                sample_rate_max=sample_rate_max,
+                kind_codes_ids=kind_codes_ids),
             key=lambda nut: nut.dkey)
+
+        def grouped(key, xs):
+            d = defaultdict(list)
+            for x in xs:
+                d[key(x)].append(x)
+
+            return d
+
+        def rkey(nut):
+            return nut.codes.replace(
+                extra=re.sub(r'-L\d\d', '', nut.codes.extra))
+
+        def best_resolution(nuts):
+            by_resolution = grouped(rkey, nuts)
+            for group in by_resolution.values():
+                group.sort(key=lambda nut: nut.codes.extra)
+
+            return [
+                nut
+                for group in by_resolution.values()
+                for nut in group if nut.codes == group[0].codes]
+
+        if nsamples_limit is not None:
+            nuts = best_resolution(nuts)
 
         if load_data:
             carpets = [
@@ -2876,7 +2909,8 @@ class Squirrel(Selection):
                 carpet = carpet.copy(data='drop')
 
             try:
-                chopped.append(carpet.chop(tmin, tmax))
+                chopped.append(
+                    carpet.chop(tmin, tmax, snap=(math.ceil, math.ceil)))
 
             except trace.NoData:
                 pass
