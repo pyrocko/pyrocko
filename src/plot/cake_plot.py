@@ -34,7 +34,7 @@ def globe_cross_section():
         class GlobeCrossSectionTransform(PolarAxes.PolarTransform):
 
             def transform(self, tr):
-                xy = num.zeros(tr.shape, num.float_)
+                xy = num.zeros(tr.shape, float)
                 t = tr[:, 0:1]*d2r
                 r = cake.earthradius - tr[:, 1:2]
                 x = xy[:, 0:1]
