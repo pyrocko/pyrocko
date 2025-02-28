@@ -314,7 +314,7 @@ class Database(object):
                         cursor,
                         '''
                         SELECT value FROM settings
-                            WHERE key == "version"
+                            WHERE key == 'version'
                         ''')[0])
                 except sqlite3.OperationalError:
                     raise error.SquirrelError(
@@ -339,11 +339,11 @@ class Database(object):
                 '''))
 
             cursor.execute(
-                'INSERT OR IGNORE INTO settings VALUES ("version", "1.0")')
+                "INSERT OR IGNORE INTO settings VALUES ('version', '1.0')")
 
             self.version = execute_get1(
                 cursor,
-                'SELECT value FROM settings WHERE key == "version"')
+                "SELECT value FROM settings WHERE key == 'version'")
 
             cursor.execute(self._register_table(
                 '''
