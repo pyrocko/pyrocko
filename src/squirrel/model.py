@@ -61,7 +61,8 @@ class CodesError(SquirrelError):
 
 
 class Codes(SObject):
-    pass
+    def __new__(cls, string):
+        return to_codes_guess(string)
 
 
 def normalize_nslce(*args, **kwargs):
