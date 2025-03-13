@@ -2185,7 +2185,7 @@ def merge_traces_data_as_array(traces, tmin=None, tmax=None, codes=None):
         codes = codes_patterns_for_kind(WAVEFORM, codes)
 
     if not traces:
-        raise ValueError('Need at least one trace.')
+        raise NoData('Need at least one trace.')
 
     _ensure_aligned(traces)
 
