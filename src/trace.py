@@ -2593,7 +2593,10 @@ def degapper(
 
                 if idist <= 0 and (maxlap is None or -maxlap < idist):
                     # still cut off overlap (cut off on first trace)
-                    a.chop(a.tmin, max(a.tmin, b.tmin-b.deltat))
+                    try:
+                        a.chop(a.tmin, max(a.tmin, b.tmin-b.deltat))
+                    except NoData:
+                        pass
 
                 pass
 
