@@ -258,8 +258,9 @@ Examples: https://pyrocko.org/docs/current/apps/squirrel/manual.html#examples
         process_standard_arguments(eff_parser, args)
 
         if eff_parser._have_selection_arguments:
-            def make_squirrel():
-                return squirrel_from_selection_arguments(args)
+            def make_squirrel(check_have_data=True):
+                return squirrel_from_selection_arguments(
+                    args, check_have_data=check_have_data)
 
             args.make_squirrel = make_squirrel
 
@@ -516,7 +517,7 @@ def add_squirrel_selection_arguments(parser):
         help='Upgrade storage layout of cached data to latest version.')
 
 
-def squirrel_from_selection_arguments(args):
+def squirrel_from_selection_arguments(args, check_have_data=True):
     '''
     Create a :py:class:`~pyrocko.squirrel.base.Squirrel` instance from command
     line arguments.
@@ -534,6 +535,13 @@ def squirrel_from_selection_arguments(args):
 
     '''
     from pyrocko.squirrel import base
+
+    if check_have_data and not (
+            args.persistent or args.datasets or args.paths):
+
+        raise error.ToolError(
+            'No data. Use --add, --dataset, and/or --persistent to set up '
+            'data sources.')
 
     squirrel = base.Squirrel(persistent=args.persistent)
 
