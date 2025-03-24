@@ -349,6 +349,7 @@ def match_codes(pattern, codes):
 
 class CodesMatcher:
     def __init__(self, patterns):
+        patterns = [CodesNSLCE(pattern) for pattern in patterns]
         self._pats_exact, self._pats_nonexact = classify_patterns(patterns)
         self._pats_exact = set(self._pats_exact)
         self._pats_nonexact = [
