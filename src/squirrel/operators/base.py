@@ -224,6 +224,15 @@ class SensorGrouping(RegexGrouping):
     pattern = String.T(default=_cglob_translate('(*.*.*.*)?(.*)'))
 
 
+class ComponentGrouping(RegexGrouping):
+    '''
+    Group by component code.
+
+    All matching channels with the same component code are put into one group.
+    '''
+    pattern = String.T(default=_cglob_translate('*.*.*.*(?).*'))
+
+
 class Translation(Object):
     '''
     Base class for :py:class:`pyrocko.squirrel.model.Nut` translators.
@@ -269,6 +278,13 @@ class ReplaceComponentTranslation(RegexTranslation):
     '''
     pattern = String.T(default=_cglob_translate('(*.*.*.*)?(.*)'))
     replacement = String.T(default=r'\1{component}\2')
+
+
+class KeepComponentTranslation(RegexTranslation):
+    '''
+    '''
+    pattern = String.T(default=_cglob_translate('*.*.*.*(?).*'))
+    replacement = String.T(default=r'...\1.')
 
 
 class CodesMapping:
@@ -1103,10 +1119,12 @@ __all__ = [
     'LocationGrouping',
     'SensorGrouping',
     'ChannelGrouping',
+    'ComponentGrouping',
     'Translation',
     'AddSuffixTranslation',
     'RegexTranslation',
     'ReplaceComponentTranslation',
+    'KeepComponentTranslation',
     'Operator',
     'Restitution',
     'Shift',
