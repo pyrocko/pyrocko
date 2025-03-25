@@ -28,7 +28,9 @@ Any other site can be specified by providing its full URL.
 import re
 import logging
 import socket
+import io
 
+import requests
 
 from pyrocko import util
 from pyrocko.util import DownloadError
@@ -216,7 +218,88 @@ class Timeout(DownloadError):
     pass
 
 
+g_session = None
+
+
 def _request(
+        url,
+        post=False,
+        user=None,
+        passwd=None,
+        timeout=None,
+        **kwargs):
+
+    global g_session
+
+    if g_session is None:
+        g_session = requests.Session()
+
+    if user is not None and passwd is not None:
+        auth = (user, passwd)
+    else:
+        auth = None
+
+    if timeout is None:
+        timeout = g_timeout
+
+    logger.debug('Accessing URL %s' % url)
+
+    try:
+        if not post:
+            response = g_session.get(
+                url,
+                auth=auth,
+                timeout=timeout,
+                params=kwargs)
+
+        else:
+            if isinstance(post, str):
+                post = post.encode('utf8')
+
+            logger.debug('POST data: \n%s' % post.decode('utf8'))
+
+            response = g_session.post(
+                url,
+                auth=auth,
+                timeout=timeout,
+                params=kwargs,
+                data=post)
+
+        logger.debug('Response: %s' % response.status_code)
+
+        if response.status_code == 204:
+            raise EmptyResult(url)
+
+        elif response.status_code == 413:
+            raise RequestEntityTooLarge(url)
+
+        response.raise_for_status()
+
+    except requests.exceptions.ConnectionError as e:
+        raise DownloadError(
+            'Failed connection attempt: %s' % str(e))
+
+    except requests.exceptions.HTTPError as e:
+        raise DownloadError(
+            'Error content returned by server (HTML stripped):\n%s\n'
+            '  Original error was: %s' % (
+                indent(
+                    strip_html(response.text),
+                    '  !  '),
+                str(e)))
+
+    except requests.exceptions.Timeout:
+        raise Timeout(
+            'Timeout error. No response received within %i s. You '
+            'may want to retry with a longer timeout setting. The global '
+            'timeout can be set with the variable `fdsn_timeout` in '
+            '`~/.pyrocko/config.pf`, but this value may be overriden by '
+            'the script/application for a specific request.' % timeout)
+
+    return io.BytesIO(response.content)
+
+
+def _request_old(
         url,
         post=False,
         user=None,
