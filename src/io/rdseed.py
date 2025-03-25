@@ -293,7 +293,7 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
                 respfile = pjoin(self.tempdir, 'RESP.%s.%s.%s.%s' % nslc)
                 respfiles.append(respfile)
 
-        from pyrocko.client.fdsn import resp
+        from pyrocko.io import resp
         sxml = resp.make_stationxml(stations, resp.iload(respfiles))
         return sxml
 
