@@ -1303,8 +1303,8 @@ class WaveformOrder(Object):
 
         if abs(tr.deltat - self.deltat) > (tr.deltat + self.deltat)*1e-5:
             raise InvalidWaveform(
-                'incorrect sampling interval - waveform: %g s, '
-                'meta-data: %g s' % (
+                'incorrect sampling interval - waveform: %15.12e s, '
+                'meta-data: %15.12e s' % (
                     tr.deltat, self.deltat))
 
         if not num.all(num.isfinite(tr.ydata)):
