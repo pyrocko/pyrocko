@@ -230,6 +230,19 @@ class Squirrel(Selection):
     :type persistent:
         :py:class:`str`
 
+    :param caching:
+        Caching scheme can be ``'memory'`` or ``'lru'``. The latter requires
+        the package ``lru-dict`` to be installed. By default, ``'memory'``
+        is used. The ``'memory'`` scheme keeps all waveform data in memory
+        until the Squirrel accessor advances. This is useful for small datasets
+        or when the data is accesses only sequentially.
+        The ``'lru'`` scheme uses a least-recently-used cache to store waveform
+        data. This is useful for large datasets where waveform data access is
+        not sequential.
+    :type caching:
+        :py:class:`str`
+
+
     :param n_threads:
         Number of threads for parallel loading of data. By default a maximum of
         8 threads are used, or less, depending on how many CPU cores are
@@ -313,7 +326,7 @@ class Squirrel(Selection):
 
     def __init__(
             self, env=None, database=None, cache_path=None, persistent=None,
-            n_threads=None, n_samples_block=100000):
+            caching='memory', n_threads=None, n_samples_block=100000):
 
         if not isinstance(env, environment.Environment):
             env = environment.get_environment(env)
@@ -326,6 +339,15 @@ class Squirrel(Selection):
 
         if persistent is None:
             persistent = env.persistent
+
+        Cache = cache.ContentCache
+        if caching == 'lru':
+            try:
+                from pyrocko.squirrel.cache_lru import LRUCache
+                Cache = LRUCache
+            except ImportError:
+                logger.warning('package lru-dict not available,'
+                               ' falling back to memory cache')
 
         Selection.__init__(
             self, database=database, persistent=persistent)
@@ -349,8 +371,8 @@ class Squirrel(Selection):
             self._n_threads = 1
 
         self._content_caches = {
-            'waveform': cache.ContentCache(),
-            'default': cache.ContentCache()}
+            'waveform': Cache(),
+            'default': Cache()}
 
         self._cache_path = cache_path
 
