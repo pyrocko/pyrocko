@@ -8,8 +8,7 @@ from pyrocko.squirrel.model import WAVEFORM, Nut
 
 logger = logging.getLogger('psq.squirrel')
 MB = 1024 * 1024
-MAX_SIZE = 4096
-MAX_BYTES = 500*MB
+MAX_BYTES = 1024*MB
 
 
 class LRUCacheStats(Object):
@@ -43,28 +42,19 @@ def get_size_bytes(nut: Nut) -> int:
 class LRUCache:
     def __init__(self, size_bytes: int = MAX_BYTES):
         self._cache: LRU[CacheKey, Nut] = LRU(
-            size=MAX_SIZE, callback=self._nut_removed)
+            size=1, callback=self._nut_removed)
         self._size_bytes = 0
         self._max_size_bytes = size_bytes
 
-    def _nut_added(self, nut: Nut) -> None:
+    def _add_nut(self, nut: Nut) -> None:
         self._size_bytes += get_size_bytes(nut)
-
-        if self._size_bytes > self._max_size_bytes:
-            new_size = max(1, self._cache.get_size() - 64)
-            self._cache.set_size(new_size)
-            logger.debug(
-                'Cache size exceeded %d bytes, shrank cache to %d elements',
-                MAX_BYTES, new_size)
+        if self._size_bytes < self._max_size_bytes:
+            self._cache.set_size(len(self._cache) + 1)
 
     def _nut_removed(self, key: CacheKey, nut: Nut) -> None:
-        if self._size_bytes < self._max_size_bytes * 0.9:
-            new_size = self._cache.get_size() + 64
-            self._cache.set_size(new_size)
-            logger.debug('Nut removed early, grew cache size to %d elements',
-                         new_size)
-
         self._size_bytes -= get_size_bytes(nut)
+        if self._size_bytes > self._max_size_bytes:
+            self._cache.set_size(len(self._cache) - 1)
 
     def put(self, nut: Nut) -> None:
         '''
@@ -75,8 +65,8 @@ class LRUCache:
         :type nut:
             :py:class:`~pyrocko.squirrel.model.Nut`
         '''
+        self._add_nut(nut)
         self._cache[CacheKey.from_nut(nut)] = nut
-        self._nut_added(nut)
 
     def get(self, nut: Nut,
             accessor: str = 'default', model: str = 'squirrel') -> object:
