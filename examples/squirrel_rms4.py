@@ -35,7 +35,7 @@ fmin = args.fmin
 fmax = args.fmax
 
 tmin = stt('2022-01-14')
-tmax = stt('2022-01-17')
+tmax = stt('2022-01-14 01')
 
 tpad = 1.0 / fmin
 
