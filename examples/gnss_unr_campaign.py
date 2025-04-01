@@ -8,7 +8,7 @@ from pyrocko.plot.automap import Map
 km = 1e3
 DIST_MAX = 80. * km
 RIDGECREST_EQ = location.Location(lat=35.766, lon=-117.605)
-GNSS_URL = 'http://geodesy.unr.edu/news_items/20190707/ci38457511_forweb.txt'
+GNSS_URL = 'https://geodesy.unr.edu/news_items/20190707/ci38457511_forweb.txt'
 
 fname = 'ci38457511_forweb.txt'
 # Download the data
