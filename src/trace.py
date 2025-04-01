@@ -2290,14 +2290,15 @@ def make_traces_compatible(
 
     traces = list(traces)
 
-    dtypes = [tr.ydata.dtype for tr in traces]
+    dtypes = sorted(set([tr.ydata.dtype for tr in traces]))
     if not _all_same(dtypes) or dtype is not None:
-
         if dtype is None:
             dtype = float
             logger.warning(
-                'make_traces_compatible: Inconsistent data types - converting '
-                'sample datatype to %s.' % str(dtype))
+                'make_traces_compatible: Inconsistent data types (%s). '
+                'Converting sample datatype to %s.' % (
+                    ', '.join(str(dtype_) for dtype_ in dtypes),
+                    str(dtype)))
 
         for itr, tr in enumerate(traces):
             tr_copy = tr.copy(data=False)
