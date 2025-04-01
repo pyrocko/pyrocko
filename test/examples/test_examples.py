@@ -32,10 +32,13 @@ skip_examples = [
 ]
 
 need_sys_argv_examples = {
-    'squirrel_rms3b.py': [
-        ['', 'rms', '--tmin=2022-01-14', '--tmax=2022-01-15',
-         '--codes=*.*.*.LHZ'],
-    ]
+    'squirrel_rms2.py':
+        [['', '--dataset', ':fdsn-bgr-gr-bfo']],
+    'squirrel_rms3b.py':
+        [['', 'rms', '--tmin=2022-01-14', '--tmax=2022-01-15',
+         '--codes=*.*.*.LHZ', '--dataset', ':fdsn-bgr-gr-bfo']],
+    'squirrel_rms4.py':
+        [['', '--dataset', ':fdsn-bgr-gr-bfo']],
 }
 
 
