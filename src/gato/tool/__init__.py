@@ -7,7 +7,8 @@
 Gato command line tools.
 '''
 
-from . import cli
+from . import cli, common
 from .cli import *  # noqa
+from .common import *  # noqa
 
-__all__ = cli.__all__
+__all__ = cli.__all__ + common.__all__
