@@ -50,10 +50,17 @@ class ToolError(Exception):
     pass
 
 
+class SensorAggregationError(SquirrelError):
+    '''
+    Raised when trying combine incompatible channels into a sensor.
+    '''
+
+
 __all__ = [
     'SquirrelError',
     'NotAvailable',
     'Duplicate',
     'Inconsistencies',
     'ConversionError',
-    'ToolError']
+    'ToolError',
+    'SensorAggregationError']
