@@ -900,6 +900,18 @@ class Database(object):
         '''
         return [row[0] for row in self._conn.execute(sql)]
 
+    def vacuum(self):
+        sql = '''
+            VACUUM
+        '''
+        self._conn.execute(sql)
+
+    def optimize(self):
+        sql = '''
+            PRAGMA optimize
+        '''
+        self._conn.execute(sql)
+
     def get_stats(self):
         return DatabaseStats(
             nfiles=self.get_nfiles(),
