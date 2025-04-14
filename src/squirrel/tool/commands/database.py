@@ -128,6 +128,40 @@ class Cleanup(SquirrelCommand):
         logger.info('Number of entries removed: %i' % n_removed)
 
 
+class Vacuum(SquirrelCommand):
+
+    def make_subparser(self, subparsers):
+        headline = \
+            'Run sqlite `VACUUM` command.'
+
+        return subparsers.add_parser(
+            'vacuum',
+            help=headline,
+            description=headline)
+
+    def run(self, parser, args):
+        s = sq.Squirrel()
+        db = s.get_database()
+        db.vacuum()
+
+
+class Optimize(SquirrelCommand):
+
+    def make_subparser(self, subparsers):
+        headline = \
+            'Run sqlite `PRAGMA optimize` command.'
+
+        return subparsers.add_parser(
+            'optimize',
+            help=headline,
+            description=headline)
+
+    def run(self, parser, args):
+        s = sq.Squirrel()
+        db = s.get_database()
+        db.optimize()
+
+
 class Remove(SquirrelCommand):
 
     def make_subparser(self, subparsers):
@@ -162,7 +196,9 @@ def make_subparser(subparsers):
     return subparsers.add_parser(
         'database',
         help=headline,
-        subcommands=[Env(), Stats(), Files(), Nuts(), Cleanup(), Remove()],
+        subcommands=[
+            Env(), Stats(), Files(), Nuts(), Cleanup(), Remove(), Vacuum(),
+            Optimize()],
         description=description)
 
 
