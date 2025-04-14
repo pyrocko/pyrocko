@@ -76,3 +76,9 @@ def get_matching_arrays(name_patterns, array_paths, use_builtin_arrays):
         (array.name, array)
         for array in arrays.values()
         if array.name in matching_names)
+
+
+__all__ = [
+    'add_array_selection_arguments',
+    'get_matching_arrays',
+]
