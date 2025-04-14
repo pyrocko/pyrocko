@@ -80,8 +80,8 @@ class SquirrelTestCase(unittest.TestCase):
                 C(*invalid)
 
         for valid in [
-                'net.sta.loc.cha',
-                '...',
+                'net.sta.loc.cha.',
+                '....',
                 'net.sta.loc.cha.ext']:
 
             c = C(valid)
