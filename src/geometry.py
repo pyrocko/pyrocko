@@ -68,6 +68,14 @@ def xyz2rtp(xyz):
     return vecs
 
 
+def xyz2latlon(xyz):
+    rtp = xyz2rtp(xyz)
+    vecs = num.empty((xyz.shape[0], 2), dtype=num.float64)
+    vecs[:, 0] = rtp[:, 1] * r2d - 90.
+    vecs[:, 1] = rtp[:, 2] * r2d
+    return vecs
+
+
 def latlon2xyz(latlon, radius=1.0):
     rtp = num.empty((latlon.shape[0], 3))
     rtp[:, 0] = radius
