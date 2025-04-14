@@ -970,6 +970,12 @@ class Squirrel(Selection):
 
             return
 
+        if codes is not None and len(codes) == 0:
+            return
+
+        if kind_codes_ids is not None and len(kind_codes_ids) == 0:
+            return
+
         kind_id = to_kind_id(kind)
 
         cond = []
