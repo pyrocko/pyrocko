@@ -9,7 +9,7 @@ import math
 import uuid
 
 from typing import TYPE_CHECKING, Generator, Sequence, Hashable, TypeVar, Union
-from typing import List as tList
+from typing import List as tList, Set as tSet
 from typing import Tuple as tTuple
 
 if TYPE_CHECKING:
@@ -26,7 +26,7 @@ from pyrocko.trace import Trace, TraceTooShort, NoData
 from ..model import (
     QuantityType, CodesNSLCE, CodesMatcher, CHANNEL, WAVEFORM,
     get_selection_args, Sensor, Channel, Response, Coverage, join_coverages,
-    codes_patterns_list, match_codes_any
+    codes_patterns_list
 )
 
 from pyrocko.guts import Object, String, Duration, Float, clone, List
@@ -106,6 +106,21 @@ def time_min_max(codes_to_traces):
     tmin_trs = min(tr.tmin for tr in trs)
     tmax_trs = max(tr.tmax for tr in trs)
     return tmin_trs, tmax_trs
+
+
+def by_codes(xs: HasCodes) -> dict[CodesNSLCE, tList[HasCodes]]:
+    by_codes = defaultdict(list)
+    for x in xs:
+        by_codes[x.codes].append(x)
+
+    return by_codes
+
+
+def by_codes_unique(xs: HasCodes) -> dict[CodesNSLCE, HasCodes]:
+    return dict(
+        (k, xs_group[0])
+        for (k, xs_group) in by_codes(xs).items()
+        if len(xs_group) == 1)
 
 
 class Filtering(Object):
@@ -300,11 +315,7 @@ def new_operator_id():
     return uuid.uuid4()
 
 
-class Operator(Object):
-
-    filtering = Filtering.T(default=Filtering.D())
-    grouping = Grouping.T(default=Grouping.D())
-    translation = Translation.T(default=Translation.D())
+class BaseOperator(Object):
 
     def post_init(self):
         self.reset()
@@ -315,7 +326,7 @@ class Operator(Object):
         self._input_mapping_counter = None
         self._mapping_counter = 0
         self._mappings = {}
-        self._available = []
+        self._available = set()
         self._n_choppers_active = 0
 
     @property
@@ -334,6 +345,9 @@ class Operator(Object):
         self.reset()
         self._input = input
 
+    def get_input(self) -> (Operator | Squirrel):
+        return self._input
+
     def describe(self) -> str:
         return '%s\n  provides: %s\n  requires: %s\n%s' % (
             self.name,
@@ -349,12 +363,6 @@ class Operator(Object):
                 scodes(mapping.in_codes))
             for mapping in self.iter_mappings()])
 
-    def translate_codes(
-                self,
-                in_codes: tList[CodesNSLCE]
-            ) -> tList[CodesNSLCE]:
-        return [self.translation.translate(codes) for codes in in_codes]
-
     def iter_mappings(
                 self,
                 codes: tList[CodesNSLCE] | None = None
@@ -362,8 +370,12 @@ class Operator(Object):
 
         self.update_mappings()
 
-        if codes:
+        if codes is not None:
+            if len(codes) == 0:
+                return
+
             cpf = CodesPatternFiltering(codes=codes)
+
             for mapping in self._mappings.values():
                 if any(cpf.match(out_codes)
                        for out_codes in mapping.out_codes):
@@ -379,8 +391,32 @@ class Operator(Object):
 
         return list(self.iter_mappings(codes))
 
-    def get_mapping(self, codes: CodesNSLCE) -> CodesMapping:
-        return self._mappings[self.grouping.key(codes)]
+    def get_mappings_and_matching_codes(
+                self,
+                codes: tList[CodesNSLCE] | None = None
+                ) -> (tList[CodesMapping], tSet[CodesNSLCE]):
+
+        self.update_mappings()
+
+        if codes is not None:
+            if len(codes) == 0:
+                return [], set()
+
+            mappings_match = []
+            codes_out_match = []
+            cpf = CodesPatternFiltering(codes=codes)
+            for mapping in self._mappings.values():
+                codes_match_this = [
+                    out_codes for out_codes in mapping.out_codes
+                    if cpf.match(out_codes)]
+
+                if codes_match_this:
+                    codes_out_match.extend(codes_match_this)
+                    mappings_match.append(mapping)
+
+            return mappings_match, codes_out_match
+        else:
+            return list(self.mappings.values()), None
 
     def iter_codes(self) -> Generator[CodesNSLCE]:
 
@@ -400,7 +436,10 @@ class Operator(Object):
 
         self.update_mappings()
 
-        for mapping in mappings or self._mappings.values():
+        if mappings is None:
+            mappings = self._mappings.values()
+
+        for mapping in mappings:
             yield from mapping.in_codes
 
     def get_in_codes(
@@ -426,53 +465,17 @@ class Operator(Object):
             else:
                 available &= codes
 
-        available = sorted(available)
-        removed, added = odiff(self._available, available)
+        added = available - self._available
+        removed = self._available - available
 
-        filt = self.filtering.filter
-        gkey = self.grouping.key
-        mappings = self._mappings
+        need_update = self._update_mappings_specific(added, removed)
+        if not isinstance(need_update, bool):
+            raise Exception(
+                '_update_mappings_specific(...) must return bool')
 
-        need_update = set()
-
-        for codes in filt(removed):
-            k = gkey(codes)
-            mappings[k].in_codes_set.remove(codes)
-            need_update.add(k)
-
-        for codes in filt(added):
-            k = gkey(codes)
-            if k not in mappings:
-                mappings[k] = CodesMapping()
-
-            mappings[k].in_codes_set.add(codes)
-            need_update.add(k)
-
-        for k in need_update:
-            mapping = mappings[k]
-            if not mapping.in_codes_set:
-                del mappings[k]
-            else:
-                mapping.in_codes = tuple(sorted(mapping.in_codes_set))
-                mapping.out_codes = self.translate_codes(mapping.in_codes)
-
-        self._available = available
         self._input_mapping_counter = self._input._mapping_counter
         if need_update:
             self._mapping_counter += 1
-
-    def by_codes(self, xs: HasCodes) -> dict[CodesNSLCE, tList[HasCodes]]:
-        by_codes = defaultdict(list)
-        for x in xs:
-            by_codes[x.codes].append(x)
-
-        return by_codes
-
-    def by_codes_unique(self, xs: HasCodes) -> dict[CodesNSLCE, HasCodes]:
-        return dict(
-            (k, xs_group[0])
-            for (k, xs_group) in self.by_codes(xs).items()
-            if len(xs_group) == 1)
 
     def get_in_channels(
                 self,
@@ -486,7 +489,7 @@ class Operator(Object):
             tmin=tmin,
             tmax=tmax)
 
-        return self.by_codes_unique(channels)
+        return by_codes(channels)
 
     def get_in_responses(
                 self,
@@ -500,7 +503,7 @@ class Operator(Object):
             tmin=tmin,
             tmax=tmax)
 
-        return self.by_codes_unique(responses)
+        return by_codes(responses)
 
     def get_in_waveforms(
                 self,
@@ -513,7 +516,7 @@ class Operator(Object):
         traces = self._input.get_waveforms(
             codes=in_codes, tmin=tmin, tmax=tmax, **kwargs)
 
-        return self.by_codes(traces)
+        return by_codes(traces)
 
     def get_in_coverages(
                 self,
@@ -527,7 +530,7 @@ class Operator(Object):
         coverages = self._input.get_coverage(
             kind, codes=in_codes, tmin=tmin, tmax=tmax, **kwargs)
 
-        return self.by_codes_unique(coverages)
+        return by_codes_unique(coverages)
 
     def get_channels(
                 self,
@@ -541,11 +544,19 @@ class Operator(Object):
         tmin, tmax, codes = get_selection_args(
             CHANNEL, obj, tmin, tmax, time, codes)
 
-        mappings = self.get_mappings(codes)
+        mappings, codes_want = self.get_mappings_and_matching_codes(codes)
         in_codes = self.get_in_codes(mappings)
-        channels = self.get_in_channels(in_codes, tmin, tmax)
-        return self.process_channels(
-            mappings, in_codes, channels, tmin, tmax)
+        channels_in = self.get_in_channels(in_codes, tmin, tmax)
+
+        channels_out = self.process_channels(
+            mappings, in_codes, channels_in, tmin, tmax)
+
+        if codes_want is not None:
+            channels_out = [
+                channel for channel in channels_out
+                if channel.codes in codes_want]
+
+        return channels_out
 
     def get_sensors(
                 self,
@@ -556,13 +567,14 @@ class Operator(Object):
                 codes: CodesConvertible = None,
             ) -> tList[Sensor]:
 
-        tmin, tmax, codes = get_selection_args(
-            CHANNEL, obj, tmin, tmax, time, codes)
+        channels = self.get_channels(
+            obj=obj,
+            tmin=tmin,
+            tmax=tmax,
+            time=time,
+            codes=codes)
 
-        mappings = self.get_mappings(codes)
-        in_codes = self.get_in_codes(mappings)
-        channels = self.get_in_channels(in_codes, tmin, tmax)
-        return self.process_sensors(channels.values(), tmin, tmax)
+        return self.process_sensors(channels)
 
     def get_responses(
                 self,
@@ -578,9 +590,9 @@ class Operator(Object):
 
         mappings = self.get_mappings(codes)
         in_codes = self.get_in_codes(mappings)
-        codes_to_response = self.get_in_responses(in_codes, tmin, tmax)
+        codes_to_responses = self.get_in_responses(in_codes, tmin, tmax)
         return self.process_responses(
-            mappings, in_codes, codes_to_response, tmin, tmax)
+            mappings, in_codes, codes_to_responses, tmin, tmax)
 
     def get_waveforms(
                 self,
@@ -595,7 +607,7 @@ class Operator(Object):
         tmin, tmax, codes = get_selection_args(
             CHANNEL, obj, tmin, tmax, time, codes)
 
-        mappings = self.get_mappings(codes)
+        mappings, codes_want = self.get_mappings_and_matching_codes(codes)
         in_codes = self.get_in_codes(mappings)
 
         tpad = self.get_time_padding()
@@ -612,8 +624,8 @@ class Operator(Object):
         trs = self.process_waveforms(
             mappings, in_codes, codes_to_traces, tmin, tmax)
 
-        if codes is not None:
-            trs = [tr for tr in trs if match_codes_any(codes, tr.codes)]
+        if codes_want is not None:
+            trs = [tr for tr in trs if tr.codes in codes_want]
 
         return trs
 
@@ -755,7 +767,7 @@ class Operator(Object):
                 self,
                 mappings: tList[CodesMapping],
                 in_codes: tList[CodesNSLCE],
-                codes_to_channel: dict[CodesNSLCE, Channel],
+                codes_to_channels: dict[CodesNSLCE, tList[Channel]],
                 tmin: TimeFloat = None,
                 tmax: TimeFloat = None,
             ) -> tList[Channel]:
@@ -765,15 +777,14 @@ class Operator(Object):
             for in_codes, out_codes in zip(
                     mapping.in_codes, mapping.out_codes):
 
-                if in_codes not in codes_to_channel:
+                if in_codes not in codes_to_channels:
                     # print('not available: %s' % in_codes.safe_str)
                     continue
 
-                channel_in = codes_to_channel[in_codes]
-                channel = clone(channel_in)
-                channel.codes = out_codes
-
-                channels.append(channel)
+                for channel_in in codes_to_channels[in_codes]:
+                    channel = clone(channel_in)
+                    channel.codes = out_codes
+                    channels.append(channel)
 
         return channels
 
@@ -784,17 +795,13 @@ class Operator(Object):
                 tmax: TimeFloat = None,
             ) -> tList[Sensor]:
 
-        from pyrocko.squirrel.base import match_time_span
-        return [
-            sensor
-            for sensor in Sensor.from_channels(channels)
-            if match_time_span(tmin, tmax, sensor)]
+        return Sensor.from_channels(channels)
 
     def process_responses(
                 self,
                 mappings: tList[CodesMapping],
                 in_codes: tList[CodesNSLCE],
-                codes_to_response: dict[CodesNSLCE, Response],
+                codes_to_responses: dict[CodesNSLCE, tList[Response]],
                 tmin: TimeFloat = None,
                 tmax: TimeFloat = None,
             ) -> tList[Response]:
@@ -805,13 +812,14 @@ class Operator(Object):
                     mapping.in_codes, mapping.out_codes):
 
                 try:
-                    responses_in = codes_to_response[in_codes]
+                    responses_in = codes_to_responses[in_codes]
                 except KeyError:
                     continue
 
-                response = clone(responses_in)
-                response.codes = out_codes
-                responses.append(response)
+                for response_in in responses_in:
+                    response = clone(response_in)
+                    response.codes = out_codes
+                    responses.append(response)
 
         return responses
 
@@ -877,6 +885,56 @@ class Operator(Object):
         return tmin + self.get_time_padding(), tmax - self.get_time_padding()
 
 
+class Operator(BaseOperator):
+    '''
+    Base class for operators with typical filter-group-translate behaviour.
+    '''
+
+    filtering = Filtering.T(default=Filtering.D())
+    grouping = Grouping.T(default=Grouping.D())
+    translation = Translation.T(default=Translation.D())
+
+    def translate_codes(
+                self,
+                in_codes: tList[CodesNSLCE]
+            ) -> tList[CodesNSLCE]:
+        return [self.translation.translate(codes) for codes in in_codes]
+
+    def _update_mappings_specific(
+            self,
+            added: tSet[CodesNSLCE],
+            removed: tSet[CodesNSLCE]) -> bool:
+
+        filt = self.filtering.filter
+        gkey = self.grouping.key
+        mappings = self._mappings
+
+        need_update = set()
+
+        for codes in filt(removed):
+            k = gkey(codes)
+            mappings[k].in_codes_set.remove(codes)
+            need_update.add(k)
+
+        for codes in filt(added):
+            k = gkey(codes)
+            if k not in mappings:
+                mappings[k] = CodesMapping()
+
+            mappings[k].in_codes_set.add(codes)
+            need_update.add(k)
+
+        for k in need_update:
+            mapping = self._mappings[k]
+            if not mapping.in_codes_set:
+                del self._mappings[k]
+            else:
+                mapping.in_codes = tuple(sorted(mapping.in_codes_set))
+                mapping.out_codes = self.translate_codes(mapping.in_codes)
+
+        return bool(need_update)
+
+
 class Restitution(Operator):
     translation = AddSuffixTranslation(suffix='R{quantity}')
     quantity = QuantityType.T(default='velocity')
@@ -933,7 +991,7 @@ class Restitution(Operator):
 
         tmin_trs, tmax_trs = time_min_max(codes_to_traces)
 
-        codes_to_response = self.get_in_responses(
+        codes_to_responses = self.get_in_responses(
             in_codes, tmin_trs, tmax_trs)
 
         freqlimits = self.get_taper_frequencies()
@@ -943,11 +1001,24 @@ class Restitution(Operator):
             for in_codes, out_codes in zip(
                     mapping.in_codes, mapping.out_codes):
 
-                if in_codes not in codes_to_response:
-                    # print('not available: %s' % in_codes.safe_str)
+                if in_codes not in codes_to_responses:
+                    logger.warning(
+                        'No instrument response available: %s' % str(in_codes))
                     continue
 
-                resp = codes_to_response[in_codes].get_effective(self.quantity)
+                responses = codes_to_responses[in_codes]
+                if len(responses) == 0:
+                    logger.warning(
+                        'No instrument response available: %s' % str(in_codes))
+                    continue
+
+                elif len(responses) > 1:
+                    logger.warning(
+                        'Multiple matching instrument responses: %s'
+                        % str(in_codes))
+                    continue
+
+                resp = responses[0].get_effective(self.quantity)
 
                 for tr in codes_to_traces[in_codes]:
                     if freqlimits[-1] > 0.5/tr.deltat:
@@ -1013,28 +1084,31 @@ class Transform(Operator):
                 self,
                 mappings: tList[CodesMapping],
                 in_codes: tList[CodesNSLCE],
-                codes_to_channel: dict[CodesNSLCE, Channel],
+                codes_to_channels: dict[CodesNSLCE, tList[Channel]],
                 tmin: TimeFloat = None,
                 tmax: TimeFloat = None,
             ) -> tList[Channel]:
 
         channels_out = []
         for mapping in mappings:
-            try:
-                sensor = Sensor.from_channels_single([
-                    codes_to_channel[in_codes]
-                    for in_codes in mapping.in_codes])
-            except KeyError:
-                continue
+            channels = []
+            for in_codes in mapping.in_codes:
+                try:
+                    channels.extend(codes_to_channels[in_codes])
+                except KeyError:
+                    pass
 
-            for component, out_codes in zip(
-                    self.components, mapping.out_codes):
+            sensors = Sensor.from_channels(channels)
+            for sensor in sensors:
+                for component, out_codes in zip(
+                        self.components, mapping.out_codes):
 
-                channel = clone(sensor.channels[0])
-                channel.codes = out_codes
-                channel.azimuth, channel.dip = self.get_orientation(
-                    sensor, component)
-                channels_out.append(channel)
+                    channel = clone(sensor.channels[0])
+                    channel.codes = out_codes
+                    channel.azimuth, channel.dip = self.get_orientation(
+                        sensor, component)
+
+                    channels_out.append(channel)
 
         return channels_out
 
@@ -1049,29 +1123,45 @@ class Transform(Operator):
 
         tmin_trs, tmax_trs = time_min_max(codes_to_traces)
 
-        codes_to_channel = self.get_in_channels(
+        codes_to_channels = self.get_in_channels(
             in_codes, tmin_trs, tmax_trs)
 
         traces_out = []
         for mapping in mappings:
-            try:
-                sensor = Sensor.from_channels_single([
-                    codes_to_channel[in_codes]
-                    for in_codes in mapping.in_codes])
-            except KeyError:
+            channels = []
+            for in_codes in mapping.in_codes:
+                try:
+                    channels.extend(codes_to_channels[in_codes])
+                except KeyError:
+                    pass
+
+            sensors = Sensor.from_channels(channels)
+            if len(sensors) == 0:
+                logger.warning(
+                    'No matching sensors: %s', ', '.join(
+                        c.safe_str for c in mapping.in_codes))
+
                 continue
 
-            trs_sensor = []
-            for in_codes in mapping.in_codes:
-                trs_sensor.extend(codes_to_traces[in_codes])
+            if len(sensors) != 1:
+                logger.warning(
+                    'Multiple matching sensors: %s'
+                    % ', '.join(sensor.codes.safe_str for sensor in sensors))
 
-            codes_mapping = dict(zip(self.components, mapping.out_codes))
+                continue
 
-            trs_sensor_out = self.project(sensor, trs_sensor)
-            for tr in trs_sensor_out:
-                tr.set_codes(*codes_mapping[tr.channel[-1]])
+            for sensor in sensors:
+                trs_sensor = []
+                for in_codes in mapping.in_codes:
+                    trs_sensor.extend(codes_to_traces[in_codes])
 
-            traces_out.extend(trs_sensor_out)
+                codes_mapping = dict(zip(self.components, mapping.out_codes))
+
+                trs_sensor_out = self.project(sensor, trs_sensor)
+                for tr in trs_sensor_out:
+                    tr.set_codes(*codes_mapping[tr.channel[-1]])
+
+                traces_out.extend(trs_sensor_out)
 
         return traces_out
 
@@ -1125,6 +1215,7 @@ __all__ = [
     'RegexTranslation',
     'ReplaceComponentTranslation',
     'KeepComponentTranslation',
+    'BaseOperator',
     'Operator',
     'Restitution',
     'Shift',
