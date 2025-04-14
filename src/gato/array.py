@@ -1,3 +1,4 @@
+import logging
 from collections import defaultdict
 
 import numpy as num
@@ -15,9 +16,34 @@ from .grid.location import UnstructuredLocationGrid, distances_3d
 guts_prefix = 'gato'
 km = 1000.
 
+logger = logging.getLogger('gato.array')
+
 
 def time_or_none_to_str(t):
     return util.time_to_str(t, '%Y-%m-%d') if t else '...'
+
+
+def deduplicate_locations(locations, eps=1e-4):
+
+    grid = UnstructuredLocationGrid.from_locations(locations)
+    distances = distances_3d(grid, grid)
+    distances_flat = distances.flatten()
+    distance_cutoff = num.median(distances_flat) * eps
+    connectivity = distances <= distance_cutoff
+
+    logger.info(
+        'Deduplication distance_cutoff: %g km' % (distance_cutoff/km))
+
+    n = len(locations)
+    igroups = num.arange(n)
+    for ia in range(n):
+        igroups[ia] = igroups[num.nonzero(connectivity[ia, :ia+1])[0][0]]
+
+    return [
+        location
+        for (ilocation, location)
+        in enumerate(locations)
+        if igroups[ilocation] == ilocation]
 
 
 class CodesTimeQueryArgs(Object):
@@ -117,7 +143,13 @@ class SensorArray(Object):
         return ' | '.join(
             ('%-17s' % self.name, self.type[:1], self.comment or ''))
 
-    def get_info(self, sq, codes=None, time=None, tmin=None, tmax=None):
+    def get_info(
+            self, sq,
+            codes=None,
+            time=None,
+            tmin=None,
+            tmax=None,
+            ignore_position_duplicates=True):
 
         # First, get all sensors matching the array definition in the given
         # time constraints, then remove channels which do not match the codes
@@ -138,8 +170,32 @@ class SensorArray(Object):
 
             sensors = [sensor for sensor in sensors if sensor.channels]
 
-        request_query_args = CodesTimeQueryArgs(
-            codes=codes, time=time, tmin=tmin, tmax=tmax)
+        if sensors:
+            if ignore_position_duplicates:
+                sensors_dedup = deduplicate_locations(sensors, eps=1e-2)
+                logger.info('Array %s - sensor deduplication: %i => %i' % (
+                    self.name,
+                    len(sensors),
+                    len(sensors_dedup)))
+
+                logger.debug(
+                    'Array %s - sensor deduplication codes:\n   %s\n => %s' % (
+                        self.name,
+                        ', '.join(s.codes.safe_str for s in sensors),
+                        ', '.join(s.codes.safe_str for s in sensors_dedup)))
+
+                sensors = sensors_dedup
+
+            grid = UnstructuredLocationGrid.from_locations(sensors)
+            center = grid.get_center()
+            distances = distances_3d(grid, grid).flatten()
+            distances = distances[distances != 0.0]
+            distances_stats = tuple(num.percentile(
+                distances, [0., 10., 50., 90., 100.])) \
+                if distances.size != 0 else None
+        else:
+            center = None
+            distances_stats = None
 
         tmins = []
         tmaxs = []
@@ -159,29 +215,19 @@ class SensorArray(Object):
             tmins.append(sensor.tmin)
             tmaxs.append(sensor.tmax)
 
+        codes = sorted(set(codes))
         tmins = [tmin for tmin in tmins if tmin is not None]
         tmin = min(tmins) if tmins else None
         tmax = None if None in tmaxs or not tmaxs else max(tmaxs)
 
-        if sensors:
-            grid = UnstructuredLocationGrid.from_locations(
-                sensors, ignore_position_duplicates=True)
-
-            center = grid.get_center()
-            distances = distances_3d(grid, grid).flatten()
-            distances = distances[distances != 0.0]
-            distances_stats = tuple(num.percentile(
-                distances, [0., 10., 50., 90., 100.])) \
-                if distances.size != 0 else None
-        else:
-            center = None
-            distances_stats = None
+        request_query_args = CodesTimeQueryArgs(
+            codes=codes, time=time, tmin=tmin, tmax=tmax)
 
         codes_nsl_by_channels = dict(
             (k, sorted(v)) for (k, v) in nsl_by_chas.items())
 
         return SensorArrayInfo(
-            codes=sorted(codes),
+            codes=codes,
             codes_nsl_by_channels=codes_nsl_by_channels,
             tmin=tmin,
             tmax=tmax,
