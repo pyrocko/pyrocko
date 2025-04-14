@@ -34,7 +34,7 @@ from pyrocko.response import FrequencyResponse, MultiplyResponse, \
 from pyrocko.model.codes import CodesError, Codes, CodesNSLCE, CodesNSL, \
     CodesX, CodesMatcher, match_codes, match_codes_any, classify_patterns  # noqa
 
-from .error import ConversionError
+from .error import ConversionError, SensorAggregationError
 
 
 d2r = num.pi / 180.
@@ -500,8 +500,12 @@ class Sensor(ChannelBase):
     @classmethod
     def from_channels_single(cls, channels):
         args = channels[0]._get_sensor_args()
-        for channel in channels:
-            assert args == channel._get_sensor_args()
+        for channel in channels[1:]:
+            if args != channel._get_sensor_args():
+                raise SensorAggregationError(
+                    'Cannot create sensor from incompatible channels:'
+                    '\n  %s' % (
+                        '\n  '.join(channel.summary for channel in channels)))
 
         return cls(
             channels=channels,
