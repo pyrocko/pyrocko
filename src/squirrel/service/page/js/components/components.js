@@ -1,14 +1,10 @@
-<<<<<<< HEAD
 import { ref, computed, onMounted, watch } from '../vue.esm-browser.js'
-=======
-import { ref, computed, onMounted, nextTick } from '../vue.esm-browser.js'
->>>>>>> 463c1112 (service-test: tabs + components-based architecture)
 import { squirrelMap } from '../squirrel/map.js'
 import { squirrelTimeline } from '../squirrel/timeline.js'
 import { squirrelGates } from '../squirrel/gate.js'
 import { squirrelConnection } from '../squirrel/connection.js'
+import { useFilters } from '../squirrel/filter.js'
 
-<<<<<<< HEAD
 const positiveOrNull = (s) => {
     if (s.trim() == '') {
         return null
@@ -26,26 +22,12 @@ const positiveOrNull = (s) => {
 export const componentTimeline = {
     setup() {
         const gates = squirrelGates()
-
         const timeline = squirrelTimeline()
-=======
-export const componentTimeline = {
-    setup() {
-
-        console.log('componentTimeline mounted')
-        const gates = squirrelGates()
-        const frequencyMin = ref(gates.frequencyMin)
-        const frequencyMax = ref(gates.frequencyMax)
-
-        const timeline = squirrelTimeline()
-        
->>>>>>> 463c1112 (service-test: tabs + components-based architecture)
 
         onMounted(() => {
             d3.select('#timeline').call(timeline)
         })
 
-<<<<<<< HEAD
         const yMinInput = ref('')
         const yMaxInput = ref('')
         const yError = ref(null)
@@ -71,9 +53,6 @@ export const componentTimeline = {
         watch(yMaxInput, propagate)
 
         return { yMinInput, yMaxInput, yError }
-=======
-        return { frequencyMin, frequencyMax, timeline }
->>>>>>> 463c1112 (service-test: tabs + components-based architecture)
     },
     template: `
         <div id="timeline" tabindex="0" class="vbox-main tab-pane">
@@ -81,17 +60,10 @@ export const componentTimeline = {
         <div class="container">
             <div class="form-group row">
                 <div class="col-2">
-<<<<<<< HEAD
                     <input type="text" class="form-control" :class="{ 'input-error': yError }" v-model="yMinInput" />
                 </div>
                 <div class="col-2">
                     <input type="text" class="form-control" :class="{ 'input-error': yError }" v-model="yMaxInput" />
-=======
-                    <input type="text" class="form-control" v-model="frequencyMin" />
-                </div>
-                <div class="col-2">
-                    <input type="text" class="form-control" v-model="frequencyMax" />
->>>>>>> 463c1112 (service-test: tabs + components-based architecture)
                 </div>
             </div>
         </div>
@@ -101,29 +73,35 @@ export const componentTimeline = {
 export const componentMap = {
     setup() {
         let map = squirrelMap()
-<<<<<<< HEAD
         onMounted(() => {
             d3.select('#map').call(map)
             map.addBasemap()
         })
-=======
-        let resizeHandlerMap = map.resizeHandler
-        onMounted(() => {
-            d3.select('#map').call(map)
-            map.addBasemap().addSensors()
-        })
-
-        console.log('componentMap mounted')
-        return { resizeHandlerMap }
->>>>>>> 463c1112 (service-test: tabs + components-based architecture)
     },
     template: `
       <div id="map" class="map-container vbox-main tab-pane"></div>
     `,
 }
 
+export const componentFilter = {
+    setup() {
+        const { searchQuery, selectedOption, filterSensors } = useFilters()
+        return {
+            searchQuery, selectedOption, onSearchClick: filterSensors
+        }
+    },
+    template:
+    `<div class="d-flex justify-content-end">
+        <div class="input-group input-group-sm rounded w-auto">
+            <input type="search" class="form-control form-control-sm rounded" placeholder="Select" v-model="searchQuery" @keyup.enter="onSearchClick" />
+            <button class="btn btn-primary" type="button" @click="onSearchClick">&#x1F50E;&#xFE0E;</button>
+        </div>
+    </div>`,
+}
+
 export const componentTable = {
     setup() {
+        const { filteredSensors, selectedOption } = useFilters()
         const sortTable = (sortValue) => {
             if (sortValue === currentSort.value) {
                 currentSortDir.value =
@@ -135,34 +113,29 @@ export const componentTable = {
         }
 
         const setOption = (option) => {
-<<<<<<< HEAD
             selectedOption.value = option
         }
 
         const gates = squirrelGates()
+        console.log("gates", gates)
+        console.log('before sensor assignment')
+        
 
         const sensors = gates.sensors
-=======
-            console.log('Selected:', option)
-            selectedOption.value = option
-        }
-
-        const sensors = ref([])
->>>>>>> 463c1112 (service-test: tabs + components-based architecture)
+        const responses = gates.responses
+        const channels = gates.channels
         const currentSort = ref('codes')
         const currentSortDir = ref('asc')
-        const selectedOption = ref('Station')
+        const responsesMap = ref({})      
+        const noResults = computed(() => filteredSensors.value.length === 0)
 
-<<<<<<< HEAD
-=======
-        const fetchSensors = async () => {
-            const connection = squirrelConnection()
-            sensors.value = await connection.request('raw/get_sensors')
-        }
+        // watch(sensors, () => {
+        //     filteredSensors.value = [...sensors.value]
+        // })
 
->>>>>>> 463c1112 (service-test: tabs + components-based architecture)
+
         const sortedSensors = computed(() => {
-            return [...sensors.value].sort((a, b) => {
+            return [...filteredSensors.value].sort((a, b) => {
                 let modifier = 1
                 if (currentSortDir.value === 'desc') modifier = -1
 
@@ -172,18 +145,23 @@ export const componentTable = {
                     return 1 * modifier
                 return 0
             })
-        })
-<<<<<<< HEAD
-=======
-        onMounted(() => {
-        //   const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
-        //   tooltipTriggerList.forEach((tooltipTriggerEl) => {
-        //     new bootstrap.Tooltip(tooltipTriggerEl)
-        //   })
-            fetchSensors()
-        })
-        console.log('componentTable mounted')
->>>>>>> 463c1112 (service-test: tabs + components-based architecture)
+        })  
+
+        const mapResponses = () => {
+            responsesMap.value = responses.value.reduce((map, response) => {
+                map[response.codes] = response
+                return map
+            }, {})
+        }
+
+        watch(responses, mapResponses, { immediate: true })
+
+        const formatResponse = (response) => {
+            const stage = response.stages[0]
+            return `${stage.input_quantity} -> ${stage.output_quantity}`
+        }
+
+
         return {
             sortTable,
             setOption,
@@ -191,9 +169,16 @@ export const componentTable = {
             currentSortDir,
             selectedOption,
             sortedSensors,
+            responses,
+            responsesMap,
+            formatResponse,
+            noResults
         }
     },
     template: `
+
+
+
     <div class="vbox-main tab-pane sensor-table">
                     <table class="table">
                         <thead>    
@@ -203,17 +188,14 @@ export const componentTable = {
                                         <button
                                             class="btn btn-outline-primary dropdown-toggle"
                                             type="button"
-                                            id="stationChannelDropdown"
                                             data-bs-toggle="dropdown"
                                             
                                         >
                                             {{ selectedOption }}
                                         </button>
-                                        <ul class="dropdown-menu" aria-labelledby="stationChannelDropdown">
-                                            <li><a class="dropdown-item" href="#" @click="setOption('Station')">Station</a></li>
-                                            <li><a class="dropdown-item" href="#" @click="setOption('Channel')">Channel</a></li>
+                                        <ul class="dropdown-menu">
                                             <li><a class="dropdown-item" href="#" @click="setOption('Sensor')">Sensor</a></li>
-                                            <li><a class="dropdown-item" href="#" @click="setOption('Response')">Response</a></li>
+                                            <li><a class="dropdown-item" href="#" @click="setOption('Channel')">Channel</a></li>
                                         </ul>
                                     </div>
                                 </th>
@@ -237,22 +219,30 @@ export const componentTable = {
                                 <th scope="col" @click="sortTable('flag')">Flag<span v-if="currentSort === 'flag'">
                                     {{ currentSortDir === 'asc' ? '▲' : '▼' }}
                                 </span></th>
+                                <th v-if="selectedOption === 'Channel'" scope="col" @click="sortTable('responses')">Response<span v-if="currentSort === 'response'">
+                                    {{ currentSortDir === 'asc' ? '▲' : '▼' }}
+                                </span></th>
                             </tr>
                         </thead>
                         <tbody>
+                            <tr v-if="noResults">
+                                    <td colspan="8" class="text-center text-muted">No sensors found.</td>
+                                </tr>
                             <template v-for="sensor in sortedSensors">
+
                                 <tr v-for="channel in sensor.channels">
+                                    
                                     
                                     <td>
                                         
-                                        <template v-if="selectedOption === 'Station'">
+                                        <template v-if="selectedOption === 'Sensor'">
                                             {{sensor.codes}}
                                         </template>
                                         <template v-if="selectedOption === 'Channel'">
                                             {{channel.codes}}
                                         </template>
                                         <template v-if="selectedOption === 'Response'">
-                                                <p>Sampling rate: {{res.input_sample_rate}} Hz -> {{res.output_sample_rate}} Hz</p>
+                                            {{}}
                                         </template>
                                         
                                     </td>
@@ -264,10 +254,18 @@ export const componentTable = {
                                       <td>
                                         <span v-if="channel.azimuth !== 0 && channel.azimuth !== 90 || channel.dip !== 0 && channel.dip !== -90" data-bs-toggle="tooltip" :title="'Unusual Orientation: Azimuth ' + channel.azimuth + ', Dip ' + channel.dip">&#x2221;</span>
                                       </td>
-                                      <!--<td>{{sensor}}</td>-->
-                                </tr>
-                              </template>
-                        
+                                    <td v-if="selectedOption === 'Channel'">
+                                        <template v-if="responsesMap[channel.codes]">
+                                            {{ formatResponse(responsesMap[channel.codes]) }}
+                                        </template>
+                                    </td>
+                                                    
+                                      
+                                    </tr>
+                                      </template>
+                                    
+                                
+                                
                         </tbody>
                     </table>
                 </div>

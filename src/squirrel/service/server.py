@@ -188,6 +188,7 @@ class SquirrelRawHandler(SquirrelRequestHandler):
         return self._squirrel.get_channels(tmin=tmin, tmax=tmax, codes=codes)
 
     def p_get_sensors(self, parameters):
+        print("in SquirrelRawHandler -> p_get_sensors()")
         tmin, tmax, codes = self.get_cleaned('tmin tmax codes', parameters)
         return self._squirrel.get_sensors(tmin=tmin, tmax=tmax, codes=codes)
 
@@ -286,6 +287,8 @@ class Gate(guts.Object):
         return self._outlet.get_channels(*args, **kwargs)
 
     def get_sensors(self, *args, **kwargs):
+        print("in Gate() -> get_sensors()")
+
         return self._outlet.get_sensors(*args, **kwargs)
 
     def get_responses(self, *args, **kwargs):
