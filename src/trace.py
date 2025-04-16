@@ -2185,7 +2185,7 @@ def merge_traces_data_as_array(traces, tmin=None, tmax=None, codes=None):
         codes = codes_patterns_for_kind(WAVEFORM, codes)
 
     if not traces:
-        raise ValueError('Need at least one trace.')
+        raise NoData('Need at least one trace.')
 
     _ensure_aligned(traces)
 
@@ -2290,14 +2290,15 @@ def make_traces_compatible(
 
     traces = list(traces)
 
-    dtypes = [tr.ydata.dtype for tr in traces]
+    dtypes = sorted(set([tr.ydata.dtype for tr in traces]))
     if not _all_same(dtypes) or dtype is not None:
-
         if dtype is None:
             dtype = float
             logger.warning(
-                'make_traces_compatible: Inconsistent data types - converting '
-                'sample datatype to %s.' % str(dtype))
+                'make_traces_compatible: Inconsistent data types (%s). '
+                'Converting sample datatype to %s.' % (
+                    ', '.join(str(dtype_) for dtype_ in dtypes),
+                    str(dtype)))
 
         for itr, tr in enumerate(traces):
             tr_copy = tr.copy(data=False)
@@ -2702,7 +2703,10 @@ def degapper(
 
                 if idist <= 0 and (maxlap is None or -maxlap < idist):
                     # still cut off overlap (cut off on first trace)
-                    a.chop(a.tmin, max(a.tmin, b.tmin-b.deltat))
+                    try:
+                        a.chop(a.tmin, max(a.tmin, b.tmin-b.deltat))
+                    except NoData:
+                        pass
 
                 pass
 
