@@ -416,7 +416,7 @@ class BaseOperator(Object):
 
             return mappings_match, codes_out_match
         else:
-            return list(self.mappings.values()), None
+            return list(self._mappings.values()), None
 
     def iter_codes(self) -> Generator[CodesNSLCE]:
 
