@@ -7,6 +7,7 @@
 Web server component for Squirrel web services.
 '''
 
+import concurrent
 import re
 import asyncio
 import json
@@ -17,6 +18,7 @@ import time
 import uuid
 import base64
 from datetime import datetime
+from io import BytesIO
 
 import numpy as num
 from tornado import web, autoreload
@@ -95,7 +97,8 @@ class SquirrelRequestHandler(web.RequestHandler):
             'tmax': util.str_to_time_fillup,
             'codes': to_codes_list,
             'ymin': float,
-            'ymax': float
+            'ymax': float,
+            'ny': int,
         }
 
         def clean_or_none(f, x):
@@ -200,10 +203,6 @@ class SquirrelRawHandler(SquirrelRequestHandler):
         kind, tmin, tmax = self.get_cleaned('kind tmin tmax', parameters)
         return self._squirrel.get_coverage(kind, tmin=tmin, tmax=tmax)
 
-    def p_get_responses(self, parameters):
-        #tmin, tmax = self.get_cleaned('kind tmin tmax', parameters)
-        return self._squirrel.get_responses()
-
 
 class ScaleChoice(guts.StringChoice):
     choices = ['lin', 'log']
@@ -234,13 +233,14 @@ class TimeSpan(guts.Object):
 
 
 def drop_resolution(codes):
-    return codes.replace(extra=re.sub(r'-L\d\d$', '', codes.extra))
+    return codes.replace(
+        extra=re.sub(r'-L(min|max|mean)\d\d$', '', codes.extra))
 
 
 def drop_resolution_codes(codes_list):
     return [
         codes for codes in codes_list
-        if not re.match(r'-L\d\d$', codes.extra)]
+        if not re.match(r'-L(min|max|mean)\d\d$', codes.extra)]
 
 
 class Gate(guts.Object):
@@ -298,13 +298,22 @@ class Gate(guts.Object):
         kwargs['codes'] = '*.*.*.*.'
         return self._outlet.get_coverage(*args, **kwargs)
 
-    def get_carpet_images(self, *args, ymin=None, ymax=None, **kwargs):
-        ny = 400
-        images = []
-        for carpet in self._outlet.get_carpets(
-                *args, **kwargs, nsamples_limit=3000):
+    def get_carpet_images(
+            self,
+            *args,
+            ymin=None,
+            ymax=None,
+            ny=100,
+            format='webp',
+            **kwargs):
 
+        def carpet_to_image(carpet):
+            times_this = []
+            times_this.append(time.time())
             carpet = carpet.resample_band(ymin, ymax, ny)
+            if carpet.nsamples == 0 or carpet.ncomponents == 0:
+                return None, None
+
             vmin, vmax = carpet.stats.min, carpet.stats.max
 
             image_data = num.zeros(
@@ -322,13 +331,16 @@ class Gate(guts.Object):
             ok3 = num.logical_and(ok[:, :, num.newaxis], ok_alpha)
             image_data[ok3[::-1, :, :]] = 255
 
+            times_this.append(time.time())
+
             from PIL import Image
             im = Image.fromarray(image_data, mode='RGBA')
-            from io import BytesIO
             buffer = BytesIO()
-            im.save(buffer, format='png')
+            im.save(buffer, format=format)
 
-            images.append(SpectrogramImage(
+            times_this.append(time.time())
+
+            image = SpectrogramImage(
                 codes=drop_resolution(carpet.codes),
                 tmin=carpet.times[0],
                 tmax=carpet.times[-1],
@@ -336,8 +348,36 @@ class Gate(guts.Object):
                 ymax=carpet.component_axes['frequency'][-1],
                 fscale='log',
                 shape=carpet.data.shape,
-                image_data_base64='data:image/png;base64,' + base64.b64encode(
-                    buffer.getvalue()).decode('ascii')))
+                image_data_base64='data:image/%s;base64,%s' % (
+                    format,
+                    base64.b64encode(buffer.getvalue()).decode('ascii')))
+
+            times_this.append(time.time())
+            return image, times_this
+
+        t0 = time.time()
+        carpets = self._outlet.get_carpets(
+            *args, **kwargs, nsamples_limit=3000)
+
+        images = []
+        times = []
+        t1 = time.time()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            for (image, times_this) in executor.map(carpet_to_image, carpets):
+                if image is not None:
+                    images.append(image)
+                    times.append(times_this)
+        t2 = time.time()
+
+        if times:
+            print(times)
+            times = num.array(times)
+            dtimes = num.diff(num.sum(times, 0))
+            logger.debug('Processing costs: %i %s %i %.1f' % (
+                int((t1 - t0)*1000.),
+                (dtimes * 1000.).astype(int),
+                int((t2 - t1)*1000.),
+                num.sum(dtimes) / (t2 - t1)))
 
         return images
 
@@ -377,9 +417,8 @@ class Gate(guts.Object):
 
             from PIL import Image
             im = Image.fromarray(image_data, mode='RGBA')
-            from io import BytesIO
             buffer = BytesIO()
-            im.save(buffer, format='png')
+            im.save(buffer, format='png', compress_type=3)
 
             images.append(SpectrogramImage(
                 codes=group.codes,
@@ -393,6 +432,9 @@ class Gate(guts.Object):
                     buffer.getvalue()).decode('ascii')))
 
         return images
+
+    def advance_accessor(self, accessor_id='default', cache_id=None):
+        self._outlet.advance_accessor(accessor_id, cache_id)
 
 
 g_gates = {}
@@ -476,15 +518,19 @@ class SquirrelGateHandler(SquirrelRequestHandler):
             ymax=ymax)
 
     def p_get_carpets(self, parameters, gate):
-        tmin, tmax, ymin, ymax = self.get_cleaned(
-            'tmin tmax ymin ymax',
+        tmin, tmax, ymin, ymax, ny = self.get_cleaned(
+            'tmin tmax ymin ymax ny',
             parameters)
 
-        return gate.get_carpet_images(
+        images = gate.get_carpet_images(
             tmin=tmin,
             tmax=tmax,
             ymin=ymin,
-            ymax=ymax)
+            ymax=ymax,
+            ny=ny or 400)
+
+        gate.advance_accessor()
+        return images
 
 
 def get_ip(host):

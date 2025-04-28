@@ -586,6 +586,8 @@ setup(
             'squirrel/service/page/*.ico',
             'squirrel/service/page/*.webmanifest',
             'squirrel/service/page/js/*.js',
+            'squirrel/service/page/js/squirrel/*.js',
+            'squirrel/service/page/js/components/*.js',
             'squirrel/service/page/css/*.css',
             'squirrel/service/page/images/*.png'],
         '': ['README.md']},

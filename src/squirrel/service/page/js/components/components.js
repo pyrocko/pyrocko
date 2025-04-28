@@ -99,10 +99,8 @@ export const componentFilter = {
     },
     template:
     `<div class="d-flex justify-content-end">
-        <div class="input-group input-group-sm rounded w-auto">
             <input type="search" class="form-control form-control-sm rounded" placeholder="Select" v-model="searchQuery" @keyup.enter="onSearchClick" />
             <!--<button class="btn btn-primary" type="button" @click="onSearchClick">&#x1F50E;&#xFE0E;</button>-->
-        </div>
     </div>`,
 }
 
