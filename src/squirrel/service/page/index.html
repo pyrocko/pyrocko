@@ -1,57 +1,71 @@
-    <!doctype html>
-    <html lang="en">
-        <head>
-            <meta charset="utf-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1" />
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, interactive-widget=resizes-content"
+        />
 
-            <title>Squirrel</title>
-            <link
-                rel="apple-touch-icon"
-                sizes="180x180"
-                href="images/apple-touch-icon.png"
-            />
-            <link
-                rel="icon"
-                type="image/png"
-                sizes="32x32"
-                href="images/favicon-32x32.png"
-            />
-            <link
-                rel="icon"
-                type="image/png"
-                sizes="16x16"
-                href="images/favicon-16x16.png"
-            />
-            <link rel="manifest" href="site.webmanifest" />
+        <title>Squirrel</title>
+        <link
+            rel="apple-touch-icon"
+            sizes="180x180"
+            href="images/apple-touch-icon.png"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="32x32"
+            href="images/favicon-32x32.png"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="16x16"
+            href="images/favicon-16x16.png"
+        />
+        <link rel="manifest" href="site.webmanifest" />
 
-            <link href="css/bootstrap.min.css" rel="stylesheet" />
-            <link href="css/local.css" rel="stylesheet" />
-            <script src="js/d3.v7.min.js"></script>
-            <script src="js/bootstrap.bundle.min.js"></script>
-        </head>
+        <link href="css/bootstrap.min.css" rel="stylesheet" />
+        <link href="css/local.css" rel="stylesheet" />
+        <script src="js/d3.v7.min.js"></script>
+        <script src="js/bootstrap.bundle.min.js"></script>
+    </head>
 
     <body>
         <div id="app" class="vbox-container">
             <!--{{ selectedTab }}-->
             <div v-if="!connection.connected" class="curtain">DISCONNECTED</div>
-            <div v-if="connection.connected && connection.connected.delay > 5.0" class="curtain">DELAY {{ fmtDuration(connection.connected.delay) }}</div>
+            <div
+                v-if="connection.connected && connection.connected.delay > 5.0"
+                class="curtain"
+            >
+                DELAY {{ fmtDuration(connection.connected.delay) }}
+            </div>
             <ul class="nav nav-tabs mt-1" role="tablist">
-                <li class="nav-item" v-for="(tab,name) in tabs" :key="name">
-                    <a class="nav-link" :class="{ active: selectedTab === name }"
-                        @click="selectTab(name)">{{ name.charAt(0).toUpperCase() + name.slice(1) }}
-                        <button v-if="!isDefaultTab(name)" @click="closeTab(name, $event)" class="close-btn">
-                        &times;
+                <li class="nav-item" v-for="(tab, name) in tabs" :key="name">
+                    <a
+                        class="nav-link"
+                        :class="{ active: selectedTab === name }"
+                        @click="selectTab(name)"
+                        >{{ name.charAt(0).toUpperCase() + name.slice(1) }}
+                        <button
+                            v-if="!isDefaultTab(name)"
+                            @click="closeTab(name, $event)"
+                            class="close-btn"
+                        >
+                            &times;
                         </button>
                     </a>
-                    </li>
+                </li>
                 <button class="add-tab-btn" @click="addTab()">+</button>
                 <component-filter class="ms-auto"></component-filter>
-                </ul>
+            </ul>
 
-
-                <keep-alive>
-                    <component :is="tabs[selectedTab]"></component>
-                </keep-alive>
+            <keep-alive>
+                <component :is="tabs[selectedTab]"></component>
+            </keep-alive>
 
             <div v-if="connection.latestError" class="error-display">
                 <pre><code>{{ connection.latestError }}</code></pre>
@@ -69,16 +83,18 @@
                 <div v-if="connection.connected">
                     <footer>
                         Version: {{ connection.serverInfo.pyrocko_version }} |
-                        Connected: {{ fmtDuration(connection.connected.duration) }} |
-                    Requests:
+                        Connected:
+                        {{ fmtDuration(connection.connected.duration) }} |
+                        Requests:
                         {{
                             connection.serverInfo
                                 ? connection.serverInfo.n_requests
                                 : ''
                         }}
-                    <span v-if="connection.connected.delay > 2.0">
-                        | Delay: {{ fmtDuration(connection.connected.delay) }}
-                    </span>
+                        <span v-if="connection.connected.delay > 2.0">
+                            | Delay:
+                            {{ fmtDuration(connection.connected.delay) }}
+                        </span>
                     </footer>
                 </div>
                 <div v-else>Disconnected</div>
@@ -86,98 +102,95 @@
         </div>
     </body>
 
-        <script type="module">
-            import {
-                createApp,
-                ref,
-                onMounted,
-                computed,
+    <script type="module">
+        import {
+            createApp,
+            ref,
+            onMounted,
+            computed,
+        } from './js/vue.esm-browser.js'
 
-            } from './js/vue.esm-browser.js'
-
-            import { squirrelConnection } from './js/squirrel/connection.js'
-            import { squirrelGates } from './js/squirrel/gate.js'
-            import { fmtDuration } from './js/squirrel/common.js'
-            import {
-                componentTimeline,
-                componentMap,
-                componentTable,
-                componentFilter
-            } from './js/components/components.js'
-            import { squirrelMap } from './js/squirrel/map.js'
+        import { squirrelConnection } from './js/squirrel/connection.js'
+        import { squirrelGates } from './js/squirrel/gate.js'
+        import { fmtDuration } from './js/squirrel/common.js'
+        import {
+            componentTimeline,
+            componentMap,
+            componentTable,
+            componentFilter,
+        } from './js/components/components.js'
+        import { squirrelMap } from './js/squirrel/map.js'
 
         createApp({
-
             components: {
-                    ComponentFilter: componentFilter
+                ComponentFilter: componentFilter,
             },
 
             setup() {
                 const tabs = {
-                        timeline: componentTimeline,
-                        map: componentMap,
-                        info: componentTable,
+                    timeline: componentTimeline,
+                    map: componentMap,
+                    info: componentTable,
+                }
+
+                const selectedTab = ref('timeline')
+                let connection = ref(squirrelConnection())
+                const gates = squirrelGates()
+
+                gates.addGate()
+
+                console.log('gate added in index.html')
+                console.log('gates in index.html: ', gates)
+
+                onMounted(() => {
+                    //const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+                    //tooltipTriggerList.forEach((tooltipTriggerEl) => {
+                    //new bootstrap.Tooltip(tooltipTriggerEl)
+                    //})
+                })
+
+                const selectTab = (tabName) => {
+                    console.log('SELECTING TAB')
+                    selectedTab.value = tabName
+                }
+
+                const addTab = () => {
+                    const newTabName = `tab_${Date.now()}`
+                    tabs[newTabName] = componentTable
+                }
+
+                const closeTab = (tabName, event) => {
+                    event.stopPropagation()
+                    console.log('before close:', selectedTab.value)
+                    delete tabs[tabName]
+
+                    console.log(tabs)
+                    console.log('after close:', selectedTab.value)
+                    if (selectedTab.value === tabName) {
+                        selectedTab.value = 'info'
+                        console.log('in if')
                     }
+                    console.log(
+                        'after changing tab to info:',
+                        selectedTab.value
+                    )
+                }
 
-                    const selectedTab = ref('timeline')
-                    let connection = ref(squirrelConnection())
-                    const gates = squirrelGates()
+                const isDefaultTab = (name) => {
+                    return ['timeline', 'map', 'info'].includes(name)
+                }
 
-                    gates.addGate()
-
-
-                    console.log("gate added in index.html")
-                    console.log("gates in index.html: ", gates)
-
-
-
-
-                    onMounted(() => {
-                        //const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
-                        //tooltipTriggerList.forEach((tooltipTriggerEl) => {
-                        //new bootstrap.Tooltip(tooltipTriggerEl)
-                        //})
-                    })
-
-                    const selectTab = (tabName) => {
-                        console.log("SELECTING TAB")
-                        selectedTab.value = tabName
-                    }
-
-                    const addTab = () => {
-                        const newTabName = `tab_${Date.now()}`
-                        tabs[newTabName] = componentTable
-                    }
-
-                    const closeTab = (tabName, event) => {
-                        event.stopPropagation()
-                        console.log('before close:', selectedTab.value)
-                        delete tabs[tabName]
-
-                        console.log(tabs)
-                        console.log('after close:', selectedTab.value)
-                        if (selectedTab.value === tabName) {
-                            selectedTab.value = 'info'
-                            console.log('in if')
-                        }
-                        console.log('after changing tab to info:', selectedTab.value)
-                    }
-
-                    const isDefaultTab = (name) => {
-                        return ['timeline', 'map', 'info'].includes(name)
-                    }
-
-                    return {
-                        connection,
-                        selectedTab,
-                        selectTab,
-                        fmtDuration,
-                        tabs,
-                        addTab,
-                        closeTab,
-                        isDefaultTab
-                    }
-                },
-            }).mount('#app')
-        </script>
-    </html>
+                return {
+                    connection,
+                    selectedTab,
+                    selectTab,
+                    fmtDuration,
+                    tabs,
+                    addTab,
+                    closeTab,
+                    isDefaultTab,
+                }
+            },
+        }).mount('#app')
+    </script>
+</html>
