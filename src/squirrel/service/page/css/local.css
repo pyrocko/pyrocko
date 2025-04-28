@@ -1,9 +1,6 @@
 /* {border:1px solid red; } */
 
 body{
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
 }
 
 .connection-monitor {
@@ -19,7 +16,7 @@ body{
     justify-content: center;
     align-items: center;
     width: 100%;
-    height: 100vh;
+    height: 100dvh;
     background-color: #00000055;
     font-size: 200%;
 }
@@ -40,7 +37,7 @@ body{
 
 .vbox-container {
     width: 100%;
-    height: 100vh;
+    height: 100dvh;
     display: flex;
     margin: 0;
     flex-direction: column;
@@ -48,11 +45,11 @@ body{
 }
 
 .vbox-main {
-    min-height: 20em;
-    /*flex-grow: 1;*/
-    flex: 1 0 auto;
+    min-height: 0em;
+    flex: 1 1 auto; /* grow shrink base */
     display: flex;
     flex-direction: column;
+    overflow-y: scroll;
 }
 
 .sensor-table {
