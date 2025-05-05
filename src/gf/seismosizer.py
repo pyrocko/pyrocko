@@ -1286,11 +1286,15 @@ class MultiTriangleSTF(STF):
 
     anchor = Float.T(
         default=0.0,
-        help='anchor point with respect to source.time: ('
+        help='Anchor point with respect to source.time: ('
              '-1.0: left -> first control node is at source.time ~ '
              'hypocenter time, 0.0: center -> control nodes are layed out '
              'symmetric around source.time, +1.0: right -> last control node '
              'is at source.time')
+
+    differentiate = Bool.T(
+        default=False,
+        help='Output is the differentiated STF.')
 
     def centroid_time(self, tref):
         amplitudes = num.abs(self.amplitudes) \
@@ -1310,9 +1314,8 @@ class MultiTriangleSTF(STF):
             * 2. * num.sqrt(3.)
 
     def discretize_t(self, deltat, tref):
-        control_amplitudes = self.amplitudes
         control_deltat = self.deltat
-        ncontrol = control_amplitudes.size
+        ncontrol = self.amplitudes.size
 
         duration = control_deltat * (ncontrol + 1)
 
@@ -1323,21 +1326,34 @@ class MultiTriangleSTF(STF):
         tmin = math.floor(tmin_stf / deltat) * deltat - 0.5*deltat
         tmax = math.ceil(tmax_stf / deltat) * deltat + 0.5*deltat
         times = util.arange2(tmin, tmax, deltat, epsilon=1e-3)
-        control_times = t0 + control_deltat * num.arange(ncontrol)
 
-        ct_ = control_times[:, num.newaxis]
-        ca_ = control_amplitudes[:, num.newaxis]
-        cd_ = control_deltat
-        t_ = times[num.newaxis, :]
+        if not self.differentiate:
+            control_times = t0 + control_deltat * num.arange(ncontrol)
+            ct_ = control_times[:, num.newaxis]
+            ca_ = self.amplitudes[:, num.newaxis]
+            cd_ = control_deltat
+            t_ = times[num.newaxis, :]
 
-        amplitudes = num.sum(0.5 * ca_ * (
-            cd_
-            + 1. / cd_ * (num.clip(t_, ct_ - cd_, ct_) + cd_ - ct_)**2
-            - 1. / cd_ * (num.clip(t_, ct_, ct_ + cd_) - cd_ - ct_)**2),
-            axis=0)
+            amplitudes = num.sum(0.5 * ca_ * (
+                cd_
+                + 1. / cd_ * (num.clip(t_, ct_ - cd_, ct_) + cd_ - ct_)**2
+                - 1. / cd_ * (num.clip(t_, ct_, ct_ + cd_) - cd_ - ct_)**2),
+                axis=0)
 
-        times = times[:-1] + 0.5 * deltat
-        amplitudes = num.diff(amplitudes)
+            times = times[:-1] + 0.5 * deltat
+            amplitudes = num.diff(amplitudes)
+
+        else:
+            control_times = t0 + control_deltat * (
+                num.arange(ncontrol + 2) - 1)
+            control_amplitudes = num.zeros(ncontrol + 2)
+            control_amplitudes[1:-1] = self.amplitudes
+            amplitudes = num.diff(num.interp(
+                times,
+                control_times,
+                control_amplitudes))
+
+            times = times[:-1] + 0.5 * deltat
 
         return times, amplitudes
 
