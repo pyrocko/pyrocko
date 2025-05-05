@@ -107,6 +107,30 @@ class GFSTFTestCase(unittest.TestCase):
             integral = num.sum(amplitudes)
             assert numeq(integral, 1.0, 1e-6)
 
+    def test_stf_multi_triangle_diff(self):
+        from matplotlib import pyplot as plt
+        stf = gf.MultiTriangleSTF(
+            deltat=0.04,
+            amplitudes=num.array([1.0]),
+            anchor=0.0,
+            differentiate=True)
+
+        stf.normalize()
+
+        t, a = stf.discretize_t(0.01, 0.0)
+        assert num.sum(a) < 1e-6
+        if show_plot:
+            plt.title('MTSTF')
+            a_orig = num.zeros(stf.amplitudes.size + 2)
+            a_orig[1:-1] = stf.amplitudes
+            t0 = - (stf.anchor+1.0) * stf.deltat * (stf.amplitudes.size - 1) \
+                / 2.0
+            t_orig = t0 + stf.deltat * (num.arange(a_orig.size) - 1)
+            plt.plot(t_orig, a_orig, color='black')
+            plt.plot(t, a)
+            plt.plot(t, a, 'o')
+            plt.show()
+
     def test_effective_durations(self):
         deltat = 1e-4
         for stf in [
