@@ -332,6 +332,16 @@ export const setupGates = () => {
         return carpets
     }
 
+    const getDataRanges = () => {
+        const ranges = new Map()
+        Map.groupBy(getCarpets(), (carpet) => carpet.codes).forEach((carpets, codes) => {
+            ranges.set(codes, [
+                yMin.value !== null ? yMin.value : Math.min(...carpets.map((carpet) => carpet.ymin)),
+                yMax.value !== null ? yMax.value : Math.max(...carpets.map((carpet) => carpet.ymax))])
+        })
+        return ranges
+    }
+
     const channels = computed(() => {
         const channels = []
         for (const gate of gates.value) {
@@ -440,6 +450,7 @@ export const setupGates = () => {
         timeSpans,
         getCoverages,
         getCarpets,
+        getDataRanges,
     }
 }
 
