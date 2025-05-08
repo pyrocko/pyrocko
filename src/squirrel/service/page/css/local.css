@@ -1,6 +1,7 @@
 /* {border:1px solid red; } */
 
 body{
+    user-select: none;
 }
 
 .connection-monitor {
