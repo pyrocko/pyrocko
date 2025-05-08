@@ -10,14 +10,7 @@ import {
 } from './common.js'
 import { squirrelConnection } from './connection.js'
 import { squirrelGates } from './gate.js'
-
-const sha1 = async (str) => {
-    const enc = new TextEncoder()
-    const hash = await crypto.subtle.digest('SHA-1', enc.encode(str))
-    return Array.from(new Uint8Array(hash))
-        .map((v) => v.toString(16).padStart(2, '0'))
-        .join('')
-}
+import { useFilters } from './filter.js'
 
 const projectionHelper = () => {
     let scale = d3.scaleLinear()
@@ -141,7 +134,7 @@ export const squirrelTimeline = () => {
     let pageRect
     let boxesGroup
     let imageGroup
-    let axesGroup
+    let timeAxesGroup
     let tracksGroup
     let x = d3.scaleLinear()
     let y = d3.scaleLinear()
@@ -150,10 +143,30 @@ export const squirrelTimeline = () => {
     let codesToTracks = new Map()
     let tracks = []
     let trackProjection = projectionHelper()
+    let effectiveTrackPadding = trackPadding
     let bounds
+    let dataRanges = new Map()
 
     const containerBounds = () => {
         return container.node().getBoundingClientRect()
+    }
+
+    const updateDataRanges = () => {
+        dataRanges = gates.getDataRanges()
+    }
+
+    const makeEffectiveTrackPadding = () => {
+        return Math.max(
+            1,
+            Math.min(
+                trackPadding,
+                ((trackProjection.range()[1] - trackProjection.range()[0]) /
+                    (trackProjection.domain()[1] -
+                        trackProjection.domain()[0]) /
+                    1.333) *
+                    0.2
+            )
+        )
     }
 
     const updateProjection = () => {
@@ -162,6 +175,7 @@ export const squirrelTimeline = () => {
             bounds.width,
         ])
         trackProjection.range([marginTop, bounds.height - marginBottom])
+        effectiveTrackPadding = makeEffectiveTrackPadding()
         pageRect.attr('x', 0)
         pageRect.attr('y', marginTop)
         pageRect.attr('width', bounds.width)
@@ -171,9 +185,10 @@ export const squirrelTimeline = () => {
     const update = () => {
         const t = d3.transition('update').duration(50).ease(d3.easeLinear)
 
+        updateDataRanges()
         updateProjection()
         updateBoxes(t)
-        updateAxes()
+        updateTimeAxes()
         updateTracks(t)
     }
 
@@ -264,20 +279,6 @@ export const squirrelTimeline = () => {
         update()
     }
 
-    const effectiveTrackPadding = () => {
-        return Math.max(
-            1,
-            Math.min(
-                trackPadding,
-                ((trackProjection.range()[1] - trackProjection.range()[0]) /
-                    (trackProjection.domain()[1] -
-                        trackProjection.domain()[0]) /
-                    1.333) *
-                    0.2
-            )
-        )
-    }
-
     const coverageToBox = (coverage) => {
         let track = codesToTracks.get(coverage.codes)
         if (track == null) {
@@ -294,40 +295,49 @@ export const squirrelTimeline = () => {
         return box
     }
 
-    const carpetToImage = (padding) => {
-        return (carpet) => {
-            let track = codesToTracks.get(carpet.codes)
-            if (track == null) {
-                // || !trackVisible(track)) {
-                return null
-            }
-            const yMinTrack = trackProjection.lower(track) + padding
-            const yMaxTrack = trackProjection.upper(track) - padding
+    const aggregateRanges = (ranges) => {
+        if (ranges.length == 0) {
+            return [0.1, 1]
+        } else {
+            return [
+                Math.min(...ranges.map((range) => range[0])),
+                Math.max(...ranges.map((range) => range[1])),
+            ]
+        }
+    }
 
-            const yMinData =
-                gates.yMin.value !== null ? gates.yMin.value : carpet.ymin
-            const yMaxData =
-                gates.yMax.value !== null ? gates.yMax.value : carpet.ymax
+    const getTrackScale = (track) => {
+        const yMinTrack = trackProjection.lower(track) + effectiveTrackPadding
+        const yMaxTrack = trackProjection.upper(track) - effectiveTrackPadding
+        const [yMinData, yMaxData] = aggregateRanges(
+            track.codes.map((codes) => dataRanges.get(codes) || [0.1, 1])
+        )
+        return d3.scaleLog([yMinData, yMaxData], [yMaxTrack, yMinTrack])
+    }
 
-            const fproject = d3.scaleLog(
-                [yMinData, yMaxData],
-                [yMaxTrack, yMinTrack]
-            )
+    const carpetToImage = (carpet) => {
+        let track = codesToTracks.get(carpet.codes)
+        if (track == null || !trackVisible(track)) {
+            return null
+        }
+        const yMinTrack = trackProjection.lower(track) + effectiveTrackPadding
+        const yMaxTrack = trackProjection.upper(track) - effectiveTrackPadding
 
-            return {
-                id: carpet.id,
-                xmin: x(carpet.tmin),
-                xmax: x(carpet.tmax),
-                ymin: fproject(carpet.ymax),
-                ymax: fproject(carpet.ymin),
-                clip: `url(#track-${track.index})`,
-                xminClip: x(gates.timeMin.value),
-                xmaxClip: x(gates.timeMax.value),
-                yminClip: yMinTrack,
-                ymaxClip: yMaxTrack,
-                zombie: carpet.zombie,
-                image_data_base64: carpet.image_data_base64,
-            }
+        const fproject = getTrackScale(track)
+
+        return {
+            id: carpet.id,
+            xmin: x(carpet.tmin),
+            xmax: x(carpet.tmax),
+            ymin: fproject(carpet.ymax),
+            ymax: fproject(carpet.ymin),
+            clip: `url(#track-${track.index})`,
+            xminClip: x(gates.timeMin.value),
+            xmaxClip: x(gates.timeMax.value),
+            yminClip: yMinTrack,
+            ymaxClip: yMaxTrack,
+            zombie: carpet.zombie,
+            image_data_base64: carpet.image_data_base64,
         }
     }
 
@@ -337,10 +347,10 @@ export const squirrelTimeline = () => {
             ? []
             : coverages.map(coverageToBox).filter((box) => box !== null)
     }
-    const getImages = (padding) => {
+    const getImages = () => {
         return gates
             .getCarpets()
-            .map(carpetToImage(padding))
+            .map(carpetToImage)
             .filter((img) => img !== null)
     }
 
@@ -359,8 +369,6 @@ export const squirrelTimeline = () => {
     }
 
     const updateBoxes = (t) => {
-        let padding = effectiveTrackPadding()
-
         boxesGroup
             .selectAll('rect')
             .data(getBoxes(), (box) => box.id)
@@ -372,9 +380,10 @@ export const squirrelTimeline = () => {
                         .attr('stroke', colors['aluminium4'] + '32')
                         .attr(
                             'height',
-                            (box) => box.ymax - box.ymin - padding * 2
+                            (box) =>
+                                box.ymax - box.ymin - effectiveTrackPadding * 2
                         )
-                        .attr('y', (box) => box.ymin + padding)
+                        .attr('y', (box) => box.ymin + effectiveTrackPadding)
                         .style('opacity', 0)
                         .call((enter) =>
                             enter.transition().duration(100).style('opacity', 1)
@@ -385,17 +394,23 @@ export const squirrelTimeline = () => {
                             .transition(t)
                             .attr(
                                 'height',
-                                (box) => box.ymax - box.ymin - padding * 2
+                                (box) =>
+                                    box.ymax -
+                                    box.ymin -
+                                    effectiveTrackPadding * 2
                             )
-                            .attr('y', (box) => box.ymin + padding)
+                            .attr(
+                                'y',
+                                (box) => box.ymin + effectiveTrackPadding
+                            )
                     )
             )
             .attr('x', (box) => x(box.tmin))
             .attr('width', (box) => x(box.tmax) - x(box.tmin))
 
-        const images = getImages(padding)
+        const images = getImages()
 
-        const imageTransition = d3.transition('image').duration(1000)
+        const imageTransition = d3.transition('image').duration(100)
 
         imageGroup
             .selectAll('image')
@@ -430,11 +445,11 @@ export const squirrelTimeline = () => {
             )
     }
 
-    const updateAxes = () => {
+    const updateTimeAxes = () => {
         const axisY = (i) => {
             return [
-                bounds.height - marginBottom + trackPadding,
-                marginTop - trackPadding,
+                bounds.height - marginBottom + effectiveTrackPadding,
+                marginTop - effectiveTrackPadding,
             ][i]
         }
 
@@ -453,7 +468,7 @@ export const squirrelTimeline = () => {
             labels: ('' + labels[i]).split('\n').reverse(),
         }))
 
-        let axisGroups = axesGroup
+        let axisGroups = timeAxesGroup
             .selectAll('.axis-group')
             .data([0, 1], (axisId) => axisId)
             .join((enter) => enter.append('g').attr('class', 'axis-group'))
@@ -566,11 +581,10 @@ export const squirrelTimeline = () => {
     }
 
     const visibleTracks = () => {
-        return tracks //.filter(trackVisible)
+        return tracks.filter(trackVisible)
     }
 
     const updateTracks = (t) => {
-        const padding = effectiveTrackPadding()
         const tracks = visibleTracks()
         const labels = tracksGroup
             .selectAll('.track-label')
@@ -666,13 +680,34 @@ export const squirrelTimeline = () => {
             .attr('x', x.range()[0])
             .attr('width', x.range()[1] - x.range()[0])
             .transition(t)
-            .attr('y', (track) => trackProjection.lower(track) + padding)
+            .attr(
+                'y',
+                (track) => trackProjection.lower(track) + effectiveTrackPadding
+            )
             .attr(
                 'height',
                 (track) =>
                     trackProjection.upper(track) -
                     trackProjection.lower(track) -
-                    2.0 * padding
+                    2.0 * effectiveTrackPadding
+            )
+        const d3format = d3.format('.4g')
+        const format = (x) => d3format(x).replace(/(\.[0-9]*?)0+$/, '$1').replace(/\.$/, '')
+
+        const trackAxes = tracksGroup
+            .selectAll('.track-axis')
+            .data(tracks, (track) => track.id)
+            .join(
+                (enter) => enter.append('g').attr('class', 'track-axis'),
+                (update) => update
+            )
+
+        trackAxes
+            .attr('transform', `translate(${bounds.width - 10},0)`)
+            .each((track, i, nodes) =>
+                d3.axisLeft().scale(getTrackScale(track)).ticks(5, format)(
+                    d3.select(nodes[i])
+                )
             )
     }
 
@@ -712,12 +747,13 @@ export const squirrelTimeline = () => {
         container = selection
         timeline = createIfNeeded(container, 'svg')
         timeline.attr('draggable', 'false')
+        timeline.style('user-select', 'none')
 
         defs = timeline.append('defs')
 
         pageRect = defs.append('clipPath').attr('id', 'page').append('rect')
 
-        axesGroup = timeline.append('g')
+        timeAxesGroup = timeline.append('g')
         boxesGroup = timeline.append('g').attr('clip-path', 'url(#page)')
         imageGroup = timeline
             .append('g')
