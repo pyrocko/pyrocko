@@ -636,6 +636,9 @@ class BaseOperator(Object):
         else:
             return self._input.get_squirrel()
 
+    def advance_accessor(self, accessor_id='default', cache_id=None):
+        self._input.advance_accessor(accessor_id, cache_id)
+
     def chopper_waveforms(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None,
             codes_exclude=None, sample_rate_min=None, sample_rate_max=None,
@@ -721,7 +724,7 @@ class BaseOperator(Object):
                         accessor_id=accessor_id,
                         channel_priorities=channel_priorities)
 
-                    self.get_squirrel().advance_accessor(accessor_id)
+                    self.advance_accessor(accessor_id, 'waveform')
 
                     yield Batch(
                         tmin=wmin,

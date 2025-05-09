@@ -9,8 +9,9 @@ Implementation of :app:`squirrel cascade`.
 
 import logging
 
-
 from pyrocko import progress
+from ..common import ldq
+
 
 logger = logging.getLogger('psq.cli.cascade')
 
@@ -44,6 +45,15 @@ def setup(parser):
         default=2,
         help='Decimation factor applied in each level.')
 
+    method_choices = ('mean', 'min', 'max')
+
+    parser.add_argument(
+        '--method',
+        dest='method',
+        default='mean',
+        choices=method_choices,
+        help='Method of reduction. Choices: %s' % ldq(method_choices))
+
 
 def run(parser, args):
     from pyrocko.squirrel.cascade import cascade
@@ -54,4 +64,5 @@ def run(parser, args):
             squirrel,
             nlevels=args.nlevels,
             nfold=args.nfold,
+            method=args.method,
             **args.squirrel_query)

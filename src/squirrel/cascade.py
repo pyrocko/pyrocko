@@ -6,20 +6,25 @@
 import os
 import re
 import math
+import logging
 import numpy as num
-from pyrocko import util
+from pyrocko import util, progress
 from pyrocko.io import rug
 from pyrocko.trace import NoData
 from pyrocko.plot import nice_time_tick_inc_approx_secs
 
+logger = logging.getLogger('psq.cascade')
 
-def level_codes_check(ilevel, codes):
+
+def level_codes_check(ilevel, codes, method):
     if ilevel == 0:
-        assert not re.match(r'-L\d\d$', codes.extra)
-        return codes.replace(extra=codes.extra + '-L00')
+        assert not re.match(r'-L%s\d\d$' % method, codes.extra)
+        return codes.replace(extra=codes.extra + '-L%s00' % method)
     else:
-        assert codes.extra.endswith('-L%02i' % (ilevel-1))
-        return codes.replace(extra=codes.extra[:-4] + '-L%02i' % ilevel)
+        assert codes.extra.endswith('-L%s%02i' % (method, ilevel-1))
+        return codes.replace(
+            extra=codes.extra[:-(4+len(method))] + '-L%s%02i' % (
+                method, ilevel))
 
 
 def cascade(
@@ -30,24 +35,37 @@ def cascade(
         codes=None,
         tmin=None,
         tmax=None,
+        method='max',
         accessor_id='default'):
 
     assert kinds is None or kinds == ['carpet']
+
+    method_functions = {
+        'min': num.min,
+        'max': num.max,
+        'mean': num.mean,
+    }
 
     tmin_content, tmax_content = squirrel.get_time_span(['carpet'])
     nsamples_block = nfold * 1000
     time_format = '%Y-%m-%d_%H-%M-%S'
 
-    def _process(ilevels, codes):
-        ilevel, *ilevels = ilevels
+    task_levels = progress.task('Cascading (level)', logger=logger)
+    for ilevel in task_levels(range(nlevels)):
+        task_channels = progress.task('Cascading (channel)', logger=logger)
 
         codes_next = set()
 
         paths = []
-        codes_info = squirrel.get_codes_info('carpet', codes)
-        for (pattern, kind_codes_id, codes_cand, deltat) in codes_info:
+        codes_info = list(squirrel.get_codes_info('carpet', codes))
+        for (pattern, kind_codes_id, codes_cand, deltat) in task_channels(
+                codes_info):
+
             tinc = nice_time_tick_inc_approx_secs(deltat * nsamples_block)
             tpad = deltat * nfold
+
+            task_time = None
+
             for batch in util.iter_windows(
                     tmin=tmin,
                     tmax=tmax,
@@ -55,6 +73,12 @@ def cascade(
                     tmin_content=tmin_content,
                     tmax_content=tmax_content,
                     snap_window=True):
+
+                if task_time is None:
+                    task_time = progress.task(
+                        'Cascading (time)', n=batch.n, logger=logger)
+
+                task_time.update(batch.i)
 
                 for carpet in squirrel.get_carpets(
                         tmin=batch.tmin-tpad,
@@ -65,7 +89,7 @@ def cascade(
                     try:
                         folded = carpet.fold(
                             carpet.deltat*nfold,
-                            method=num.max)
+                            method=method_functions[method])
 
                         folded = folded.chop(
                             batch.tmin,
@@ -77,7 +101,8 @@ def cascade(
                     if folded.nsamples == 0:
                         continue
 
-                    folded.codes = level_codes_check(ilevel, carpet.codes)
+                    folded.codes = level_codes_check(
+                        ilevel, carpet.codes, method)
                     codes_next.add(folded.codes)
 
                     path = os.path.join(
@@ -93,10 +118,10 @@ def cascade(
                     util.ensuredirs(path)
                     paths.extend(rug.save([folded], path))
 
-        squirrel.advance_accessor(accessor_id, 'carpet')
+                squirrel.advance_accessor(accessor_id, 'carpet')
+
+            if task_time is not None:
+                task_time.done()
+
         squirrel.add(paths)
-
-        if ilevels:
-            _process(ilevels, list(codes_next))
-
-    _process(list(range(nlevels)), codes)
+        codes = list(codes_next)
