@@ -7,6 +7,7 @@ body{
 .connection-monitor {
     font-size: 80%;
     margin-top: auto;
+    background-color: #f8f9fa;
 }
 
 .curtain {
@@ -57,6 +58,13 @@ body{
     flex-grow: 1
 }
 
+
+.nav-tabs {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+
 th {
     cursor: pointer;
 }
@@ -105,4 +113,8 @@ svg text{
     background: rgba(0, 123, 255, 0.2);
     color: #0056b3;
     transform: scale(1.1);
+}
+
+.tiny-search {
+    height: 1em;
 }
