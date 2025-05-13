@@ -1,4 +1,4 @@
-import { ref, computed, onMounted, onActivated, watch } from '../vue.esm-browser.js'
+import { ref, computed, onMounted, watch } from '../vue.esm-browser.js'
 import { squirrelMap } from '../squirrel/map.js'
 import { squirrelTimeline } from '../squirrel/timeline.js'
 import { squirrelGates } from '../squirrel/gate.js'
@@ -26,10 +26,6 @@ export const componentTimeline = {
 
         onMounted(() => {
             d3.select('#timeline').call(timeline)
-        })
-
-        onActivated(() => {
-            timeline.resizeHandler()
         })
 
         const yMinInput = ref('')
@@ -81,9 +77,6 @@ export const componentMap = {
             d3.select('#map').call(map)
             map.addBasemap()
         })
-        onActivated(() => {
-            map.resizeHandler()
-        })
     },
     template: `
       <div id="map" class="map-container vbox-main tab-pane"></div>
@@ -93,14 +86,52 @@ export const componentMap = {
 export const componentFilter = {
     setup() {
         const { searchQuery, selectedOption, filterSensors } = useFilters()
+
+        const options = ["Filter 1",
+            "Filter 2"
+        ]
+
+        const searchHistory = ref([])
+        const typingTimer = ref(null)
+        const searchDelay = 1000
+
+        const saveSearchHistory = () => {
+            if (searchQuery.value.trim() && !searchHistory.value.includes(searchQuery.value)) {
+                searchHistory.value.unshift(searchQuery.value.trim())
+                searchHistory.value = searchHistory.value.slice(0, 3)
+                sessionStorage.setItem('searchHistory', JSON.stringify(searchHistory.value))
+            }   
+        }
+
+        const onSearchInput = () => {
+            clearTimeout(typingTimer.value)
+
+            typingTimer.value = setTimeout(() => {
+                saveSearchHistory()
+            }, searchDelay)
+        }
+
+        onMounted( () => {
+            const storedHistory = sessionStorage.getItem('searchHistory')
+            if (storedHistory) {
+                searchHistory.value = JSON.parse(storedHistory)
+            }
+        })
+       
         return {
-            searchQuery, selectedOption, onSearchClick: filterSensors
+            searchQuery, selectedOption, onSearchClick: filterSensors, searchHistory, saveSearchHistory, onSearchInput
         }
     },
     template:
     `<div class="d-flex justify-content-end">
-            <input type="search" class="form-control form-control-sm rounded" placeholder="Select" v-model="searchQuery" @keyup.enter="onSearchClick" />
-            <!--<button class="btn btn-primary" type="button" @click="onSearchClick">&#x1F50E;&#xFE0E;</button>-->
+        <div class="input-group input-group-sm rounded w-auto pe-4">
+            <input list="filters" type="search" class="form-control form-control-sm rounded tiny-search" placeholder="Select" v-model="searchQuery" @input="onSearchInput" @keyup.enter="onSearchClick"/>
+            <datalist id="filters">
+                <option v-for="(historyItem, index) in searchHistory" :key="index" :value="historyItem"></option>
+                <option value="..Z"></option>
+                <option value="..[EN]"></option>
+            </datalist>    
+        </div>
     </div>`,
 }
 
