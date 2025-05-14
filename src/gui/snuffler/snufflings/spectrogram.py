@@ -265,9 +265,9 @@ class Spectrogram(Snuffling):
 
                 data[nslc].add(tr.deltat)
 
-        nslcs = sorted(data.keys())
-        deltats = [sorted(data[nslc]) for nslc in nslcs]
-        return min(times), max(times), nslcs, deltats
+        nslcs_and_deltats = sorted((nslc, dt) for nslc,
+                                   dts in data.items() for dt in dts)
+        return min(times), max(times), nslcs_and_deltats
 
     def call(self):
         '''Main work routine of the snuffling.'''
@@ -275,16 +275,10 @@ class Spectrogram(Snuffling):
         tpad = self.twin * self.overlap/100. * 0.5
         tinc = self.twin - 2 * tpad
 
-        tmin, tmax, nslcs, deltats = self.prescan(tinc, tpad)
+        tmin, tmax, nslcs_and_deltats = self.prescan(tinc, tpad)
 
-        for nslc, deltats in zip(nslcs, deltats):
-            if len(deltats) > 1:
-                self.fail(
-                    'Multiple sample rates found for channel %s.%s.%s.%s.'
-                    % nslc)
-
-        ncols = int(len(nslcs) // 5 + 1)
-        nrows = (len(nslcs)-1) // ncols + 1
+        ncols = int(len(nslcs_and_deltats) // 5 + 1)
+        nrows = (len(nslcs_and_deltats) - 1) // ncols + 1
 
         frame = self.smartplot_frame(
             'Spectrogram %i' % (self.iframe + 1),
@@ -295,10 +289,10 @@ class Spectrogram(Snuffling):
         self.iframe += 1
 
         zvalues = []
-        for i, nslc in enumerate(nslcs):
+        for i, (nslc, deltat) in enumerate(nslcs_and_deltats):
 
             t, f, a = self.make_spectrogram(
-                tmin, tmax, tinc, tpad, nslc, deltats[0])
+                tmin, tmax, tinc, tpad, nslc, deltat)
 
             if self.color_scale == 'log':
                 a = num.log(a)
@@ -347,7 +341,7 @@ class Spectrogram(Snuffling):
 
             plot.mpl_time_axis(axes, 10. / ncols)
 
-        for i in range(len(nslcs), ncols*nrows):
+        for i in range(len(nslcs_and_deltats), ncols * nrows):
             icol, irow = i % ncols, i // ncols
             axes = frame.plot.axes(icol, nrows-1-irow)
             axes.set_axis_off()
