@@ -196,10 +196,10 @@ class SphericalSlownessGrid(SlownessGrid):
         default=0.0,
         help='Sr axis maximum [s/m].')
     stheta_min = Float.T(
-        default=0.0,
+        default=90.0,
         help='Lower angle limit of incidence angle [deg].')
     stheta_max = Float.T(
-        default=0.0,
+        default=90.0,
         help='Upper angle limit of incidence angle [deg].')
     sphi_min = Float.T(
         default=-180.0,
@@ -245,7 +245,7 @@ class SphericalSlownessGrid(SlownessGrid):
             r2, theta2, phi2 = [v.flatten() for v in num.meshgrid(
                 self._r, self._theta, self._phi, indexing='ij')]
 
-            self._rtp = num.vstack([phi2, theta2, r2]).T
+            self._rtp = num.vstack([r2, theta2, phi2]).T
 
         return self._rtp
 
@@ -253,9 +253,9 @@ class SphericalSlownessGrid(SlownessGrid):
 
         if self._xyz is None:
             rtp = self._get_rtp()
-            x2 = rtp[:, 2] * num.sin(rtp[:, 1]*d2r) * num.cos(rtp[:, 0]*d2r)
-            y2 = rtp[:, 2] * num.sin(rtp[:, 1]*d2r) * num.sin(rtp[:, 0]*d2r)
-            z2 = rtp[:, 2] * num.cos(rtp[:, 1]*d2r)
+            x2 = rtp[:, 0] * num.sin(rtp[:, 1]*d2r) * num.cos(rtp[:, 2]*d2r)
+            y2 = rtp[:, 0] * num.sin(rtp[:, 1]*d2r) * num.sin(rtp[:, 2]*d2r)
+            z2 = rtp[:, 0] * num.cos(rtp[:, 1]*d2r)
 
             self._xy = num.vstack([x2, y2, z2]).T
 
@@ -265,11 +265,11 @@ class SphericalSlownessGrid(SlownessGrid):
 
         if self._ned is None:
             rtp = self._get_rtp()
-            n2 = rtp[:, 2] * num.sin(rtp[:, 1]*d2r) \
-                * num.cos((rtp[:, 0] - self.azimuth)*d2r)
-            e2 = rtp[:, 2] * num.sin(rtp[:, 1]*d2r) \
-                * num.sin((rtp[:, 0] - self.azimuth)*d2r)
-            d2 = rtp[:, 2] * num.cos(rtp[:, 1]*d2r)
+            n2 = rtp[:, 0] * num.sin(rtp[:, 1]*d2r) \
+                * num.cos((rtp[:, 2] - self.azimuth)*d2r)
+            e2 = rtp[:, 0] * num.sin(rtp[:, 1]*d2r) \
+                * num.sin((rtp[:, 2] - self.azimuth)*d2r)
+            d2 = rtp[:, 0] * num.cos(rtp[:, 1]*d2r)
 
             self._ned = num.vstack([n2, e2, d2]).T
 
