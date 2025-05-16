@@ -326,8 +326,8 @@ typedef struct {
 
 /* component scheme defs */
 
-#define NCOMPONENTS_MAX 3
-#define NSUMMANDS_MAX 6
+#define NCOMPONENTS_MAX 6
+#define NSUMMANDS_MAX 10
 
 typedef void (*make_weights_function_t)(const float64_t*, const float64_t*, const float64_t*, float64_t*);
 static void make_weights_dummy(const float64_t*, const float64_t*, const float64_t*, float64_t*);
@@ -337,6 +337,7 @@ static void make_weights_elastic8(const float64_t*, const float64_t*, const floa
 static void make_weights_elastic10(const float64_t*, const float64_t*, const float64_t*, float64_t*);
 static void make_weights_elastic18(const float64_t*, const float64_t*, const float64_t*, float64_t*);
 static void make_weights_rotational8(const float64_t*, const float64_t*, const float64_t*, float64_t*);
+static void make_weights_strain20(const float64_t*, const float64_t*, const float64_t*, float64_t*);
 /*static void make_weights_poroelastic10(const float64_t*, const float64_t*, const float64_t*, float64_t*);*/
 
 typedef struct {
@@ -2248,7 +2249,7 @@ static void make_weights_strain20(
         float64_t *ws) {
 
     float64_t azi, bazi, f0, f1, f2, f3, f4, f5;
-    float64_t sa, ca, s2a, c2a, sb, cb;
+    float64_t sa, ca, s2a, c2a, sb, sb2, cb, cb2, s2b, c2b;
     size_t ioff;
     size_t nsummands_max = component_schemes[STRAIN20].nsummands_max;
 
@@ -2280,8 +2281,8 @@ static void make_weights_strain20(
     ws[ioff + 5] = sb2 * f1;
     ws[ioff + 6] = sb2 * f2;
     ws[ioff + 7] = sb2 * f5;
-    ws[ioff + 8] = sb * cb * f3;
-    ws[ioff + 9] = sb * cb * f4;
+    ws[ioff + 8] = -2.0 * sb * cb * f3;
+    ws[ioff + 9] = -2.0 * sb * cb * f4;
 
     ioff = 1 * nsummands_max;
     ws[ioff + 0] = sb2 * f0;
@@ -2292,8 +2293,8 @@ static void make_weights_strain20(
     ws[ioff + 5] = cb2 * f1;
     ws[ioff + 6] = cb2 * f2;
     ws[ioff + 7] = cb2 * f5;
-    ws[ioff + 8] = sb * cb * f3;
-    ws[ioff + 9] = sb * cb * f4;
+    ws[ioff + 8] = 2.0 * sb * cb * f3;
+    ws[ioff + 9] = 2.0 * sb * cb * f4;
 
     ioff = 2 * nsummands_max;
     ws[ioff + 0] = f0;
@@ -2306,20 +2307,20 @@ static void make_weights_strain20(
     ws[ioff + 1] = 0.5 * s2b * f1;
     ws[ioff + 2] = 0.5 * s2b * f2;
     ws[ioff + 3] = 0.5 * s2b * f5;
-    ws[ioff + 4] = 0.5 * s2b * f0;
-    ws[ioff + 5] = 0.5 * s2b * f1;
-    ws[ioff + 6] = 0.5 * s2b * f2;
-    ws[ioff + 7] = 0.5 * s2b * f5;
-    ws[ioff + 8] = 0.5 * c2b * f3;
-    ws[ioff + 9] = 0.5 * c2b * f4;
+    ws[ioff + 4] = -0.5 * s2b * f0;
+    ws[ioff + 5] = -0.5 * s2b * f1;
+    ws[ioff + 6] = -0.5 * s2b * f2;
+    ws[ioff + 7] = -0.5 * s2b * f5;
+    ws[ioff + 8] = c2b * f3;
+    ws[ioff + 9] = c2b * f4;
 
     ioff = 4 * nsummands_max;
     ws[ioff + 0] = cb * f0;
     ws[ioff + 1] = cb * f1;
     ws[ioff + 2] = cb * f2;
     ws[ioff + 3] = cb * f5;
-    ws[ioff + 4] = sb * f3;
-    ws[ioff + 5] = sb * f4;
+    ws[ioff + 4] = -sb * f3;
+    ws[ioff + 5] = -sb * f4;
 
     ioff = 5 * nsummands_max;
     ws[ioff + 0] = sb * f0;

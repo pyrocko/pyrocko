@@ -197,6 +197,15 @@ class Target(meta.Receiver):
         cd = math.cos(dip*d2r)
         return sa, ca, sd, cd
 
+    def get_sin_cos_factors_extended(self):
+        azi = self.effective_azimuth()
+        sa = math.sin(azi*d2r)
+        ca = math.cos(azi*d2r)
+        s2a = math.sin(2.0*azi*d2r)
+        c2a = math.cos(2.0*azi*d2r)
+        sa, s2a, ca, c2a
+        return sa, s2a, ca, c2a
+
     def get_factor(self):
         return 1.0
 
