@@ -300,11 +300,21 @@ class Transaction(object):
         LOCK.release()
 
 
+class xlist(list):
+    pass
+
+
 class Cursor(sqlite3.Cursor):
 
     def execute(self, *args, **kwargs):
         with LOCK:
-            return super().execute(*args, **kwargs)
+            r = super().execute(*args, **kwargs)
+            xl = xlist(r)
+            xl.rowcount = r.rowcount
+        return xl
+
+    def execute_nolock(self, *args, **kwargs):
+        return super().execute(*args, **kwargs)
 
     def executemany(self, *args, **kwargs):
         with LOCK:
@@ -314,22 +324,26 @@ class Cursor(sqlite3.Cursor):
         with LOCK:
             return super().executescript(*args, **kwargs)
 
-    def fetchone(self, *args, **kwargs):
-        with LOCK:
-            return super().fetchone(*args, **kwargs)
-
-    def fetchmany(self, *args, **kwargs):
-        with LOCK:
-            return super().fetchmany(*args, **kwargs)
-
 
 class Connection(sqlite3.Connection):
+    def cursor(self, factory=Cursor):
+        return factory(self)
 
-    def cursor(self):
-        return Cursor(self)
+    def execute(self, *args, **kwargs):
+        cursor = self.cursor()
+        return cursor.execute(*args, **kwargs)
 
+    def execute_nolock(self, *args, **kwargs):
+        cursor = self.cursor()
+        return cursor.execute_nolock(*args, **kwargs)
 
-class Connection(sqlite3.Connection):
+    def executemany(self, *args, **kwargs):
+        cursor = self.cursor()
+        return cursor.executemany(*args, **kwargs)
+
+    def executescript(self, *args, **kwargs):
+        cursor = self.cursor()
+        return cursor.executescript(*args, **kwargs)
 
     def close(self):
         if hasattr(self, '_close_handlers'):
@@ -365,7 +379,7 @@ class Database(object):
                 database_path,
                 isolation_level=None,
                 factory=Connection,
-                check_same_thread=False if sqlite3.threadsafety else True)
+                check_same_thread=False if sqlite3.threadsafety == 3 else True)
 
         except sqlite3.OperationalError:
             raise error.SquirrelError(
@@ -747,14 +761,16 @@ class Database(object):
             INNER JOIN nuts ON files.file_id = nuts.file_id
             INNER JOIN kind_codes
                 ON nuts.kind_codes_id = kind_codes.kind_codes_id
-            WHERE files.path = :path
+            WHERE files.path = ?
         '''
+        args = [path]
         if segment is not None:
-            sql += ' AND nuts.file_segment = :segment\n'
-        args = {"path": r"%s" % path, "segment": segment}
+            sql += ' AND nuts.file_segment = ?'
+            args.append(segment)
 
-        return [Nut(values_nocheck=(self.abspath(row[0]),) + row[1:])
-                for row in self._conn.execute(sql, args)]
+        return [
+            Nut(values_nocheck=(self.abspath(row[0]),) + row[1:])
+            for row in self._conn.execute(sql, args)]
 
     def undig_all(self):
         sql = '''
@@ -1104,12 +1120,6 @@ class Database(object):
     def vacuum(self):
         sql = '''
             VACUUM
-        '''
-        self._conn.execute(sql)
-
-    def optimize(self):
-        sql = '''
-            PRAGMA optimize
         '''
         self._conn.execute(sql)
 
