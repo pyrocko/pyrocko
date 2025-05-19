@@ -17,7 +17,7 @@ from pyrocko.io.io_common import FileLoadError
 from pyrocko import progress
 
 from . import error, io, model
-from .database import Database, get_database, execute_get1, abspath
+from .database import Database, get_database, execute_get1, abspath, LOCK
 
 logger = logging.getLogger('psq.selection')
 
@@ -623,20 +623,22 @@ class Selection(object):
             nuts = []
             format_path = None
             db = self.get_database()
-            for values in self._conn.execute(sql):
-                apath = db.abspath(values[1])
-                if format_path is not None and apath != format_path[1]:
+
+            with LOCK:
+                for values in self._conn.execute_nolock(sql):
+                    apath = db.abspath(values[1])
+                    if format_path is not None and apath != format_path[1]:
+                        yield format_path, nuts
+                        nuts = []
+
+                    format_path = values[0], apath
+
+                    if values[2] is not None:
+                        nuts.append(model.Nut(
+                            values_nocheck=format_path[1:2] + values[2:]))
+
+                if format_path is not None:
                     yield format_path, nuts
-                    nuts = []
-
-                format_path = values[0], apath
-
-                if values[2] is not None:
-                    nuts.append(model.Nut(
-                        values_nocheck=format_path[1:2] + values[2:]))
-
-            if format_path is not None:
-                yield format_path, nuts
 
         return GeneratorWithLen(gen(), nfiles)
 

@@ -17,6 +17,7 @@ import math
 import logging
 import threading
 import queue
+import sqlite3
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
@@ -335,6 +336,15 @@ class Squirrel(Selection):
             self._n_threads = get_nthreads()
         else:
             self._n_threads = n_threads
+
+        if sqlite3.threadsafety != 3 and self._n_threads != 1:
+            logger.warning(
+                'Falling back to single-threaded behaviour. The sqlite3 '
+                'module has been compile without support to share the '
+                'connection across threads (sqlite3.threadsafety == %i'
+                % sqlite3.threadsafety)
+
+            self._n_threads = 1
 
         self._content_caches = {
             'waveform': cache.ContentCache(),
