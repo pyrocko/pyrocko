@@ -113,6 +113,7 @@ export const squirrelBlock = (block) => {
         const carpets = await connection.request('gate/default/get_carpets', {
             tmin: timeToStr(my.timeMin),
             tmax: timeToStr(my.timeMax),
+            ny: my.ny,
             ...params,
         })
         for (const carpet of carpets) {
@@ -131,6 +132,7 @@ export const squirrelBlock = (block) => {
     }
 
     my.update = async (params) => {
+        console.log(params)
         coverages = await fetchCoverage('carpet')
         counter.value++
         carpets = await fetchCarpets(params)
@@ -196,6 +198,7 @@ export const setupGates = () => {
     const gates = ref([])
     const timeMin = ref(TIME_MIN)
     const timeMax = ref(TIME_MAX)
+    const imageHeight = ref(100)
     const yMin = ref(null)
     const yMax = ref(null)
     const blockFactor = 4
@@ -214,6 +217,7 @@ export const setupGates = () => {
             timeStep: tstep,
             timeMin: (itime - 1) * tstep * 0.5,
             timeMax: (itime + 1) * tstep * 0.5,
+            ny: imageHeight.value,
         })
     }
 
@@ -269,6 +273,10 @@ export const setupGates = () => {
         timeMin.value = Math.max(tmin, TIME_MIN)
         timeMax.value = Math.min(tmax, TIME_MAX)
         update()
+    }
+
+    const setImageHeight = (ny) => {
+        imageHeight.value = Math.round(ny)
     }
 
     const makePageMove = (amount) => {
@@ -438,6 +446,7 @@ export const setupGates = () => {
         yMax,
         counter,
         setTimeSpan,
+        setImageHeight,
         pageForward,
         pageBackward,
         halfPageForward,
