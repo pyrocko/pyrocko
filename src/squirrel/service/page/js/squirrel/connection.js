@@ -1,8 +1,5 @@
 import { ref, computed } from '../vue.esm-browser.js'
-
-const now = () => {
-    return new Date().getTime()
-}
+import { now } from './common.js'
 
 const setupConnection = () => {
     let serverInfo = ref(null)
