@@ -4,6 +4,26 @@ All notable changes to Pyrocko are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Added
+- `squirrel summon`: add possibility to download event data windows.
+- Squirrel and `str_to_time_fillup`: add "yesterday" shortcut
+- `orthodrome`: Crosstrack distance calculations.
+
+### Fixed
+- Squirrel: Fix some issues with relative paths in dataset configurations.
+- `squirrel jackseis`: fix an error causing data corruption when merging data
+  into existing files.
+- Various bug and compatibility fixes.
+- Spectrogram snuffling: Fix handling of mixed sampling rates.
+
+### Changed
+- Squirrel CLI tools now warn and exit with explanation on how to add data when
+  started with empty data selection.
+- Enable persistent connections in FDSN and some catolog clients.
+- Improved SeisBench snuffling.
+
 ## v2025.01.21
 
 ### Added
