@@ -368,3 +368,7 @@ export const fmtDuration = (d) => {
         (d < 1.0 ? ms.toFixed(0) + 'ms' : '')
     )
 }
+
+export const now = () => {
+    return new Date().getTime()
+}

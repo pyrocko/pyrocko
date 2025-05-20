@@ -1,4 +1,5 @@
 import { watch } from '../vue.esm-browser.js'
+import { now } from './common.js'
 
 import {
     createIfNeeded,
@@ -24,6 +25,10 @@ const projectionHelper = () => {
 
     my.range = scale.range
     my.domain = scale.domain
+
+    my.trackHeight = () => {
+        return scale(scale.domain()[0]+1) - scale(scale.domain()[0])
+    }
 
     my.lower = (obj) => {
         return scale(attribute(obj))
@@ -146,6 +151,8 @@ export const squirrelTimeline = () => {
     let effectiveTrackPadding = trackPadding
     let bounds
     let dataRanges = new Map()
+    let scrollDeltaY = 0
+    let scrollTime = 0
 
     const containerBounds = () => {
         return container.node().getBoundingClientRect()
@@ -257,17 +264,44 @@ export const squirrelTimeline = () => {
         trackStart = null
     }
 
+    const updateTrackHeight = () => {
+        const ny = trackProjection.trackHeight() - 2 * effectiveTrackPadding
+        gates.setImageHeight(ny)
+    }
+
     const scrollHandler = (ev) => {
+        ev.preventDefault()
+
+        const tnow = now()
+        if (tnow - scrollTime > 3000) {
+            scrollDeltaY = 0
+        }
+
+        scrollTime = tnow
+
+        scrollDeltaY += ev.deltaY
+
+        const step = 100
+
+        if (Math.abs(scrollDeltaY) < step) {
+            return
+        }
+
+        const iamount = Math.round(scrollDeltaY / step)
+        scrollDeltaY = scrollDeltaY % step
+
         let relPos = trackProjection.relative(ev.clientY)
-        const amount = Math.max(1, Math.abs(trackProjection.domainSpan()) / 5)
+        const amount =
+            iamount * Math.max(1, Math.abs(trackProjection.domainSpan()) / 5)
 
         if (ev.ctrlKey) {
-            ev.preventDefault()
-            zoomTracks(relPos, ev.deltaY > 0 ? -amount : +amount)
+            zoomTracks(relPos, -amount)
+            updateTrackHeight()
         } else {
-            scrollTracks(ev.deltaY < 0 ? -amount : +amount)
+            scrollTracks(amount)
         }
     }
+
 
     const zoomTracks = (anchor, delta) => {
         trackProjection.zoom(anchor, delta)
@@ -692,7 +726,10 @@ export const squirrelTimeline = () => {
                     2.0 * effectiveTrackPadding
             )
         const d3format = d3.format('.4g')
-        const format = (x) => d3format(x).replace(/(\.[0-9]*?)0+$/, '$1').replace(/\.$/, '')
+        const format = (x) =>
+            d3format(x)
+                .replace(/(\.[0-9]*?)0+$/, '$1')
+                .replace(/\.$/, '')
 
         const trackAxes = tracksGroup
             .selectAll('.track-axis')
