@@ -1694,7 +1694,8 @@ class Injector(trace.States):
                     fns, show_progress=False, fileformat=self._format)
 
         if del_state:
-            del self._states[trbuf.nslc_id]
+            if trbuf.nslc_id in self._states:
+                del self._states[trbuf.nslc_id]
 
     def __del__(self):
         self.fixate_all()
