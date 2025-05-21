@@ -49,7 +49,7 @@ g_site_abbr = {
     'bgr': 'http://eida.bgr.de',
     'emsc': 'http://www.seismicportal.eu',
     'ethz': 'http://eida.ethz.ch',
-    'geofon': 'https://geofon.gfz-potsdam.de',
+    'geofon': 'https://geofon.gfz.de',
     'geonet': 'http://service.geonet.org.nz',
     'icgc': 'http://ws.icgc.cat',
     'iesdmc': 'http://batsws.earth.sinica.edu.tw:8080',
@@ -126,7 +126,8 @@ def doc_table_dict(d, khead, vhead, indent=''):
 
 
 def strip_html(s):
-    s = s.decode('utf-8')
+    if isinstance(s, bytes):
+        s = s.decode('utf-8')
     s = re.sub(r'<[^>]+>', '', s)
     s = re.sub(r'\r', '', s)
     s = re.sub(r'\s*\n', '\n', s)
