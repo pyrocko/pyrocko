@@ -17,6 +17,7 @@ from .. import common
 from pyrocko import squirrel, util, pile, io, trace, model as pmodel
 from pyrocko import progress
 from pyrocko.parimap import parimap
+from pyrocko.client import fdsn
 try:
     from StringIO import StringIO
 except ImportError:
@@ -24,6 +25,7 @@ except ImportError:
 
 
 progress.g_force_viewer_off = True
+fdsn.g_timeout = 40.
 
 
 logger = logging.getLogger('test_squirrel.py')

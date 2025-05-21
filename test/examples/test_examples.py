@@ -19,6 +19,9 @@ from pyrocko import orthodrome
 
 from pyrocko.gui.snuffler import snuffler
 from pyrocko.dataset import topo
+from pyrocko.client import fdsn
+
+fdsn.g_timeout = 40.
 
 
 op = os.path
