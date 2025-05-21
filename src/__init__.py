@@ -60,7 +60,13 @@ def app_init(
     util.setup_logging(sys.argv[0], log_level)
     progress.set_default_viewer(progress_viewer)
     import multiprocessing
-    multiprocessing.set_start_method(multiprocessing_start_method)
+    current_start_method = multiprocessing.get_start_method(allow_none=True)
+    if current_start_method is None \
+            or current_start_method != multiprocessing_start_method:
+
+        # in the latter case (it has already been fixed), this should raise
+        # RuntimeError
+        multiprocessing.set_start_method(multiprocessing_start_method)
 
 
 def make_squirrel(*args, **kwargs):
