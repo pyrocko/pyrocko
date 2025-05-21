@@ -1,0 +1,90 @@
+--- evalresp-3.3.0/evr_spline.c	2005-10-25 00:31:18.000000000 +0200
++++ evalresp-3.3.0_mod/evr_spline.c	2025-05-20 12:30:28.528934583 +0200
+@@ -39,14 +39,14 @@
+    x/sinh(x) and x/tanh(x) by |x|exp(-|x|). */
+ #define TRIG_ARG_MAX 50.0
+ 
+-typedef enum { false = 0, true = 1 } bool;
++typedef enum { _false = 0, _true = 1 } _bool;
+ 
+ /* forward references */
+ double interpolate(int n, double *t, double *y, double *z, double x,
+-                                             double tension, bool periodic);
++                                             double tension, _bool periodic);
+ char *fit(int n, double *t, double *y, double *z, double k, double tension,
+-                                                             bool periodic);
+-bool is_monotonic(int n, double *t);
++                                                             _bool periodic);
++_bool is_monotonic(int n, double *t);
+ double quotient_sin_func(double x, double y);
+ double quotient_sinh_func(double x, double y);
+ double sin_func(double x);
+@@ -123,7 +123,7 @@
+   z = (double *)spl_malloc (sizeof(double) * num_points);
+ 
+   /* compute z, array of 2nd derivatives at each knot */
+-  if((retstr=fit(used, t, y, z, k, tension, false)) != NULL)
++  if((retstr=fit(used, t, y, z, k, tension, _false)) != NULL)
+     {
+       free(z);                 /* free array for 2nd derivatives */
+       return retstr;           /* if error string returned then return it */
+@@ -155,7 +155,7 @@
+       if ((x - t[0]) * (x - t[used]) <= 0)
+ 	{               /* calculate value, enter into array, inc index */
+           (*p_retvals_arr)[(*p_num_retvals)++] = interpolate(
+-                                          used, t, y, z, x, tension, false);
++                                          used, t, y, z, x, tension, _false);
+ 	}
+       else
+ 	range_count++;
+@@ -191,7 +191,7 @@
+    equation is solved by back-substitution for y''[], i.e., for z[]. */
+ 
+ char *fit(int n, double *t, double *y, double *z, double k, double tension,
+-           bool periodic)
++           _bool periodic)
+ {
+   double *h, *b, *u, *v, *alpha, *beta;
+   double *uu = NULL, *vv = NULL, *s = NULL;
+@@ -395,7 +395,7 @@
+    periodic case. */
+ 
+ double interpolate(int n, double *t, double *y, double *z, double x,
+-	     double tension, bool periodic)
++	     double tension, _bool periodic)
+ {
+   double diff, updiff, reldiff, relupdiff, h;
+   double value;
+@@ -487,24 +487,24 @@
+ 
+ /* is_monotonic() check whether an array of data points, read in by
+    read_data(), has monotonic abscissa values. */
+-bool is_monotonic(int n, double *t)
++_bool is_monotonic(int n, double *t)
+ {
+-  bool is_ascending;
++  _bool is_ascending;
+ 
+   if (t[n-1] < t[n])
+-    is_ascending = true;
++    is_ascending = _true;
+   else if (t[n-1] > t[n])
+-    is_ascending = false;
++    is_ascending = _false;
+   else				/* equality */
+-    return false;
++    return _false;
+ 
+   while (n>0)
+     {
+       n--;
+-      if (is_ascending == true ? t[n] >= t[n+1] : t[n] <= t[n+1])
+-	return false;
++      if (is_ascending == _true ? t[n] >= t[n+1] : t[n] <= t[n+1])
++	return _false;
+     };
+-  return true;
++  return _true;
+ }
+ 
+ /* Following four functions compute (6/x^2)(1-x/sinh(x)),

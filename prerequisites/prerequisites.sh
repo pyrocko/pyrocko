@@ -15,4 +15,7 @@ if [ ! -d evalresp-3.3.0 ]; then
     tar -xzf evalresp-3.3.0.tar.gz
     patch -s -p0 < evalresp-3.3.0-fprintf-fmtstr.patch
     patch -s -p0 < evalresp-3.3.0-undef-complex.patch
+    patch -s -p0 < evalresp-3.3.0-custom-bool.patch
+    patch -s -p0 < evalresp-3.3.0-rm-atof-decl.patch
+    patch -s -p0 < evalresp-3.3.0-fix-forwards.patch
 fi

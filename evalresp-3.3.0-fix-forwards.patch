@@ -1,0 +1,46 @@
+diff -ruN evalresp-3.3.0/regexp.c evalresp-3.3.0_mod/regexp.c
+--- evalresp-3.3.0/regexp.c	2009-04-30 22:41:37.000000000 +0200
++++ evalresp-3.3.0_mod/regexp.c	2025-05-21 08:46:42.472212700 +0200
+@@ -169,18 +169,18 @@
+ #ifndef STATIC
+ #define	STATIC	static
+ #endif
+-STATIC char *reg();
+-STATIC char *regbranch();
+-STATIC char *regpiece();
+-STATIC char *regatom();
+-STATIC char *regnode();
+-STATIC char *regnext();
+-STATIC void regc();
+-STATIC void reginsert();
+-STATIC void regtail();
+-STATIC void regoptail();
++STATIC char *reg(int, int*);
++STATIC char *regbranch(int*);
++STATIC char *regpiece(int*);
++STATIC char *regatom(int*);
++STATIC char *regnode(char);
++STATIC char *regnext(char*);
++STATIC void regc(char);
++STATIC void reginsert(char, char*);
++STATIC void regtail(char*, char*);
++STATIC void regoptail(char*, char*);
+ #ifdef STRCSPN
+-STATIC int strcspn();
++STATIC int strcspn(char*, char*);
+ #endif
+ 
+ /*
+@@ -697,9 +697,9 @@
+ /*
+  * Forwards.
+  */
+-STATIC int regtry();
+-STATIC int regmatch();
+-STATIC int regrepeat();
++STATIC int regtry(regexp*, char*);
++STATIC int regmatch(char*);
++STATIC int regrepeat(char*);
+ 
+ #ifdef DEBUG
+ int regnarrate = 0;
