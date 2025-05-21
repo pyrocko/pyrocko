@@ -1,0 +1,278 @@
+diff -ruN libmseed/unpack.c libmseed_mod/unpack.c
+--- libmseed/unpack.c	2019-06-19 10:59:29.000000000 +0200
++++ libmseed_mod/unpack.c	2025-05-21 10:13:28.418424322 +0200
+@@ -857,7 +857,7 @@
+     if (verbose > 1)
+       ms_log (1, "%s: Unpacking FLOAT32 data samples\n", srcname);
+ 
+-    nsamples = msr_decode_float32 ((float *)dbuf, (int)msr->samplecnt,
++    nsamples = msr_decode_float32 ((uint32_t *)dbuf, (int)msr->samplecnt,
+                                    msr->datasamples, unpacksize, swapflag);
+ 
+     msr->sampletype = 'f';
+@@ -867,7 +867,7 @@
+     if (verbose > 1)
+       ms_log (1, "%s: Unpacking FLOAT64 data samples\n", srcname);
+ 
+-    nsamples = msr_decode_float64 ((double *)dbuf, (int)msr->samplecnt,
++    nsamples = msr_decode_float64 ((uint64_t *)dbuf, (int)msr->samplecnt,
+                                    msr->datasamples, unpacksize, swapflag);
+ 
+     msr->sampletype = 'd';
+diff -ruN libmseed/unpackdata.c libmseed_mod/unpackdata.c
+--- libmseed/unpackdata.c	2019-06-19 10:59:29.000000000 +0200
++++ libmseed_mod/unpackdata.c	2025-05-21 10:41:45.685628029 +0200
+@@ -6,6 +6,14 @@
+  * modified: 2017.283
+  ************************************************************************/
+ 
++#if HAVE_BYTESWAP_H
++#include <byteswap.h>
++#else
++#define bswap_16 __builtin_bswap16
++#define bswap_32 __builtin_bswap32
++#define bswap_64 __builtin_bswap64
++#endif
++
+ #include <memory.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+@@ -50,7 +58,8 @@
+     sample = input[idx];
+ 
+     if (swapflag)
+-      ms_gswap2a (&sample);
++      /*ms_gswap2a (&sample);*/
++      sample = (int16_t)bswap_16((uint16_t)sample);
+ 
+     output[idx] = (int32_t)sample;
+ 
+@@ -86,7 +95,8 @@
+     sample = input[idx];
+ 
+     if (swapflag)
+-      ms_gswap4a (&sample);
++      /*ms_gswap4a (&sample);*/
++      sample = (int32_t)bswap_32((uint32_t)sample);
+ 
+     output[idx] = sample;
+ 
+@@ -105,10 +115,10 @@
+  * Return number of samples in output buffer on success, -1 on error.
+  ************************************************************************/
+ int
+-msr_decode_float32 (float *input, int samplecount, float *output,
++msr_decode_float32 (uint32_t *input, int samplecount, float *output,
+                     int outputlength, int swapflag)
+ {
+-  float sample;
++  uint32_t isample;
+   int idx;
+ 
+   if (samplecount <= 0)
+@@ -119,13 +129,8 @@
+ 
+   for (idx = 0; idx < samplecount && outputlength >= (int)sizeof (float); idx++)
+   {
+-    memcpy (&sample, &input[idx], sizeof (float));
+-
+-    if (swapflag)
+-      ms_gswap4a (&sample);
+-
+-    output[idx] = sample;
+-
++    isample = (swapflag) ? bswap_32(input[idx]) : input[idx];
++    memcpy (&output[idx], &isample, sizeof (float));
+     outputlength -= sizeof (float);
+   }
+ 
+@@ -141,10 +146,10 @@
+  * Return number of samples in output buffer on success, -1 on error.
+  ************************************************************************/
+ int
+-msr_decode_float64 (double *input, int samplecount, double *output,
++msr_decode_float64 (uint64_t *input, int samplecount, double *output,
+                     int outputlength, int swapflag)
+ {
+-  double sample;
++  uint64_t isample;
+   int idx;
+ 
+   if (samplecount <= 0)
+@@ -155,13 +160,8 @@
+ 
+   for (idx = 0; idx < samplecount && outputlength >= (int)sizeof (double); idx++)
+   {
+-    memcpy (&sample, &input[idx], sizeof (double));
+-
+-    if (swapflag)
+-      ms_gswap8a (&sample);
+-
+-    output[idx] = sample;
+-
++    isample = (swapflag) ? bswap_64(input[idx]) : input[idx];
++    memcpy (&output[idx], &isample, sizeof (double));
+     outputlength -= sizeof (double);
+   }
+ 
+@@ -220,8 +220,10 @@
+     {
+       if (swapflag)
+       {
+-        ms_gswap4a (&frame[1]);
+-        ms_gswap4a (&frame[2]);
++        /*ms_gswap4a (&frame[1]);*/
++        /*ms_gswap4a (&frame[2]);*/
++        frame[1] = bswap_32(frame[1]);
++        frame[2] = bswap_32(frame[2]);
+       }
+ 
+       X0 = frame[1];
+@@ -242,7 +244,8 @@
+ 
+     /* Swap 32-bit word containing the nibbles */
+     if (swapflag)
+-      ms_gswap4a (&frame[0]);
++      /*ms_gswap4a (&frame[0]);*/
++      frame[0] = bswap_32(frame[0]);
+ 
+     /* Decode each 32-bit word according to nibble */
+     for (widx = startnibble; widx < 16 && samplecount > 0; widx++)
+@@ -273,8 +276,10 @@
+ 
+         if (swapflag)
+         {
+-          ms_gswap2a (&word->d16[0]);
+-          ms_gswap2a (&word->d16[1]);
++          /*ms_gswap2a (&word->d16[0]);*/
++          /*ms_gswap2a (&word->d16[1]);*/
++          word->d16[0] = (int16_t)bswap_16((uint16_t)word->d16[0]);
++          word->d16[1] = (int16_t)bswap_16((uint16_t)word->d16[1]);
+         }
+ 
+         if (decodedebug)
+@@ -284,7 +289,9 @@
+       case 3: /* 11: One 4-byte difference */
+         diffcount = 1;
+         if (swapflag)
+-          ms_gswap4a (&word->d32);
++          /*ms_gswap4a (&word->d32);*/
++          word->d32 = (int32_t)bswap_32((uint32_t)word->d32);
++            
+ 
+         if (decodedebug)
+           ms_log (1, "  W%02d: 11=1x32b  %d\n", widx, word->d32);
+@@ -375,8 +382,10 @@
+     {
+       if (swapflag)
+       {
+-        ms_gswap4a (&frame[1]);
+-        ms_gswap4a (&frame[2]);
++        /*ms_gswap4a (&frame[1]);*/
++        /*ms_gswap4a (&frame[2]);*/
++        frame[1] = bswap_32(frame[1]);
++        frame[2] = bswap_32(frame[2]);
+       }
+ 
+       X0 = frame[1];
+@@ -397,7 +406,9 @@
+ 
+     /* Swap 32-bit word containing the nibbles */
+     if (swapflag)
+-      ms_gswap4a (&frame[0]);
++      /*ms_gswap4a (&frame[0]);*/
++      frame[0] = bswap_32(frame[0]);
++
+ 
+     /* Decode each 32-bit word according to nibble */
+     for (widx = startnibble; widx < 16 && samplecount > 0; widx++)
+@@ -428,7 +439,9 @@
+ 
+       case 2: /* nibble=10: Must consult dnib, the high order two bits */
+         if (swapflag)
+-          ms_gswap4a (&frame[widx]);
++          /*ms_gswap4a (&frame[widx]);*/
++          frame[widx] = bswap_32(frame[widx]);
++
+         dnib = EXTRACTBITRANGE (frame[widx], 30, 2);
+ 
+         switch (dnib)
+@@ -479,8 +492,10 @@
+         break;
+ 
+       case 3: /* nibble=11: Must consult dnib, the high order two bits */
+-        if (swapflag)
+-          ms_gswap4a (&frame[widx]);
++        if (swapflag) 
++          /*ms_gswap4a (&frame[widx]);*/
++          frame[widx] = bswap_32(frame[widx]);
++
+         dnib = EXTRACTBITRANGE (frame[widx], 30, 2);
+ 
+         switch (dnib)
+@@ -638,7 +653,8 @@
+     case DE_GEOSCOPE163:
+       memcpy (&sint, input, sizeof (int16_t));
+       if (swapflag)
+-        ms_gswap2a (&sint);
++        /*ms_gswap2a (&sint);*/
++        sint = (int16_t)bswap_16((uint16_t)sint);
+ 
+       /* Recover mantissa and gain range factor */
+       mantissa  = (sint & GEOSCOPE_MANTISSA_MASK);
+@@ -655,7 +671,8 @@
+     case DE_GEOSCOPE164:
+       memcpy (&sint, input, sizeof (int16_t));
+       if (swapflag)
+-        ms_gswap2a (&sint);
++        /*ms_gswap2a (&sint);*/
++        sint = (int16_t)bswap_16((uint16_t)sint);
+ 
+       /* Recover mantissa and gain range factor */
+       mantissa  = (sint & GEOSCOPE_MANTISSA_MASK);
+@@ -751,7 +768,8 @@
+   {
+     memcpy (&sint, &input[idx], sizeof (int16_t));
+     if (swapflag)
+-      ms_gswap2a (&sint);
++      /*ms_gswap2a (&sint);*/
++      sint = bswap_16(sint);
+ 
+     /* Recover mantissa and gain range factor */
+     mantissa  = (sint & CDSN_MANTISSA_MASK);
+@@ -844,7 +862,8 @@
+   {
+     memcpy (&sint, &input[idx], sizeof (int16_t));
+     if (swapflag)
+-      ms_gswap2a (&sint);
++      /*ms_gswap2a (&sint);*/
++      sint = bswap_16(sint);
+ 
+     /* Recover mantissa and gain range factor */
+     mantissa  = (sint & SRO_MANTISSA_MASK);
+@@ -898,7 +917,9 @@
+   {
+     memcpy (&sint, &input[idx], sizeof (uint16_t));
+     if (swapflag)
+-      ms_gswap2a (&sint);
++      /*ms_gswap2a (&sint);*/
++      sint = bswap_16(sint);
++
+     sample = (int32_t)sint;
+ 
+     /* Take 2's complement for sample */
+diff -ruN libmseed/unpackdata.h libmseed_mod/unpackdata.h
+--- libmseed/unpackdata.h	2019-06-19 10:59:29.000000000 +0200
++++ libmseed_mod/unpackdata.h	2025-05-21 10:13:09.433238716 +0200
+@@ -21,9 +21,9 @@
+                              int outputlength, int swapflag);
+ extern int msr_decode_int32 (int32_t *input, int samplecount, int32_t *output,
+                              int outputlength, int swapflag);
+-extern int msr_decode_float32 (float *input, int samplecount, float *output,
++extern int msr_decode_float32 (uint32_t *input, int samplecount, float *output,
+                                int outputlength, int swapflag);
+-extern int msr_decode_float64 (double *input, int samplecount, double *output,
++extern int msr_decode_float64 (uint64_t *input, int samplecount, double *output,
+                                int outputlength, int swapflag);
+ extern int msr_decode_steim1 (int32_t *input, int inputlength, int samplecount,
+                               int32_t *output, int outputlength, char *srcname,

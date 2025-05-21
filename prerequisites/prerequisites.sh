@@ -8,6 +8,7 @@ if [ ! -d libmseed ]; then
     patch -s -p0 < libmseed-2.19.6-speedread.patch
     patch -s -p0 < libmseed-2.19.6-selection-fallthru.patch
     patch -s -p0 < libmseed-2.19.6-fix-blkt-395-bswap.patch
+    patch -s -p0 < libmseed-2.19.6-speedswap.patch
 fi
 
 if [ ! -d evalresp-3.3.0 ]; then
