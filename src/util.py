@@ -81,6 +81,7 @@ import fnmatch
 import inspect
 import warnings
 import weakref
+import signal as psignal
 try:
     import fcntl
 except ImportError:
@@ -2476,6 +2477,20 @@ def human_bytesize(value):
     return '%i Bytes' % value
 
 
+def human_intsize(value):
+
+    exts = 'x k M G T P E Z Y'.split()
+
+    for i, ext in enumerate(exts):
+        x = float(value) / 1000**i
+        if round(x) < 10. and not value < 1000:
+            return '%.1f%s' % (x, ' ' + ext if ext != 'x' else '')
+        if round(x) < 1000.:
+            return '%.0f%s' % (x, ' ' + ext if ext != 'x' else '')
+
+    return '%i' % value
+
+
 re_compatibility = re.compile(
     r'!pyrocko\.(trace|gf\.(meta|seismosizer)|fomosto\.' +
     r'(dummy|poel|qseis|qssp))\.'
@@ -3016,3 +3031,29 @@ def smart_weakref(obj, callback=None):
         return weakref.WeakMethod(obj, callback)
     else:
         return weakref.ref(obj, callback)
+
+
+class SignalQuitable:
+
+    def __init__(
+            self,
+            signals=[psignal.SIGINT, psignal.SIGHUP, psignal.SIGTERM]):
+
+        self.quit_requested = False
+        self._original = {}
+        self._signals = signals
+
+    def quit(self, *_):
+        self.quit_requested = True
+
+    def __enter__(self):
+        for sig in self._signals:
+            self._original[sig] = psignal.signal(sig, self.quit)
+
+        return self
+
+    def __exit__(self, *_):
+        for sig, handler in self._original.items():
+            psignal.signal(sig, handler)
+
+        self._original = {}
