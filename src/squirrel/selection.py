@@ -457,7 +457,7 @@ class Selection(object):
                          WHERE files.path == ?)
                 '''), ((normpath(path),) for path in paths))
 
-    def iter_paths(self, raw=False):
+    def iter_paths(self, raw=False, format=None):
         '''
         Iterate over all file paths currently belonging to the selection.
 
@@ -472,12 +472,24 @@ class Selection(object):
         :yields: File paths.
         '''
 
+        conditions = []
+        args = []
+        if format is not None:
+            conditions.append('files.format = ?')
+            args.append(format)
+
+        if conditions:
+            condition = 'WHERE %s' % ' AND '.join(conditions)
+        else:
+            condition = ''
+
         sql = self._sql('''
             SELECT
                 files.path
             FROM %(db)s.%(file_states)s
             INNER JOIN files
             ON files.file_id = %(db)s.%(file_states)s.file_id
+''' + condition + '''
             ORDER BY %(db)s.%(file_states)s.file_id
         ''')
 
@@ -488,10 +500,10 @@ class Selection(object):
             db = self.get_database()
             trans = db.abspath
 
-        for values in self._conn.execute(sql):
+        for values in self._conn.execute(sql, args):
             yield trans(values[0])
 
-    def get_paths(self, raw=False):
+    def get_paths(self, raw=False, format=None):
         '''
         Get all file paths currently belonging to the selection.
 
@@ -505,7 +517,7 @@ class Selection(object):
 
         :returns: List of file paths.
         '''
-        return list(self.iter_paths(raw=raw))
+        return list(self.iter_paths(raw=raw, format=format))
 
     def _set_file_states_known(self, transaction=None):
         '''

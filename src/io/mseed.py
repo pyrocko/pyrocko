@@ -25,6 +25,8 @@ logger = logging.getLogger('pyrocko.io.mseed')
 MSEED_HEADER_BYTES = 64
 VALID_RECORD_LENGTHS = tuple(2**exp for exp in range(8, 20))
 
+g_bytes_read = 0
+
 
 class CodeTooLong(FileSaveError):
     pass
@@ -32,6 +34,8 @@ class CodeTooLong(FileSaveError):
 
 def iload(filename, load_data=True, offset=0, segment_size=0, nsegments=0):
     from pyrocko import mseed_ext
+
+    global g_bytes_read
 
     have_zero_rate_traces = False
     try:
@@ -42,6 +46,11 @@ def iload(filename, load_data=True, offset=0, segment_size=0, nsegments=0):
 
             if not tr_tuples:
                 break
+
+            offset_end = tr_tuples[0][9]
+            assert all(tr_tuple[9] == offset_end for tr_tuple in tr_tuples)
+
+            g_bytes_read += offset_end - offset
 
             for tr_tuple in tr_tuples:
                 network, station, location, channel = tr_tuple[1:5]
@@ -67,7 +76,7 @@ def iload(filename, load_data=True, offset=0, segment_size=0, nsegments=0):
 
                 tr.meta = {
                     'offset_start': offset,
-                    'offset_end': tr_tuple[9],
+                    'offset_end': offset_end,
                     'last': tr_tuple[10],
                     'segment_size': segment_size
                 }
