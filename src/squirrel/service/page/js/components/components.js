@@ -5,6 +5,7 @@ import { squirrelGates } from '../squirrel/gate.js'
 import { squirrelConnection } from '../squirrel/connection.js'
 import { useFilters } from '../squirrel/filter.js'
 
+
 const positiveOrNull = (s) => {
     if (s.trim() == '') {
         return null
@@ -18,6 +19,7 @@ const positiveOrNull = (s) => {
     }
     return x
 }
+
 
 export const componentTimeline = {
     setup() {
@@ -135,7 +137,107 @@ export const componentFilter = {
     </div>`,
 }
 
+export const componentTabs = {
+    components: {
+        componentFilter
+    },
+    setup() {       
+        const selectedTab = ref('timeline')
+
+        const tabs = ref({
+            timeline: componentTimeline,
+            map: componentMap,
+            info: componentTable,
+        })
+
+        const selectTab = (tabName) => {
+            selectedTab.value = tabName
+        }
+
+        const addTab = () => {
+            const newTabName = `tab_${Date.now()}`
+            tabs.value[newTabName] = componentTable
+        }
+        
+        const closeTab = (tabName, event) => {
+            event.stopPropagation()
+            delete tabs.value[tabName]
+
+            if (selectedTab.value === tabName) {
+                selectedTab.value = 'info'
+            }
+        }
+
+        const isDefaultTab = (name) => {
+            return ['timeline', 'map', 'info'].includes(name)
+        }
+
+        const openInfoTab = ({sensor,channel,response}) => {
+            const tabName = channel.codes
+            const componentInfo = {
+                setup() {
+                    onMounted(() => {
+                        let map = L.map('leaflet-map').setView([channel.lat,channel.lon], 13)
+                        let marker = L.marker([channel.lat, channel.lon]).addTo(map);
+                        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            maxZoom: 19,
+                            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                            }).addTo(map)
+                        })
+                return {sensor,channel,response}
+                },
+            template: `
+
+            <div class="p-5">
+                <h5>Details for {{ channel.codes }}</h5>
+                <p><strong>Sensor:</strong> {{ sensor.codes }}</p>
+                <p><strong>Channel:</strong> {{ channel.codes }}</p>
+                <p><strong>Latitude:</strong> {{ channel.lat }}</p>
+                <p><strong>Longitude:</strong> {{ channel.lon }}</p>
+                {{response}}
+                
+            </div>
+
+            <div id="leaflet-map"></div>
+        `,
+            }
+        tabs.value[tabName] = componentInfo
+        selectedTab.value = tabName
+    }
+    return {selectedTab, selectTab, tabs, addTab, closeTab, isDefaultTab, openInfoTab}
+    },
+
+    template:
+    `           <ul class="nav nav-tabs mt-1" role="tablist">
+                <li class="nav-item" v-for="(tab, name) in tabs" :key="name">
+                    <a
+                        class="nav-link"
+                        :class="{ active: selectedTab === name }"
+                        @click="selectTab(name)"
+                        >{{ name.charAt(0).toUpperCase() + name.slice(1) }}
+                        <button
+                            v-if="!isDefaultTab(name)"
+                            @click="closeTab(name, $event)"
+                            class="close-btn"
+                        >
+                            &times;
+                        </button>
+                    </a>
+                </li>
+                <button class="add-tab-btn" @click="addTab()">+</button>
+                <component-filter class="ms-auto"></component-filter>
+            </ul>
+
+            <keep-alive>
+                <component :is="tabs[selectedTab]" @open-tab="openInfoTab"></component>
+            </keep-alive>`
+}
+
+
+
+
 export const componentTable = {
+    emits: ['open-tab'],
     setup() {
         const { filteredSensors, selectedOption } = useFilters()
         const sortTable = (sortValue) => {
@@ -269,7 +371,7 @@ export const componentTable = {
                                 <tr v-for="channel in sensor.channels">
                                     
                                     
-                                    <td>
+                                    <td class="table-code" @click="$emit('open-tab', {sensor,channel})">
                                         
                                         <template v-if="selectedOption === 'Sensor'">
                                             {{sensor.codes}}

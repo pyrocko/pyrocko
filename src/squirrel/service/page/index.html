@@ -29,13 +29,15 @@
 
         <link href="css/bootstrap.min.css" rel="stylesheet" />
         <link href="css/local.css" rel="stylesheet" />
+        <link href="css/leaflet.css" rel="stylesheet" />
         <script src="js/d3.v7.min.js"></script>
         <script src="js/bootstrap.bundle.min.js"></script>
+        <script src="js/squirrel/leaflet.js"></script>
+
     </head>
 
     <body>
         <div id="app" class="vbox-container">
-            <!--{{ selectedTab }}-->
             <div v-if="!connection.connected" class="curtain">DISCONNECTED</div>
             <div
                 v-if="connection.connected && connection.connected.delay > 5.0"
@@ -43,7 +45,7 @@
             >
                 DELAY {{ fmtDuration(connection.connected.delay) }}
             </div>
-            <ul class="nav nav-tabs mt-1" role="tablist">
+            <!-- <ul class="nav nav-tabs mt-1" role="tablist">
                 <li class="nav-item" v-for="(tab, name) in tabs" :key="name">
                     <a
                         class="nav-link"
@@ -65,7 +67,9 @@
 
             <keep-alive>
                 <component :is="tabs[selectedTab]"></component>
-            </keep-alive>
+            </keep-alive> -->
+            <component-tabs></component-tabs>
+            
 
             <div v-if="connection.latestError" class="error-display">
                 <pre><code>{{ connection.latestError }}</code></pre>
@@ -114,6 +118,7 @@
         import { squirrelGates } from './js/squirrel/gate.js'
         import { fmtDuration } from './js/squirrel/common.js'
         import {
+            componentTabs,
             componentTimeline,
             componentMap,
             componentTable,
@@ -124,6 +129,7 @@
         createApp({
             components: {
                 ComponentFilter: componentFilter,
+                ComponentTabs: componentTabs
             },
 
             setup() {
@@ -139,8 +145,6 @@
 
                 gates.addGate()
 
-                console.log('gate added in index.html')
-                console.log('gates in index.html: ', gates)
 
                 onMounted(() => {
                     //const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
@@ -150,7 +154,6 @@
                 })
 
                 const selectTab = (tabName) => {
-                    console.log('SELECTING TAB')
                     selectedTab.value = tabName
                 }
 
@@ -161,19 +164,11 @@
 
                 const closeTab = (tabName, event) => {
                     event.stopPropagation()
-                    console.log('before close:', selectedTab.value)
                     delete tabs[tabName]
 
-                    console.log(tabs)
-                    console.log('after close:', selectedTab.value)
                     if (selectedTab.value === tabName) {
                         selectedTab.value = 'info'
-                        console.log('in if')
                     }
-                    console.log(
-                        'after changing tab to info:',
-                        selectedTab.value
-                    )
                 }
 
                 const isDefaultTab = (name) => {
