@@ -39,8 +39,11 @@
 
         <link href="css/bootstrap.min.css" rel="stylesheet" />
         <link href="css/local.css" rel="stylesheet" />
+        <link href="css/leaflet.css" rel="stylesheet" />
         <script src="js/d3.v7.min.js"></script>
         <script src="js/bootstrap.bundle.min.js"></script>
+        <script src="js/squirrel/leaflet.js"></script>
+
     </head>
 
     <body>
@@ -112,7 +115,9 @@
 
             <keep-alive>
                 <component :is="tabs[selectedTab]"></component>
-            </keep-alive>
+            </keep-alive> -->
+            <component-tabs></component-tabs>
+            
 
             <div v-if="connection.latestError" class="error-display">
                 <pre><code>{{ connection.latestError }}</code></pre>
@@ -186,6 +191,7 @@
         import { squirrelGates } from './js/squirrel/gate.js'
         import { fmtDuration } from './js/squirrel/common.js'
         import {
+            componentTabs,
             componentTimeline,
             componentMap,
             componentTable,
@@ -197,6 +203,7 @@
         createApp({
             components: {
                 ComponentFilter: componentFilter,
+                ComponentTabs: componentTabs
             },
 
             setup() {
