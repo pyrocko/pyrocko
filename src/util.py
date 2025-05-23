@@ -560,7 +560,7 @@ def get_time_float():
     :returns: :py:class:`float` or :py:class:`hpfloat`, depending on the
         current time handling mode
     '''
-    global g_time_float
+    global g_time_float  # noqa
 
     if g_time_float is None:
         _setup_high_precision_time_mode()
@@ -575,7 +575,7 @@ def get_time_dtype():
     See :ref:`High precision time handling mode <time-handling-mode>`.
     '''
 
-    global g_time_dtype
+    global g_time_dtype  # noqa
 
     if g_time_dtype is None:
         _setup_high_precision_time_mode()
@@ -3033,11 +3033,17 @@ def smart_weakref(obj, callback=None):
         return weakref.ref(obj, callback)
 
 
+DEFAULT_SIGNALS = []
+for signame in ['SIGINT', 'SIGTERM', 'SIGHUP']:
+    try:
+        DEFAULT_SIGNALS.append(getattr(psignal, signame))
+    except AttributeError:
+        pass
+
+
 class SignalQuitable:
 
-    def __init__(
-            self,
-            signals=[psignal.SIGINT, psignal.SIGHUP, psignal.SIGTERM]):
+    def __init__(self, signals=DEFAULT_SIGNALS):
 
         self.quit_requested = False
         self._original = {}
