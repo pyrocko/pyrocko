@@ -157,6 +157,7 @@ export const squirrelTimeline = () => {
     let scrollDeltaY = 0
     let scrollTime = 0
     let updateTimeoutId = null
+    let searchQuery = null
 
     let deactivateScrollMarginsTimeoutId = null
     let needScrollMargins = false
@@ -222,16 +223,16 @@ export const squirrelTimeline = () => {
     }
 
     const update = () => {
-        const t = d3.transition('update').duration(50).ease(d3.easeLinear)
+        const t = d3.transition('update').duration(100).ease(d3.easeLinear)
 
         updateVisibleCodes()
         updateTrackHeight()
 
         updateDataRanges()
         updateProjection()
+        updateTracks(t)
         updateBoxes(t)
         updateTimeAxes()
-        updateTracks(t)
     }
 
     const updateSoon = () => {
@@ -540,7 +541,7 @@ export const squirrelTimeline = () => {
                         .attr('y', (box) => box.ymin + effectiveTrackPadding)
                         .style('opacity', 0)
                         .call((enter) =>
-                            enter.transition().duration(100).style('opacity', 1)
+                            enter.transition().delay(200).duration(100).style('opacity', 1)
                         ),
                 (update) =>
                     update.call((update) =>
@@ -757,7 +758,6 @@ export const squirrelTimeline = () => {
     }
 
     const updateTracks = (t) => {
-        const tracks = visibleTracks()
         const labels = tracksGroup
             .selectAll('.track-label')
             .data(tracks, (track) => track.id)
@@ -768,12 +768,14 @@ export const squirrelTimeline = () => {
                     .append('rect')
                     .attr('fill', labelBackgroundFill)
                     .attr('stroke', labelBackgroundStroke)
+                    .attr('y', (track) => trackProjection(track))
 
                 group
                     .append('text')
                     .attr('class', 'track-label-text')
                     .attr('x', 0)
                     .attr('dx', '1em')
+                    .attr('y', (track) => trackProjection(track))
                     .style('dominant-baseline', 'central')
 
                 group
@@ -781,6 +783,7 @@ export const squirrelTimeline = () => {
                     .attr('class', 'track-label-helper-text')
                     .attr('x', 0)
                     .attr('dx', '1em')
+                    .attr('y', (track) => trackProjection(track))
                     .style('dominant-baseline', 'central')
 
                 return group
@@ -845,9 +848,9 @@ export const squirrelTimeline = () => {
                 enter
                     .append('clipPath')
                     .attr('class', 'track-clip-path')
-                    .attr('id', (track) => `track-${track.index}`)
                     .call((enter) => enter.append('rect'))
             )
+            .attr('id', (track) => `track-${track.index}`)
             .select('rect')
             .attr('x', x.range()[0])
             .attr('width', x.range()[1] - x.range()[0])
@@ -873,17 +876,27 @@ export const squirrelTimeline = () => {
             .selectAll('.track-axis')
             .data(tracks, (track) => track.id)
             .join(
-                (enter) => enter.append('g').attr('class', 'track-axis'),
+                (enter) => {
+                    const group = enter.append('g').attr('class', 'track-axis')
+                    group.append('rect').attr('class', 'track-axis-background').attr('fill', labelBackgroundFill)
+                    return group;
+                },
                 (update) => update
-            )
-
-        trackAxes
+            ).style('opacity', (track) => trackProjection.trackHeight() > 100 ? 1 : 0)
             .attr('transform', `translate(${bounds.width - 10},0)`)
             .each((track, i, nodes) =>
                 d3.axisLeft().scale(getTrackScale(track)).ticks(5, format)(
                     d3.select(nodes[i])
                 )
             )
+            .selectAll('.track-axis-background')
+                .attr('width', 60)
+                .attr('x', -50)
+                .attr('height', (track) =>
+                    trackProjection.upper(track) -
+                    trackProjection.lower(track))
+                .attr('y', (track) => trackProjection.lower(track))
+
     }
 
     const updateCodes = async () => {
@@ -896,7 +909,13 @@ export const squirrelTimeline = () => {
             return c.split('.')
         }
 
-        let groups = Map.groupBy(gates.codes.value, (c) => groupKeyChannel(c))
+        const query = searchQuery.value.trim().toLowerCase()
+
+        const filter = (c) => {
+            return c.toLowerCase().includes(query)
+        }
+
+        let groups = Map.groupBy(gates.codes.value.filter(filter), (c) => groupKeyChannel(c))
         tracks.length = 0
         let i = 0
         for (const [k, codes] of groups) {
@@ -965,6 +984,8 @@ export const squirrelTimeline = () => {
             gates.setTimeSpan(newVal[0], newVal[1])
         })
         watch(visibleCodes, gates.setCodesVisible)
+        searchQuery = useFilters()['searchQuery']
+        watch(searchQuery, updateCodes)
     }
 
     my.activate = () => {

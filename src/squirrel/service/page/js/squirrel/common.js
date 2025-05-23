@@ -60,7 +60,7 @@ const gmtime = (time) => {
     return [
         date.getUTCFullYear(),
         date.getUTCMonth() + 1,
-        date.getUTCDay(),
+        date.getUTCDate(),
         date.getUTCHours(),
         date.getUTCMinutes(),
         date.getUTCSeconds(),
@@ -73,7 +73,7 @@ export const tomorrow = () => {
         Date.UTC(
             date.getUTCFullYear(),
             date.getUTCMonth(),
-            date.getUTCDay(),
+            date.getUTCDate(),
             0,
             0,
             0

@@ -1,5 +1,6 @@
 import {
     ref,
+    shallowRef,
     computed,
     onMounted,
     onActivated,
@@ -12,6 +13,7 @@ import { squirrelGates } from '../squirrel/gate.js'
 import { squirrelConnection } from '../squirrel/connection.js'
 import { useFilters } from '../squirrel/filter.js'
 import { timeToStr } from '../squirrel/common.js'
+
 
 const positiveOrNull = (s) => {
     if (s.trim() == '') {
@@ -138,22 +140,26 @@ export const componentTimeline = {
 
         watch([gates.yMin, gates.yMax], propagateIn, { flush: 'sync' })
 
-        return { yMinInput, yMaxInput, yMinError, yMaxError, gates, overviewMethod: gates.overviewMethod }
+        const blur = (e) => {
+            e.target.blur()
+        }
+
+        return { yMinInput, yMaxInput, yMinError, yMaxError, gates, overviewMethod: gates.overviewMethod, blur}
     },
     template: `
         <div id="timeline" tabindex="0" class="vbox-main tab-pane"></div>
-        <div class="container-fluid bg-light pt-2" style="border-top: 1px solid #eee;">
+        <div class="container-fluid bg-light pt-2 pb-2" style="border-top: 1px solid #eee;">
             <div class="form-group row">
-                <div class="col-2">
-                    <input type="text" class="form-control" :class="{ 'input-error': yMinError }" v-model="yMinInput" />
+                <div class="col-4 col-md-2">
+                    <input placeholder="fₘᵢₙ" type="text" class="form-control" @keyup.enter="blur" :class="{ 'input-error': yMinError }" v-model="yMinInput" />
                 </div>
-                <div class="col-6">
-                    <component-range-select :min="gates.yMin" :max="gates.yMax" style="height: 3.5em;"></component-range-select>
+                <div class="d-none d-md-block col-4 col-md-6">
+                    <component-range-select :min="gates.yMin" :max="gates.yMax" style="height: 3em;"></component-range-select>
                 </div>
-                <div class="col-2">
-                    <input type="text" class="form-control" :class="{ 'input-error': yMaxError }" v-model="yMaxInput" />
+                <div class="col-4 col-md-2">
+                    <input placeholder="fₘₐₓ" type="text" class="form-control" @keyup.enter="blur" :class="{ 'input-error': yMaxError }" v-model="yMaxInput" />
                 </div>
-                <div class="col-2">
+                <div class="col-4 col-md-2">
                     <select v-model="overviewMethod" class="form-select">
                         <option value="mean">Mean</option>
                         <option value="min">Min</option>
@@ -215,6 +221,12 @@ export const componentFilter = {
             }, searchDelay)
         }
 
+        const onSearchFinalize = (e) => {
+            e.target.blur()
+            filterSensors()
+
+        }
+
         onMounted(() => {
             const storedHistory = sessionStorage.getItem('searchHistory')
             if (storedHistory) {
@@ -222,17 +234,18 @@ export const componentFilter = {
             }
         })
 
+
         return {
             searchQuery,
             selectedOption,
-            onSearchClick: filterSensors,
             searchHistory,
             saveSearchHistory,
             onSearchInput,
+            onSearchFinalize,
         }
     },
     template: `<div class="d-flex justify-content-end">
-            <input list="filters" type="search" class="form-control" placeholder="" v-model="searchQuery" @input="onSearchInput" @keyup.enter="onSearchClick"/>
+            <input list="filters" type="search" class="form-control" placeholder="" v-model="searchQuery" @input="onSearchInput" @keyup.enter="onSearchFinalize"/>
             <datalist id="filters">
                 <option v-for="(historyItem, index) in searchHistory" :key="index" :value="historyItem"></option>
                 <option value="..Z"></option>
@@ -241,8 +254,203 @@ export const componentFilter = {
     </div>`,
 }
 
+export const componentTabs = {
+    components: {
+        componentFilter
+    },
+    setup() {
+        const selectedTab = ref('timeline')
+
+        const tabs = shallowRef({
+            timeline: componentTimeline,
+            map: componentMap,
+            info: componentTable,
+        })
+
+        const selectTab = (tabName) => {
+            selectedTab.value = tabName
+        }
+
+        const addTab = () => {
+            const newTabName = `tab_${Date.now()}`
+            tabs.value[newTabName] = componentTable
+        }
+
+        const closeTab = (tabName, event) => {
+            event.stopPropagation()
+            delete tabs.value[tabName]
+
+            if (selectedTab.value === tabName) {
+                selectedTab.value = 'info'
+            }
+        }
+
+        const isDefaultTab = (name) => {
+            return ['timeline', 'map', 'info'].includes(name)
+        }
+
+        const openInfoTab = ({sensor,channel,sortedSensors}) => {
+            const tabName = channel.codes
+            const componentInfo = {
+                setup() {
+                    onMounted(() => {
+                        const defaultIcon = L.icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.3/images/marker-shadow.png',
+                        shadowSize: [41, 41]
+                    });
+
+                    const inactiveIcon = L.icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-grey.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.3/images/marker-shadow.png',
+                        shadowSize: [41, 41]
+                    });
+
+
+                        let map = L.map('leaflet-map').setView([channel.lat,channel.lon], 13)
+                        // let marker = L.marker([channel.lat, channel.lon]).addTo(map)
+                        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            maxZoom: 19,
+                            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                            }).addTo(map)
+
+                        sortedSensors.forEach(s => {
+                            const sensorSelected = s.codes == sensor.codes
+                            L.marker([s.lat, s.lon], {
+                                icon: sensorSelected ? defaultIcon : inactiveIcon
+                            }).addTo(map).bindPopup(s.codes)
+                        })
+                    })
+                return {sensor,channel,sortedSensors}
+                },
+            template: `
+            <div class="row h-100 w-100">
+                <div class="col-12 col-md-6 p-5" style="max-height: 80vh; overflow-y: auto;">
+                    <h5>Sensor Details</h5>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                            <tr><th>Codes</th><td>{{ sensor.codes }}</td></tr>
+                            <tr v-if="sensor.lat != null"><th>Latitude</th><td>{{ sensor.lat }}</td></tr>
+                            <tr v-if="sensor.lon != null"><th>Longitude</th><td>{{ sensor.lon }}</td></tr>
+                            <tr v-if="sensor.depth != null"><th>Depth</th><td>{{ sensor.depth }}</td></tr>
+                            <tr v-if="sensor.elevation != null"><th>Elevation</th><td>{{ sensor.elevation }}</td></tr>
+                            <tr v-if="sensor.north_shift != null"><th>North Shift</th><td>{{ sensor.north_shift }}</td></tr>
+                            <tr v-if="sensor.east_shift != null"><th>East Shift</th><td>{{ sensor.east_shift }}</td></tr>
+                            <tr v-if="sensor.tmin != null"><th>Start Time</th><td>{{ sensor.tmin }}</td></tr>
+                            <tr v-if="sensor.tmax != null"><th>End Time</th><td>{{ sensor.tmax }}</td></tr>
+                            <tr v-if="sensor.deltat != null"><th>Delta T</th><td>{{ sensor.deltat }}</td></tr>
+
+                        </tbody>
+                    </table>
+
+                    <h5>Channel Details</h5>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                            <tr><th>Codes</th><td>{{ channel.codes }}</td></tr>
+                            <tr v-if="channel.lat != sensor.lat && channel.lat != null"><th>Latitude</th><td>{{ channel.lat }}</td></tr>
+                            <tr v-if="channel.lon != sensor.lon && channel.lon != null"><th>Longitude</th><td>{{ channel.lon }}</td></tr>
+                            <tr v-if="channel.depth != sensor.depth && channel.depth != null"><th>Depth</th><td>{{ channel.depth }}</td></tr>
+                            <tr v-if="channel.elevation != sensor.elevation && channel.elevation != null"><th>Elevation</th><td>{{ channel.elevation }}</td></tr>
+                            <tr v-if="channel.north_shift != sensor.north_shift && channel.north_shift != null"><th>North shift</th><td>{{ channel.north_shift }}</td></tr>
+                            <tr v-if="channel.east_shift != sensor.east_shift && channel.east_shift != null"><th>East shift</th><td>{{ channel.east_shift }}</td></tr>
+                            <tr v-if="channel.tmin != sensor.tmin && channel.tmin != null"><th>Start Time</th><td>{{ channel.tmin }}</td></tr>
+                            <tr v-if="channel.tmax != sensor.tmax && channel.tmax != null"><th>End Time</th><td>{{ channel.tmax }}</td></tr>
+                            <tr v-if="channel.deltat != sensor.deltat && channel.deltat != null"><th>Delta T</th><td>{{ channel.deltat }}</td></tr>
+                            <tr v-if="channel.dip != null"><th>Dip</th><td>{{ channel.dip }}</td></tr>
+                            <tr v-if="channel.azimuth != null"><th>Azimuth</th><td>{{ channel.azimuth }}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="leaflet-map" class="col-12 col-md-6"></div>
+            </div>
+        `,
+            }
+        tabs.value[tabName] = componentInfo
+        selectedTab.value = tabName
+    }
+    return {selectedTab, selectTab, tabs, addTab, closeTab, isDefaultTab, openInfoTab}
+    },
+
+    template: `
+            <nav class="navbar navbar-expand-md navbar-light bg-light">
+                <div class="container-fluid">
+                    <button
+                        class="navbar-toggler"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#navbarNav"
+                    >
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <div class="collapse navbar-collapse" id="navbarNav">
+                        <ul class="navbar-nav me-auto">
+                            <li
+                                class="nav-item has-close-btn"
+                                v-for="(tab, name) in tabs"
+                                :key="name"
+                            >
+                                <a
+                                    class="nav-link"
+                                    :class="{ active: selectedTab === name }"
+                                    @click="selectTab(name)"
+                                    style="
+                                        margin-top: -1rem;
+                                        margin-bottom: -1rem;
+                                        font-size: 2rem;
+                                    "
+                                >
+                                    <span v-if="tab.label">{{ tab.label }}</span>
+                                    <span v-if="!tab.label">{{ name.charAt(0).toUpperCase() + name.slice(1) }}</span>
+                                    <span class="close-btn" v-if="!isDefaultTab(name)" @click="closeTab(name, $event)">&times;</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <component-filter class="ms-auto"></component-filter>
+                </div>
+            </nav>
+
+            <!--
+           <ul class="nav nav-tabs mt-1" role="tablist">
+                <li class="nav-item" v-for="(tab, name) in tabs" :key="name">
+                    <a
+                        class="nav-link"
+                        :class="{ active: selectedTab === name }"
+                        @click="selectTab(name)"
+                        >{{ name.charAt(0).toUpperCase() + name.slice(1) }}
+                        <button
+                            v-if="!isDefaultTab(name)"
+                            @click="closeTab(name, $event)"
+                            class="close-btn"
+                        >
+                            &times;
+                        </button>
+                    </a>
+                </li>
+                <button class="add-tab-btn" @click="addTab()">+</button>
+                <component-filter class="ms-auto"></component-filter>
+            </ul>
+            -->
+
+            <keep-alive>
+                <component :is="tabs[selectedTab]" @open-tab="openInfoTab"></component>
+            </keep-alive>`
+}
+
+
+
+
 export const componentTable = {
     label: '⟁',
+    emits: ['open-tab'],
+
     setup() {
         const { filteredSensors, selectedOption } = useFilters()
         const sortTable = (sortValue) => {
@@ -370,8 +578,7 @@ export const componentTable = {
 
                                 <tr v-for="channel in sensor.channels">
 
-
-                                    <td>
+                                    <td class="table-code" @click="$emit('open-tab', {sensor,channel,sortedSensors})">
 
                                         <template v-if="selectedOption === 'Sensor'">
                                             {{sensor.codes}}

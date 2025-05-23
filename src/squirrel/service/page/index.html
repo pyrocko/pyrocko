@@ -39,8 +39,11 @@
 
         <link href="css/bootstrap.min.css" rel="stylesheet" />
         <link href="css/local.css" rel="stylesheet" />
+        <link href="css/leaflet.css" rel="stylesheet" />
         <script src="js/d3.v7.min.js"></script>
         <script src="js/bootstrap.bundle.min.js"></script>
+        <script src="js/squirrel/leaflet.js"></script>
+
     </head>
 
     <body>
@@ -61,58 +64,9 @@
             >
                 DELAY {{ fmtDuration(connection.connected.delay) }}
             </div>
-            <nav class="navbar navbar-expand-md navbar-light bg-light">
-                <div class="container-fluid">
-                    <button
-                        class="navbar-toggler"
-                        type="button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#navbarNav"
-                    >
-                        <span class="navbar-toggler-icon"></span>
-                    </button>
-                    <div class="collapse navbar-collapse" id="navbarNav">
-                        <ul class="navbar-nav me-auto">
-                            <li
-                                class="nav-item has-close-btn"
-                                v-for="(tab, name) in tabs"
-                                :key="name"
-                            >
-                                <a
-                                    class="nav-link"
-                                    :class="{ active: selectedTab === name }"
-                                    @click="selectTab(name)"
-                                    style="
-                                        font-size: 2rem;
-                                        margin-top: -1rem;
-                                        margin-bottom: -1rem;
-                                    "
-                                >
-                                    {{ tab.label }}
-                                    <!--<span class="close-btn" v-if="!isDefaultTab(name)" @click="closeTab(name, $event)">&times;</span> -->
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a
-                                    class="nav-link"
-                                    @click="addTab()"
-                                    style="
-                                        font-size: 2rem;
-                                        margin-top: -1rem;
-                                        margin-bottom: -1rem;
-                                    "
-                                    >+</a
-                                >
-                            </li>
-                        </ul>
-                    </div>
-                    <component-filter class="ms-auto"></component-filter>
-                </div>
-            </nav>
 
-            <keep-alive>
-                <component :is="tabs[selectedTab]"></component>
-            </keep-alive>
+            <component-tabs></component-tabs>
+            
 
             <div v-if="connection.latestError" class="error-display">
                 <pre><code>{{ connection.latestError }}</code></pre>
@@ -186,6 +140,7 @@
         import { squirrelGates } from './js/squirrel/gate.js'
         import { fmtDuration } from './js/squirrel/common.js'
         import {
+            componentTabs,
             componentTimeline,
             componentMap,
             componentTable,
@@ -197,6 +152,7 @@
         createApp({
             components: {
                 ComponentFilter: componentFilter,
+                ComponentTabs: componentTabs
             },
 
             setup() {

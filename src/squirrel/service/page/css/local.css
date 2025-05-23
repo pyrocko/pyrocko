@@ -1,4 +1,4 @@
-/* {border:1px solid red; } */
+ /* * {border:1px solid red; } */
 
 html, body {
     user-select: none;
@@ -56,13 +56,17 @@ html, body {
     flex: 1 1 auto; /* grow shrink base */
     display: flex;
     flex-direction: column;
-    overflow-y: scroll;
+    overflow-y: auto;
 }
 
 .sensor-table {
     flex-grow: 1
 }
 
+.table-code:hover {
+    font-weight: bold;
+    cursor: pointer;
+}
 
 .nav-tabs {
     background-color: #f8f9fa;
@@ -103,4 +107,18 @@ svg text{
 .close-btn:hover {
     color: rgba(0, 0, 0, 0.8);
     transform: scale(1.2);
+}
+
+#leaflet-map {
+    height: 80em;
+    width: 80em;
+    margin: auto;
+}
+
+.tiny-search {
+    height: 1em;
+}
+
+#leaflet-map {
+    height: 100%;
 }
