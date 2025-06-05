@@ -88,6 +88,7 @@ except ImportError:
 import optparse
 import os.path as op
 import errno
+from collections import defaultdict
 
 import numpy as num
 from scipy import signal
@@ -3041,3 +3042,11 @@ def smart_weakref(obj, callback=None):
         return weakref.WeakMethod(obj, callback)
     else:
         return weakref.ref(obj, callback)
+
+
+def group_by(key, xs):
+    groups = defaultdict(list)
+    for x in xs:
+        groups[key(x)].append(x)
+
+    return groups
