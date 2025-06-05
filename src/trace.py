@@ -2666,6 +2666,48 @@ def degapper(
     return out_traces
 
 
+def deoverlap(traces):
+    groups = util.group_by(lambda tr: tr.codes, traces)
+    traces_out = []
+    for codes, group in groups.items():
+        group_out = []
+        group.sort(key=lambda tr: -(tr.tmax - tr.tmin))
+        for tr in group:
+            keep = tr
+            for have in group_out:
+                if tr.tmax < have.tmin or tr.tmin > have.tmax:
+                    pass
+                elif tr.tmin < have.tmin and tr.tmax >= have.tmin:
+                    if keep is tr:
+                        keep = keep.copy()
+                    try:
+                        keep.chop(tr.tmin, have.tmin)
+                    except NoData:
+                        keep = None
+                        break
+                elif tr.tmin >= have.tmin and tr.tmax <= have.tmax:
+                    keep = None
+                    break
+                elif tr.tmin <= have.tmax and tr.tmax > have.tmax:
+                    if keep is tr:
+                        keep = keep.copy()
+                    try:
+                        keep.chop(have.tmax+tr.deltat, tr.tmax+tr.deltat)
+                    except NoData:
+                        keep = None
+                        break
+                else:
+                    print(tr.tmin, tr.tmax, have.tmin, have.tmax)
+                    assert False
+
+            if keep is not None:
+                group_out.append(keep)
+
+        traces_out.extend(sorted(group_out, key=lambda tr: tr.tmin))
+
+    return traces_out
+
+
 def rotate(traces, azimuth, in_channels, out_channels):
     '''
     2D rotation of traces.

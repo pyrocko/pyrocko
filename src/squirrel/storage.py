@@ -181,7 +181,7 @@ class StorageScheme(guts.Object):
         for deltat, traces_group in by_deltat.items():
             layout = self.select_layout(deltat)
             traces_group.sort(key=lambda tr: tr.full_id)
-            traces_group = trace.degapper(traces_group, maxgap=0)  # deoverlap
+            traces_group = trace.deoverlap(traces_group)
             tmin = min(tr.tmin for tr in traces_group)
             tmax = max(tr.tmax for tr in traces_group)
             for wmin, wmax in iter_windows(

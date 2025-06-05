@@ -180,6 +180,33 @@ class TraceTestCase(unittest.TestCase):
                 assert x.ydata.size == 18
                 assert numeq(x.ydata[8:10], res, 1e-6)
 
+    def testDeoverlap(self):
+        def pp(traces):
+            for tr in traces:
+                print(
+                    int(round(tr.tmin/tr.deltat)) * ' '
+                    + ''.join(str(int(round(x))) for x in tr.ydata))
+
+        dt = 1.0
+        atmin = 5.0
+        a = trace.Trace(deltat=dt, ydata=num.zeros(3), tmin=atmin)
+        print()
+        for subshift in [-0.1, 0., 0.1]:
+            for n2 in [2, 3, 4]:
+                for ioff in range(-4, 5):
+                    b = trace.Trace(
+                        deltat=dt,
+                        ydata=num.ones(n2),
+                        tmin=atmin+ioff+subshift)
+                    # print('======')
+                    # pp([a, b])
+                    # print('---')
+                    xs = trace.deoverlap([a, b])
+                    trace.check_overlaps(xs)
+                    # pp(xs)
+                    # print(', '.join(
+                    #     '%g - %g' % (tr.tmin, tr.tmax) for tr in xs))
+
     def testRotation(self):
         s2 = math.sqrt(2.)
         ndata = num.array([s2, s2], dtype=float)
