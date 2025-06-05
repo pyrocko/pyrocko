@@ -3038,19 +3038,12 @@ class Squirrel(Selection):
                 kind_codes_ids=kind_codes_ids),
             key=lambda nut: nut.dkey)
 
-        def grouped(key, xs):
-            d = defaultdict(list)
-            for x in xs:
-                d[key(x)].append(x)
-
-            return d
-
         def rkey(nut):
             return nut.codes.replace(
                 extra=re.sub(r'-L(min|max|mean)\d\d', '', nut.codes.extra))
 
         def best_resolution(nuts):
-            by_resolution = grouped(rkey, nuts)
+            by_resolution = util.group_by(rkey, nuts)
             for group in by_resolution.values():
                 group.sort(key=lambda nut: nut.codes.extra)
 
