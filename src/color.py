@@ -118,6 +118,10 @@ g_pyrocko_colors = {
     "pine-light": "#7db3a1",
 }
 
+g_pyrocko_color_cycle_base = [
+    'plum', 'sky', 'ocean', 'foliage', 'ochre', 'sienna', 'brick']
+
+
 g_tango_colors = {
     'butter1':     (252, 233,  79),
     'butter2':     (237, 212,   0),
