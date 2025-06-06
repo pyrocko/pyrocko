@@ -232,7 +232,7 @@ def run(parser, args):
 
             paths = sq.get_paths(format='mseed')
             for ipath, path in enumerate(paths):
-                nuts = list(sq_mseed.iload('mseed', path, 0, ('waveform',)))
+                nuts = list(sq_mseed.iload('mseed', path, None, ('waveform',)))
 
                 if not nuts:
                     continue
