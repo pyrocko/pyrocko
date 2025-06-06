@@ -341,7 +341,7 @@ class Squirrel(Selection):
             logger.warning(
                 'Falling back to single-threaded behaviour. The sqlite3 '
                 'module has been compile without support to share the '
-                'connection across threads (sqlite3.threadsafety == %i'
+                'connection across threads (sqlite3.threadsafety == %i)'
                 % sqlite3.threadsafety)
 
             self._n_threads = 1
@@ -1796,7 +1796,7 @@ class Squirrel(Selection):
                     model=model)
                 for nut in nuts]
 
-        if len(by_file_segment) == 1:
+        if len(by_file_segment) == 1 or self._n_threads == 1:
             return get_content(nuts)
 
         elif len(by_file_segment) > 1:
