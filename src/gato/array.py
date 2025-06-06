@@ -245,6 +245,10 @@ def to_codes(codes):
     return [CodesNSLCE(c) for c in codes]
 
 
+def to_codes_extrastar(codes):
+    return [CodesNSLCE(c).replace(extra='*') for c in codes]
+
+
 def _make_fdsn_source(site, codes):
     return FDSNSource(site=site, codes=codes)
 
@@ -253,7 +257,7 @@ g_sensor_arrays = [
     SensorArrayFromFDSN(
         name=':' + name,
         type=typ,
-        codes=to_codes(codes),
+        codes=to_codes_extrastar(codes),
         comment=comment,
         sources=[_make_fdsn_source('iris', codes)])
 
@@ -299,7 +303,7 @@ g_sensor_arrays = [
     SensorArrayFromFDSN(
         name=':' + name,
         type='seismic',
-        codes=to_codes(codes),
+        codes=to_codes_extrastar(codes),
         sources=[_make_fdsn_source('geofon', codes)],
         comment=comment)
 
@@ -313,7 +317,7 @@ g_sensor_arrays = [
     SensorArrayFromFDSN(
         name=':' + name,
         type='seismic',
-        codes=to_codes(codes),
+        codes=to_codes_extrastar(codes),
         sources=[_make_fdsn_source('bgr', codes)],
         comment=comment)
 
@@ -329,7 +333,7 @@ g_sensor_arrays = [
     SensorArrayFromFDSN(
         name=':' + name,
         type='seismic',
-        codes=to_codes(codes),
+        codes=to_codes_extrastar(codes),
         sources=[_make_fdsn_source('norsar', codes)],
         comment=comment)
 
@@ -359,7 +363,7 @@ g_sensor_arrays = [
     SensorArrayFromFDSN(
         name=':' + name,
         type='seismic',
-        codes=to_codes(codes),
+        codes=to_codes_extrastar(codes),
         sources=[_make_fdsn_source('up', codes)],
         comment=comment)
 
