@@ -39,7 +39,7 @@ from . import client, environment, error
 
 logger = logging.getLogger('psq.base')
 
-NTHREADS_DEFAULT = 8
+NTHREADS_DEFAULT = 1
 LOADING_EXECUTOR = {}
 guts_prefix = 'squirrel'
 
