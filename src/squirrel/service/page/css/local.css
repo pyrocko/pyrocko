@@ -1,9 +1,13 @@
-/* {border:1px solid red; } */
+ /* * {border:1px solid red; } */
 
 html, body {
     user-select: none;
+<<<<<<< HEAD
     overscroll-behavior: none;
     overflow: hidden;
+=======
+    width: 100%;
+>>>>>>> 81055b5a (service: update sensor info layout)
 }
 
 .connection-monitor {
@@ -113,4 +117,12 @@ svg text{
     height: 80em; 
     width: 80em;
     margin: auto;
+}
+
+.tiny-search {
+    height: 1em;
+}
+
+#leaflet-map {
+    height: 100%;
 }
