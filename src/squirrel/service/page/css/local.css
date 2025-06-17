@@ -1,7 +1,8 @@
-/* {border:1px solid red; } */
+ /* * {border:1px solid red; } */
 
 body{
     user-select: none;
+    width: 100%;
 }
 
 .connection-monitor {
@@ -123,8 +124,8 @@ svg text{
     height: 1em;
 }
 
-#leaflet-map { 
-    height: 80em; 
-    width: 80em;
-    margin: auto;
+#leaflet-map {
+    height: 100%;
 }
+
+

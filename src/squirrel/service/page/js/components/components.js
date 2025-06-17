@@ -187,18 +187,18 @@ export const componentTabs = {
                 return {sensor,channel,response}
                 },
             template: `
+            <div class="row h-100 w-100">
+                <div class="col-12 col-md-6 p-5">
+                    <h5>Details for {{ channel.codes }}</h5>
+                    <p><strong>Sensor:</strong> {{ sensor.codes }}</p>
+                    <p><strong>Channel:</strong> {{ channel.codes }}</p>
+                    <p><strong>Latitude:</strong> {{ channel.lat }}</p>
+                    <p><strong>Longitude:</strong> {{ channel.lon }}</p>
+                    
+                </div>
 
-            <div class="p-5">
-                <h5>Details for {{ channel.codes }}</h5>
-                <p><strong>Sensor:</strong> {{ sensor.codes }}</p>
-                <p><strong>Channel:</strong> {{ channel.codes }}</p>
-                <p><strong>Latitude:</strong> {{ channel.lat }}</p>
-                <p><strong>Longitude:</strong> {{ channel.lon }}</p>
-                {{response}}
-                
+                <div id="leaflet-map" class="col-12 col-md-6"></div>
             </div>
-
-            <div id="leaflet-map"></div>
         `,
             }
         tabs.value[tabName] = componentInfo
