@@ -172,29 +172,83 @@ export const componentTabs = {
             return ['timeline', 'map', 'info'].includes(name)
         }
 
-        const openInfoTab = ({sensor,channel,response}) => {
+        const openInfoTab = ({sensor,channel,sortedSensors}) => {
             const tabName = channel.codes
             const componentInfo = {
                 setup() {
                     onMounted(() => {
+                        const defaultIcon = L.icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.3/images/marker-shadow.png',
+                        shadowSize: [41, 41]
+                    });
+
+                    const inactiveIcon = L.icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-grey.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.3/images/marker-shadow.png',
+                        shadowSize: [41, 41]
+                    });
+
+
                         let map = L.map('leaflet-map').setView([channel.lat,channel.lon], 13)
-                        let marker = L.marker([channel.lat, channel.lon]).addTo(map);
+                        // let marker = L.marker([channel.lat, channel.lon]).addTo(map)
                         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
                             maxZoom: 19,
                             attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                             }).addTo(map)
+
+                        sortedSensors.forEach(s => {
+                            const sensorSelected = s.codes == sensor.codes
+                            L.marker([s.lat, s.lon], {
+                                icon: sensorSelected ? defaultIcon : inactiveIcon
+                            }).addTo(map).bindPopup(s.codes)
                         })
-                return {sensor,channel,response}
+                    })
+                return {sensor,channel,sortedSensors}
                 },
             template: `
             <div class="row h-100 w-100">
-                <div class="col-12 col-md-6 p-5">
-                    <h5>Details for {{ channel.codes }}</h5>
-                    <p><strong>Sensor:</strong> {{ sensor.codes }}</p>
-                    <p><strong>Channel:</strong> {{ channel.codes }}</p>
-                    <p><strong>Latitude:</strong> {{ channel.lat }}</p>
-                    <p><strong>Longitude:</strong> {{ channel.lon }}</p>
-                    
+                <div class="col-12 col-md-6 p-5" style="max-height: 80vh; overflow-y: auto;">
+                    <h5>Sensor Details</h5>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                            <tr><th>Codes</th><td>{{ sensor.codes }}</td></tr>
+                            <tr v-if="sensor.lat != null"><th>Latitude</th><td>{{ sensor.lat }}</td></tr>
+                            <tr v-if="sensor.lon != null"><th>Longitude</th><td>{{ sensor.lon }}</td></tr>
+                            <tr v-if="sensor.depth != null"><th>Depth</th><td>{{ sensor.depth }}</td></tr>
+                            <tr v-if="sensor.elevation != null"><th>Elevation</th><td>{{ sensor.elevation }}</td></tr>
+                            <tr v-if="sensor.north_shift != null"><th>North Shift</th><td>{{ sensor.north_shift }}</td></tr>
+                            <tr v-if="sensor.east_shift != null"><th>East Shift</th><td>{{ sensor.east_shift }}</td></tr>
+                            <tr v-if="sensor.tmin != null"><th>Start Time</th><td>{{ sensor.tmin }}</td></tr>
+                            <tr v-if="sensor.tmax != null"><th>End Time</th><td>{{ sensor.tmax }}</td></tr>
+                            <tr v-if="sensor.deltat != null"><th>Delta T</th><td>{{ sensor.deltat }}</td></tr>
+                            
+                        </tbody>
+                    </table>
+
+                    <h5>Channel Details</h5>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                            <tr><th>Codes</th><td>{{ channel.codes }}</td></tr>
+                            <tr v-if="channel.lat != sensor.lat && channel.lat != null"><th>Latitude</th><td>{{ channel.lat }}</td></tr>
+                            <tr v-if="channel.lon != sensor.lon && channel.lon != null"><th>Longitude</th><td>{{ channel.lon }}</td></tr>
+                            <tr v-if="channel.depth != sensor.depth && channel.depth != null"><th>Depth</th><td>{{ channel.depth }}</td></tr>
+                            <tr v-if="channel.elevation != sensor.elevation && channel.elevation != null"><th>Elevation</th><td>{{ channel.elevation }}</td></tr>
+                            <tr v-if="channel.north_shift != sensor.north_shift && channel.north_shift != null"><th>North shift</th><td>{{ channel.north_shift }}</td></tr>
+                            <tr v-if="channel.east_shift != sensor.east_shift && channel.east_shift != null"><th>East shift</th><td>{{ channel.east_shift }}</td></tr>
+                            <tr v-if="channel.tmin != sensor.tmin && channel.tmin != null"><th>Start Time</th><td>{{ channel.tmin }}</td></tr>
+                            <tr v-if="channel.tmax != sensor.tmax && channel.tmax != null"><th>End Time</th><td>{{ channel.tmax }}</td></tr>
+                            <tr v-if="channel.deltat != sensor.deltat && channel.deltat != null"><th>Delta T</th><td>{{ channel.deltat }}</td></tr>
+                            <tr v-if="channel.dip != null"><th>Dip</th><td>{{ channel.dip }}</td></tr>
+                            <tr v-if="channel.azimuth != null"><th>Azimuth</th><td>{{ channel.azimuth }}</td></tr>
+                        </tbody>
+                    </table>                    
                 </div>
 
                 <div id="leaflet-map" class="col-12 col-md-6"></div>
@@ -371,7 +425,7 @@ export const componentTable = {
                                 <tr v-for="channel in sensor.channels">
                                     
                                     
-                                    <td class="table-code" @click="$emit('open-tab', {sensor,channel})">
+                                    <td class="table-code" @click="$emit('open-tab', {sensor,channel,sortedSensors})">
                                         
                                         <template v-if="selectedOption === 'Sensor'">
                                             {{sensor.codes}}
