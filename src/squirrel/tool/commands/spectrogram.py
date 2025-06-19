@@ -72,6 +72,13 @@ def setup(parser):
         help='Show multi-resolutiion spectrogram construction plots (for '
              'debugging purposes).')
 
+    parser.add_argument(
+        '--no-restitution',
+        dest='restitute',
+        action='store_false',
+        default=True,
+        help='Do not correct spectra with instrument transfer function.')
+
 
 def run(parser, args):
     from pyrocko.io import rug
@@ -81,6 +88,7 @@ def run(parser, args):
     squirrel = args.make_squirrel()
 
     musop = MultiSpectrogramOperator(
+        restitute=args.restitute,
         windowing=Pow2Windowing(
             nblock=2**args.nblock_exponent,
             nlevels=args.nlevels,
