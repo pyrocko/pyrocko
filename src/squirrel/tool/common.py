@@ -402,6 +402,15 @@ def add_standard_arguments(parser):
              'Default: %s.' % (
                 ldq(progress_choices), dq(progress_default)))
 
+    group.add_argument(
+        '--threads-loading',
+        dest='n_threads',
+        type=int,
+        default=1,
+        metavar='INT',
+        help='Set number of threads used in file content loading/decoding. '
+             'Default: 1')
+
 
 def process_standard_arguments(parser, args):
     loglevel = args.__dict__.pop('loglevel')
@@ -543,7 +552,9 @@ def squirrel_from_selection_arguments(args, check_have_data=True):
             'No data. Use --add, --dataset, and/or --persistent to set up '
             'data sources.')
 
-    squirrel = base.Squirrel(persistent=args.persistent)
+    squirrel = base.Squirrel(
+        persistent=args.persistent,
+        n_threads=args.n_threads)
 
     with progress.view():
         if args.paths:
