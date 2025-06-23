@@ -256,16 +256,6 @@ def iload(
             selection.flag_modified(check)
 
         if selection:
-            # undig_grouped starts a long select which causes deadlocks
-            # when transaction is started after starting the select, therefore
-            # the transaction has to be started before in these cases.
-            # The db will be locked for a long time in this case. This could be
-            # solved either by breaking the indexing into smaller blocks in
-            # the caller or by modifying undig_grouped to allow limit and
-            # offset and add an outer loop below.
-            transaction = database.transaction(
-                'update content index')
-            transaction.begin()
             it = selection.undig_grouped(skip_unchanged=skip_unchanged)
         else:
             # The list() causes the query to finish, so we don't have to lock,
@@ -283,9 +273,6 @@ def iload(
     try:
         n_files_total = len(it)
         if n_files_total == 0:
-            if transaction:
-                transaction.commit()
-                transaction.close()
             return
 
     except TypeError:
@@ -310,10 +297,9 @@ def iload(
                 task.update(n_files, condition)
 
             n_files += 1
-            # cannot release when iterating a selection (see above)
-            if database and transaction and not selection:
+            if database and transaction:
                 tnow = time.time()
-                if tnow - tcommit > 20. or n_files % 1000 == 0:
+                if tnow - tcommit > 20. or n_files % 200 == 0:
                     transaction.commit()
                     tcommit = tnow
                     transaction.close()

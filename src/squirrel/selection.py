@@ -579,12 +579,15 @@ class Selection(object):
         contents of the file.
         '''
 
+        where = '''
+        '''
+
         if skip_unchanged:
-            where = '''
-                WHERE %(db)s.%(file_states)s.file_state == 0
+            extra_where = '''
+                AND file_states_a.file_state == 0
             '''
         else:
-            where = ''
+            extra_where = ''
 
         nfiles = execute_get1(self._conn, self._sql('''
             SELECT
@@ -595,7 +598,7 @@ class Selection(object):
         def gen():
             sql = self._sql('''
                 SELECT
-                    %(db)s.%(file_states)s.format,
+                    file_states_a.format,
                     files.path,
                     files.format,
                     files.mtime,
@@ -609,23 +612,34 @@ class Selection(object):
                     nuts.tmax_seconds,
                     nuts.tmax_offset,
                     kind_codes.deltat
-                FROM %(db)s.%(file_states)s
+                FROM %(db)s.%(file_states)s file_states_a
                 LEFT OUTER JOIN files
-                    ON %(db)s.%(file_states)s.file_id = files.file_id
+                    ON file_states_a.file_id = files.file_id
                 LEFT OUTER JOIN nuts
                     ON files.file_id = nuts.file_id
                 LEFT OUTER JOIN kind_codes
                     ON nuts.kind_codes_id == kind_codes.kind_codes_id
-            ''' + where + '''
-                ORDER BY %(db)s.%(file_states)s.file_id
+                WHERE file_states_a.file_id IN (
+                    SELECT file_id FROM %(db)s.%(file_states)s file_states_b
+                    ORDER BY file_states_b.file_id
+                    LIMIT ? OFFSET ?
+                )
+            ''' + extra_where + '''
+                ORDER BY file_states_a.file_id
             ''')
 
-            nuts = []
-            format_path = None
             db = self.get_database()
 
-            with LOCK:
-                for values in self._conn.execute_nolock(sql):
+            limit = 100
+            offset = 0
+            while True:
+                nuts = []
+                format_path = None
+                at_end = True
+                for values in self._conn.execute(
+                        sql, (limit, offset)):
+
+                    at_end = False
                     apath = db.abspath(values[1])
                     if format_path is not None and apath != format_path[1]:
                         yield format_path, nuts
@@ -639,6 +653,10 @@ class Selection(object):
 
                 if format_path is not None:
                     yield format_path, nuts
+
+                offset += limit
+                if at_end:
+                    break
 
         return GeneratorWithLen(gen(), nfiles)
 
