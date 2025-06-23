@@ -4952,10 +4952,6 @@ class SimpleLandslideSource(Source):
         default=0.,
         help='downward component of impulse [Ns]')
 
-    azimuth = Float.T(
-        default=0.,
-        help='azimuth direction of the mass movement [deg]')
-
     stf_v = SimpleLandslideSTF.T(
         default=SimpleLandslideSTF.D(),
         help='source time function for vertical force component')
