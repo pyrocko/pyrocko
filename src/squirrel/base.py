@@ -21,7 +21,8 @@ import sqlite3
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
-from pyrocko.guts import Object, Int, List, Tuple, String, Timestamp, Dict
+from pyrocko.guts import Object, Int, List, Tuple, String, Timestamp, Dict, \
+    clone
 from pyrocko import util, trace
 from pyrocko import progress
 from pyrocko.plot import nice_time_tick_inc_approx_secs
@@ -66,6 +67,22 @@ def nonef(f, xs):
         return f(xs_)
     else:
         return None
+
+
+def none_min(a, b):
+    if a is None:
+        return b
+    if b is None:
+        return a
+    return min(a, b)
+
+
+def none_max(a, b):
+    if a is None:
+        return b
+    if b is None:
+        return a
+    return max(a, b)
 
 
 def make_task(*args):
@@ -238,6 +255,29 @@ class Batch(object):
             component_codes=component_codes,
             tmin=tmin,
             deltat=deltat)
+
+
+order_mapping = {
+    'tmin': [
+        '%(db)s.%(nuts)s.tmin_seconds',
+        '%(db)s.%(nuts)s.tmax_offset',
+    ],
+    'tmax': [
+        '%(db)s.%(nuts)s.tmax_seconds',
+        '%(db)s.%(nuts)s.tmax_offset',
+    ],
+    '-tmin': [
+        '-%(db)s.%(nuts)s.tmin_seconds',
+        '-%(db)s.%(nuts)s.tmax_offset',
+    ],
+    '-tmax': [
+        '-%(db)s.%(nuts)s.tmax_seconds',
+        '-%(db)s.%(nuts)s.tmax_offset',
+    ],
+    'codes': [
+        'kind_codes.codes',
+    ],
+}
 
 
 class Squirrel(Selection):
@@ -1031,7 +1071,8 @@ class Squirrel(Selection):
     def iter_nuts(
             self, kind=None, tmin=None, tmax=None, codes=None,
             codes_exclude=None, kind_codes_ids=None, sample_rate_min=None,
-            sample_rate_max=None, naiv=False, path=None, limit=None):
+            sample_rate_max=None, naiv=False, path=None, order_by=None,
+            limit=None):
 
         '''
         Iterate over content entities matching given constraints.
@@ -1172,8 +1213,12 @@ class Squirrel(Selection):
         if cond:
             sql += ''' WHERE ''' + ' AND '.join(cond)
 
+        if order_by is not None:
+            sql += ' ORDER BY ' + ', '.join(order_mapping[order_by])
+
         if limit is not None:
-            sql += ''' LIMIT %i''' % limit
+            sql += ''' LIMIT ?'''
+            args.append(limit)
 
         sql = self._sql(sql)
         if tmin is None and tmax is None:
@@ -2196,7 +2241,14 @@ class Squirrel(Selection):
 
     @filldocs
     def get_events(
-            self, obj=None, tmin=None, tmax=None, time=None, codes=None):
+            self,
+            obj=None,
+            tmin=None,
+            tmax=None,
+            time=None,
+            codes=None,
+            nlatest=None,
+            filter=None):
 
         '''
         Get events matching given constraints.
@@ -2209,11 +2261,49 @@ class Squirrel(Selection):
         See :py:meth:`iter_nuts` for details on time span matching.
         '''
 
-        args = self._get_selection_args(EVENT, obj, tmin, tmax, time, codes)
-        nuts = sorted(
-            self.iter_nuts('event', *args), key=lambda nut: nut.dkey)
+        import pyrocko.squirrel.elk as elk
 
-        return [self.get_content(nut) for nut in nuts]
+        tmin, tmax, codes = self._get_selection_args(
+            EVENT, obj, tmin, tmax, time, codes)
+
+        tmin = none_max(tmin, filter.time_min)
+        tmax = none_min(tmax, filter.time_max)
+
+        nuts = sorted(
+            self.iter_nuts(
+                'event', tmin, tmax, codes,
+                order_by='-tmin',
+                limit=nlatest),
+            key=lambda nut: nut.dkey)
+
+        events = [self.get_content(nut) for nut in nuts]
+
+        condition = filter.get_condition()
+        events = [ev for ev in events if condition(ev)]
+
+        nuts = sorted(
+            self.iter_nuts('elk', tmin, tmax, codes),
+            key=lambda nut: nut.dkey)
+
+        filter = clone(filter)
+        filter.time_min = tmin
+        filter.time_max = tmax
+
+        for nut in nuts:
+            prefix = self._database.get_attachment_prefix(nut.file_path)
+            events.extend(
+                elk.get_events(
+                    self._conn,
+                    prefix=prefix,
+                    nlatest=nlatest,
+                    filter=filter))
+
+        events.sort(key=lambda ev: -ev.time)
+
+        if nlatest is not None:
+            events = events[:nlatest]
+
+        return events
 
     def _housekeep_recent_orders(self):
         now = time.time()

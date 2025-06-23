@@ -360,42 +360,52 @@ class Database(object):
     '''
 
     def __init__(self, database_path=':memory:', log_statements=False):
+        self._transaction = {}
+        self._listeners = []
+        self._tables = {}
+        self._basepath = None
+        self._selections = []
+        self._attachments = {}
+        self.version = None
         self._database_path = database_path
-        if database_path != ':memory:':
-            util.ensuredirs(database_path)
+        self._conn = None
+
+        try:
+            if int(os.environ.get('SQUIRREL_SQL_DEBUG') or 0) == 1:
+                log_statements = True
+        except ValueError:
+            raise error.SquirrelError(
+                'Environment variable SQUIRREL_SQL_DEBUG must be 0 or 1.')
+
+        if self._database_path != ':memory:':
+            util.ensuredirs(self._database_path)
 
         try:
             logger.debug(
                 'Opening connection to database (threadsafety: %i): %s',
                 sqlite3.threadsafety,
-                database_path)
+                self._database_path)
 
             self._conn = sqlite3.connect(
-                database_path,
+                self._database_path,
                 isolation_level=None,
                 factory=Connection,
                 check_same_thread=False if sqlite3.threadsafety == 3 else True)
 
         except sqlite3.OperationalError:
             raise error.SquirrelError(
-                'Cannot connect to database: %s' % database_path)
+                'Cannot connect to database: %s' % self._database_path)
 
         self._conn.on_close(self.close)
-
         self._conn.text_factory = str
-        self._tables = {}
 
         if log_statements:
             self._conn.set_trace_callback(self._log_statement)
 
-        self._transaction = {}
-        self._listeners = []
         self._initialize_db()
-        self._basepath = None
 
-        self._selections = []
-
-        self.version = None
+        from .events import connection_hook
+        connection_hook(self._conn)
 
     def __del__(self):
         self.close()
@@ -411,6 +421,26 @@ class Database(object):
 
     def remove_selection(self, selection):
         self._selections.remove(selection)
+
+    def attach(self, path):
+        if path in self._attachments:
+            if path in self._attachments:
+                raise error.SquirrelError(
+                    'Database aleady attached: %s')
+
+        prefix = 'a%i' % len(self._attachments)
+
+        self._conn.execute('''
+            ATTACH DATABASE ? AS ?
+        ''', (path, prefix))
+
+        self._attachments[path] = prefix
+
+    def get_attachment_prefix(self, path):
+        if path not in self._attachments:
+            self.attach(path)
+
+        return self._attachments[path]
 
     def set_basepath(self, basepath):
         if basepath is not None:
