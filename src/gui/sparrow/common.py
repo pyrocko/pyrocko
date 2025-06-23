@@ -151,7 +151,7 @@ def _paint_cpt_rect(painter, cpt, rect):
     painter.drawImage(rect_cpt, img)
 
     c = cpt.color_nan
-    qcolor_nan = qg.QColor(*c if c is not None else (0, 0, 0))
+    qcolor_nan = qg.QColor(*map(int, c) if c is not None else (0, 0, 0))
     qcolor_nan.setAlpha(255 if c is not None else 0)
 
     painter.fillRect(rect_c_nan, qcolor_nan)
