@@ -17,14 +17,14 @@ from pyrocko import progress
 
 from .backends import \
     mseed, sac, hdf5_optodas, datacube, stationxml, textfiles, virtual, yaml, \
-    tdms_idas, spickle, rug
+    tdms_idas, spickle, rug, sqlite
 
 from ..model import to_kind_ids, EMPTY, Nut
 from ..database import color_tid_pid
 
 backend_modules = [
     mseed, sac, hdf5_optodas, datacube, stationxml, textfiles, virtual, yaml,
-    tdms_idas, spickle, rug]
+    tdms_idas, spickle, rug, sqlite]
 
 logger = logging.getLogger('psq.io')
 
