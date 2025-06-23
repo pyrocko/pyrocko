@@ -6,6 +6,7 @@ import shutil
 import time
 import platform
 import os
+import uuid
 from random import random, randint, choice
 import numpy as num
 from pyrocko import util
@@ -351,6 +352,26 @@ class UtilTestCase(unittest.TestCase):
                 assert isinstance(it, list)
 
             assert list(it) == list(range(n))
+
+    def check_uuid7(self, f):
+        ids = [f() for _ in range(10000)]
+        for u in ids:
+            assert u.version == 7
+            assert u.variant == uuid.RFC_4122
+
+        assert all(a < b for (a, b) in zip(ids[:-1], ids[1:]))
+        assert all(str(a) < str(b) for (a, b) in zip(ids[:-1], ids[1:]))
+
+        t_ms = ids[-1].int >> 80
+        assert abs(t_ms / 1000. - time.time()) < 10.
+
+    @unittest.skipIf(
+        not hasattr(uuid, 'uuid7'), 'uuid.uuid7 not available')
+    def test_uuid7(self):
+        self.check_uuid7(util.uuid7)
+
+    def test_uuid7_fallback(self):
+        self.check_uuid7(util._uuid7_fallback)
 
 
 if __name__ == '__main__':

@@ -81,6 +81,8 @@ import fnmatch
 import inspect
 import warnings
 import weakref
+import threading
+import uuid
 import signal as psignal
 try:
     import fcntl
@@ -3146,3 +3148,68 @@ def str_duration(d):
             return '%g' % (d / duration_unit_factors[k]) + k
 
     return '%gs' % d
+
+
+_uuid7_lock = threading.Lock()
+_uuid7_last_timestamp = None
+_uuid7_last_counter = None
+
+
+def _uuid7_fallback():
+    global _uuid7_last_timestamp, _uuid7_last_counter
+
+    # Layout (RFC 9562, method 1 of section 6.2, as in Python 3.14):
+    #
+    #   48 bit unix_ts_ms | 4 bit version | 12 bit counter_hi |
+    #   2 bit variant | 30 bit counter_lo | 32 bit random
+    #
+    # The 42 bit counter is initialized randomly (with MSB cleared) for each
+    # new millisecond and incremented for IDs within the same millisecond.
+
+    with _uuid7_lock:
+        timestamp_ms = time.time_ns() // 1000000
+        if _uuid7_last_timestamp is None \
+                or timestamp_ms > _uuid7_last_timestamp:
+
+            counter = None
+        else:
+            timestamp_ms = _uuid7_last_timestamp
+            counter = _uuid7_last_counter + 1
+            if counter > 0x3ffffffffff:
+                timestamp_ms += 1
+                counter = None
+
+        if counter is None:
+            counter = int.from_bytes(os.urandom(6), 'big') >> 6
+            counter &= 0x1ffffffffff
+
+        tail = int.from_bytes(os.urandom(4), 'big')
+
+        _uuid7_last_timestamp = timestamp_ms
+        _uuid7_last_counter = counter
+
+    i = (timestamp_ms & 0xffffffffffff) << 80
+    i |= 0x7 << 76
+    i |= (counter >> 30) << 64
+    i |= 0x2 << 62
+    i |= (counter & 0x3fffffff) << 32
+    i |= tail
+
+    return uuid.UUID(int=i)
+
+
+def uuid7():
+    '''
+    Create new time-ordered UUID (version 7, RFC 9562).
+
+    Uses :py:func:`uuid.uuid7` when available (Python >= 3.14), otherwise
+    an equivalent fallback implementation. IDs created within the same
+    process are monotonically increasing.
+
+    :returns: :py:class:`uuid.UUID` object
+    '''
+
+    return _uuid7()
+
+
+_uuid7 = getattr(uuid, 'uuid7', _uuid7_fallback)
