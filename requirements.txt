@@ -4,4 +4,5 @@ scipy>=1.0
 pyyaml
 matplotlib
 requests
+uuid-backport; python_version<'3.14'
 tornado
