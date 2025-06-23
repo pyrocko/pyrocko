@@ -76,7 +76,7 @@ def opportunistic_cast(v):
 
 def in_range(vmin, vmax, v):
     return (vmin is None or (v is not None and vmin <= v)) \
-        and (vmax is None or (v is not None and vmax >= v))
+        and (vmax is None or (v is not None and v < vmax))
 
 
 def mult_none(a, b):
@@ -84,6 +84,49 @@ def mult_none(a, b):
         return None
     else:
         return a*b
+
+
+class ConditionError(Exception):
+    pass
+
+
+def _none_le(b, v):
+    return v is not None and b <= v
+
+
+def _none_gt(b, v):
+    return v is not None and b > v
+
+
+def _acond(f, b, a):
+    def g(x):
+        return f(b, getattr(x, a))
+
+    return g
+
+
+def attr_condition(allowed=None, **kwargs):
+    condition = lambda x: True  # noqa
+    for attr_type, b in kwargs.items():
+        if b is None:
+            continue
+
+        try:
+            a, t = attr_type.rsplit('_', 1)
+        except ValueError:
+            raise ConditionError('Invalid filter argument: %s' % attr_type)
+
+        if allowed is not None and a not in allowed:
+            raise ConditionError('Invalid filter attribute: %s' % a)
+
+        if t == 'min':
+            condition = _acond(_none_le, b, a)
+        elif t == 'max':
+            condition = _acond(_none_gt, b, a)
+        else:
+            raise ConditionError('Invalid filter type: %s' % t)
+
+    return condition
 
 
 class EventFilter(Object):
@@ -103,6 +146,12 @@ class EventFilter(Object):
     depth_max = Float.T(
         optional=True,
         help='Maximum event depth [m].')
+    time_min = Timestamp.T(
+        optional=True,
+        help='Minimum time.')
+    time_max = Timestamp.T(
+        optional=True,
+        help='Maximum time.')
 
     @classmethod
     def setup_argparse(cls, parser):
@@ -143,13 +192,35 @@ class EventFilter(Object):
             depth_min=mult_none(args.depth_min_km, km),
             depth_max=mult_none(args.depth_max_km, km))
 
-    def get_filter(self):
-        def filter(ev):
-            return (
-                in_range(self.magnitude_min, self.magnitude_max, ev.magnitude)
-                and in_range(self.depth_min, self.depth_max, ev.depth))
+    def get_condition(self):
+        return attr_condition(
+            magnitude_min=self.magnitude_min,
+            magnitude_max=self.magnitude_max,
+            depth_min=self.depth_min,
+            depth_max=self.depth_max,
+            time_min=self.time_min,
+            time_max=self.time_max)
 
-        return filter
+    def sql_condition(self):
+        conditions = []
+        args = []
+        for k in ['time',  'magnitude', 'depth']:
+            b = getattr(self, k + '_min')
+            if b is not None:
+                conditions.append('? <= %s' % k)
+                args.append(b)
+
+            b = getattr(self, k + '_max')
+            if b is not None:
+                conditions.append('%s < ?' % k)
+                args.append(b)
+
+        if conditions:
+            where = 'WHERE ' + ' AND '.join(conditions)
+        else:
+            where = ''
+
+        return where, args
 
 
 class Event(Location):

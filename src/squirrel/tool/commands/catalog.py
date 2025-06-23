@@ -7,11 +7,13 @@
 Implementation of :app:`squirrel catalog`.
 '''
 
+import os
 import logging
 import time
 
 from pyrocko import util
 from pyrocko.model.event import EventFilter
+from pyrocko.squirrel.error import ToolError
 
 from ..common import ldq
 
@@ -59,18 +61,35 @@ def setup(parser):
         default='table',
         help='Set style of presentation. Choices: %s' % ldq(style_choices))
 
+    parser.add_argument(
+        '--out',
+        dest='output_path',
+        metavar='PATH',
+        help='Add matching events to ELK database at PATH. A new database '
+             'is created if needed.')
+
 
 def run(parser, args):
     sq = args.make_squirrel()
-    efilter = EventFilter.from_argparse(args).get_filter()
+    event_filter = EventFilter.from_argparse(args)
 
-    if 'tmin' in args.squirrel_query and 'tmax' in args.squirrel_query:
-        tmin = args.squirrel_query['tmin']
-        tmax = args.squirrel_query['tmax']
+    if 'tmin' in args.squirrel_query or 'tmax' in args.squirrel_query:
+        tmin = args.squirrel_query.get('tmin')
+        tmax = args.squirrel_query.get('tmax')
+
+        if tmin is None or tmax is None:
+            raise ToolError(
+                'In catalog search, --tmin and --tmax must be provided '
+                'together.')
+
         sq.update(tmin=tmin, tmax=tmax, inventory='event')
+        events = sq.get_events(tmin=tmin, tmax=tmax, filter=event_filter)
 
     else:
-        logger.info('No time range specified, showing latest events.')
+        napprox = 10
+        logger.info(
+            'No time range specified, trying to get at least %i latest '
+            'events.' % napprox)
 
         tmax = util.hour_start(time.time())
         tduration = 3600.*24.
@@ -78,16 +97,17 @@ def run(parser, args):
         while True:
             tmin = tmax - tduration
             sq.update(tmin=tmin, tmax=tmax, inventory='event')
-            events = list(filter(
-                efilter, sq.get_events(tmin=tmin, tmax=tmax)))
+            events = sq.get_events(
+                tmin=tmin,
+                tmax=tmax,
+                filter=event_filter)
 
-            if len(events) > 10 or tmin < util.str_to_time(
+            if len(events) > napprox or tmin < util.str_to_time(
                     '1900-01-01 00:00:00'):
                 break
 
             tduration *= 2
 
-    events = list(filter(efilter, sq.get_events(tmin=tmin, tmax=tmax)))
     if not events:
         logger.info('No events found in the time range %s - %s.' % (
             util.time_to_str(tmin),
@@ -95,22 +115,44 @@ def run(parser, args):
 
         return
 
-    logger.info('Showing events for the time range %s - %s.' % (
-        util.time_to_str(tmin),
-        util.time_to_str(tmax)))
+    if args.output_path:
+        logger.info('Storing %i event%s for the time range %s - %s.' % (
+            len(events),
+            util.plural_s(events),
+            util.time_to_str(tmin),
+            util.time_to_str(tmax)))
 
-    for ev in events:
-        if args.style == 'yaml':
-            print('# %s' % ev.summary)
-            print(ev.dump())
-        elif args.style == 'summary':
-            print(ev.summary)
-        elif args.style == 'table':
-            print('%-20s %-30s %3.1f %3.0f %s' % (
-                ev.name,
-                util.time_to_str(ev.time),
-                ev.magnitude,
-                ev.depth / km,
-                ev.region))
+        from pyrocko.squirrel import elk
+        if not os.path.exists(args.output_path):
+            util.ensuredirs(args.output_path)
+            initialize = True
         else:
-            assert False
+            initialize = False
+        conn = elk.connect(args.output_path)
+        if initialize:
+            elk.init_database(conn, 'main')
+
+        elk.add_events(conn, 'main', events)
+
+    else:
+        logger.info('Showing %i event%s for the time range %s - %s.' % (
+            len(events),
+            util.plural_s(events),
+            util.time_to_str(tmin),
+            util.time_to_str(tmax)))
+
+        for ev in events:
+            if args.style == 'yaml':
+                print('# %s' % ev.summary)
+                print(ev.dump())
+            elif args.style == 'summary':
+                print(ev.summary)
+            elif args.style == 'table':
+                print('%-20s %-30s %3.1f %3.0f %s' % (
+                    ev.name,
+                    util.time_to_str(ev.time),
+                    ev.magnitude,
+                    ev.depth / km,
+                    ev.region))
+            else:
+                assert False
