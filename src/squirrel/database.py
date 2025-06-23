@@ -111,7 +111,7 @@ def process_color():
 
 
 def color_tid_pid():
-    return '(%stid: %s%s, %spid: %s%s)' % (
+    return '%stid: %s%s, %spid: %s%s' % (
         thread_color(), tid(), ansi_reset,
         process_color(), os.getpid(), ansi_reset)
 
@@ -122,14 +122,14 @@ def get_RLock():
 
         class RLockDebug(RLockBase):
             def acquire(self):
-                logger.debug('Waiting for lock %s' % color_tid_pid())
+                logger.debug('Waiting for lock (%s).' % color_tid_pid())
                 ret = RLockBase.acquire(self)
-                logger.debug('Got lock %s' % color_tid_pid())
+                logger.debug('Got lock (%s).' % color_tid_pid())
                 return ret
 
             def release(self):
                 logger.debug(
-                    'Releasing lock %s' % color_tid_pid())
+                    'Releasing lock (%s).' % color_tid_pid())
                 return RLockBase.release(self)
 
         return RLockDebug()
@@ -170,10 +170,9 @@ class Transaction(object):
                     if self.debug:
                         logger.debug(
                             'Waiting for transaction:   %-30s '
-                            '(pid: %s, tid: %i, mode: %s)',
+                            '(%s, mode: %s)',
                             self.label,
-                            os.getpid(),
-                            tid(),
+                            color_tid_pid(),
                             self.mode)
 
                     self.cursor.execute('BEGIN %s' % self.mode.upper())
@@ -181,10 +180,9 @@ class Transaction(object):
                     if self.debug:
                         logger.debug(
                             'Transaction started:   %-30s '
-                            '(pid: %s, tid: %i, mode: %s)',
+                            '(%s, mode: %s)',
                             self.label,
-                            os.getpid(),
-                            tid(),
+                            color_tid_pid(),
                             self.mode)
 
                     self.total_changes_begin \
@@ -197,9 +195,9 @@ class Transaction(object):
 
                     logger.info(
                         'Database is locked retrying in %s s: %s '
-                        '(pid: %s, tid: %i, tries: %i)' % (
+                        '(%s, tries: %i)' % (
                             self.retry_interval, self.label,
-                            os.getpid(), tid(), tries))
+                            color_tid_pid(), tries))
 
                     time.sleep(self.retry_interval)
 
@@ -210,10 +208,9 @@ class Transaction(object):
             if not self.started:
                 raise Exception(
                     'Trying to commit without having started a transaction '
-                    '(%s, %s, %s)' % (
+                    '(%s, %s)' % (
                         self.label,
-                        os.getpid(),
-                        tid()))
+                        color_tid_pid()))
 
             self.depth -= 1
             if self.depth == 0:
@@ -232,10 +229,9 @@ class Transaction(object):
                     if self.debug:
                         logger.debug(
                             'Transaction completed: %-30s '
-                            '(pid: %s, tid: %s, changes: %i)',
+                            '(%s, changes: %i)',
                             self.label,
-                            os.getpid(),
-                            tid(),
+                            color_tid_pid(),
                             total_changes or 0)
 
                 else:
@@ -244,10 +240,9 @@ class Transaction(object):
                     logger.warning('Deferred rollback executed.')
                     if self.debug:
                         logger.debug(
-                            'Transaction failed:   %-30s (pid: %s)',
+                            'Transaction failed:   %-30s (%s)',
                             self.label,
-                            os.getpid(),
-                            tid())
+                            color_tid_pid())
 
                     self.rollback_wanted = False
         finally:

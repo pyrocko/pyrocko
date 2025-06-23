@@ -20,6 +20,7 @@ from .backends import \
     tdms_idas, spickle
 
 from ..model import to_kind_ids, EMPTY, Nut
+from ..database import color_tid_pid
 
 backend_modules = [
     mseed, sac, hdf5_optodas, datacube, stationxml, textfiles, virtual, yaml,
@@ -353,7 +354,7 @@ def iload(
                         'Reading file "%s", segment "%s".' % (path, segment))
                 else:
                     logger.debug(
-                        'Reading file "%s".' % path)
+                        'Reading file "%s". %s' % (path, color_tid_pid()))
 
                 nuts = []
                 for nut in mod.iload(format_this, path, segment, content):
