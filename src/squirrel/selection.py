@@ -17,7 +17,7 @@ from pyrocko.io.io_common import FileLoadError
 from pyrocko import progress
 
 from . import error, io, model
-from .database import Database, get_database, execute_get1, abspath, LOCK
+from .database import Database, get_database, execute_get1, abspath
 
 logger = logging.getLogger('psq.selection')
 
