@@ -554,7 +554,7 @@ def squirrel_from_selection_arguments(args, check_have_data=True):
 
     squirrel = base.Squirrel(
         persistent=args.persistent,
-        n_threads=args.n_threads)
+        n_threads=getattr(args, 'n_threads', 1))
 
     with progress.view():
         if args.paths:
