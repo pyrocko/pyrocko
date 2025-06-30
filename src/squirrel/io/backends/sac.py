@@ -38,7 +38,7 @@ def agg(*ds):
 
 def nonetoempty(x):
     if x is None:
-        return x
+        return ''
     else:
         return x.strip()
 
