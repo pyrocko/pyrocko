@@ -52,7 +52,9 @@ def time_to_template_vars(prefix, t):
 
 
 def iter_windows(tmin, tmax, tinc, tinc_nonuniform):
-    if tinc_nonuniform is None:
+    if tinc is None:
+        yield tmin, tmax
+    elif tinc_nonuniform is None:
         tmin = math.floor(tmin / tinc) * tinc
         t = tmin
         while t < tmax:
@@ -75,6 +77,7 @@ class StorageSchemeLayout(guts.Object):
     name = guts.String.T(
         help='Name of the layout, informational.')
     time_increment = guts.Float.T(
+        optional=True,
         help='Time window length stored in each file[s]. Exact or '
              'approximate, depending on :py:gattr:`time_incement_nonuniform`.')
     time_increment_nonuniform = guts.String.T(
@@ -108,8 +111,9 @@ class StorageSchemeLayout(guts.Object):
         rate = 1.0 / deltat
         tblock = nice_time_tick_inc_approx_secs(deltat * nsamples_block)
         tsegment = deltat * nsamples_segment
-        segments_per_file = self.time_increment / tsegment
-        bytesize = self.time_increment / deltat * 4
+        segments_per_file = self.time_increment / tsegment \
+            if self.time_increment is not None else 0.0,
+        bytesize = (self.time_increment or 0.0) / deltat * 4
 
         return '%8.1f %11.5f %6.0f %10s %12.0f %10s %6s %4.0f %8s %6i' % (
             rate,
@@ -140,6 +144,7 @@ class StorageScheme(guts.Object):
         default='mseed',
         help='File format of waveform data files.')
     description = guts.String.T(
+        default='',
         help='Description of the storage scheme.')
 
     def post_init(self):
@@ -152,7 +157,7 @@ class StorageScheme(guts.Object):
         tsegment = deltat * nsamples_segment
         twant = tsegment * self.min_segments_per_file
         for layout in self.layouts:
-            if layout.time_increment > twant:
+            if layout.time_increment is None or layout.time_increment > twant:
                 return layout
 
         return layout

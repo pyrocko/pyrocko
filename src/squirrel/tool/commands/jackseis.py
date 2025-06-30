@@ -507,8 +507,10 @@ replacements. Examples: Direct replacement: ```XX``` - set all network codes to
 
         if self.out_path:
             scheme = StorageScheme(
-                layouts=StorageSchemeLayout(
-                    path_template=self.expand_path(self.out_path)))
+                name='custom',
+                layouts=[StorageSchemeLayout(
+                    name='custom',
+                    path_template=self.expand_path(self.out_path))])
 
         elif self.out_sds_path:
             scheme = clone(get_storage_scheme('sds'))
@@ -603,7 +605,8 @@ replacements. Examples: Direct replacement: ```XX``` - set all network codes to
             if storage_scheme and storage_scheme.name in ('sds', 'default'):
                 if tinc is None:
                     logger.warning(
-                        'Setting time window to 1 hour to fill "%s" storage.',
+                        'Setting processing time window to 1 hour to fill '
+                        '"%s" storage.',
                         storage_scheme.name)
                     tinc = 3600.0
 
