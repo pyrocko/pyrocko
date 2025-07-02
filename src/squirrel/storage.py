@@ -254,7 +254,7 @@ g_schemes = dict((scheme.name, scheme) for scheme in _g_schemes_list)
 
 
 def get_storage_scheme(name):
-    return g_schemes[name]
+    return guts.clone(g_schemes[name])
 
 
 class StorageSchemeChoice(guts.StringChoice):
