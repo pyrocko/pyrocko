@@ -27,6 +27,7 @@ def _translate_path_template(s):
         'year': '%(wmin_year)s',
         'month': '%(wmin_month)s',
         'day': '%(wmin_day)s',
+        'jday': '%(wmin_jday)s',
         'hour': '%(wmin_hour)s',
         'minute': '%(wmin_minute)s',
         'second': '%(wmin_second)s',
@@ -44,8 +45,9 @@ def _translate_path_template(s):
 def time_to_template_vars(prefix, t):
     d = dict(zip(
             [prefix + '_' + var
-             for var in ['year', 'month', 'day', 'hour', 'minute', 'second']],
-            util.time_to_str(t, '%Y.%m.%d.%H.%M.%S').split('.')))
+             for var in [
+                'year', 'month', 'day', 'jday', 'hour', 'minute', 'second']],
+            util.time_to_str(t, '%Y.%m.%d.%j.%H.%M.%S').split('.')))
     # needed for backwards compatibility
     d[prefix] = util.time_to_str(t, '%Y-%m-%d_%H-%M-%S')
     return d
