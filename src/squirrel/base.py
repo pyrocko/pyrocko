@@ -820,8 +820,9 @@ class Squirrel(Selection):
         Arguments are passed to
         :py:class:`~pyrocko.squirrel.client.fdsn.FDSNSource`.
         '''
-
-        self.add_source(fdsn.FDSNSource(*args, **kwargs))
+        source = fdsn.FDSNSource(*args, **kwargs)
+        source.set_basepath('.')
+        self.add_source(source)
 
     def add_catalog(self, *args, **kwargs):
         '''

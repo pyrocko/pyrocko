@@ -267,6 +267,18 @@ class FDSNSource(Source, has_paths.HasPaths):
              'the same Squirrel environment. If ``False``, they are kept '
              'separate.')
 
+    storage_path = has_paths.Path.T(
+        optional=True,
+        help='If set, manage waveforms in the given directory rather than '
+             'in the Squirrel cache.')
+
+    storage_scheme = storage.StorageSchemeChoice.T(
+        default='default',
+        help="Set layout of waveform storage. Available: %s. "
+             "Default: ``'default'``." % ', '.join(
+                "``'%s'``" % name
+                for name in storage.StorageSchemeChoice.choices))
+
     user_credentials = Tuple.T(
         2, String.T(),
         optional=True,
@@ -369,7 +381,7 @@ class FDSNSource(Source, has_paths.HasPaths):
 
         util.ensuredir(self._cache_path)
         self._load_constraint()
-        self._archive = storage.get_storage_scheme('default')
+        self._archive = storage.get_storage_scheme(self.storage_scheme)
 
         waveforms_path = self._get_waveforms_path()
         util.ensuredir(waveforms_path)
@@ -459,6 +471,9 @@ class FDSNSource(Source, has_paths.HasPaths):
                 dirpath, 'response_%s_%s_%s_%s.stationxml' % nslc)
 
     def _get_waveforms_path(self):
+        if self.storage_path:
+            return self.expand_path(self.storage_path)
+
         if self.shared_waveforms:
             return op.join(self._cache_path, 'waveforms-v2')
         else:
