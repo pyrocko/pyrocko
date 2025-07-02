@@ -897,7 +897,7 @@ def run(parser, args):
     cli_overrides.set_basepath('.')
 
     def squirrel_factory():
-        return args.make_squirrel()
+        return args.make_squirrel(check_have_data=not args.config_path)
 
     with progress.view():
         task = make_task('Jackseis jobs')
