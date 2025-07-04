@@ -4,6 +4,7 @@ import { squirrelTimeline } from '../squirrel/timeline.js'
 import { squirrelGates } from '../squirrel/gate.js'
 import { squirrelConnection } from '../squirrel/connection.js'
 import { useFilters } from '../squirrel/filter.js'
+import { timeToStr } from '../squirrel/common.js'
 
 const positiveOrNull = (s) => {
     if (s.trim() == '') {
@@ -100,7 +101,7 @@ export const componentFilter = {
                 searchHistory.value.unshift(searchQuery.value.trim())
                 searchHistory.value = searchHistory.value.slice(0, 3)
                 sessionStorage.setItem('searchHistory', JSON.stringify(searchHistory.value))
-            }   
+            }
         }
 
         const onSearchInput = () => {
@@ -117,7 +118,7 @@ export const componentFilter = {
                 searchHistory.value = JSON.parse(storedHistory)
             }
         })
-       
+
         return {
             searchQuery, selectedOption, onSearchClick: filterSensors, searchHistory, saveSearchHistory, onSearchInput
         }
@@ -130,7 +131,7 @@ export const componentFilter = {
                 <option v-for="(historyItem, index) in searchHistory" :key="index" :value="historyItem"></option>
                 <option value="..Z"></option>
                 <option value="..[EN]"></option>
-            </datalist>    
+            </datalist>
         </div>
     </div>`,
 }
@@ -155,14 +156,14 @@ export const componentTable = {
         const gates = squirrelGates()
         console.log("gates", gates)
         console.log('before sensor assignment')
-        
+
 
         const sensors = gates.sensors
         const responses = gates.responses
         const channels = gates.channels
         const currentSort = ref('codes')
         const currentSortDir = ref('asc')
-        const responsesMap = ref({})      
+        const responsesMap = ref({})
         const noResults = computed(() => filteredSensors.value.length === 0)
 
         // watch(sensors, () => {
@@ -181,7 +182,7 @@ export const componentTable = {
                     return 1 * modifier
                 return 0
             })
-        })  
+        })
 
         const mapResponses = () => {
             responsesMap.value = responses.value.reduce((map, response) => {
@@ -217,7 +218,7 @@ export const componentTable = {
 
     <div class="vbox-main tab-pane sensor-table">
                     <table class="table">
-                        <thead>    
+                        <thead>
                             <tr>
                                 <th scope="col">
                                     <div class="dropdown">
@@ -225,7 +226,7 @@ export const componentTable = {
                                             class="btn btn-outline-primary dropdown-toggle"
                                             type="button"
                                             data-bs-toggle="dropdown"
-                                            
+
                                         >
                                             {{ selectedOption }}
                                         </button>
@@ -235,8 +236,8 @@ export const componentTable = {
                                         </ul>
                                     </div>
                                 </th>
-                                
-                                
+
+
                                 <th scope="col" @click="sortTable('lat')" style="text-align: right">Latitude     <span v-if="currentSort === 'lat'">
                                     {{ currentSortDir === 'asc' ? '▲' : '▼' }}
                                 </span></th>
@@ -267,10 +268,10 @@ export const componentTable = {
                             <template v-for="sensor in sortedSensors">
 
                                 <tr v-for="channel in sensor.channels">
-                                    
-                                    
+
+
                                     <td>
-                                        
+
                                         <template v-if="selectedOption === 'Sensor'">
                                             {{sensor.codes}}
                                         </template>
@@ -280,7 +281,7 @@ export const componentTable = {
                                         <template v-if="selectedOption === 'Response'">
                                             {{}}
                                         </template>
-                                        
+
                                     </td>
                                       <td style="text-align: right">{{ channel.lat }}</td>
                                       <td style="text-align: right">{{ channel.lon }}</td>
@@ -295,15 +296,139 @@ export const componentTable = {
                                             {{ formatResponse(responsesMap[channel.codes]) }}
                                         </template>
                                     </td>
-                                                    
-                                      
+
+
                                     </tr>
                                       </template>
-                                    
-                                
-                                
+
+
+
                         </tbody>
                     </table>
                 </div>
+    `,
+}
+
+export const componentCatalog = {
+    setup() {
+        const gates = squirrelGates()
+
+        const event_groups = gates.eventGroups;
+
+        const fmt = (format, value) => {
+            return d3.format(format)(value);
+        };
+
+        const toParams = (o) => {
+            return new URLSearchParams(o).toString();
+        };
+
+        const depth_scale = d3
+            .scaleThreshold()
+            .domain([15e3, 30e3, 60e3, 120e3, 240e3, 480e3])
+            .range([
+                "brick",
+                "sienna",
+                "ochre",
+                "foliage",
+                "ocean",
+                "sky",
+                "plum",
+            ]);
+
+        const get_m6 = ({mnn, mee, mdd, mne, mnd, med}) => ({mnn, mee, mdd, mne, mnd, med})
+
+        const beachball_link = (ev) => {
+            if (ev.moment_tensor) {
+                return (
+                    "beachball?" +
+                    toParams(get_m6(ev.moment_tensor)) +
+                    "&" +
+                    toParams({ theme: depth_scale(ev.depth) })
+                );
+            } else {
+                return "";
+            }
+        };
+
+        const get_region = (group) => {
+            for (let i=0; i<group.length; i++) {
+                if (group[i].region) {
+                    return group[i].region
+                }
+            }
+        }
+
+        return { event_groups, timeToStr, fmt, beachball_link, get_region };
+    },
+    template: `
+
+            <div class="mb-4" v-for="event_group in event_groups">
+                <div
+                    class="clickable text-nowrap"
+                    @click="event_group.details = !event_group.details;"
+                >
+                    {{ get_region(event_group) }}
+                </div>
+                <div
+                    v-if="event_group.details"
+                    class="text-nowrap"
+                    style="font-size: small"
+                >
+                    {{ event_group[0].extras.group_id }}
+                </div>
+                <div
+                    class="row align-items-center"
+                    v-for="event in event_group"
+                >
+                    <!--<div class="col-3" style="color: gray; font-size: 70%">{{ event.name }} {{event.extras.catalog_id }}</div>-->
+                    <div class="col-9 col-md-10">
+                        <div
+                            class="row align-items-center clickable"
+                            @click="event_group.details = !event_group.details"
+                        >
+                            <!--<div class="col-6 col-md-3" style="color: gray; font-size: 70%">{{event.extras.catalog_id }}</div>-->
+                            <div class="col-3 col-md-2 varsize text-nowrap">
+                                <span class="badge">{{ event.catalog }}</span>
+                            </div>
+                            <div class="col-4 col-md-3 varsize text-nowrap">
+                                {{ timeToStr(event.time, '%Y-%m-%d') }}
+                            </div>
+                            <div
+                                class="col-5 col-md-3 varsize text-nowrap text-end"
+                                style="color: gray"
+                            >
+                                {{ timeToStr(event.time, '%H:%M:%S.3FRAC') }}
+                            </div>
+                            <div class="col-6 col-md-2 text-nowrap">
+                                {{ event.magnitude_type || 'M' }} {{ fmt('3.1f',
+                                event.magnitude) }}
+                            </div>
+                            <div class="col-6 col-md-2 text-end text-nowrap">
+                                {{ fmt('4.0f', event.depth / 1000.) }} km
+                            </div>
+                        </div>
+                        <div
+                            v-if="event_group.details"
+                            style="font-size: small"
+                        >
+                            <div>{{ event.lat }}, {{ event.lon }}</div>
+                            <div style="font-size: small">
+                                {{ event.name }}, {{ event.extras.catalog_id }}
+                            </div>
+                        </div>
+                    </div>
+                    <div
+                        class="col-3 col-md-2 text-center"
+                        style="padding: 0em"
+                    >
+                        <img
+                            style="height: 100%"
+                            :src="beachball_link(event)"
+                        />
+                    </div>
+                </div>
+            </div>
+
     `,
 }

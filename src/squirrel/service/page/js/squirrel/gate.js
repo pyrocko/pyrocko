@@ -15,6 +15,7 @@ export const squirrelGate = (gate_id_) => {
     const channels = shallowRef([])
     const sensors = shallowRef([])
     const responses = shallowRef([])
+    const events = shallowRef([])
     const timeSpans = shallowRef({
         waveform: null,
         channel: null,
@@ -52,6 +53,14 @@ export const squirrelGate = (gate_id_) => {
         return gateRequest('get_responses')
     }
 
+    const fetchEvents = async () => {
+        const events = await gateRequest('get_events')
+        for (const ev of events) {
+            ev.time = strToTime(ev.time)
+        }
+        return events
+    }
+
     const fetchTimeSpans = async () => {
         const newTimeSpans = {}
         for (const kind of ['waveform', 'channel', 'response', 'carpet']) {
@@ -72,9 +81,10 @@ export const squirrelGate = (gate_id_) => {
         channels.value = await fetchChannels()
         sensors.value = await fetchSensors()
         responses.value = await fetchResponses()
+        events.value = await fetchEvents()
     }
 
-    return { codes, timeSpans, channels, sensors, responses, update, counter, filter }
+    return { codes, timeSpans, channels, sensors, responses, events, update, counter, filter }
 }
 
 export const squirrelBlock = (block) => {
@@ -393,6 +403,24 @@ export const setupGates = () => {
         return responses
     })
 
+    const events = computed(() => {
+        console.log('zzz')
+        const events = []
+        for (const gate of gates.value) {
+            for (const ev of gate.events) {
+                events.push(ev)
+            }
+        }
+        return events
+    })
+
+    const eventGroups = computed(() => {
+        console.log('yyy')
+        const groups = Array.from(Map.groupBy(events.value, (ev) => ev.extras.group_id).values())
+        groups.sort((a, b) => a[0].time - b[0].time)
+        return groups
+    })
+
     const timeSpans = computed(() => {
         const spans = {
             channel: null,
@@ -456,6 +484,8 @@ export const setupGates = () => {
         channels,
         sensors,
         responses,
+        events,
+        eventGroups,
         timeSpans,
         getCoverages,
         getCarpets,
