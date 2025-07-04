@@ -2266,6 +2266,10 @@ class Squirrel(Selection):
         tmin, tmax, codes = self._get_selection_args(
             EVENT, obj, tmin, tmax, time, codes)
 
+        if filter is None:
+            from pyrocko.model.event import EventFilter
+            filter = EventFilter()
+
         tmin = none_max(tmin, filter.time_min)
         tmax = none_min(tmax, filter.time_max)
 

@@ -21,6 +21,7 @@ from datetime import datetime
 from io import BytesIO
 
 import numpy as num
+from matplotlib import pyplot as plt
 from tornado import web, autoreload
 
 from pyrocko import info
@@ -31,6 +32,9 @@ from pyrocko import guts
 from pyrocko.squirrel.error import ToolError, SquirrelError
 from pyrocko.squirrel import operators as ops
 from pyrocko.squirrel.base import Squirrel
+from pyrocko import moment_tensor as pmt
+from pyrocko.plot import beachball
+from pyrocko.color import Color, g_pyrocko_color_cycle_base
 
 logger = logging.getLogger('psq.service.server')
 
@@ -294,6 +298,9 @@ class Gate(guts.Object):
     def get_responses(self, *args, **kwargs):
         return self._outlet.get_responses(*args, **kwargs)
 
+    def get_events(self, *args, **kwargs):
+        return self._outlet.get_events(*args, **kwargs)
+
     def get_coverage(self, *args, **kwargs):
         kwargs['codes'] = '*.*.*.*.'
         return self._outlet.get_coverage(*args, **kwargs)
@@ -487,7 +494,7 @@ class SquirrelGateHandler(SquirrelRequestHandler):
         return TimeSpan(*gate.get_time_span(kinds=[kind], dummy_limits=False))
 
     def p_get_events(self, parameters, gate):
-        tmin, tmax = self.get_cleaned('tmin tmax codes', parameters)
+        tmin, tmax = self.get_cleaned('tmin tmax', parameters)
         return gate.get_events(tmin=tmin, tmax=tmax)
 
     def p_get_channels(self, parameters, gate):
@@ -531,6 +538,50 @@ class SquirrelGateHandler(SquirrelRequestHandler):
 
         gate.advance_accessor()
         return images
+
+
+color_themes = {
+    'black': dict(
+        edgecolor=Color('black').rgba,
+        color_t=Color('black').rgba)}
+
+for name in g_pyrocko_color_cycle_base:
+    color_themes[name] = dict(
+        edgecolor=Color(name+'-dark').rgba,
+        color_t=Color(name).rgba)
+
+
+class BeachballHandler(SquirrelRequestHandler):
+    def get(self):
+        m6 = [
+            float(self.get_query_argument(component))
+            for component in 'mnn mee mdd mne mnd med'.split()]
+
+        color_theme_name = self.get_query_argument('theme', 'black')
+
+        mt = pmt.as_mt(m6)
+        print(mt)
+
+        fig = plt.figure(figsize=(0.5, 0.5))
+        axes = fig.add_subplot(1, 1, 1, aspect=1.)
+        axes.axison = False
+        axes.set_xlim(-0.52, 0.52)
+        axes.set_ylim(-0.52, 0.52)
+
+        beachball.plot_beachball_mpl(
+            mt, axes,
+            position=(0, 0),
+            size_units='data',
+            **color_themes[color_theme_name],
+            linewidth=0.8)
+
+        buffer = BytesIO()
+        fig.savefig(buffer, format='svg')
+
+        plt.close(fig)
+
+        self.set_header('Content-Type', 'image/svg+xml')
+        self.write(buffer.getvalue())
 
 
 def get_ip(host):
@@ -663,6 +714,11 @@ async def serve(
             (
                 r'/squirrel/gate/([a-z0-9_]+)/([a-z0-9_]+)',
                 SquirrelGateHandler,
+                squirrel_handler_dict,
+            ),
+            (
+                r'/beachball',
+                BeachballHandler,
                 squirrel_handler_dict,
             ),
         ],
