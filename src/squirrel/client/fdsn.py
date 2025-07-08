@@ -711,9 +711,11 @@ class FDSNSource(Source, has_paths.HasPaths):
 
         return d
 
+    def save_waveforms(self, trs):
+        return self._archive.save(trs, check_append_merge=True)
+
     def download_waveforms(
-            self, orders, success, batch_add, error_permanent,
-            error_temporary, aborted):
+            self, orders, success, error_permanent, error_temporary, aborted):
 
         elog = ErrorLog(site=self.site)
         orders.sort(key=orders_sort_key)
@@ -733,7 +735,6 @@ class FDSNSource(Source, has_paths.HasPaths):
             self._log_info_data(
                 'downloading, %s' % order_summary(orders_now))
 
-            all_paths = []
             with tempfile.TemporaryDirectory() as tmpdir:
                 try:
                     data = fdsn.dataselect(
@@ -808,11 +809,6 @@ class FDSNSource(Source, has_paths.HasPaths):
                                 else:
                                     elog.append(now, order, 'partial result')
 
-                            paths = self._archive.save(
-                                trs_order,
-                                check_append_merge=True)
-                            all_paths.extend(paths)
-
                             nsuccess += 1
                             success(order, trs_order)
 
@@ -845,9 +841,6 @@ class FDSNSource(Source, has_paths.HasPaths):
                     util.plural_s(nsuccess),
                     '(partially) ' if emessage else '')
                 + (', %s' % emessage if emessage else ''))
-
-            if all_paths:
-                batch_add(all_paths)
 
             i += neach
             task.update(i)

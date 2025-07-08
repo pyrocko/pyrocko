@@ -263,7 +263,8 @@ class Selection(object):
             paths,
             kind_mask=model.g_kind_mask_all,
             format='detect',
-            show_progress=True):
+            show_progress=True,
+            transaction=None):
 
         '''
         Add files to the selection.
@@ -293,15 +294,15 @@ class Selection(object):
         if isinstance(paths, list) and len(paths) == 0:
             return
 
+        use_temp_table = not isinstance(paths, list) or len(paths) > 200
+
         if show_progress:
             task = make_task('Gathering file names')
             paths = task(paths)
 
         db = self.get_database()
-        with self.transaction('add files') as cursor:
-
-            if isinstance(paths, list) and len(paths) <= 200:
-
+        with (transaction or self.transaction('add files')) as cursor:
+            if not use_temp_table:
                 paths = [db.relpath(path) for path in paths]
 
                 # short non-iterator paths: can do without temp table
@@ -579,20 +580,16 @@ class Selection(object):
         contents of the file.
         '''
 
-        where = '''
-        '''
-
+        where = ''
         if skip_unchanged:
-            extra_where = '''
-                AND file_states_a.file_state == 0
+            where = '''
+                WHERE file_states_b.file_state == 0
             '''
-        else:
-            extra_where = ''
 
         nfiles = execute_get1(self._conn, self._sql('''
             SELECT
                 COUNT()
-            FROM %(db)s.%(file_states)s
+            FROM %(db)s.%(file_states)s file_states_b
         ''' + where), ())[0]
 
         def gen():
@@ -621,10 +618,10 @@ class Selection(object):
                     ON nuts.kind_codes_id == kind_codes.kind_codes_id
                 WHERE file_states_a.file_id IN (
                     SELECT file_id FROM %(db)s.%(file_states)s file_states_b
+            ''' + where + '''
                     ORDER BY file_states_b.file_id
                     LIMIT ? OFFSET ?
                 )
-            ''' + extra_where + '''
                 ORDER BY file_states_a.file_id
             ''')
 
@@ -660,7 +657,7 @@ class Selection(object):
 
         return GeneratorWithLen(gen(), nfiles)
 
-    def flag_modified(self, check=True):
+    def flag_modified(self, check=True, transaction=None):
         '''
         Mark files which have been modified.
 
@@ -679,7 +676,7 @@ class Selection(object):
         '''
 
         db = self.get_database()
-        with self.transaction('flag modified') as cursor:
+        with (transaction or self.transaction('flag modified')) as cursor:
             sql = self._sql('''
                 UPDATE %(db)s.%(file_states)s
                 SET file_state = 0

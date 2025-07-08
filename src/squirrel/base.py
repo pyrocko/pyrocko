@@ -184,7 +184,7 @@ class Batch(object):
         Extracted waveforms for this time window.
     '''
 
-    def __init__(self, tmin, tmax, i, n, igroup, ngroups, traces):
+    def __init__(self, tmin, tmax, tpad, i, n, igroup, ngroups, traces):
         self.tmin = tmin
         self.tmax = tmax
         self.i = i
@@ -192,6 +192,12 @@ class Batch(object):
         self.igroup = igroup
         self.ngroups = ngroups
         self.traces = traces
+
+    def __str__(self):
+        return 'Batch %i/%i, group %i/%i, %i traces, %s - %s' % (
+            self.i, self.n, self.igroup, self.ngroups, len(self.traces),
+            util.time_to_str(self.tmin),
+            util.time_to_str(self.tmax))
 
 
 class Squirrel(Selection):
@@ -600,7 +606,8 @@ class Squirrel(Selection):
             format='detect',
             include=None,
             exclude=None,
-            check=True):
+            check=True,
+            transaction=None):
 
         '''
         Add files to the selection.
@@ -665,10 +672,10 @@ class Squirrel(Selection):
                 include=include,
                 exclude=exclude,
                 pass_through=lambda path: path.startswith('virtual:')
-            ), kind_mask, format)
+            ), kind_mask, format, transaction=transaction)
 
-        self._load(check)
-        self._update_nuts()
+        self._load(check, transaction=transaction)
+        self._update_nuts(transaction=transaction)
 
     def reload(self):
         '''
@@ -754,12 +761,13 @@ class Squirrel(Selection):
         self.add_volatile(nuts)
         return path
 
-    def _load(self, check):
+    def _load(self, check, transaction=None):
         for _ in io.iload(
                 self,
                 content=[],
                 skip_unchanged=True,
-                check=check):
+                check=check,
+                transaction=transaction):
             pass
 
     def _update_nuts(self, transaction=None):
@@ -1128,7 +1136,13 @@ class Squirrel(Selection):
         return list(self.iter_nuts(*args, **kwargs))
 
     def _split_nuts(
-            self, kind, tmin=None, tmax=None, codes=None, path=None):
+            self,
+            kind,
+            tmin=None,
+            tmax=None,
+            codes=None,
+            path=None,
+            transaction=None):
 
         kind_id = to_kind_id(kind)
         tmin_seconds, tmin_offset = model.tsplit(tmin)
@@ -1142,7 +1156,7 @@ class Squirrel(Selection):
         def main_nuts(s):
             return s % names_main_nuts
 
-        with self.transaction('split nuts') as cursor:
+        with (transaction or self.transaction('split nuts')) as cursor:
             # modify selection and main
             for sql_subst in [
                     self._sql, main_nuts]:
@@ -2125,11 +2139,29 @@ class Squirrel(Selection):
     def _redeem_promises(self, *args, order_only=False):
 
         to_be_split = []
+        to_be_saved = []
+        transaction = None
+
+        def save_execute():
+            paths = []
+            for order, trs in to_be_saved:
+                paths.extend(sources[order.source_id].save_waveforms(trs))
+
+            paths = sorted(set(paths))
+            self.add(paths, transaction=transaction)
+
+            to_be_saved[:] = []
 
         def split_promise_execute():
             for (tmin, tmax, codes, path) in to_be_split:
                 self._split_nuts(
-                    'waveform_promise', tmin, tmax, codes=codes, path=path)
+                    'waveform_promise',
+                    tmin,
+                    tmax,
+                    codes=codes,
+                    path=path,
+                    transaction=transaction)
+
             to_be_split[:] = []
 
         def split_promise(order, tmax=None):
@@ -2272,8 +2304,7 @@ class Squirrel(Selection):
             else:
                 split_promise(order)
 
-        def batch_add(paths):
-            self.add(paths)
+            to_be_saved.append((order, trs))
 
         calls = queue.Queue()
 
@@ -2315,7 +2346,6 @@ class Squirrel(Selection):
                                 success=enqueue(success),
                                 error_permanent=enqueue(split_promise),
                                 error_temporary=noop,
-                                batch_add=enqueue(batch_add),
                                 aborted=aborted)
 
                         finally:
@@ -2326,12 +2356,44 @@ class Squirrel(Selection):
                     threads.append(thread)
 
                 ndone = 0
+                batch = []
                 while ndone < len(by_source_id):
-                    ret = calls.get()
-                    if ret is None:
-                        ndone += 1
-                    else:
-                        ret[0](*ret[1])
+                    try:
+                        ret = calls.get(time, timeout=0.1)
+                        if ret is None:
+                            ndone += 1
+                        else:
+                            batch.append(ret)
+
+                    except queue.Empty:
+                        if batch:
+                            transaction = self.transaction(
+                                'post receive processing (%i)' % len(batch))
+
+                            with transaction:
+                                while batch:
+                                    func, args = batch.pop(0)
+                                    func(*args)
+
+                                split_promise_execute()
+                                save_execute()
+
+                            transaction = None
+
+                if batch:
+                    transaction = self.transaction(
+                        'post receive processing (finishing, %i)' % len(batch))
+
+                    with transaction:
+                        while batch:
+                            func, args = batch.pop(0)
+                            func(*args)
+
+                        split_promise_execute()
+                        save_execute()
+
+                    transaction = None
+
             finally:
                 quit_threads = True
 
@@ -2340,8 +2402,6 @@ class Squirrel(Selection):
 
             if task:
                 task.update(n_order_groups - len(order_groups))
-
-        split_promise_execute()
 
         if task:
             task.done()
@@ -2824,6 +2884,7 @@ class Squirrel(Selection):
                     yield Batch(
                         tmin=wmin,
                         tmax=wmax,
+                        tpad=tpad,
                         i=iwin,
                         n=nwin,
                         igroup=igroup,
@@ -3455,6 +3516,7 @@ Operators:                     %s''' % (
 
 
 __all__ = [
+    'Batch',
     'Squirrel',
     'SquirrelStats',
 ]

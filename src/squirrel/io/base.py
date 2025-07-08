@@ -145,7 +145,8 @@ def iload(
         skip_unchanged=False,
         content=g_content_kinds,
         show_progress=True,
-        update_selection=None):
+        update_selection=None,
+        transaction=None):
 
     '''
     Iteratively load content or index/reindex meta-information from files.
@@ -207,6 +208,8 @@ def iload(
 
     from ..selection import Selection
 
+    outer_transaction = transaction
+
     n_db = 0
     n_load = 0
     selection = None
@@ -254,7 +257,7 @@ def iload(
                 selection = temp_selection
 
         if skip_unchanged:
-            selection.flag_modified(check)
+            selection.flag_modified(check, transaction=outer_transaction)
 
         if selection:
             it = selection.undig_grouped(skip_unchanged=skip_unchanged)
@@ -300,7 +303,9 @@ def iload(
             n_files += 1
             if database and transaction:
                 tnow = time.time()
-                if tnow - tcommit > 20. or n_files % 200 == 0:
+                if tnow - tcommit > 20. or n_files % 200 == 0 \
+                        and not outer_transaction:
+
                     transaction.commit()
                     tcommit = tnow
                     transaction.close()
@@ -401,25 +406,31 @@ def iload(
                                     file_size=size,
                                     kind_id=EMPTY))
 
-                    if not transaction:
+                    if not transaction and not outer_transaction:
                         transaction = database.transaction(
                             'update content index')
                         transaction.begin()
 
-                    database.dig(nuts, transaction=transaction)
+                    database.dig(
+                        nuts, transaction=(outer_transaction or transaction))
+
                     if update_selection is not None:
                         update_selection._set_file_states_force_check(
-                            [path], transaction=transaction)
-                        update_selection._update_nuts(transaction=transaction)
+                            [path],
+                            transaction=(outer_transaction or transaction))
+
+                        update_selection._update_nuts(
+                            transaction=(outer_transaction or transaction))
 
             except FileLoadError:
                 logger.error('Cannot read file: %s' % path)
                 if database:
-                    if not transaction:
+                    if not transaction and not outer_transaction:
                         transaction = database.transaction(
                             'update content index')
                         transaction.begin()
-                    database.reset(path, transaction=transaction)
+                    database.reset(
+                        path, transaction=(outer_transaction or transaction))
 
         clean = True
 
