@@ -16,6 +16,7 @@ InvalidColorDef
 d2r = cake.d2r
 r2d = cake.r2d
 
+
 def globe_cross_section():
     # modified from http://stackoverflow.com/questions/2417794/
     # how-to-make-the-angles-in-a-matplotlib-polar-plot-go-clockwise-with-0-at-the-top
@@ -464,9 +465,12 @@ def plot_source(zstart, axes=None):
     axes = getaxes(axes)
     axes.plot([0], [zstart], 'o', color='black', clip_on=False)
 
+
 def offset(axes, x, y):
     from matplotlib import transforms
-    return axes.transData + transforms.ScaledTranslation(x/72., y/72., axes.get_figure().dpi_scale_trans)
+    return axes.transData + transforms.ScaledTranslation(
+        x/72., y/72., axes.get_figure().dpi_scale_trans)
+
 
 def plot_receivers(zstop, distances, axes=None, **kwargs):
     if 'color' not in kwargs and 'c' not in kwargs:
@@ -477,7 +481,10 @@ def plot_receivers(zstop, distances, axes=None, **kwargs):
     for distance in distances:
         axes.plot(
             distance, zstop, marker=(3, 0, -distance),
-            clip_on=False, transform=offset(axes, num.sin(distance*d2r)*3, num.cos(distance*d2r)*3), **kwargs)
+            clip_on=False, transform=offset(
+                axes, num.sin(distance*d2r)*3, num.cos(distance*d2r)*3),
+            **kwargs)
+
 
 def getaxes(axes=None):
     from matplotlib import pyplot as plt
@@ -644,20 +651,24 @@ def my_rays_plot_gcs(
 
     globe_cross_section()
     axes = plt.subplot(1, 1, 1, projection='globe_cross_section')
-    axes.tick_params(labeltop = False, labelbottom = False)
+    axes.tick_params(labeltop=False, labelbottom=False)
     plot_rays(paths, rays, zstart, zstop, axes=axes, phase_colors=phase_colors)
-    print('plot_source')
     plot_source(zstart, axes=axes)
 
     for name in ['cmb', 'icb']:
-        z = mod.discontinuity(name).z
 
-        borders = num.arange(0, 360, 0.01)
-        a = len(borders)
-        depth = num.full(a, z)
+        try:
+            z = mod.discontinuity(name).z
 
-        axes.plot(borders, depth, color='xkcd:grey', alpha=0.5)
-        axes.fill(borders, depth, color='xkcd:grey', alpha=0.1)
+            borders = num.arange(0, 360, 0.01)
+            a = len(borders)
+            depth = num.full(a, z)
+
+            axes.plot(borders, depth, color='xkcd:grey', alpha=0.5)
+            axes.fill(borders, depth, color='xkcd:grey', alpha=0.1)
+
+        except cake.DiscontinuityNotFound:
+            pass
 
     if distances is not None:
         plot_receivers(zstop, distances, axes=axes)
@@ -701,6 +712,7 @@ def my_rays_plot(
     plot_source(zstart, axes=axes)
     if distances is not None:
         plot_receivers(zstop, distances, axes=axes)
+
     labels_rays(as_degrees=as_degrees, axes=axes)
     mx = (xmax-xmin)*0.05
     my = (ymax-ymin)*0.05
