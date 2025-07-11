@@ -1329,7 +1329,7 @@ class Squirrel(Selection):
         self_tmin, self_tmax = self.get_time_span(
             kinds, dummy_limits=False)
 
-        return None not in (self_tmin, self_tmax)
+        return not (self_tmin is None and self_tmax is None)
 
     def get_deltat_span(self, kind):
         '''
