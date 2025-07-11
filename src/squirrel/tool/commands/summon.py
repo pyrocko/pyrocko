@@ -71,6 +71,11 @@ def run(parser, args):
     d = args.squirrel_query
     squirrel = args.make_squirrel()
 
+    if not squirrel.has(['waveform_promise']):
+        logger.warning(
+            'No waveform promises available. It may be necessary  to run '
+            '`squirrel update --promises ...`.')
+
     if args.get_events:
         events = squirrel.get_events(
             tmin=d.get('tmin', None),
@@ -94,6 +99,16 @@ def run(parser, args):
             (event.time + span_tmin, event.time + span_tmax, event.name)
             for event in events]
     else:
+        p_tmin, p_tmax = squirrel.get_time_span(
+            kinds=['waveform_promise'],
+            dummy_limits=False)
+
+        if d.get('tmin') is None and p_tmin is not None:
+            d['tmin'] = p_tmin
+
+        if d.get('tmax') is None and p_tmax is not None:
+            d['tmax'] = p_tmax
+
         if 'tmin' not in d or 'tmax' not in d:
             raise SquirrelError('Time span required.')
 
@@ -112,12 +127,16 @@ def run(parser, args):
     with progress.view():
         task_group = progress.task('Group', len(groups))
 
-        for group_tmin, group_tmax, group_name in task_group(groups):
+        for igroup, (group_tmin, group_tmax, group_name) in enumerate(groups):
+            group_label = '%s - %s%s' % (
+                    util.time_to_str(group_tmin, '%Y-%m-%d %H:%M:%S'),
+                    util.time_to_str(group_tmax, '%Y-%m-%d %H:%M:%S'),
+                    '(%s)' % group_name if group_name else '')
+
+            task_group.update(igroup, group_label)
+
             if group_name:
-                logger.info('Summoning group: %s (%s - %s)' % (
-                    group_name,
-                    util.time_to_str(group_tmin),
-                    util.time_to_str(group_tmax)))
+                logger.info('Summoning group: %s' % group_label)
 
             tmin = math.floor(group_tmin / tinc) * tinc
             tmax = math.ceil(group_tmax / tinc) * tinc
@@ -125,7 +144,7 @@ def run(parser, args):
             task = progress.task('Summoning', nwindows)
             iwindow = 0
             try:
-                for trs in squirrel.chopper_waveforms(
+                for batch in squirrel.chopper_waveforms(
                         tinc=tinc,
                         load_data=False,
                         channel_priorities=channel_priorities,
@@ -136,7 +155,9 @@ def run(parser, args):
                         **d):
 
                     iwindow += 1
-                    task.update(iwindow)
+                    task.update(iwindow, '%s - %s' % (
+                        util.time_to_str(batch.tmin, '%Y-%m-%d %H:%M:%S'),
+                        util.time_to_str(batch.tmax, '%Y-%m-%d %H:%M:%S')))
 
             finally:
                 task.done()
