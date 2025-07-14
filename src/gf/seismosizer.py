@@ -1042,7 +1042,7 @@ class HalfSinusoidSTF(STF):
         return times, amplitudes
 
     def base_key(self):
-        return (type(self).__name__, self.duration, self.anchor)
+        return (type(self).__name__, self.duration, self.anchor, self.exponent)
 
 
 class SmoothRampSTF(STF):
@@ -1206,6 +1206,14 @@ class SimpleLandslideSTF(STF):
         default=False,
         help='set acceleration to zero (for testing)')
 
+    def base_key(self):
+        return (
+            type(self).__name__,
+            self.duration_acceleration,
+            self.duration_deceleration,
+            self.mute_acceleration,
+            self.mute_deceleration)
+
     def discretize_t(self, deltat, tref):
 
         d_acc = self.duration_acceleration
@@ -1295,6 +1303,13 @@ class MultiTriangleSTF(STF):
     differentiate = Bool.T(
         default=False,
         help='Output is the differentiated STF.')
+
+    def base_key(self):
+        return (
+            type(self).__name__,
+            self.deltat,
+            self.anchor,
+            self.differentiate) + tuple(self.amplitudes.tolist())
 
     def centroid_time(self, tref):
         amplitudes = num.abs(self.amplitudes) \
@@ -4868,6 +4883,9 @@ class SFSource(Source):
     A single force point source.
 
     Supported GF schemes: `'elastic5'`.
+
+    Source time function handling: either set `stf` or set `stf_n`, `stf_e`
+    and `stf_d` or set `stf_ne` and `stf_d`.
     '''
 
     discretized_source_class = meta.DiscretizedSFSource
@@ -4884,11 +4902,33 @@ class SFSource(Source):
         default=0.,
         help='downward component of single force [N]')
 
+    stf_n = STF.T(
+        optional=True,
+        help='source time function for north component.')
+
+    stf_e = STF.T(
+        optional=True,
+        help='source time function for east component.')
+
+    stf_d = STF.T(
+        optional=True,
+        help='source time function for vertical component.')
+
+    stf_ne = STF.T(
+        optional=True,
+        help='combined source time function for horizontal components.')
+
     def __init__(self, **kwargs):
         Source.__init__(self, **kwargs)
 
     def base_key(self):
-        return Source.base_key(self) + (self.fn, self.fe, self.fd)
+        stf_key = []
+        for stf in [self.stf_n, self.stf_e, self.stf_d, self.stf_ne]:
+            if stf is not None:
+                stf_key.extend(stf.base_key())
+
+        return Source.base_key(self) + (self.fn, self.fe, self.fd) \
+            + tuple(stf_key)
 
     def get_factor(self):
         return 1.0
@@ -4898,13 +4938,59 @@ class SFSource(Source):
         return math.sqrt(self.fn**2 + self.fe**2 + self.fd**2)
 
     def discretize_basesource(self, store, target=None):
-        times, amplitudes = self.effective_stf_pre().discretize_t(
-            store.config.deltat, self.time)
-        forces = amplitudes[:, num.newaxis] * num.array(
-            [[self.fn, self.fe, self.fd]], dtype=float)
 
-        return meta.DiscretizedSFSource(forces=forces,
-                                        **self._dparams_base_repeated(times))
+        stf_mask = (
+            self.stf is not None,
+            self.stf_n is not None,
+            self.stf_e is not None,
+            self.stf_d is not None,
+            self.stf_ne is not None)
+
+        try:
+            stf_cmode = {
+                (False, False, False, False, False): 1,
+                (True, False, False, False, False): 1,
+                (False, False, False, True, True): 2,
+                (False, True, True, True, False): 3}[stf_mask]
+        except KeyError:
+            raise Exception(
+                'SFSource: Invalid combination of component-wise STFs.')
+
+        if stf_cmode != 1 and self.stf_mode != 'pre':
+            raise Exception(
+                'SFSource: '
+                'Component-wise STFs only works with `stf_mode == "pre"`.')
+
+        times_forces = []
+        for stf, force in [
+                (self.effective_stf_pre() if stf_cmode == 1 else None,
+                 [self.fn, self.fe, self.fd]),
+                (self.stf_n, [self.fn, 0.0, 0.0]),
+                (self.stf_e, [0.0, self.fe, 0.0]),
+                (self.stf_d, [0.0, 0.0, self.fd]),
+                (self.stf_ne, [self.fn, self.fe, 0.0])]:
+
+            if stf is not None:
+                times, amplitudes = stf.discretize_t(
+                    store.config.deltat, self.time)
+
+                forces = amplitudes[:, num.newaxis] * num.array(
+                    [force], dtype=float)
+
+                times_forces.append((times, forces))
+
+        tmin = min(times[0] for (times, _) in times_forces)
+        tmax = max(times[-1] for (times, _) in times_forces)
+        ntimes = int(round((tmax - tmin) / store.config.deltat)) + 1
+        sum_times = num.linspace(tmin, tmax, ntimes)
+        sum_forces = num.zeros((ntimes, 3))
+        for times, forces in times_forces:
+            ioff = int(round((times[0] - sum_times[0]) / store.config.deltat))
+            sum_forces[ioff:ioff+times.size, :] += forces
+
+        return meta.DiscretizedSFSource(
+            forces=sum_forces,
+            **self._dparams_base_repeated(sum_times))
 
     def pyrocko_event(self, store=None, target=None, **kwargs):
         return Source.pyrocko_event(
