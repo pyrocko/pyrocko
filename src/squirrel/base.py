@@ -119,10 +119,6 @@ def gaps(avail, tmin, tmax):
     return gaps
 
 
-def order_key(order):
-    return (order.codes, order.tmin, order.tmax)
-
-
 def prefix_tree(tups):
     if not tups:
         return []
@@ -361,6 +357,8 @@ class Squirrel(Selection):
         self._sources = []
         self._operators = []
         self._operator_registry = {}
+        self._recent_orders = {}
+        self._recent_orders_prune_time = 3600.
 
         self._pending_orders = []
 
@@ -714,9 +712,12 @@ class Squirrel(Selection):
                 nuts = list(nuts)
             virtual_paths = set(nut.file_path for nut in nuts)
 
-        Selection.add(self, virtual_paths)
-        self.get_database().dig(nuts)
-        self._update_nuts()
+        transaction = self.transaction('add virtual')
+        with transaction:
+            Selection.add(self, virtual_paths, transaction=transaction)
+            self.flag_modified(False, transaction=transaction)
+            self.get_database().dig(nuts, transaction=transaction)
+            self._update_nuts(transaction=transaction)
 
     def add_volatile(self, nuts):
         if not isinstance(nuts, list):
@@ -2137,11 +2138,34 @@ class Squirrel(Selection):
 
         return [self.get_content(nut) for nut in nuts]
 
+    def _housekeep_recent_orders(self):
+        now = time.time()
+
+        to_delete = []
+        for order_key, time_created in self._recent_orders.items():
+            if time_created < now - self._recent_orders_prune_time:
+                to_delete.append(order_key)
+
+        for order_key in to_delete:
+            del self._recent_orders[order_key]
+
     def _redeem_promises(self, *args, order_only=False):
+
+        self._housekeep_recent_orders()
 
         to_be_split = []
         to_be_saved = []
         transaction = None
+
+        source_ids = []
+        sources = {}
+        for source in self._sources:
+            if isinstance(source, fdsn.FDSNSource):
+                source_ids.append(source._source_id)
+                sources[source._source_id] = source
+
+        source_priority = dict(
+            (source_id, i) for (i, source_id) in enumerate(source_ids))
 
         def save_execute():
             paths = []
@@ -2211,19 +2235,26 @@ class Squirrel(Selection):
                 if block_tmin > now:
                     continue
 
-                orders.append(
-                    WaveformOrder(
+                order = WaveformOrder(
                         source_id=promise.file_path,
                         codes=promise.codes,
                         tmin=block_tmin,
                         tmax=block_tmax,
+                        anxious=sources[promise.file_path].anxious,
                         deltat=promise.deltat,
                         gaps=gaps(waveforms_avail, block_tmin, block_tmax),
-                        time_created=now))
+                        time_created=now)
+
+                order_key = order.key1()
+                if order_key in self._recent_orders:
+                    continue
+
+                self._recent_orders[order_key] = now
+                orders.append(order)
 
         orders_noop, orders = lpick(lambda order: order.gaps, orders)
 
-        order_keys_noop = set(order_key(order) for order in orders_noop)
+        order_keys_noop = set(order.key2() for order in orders_noop)
         if len(order_keys_noop) != 0 or len(orders_noop) != 0:
             logger.info(
                 'Waveform orders already satisified with cached/local data: '
@@ -2248,19 +2279,9 @@ class Squirrel(Selection):
 
             self._pending_orders = []
 
-        source_ids = []
-        sources = {}
-        for source in self._sources:
-            if isinstance(source, fdsn.FDSNSource):
-                source_ids.append(source._source_id)
-                sources[source._source_id] = source
-
-        source_priority = dict(
-            (source_id, i) for (i, source_id) in enumerate(source_ids))
-
         order_groups = defaultdict(list)
         for order in orders:
-            order_groups[order_key(order)].append(order)
+            order_groups[order.key2()].append(order)
 
         for k, order_group in order_groups.items():
             order_group.sort(
@@ -2278,12 +2299,12 @@ class Squirrel(Selection):
             task = None
 
         def release_order_group(order):
-            okey = order_key(order)
-            for followup in order_groups[okey]:
+            order_key = order.key2()
+            for followup in order_groups[order_key]:
                 if followup is not order:
                     split_promise(followup)
 
-            del order_groups[okey]
+            del order_groups[order_key]
 
             if task:
                 task.update(n_order_groups - len(order_groups))

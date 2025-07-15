@@ -1285,6 +1285,12 @@ class WaveformOrder(Object):
     def client(self):
         return self.source_id.split(':')[1]
 
+    def key1(self):
+        return (self.source_id, self.codes, self.tmin, self.tmax)
+
+    def key2(self):
+        return (self.codes, self.tmin, self.tmax)
+
     def describe(self, site='?'):
         return '%s:%s %s [%s - %s]' % (
             self.client, site, str(self.codes),

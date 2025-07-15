@@ -255,6 +255,12 @@ class FDSNSource(Source, has_paths.HasPaths):
              'refreshed. This only applies to station-metadata. Waveforms do '
              'not expire. If set to ``None`` neither type of data  expires.')
 
+    anxious = Duration.T(
+        default=600.,
+        help='Anxiety period [s]. Missing waveforms will not be treated as '
+             'permanently missing for orders spanning into times later than '
+             '(current time - anxious). Default: 600.')
+
     cache_path = has_paths.Path.T(
         optional=True,
         help='Directory path where any downloaded waveforms and station '
@@ -695,6 +701,9 @@ class FDSNSource(Source, has_paths.HasPaths):
         squirrel.add_virtual(
             (make_waveform_promise_nut(
                 file_path=path,
+                file_format = 'virtual',
+                file_mtime = 0.0,
+                file_size = 0,
                 **nut.waveform_promise_kwargs) for nut in wanted(nuts)),
             virtual_paths=[path])
 
