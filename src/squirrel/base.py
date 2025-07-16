@@ -715,8 +715,10 @@ class Squirrel(Selection):
         transaction = self.transaction('add virtual')
         with transaction:
             Selection.add(self, virtual_paths, transaction=transaction)
-            self.flag_modified(False, transaction=transaction)
-            self.get_database().dig(nuts, transaction=transaction)
+            if isinstance(nuts, list) and len(nuts) == 0:
+                self.flag_modified(False, transaction=transaction)
+            else:
+                self.get_database().dig(nuts, transaction=transaction)
             self._update_nuts(transaction=transaction)
 
     def add_volatile(self, nuts):
