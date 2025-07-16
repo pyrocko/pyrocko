@@ -136,8 +136,11 @@ class Trace(Object):
                 raise Exception(
                     'fixme: trace must be created with tmax or ydata')
         else:
-            n = int(round((tmax - self.tmin) / self.deltat)) + 1
-            self.tmax = self.tmin + (n - 1) * self.deltat
+            if deltat != 0:
+                n = int(round((tmax - self.tmin) / self.deltat)) + 1
+                self.tmax = self.tmin + (n - 1) * self.deltat
+            else:
+                self.tmax = self.tmin
 
         self.meta = meta
         self.ydata = ydata
@@ -176,7 +179,8 @@ class Trace(Object):
             self.__class__.__name__,
             str(self.codes),
             self.str_time_span,
-            '%g' % (1.0/self.deltat))
+            '%8g' % (1.0/self.deltat if self.deltat != 0.0 else 0.0),
+            '%9i' % self.data_len())
 
     @property
     def summary_stats_entries(self):
@@ -188,7 +192,7 @@ class Trace(Object):
 
     @property
     def summary(self):
-        return util.fmt_summary(self.summary_entries, (10, 20, 55, 0))
+        return util.fmt_summary(self.summary_entries, (10, 20, 55, 8, 9))
 
     @property
     def summary_stats(self):
@@ -635,6 +639,16 @@ class Trace(Object):
         when the requested time span does dot overlap with the trace's time
         span.
         '''
+
+        if self.deltat == 0:
+            assert self.tmin == self.tmax
+            if self.tmin < tmin or self.tmin > tmax:
+                raise NoData()
+            else:
+                if not inplace:
+                    return self.copy()
+                else:
+                    return
 
         if want_incomplete:
             if tmax <= self.tmin-self.deltat or self.tmax+self.deltat < tmin:
@@ -2564,11 +2578,19 @@ def degapper(
     :returns:           list of traces
     '''
 
-    in_traces = traces
+    in_traces = []
     out_traces = []
+    for tr in traces:
+        if tr.deltat == 0:
+            out_traces.append(tr)
+        else:
+            in_traces.append(tr)
+
     if not in_traces:
         return out_traces
+
     out_traces.append(in_traces.pop(0))
+
     while in_traces:
 
         a = out_traces[-1]

@@ -2719,7 +2719,7 @@ def MakePileViewerMainClass(base):
 
             deltatmin, deltatmax = pile.get_deltatmin(), pile.get_deltatmax()
 
-            if deltatmin is None:
+            if deltatmin is None or deltatmin == 0.0:
                 deltatmin = 0.001
 
             if deltatmax is None:

@@ -7,8 +7,13 @@
 Squirrel IO adaptor to :py:mod:`pyrocko.io.mseed`.
 '''
 
+import logging
+
 from pyrocko.io.io_common import get_stats, touch  # noqa
 from ... import model
+
+
+logger = logging.getLogger('psq.io.mseed')
 
 SEGMENT_SIZE = 1024*1024
 
@@ -39,27 +44,35 @@ def iload(format, file_path, segment, content):
         offset = segment
         nsegments = 1
 
-    file_segment = None
-    itr = 0
-    for tr in mseed.iload(
-            file_path, load_data=load_data,
-            offset=offset, segment_size=SEGMENT_SIZE, nsegments=nsegments):
+    try:
+        file_segment = None
+        itr = 0
+        for tr in mseed.iload(
+                file_path, load_data=load_data,
+                offset=offset, segment_size=SEGMENT_SIZE, nsegments=nsegments):
 
-        if file_segment != tr.meta['offset_start']:
-            itr = 0
-            file_segment = tr.meta['offset_start']
+            if file_segment != tr.meta['offset_start']:
+                itr = 0
+                file_segment = tr.meta['offset_start']
 
-        nsamples = int(round((tr.tmax - tr.tmin) / tr.deltat)) + 1
-        nut = model.make_waveform_nut(
-            file_segment=file_segment,
-            file_element=itr,
-            codes=tr.codes,
-            tmin=tr.tmin,
-            tmax=tr.tmin + tr.deltat * nsamples,
-            deltat=tr.deltat)
+            if tr.deltat != 0.0:
+                nsamples = int(round((tr.tmax - tr.tmin) / tr.deltat)) + 1
+            else:
+                nsamples = 0.0
+            nut = model.make_waveform_nut(
+                file_segment=file_segment,
+                file_element=itr,
+                codes=tr.codes,
+                tmin=tr.tmin,
+                tmax=tr.tmin + tr.deltat * nsamples,
+                deltat=tr.deltat)
 
-        if 'waveform' in content:
-            nut.content = tr
+            if 'waveform' in content:
+                nut.content = tr
 
-        yield nut
-        itr += 1
+            yield nut
+            itr += 1
+
+    except Exception as e:
+        logger.warning(str(e))
+        raise e from e

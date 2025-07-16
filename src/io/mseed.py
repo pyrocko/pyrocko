@@ -37,7 +37,6 @@ def iload(filename, load_data=True, offset=0, segment_size=0, nsegments=0):
 
     global g_bytes_read
 
-    have_zero_rate_traces = False
     try:
         isegment = 0
         while isegment < nsegments or nsegments == 0:
@@ -59,8 +58,7 @@ def iload(filename, load_data=True, offset=0, segment_size=0, nsegments=0):
                 try:
                     deltat = reuse(1.0/float(tr_tuple[7]))
                 except ZeroDivisionError:
-                    have_zero_rate_traces = True
-                    continue
+                    deltat = 0.0
 
                 ydata = tr_tuple[8]
 
@@ -91,11 +89,6 @@ def iload(filename, load_data=True, offset=0, segment_size=0, nsegments=0):
 
     except (OSError, mseed_ext.MSeedError) as e:
         raise FileLoadError(str(e)+' (file: %s)' % filename)
-
-    if have_zero_rate_traces:
-        logger.warning(
-            'Ignoring traces with sampling rate of zero in file %s '
-            '(maybe LOG traces)' % filename)
 
 
 def as_tuple(tr, dataquality='D'):

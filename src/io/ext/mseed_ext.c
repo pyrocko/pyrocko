@@ -158,22 +158,6 @@ mseed_get_traces(PyObject *m, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
-    /* check that there is data in the traces */
-    if (unpackdata == Py_True)
-    {
-        mst = mstg->traces;
-        while (mst)
-        {
-            if (mst->datasamples == NULL)
-            {
-                PyErr_SetString(st->error, "Error reading file - datasamples is NULL");
-                mst_freegroup(&mstg);
-                return NULL;
-            }
-            mst = mst->next;
-        }
-    }
-
     out_traces = Py_BuildValue("[]");
     if (out_traces == NULL)
     {
@@ -184,33 +168,42 @@ mseed_get_traces(PyObject *m, PyObject *args, PyObject *kwds)
     mst = mstg->traces;
     while (mst)
     {
+        if (strchr("iafd", mst->sampletype) == NULL) {
+            fprintf(stderr, "Ignoring trace with unsupported `sampletype` '%c'.\n", mst->sampletype);
+            mst = mst->next;
+            continue;
+        }
 
         if (unpackdata == Py_True)
         {
+            if (mst->datasamples == NULL) {
+                if (mst->numsamples != 0) {
+                    PyErr_Format(st->error, "Data curruption: `datasamples` is NULL but `numsamples` is nonzero.\n");
+                    Py_XDECREF(out_traces);
+                    mst_freegroup(&mstg);
+                    return NULL;
+                }
+            }
+
             array_dims[0] = mst->numsamples;
             switch (mst->sampletype)
             {
-            case 'i':
-                assert(ms_samplesize('i') == 4);
-                numpytype = NPY_INT32;
-                break;
-            case 'a':
-                assert(ms_samplesize('a') == 1);
-                numpytype = NPY_INT8;
-                break;
-            case 'f':
-                assert(ms_samplesize('f') == 4);
-                numpytype = NPY_FLOAT32;
-                break;
-            case 'd':
-                assert(ms_samplesize('d') == 8);
-                numpytype = NPY_FLOAT64;
-                break;
-            default:
-                PyErr_Format(st->error, "Unknown sampletype %c\n", mst->sampletype);
-                Py_XDECREF(out_traces);
-                mst_freegroup(&mstg);
-                return NULL;
+                case 'i':
+                    assert(ms_samplesize('i') == 4);
+                    numpytype = NPY_INT32;
+                    break;
+                case 'a':
+                    assert(ms_samplesize('a') == 1);
+                    numpytype = NPY_INT8;
+                    break;
+                case 'f':
+                    assert(ms_samplesize('f') == 4);
+                    numpytype = NPY_FLOAT32;
+                    break;
+                case 'd':
+                    assert(ms_samplesize('d') == 8);
+                    numpytype = NPY_FLOAT64;
+                    break;
             }
             array = PyArray_SimpleNew(1, array_dims, numpytype);
             size_bytes = PyArray_NBYTES((PyArrayObject *)array);

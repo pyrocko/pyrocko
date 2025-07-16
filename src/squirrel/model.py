@@ -1658,7 +1658,7 @@ class DummyTrace(object):
 
     @property
     def deltat(self):
-        return self.nut.deltat
+        return self.nut.deltat or 0.0
 
     @property
     def nslc_id(self):
