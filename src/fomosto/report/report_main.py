@@ -1055,7 +1055,7 @@ class GreensFunctionTest(Object):
                 cmap=cmap, norm=plt.Normalize(vmin=tmin, vmax=tmax))
             sm.set_array(np.linspace(tmin, tmax,
                          self.sensors[sen_id].sensor_count))
-            cbar = plt.colorbar(sm, shrink=0.95)
+            cbar = plt.colorbar(sm, ax=ax, shrink=0.95)
             cbar.ax.set_ylabel('Sensor distance [km]')
 
     def __createMaxAmpFigure(self, trc_id, trc_typ):
