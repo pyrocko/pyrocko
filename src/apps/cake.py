@@ -15,7 +15,7 @@ from pyrocko import cake, util, orthodrome
 from pyrocko.plot import cake_plot as plot
 from optparse import OptionParser, OptionGroup
 import matplotlib.pyplot as plt
-from pyrocko.plot import mpl_init, mpl_papersize, mpl_margins
+from pyrocko.plot import mpl_init, mpl_papersize
 
 r2d = cake.r2d
 
@@ -615,17 +615,10 @@ def print_arrivals(
 
 
 def plot_init(size, save, show):
-    fontsize = 9
     mpl_init()
     fig = plt.figure(figsize=mpl_papersize(size, 'landscape'))
-
-    labelpos = mpl_margins(fig, w=7., h=5., units=fontsize)
-    axes = fig.add_subplot(1, 1, 1)
-    labelpos(axes, 2., 1.5)
-
     showplt = bool(show or not save)
-
-    return fig, axes, showplt
+    return fig, showplt
 
 
 class CakeError(Exception):
@@ -642,6 +635,8 @@ def plot_end(save, fig, show=True):
             raise CakeError(str(e))
         except ValueError as e:
             raise CakeError(str(e))
+    else:
+        plt.show()
 
 
 def main(args=None):
@@ -763,36 +758,36 @@ To get further help and a list of available options for any subcommand run:
         else:
             arrivals = None
 
-        fig, axes, showplt = plot_init(c.size, c.save, c.show)
+        fig, showplt = plot_init(c.size, c.save, c.show)
 
         if command == 'plot-xp':
             plot.my_xp_plot(
                 paths, c.zstart, c.zstop, c.distances,
-                c.as_degrees, show=showplt, phase_colors=c.phase_colors)
+                c.as_degrees, phase_colors=c.phase_colors, fig=fig)
 
         elif command == 'plot-xt':
             plot.my_xt_plot(
                 paths, c.zstart, c.zstop, c.distances, c.as_degrees,
-                vred=c.vred, show=showplt,
-                phase_colors=c.phase_colors)
+                vred=c.vred,
+                phase_colors=c.phase_colors, fig=fig)
 
         elif command == 'plot-rays':
             if c.as_degrees:
                 plot.my_rays_plot_gcs(
                     mod, paths, arrivals, c.zstart, c.zstop, c.distances,
-                    show=showplt, phase_colors=c.phase_colors)
+                    phase_colors=c.phase_colors, fig=fig)
 
             else:
                 plot.my_rays_plot(
                     mod, paths, arrivals, c.zstart, c.zstop, c.distances,
-                    show=showplt, aspect=c.aspect, shade_model=c.shade_model,
-                    phase_colors=c.phase_colors)
+                    aspect=c.aspect, shade_model=c.shade_model,
+                    phase_colors=c.phase_colors, fig=fig)
 
         elif command == 'plot':
             plot.my_combi_plot(
                 mod, paths, arrivals, c.zstart, c.zstop, c.distances,
-                c.as_degrees, show=showplt, vred=c.vred,
-                phase_colors=c.phase_colors)
+                c.as_degrees, vred=c.vred,
+                phase_colors=c.phase_colors, fig=fig)
 
         try:
             plot_end(save=c.save, fig=fig, show=c.show)
@@ -804,8 +799,8 @@ To get further help and a list of available options for any subcommand run:
             ('model',), ('save', 'size', 'show'),
             usage=subusage, descr=descr, args=args)
         mod = c.model
-        fig, axes, showplt = plot_init(c.size, c.save, c.show)
-        plot.my_model_plot(mod, show=showplt)
+        fig, showplt = plot_init(c.size, c.save, c.show)
+        plot.my_model_plot(mod, fig=fig)
         try:
             plot_end(save=c.save, fig=fig, show=c.show)
         except CakeError as e:

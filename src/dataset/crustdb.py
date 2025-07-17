@@ -191,7 +191,7 @@ class VelocityProfile(Object):
         import matplotlib.pyplot as plt
 
         fig, ax = _getCanvas(axes)
-        my_model_plot(self.getLayeredModel(), axes=axes)
+        my_model_plot(self.getLayeredModel(), fig=ax.figure)
         ax.set_title('Global Crustal Database\n'
                      'Velocity Structure at {p.lat:.4f}N, '
                      ' {p.lat:.4f}E (uid {p.uid})'.format(p=self))

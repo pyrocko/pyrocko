@@ -664,7 +664,7 @@ class SeismosizerHandler(RequestHandler):
             self.end_headers()
             return
 
-        cake_plot.my_model_plot(store.config.earthmodel_1d, axes=axes)
+        cake_plot.my_model_plot(store.config.earthmodel_1d, fig=axes.figure)
 
         f = BytesIO()
         fig.savefig(f, format='png')

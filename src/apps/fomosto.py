@@ -890,7 +890,8 @@ def mkp(s):
 
 def stored_attribute_table_plots(phase_ids, options, args, attribute):
     import numpy as num
-    from pyrocko.plot.cake_plot import labelspace, xscaled, yscaled, mpl_init
+    from pyrocko.plot.cake_plot import xscaled, yscaled, mpl_init
+    from pyrocko.plot import mpl_labelspace as labelspace
 
     plt = mpl_init()
 
@@ -1221,7 +1222,8 @@ def command_modelview(args):
 
     import matplotlib.pyplot as plt
     import numpy as num
-    from pyrocko.plot.cake_plot import mpl_init, labelspace, xscaled, yscaled
+    from pyrocko.plot.cake_plot import mpl_init, xscaled, yscaled
+    from pyrocko.plot import mpl_labelspace as labelspace
     mpl_init()
 
     neat_labels = {

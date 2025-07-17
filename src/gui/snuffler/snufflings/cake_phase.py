@@ -175,7 +175,7 @@ v0.3/cake_doc.html#cmdoption-cake--phase">Cake documentation</a>.
             from pyrocko.plot import cake_plot
             cake_plot.my_rays_plot(model, None, allrays, depth, 0.0,
                                    num.array(alldists)*cake.m2d,
-                                   axes=fig.gca())
+                                   fig=fig)
 
             fig.canvas.draw()
 
@@ -237,7 +237,7 @@ v0.3/cake_doc.html#cmdoption-cake--phase">Cake documentation</a>.
 
         fig = self.figure(name='Model: %s' % self._model[0])
 
-        cake_plot.my_model_plot(self._model[1], axes=fig.gca())
+        cake_plot.my_model_plot(self._model[1], fig=fig)
 
         fig.canvas.draw()
 

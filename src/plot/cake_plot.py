@@ -7,8 +7,8 @@ import math
 import numpy as num
 from pyrocko import cake
 from pyrocko.util import mpl_show
-from . import mpl_labelspace as labelspace, mpl_init, \
-    mpl_color as str_to_mpl_color, InvalidColorDef
+from . import mpl_init, mpl_color as str_to_mpl_color, InvalidColorDef, \
+    mpl_margins
 
 str_to_mpl_color
 InvalidColorDef
@@ -16,13 +16,20 @@ InvalidColorDef
 d2r = cake.d2r
 r2d = cake.r2d
 
+_have_registered_gcs = False
+
 
 def globe_cross_section():
     # modified from http://stackoverflow.com/questions/2417794/
     # how-to-make-the-angles-in-a-matplotlib-polar-plot-go-clockwise-with-0-at-the-top
 
+    global _have_registered_gcs
+
+    if _have_registered_gcs:
+        return
+
     from matplotlib.projections import PolarAxes, register_projection
-    from matplotlib.transforms import Affine2D, Bbox, IdentityTransform
+    from matplotlib.transforms import Bbox, IdentityTransform
 
     class GlobeCrossSectionAxes(PolarAxes):
         '''
@@ -34,13 +41,11 @@ def globe_cross_section():
         class GlobeCrossSectionTransform(PolarAxes.PolarTransform):
 
             def transform(self, tr):
-                xy = num.zeros(tr.shape, float)
-                t = tr[:, 0:1]*d2r
-                r = cake.earthradius - tr[:, 1:2]
-                x = xy[:, 0:1]
-                y = xy[:, 1:2]
-                x[:] = r * num.sin(t)
-                y[:] = r * num.cos(t)
+                xy = num.zeros(tr.shape)
+                t = tr[:, 0]*d2r
+                r = cake.earthradius - tr[:, 1]
+                xy[:, 0] = r * num.sin(t)
+                xy[:, 1] = r * num.cos(t)
                 return xy
 
             transform_non_affine = transform
@@ -53,21 +58,26 @@ def globe_cross_section():
                 PolarAxes.InvertedPolarTransform):
 
             def transform(self, xy):
-                x = xy[:, 0:1]
-                y = xy[:, 1:]
-                r = num.sqrt(x*x + y*y)
-                theta = num.arctan2(y, x)*r2d
-                return num.concatenate((theta, cake.earthradius-r), 1)
+                x = xy[:, 0]
+                y = xy[:, 1]
+                tr = num.zeros(xy.shape)
+                tr[:, 1] = num.sqrt(x*x + y*y)
+                tr[:, 0] = num.arctan2(y, x)*r2d
+                return tr
 
             def inverted(self):
                 return GlobeCrossSectionAxes.GlobeCrossSectionTransform()
 
+        def __init__(self, *args, **kwargs):
+            PolarAxes.__init__(
+                self,
+                *args,
+                theta_offset=90.*d2r,
+                theta_direction=-1,
+                **kwargs)
+
         def _set_lim_and_transforms(self):
             PolarAxes._set_lim_and_transforms(self)
-            try:
-                theta_position = self._theta_label1_position
-            except AttributeError:
-                theta_position = self.get_theta_offset()
 
             self.transProjection = self.GlobeCrossSectionTransform()
             self.transData = (
@@ -78,24 +88,10 @@ def globe_cross_section():
                 self.transProjection +
                 self.PolarAffine(IdentityTransform(), Bbox.unit()) +
                 self.transAxes)
-            self._xaxis_text1_transform = (
-                theta_position +
-                self._xaxis_transform)
-            self._yaxis_transform = (
-                Affine2D().scale(num.pi * 2.0, 1.0) +
-                self.transData)
-
-            try:
-                rlp = getattr(self, '_r_label1_position')
-            except AttributeError:
-                rlp = getattr(self, '_r_label_position')
-
-            self._yaxis_text1_transform = (
-                rlp +
-                Affine2D().scale(1.0 / 360.0, 1.0) +
-                self._yaxis_transform)
 
     register_projection(GlobeCrossSectionAxes)
+
+    _have_registered_gcs = True
 
 
 tango_colors = {
@@ -472,7 +468,7 @@ def offset(axes, x, y):
         x/72., y/72., axes.get_figure().dpi_scale_trans)
 
 
-def plot_receivers(zstop, distances, axes=None, **kwargs):
+def plot_receivers_gcs(zstop, distances, axes=None, **kwargs):
     if 'color' not in kwargs and 'c' not in kwargs:
         kwargs['color'] = 'black'
     if 'markersize' not in kwargs and 'ms' not in kwargs:
@@ -483,6 +479,20 @@ def plot_receivers(zstop, distances, axes=None, **kwargs):
             distance, zstop, marker=(3, 0, -distance),
             clip_on=False, transform=offset(
                 axes, num.sin(distance*d2r)*3, num.cos(distance*d2r)*3),
+            **kwargs)
+
+
+def plot_receivers(zstop, distances, axes=None, **kwargs):
+    if 'color' not in kwargs and 'c' not in kwargs:
+        kwargs['color'] = 'black'
+    if 'markersize' not in kwargs and 'ms' not in kwargs:
+        kwargs['markersize'] = 6
+    axes = getaxes(axes)
+    for distance in distances:
+        axes.plot(
+            distance, zstop, marker=(3, 0, 0),
+            clip_on=False, transform=offset(
+                axes, 0, 3),
             **kwargs)
 
 
@@ -574,22 +584,35 @@ def plot_surface_efficiency(mat):
     mpl_show(plt)
 
 
+def setup_figure(fig):
+    if fig is None:
+        from matplotlib import pyplot as plt
+        mpl_init()
+        fig = plt.figure()
+    else:
+        plt = None
+
+    return fig, plt
+
+
+def setup_axes(fig):
+    fontsize = 9
+    labelpos = mpl_margins(fig, w=7., h=5., units=fontsize)
+    axes = fig.add_subplot(1, 1, 1)
+    labelpos(axes, 2., 1.5)
+    return axes
+
+
 def my_xp_plot(
         paths, zstart, zstop,
         distances=None,
         as_degrees=False,
-        axes=None,
-        show=True,
-        phase_colors={}):
+        phase_colors={},
+        fig=None):
 
-    if axes is None:
-        from matplotlib import pyplot as plt
-        mpl_init()
-        axes = plt.gca()
-    else:
-        plt = None
+    fig, plt = setup_figure(fig)
+    axes = setup_axes(fig)
 
-    labelspace(axes)
     xmin, xmax = plot_xp(
         paths, zstart, zstop, axes=axes, phase_colors=phase_colors)
 
@@ -600,8 +623,7 @@ def my_xp_plot(
     labels_xp(as_degrees=as_degrees, axes=axes)
 
     if plt:
-        if show is True:
-            mpl_show(plt)
+        mpl_show(plt)
 
 
 def my_xt_plot(
@@ -609,18 +631,12 @@ def my_xt_plot(
         distances=None,
         as_degrees=False,
         vred=None,
-        axes=None,
-        show=True,
-        phase_colors={}):
+        phase_colors={},
+        fig=None):
 
-    if axes is None:
-        from matplotlib import pyplot as plt
-        mpl_init()
-        axes = plt.gca()
-    else:
-        plt = None
+    fig, plt = setup_figure(fig)
+    axes = setup_axes(fig)
 
-    labelspace(axes)
     xmin, xmax, ymin, ymax = plot_xt(
         paths,
         zstart,
@@ -637,21 +653,20 @@ def my_xt_plot(
     axes.set_ylim(ymin, ymax)
     labels_xt(as_degrees=as_degrees, vred=vred, axes=axes)
     if plt:
-        if show is True:
-            mpl_show(plt)
+        mpl_show(plt)
 
 
 def my_rays_plot_gcs(
         mod, paths, rays, zstart, zstop,
         distances=None,
-        show=True,
-        phase_colors={}):
-    from matplotlib import pyplot as plt
-    mpl_init()
+        phase_colors={},
+        fig=None):
 
     globe_cross_section()
-    axes = plt.subplot(1, 1, 1, projection='globe_cross_section')
-    axes.tick_params(labeltop=False, labelbottom=False)
+
+    fig, plt = setup_figure(fig)
+    axes = fig.add_subplot(1, 1, 1, projection='globe_cross_section')
+
     plot_rays(paths, rays, zstart, zstop, axes=axes, phase_colors=phase_colors)
     plot_source(zstart, axes=axes)
 
@@ -671,37 +686,30 @@ def my_rays_plot_gcs(
             pass
 
     if distances is not None:
-        plot_receivers(zstop, distances, axes=axes)
+        plot_receivers_gcs(zstop, distances, axes=axes)
 
     axes.set_ylim(0., cake.earthradius)
     axes.get_yaxis().set_visible(False)
 
     if plt:
-        if show is True:
-            mpl_show(plt)
+        mpl_show(plt)
 
 
 def my_rays_plot(
         mod, paths, rays, zstart, zstop,
         distances=None,
         as_degrees=False,
-        axes=None,
-        show=True,
         aspect=None,
         shade_model=True,
-        phase_colors={}):
+        phase_colors={},
+        fig=None):
 
-    if axes is None:
-        from matplotlib import pyplot as plt
-        mpl_init()
-        axes = plt.gca()
-    else:
-        plt = None
+    fig, plt = setup_figure(fig)
+    axes = setup_axes(fig)
 
     if paths is None:
         paths = list(set([x.path for x in rays]))
 
-    labelspace(axes)
     plot_rays(
         paths, rays, zstart, zstop,
         axes=axes, aspect=aspect, phase_colors=phase_colors)
@@ -720,66 +728,68 @@ def my_rays_plot(
     axes.set_ylim(ymax+my, ymin-my)
 
     if plt:
-        if show is True:
-            mpl_show(plt)
+        mpl_show(plt)
 
 
 def my_combi_plot(
         mod, paths, rays, zstart, zstop,
         distances=None,
         as_degrees=False,
-        show=True,
         vred=None,
-        phase_colors={}):
+        phase_colors={},
+        fig=None):
 
-    from matplotlib import pyplot as plt
-    mpl_init()
-    ax1 = plt.subplot(211)
-    labelspace(plt.gca())
+    fig, plt = setup_figure(fig)
+
+    fontsize = 9
+    labelpos = mpl_margins(
+        fig, nw=1, nh=2, w=7., h=5., hspace=2., units=fontsize)
+
+    ax1 = fig.add_subplot(2, 1, 1)
+    labelpos(ax1, 2., 1.5)
+
+    ax2 = fig.add_subplot(2, 1, 2, sharex=ax1)
+    labelpos(ax2, 2., 1.5)
 
     xmin, xmax, ymin, ymax = plot_xt(
         paths, zstart, zstop,
         vred=vred,
         distances=distances,
-        phase_colors=phase_colors)
+        phase_colors=phase_colors,
+        axes=ax1)
 
     if distances is None:
-        plt.xlim(xmin, xmax)
+        ax1.set_xlim(xmin, xmax)
 
-    labels_xt(vred=vred, as_degrees=as_degrees)
-    plt.setp(ax1.get_xticklabels(), visible=False)
-    plt.xlabel('')
+    labels_xt(axes=ax1, vred=vred, as_degrees=as_degrees)
+    ax1.set_xlabel('')
+    ax1.get_xaxis().set_tick_params(labelbottom=False)
 
-    ax2 = plt.subplot(212, sharex=ax1)
-    labelspace(plt.gca())
-    plot_rays(paths, rays, zstart, zstop, phase_colors=phase_colors)
-    xmin, xmax = plt.xlim()
-    ymin, ymax = plt.ylim()
-    sketch_model(mod)
+    plot_rays(paths, rays, zstart, zstop, phase_colors=phase_colors, axes=ax2)
+    xmin, xmax = ax2.get_xlim()
+    ymin, ymax = ax2.get_ylim()
+    sketch_model(mod, axes=ax2)
 
-    plot_source(zstart)
+    plot_source(zstart, axes=ax2)
     if distances is not None:
-        plot_receivers(zstop, distances)
-    labels_rays(as_degrees=as_degrees)
+        plot_receivers(zstop, distances, axes=ax2)
+
+    labels_rays(as_degrees=as_degrees, axes=ax2)
+
     mx = (xmax-xmin)*0.05
     my = (ymax-ymin)*0.05
     ax2.set_xlim(xmin-mx, xmax+mx)
     ax2.set_ylim(ymax+my, ymin-my)
 
-    if show is True:
+    if plt:
         mpl_show(plt)
 
 
-def my_model_plot(mod, axes=None, show=True):
+def my_model_plot(mod, fig=None):
 
-    if axes is None:
-        from matplotlib import pyplot as plt
-        mpl_init()
-        axes = plt.gca()
-    else:
-        plt = None
+    fig, plt = setup_figure(fig)
+    axes = setup_axes(fig)
 
-    labelspace(axes)
     labels_model(axes=axes)
     sketch_model(mod, axes=axes)
     z = mod.profile('z')
@@ -795,5 +805,4 @@ def my_model_plot(mod, axes=None, show=True):
     axes.set_ylim(ymax+my, ymin-my)
     axes.set_xlim(xmin, xmax+mx)
     if plt:
-        if show is True:
-            mpl_show(plt)
+        mpl_show(plt)
