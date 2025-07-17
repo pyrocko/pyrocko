@@ -2262,8 +2262,8 @@ static void make_weights_strain20(
     cb = cos(bazi*D2R-M_PI);
     sb2 = SQR(sb);
     cb2 = SQR(cb);
-    s2b = sin(2.0*bazi*D2R);
-    c2b = cos(2.0*bazi*D2R);
+    s2b = sin(2.0*(bazi*D2R-M_PI));
+    c2b = cos(2.0*(bazi*D2R-M_PI));
 
     f0 = ms[0]*SQR(ca) + ms[1]*SQR(sa) + ms[3]*s2a;
     f1 = ms[4]*ca + ms[5]*sa;
