@@ -2272,6 +2272,8 @@ static void make_weights_strain20(
     f4 = ms[5]*ca - ms[4]*sa;
     f5 = ms[0]*SQR(sa) + ms[1]*SQR(ca) - ms[3]*s2a;
 
+// static const uint64_t igs_strain20_0[] = {0, 1, 2, 3, 4, 5, 6, 7, 12, 13};
+
     ioff = 0 * nsummands_max;
     ws[ioff + 0] = cb2 * f0;
     ws[ioff + 1] = cb2 * f1;
@@ -2284,6 +2286,7 @@ static void make_weights_strain20(
     ws[ioff + 8] = -2.0 * sb * cb * f3;
     ws[ioff + 9] = -2.0 * sb * cb * f4;
 
+//static const uint64_t igs_strain20_1[] = {0, 1, 2, 3, 4, 5, 6, 7, 12, 13};
     ioff = 1 * nsummands_max;
     ws[ioff + 0] = sb2 * f0;
     ws[ioff + 1] = sb2 * f1;
@@ -2296,12 +2299,14 @@ static void make_weights_strain20(
     ws[ioff + 8] = 2.0 * sb * cb * f3;
     ws[ioff + 9] = 2.0 * sb * cb * f4;
 
+//static const uint64_t igs_strain20_2[] = {8, 9, 10, 11};
     ioff = 2 * nsummands_max;
     ws[ioff + 0] = f0;
     ws[ioff + 1] = f1;
     ws[ioff + 2] = f2;
     ws[ioff + 3] = f5;
 
+//static const uint64_t igs_strain20_3[] = {0, 1, 2, 3, 4, 5, 6, 7, 12, 13};
     ioff = 3 * nsummands_max;
     ws[ioff + 0] = 0.5 * s2b * f0;
     ws[ioff + 1] = 0.5 * s2b * f1;
@@ -2314,6 +2319,7 @@ static void make_weights_strain20(
     ws[ioff + 8] = c2b * f3;
     ws[ioff + 9] = c2b * f4;
 
+//static const uint64_t igs_strain20_4[] = {14, 15, 16, 17, 18, 19};
     ioff = 4 * nsummands_max;
     ws[ioff + 0] = cb * f0;
     ws[ioff + 1] = cb * f1;
@@ -2322,6 +2328,7 @@ static void make_weights_strain20(
     ws[ioff + 4] = -sb * f3;
     ws[ioff + 5] = -sb * f4;
 
+//static const uint64_t igs_strain20_5[] = {14, 15, 16, 17, 18, 19};
     ioff = 5 * nsummands_max;
     ws[ioff + 0] = sb * f0;
     ws[ioff + 1] = sb * f1;
