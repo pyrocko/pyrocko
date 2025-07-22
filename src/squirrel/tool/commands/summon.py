@@ -66,6 +66,14 @@ returned. Use in combination with ``--sample-rate-min`` and
         metavar='DURATION,DURATION',
         help='Set time span to be completed for events, e.g. `-30m,2h`.')
 
+    parser.add_argument(
+        '--tinc',
+        dest='tinc',
+        type=float,
+        default=3600.,
+        metavar='SECONDS',
+        help='Download loop time window length [s].')
+
 
 def run(parser, args):
     d = args.squirrel_query
@@ -117,7 +125,7 @@ def run(parser, args):
     d.pop('tmin', None)
     d.pop('tmax', None)
 
-    tinc = 3600.
+    tinc = args.tinc
 
     channel_priorities = None
     if args.channel_priorities:

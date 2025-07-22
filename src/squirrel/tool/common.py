@@ -508,6 +508,15 @@ def add_squirrel_selection_arguments(parser):
              'applications.')
 
     group.add_argument(
+        '--samples-block',
+        dest='n_samples_block',
+        type=int,
+        metavar='N',
+        default=100000,
+        help='When downloading data, use blocks with approximately ``N`` '
+             'samples. Default: 100000')
+
+    group.add_argument(
         '--dataset', '-d',
         dest='datasets',
         default=[],
@@ -554,6 +563,7 @@ def squirrel_from_selection_arguments(args, check_have_data=True):
 
     squirrel = base.Squirrel(
         persistent=args.persistent,
+        n_samples_block=args.n_samples_block,
         n_threads=getattr(args, 'n_threads', 1))
 
     with progress.view():

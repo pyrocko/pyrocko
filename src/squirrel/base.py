@@ -84,9 +84,9 @@ def len_plural(obj):
     return len(obj), '' if len(obj) == 1 else 's'
 
 
-def blocks(tmin, tmax, deltat, nsamples_block=100000):
+def blocks(tmin, tmax, deltat, n_samples_block=100000):
     tblock = nice_time_tick_inc_approx_secs(
-        util.to_time_float(deltat * nsamples_block))
+        util.to_time_float(deltat * n_samples_block))
     iblock_min = int(math.floor(tmin / tblock))
     iblock_max = int(math.ceil(tmax / tblock))
     for iblock in range(iblock_min, iblock_max):
@@ -313,7 +313,7 @@ class Squirrel(Selection):
 
     def __init__(
             self, env=None, database=None, cache_path=None, persistent=None,
-            n_threads=None):
+            n_threads=None, n_samples_block=100000):
 
         if not isinstance(env, environment.Environment):
             env = environment.get_environment(env)
@@ -366,6 +366,7 @@ class Squirrel(Selection):
         self._n_choppers_active = 0
 
         self.downloads_enabled = True
+        self.n_samples_block = n_samples_block
 
         self._names.update({
             'nuts': self.name + '_nuts',
@@ -2232,7 +2233,8 @@ class Squirrel(Selection):
             for block_tmin, block_tmax in blocks(
                     max(tmin, promise.tmin),
                     min(tmax, promise.tmax),
-                    promise.deltat):
+                    promise.deltat,
+                    n_samples_block=self.n_samples_block):
 
                 if block_tmin > now:
                     continue
