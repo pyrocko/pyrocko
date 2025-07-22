@@ -404,7 +404,7 @@ class Database(object):
 
         self._initialize_db()
 
-        from .events import connection_hook
+        from .elk import connection_hook
         connection_hook(self._conn)
 
     def __del__(self):
