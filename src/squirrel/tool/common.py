@@ -624,6 +624,12 @@ def add_squirrel_query_arguments(parser, without=[]):
                  'character out of ``CHARS``). Multiple patterns can be '
                  'given by separating them with commas.')
 
+        group.add_argument(
+            '--codes-exclude',
+            dest='codes_exclude',
+            metavar='CODES',
+            help='Code patterns to exclude. See ``--codes``.')
+
     if 'tmin' not in without:
         group.add_argument(
             '--tmin',
@@ -689,6 +695,10 @@ def squirrel_query_from_arguments(args):
     if 'codes' in args and args.codes:
         d['codes'] = [
             sq.to_codes_guess(s.strip()) for s in args.codes.split(',')]
+    if 'codes_exclude' in args and args.codes_exclude:
+        d['codes_exclude'] = [
+            sq.to_codes_guess(s.strip())
+            for s in args.codes_exclude.split(',')]
 
     if ('tmin' in d and 'time' in d) or ('tmax' in d and 'time' in d):
         raise error.ToolError(
