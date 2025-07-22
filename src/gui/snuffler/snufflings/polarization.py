@@ -658,7 +658,7 @@ window). The currently used scaling factor can be frozen by checking
 
                 axes.my_line.set_data(x, y)
                 ipos = int(round(self.dot_position * (x.size-1)))
-                axes.my_dot.set_data(x[ipos], y[ipos])
+                axes.my_dot.set_data([x[ipos]], [y[ipos]])
 
             tref = tmin
             for itr, (tr, tr_chopped) in enumerate(zip(
