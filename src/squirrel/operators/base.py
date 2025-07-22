@@ -1004,6 +1004,9 @@ class Restitution(Operator):
             for in_codes, out_codes in zip(
                     mapping.in_codes, mapping.out_codes):
 
+                if in_codes not in codes_to_traces:
+                    continue
+
                 if in_codes not in codes_to_responses:
                     logger.warning(
                         'No instrument response available: %s' % str(in_codes))
