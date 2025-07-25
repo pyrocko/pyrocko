@@ -23,12 +23,20 @@ def time_or_none_to_str(t):
     return util.time_to_str(t, '%Y-%m-%d') if t else '...'
 
 
-def deduplicate_locations(locations, eps=1e-4):
+def deduplicate_locations(
+        locations,
+        relative_cutoff=None,
+        distance_cutoff=None):
+
+    if relative_cutoff is None:
+        relative_cutoff = 1e-4
 
     grid = UnstructuredLocationGrid.from_locations(locations)
     distances = distances_3d(grid, grid)
     distances_flat = distances.flatten()
-    distance_cutoff = num.median(distances_flat) * eps
+    if distance_cutoff is None:
+        distance_cutoff = num.median(distances_flat) * relative_cutoff
+
     connectivity = distances <= distance_cutoff
 
     logger.info(
@@ -149,7 +157,9 @@ class SensorArray(Object):
             time=None,
             tmin=None,
             tmax=None,
-            ignore_position_duplicates=True):
+            deduplicate=True,
+            deduplicate_relative_cutoff=None,
+            deduplicate_distance_cutoff=None):
 
         # First, get all sensors matching the array definition in the given
         # time constraints, then remove channels which do not match the codes
@@ -171,8 +181,12 @@ class SensorArray(Object):
             sensors = [sensor for sensor in sensors if sensor.channels]
 
         if sensors:
-            if ignore_position_duplicates:
-                sensors_dedup = deduplicate_locations(sensors, eps=1e-2)
+            if deduplicate:
+                sensors_dedup = deduplicate_locations(
+                    sensors,
+                    relative_cutoff=deduplicate_relative_cutoff,
+                    distance_cutoff=deduplicate_distance_cutoff)
+
                 logger.info('Array %s - sensor deduplication: %i => %i' % (
                     self.name,
                     len(sensors),
