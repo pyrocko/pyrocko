@@ -24,6 +24,7 @@ from pyrocko import moment_tensor as pmt
 from pyrocko import util
 from pyrocko.dataset.util import set_download_callback
 
+from pyrocko.gui.state import state_bind_slider
 from pyrocko.gui.util import Progressbars, RangeEdit
 from pyrocko.gui.talkie import TalkieConnectionOwner, equal as state_equal
 from pyrocko.gui.qt_compat import qw, qc, qg
@@ -334,6 +335,7 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
         self._animation_tstart = None
         self._animation_iframe = None
         self._animation = None
+        self._locked_zoom = False
 
         mbar = qw.QMenuBar()
         self.setMenuBar(mbar)
@@ -390,6 +392,10 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
         action.setShortcut(qc.Qt.Key_Space)
         action.setShortcutContext(qc.Qt.ApplicationShortcut)
         action.triggered.connect(self.toggle_panel_visibility)
+        menu.addAction(action)
+        # reset view
+        action = qw.QAction('Reset View', self)
+        action.triggered.connect(self.reset_view)
         menu.addAction(action)
 
         self.panels_menu = mbar.addMenu('Panels')
@@ -1264,7 +1270,8 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
             self.state.strike = float(((-(lon + 90.))+180.) % 360. - 180.)
 
     def do_dolly(self, v):
-        self.state.distance *= float(1.0 + 0.1*v)
+        if not self._locked_zoom:
+            self.state.distance *= float(1.0 + 0.1*v)
 
     def key_down_event(self, obj, event):
         k = obj.GetKeyCode()
@@ -1421,15 +1428,10 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
 
         self.strike_dip_lineedit = le
 
-        but = qw.QPushButton('Reset')
-        but.setStatusTip('Reset to north-up map view.')
-        but.clicked.connect(self.reset_strike_dip)
-        layout.addWidget(but, 3, 1, 1, 1)
-
         # crosshair
 
         self._crosshair_checkbox = qw.QCheckBox('Crosshair')
-        layout.addWidget(self._crosshair_checkbox, 4, 0, 1, 2)
+        layout.addWidget(self._crosshair_checkbox, 3, 1, 1, 1)
 
         # camera bindings
         self.talkie_connect(
@@ -1439,6 +1441,32 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
 
         self.talkie_connect(
             self.gui_state, 'panels_visible', self.update_panel_visibility)
+
+        # zoom
+        layout.addWidget(
+            qw.QLabel('Zoom'), 4, 0)
+
+        zoom_slider = qw.QSlider(qc.Qt.Horizontal)
+        zoom_slider.setMinimum(-10)
+        zoom_slider.setMaximum(50)
+        zoom_slider.setValue(0)
+        layout.addWidget(zoom_slider, 5, 0)
+
+        lock_checkbox = qw.QCheckBox("Lock")
+        layout.addWidget(lock_checkbox, 5, 1)
+
+        self._zoom_slider = zoom_slider
+        state_bind_slider(
+            owner=self,
+            state=self.state,
+            path='distance',
+            widget=self._zoom_slider,
+            scale='log',
+            base=3.0,
+            factor=1.2,
+        )
+        self._zoom_lock_checkbox = lock_checkbox
+        lock_checkbox.stateChanged.connect(self.on_zoom_lock_toggled)
 
         return frame
 
@@ -1628,6 +1656,24 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
     def reset_strike_dip(self, *args):
         self.state.strike = 90.
         self.state.dip = 0
+        self.gui_state.focal_point = 'center'
+
+    def reset_view(self, *args):
+        reply = qw.QMessageBox.question(
+            self,
+            "Reset view",
+            "Are you sure you want to reset the view?",
+            qw.QMessageBox.Yes | qw.QMessageBox.No,
+            qw.QMessageBox.No
+            )
+        if reply == qw.QMessageBox.No:
+            return
+        self.state.strike = 90.
+        self.state.dip = 0
+        self.state.distance = 3.0
+        self.state.lat = 0.
+        self.state.lon = 0.
+        self.state.depth = 0.
         self.gui_state.focal_point = 'center'
 
     def get_camera_geometry(self):
@@ -1868,6 +1914,14 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
 
     def is_closing(self):
         return self.closing
+
+    def on_zoom_lock_toggled(self):
+        if self._locked_zoom:
+            self._zoom_slider.setEnabled(True)
+            self._locked_zoom = False
+        else:
+            self._zoom_slider.setEnabled(False)
+            self._locked_zoom = True
 
 
 def main(*args, **kwargs):

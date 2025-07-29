@@ -8,7 +8,7 @@
 '''
 
 import logging
-
+import math
 from pyrocko.gui import util as gui_util
 from pyrocko.color import Color
 
@@ -53,6 +53,7 @@ def state_bind(
 
 def state_bind_slider(
         owner, state, path, widget, factor=1.,
+        scale='lin', base=1.,
         dtype=float,
         min_is_none=False,
         max_is_none=False):
@@ -62,25 +63,64 @@ def state_bind_slider(
     widget.sliderReleased.connect(viewer.enable_capture)
 
     def make_funcs():
-        def update_state(widget, state):
-            val = widget.value()
-            if (min_is_none and val == widget.minimum()) \
-                    or (max_is_none and val == widget.maximum()):
-                state.set(path, None)
-            else:
-                viewer.status('%g' % (val * factor))
-                state.set(path, dtype(val * factor))
+        if scale == 'log':
+            if not base or not factor:
+                raise ValueError(
+                    'Logarithmic scale requires "base" and "factor" arguments.'
+                    )
 
-        def update_widget(state, widget):
-            val = state.get(path)
-            widget.blockSignals(True)
-            if min_is_none and val is None:
-                widget.setValue(widget.minimum())
-            elif max_is_none and val is None:
-                widget.setValue(widget.maximum())
-            else:
-                widget.setValue(int(state.get(path) * 1. / factor))
-            widget.blockSignals(False)
+            def update_state(widget, state):
+                value = widget.value()
+                if (min_is_none and value == widget.minimum()) \
+                        or (max_is_none and value == widget.maximum()):
+                    state.set(path, None)
+                    return
+                new_state_val = base * (factor ** - value)
+                viewer.status(f'{new_state_val:.2f}')
+                state.set(path, new_state_val)
+
+            def update_widget(state, widget):
+                state_val = state.get(path)
+
+                if min_is_none and state_val is None:
+                    widget.blockSignals(True)
+                    widget.setValue(widget.minimum())
+                    widget.blockSignals(False)
+                    return
+
+                if max_is_none and state_val is None:
+                    widget.blockSignals(True)
+                    widget.setValue(widget.maximum())
+                    widget.blockSignals(False)
+                    return
+
+                if state_val > 0:
+                    new_widget_val = -math.log(state_val / base) \
+                        / math.log(factor)
+                    widget.blockSignals(True)
+                    widget.setValue(int(round(new_widget_val)))
+                    widget.blockSignals(False)
+
+        else:
+            def update_state(widget, state):
+                val = widget.value()
+                if (min_is_none and val == widget.minimum()) \
+                        or (max_is_none and val == widget.maximum()):
+                    state.set(path, None)
+                else:
+                    viewer.status('%g' % (val * factor))
+                    state.set(path, dtype(val * factor))
+
+            def update_widget(state, widget):
+                val = state.get(path)
+                widget.blockSignals(True)
+                if min_is_none and val is None:
+                    widget.setValue(widget.minimum())
+                elif max_is_none and val is None:
+                    widget.setValue(widget.maximum())
+                else:
+                    widget.setValue(int(state.get(path) * 1. / factor))
+                widget.blockSignals(False)
 
         return update_state, update_widget
 
