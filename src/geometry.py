@@ -63,7 +63,7 @@ def xyz2rtp(xyz):
     x, y, z = xyz[:, 0], xyz[:, 1], xyz[:, 2]
     vecs = num.empty(xyz.shape, dtype=num.float64)
     vecs[:, 0] = num.sqrt(x**2+y**2+z**2)
-    vecs[:, 1] = num.arctan2(num.sqrt(x**2+y**2), z)
+    vecs[:, 1] = num.arctan2(num.sqrt(x**2+y**2), -z)
     vecs[:, 2] = num.arctan2(y, x)
     return vecs
 
