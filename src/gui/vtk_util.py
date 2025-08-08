@@ -221,6 +221,7 @@ class BeachballPipe(object):
             lighting=False):
 
         from pyrocko import moment_tensor, icosphere
+        from pyrocko.plot import beachball
 
         # cpt tricks
 
@@ -323,7 +324,7 @@ class BeachballPipe(object):
 
             vecs_e = num.dot(rot, vertices.T).T
 
-            rtp = geometry.xyz2rtp(vecs_e)
+            rtp = beachball.numpy_xyz2rtp(vecs_e)
 
             atheta, aphi = rtp[:, 1], rtp[:, 2]
             amps_this = ep * num.cos(atheta)**2 + (
