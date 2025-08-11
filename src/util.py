@@ -90,6 +90,7 @@ import optparse
 import os.path as op
 import errno
 from collections import defaultdict
+from typing import TYPE_CHECKING, TypeAlias, List, Iterable
 
 import numpy as num
 from scipy import signal
@@ -109,6 +110,10 @@ try:
     g_ssl_context = ssl.create_default_context(cafile=certifi.where())
 except ImportError:
     g_ssl_context = None
+
+
+if TYPE_CHECKING:
+    hpfloat_type: TypeAlias = num.floating
 
 
 class URLErrorSSL(URLError):
@@ -552,7 +557,7 @@ Pyrocko high precision time mode selection (latter override earlier):
         g_time_dtype = num.float64
 
 
-def get_time_float():
+def get_time_float() -> float | hpfloat_type:
     '''
     Get the effective float class for timestamps.
 
@@ -584,7 +589,7 @@ def get_time_dtype():
     return g_time_dtype
 
 
-def to_time_float(t):
+def to_time_float(t: float):
     '''
     Convert float to valid time stamp in the current time handling mode.
 
@@ -691,7 +696,7 @@ class Stopwatch(object):
         return time.time() - self.start
 
 
-def wrap(text, line_length=80):
+def wrap(text: str, line_length: int=80) -> List[str]:
     '''
     Paragraph and list-aware wrapping of text.
     '''
@@ -745,7 +750,7 @@ def wrap(text, line_length=80):
     return outlines
 
 
-def ewrap(lines, width=80, indent=''):
+def ewrap(lines: Iterable[str], width=80, indent='') -> str:
     lines = list(lines)
     if not lines:
         return ''
@@ -1611,7 +1616,7 @@ def _endswith_n(s, endings):
     return -1
 
 
-def str_to_time(s, format='%Y-%m-%d %H:%M:%S.OPTFRAC'):
+def str_to_time(s: str, format: str ='%Y-%m-%d %H:%M:%S.OPTFRAC') -> float:
     '''
     Convert string representing UTC time to floating point system time.
 
@@ -1677,7 +1682,7 @@ def str_to_time(s, format='%Y-%m-%d %H:%M:%S.OPTFRAC'):
 stt = str_to_time
 
 
-def str_to_time_fillup(s):
+def str_to_time_fillup(s: str) -> float:
     '''
     Default :py:func:`str_to_time` with filling in of missing values.
 
@@ -1700,7 +1705,7 @@ def str_to_time_fillup(s):
     return str_to_time(s)
 
 
-def time_to_str(t, format='%Y-%m-%d %H:%M:%S.3FRAC'):
+def time_to_str(t: float, format: str ='%Y-%m-%d %H:%M:%S.3FRAC') -> str:
     '''
     Get string representation for floating point system time.
 
@@ -1787,7 +1792,7 @@ def plural_s(n):
     return 's' if n != 1 else ''
 
 
-def ensuredirs(dst):
+def ensuredirs(dst: str):
     '''
     Create all intermediate path components for a target path.
 
@@ -1813,7 +1818,7 @@ def ensuredirs(dst):
                 raise
 
 
-def ensuredir(dst):
+def ensuredir(dst: str):
     '''
     Create directory and all intermediate path components to it as needed.
 
@@ -2044,7 +2049,7 @@ ruler = ''.join(['%-10i' % i for i in range(8)]) \
     + '\n' + '0123456789' * 8 + '\n'
 
 
-def unpack_fixed(format, line, *callargs):
+def unpack_fixed(format: str, line: str, *callargs) -> list:
     '''
     Unpack fixed format string, as produced by many fortran codes.
 
