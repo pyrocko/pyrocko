@@ -22,6 +22,7 @@ from io import BytesIO
 
 import numpy as num
 from matplotlib import pyplot as plt
+import matplotlib as mpl
 from tornado import web, autoreload
 
 from pyrocko import info
@@ -31,7 +32,6 @@ from pyrocko.squirrel import model
 from pyrocko import guts
 from pyrocko.squirrel.error import ToolError, SquirrelError
 from pyrocko.squirrel import operators as ops
-from pyrocko.squirrel.base import Squirrel
 from pyrocko import moment_tensor as pmt
 from pyrocko.plot import beachball
 from pyrocko.color import Color, g_pyrocko_color_cycle_base
@@ -49,8 +49,11 @@ def str_choice(s, choices):
     return s
 
 
-def to_codes_list(x):
-    return [model.to_codes_guess(s.strip()) for s in x.split(',')]
+def to_codes_list(xs):
+    if not isinstance(xs, list) or not all(isinstance(x, str) for x in xs):
+        raise ValueError('List of strings required.')
+
+    return [model.to_codes_guess(x.strip()) for x in xs]
 
 
 def get_parameters_dict(body):
@@ -102,7 +105,9 @@ class SquirrelRequestHandler(web.RequestHandler):
             'codes': to_codes_list,
             'ymin': float,
             'ymax': float,
+            'nx': int,
             'ny': int,
+            'overview_method': lambda x: str_choice(x, ['mean', 'min', 'max']),
         }
 
         def clean_or_none(f, x):
@@ -155,7 +160,8 @@ class SquirrelHeartbeatHandler(SquirrelRequestHandler):
                 self.write(
                     json.dumps(dict(
                         time_start=time_start,
-                        time_now=time.time())))
+                        time_now=time.time(),
+                        server_info=self._server_info)))
 
                 try:
                     await self.flush()
@@ -195,7 +201,6 @@ class SquirrelRawHandler(SquirrelRequestHandler):
         return self._squirrel.get_channels(tmin=tmin, tmax=tmax, codes=codes)
 
     def p_get_sensors(self, parameters):
-        print("in SquirrelRawHandler -> p_get_sensors()")
         tmin, tmax, codes = self.get_cleaned('tmin tmax codes', parameters)
         return self._squirrel.get_sensors(tmin=tmin, tmax=tmax, codes=codes)
 
@@ -212,7 +217,7 @@ class ScaleChoice(guts.StringChoice):
     choices = ['lin', 'log']
 
 
-class SpectrogramImage(guts.Object):
+class CarpetImage(guts.Object):
     codes = model.CodesNSLCE.T()
     shape = guts.Tuple.T(2, guts.Int.T())
     tmin = guts.Timestamp.T()
@@ -220,7 +225,18 @@ class SpectrogramImage(guts.Object):
     ymin = guts.Float.T()
     ymax = guts.Float.T()
     fscale = ScaleChoice.T()
+    overview_method = guts.String.T(optional=True)
     image_data_base64 = guts.String.T()
+
+    @property
+    def summary(self):
+        return 'CarpetImage, %s, (%i, %i), %s - %s, %s' % (
+            str(self.codes),
+            self.shape[0],
+            self.shape[1],
+            util.time_to_str(self.tmin),
+            util.time_to_str(self.tmax),
+            util.human_bytesize(len(self.image_data_base64)))
 
 
 class TimeSpan(guts.Object):
@@ -291,8 +307,6 @@ class Gate(guts.Object):
         return self._outlet.get_channels(*args, **kwargs)
 
     def get_sensors(self, *args, **kwargs):
-        print("in Gate() -> get_sensors()")
-
         return self._outlet.get_sensors(*args, **kwargs)
 
     def get_responses(self, *args, **kwargs):
@@ -310,30 +324,46 @@ class Gate(guts.Object):
             *args,
             ymin=None,
             ymax=None,
+            nx=6000,
             ny=100,
+            overview_method='mean',
             format='webp',
             **kwargs):
 
         def carpet_to_image(carpet):
             times_this = []
             times_this.append(time.time())
-            carpet = carpet.resample_band(ymin, ymax, ny)
+            overview_method = carpet.meta['overview_method']
+            try:
+                carpet = carpet.resample_band(ymin, ymax, ny)
+            except ValueError as e:
+                logger.error('Cannot create carpet: %s', str(e))
+                return None, None
+
             if carpet.nsamples == 0 or carpet.ncomponents == 0:
                 return None, None
 
             vmin, vmax = carpet.stats.min, carpet.stats.max
+            if vmin == vmax:
+                vmin -= 0.5
+                vmax += 0.5
+
+            rgb = (num.round(mpl.colormaps['inferno'](
+                num.linspace(0., 1., 256)) * 255.)).astype(num.uint8)[:, :3]
 
             image_data = num.zeros(
                 carpet.data.shape + (4,), dtype=num.uint8)
 
             ok = num.isfinite(carpet.data)
             values = num.zeros(carpet.data.shape)
-            values[ok] = carpet.data[ok]
+            values[ok] = num.clip(carpet.data[ok], vmin, vmax)
             values[ok] -= vmax
             values[ok] *= 255.0 / (vmin - vmax)
 
+            # image_data[::-1, :, :3] \
+            #     = values.astype(num.uint8)[:, :, num.newaxis]
             image_data[::-1, :, :3] \
-                = values.astype(num.uint8)[:, :, num.newaxis]
+                = rgb[values.astype(num.uint8)]
             ok_alpha = num.array([[[False, False, False, True]]], dtype=bool)
             ok3 = num.logical_and(ok[:, :, num.newaxis], ok_alpha)
             image_data[ok3[::-1, :, :]] = 255
@@ -347,7 +377,7 @@ class Gate(guts.Object):
 
             times_this.append(time.time())
 
-            image = SpectrogramImage(
+            image = CarpetImage(
                 codes=drop_resolution(carpet.codes),
                 tmin=carpet.times[0],
                 tmax=carpet.times[-1],
@@ -355,6 +385,7 @@ class Gate(guts.Object):
                 ymax=carpet.component_axes['frequency'][-1],
                 fscale='log',
                 shape=carpet.data.shape,
+                overview_method=overview_method,
                 image_data_base64='data:image/%s;base64,%s' % (
                     format,
                     base64.b64encode(buffer.getvalue()).decode('ascii')))
@@ -362,22 +393,46 @@ class Gate(guts.Object):
             times_this.append(time.time())
             return image, times_this
 
+        codes = kwargs.pop('codes', None)
+        if codes is not None and not isinstance(codes, list):
+            codes = [codes]
+
+        if overview_method is not None:
+            if codes is None:
+                codes = [
+                    model.CodesNSLCE('*.*.*.*.'),
+                    model.CodesNSLCE('*.*.*.*.-L%s??' % overview_method)]
+
+            else:
+                codes_overview = [
+                    v.replace(extra='-L%s??' % overview_method)
+                    for v in codes
+                    if v is not None]
+
+                codes.extend(codes_overview)
+
         t0 = time.time()
+
         carpets = self._outlet.get_carpets(
-            *args, **kwargs, nsamples_limit=3000)
+            *args, **kwargs, codes=codes, nsamples_limit=nx)
+
+        for carpet in carpets:
+            carpet.meta['overview_method'] = overview_method
 
         images = []
         times = []
+
         t1 = time.time()
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             for (image, times_this) in executor.map(carpet_to_image, carpets):
                 if image is not None:
                     images.append(image)
                     times.append(times_this)
+
         t2 = time.time()
 
         if times:
-            print(times)
             times = num.array(times)
             dtimes = num.diff(num.sum(times, 0))
             logger.debug('Processing costs: %i %s %i %.1f' % (
@@ -385,58 +440,6 @@ class Gate(guts.Object):
                 (dtimes * 1000.).astype(int),
                 int((t2 - t1)*1000.),
                 num.sum(dtimes) / (t2 - t1)))
-
-        return images
-
-    def get_spectrogram_images(self, *args, ymin=0.001, ymax=1000.0, **kwargs):
-        if isinstance(self._outlet, Squirrel):
-            return []
-
-        images = []
-        for group in self._outlet.get_spectrogram_groups(
-                *args,
-                **kwargs,
-                nsamples_limit=1000000):
-
-            fslice = slice(2, None)
-            spectrogram = group \
-                .get_multi_spectrogram() \
-                .crop(fslice=fslice)
-
-            ny = 200
-            spectrogram_ = spectrogram.resample_band(ymin, ymax, ny)
-            vmin, vmax = spectrogram_.stats.min, spectrogram_.stats.max
-
-            image_data = num.zeros(
-                spectrogram_.values.shape[::-1] + (4,), dtype=num.uint8)
-
-            ok = num.isfinite(spectrogram_.values)
-            values = num.zeros(spectrogram_.values.shape)
-            values[ok] = spectrogram_.values[ok]
-            values[ok] -= vmax
-            values[ok] *= 255.0 / (vmin - vmax)
-
-            image_data[::-1, :, :3] \
-                = values.astype(num.uint8).T[:, :, num.newaxis]
-            ok_alpha = num.array([[[False, False, False, True]]], dtype=bool)
-            ok3 = num.logical_and(ok.T[:, :, num.newaxis], ok_alpha)
-            image_data[ok3[::-1, :, :]] = 255
-
-            from PIL import Image
-            im = Image.fromarray(image_data, mode='RGBA')
-            buffer = BytesIO()
-            im.save(buffer, format='png', compress_type=3)
-
-            images.append(SpectrogramImage(
-                codes=group.codes,
-                tmin=spectrogram_.times[0],
-                tmax=spectrogram_.times[-1],
-                ymin=spectrogram_.frequencies[0],
-                ymax=spectrogram_.frequencies[-1],
-                fscale='log',
-                shape=spectrogram_.values.shape,
-                image_data_base64='data:image/png;base64,' + base64.b64encode(
-                    buffer.getvalue()).decode('ascii')))
 
         return images
 
@@ -525,16 +528,20 @@ class SquirrelGateHandler(SquirrelRequestHandler):
             ymax=ymax)
 
     def p_get_carpets(self, parameters, gate):
-        tmin, tmax, ymin, ymax, ny = self.get_cleaned(
-            'tmin tmax ymin ymax ny',
-            parameters)
+        tmin, tmax, ymin, ymax, nx, ny, codes, overview_method \
+            = self.get_cleaned(
+                'tmin tmax ymin ymax nx ny codes overview_method',
+                parameters)
 
         images = gate.get_carpet_images(
             tmin=tmin,
             tmax=tmax,
+            codes=codes,
             ymin=ymin,
             ymax=ymax,
-            ny=ny or 400)
+            nx=nx or 6000,
+            ny=ny or 400,
+            overview_method=overview_method)
 
         gate.advance_accessor()
         return images
@@ -560,7 +567,6 @@ class BeachballHandler(SquirrelRequestHandler):
         color_theme_name = self.get_query_argument('theme', 'black')
 
         mt = pmt.as_mt(m6)
-        print(mt)
 
         fig = plt.figure(figsize=(0.5, 0.5))
         axes = fig.add_subplot(1, 1, 1, aspect=1.)

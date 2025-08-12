@@ -5,8 +5,10 @@ const setupConnection = () => {
     let serverInfo = ref(null)
     let heartbeats = []
     let latestError = ref(null)
+    let activeRequests = ref(0)
 
     const squirrelRequest = async (method, args) => {
+        activeRequests.value += 1
         const response = await fetch('/squirrel/' + method, {
             method: 'POST',
             headers: {
@@ -14,6 +16,7 @@ const setupConnection = () => {
             },
             body: JSON.stringify(args),
         })
+        activeRequests.value -= 1
         if (!response.ok) {
             latestError.value = await response.text()
             throw new Error(
@@ -45,6 +48,7 @@ const setupConnection = () => {
                 if (heartbeats.length > 10) {
                     heartbeats.splice(0, heartbeats.length - 10)
                 }
+                serverInfo.value = heartbeat.server_info
             }
         } catch (e) {
             heartbeats = []
@@ -71,9 +75,17 @@ const setupConnection = () => {
     })
 
     getServerInfo()
-    receiveHeartbeat()
 
-    return { connected, serverInfo, request: squirrelRequest, latestError }
+    const connect = () => {
+        if (connected.value === null) {
+            receiveHeartbeat()
+        }
+    }
+
+    connect()
+
+    return { connect, connected, serverInfo, request: squirrelRequest, latestError,
+        activeRequests }
 }
 
 let connection = null

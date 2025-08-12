@@ -1,5 +1,5 @@
 import { watch } from '../vue.esm-browser.js'
-import { createIfNeeded, colors } from './common.js'
+import { createIfNeeded, colors, onResizeDebounced } from './common.js'
 import { squirrelConnection } from './connection.js'
 import { squirrelGates } from './gate.js'
 
@@ -48,8 +48,11 @@ export const squirrelMap = () => {
     }
 
     const resizeHandler = () => {
-        updateSensors()
         bounds = containerBounds()
+        if (bounds.width <= 0 || bounds.height <= 0) {
+            return
+        }
+        updateSensors()
         map.attr('width', bounds.width).attr('height', bounds.height)
         reProject()
     }
@@ -128,10 +131,8 @@ export const squirrelMap = () => {
 
         projection = projections.ea
 
+        onResizeDebounced(container.node(), resizeHandler)
         resizeHandler()
-        window.addEventListener('resize', resizeHandler)
-
-        my.resizeHandler = resizeHandler
 
         map.on('click', (ev) => {
             rotate(projection.invert(d3.pointer(ev)))

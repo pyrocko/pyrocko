@@ -4,28 +4,38 @@
         <meta charset="utf-8" />
         <meta
             name="viewport"
-            content="width=device-width, initial-scale=1, interactive-widget=resizes-content"
+            content="width=device-width, initial-scale=1, user-scalable=0, interactive-widget=resizes-content"
         />
 
         <title>Squirrel</title>
         <link
+            rel="icon"
+            type="image/png"
+            sizes="any"
+            href="images/squirrel.svg"
+            crossorigin="use-credentials"
+        />
+        <link
             rel="apple-touch-icon"
             sizes="180x180"
             href="images/apple-touch-icon.png"
+            crossorigin="use-credentials"
         />
         <link
             rel="icon"
             type="image/png"
             sizes="32x32"
             href="images/favicon-32x32.png"
+            crossorigin="use-credentials"
         />
         <link
             rel="icon"
             type="image/png"
             sizes="16x16"
             href="images/favicon-16x16.png"
+            crossorigin="use-credentials"
         />
-        <link rel="manifest" href="site.webmanifest" />
+        <link rel="manifest" href="site.webmanifest" crossorigin="use-credentials" />
 
         <link href="css/bootstrap.min.css" rel="stylesheet" />
         <link href="css/local.css" rel="stylesheet" />
@@ -35,33 +45,70 @@
 
     <body>
         <div id="app" class="vbox-container">
-            <!--{{ selectedTab }}-->
-            <div v-if="!connection.connected" class="curtain">DISCONNECTED</div>
+            <div
+                @click="connection.connect()"
+                v-if="!connection.connected"
+                class="curtain"
+            >
+                <div>DISCONNECTED</div>
+                <div>
+                    <small>Click to reconnect.</small>
+                </div>
+            </div>
             <div
                 v-if="connection.connected && connection.connected.delay > 5.0"
                 class="curtain"
             >
                 DELAY {{ fmtDuration(connection.connected.delay) }}
             </div>
-            <ul class="nav nav-tabs mt-1" role="tablist">
-                <li class="nav-item" v-for="(tab, name) in tabs" :key="name">
-                    <a
-                        class="nav-link"
-                        :class="{ active: selectedTab === name }"
-                        @click="selectTab(name)"
-                        >{{ name.charAt(0).toUpperCase() + name.slice(1) }}
-                        <button
-                            v-if="!isDefaultTab(name)"
-                            @click="closeTab(name, $event)"
-                            class="close-btn"
-                        >
-                            &times;
-                        </button>
-                    </a>
-                </li>
-                <button class="add-tab-btn" @click="addTab()">+</button>
-                <component-filter class="ms-auto"></component-filter>
-            </ul>
+            <nav class="navbar navbar-expand-md navbar-light bg-light">
+                <div class="container-fluid">
+                    <button
+                        class="navbar-toggler"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#navbarNav"
+                    >
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <div class="collapse navbar-collapse" id="navbarNav">
+                        <ul class="navbar-nav me-auto">
+                            <li
+                                class="nav-item has-close-btn"
+                                v-for="(tab, name) in tabs"
+                                :key="name"
+                            >
+                                <a
+                                    class="nav-link"
+                                    :class="{ active: selectedTab === name }"
+                                    @click="selectTab(name)"
+                                    style="
+                                        font-size: 2rem;
+                                        margin-top: -1rem;
+                                        margin-bottom: -1rem;
+                                    "
+                                >
+                                    {{ tab.label }}
+                                    <!--<span class="close-btn" v-if="!isDefaultTab(name)" @click="closeTab(name, $event)">&times;</span> -->
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a
+                                    class="nav-link"
+                                    @click="addTab()"
+                                    style="
+                                        font-size: 2rem;
+                                        margin-top: -1rem;
+                                        margin-bottom: -1rem;
+                                    "
+                                    >+</a
+                                >
+                            </li>
+                        </ul>
+                    </div>
+                    <component-filter class="ms-auto"></component-filter>
+                </div>
+            </nav>
 
             <keep-alive>
                 <component :is="tabs[selectedTab]"></component>
@@ -82,18 +129,43 @@
             <div class="connection-monitor">
                 <div v-if="connection.connected">
                     <footer>
-                        Version: {{ connection.serverInfo.pyrocko_version }} |
-                        Connected:
+                        🐿️
+                        <span class="d-none d-sm-inline">Version:</span>
+                        {{ connection.serverInfo.pyrocko_version }} |
+                        <span class="d-none d-sm-inline">Connected:</span>
                         {{ fmtDuration(connection.connected.duration) }} |
-                        Requests:
+                        <span class="d-none d-sm-inline">Requests:</span>
                         {{
                             connection.serverInfo
                                 ? connection.serverInfo.n_requests
                                 : ''
                         }}
+                        <span v-if="connection.activeRequests > 0">
+                            |
+                            <strong
+                                style="
+                                    padding-left: 0.5em;
+                                    padding-right: 0.5em;
+                                    background-color: #ccc;
+                                "
+                            >
+                                Active: {{ connection.activeRequests }}</strong
+                            >
+                        </span>
                         <span v-if="connection.connected.delay > 2.0">
-                            | Delay:
-                            {{ fmtDuration(connection.connected.delay) }}
+                            |
+                            <strong
+                                style="
+                                    padding-left: 0.5em;
+                                    padding-right: 0.5em;
+                                    background-color: #ecc;
+                                "
+                            >
+                                Delay:
+                                {{
+                                    fmtDuration(connection.connected.delay)
+                                }}</strong
+                            >
                         </span>
                     </footer>
                 </div>
@@ -141,9 +213,6 @@
 
                 gates.addGate()
 
-                console.log('gate added in index.html')
-                console.log('gates in index.html: ', gates)
-
                 onMounted(() => {
                     //const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
                     //tooltipTriggerList.forEach((tooltipTriggerEl) => {
@@ -152,7 +221,6 @@
                 })
 
                 const selectTab = (tabName) => {
-                    console.log('SELECTING TAB')
                     selectedTab.value = tabName
                 }
 
@@ -163,19 +231,11 @@
 
                 const closeTab = (tabName, event) => {
                     event.stopPropagation()
-                    console.log('before close:', selectedTab.value)
                     delete tabs[tabName]
 
-                    console.log(tabs)
-                    console.log('after close:', selectedTab.value)
                     if (selectedTab.value === tabName) {
                         selectedTab.value = 'info'
-                        console.log('in if')
                     }
-                    console.log(
-                        'after changing tab to info:',
-                        selectedTab.value
-                    )
                 }
 
                 const isDefaultTab = (name) => {

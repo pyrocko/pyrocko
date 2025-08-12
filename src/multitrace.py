@@ -18,7 +18,7 @@ from scipy import signal
 
 from . import trace, util
 from .trace import Trace, AboveNyquist, _get_cached_filter_coeffs, costaper
-from .guts import Object, Float, Timestamp, List, Int, Dict, String
+from .guts import Object, Float, Timestamp, List, Int, Dict, String, Any
 from .guts_array import Array
 from .model.codes import CodesNSLCE
 
@@ -207,6 +207,8 @@ class Carpet(Object):
     deltat = Float.T(
         default=1.0,
         help='Sampling interval [s]')
+
+    meta = Dict.T(String.T(), Any.T())
 
     stats__ = CarpetStats.T(optional=True)
 
@@ -977,6 +979,9 @@ class Carpet(Object):
         iok = num.where(num.logical_and(
             log_frequencies[0] <= log_frequencies_out,
             log_frequencies_out <= log_frequencies[-1]))[0]
+
+        if iok.size == 0:
+            raise ValueError('No frequency values in requested range.')
 
         fslice = slice(iok[0], iok[-1]+1)
         fslice_out = slice(iok[0], iok[-1])
