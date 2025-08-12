@@ -39,7 +39,7 @@ def deduplicate_locations(
 
     connectivity = distances <= distance_cutoff
 
-    logger.info(
+    logger.debug(
         'Deduplication distance_cutoff: %g km' % (distance_cutoff/km))
 
     n = len(locations)
