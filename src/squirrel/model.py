@@ -1540,6 +1540,23 @@ class Coverage(Object):
         counts = num.array([c for (_, c) in self.changes], dtype=int)
         return times, counts
 
+    def contiguous(self, tmin, tmax):
+
+        if self.changes is None or len(self.changes) < 1:
+            return -1
+
+        count = -1
+        for t, c in self.changes:
+            if t <= tmin:
+                count = c
+            elif tmin < t and t < tmax:
+                if c != count:
+                    return -1
+            else:
+                return count
+
+        return count
+
 
 def same_or_none(xs):
     xs = list(xs)
