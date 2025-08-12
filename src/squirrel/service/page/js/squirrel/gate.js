@@ -94,6 +94,8 @@ export const squirrelBlock = (block) => {
     let lastTouched = -1
     let coverages = null
     let carpets = null
+    let updateTimeoutId = null
+    let updateInProgress = false
 
     const fetchCoverage = async (kind) => {
         const coverages = await connection.request(
@@ -123,7 +125,6 @@ export const squirrelBlock = (block) => {
         const carpets = await connection.request('gate/default/get_carpets', {
             tmin: timeToStr(my.timeMin),
             tmax: timeToStr(my.timeMax),
-            ny: my.ny,
             ...params,
         })
         for (const carpet of carpets) {
@@ -133,6 +134,7 @@ export const squirrelBlock = (block) => {
                 carpet.tmax,
                 carpet.ymin,
                 carpet.ymax,
+                carpet.shape[0],
                 carpet.codes,
             ].join('+++')
             carpet.tmin = strToTime(carpet.tmin)
@@ -141,13 +143,36 @@ export const squirrelBlock = (block) => {
         return carpets
     }
 
-    my.update = async (params) => {
-        console.log(params)
-        coverages = await fetchCoverage('carpet')
-        counter.value++
-        carpets = await fetchCarpets(params)
-        counter.value++
+    my.key = () => my.iScale + ',' + my.iTime
+
+    my.doUpdate = async () => {
+        if (updateInProgress) {
+            my.rescheduleUpdate()
+        } else {
+            updateInProgress = true
+            const params = my.nextParams
+            console.log('<<< enter', my.key(), params)
+            coverages = await fetchCoverage('carpet')
+            counter.value++
+            carpets = await fetchCarpets(my.nextParams)
+            counter.value++
+            console.log('>>> exit', my.key(), params)
+            updateInProgress = false
+        }
     }
+
+    my.rescheduleUpdate = () => {
+        if (updateTimeoutId !== null) {
+            clearTimeout(updateTimeoutId)
+        }
+        updateTimeoutId = setTimeout(async () => { await my.doUpdate() ; updateTimeoutId = null }, 100)
+    }
+
+    my.update = (params) => {
+        my.nextParams = params
+        my.rescheduleUpdate()
+    }
+
     my.touch = (counter) => {
         lastTouched = counter
     }
@@ -227,17 +252,14 @@ export const setupGates = () => {
             timeStep: tstep,
             timeMin: (itime - 1) * tstep * 0.5,
             timeMax: (itime + 1) * tstep * 0.5,
-            ny: imageHeight.value,
         })
     }
-
-    const blockKey = (block) => block.iScale + ',' + block.iTime
 
     const dropOldBlocks = () => {
         const kDelete = Array.from(blocks.values())
             .toSorted((a, b) => b.getLastTouched() - a.getLastTouched())
             .slice(5)
-            .map(blockKey)
+            .map((block) => block.key())
 
         for (const k of kDelete) {
             blocks.delete(k)
@@ -253,26 +275,34 @@ export const setupGates = () => {
             return
         }
 
-        const kNewest = blockKey(sorted[0])
+        const kNewest = sorted[0].key()
 
         for (const k of blocks.keys()) {
             if (k == kNewest) {
-                blocks.get(k).update()
+                blocks.get(k).update({
+                    'ymin': yMin.value,
+                    'ymax': yMax.value,
+                    'ny': imageHeight.value,
+                })
             } else {
                 blocks.delete(k)
             }
         }
     }
 
-    watch([yMin, yMax], updateBlocks)
+    watch([yMin, yMax, imageHeight], updateBlocks)
 
     const update = () => {
         const block = makeTimeBlock(timeMin.value, timeMax.value)
-        const k = blockKey(block)
+        const k = block.key()
         if (!blocks.has(k)) {
             blocks.set(k, block)
             watch([block.counter], () => counter.value++)
-            block.update()
+            block.update({
+                'ymin': yMin.value,
+                'ymax': yMax.value,
+                'ny': imageHeight.value,
+            })
         }
         blocks.get(k).touch(counter.value)
         counter.value++
@@ -404,7 +434,6 @@ export const setupGates = () => {
     })
 
     const events = computed(() => {
-        console.log('zzz')
         const events = []
         for (const gate of gates.value) {
             for (const ev of gate.events) {
@@ -415,7 +444,6 @@ export const setupGates = () => {
     })
 
     const eventGroups = computed(() => {
-        console.log('yyy')
         const groups = Array.from(Map.groupBy(events.value, (ev) => ev.extras.group_id).values())
         groups.sort((a, b) => a[0].time - b[0].time)
         return groups

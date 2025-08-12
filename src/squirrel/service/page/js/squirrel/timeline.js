@@ -273,7 +273,7 @@ export const squirrelTimeline = () => {
         ev.preventDefault()
 
         const tnow = now()
-        if (tnow - scrollTime > 3000) {
+        if (tnow - scrollTime > 500) {
             scrollDeltaY = 0
         }
 
@@ -281,7 +281,7 @@ export const squirrelTimeline = () => {
 
         scrollDeltaY += ev.deltaY
 
-        const step = 100
+        const step = 200
 
         if (Math.abs(scrollDeltaY) < step) {
             return

@@ -31,7 +31,6 @@ from pyrocko.squirrel import model
 from pyrocko import guts
 from pyrocko.squirrel.error import ToolError, SquirrelError
 from pyrocko.squirrel import operators as ops
-from pyrocko.squirrel.base import Squirrel
 from pyrocko import moment_tensor as pmt
 from pyrocko.plot import beachball
 from pyrocko.color import Color, g_pyrocko_color_cycle_base
@@ -195,7 +194,6 @@ class SquirrelRawHandler(SquirrelRequestHandler):
         return self._squirrel.get_channels(tmin=tmin, tmax=tmax, codes=codes)
 
     def p_get_sensors(self, parameters):
-        print("in SquirrelRawHandler -> p_get_sensors()")
         tmin, tmax, codes = self.get_cleaned('tmin tmax codes', parameters)
         return self._squirrel.get_sensors(tmin=tmin, tmax=tmax, codes=codes)
 
@@ -212,7 +210,7 @@ class ScaleChoice(guts.StringChoice):
     choices = ['lin', 'log']
 
 
-class SpectrogramImage(guts.Object):
+class CarpetImage(guts.Object):
     codes = model.CodesNSLCE.T()
     shape = guts.Tuple.T(2, guts.Int.T())
     tmin = guts.Timestamp.T()
@@ -221,6 +219,16 @@ class SpectrogramImage(guts.Object):
     ymax = guts.Float.T()
     fscale = ScaleChoice.T()
     image_data_base64 = guts.String.T()
+
+    @property
+    def summary(self):
+        return 'CarpetImage, %s, (%i, %i), %s - %s, %s' % (
+            str(self.codes),
+            self.shape[0],
+            self.shape[1],
+            util.time_to_str(self.tmin),
+            util.time_to_str(self.tmax),
+            util.human_bytesize(len(self.image_data_base64)))
 
 
 class TimeSpan(guts.Object):
@@ -291,8 +299,6 @@ class Gate(guts.Object):
         return self._outlet.get_channels(*args, **kwargs)
 
     def get_sensors(self, *args, **kwargs):
-        print("in Gate() -> get_sensors()")
-
         return self._outlet.get_sensors(*args, **kwargs)
 
     def get_responses(self, *args, **kwargs):
@@ -314,6 +320,8 @@ class Gate(guts.Object):
             format='webp',
             **kwargs):
 
+        print('get_carpet_images', ymin, ymax, ny)
+
         def carpet_to_image(carpet):
             times_this = []
             times_this.append(time.time())
@@ -322,6 +330,9 @@ class Gate(guts.Object):
                 return None, None
 
             vmin, vmax = carpet.stats.min, carpet.stats.max
+            if vmin == vmax:
+                vmin -= 0.5
+                vmax += 0.5
 
             image_data = num.zeros(
                 carpet.data.shape + (4,), dtype=num.uint8)
@@ -347,7 +358,7 @@ class Gate(guts.Object):
 
             times_this.append(time.time())
 
-            image = SpectrogramImage(
+            image = CarpetImage(
                 codes=drop_resolution(carpet.codes),
                 tmin=carpet.times[0],
                 tmax=carpet.times[-1],
@@ -358,6 +369,8 @@ class Gate(guts.Object):
                 image_data_base64='data:image/%s;base64,%s' % (
                     format,
                     base64.b64encode(buffer.getvalue()).decode('ascii')))
+
+            print(image.summary)
 
             times_this.append(time.time())
             return image, times_this
@@ -377,7 +390,6 @@ class Gate(guts.Object):
         t2 = time.time()
 
         if times:
-            print(times)
             times = num.array(times)
             dtimes = num.diff(num.sum(times, 0))
             logger.debug('Processing costs: %i %s %i %.1f' % (
@@ -385,58 +397,6 @@ class Gate(guts.Object):
                 (dtimes * 1000.).astype(int),
                 int((t2 - t1)*1000.),
                 num.sum(dtimes) / (t2 - t1)))
-
-        return images
-
-    def get_spectrogram_images(self, *args, ymin=0.001, ymax=1000.0, **kwargs):
-        if isinstance(self._outlet, Squirrel):
-            return []
-
-        images = []
-        for group in self._outlet.get_spectrogram_groups(
-                *args,
-                **kwargs,
-                nsamples_limit=1000000):
-
-            fslice = slice(2, None)
-            spectrogram = group \
-                .get_multi_spectrogram() \
-                .crop(fslice=fslice)
-
-            ny = 200
-            spectrogram_ = spectrogram.resample_band(ymin, ymax, ny)
-            vmin, vmax = spectrogram_.stats.min, spectrogram_.stats.max
-
-            image_data = num.zeros(
-                spectrogram_.values.shape[::-1] + (4,), dtype=num.uint8)
-
-            ok = num.isfinite(spectrogram_.values)
-            values = num.zeros(spectrogram_.values.shape)
-            values[ok] = spectrogram_.values[ok]
-            values[ok] -= vmax
-            values[ok] *= 255.0 / (vmin - vmax)
-
-            image_data[::-1, :, :3] \
-                = values.astype(num.uint8).T[:, :, num.newaxis]
-            ok_alpha = num.array([[[False, False, False, True]]], dtype=bool)
-            ok3 = num.logical_and(ok.T[:, :, num.newaxis], ok_alpha)
-            image_data[ok3[::-1, :, :]] = 255
-
-            from PIL import Image
-            im = Image.fromarray(image_data, mode='RGBA')
-            buffer = BytesIO()
-            im.save(buffer, format='png', compress_type=3)
-
-            images.append(SpectrogramImage(
-                codes=group.codes,
-                tmin=spectrogram_.times[0],
-                tmax=spectrogram_.times[-1],
-                ymin=spectrogram_.frequencies[0],
-                ymax=spectrogram_.frequencies[-1],
-                fscale='log',
-                shape=spectrogram_.values.shape,
-                image_data_base64='data:image/png;base64,' + base64.b64encode(
-                    buffer.getvalue()).decode('ascii')))
 
         return images
 
@@ -560,7 +520,6 @@ class BeachballHandler(SquirrelRequestHandler):
         color_theme_name = self.get_query_argument('theme', 'black')
 
         mt = pmt.as_mt(m6)
-        print(mt)
 
         fig = plt.figure(figsize=(0.5, 0.5))
         axes = fig.add_subplot(1, 1, 1, aspect=1.)
