@@ -1840,6 +1840,89 @@ class Coverage(Object):
         if group:
             yield (group[0][0], group[-1][1])
 
+    def changes_as_arrays(self):
+        if self.changes is None:
+            return None, None
+
+        time_float = util.get_time_float()
+        times = num.array([t for (t, _) in self.changes], dtype=time_float)
+        counts = num.array([c for (_, c) in self.changes], dtype=int)
+        return times, counts
+
+    def contiguous(self, tmin, tmax):
+
+        if self.changes is None or len(self.changes) < 1:
+            return -1
+
+        count = -1
+        for t, c in self.changes:
+            if t <= tmin:
+                count = c
+            elif tmin < t and t < tmax:
+                if c != count:
+                    return -1
+            else:
+                return count
+
+        return count
+
+
+def same_or_none(xs):
+    xs = list(xs)
+    if not xs:
+        return None
+
+    if all(x == xs[0] for x in xs):
+        return xs[0]
+    else:
+        return None
+
+
+def join_coverages(coverages, tbleed=0.0):
+    assert len(coverages) > 0
+
+    tmin = min(coverage.tmin for coverage in coverages) + tbleed
+    tmax = max(coverage.tmax for coverage in coverages) - tbleed
+
+    assert tmax >= tmin
+
+    kind_id = same_or_none(coverage.kind_id for coverage in coverages)
+    deltat = same_or_none(coverage.deltat for coverage in coverages)
+
+    if any(coverage.changes is None for coverage in coverages):
+        changes = None
+    else:
+        all_times = []
+        all_diff_counts = []
+        for coverage in coverages:
+            times, counts = coverage.changes_as_arrays()
+            diff_counts = counts.copy()
+            diff_counts[0] = counts[0]
+            diff_counts[1:] = counts[1:] - counts[:-1]
+            all_diff_counts.append(diff_counts)
+            if tbleed != 0.0:
+                times[diff_counts > 0] += tbleed
+                times[diff_counts < 0] -= tbleed
+
+            all_times.append(times)
+
+        times = num.concatenate(all_times)
+        diff_counts = num.concatenate(all_diff_counts)
+        iorder = num.argsort(times)
+        times = times[iorder]
+        diff_counts = diff_counts[iorder]
+        counts = num.cumsum(diff_counts)
+        changes = list(zip(times, counts))
+
+    coverage = Coverage(
+        kind_id=kind_id,
+        tmin=tmin,
+        tmax=tmax,
+        deltat=deltat,
+        changes=changes)
+
+    return coverage
+
 
 __all__ = [
     'UNDEFINED',
