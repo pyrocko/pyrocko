@@ -22,6 +22,7 @@ from itertools import chain
 
 from pyrocko.model import Location
 from pyrocko.trace import Trace, TraceTooShort, NoData
+from pyrocko.response import InvalidResponseError
 
 from ..model import (
     QuantityType, CodesNSLCE, CodesMatcher, CHANNEL, WAVEFORM,
@@ -1051,7 +1052,7 @@ class Restitution(Operator):
                         tr_rest.chop(tmin, tmax)
                         traces_out.append(tr_rest)
 
-                    except (TraceTooShort, NoData):
+                    except (TraceTooShort, NoData, InvalidResponseError):
                         # print('trace too short: %s' % tr.summary)
                         pass
 
