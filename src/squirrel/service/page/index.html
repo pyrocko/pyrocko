@@ -43,25 +43,33 @@
             >
                 DELAY {{ fmtDuration(connection.connected.delay) }}
             </div>
-            <ul class="nav nav-tabs mt-1" role="tablist">
-                <li class="nav-item" v-for="(tab, name) in tabs" :key="name">
-                    <a
-                        class="nav-link"
-                        :class="{ active: selectedTab === name }"
-                        @click="selectTab(name)"
-                        >{{ name.charAt(0).toUpperCase() + name.slice(1) }}
-                        <button
-                            v-if="!isDefaultTab(name)"
-                            @click="closeTab(name, $event)"
-                            class="close-btn"
-                        >
-                            &times;
-                        </button>
-                    </a>
-                </li>
-                <button class="add-tab-btn" @click="addTab()">+</button>
-                <component-filter class="ms-auto"></component-filter>
-            </ul>
+            <nav class="navbar navbar-expand-lg navbar-light bg-light">
+                <div class="container-fluid">
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <div class="collapse navbar-collapse" id="navbarNav">
+                        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                            <li
+                                    class="nav-item has-close-btn"
+                                    v-for="(tab, name) in tabs"
+                                    :key="name">
+                                <a
+                                        class="nav-link"
+                                        :class="{ active: selectedTab === name }"
+                                        @click="selectTab(name)" >
+                                    {{ tab.label }}
+                                    <!--<span class="close-btn" v-if="!isDefaultTab(name)" @click="closeTab(name, $event)">&times;</span> -->
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" @click="addTab()">+</a>
+                            </li>
+                        </ul>
+                    </div>
+                    <component-filter class="ms-auto"></component-filter>
+                </div>
+            </nav>
 
             <keep-alive>
                 <component :is="tabs[selectedTab]"></component>
@@ -91,9 +99,11 @@
                                 ? connection.serverInfo.n_requests
                                 : ''
                         }}
+                        <span v-if="connection.activeRequests > 0">
+                            | <strong style="padding-left: 0.5em; padding-right: 0.5em; background-color: #ccc;"> Active: {{ connection.activeRequests }}</strong>
+                        </span>
                         <span v-if="connection.connected.delay > 2.0">
-                            | Delay:
-                            {{ fmtDuration(connection.connected.delay) }}
+                            | <strong style="padding-left: 0.5em; padding-right: 0.5em; background-color: #ecc;"> Delay: {{ fmtDuration(connection.connected.delay) }}</strong>
                         </span>
                     </footer>
                 </div>

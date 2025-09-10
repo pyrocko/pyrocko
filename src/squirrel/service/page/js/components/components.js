@@ -1,6 +1,7 @@
 import { ref, computed, onMounted, watch } from '../vue.esm-browser.js'
 import { squirrelMap } from '../squirrel/map.js'
 import { squirrelTimeline } from '../squirrel/timeline.js'
+import { squirrelRangeSelect } from '../squirrel/range_select.js'
 import { squirrelGates } from '../squirrel/gate.js'
 import { squirrelConnection } from '../squirrel/connection.js'
 import { useFilters } from '../squirrel/filter.js'
@@ -20,7 +21,38 @@ const positiveOrNull = (s) => {
     return x
 }
 
+export const ComponentRangeSelect = {
+    props: ['min', 'max'],
+
+    setup(props) {
+        console.log(props.min.value, props.max.value)
+        let rangeSelect = squirrelRangeSelect()
+
+        const updateRange = (range) => {
+            console.log('updateRange', range)
+            props.min.value = range[0]
+            props.max.value = range[1]
+        }
+
+        rangeSelect.on('brushed', updateRange)
+
+        watch([props.min, props.max], rangeSelect.setRange)
+
+        onMounted(() => {
+            d3.select('#rangeSelect').call(rangeSelect)
+        })
+        return {}
+    },
+    template: `
+      <div id="rangeSelect"></div>
+    `,
+}
+
 export const componentTimeline = {
+    label: '≋',  // ⩫
+    components: {
+        ComponentRangeSelect,
+    },
     setup() {
         const gates = squirrelGates()
         const timeline = squirrelTimeline()
@@ -46,22 +78,37 @@ export const componentTimeline = {
                 gates.yMin.value = yMin
                 gates.yMax.value = yMax
             } catch (e) {
+                console.log(e)
                 yError.value = e
             }
         }
 
+
         watch(yMinInput, propagate)
         watch(yMaxInput, propagate)
 
-        return { yMinInput, yMaxInput, yError }
+        const propagateIn = () => {
+            const fmt = d3.format('.4g')
+            yMinInput.value = fmt(gates.yMin.value)
+            yMaxInput.value = fmt(gates.yMax.value)
+            yError.value = null
+        }
+
+        watch(gates.yMin, propagateIn)
+        watch(gates.yMax, propagateIn)
+
+        return { yMinInput, yMaxInput, yError, gates }
     },
     template: `
         <div id="timeline" tabindex="0" class="vbox-main tab-pane">
         </div>
-        <div class="container">
+        <div class="container-fluid">
             <div class="form-group row">
                 <div class="col-2">
                     <input type="text" class="form-control" :class="{ 'input-error': yError }" v-model="yMinInput" />
+                </div>
+                <div class="col-8">
+                    <component-range-select :min="gates.yMin" :max="gates.yMax" style="height: 3.5em;"></component-range-select>
                 </div>
                 <div class="col-2">
                     <input type="text" class="form-control" :class="{ 'input-error': yError }" v-model="yMaxInput" />
@@ -72,12 +119,16 @@ export const componentTimeline = {
 }
 
 export const componentMap = {
+    label: '⦾',  // ⦾ ⦿ ⊙
+
     setup() {
         let map = squirrelMap()
         onMounted(() => {
             d3.select('#map').call(map)
             map.addBasemap()
         })
+
+        return {}
     },
     template: `
       <div id="map" class="map-container vbox-main tab-pane"></div>
@@ -85,6 +136,7 @@ export const componentMap = {
 }
 
 export const componentFilter = {
+    label: '🔍',
     setup() {
         const { searchQuery, selectedOption, filterSensors } = useFilters()
 
@@ -137,6 +189,7 @@ export const componentFilter = {
 }
 
 export const componentTable = {
+    label: '⟁',
     setup() {
         const { filteredSensors, selectedOption } = useFilters()
         const sortTable = (sortValue) => {
@@ -154,8 +207,6 @@ export const componentTable = {
         }
 
         const gates = squirrelGates()
-        console.log("gates", gates)
-        console.log('before sensor assignment')
 
 
         const sensors = gates.sensors
@@ -209,7 +260,7 @@ export const componentTable = {
             responses,
             responsesMap,
             formatResponse,
-            noResults
+            noResults,
         }
     },
     template: `
@@ -310,6 +361,7 @@ export const componentTable = {
 }
 
 export const componentCatalog = {
+    label: '✩', // ★
     setup() {
         const gates = squirrelGates()
 

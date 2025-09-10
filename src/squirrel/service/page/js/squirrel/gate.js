@@ -89,13 +89,13 @@ export const squirrelGate = (gate_id_) => {
 
 export const squirrelBlock = (block) => {
     const counter = ref(0)
+    let updateInProgress = false
     const my = { ...block }
     const connection = squirrelConnection()
     let lastTouched = -1
     let coverages = null
     let carpets = null
     let updateTimeoutId = null
-    let updateInProgress = false
 
     const fetchCoverage = async (kind) => {
         const coverages = await connection.request(
@@ -234,6 +234,7 @@ export const setupGates = () => {
     const timeMin = ref(TIME_MIN)
     const timeMax = ref(TIME_MAX)
     const imageHeight = ref(100)
+    const codesVisible = shallowRef(null)
     const yMin = ref(null)
     const yMax = ref(null)
     const blockFactor = 4
@@ -267,6 +268,7 @@ export const setupGates = () => {
     }
 
     const updateBlocks = () => {
+        console.log('updateBlocks')
         const sorted = Array.from(blocks.values()).toSorted(
             (a, b) => b.getLastTouched() - a.getLastTouched()
         )
@@ -283,6 +285,7 @@ export const setupGates = () => {
                     'ymin': yMin.value,
                     'ymax': yMax.value,
                     'ny': imageHeight.value,
+                    'codes': codesVisible.value,
                 })
             } else {
                 blocks.delete(k)
@@ -290,7 +293,7 @@ export const setupGates = () => {
         }
     }
 
-    watch([yMin, yMax, imageHeight], updateBlocks)
+    watch([yMin, yMax, imageHeight, codesVisible], updateBlocks)
 
     const update = () => {
         const block = makeTimeBlock(timeMin.value, timeMax.value)
@@ -302,6 +305,7 @@ export const setupGates = () => {
                 'ymin': yMin.value,
                 'ymax': yMax.value,
                 'ny': imageHeight.value,
+                'codes': codesVisible.value,
             })
         }
         blocks.get(k).touch(counter.value)
@@ -317,6 +321,10 @@ export const setupGates = () => {
 
     const setImageHeight = (ny) => {
         imageHeight.value = Math.round(ny)
+    }
+
+    const setCodesVisible = (codes) => {
+        codesVisible.value = codes
     }
 
     const makePageMove = (amount) => {
@@ -338,6 +346,7 @@ export const setupGates = () => {
         gates.value.push(gate)
         gate.update()
     }
+
 
     const getRelevantBlocks = () => {
         const relevant = Array.from(blocks.values())
@@ -503,6 +512,7 @@ export const setupGates = () => {
         counter,
         setTimeSpan,
         setImageHeight,
+        setCodesVisible,
         pageForward,
         pageBackward,
         halfPageForward,

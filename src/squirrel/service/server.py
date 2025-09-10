@@ -48,8 +48,11 @@ def str_choice(s, choices):
     return s
 
 
-def to_codes_list(x):
-    return [model.to_codes_guess(s.strip()) for s in x.split(',')]
+def to_codes_list(xs):
+    if not isinstance(xs, list) or not all(isinstance(x, str) for x in xs):
+        raise ValueError('List of strings required.')
+
+    return [model.to_codes_guess(x.strip()) for x in xs]
 
 
 def get_parameters_dict(body):
@@ -485,13 +488,14 @@ class SquirrelGateHandler(SquirrelRequestHandler):
             ymax=ymax)
 
     def p_get_carpets(self, parameters, gate):
-        tmin, tmax, ymin, ymax, ny = self.get_cleaned(
-            'tmin tmax ymin ymax ny',
+        tmin, tmax, ymin, ymax, ny, codes = self.get_cleaned(
+            'tmin tmax ymin ymax ny codes',
             parameters)
 
         images = gate.get_carpet_images(
             tmin=tmin,
             tmax=tmax,
+            codes=codes,
             ymin=ymin,
             ymax=ymax,
             ny=ny or 400)

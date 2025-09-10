@@ -1,5 +1,5 @@
-import { watch } from '../vue.esm-browser.js'
-import { now } from './common.js'
+import { watch, shallowRef } from '../vue.esm-browser.js'
+import { now, arraysEqual } from './common.js'
 
 import {
     createIfNeeded,
@@ -154,8 +154,28 @@ export const squirrelTimeline = () => {
     let scrollDeltaY = 0
     let scrollTime = 0
 
+    const trackHeight = shallowRef(100)
+    const timeSpan = shallowRef([0., 1.])
+    const visibleCodes = shallowRef([])
+
+    const visibleTracks = () => {
+        return tracks.filter(trackVisible)
+    }
+
     const containerBounds = () => {
         return container.node().getBoundingClientRect()
+    }
+
+    const updateTrackHeight = () => {
+        trackHeight.value = trackProjection.trackHeight() - 2 * effectiveTrackPadding
+    }
+
+    const updateVisibleCodes = () => {
+        const visible = visibleTracks().map((track) => track.codes).flat()
+        visible.sort()
+        if (!arraysEqual(visibleCodes.value, visible)) {
+            visibleCodes.value = visible
+        }
     }
 
     const updateDataRanges = () => {
@@ -191,6 +211,9 @@ export const squirrelTimeline = () => {
 
     const update = () => {
         const t = d3.transition('update').duration(50).ease(d3.easeLinear)
+
+        updateVisibleCodes()
+        updateTrackHeight()
 
         updateDataRanges()
         updateProjection()
@@ -256,7 +279,7 @@ export const squirrelTimeline = () => {
             dt = dx * (tmax0 - tmin0) * scale
             let timeMin = tmin0 - dt - dtr * xfrac
             let timeMax = tmax0 - dt + dtr * (1 - xfrac)
-            gates.setTimeSpan(timeMin, timeMax)
+            timeSpan.value = [timeMin, timeMax]
         }
     }
 
@@ -264,10 +287,6 @@ export const squirrelTimeline = () => {
         trackStart = null
     }
 
-    const updateTrackHeight = () => {
-        const ny = trackProjection.trackHeight() - 2 * effectiveTrackPadding
-        gates.setImageHeight(ny)
-    }
 
     const scrollHandler = (ev) => {
         ev.preventDefault()
@@ -296,7 +315,6 @@ export const squirrelTimeline = () => {
 
         if (ev.ctrlKey) {
             zoomTracks(relPos, -amount)
-            updateTrackHeight()
         } else {
             scrollTracks(amount)
         }
@@ -305,6 +323,7 @@ export const squirrelTimeline = () => {
 
     const zoomTracks = (anchor, delta) => {
         trackProjection.zoom(anchor, delta)
+
         update()
     }
 
@@ -471,7 +490,7 @@ export const squirrelTimeline = () => {
             .attr('clip-path', (img) => img.clip)
             .attr('x', (img) => img.xmin)
             .attr('width', (img) => img.xmax - img.xmin)
-            //.filter(needOpacityChange)
+            .filter(needOpacityChange)
             .transition(imageTransition)
             .duration((img) => (img.zombie ? 1000 : 100))
             .style('opacity', (img) =>
@@ -614,9 +633,6 @@ export const squirrelTimeline = () => {
         )
     }
 
-    const visibleTracks = () => {
-        return tracks.filter(trackVisible)
-    }
 
     const updateTracks = (t) => {
         const tracks = visibleTracks()
@@ -807,8 +823,13 @@ export const squirrelTimeline = () => {
         window.addEventListener('resize', resizeHandler)
         resizeHandler()
 
-        watch([gates.counter], update)
-        watch([gates.codes], updateCodes)
+        timeSpan.value = [gates.timeMin.value, gates.timeMax.value]
+
+        watch(gates.counter, update)
+        watch(gates.codes, updateCodes)
+        watch(trackHeight, gates.setImageHeight)
+        watch(timeSpan, (newVal, oldVal) => { gates.setTimeSpan(newVal[0], newVal[1]); })
+        watch(visibleCodes, gates.setCodesVisible)
     }
     my.resizeHandler = resizeHandler
     return my
