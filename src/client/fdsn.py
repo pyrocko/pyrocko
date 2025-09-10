@@ -236,7 +236,7 @@ def _request(
         g_session = requests.Session()
 
     if user is not None and passwd is not None:
-        auth = (user, passwd)
+        auth = requests.auth.HTTPDigestAuth(user, passwd)
     else:
         auth = None
 
