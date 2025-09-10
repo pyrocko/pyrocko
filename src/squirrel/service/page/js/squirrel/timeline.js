@@ -24,10 +24,9 @@ const projectionHelper = () => {
     }
 
     my.range = scale.range
-    my.domain = scale.domain
 
     my.trackHeight = () => {
-        return scale(scale.domain()[0]+1) - scale(scale.domain()[0])
+        return scale(scale.domain()[0] + 1) - scale(scale.domain()[0])
     }
 
     my.lower = (obj) => {
@@ -154,8 +153,11 @@ export const squirrelTimeline = () => {
     let scrollDeltaY = 0
     let scrollTime = 0
 
+    let deactivateScrollMarginsTimeoutId = null
+    let needScrollMargins = false
+
     const trackHeight = shallowRef(100)
-    const timeSpan = shallowRef([0., 1.])
+    const timeSpan = shallowRef([0, 1])
     const visibleCodes = shallowRef([])
 
     const visibleTracks = () => {
@@ -167,11 +169,14 @@ export const squirrelTimeline = () => {
     }
 
     const updateTrackHeight = () => {
-        trackHeight.value = trackProjection.trackHeight() - 2 * effectiveTrackPadding
+        trackHeight.value =
+            trackProjection.trackHeight() - 2 * effectiveTrackPadding
     }
 
     const updateVisibleCodes = () => {
-        const visible = visibleTracks().map((track) => track.codes).flat()
+        const visible = visibleTracks()
+            .map((track) => track.codes)
+            .flat()
         visible.sort()
         if (!arraysEqual(visibleCodes.value, visible)) {
             visibleCodes.value = visible
@@ -287,7 +292,6 @@ export const squirrelTimeline = () => {
         trackStart = null
     }
 
-
     const scrollHandler = (ev) => {
         ev.preventDefault()
 
@@ -313,13 +317,14 @@ export const squirrelTimeline = () => {
         const amount =
             iamount * Math.max(1, Math.abs(trackProjection.domainSpan()) / 5)
 
+        activateScrollMargins()
+
         if (ev.ctrlKey) {
             zoomTracks(relPos, -amount)
         } else {
             scrollTracks(amount)
         }
     }
-
 
     const zoomTracks = (anchor, delta) => {
         trackProjection.zoom(anchor, delta)
@@ -334,8 +339,7 @@ export const squirrelTimeline = () => {
 
     const coverageToBox = (coverage) => {
         let track = codesToTracks.get(coverage.codes)
-        if (track == null) {
-            // || !trackVisible(track)) {
+        if (track == null || !trackVisible(track)) {
             return null
         }
         let box = {
@@ -407,20 +411,6 @@ export const squirrelTimeline = () => {
             .filter((img) => img !== null)
     }
 
-    const targetOpacities = new Map()
-
-    const needOpacityChange = (img) => {
-        return (
-            !targetOpacities.has(img.id) ||
-            (targetOpacities.get(img.id) != img.zombie ? 0 : 1)
-        )
-    }
-
-    const trackOpacityChange = (img, opacity) => {
-        targetOpacities.set(img.id, opacity)
-        return opacity
-    }
-
     const updateBoxes = (t) => {
         boxesGroup
             .selectAll('rect')
@@ -463,7 +453,7 @@ export const squirrelTimeline = () => {
 
         const images = getImages()
 
-        const imageTransition = d3.transition('image').duration(100)
+        const imageTransition = d3.transition('image')
 
         imageGroup
             .selectAll('image')
@@ -477,8 +467,8 @@ export const squirrelTimeline = () => {
                         .attr('href', (img) => img.image_data_base64)
                         .attr('y', (img) => img.ymin)
                         .attr('height', (img) => img.ymax - img.ymin)
-                        //.style('mix-blend-mode', 'plus-lighter')
-                        .style('opacity', (img) => trackOpacityChange(img, 0)),
+                        .style('mix-blend-mode', 'plus-lighter')
+                        .style('opacity', (img) => 0),
                 (update) =>
                     update.call((update) =>
                         update
@@ -490,12 +480,9 @@ export const squirrelTimeline = () => {
             .attr('clip-path', (img) => img.clip)
             .attr('x', (img) => img.xmin)
             .attr('width', (img) => img.xmax - img.xmin)
-            .filter(needOpacityChange)
             .transition(imageTransition)
-            .duration((img) => (img.zombie ? 1000 : 100))
-            .style('opacity', (img) =>
-                trackOpacityChange(img, img.zombie ? 0 : 1)
-            )
+            .duration((img) => 500)
+            .style('opacity', (img) => (img.zombie ? 0 : 1))
     }
 
     const updateTimeAxes = () => {
@@ -626,13 +613,36 @@ export const squirrelTimeline = () => {
         axisGroups
     }
 
-    const trackVisible = (track) => {
-        return (
-            trackProjection.range()[0] <= trackProjection.lower(track) &&
-            trackProjection.upper(track) <= trackProjection.range()[1]
-        )
+    const activateScrollMargins = () => {
+        needScrollMargins = true
+        if (deactivateScrollMarginsTimeoutId !== null) {
+            clearTimeout(deactivateScrollMarginsTimeoutId)
+        }
+        deactivateScrollMarginsTimeoutId = setTimeout(() => {
+            needScrollMargins = false
+        }, 3000)
     }
 
+    const visibilityMargins = () => {
+        if (needScrollMargins) {
+            return [
+                trackProjection.trackHeight(),
+                trackProjection.trackHeight(),
+            ]
+        } else {
+            return [0, 0]
+        }
+    }
+
+    const trackVisible = (track) => {
+        const margins = visibilityMargins()
+        return (
+            trackProjection.range()[0] - margins[0] <=
+                trackProjection.lower(track) &&
+            trackProjection.upper(track) <=
+                trackProjection.range()[1] + margins[1]
+        )
+    }
 
     const updateTracks = (t) => {
         const tracks = visibleTracks()
@@ -828,7 +838,9 @@ export const squirrelTimeline = () => {
         watch(gates.counter, update)
         watch(gates.codes, updateCodes)
         watch(trackHeight, gates.setImageHeight)
-        watch(timeSpan, (newVal, oldVal) => { gates.setTimeSpan(newVal[0], newVal[1]); })
+        watch(timeSpan, (newVal, oldVal) => {
+            gates.setTimeSpan(newVal[0], newVal[1])
+        })
         watch(visibleCodes, gates.setCodesVisible)
     }
     my.resizeHandler = resizeHandler

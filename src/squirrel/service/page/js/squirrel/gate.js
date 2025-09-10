@@ -84,7 +84,17 @@ export const squirrelGate = (gate_id_) => {
         events.value = await fetchEvents()
     }
 
-    return { codes, timeSpans, channels, sensors, responses, events, update, counter, filter }
+    return {
+        codes,
+        timeSpans,
+        channels,
+        sensors,
+        responses,
+        events,
+        update,
+        counter,
+        filter,
+    }
 }
 
 export const squirrelBlock = (block) => {
@@ -95,6 +105,7 @@ export const squirrelBlock = (block) => {
     let lastTouched = -1
     let coverages = null
     let carpets = null
+    let oldCarpets = []
     let updateTimeoutId = null
 
     const fetchCoverage = async (kind) => {
@@ -137,6 +148,7 @@ export const squirrelBlock = (block) => {
                 carpet.shape[0],
                 carpet.codes,
             ].join('+++')
+            carpet.zombie1 = false
             carpet.tmin = strToTime(carpet.tmin)
             carpet.tmax = strToTime(carpet.tmax)
         }
@@ -145,18 +157,31 @@ export const squirrelBlock = (block) => {
 
     my.key = () => my.iScale + ',' + my.iTime
 
+    my.cleanup = () => {
+        const now = Date.now()
+        oldCarpets = oldCarpets.filter(
+            (carpet) => carpet.zombie1Timestamp > now - 1000
+        )
+    }
+
     my.doUpdate = async () => {
         if (updateInProgress) {
             my.rescheduleUpdate()
         } else {
             updateInProgress = true
             const params = my.nextParams
-            console.log('<<< enter', my.key(), params)
             coverages = await fetchCoverage('carpet')
             counter.value++
-            carpets = await fetchCarpets(my.nextParams)
+            const newCarpets = await fetchCarpets(my.nextParams)
+            for (const carpet of carpets || []) {
+                carpet.zombie1 = true
+                carpet.zombie1Timestamp = Date.now()
+                oldCarpets.push(carpet)
+            }
+            carpets = newCarpets
+            setTimeout(my.cleanup, 1100)
+
             counter.value++
-            console.log('>>> exit', my.key(), params)
             updateInProgress = false
         }
     }
@@ -165,7 +190,10 @@ export const squirrelBlock = (block) => {
         if (updateTimeoutId !== null) {
             clearTimeout(updateTimeoutId)
         }
-        updateTimeoutId = setTimeout(async () => { await my.doUpdate() ; updateTimeoutId = null }, 100)
+        updateTimeoutId = setTimeout(async () => {
+            await my.doUpdate()
+            updateTimeoutId = null
+        }, 100)
     }
 
     my.update = (params) => {
@@ -186,7 +214,7 @@ export const squirrelBlock = (block) => {
     }
 
     my.getCarpets = () => {
-        return carpets || []
+        return (carpets || []).concat(oldCarpets || [])
     }
 
     my.overlaps = (tmin, tmax) => {
@@ -218,12 +246,12 @@ export const squirrelBlock = (block) => {
         }
     }
 
-    my.activeOrZombieAge = () => {
+    my.durationSinceChange = () => {
         return Date.now() - my.activeChanged
     }
 
     my.isActiveOrZombie = () => {
-        return my.active || my.activeOrZombieAge() < 1000
+        return my.active || my.durationSinceChange() < 1000
     }
 
     return my
@@ -268,7 +296,6 @@ export const setupGates = () => {
     }
 
     const updateBlocks = () => {
-        console.log('updateBlocks')
         const sorted = Array.from(blocks.values()).toSorted(
             (a, b) => b.getLastTouched() - a.getLastTouched()
         )
@@ -282,10 +309,10 @@ export const setupGates = () => {
         for (const k of blocks.keys()) {
             if (k == kNewest) {
                 blocks.get(k).update({
-                    'ymin': yMin.value,
-                    'ymax': yMax.value,
-                    'ny': imageHeight.value,
-                    'codes': codesVisible.value,
+                    ymin: yMin.value,
+                    ymax: yMax.value,
+                    ny: imageHeight.value,
+                    codes: codesVisible.value,
                 })
             } else {
                 blocks.delete(k)
@@ -302,10 +329,10 @@ export const setupGates = () => {
             blocks.set(k, block)
             watch([block.counter], () => counter.value++)
             block.update({
-                'ymin': yMin.value,
-                'ymax': yMax.value,
-                'ny': imageHeight.value,
-                'codes': codesVisible.value,
+                ymin: yMin.value,
+                ymax: yMax.value,
+                ny: imageHeight.value,
+                codes: codesVisible.value,
             })
         }
         blocks.get(k).touch(counter.value)
@@ -347,7 +374,6 @@ export const setupGates = () => {
         gate.update()
     }
 
-
     const getRelevantBlocks = () => {
         const relevant = Array.from(blocks.values())
             .toSorted((a, b) => b.getLastTouched() - a.getLastTouched())
@@ -360,6 +386,10 @@ export const setupGates = () => {
             relevant.length > 0 &&
             (_relevantBlocks.length == 0 || relevant[0] !== _relevantBlocks[0])
         ) {
+            const i = _relevantBlocks.indexOf(relevant[0])
+            if (i > -1) {
+                _relevantBlocks.splice(i, 1)
+            }
             _relevantBlocks.unshift(relevant[0])
             if (_relevantBlocks.length > 4) {
                 _relevantBlocks.length = 4
@@ -382,7 +412,7 @@ export const setupGates = () => {
         const carpets = []
         for (const block of getRelevantBlocks()) {
             for (const carpet of block.getCarpets()) {
-                carpet.zombie = !block.active
+                carpet.zombie = !block.active || carpet.zombie1
                 carpets.push(carpet)
             }
         }
@@ -391,11 +421,18 @@ export const setupGates = () => {
 
     const getDataRanges = () => {
         const ranges = new Map()
-        Map.groupBy(getCarpets(), (carpet) => carpet.codes).forEach((carpets, codes) => {
-            ranges.set(codes, [
-                yMin.value !== null ? yMin.value : Math.min(...carpets.map((carpet) => carpet.ymin)),
-                yMax.value !== null ? yMax.value : Math.max(...carpets.map((carpet) => carpet.ymax))])
-        })
+        Map.groupBy(getCarpets(), (carpet) => carpet.codes).forEach(
+            (carpets, codes) => {
+                ranges.set(codes, [
+                    yMin.value !== null
+                        ? yMin.value
+                        : Math.min(...carpets.map((carpet) => carpet.ymin)),
+                    yMax.value !== null
+                        ? yMax.value
+                        : Math.max(...carpets.map((carpet) => carpet.ymax)),
+                ])
+            }
+        )
         return ranges
     }
 
@@ -410,14 +447,12 @@ export const setupGates = () => {
     })
 
     const sensors = computed(() => {
-        console.log('inside setupGate() -> sensors')
         const sensors = []
         for (const gate of gates.value) {
             for (const sensor of gate.sensors) {
                 sensors.push(sensor)
             }
         }
-        console.log("setupGates received sensors:", sensors)
         return sensors
     })
 
@@ -453,7 +488,9 @@ export const setupGates = () => {
     })
 
     const eventGroups = computed(() => {
-        const groups = Array.from(Map.groupBy(events.value, (ev) => ev.extras.group_id).values())
+        const groups = Array.from(
+            Map.groupBy(events.value, (ev) => ev.extras.group_id).values()
+        )
         groups.sort((a, b) => a[0].time - b[0].time)
         return groups
     })
@@ -536,7 +573,7 @@ let gates = null
 export const squirrelGates = () => {
     if (gates === null) {
         gates = setupGates()
-        console.log("gates === null, in squirrelGates now running setupGates()")
+        console.log('gates === null, in squirrelGates now running setupGates()')
     }
     return gates
 }
