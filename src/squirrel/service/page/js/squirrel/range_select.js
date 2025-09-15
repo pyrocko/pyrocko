@@ -11,6 +11,7 @@ export const squirrelRangeSelect = () => {
     let margin = {top: 0, right: 10, bottom: 25, left: 10}
     let spacing = 3
     let handlers = {}
+    let muted = false
 
     let brushOverlayStroke = 'none'
     let brushOverlayFill = '#eeeeeb'
@@ -35,6 +36,9 @@ export const squirrelRangeSelect = () => {
     }
 
     const brushed = (event) => {
+        if (muted) {
+            return
+        }
         if (event.selection === null) {
             handlers['brushed']([null, null])
         } else {
@@ -68,7 +72,9 @@ export const squirrelRangeSelect = () => {
         } else {
             const [cmin, cmax] = scale.domain()
             const srange = [min !== null ? min : cmin, max !== null ? max : cmax]
+            muted = true
             group_brush.call(brush.move, srange.map(scale))
+            muted = false
         }
     }
 

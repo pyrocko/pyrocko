@@ -372,3 +372,20 @@ export const fmtDuration = (d) => {
 export const now = () => {
     return new Date().getTime()
 }
+
+export const onResizeDebounced = (node, resizeHandler) => {
+    let resizeTimeoutId = null
+    const rescheduleResize = () => {
+        if (resizeTimeoutId !== null) {
+            clearTimeout(resizeTimeoutId)
+        }
+        resizeTimeoutId = setTimeout(() => {
+            resizeHandler()
+            resizeTimeoutId = null
+        }, 100)
+    }
+
+    const resizeObserver = new ResizeObserver(rescheduleResize)
+    resizeObserver.observe(node)
+    return resizeObserver
+}

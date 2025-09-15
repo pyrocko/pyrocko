@@ -1,5 +1,5 @@
 import { watch, shallowRef } from '../vue.esm-browser.js'
-import { now, arraysEqual } from './common.js'
+import { now, arraysEqual, onResizeDebounced } from './common.js'
 
 import {
     createIfNeeded,
@@ -229,6 +229,9 @@ export const squirrelTimeline = () => {
 
     const resizeHandler = () => {
         bounds = containerBounds()
+        if (bounds.width <= 0 || bounds.height <= 0) {
+            return
+        }
         timeline.attr('width', bounds.width).attr('height', bounds.height)
         update()
     }
@@ -829,8 +832,11 @@ export const squirrelTimeline = () => {
         container.on('pointermove', pointerMoveHandler)
         container.on('keydown', keyDownHandler)
         container.on('wheel', scrollHandler)
+        container.on('contextmenu', (ev) => {
+            ev.preventDefault()
+        })
 
-        window.addEventListener('resize', resizeHandler)
+        onResizeDebounced(container.node(), resizeHandler)
         resizeHandler()
 
         timeSpan.value = [gates.timeMin.value, gates.timeMax.value]
@@ -843,6 +849,10 @@ export const squirrelTimeline = () => {
         })
         watch(visibleCodes, gates.setCodesVisible)
     }
-    my.resizeHandler = resizeHandler
+
+    my.activate = () => {
+        resizeHandler()
+    }
+
     return my
 }

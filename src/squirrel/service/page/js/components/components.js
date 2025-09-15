@@ -1,4 +1,4 @@
-import { ref, computed, onMounted, watch } from '../vue.esm-browser.js'
+import { ref, computed, onMounted, onActivated, watch } from '../vue.esm-browser.js'
 import { squirrelMap } from '../squirrel/map.js'
 import { squirrelTimeline } from '../squirrel/timeline.js'
 import { squirrelRangeSelect } from '../squirrel/range_select.js'
@@ -25,11 +25,9 @@ export const ComponentRangeSelect = {
     props: ['min', 'max'],
 
     setup(props) {
-        console.log(props.min.value, props.max.value)
         let rangeSelect = squirrelRangeSelect()
 
         const updateRange = (range) => {
-            console.log('updateRange', range)
             props.min.value = range[0]
             props.max.value = range[1]
         }
@@ -49,7 +47,7 @@ export const ComponentRangeSelect = {
 }
 
 export const componentTimeline = {
-    label: '≋',  // ⩫
+    label: '≋', // ⩫
     components: {
         ComponentRangeSelect,
     },
@@ -61,57 +59,93 @@ export const componentTimeline = {
             d3.select('#timeline').call(timeline)
         })
 
+        onActivated(() => timeline.activate)
+
         const yMinInput = ref('')
         const yMaxInput = ref('')
-        const yError = ref(null)
+        const yMinError = ref(null)
+        const yMaxError = ref(null)
+        let muteIn = false
+        let muteOut = false
 
         const propagate = () => {
+            if (muteOut) {
+                return
+            }
             let yMin
             let yMax
             try {
                 yMin = positiveOrNull(yMinInput.value)
+                yMinError.value = null
+            } catch (e) {
+                yMinError.value = e
+            }
+            try {
                 yMax = positiveOrNull(yMaxInput.value)
-                if (yMax !== null && yMin !== null && yMax <= yMin) {
-                    throw new Error('Invalid entries: yMax <= yMin')
+                yMaxError.value = null
+            } catch (e) {
+                yMaxError.value = e
+            }
+
+            if (yMinError.value !== null || yMaxError.value !== null) {
+                return
+            }
+            try {
+                if (yMin !== null && yMax !== null && yMax < yMin) {
+                    throw new Error('Invalid entries: yMax < yMin')
                 }
-                yError.value = null
+                yMinError.value = null
+                yMaxError.value = null
+                muteIn = true
                 gates.yMin.value = yMin
                 gates.yMax.value = yMax
+                muteIn = false
             } catch (e) {
-                console.log(e)
-                yError.value = e
+                yMinError.value = e
+                yMaxError.value = e
             }
         }
 
-
-        watch(yMinInput, propagate)
-        watch(yMaxInput, propagate)
+        watch([yMinInput, yMaxInput], propagate)
 
         const propagateIn = () => {
+            if (muteIn) {
+                return
+            }
             const fmt = d3.format('.4g')
-            yMinInput.value = fmt(gates.yMin.value)
-            yMaxInput.value = fmt(gates.yMax.value)
-            yError.value = null
+            muteOut = true
+            if (gates.yMin.value === null) {
+                yMinInput.value = ''
+            } else {
+                yMinInput.value = fmt(gates.yMin.value)
+            }
+            if (gates.yMax.value === null) {
+                yMaxInput.value = ''
+            } else {
+                yMaxInput.value = fmt(gates.yMax.value)
+            }
+            muteOut = false
+            yMinError.value = null
+            yMaxError.value = null
         }
 
-        watch(gates.yMin, propagateIn)
-        watch(gates.yMax, propagateIn)
+        watch([gates.yMin, gates.yMax], propagateIn, { flush: 'sync' })
 
-        return { yMinInput, yMaxInput, yError, gates }
+        return { yMinInput, yMaxInput, yMinError, yMaxError, gates }
     },
     template: `
         <div id="timeline" tabindex="0" class="vbox-main tab-pane">
         </div>
-        <div class="container-fluid">
+        <div class="container-fluid bg-light pt-2" style="border-top: 1px solid #eee;">
             <div class="form-group row">
                 <div class="col-2">
-                    <input type="text" class="form-control" :class="{ 'input-error': yError }" v-model="yMinInput" />
+                    <input type="text" class="form-control" :class="{ 'input-error': yMinError }" v-model="yMinInput" />
                 </div>
                 <div class="col-8">
                     <component-range-select :min="gates.yMin" :max="gates.yMax" style="height: 3.5em;"></component-range-select>
                 </div>
                 <div class="col-2">
-                    <input type="text" class="form-control" :class="{ 'input-error': yError }" v-model="yMaxInput" />
+                    <input type="text" class="form-control" :class="{ 'input-error': yMaxError }" v-model="yMaxInput" />
                 </div>
             </div>
         </div>
@@ -119,7 +153,7 @@ export const componentTimeline = {
 }
 
 export const componentMap = {
-    label: '⦾',  // ⦾ ⦿ ⊙
+    label: '⦾', // ⦾ ⦿ ⊙
 
     setup() {
         let map = squirrelMap()
@@ -140,19 +174,23 @@ export const componentFilter = {
     setup() {
         const { searchQuery, selectedOption, filterSensors } = useFilters()
 
-        const options = ["Filter 1",
-            "Filter 2"
-        ]
+        const options = ['Filter 1', 'Filter 2']
 
         const searchHistory = ref([])
         const typingTimer = ref(null)
         const searchDelay = 1000
 
         const saveSearchHistory = () => {
-            if (searchQuery.value.trim() && !searchHistory.value.includes(searchQuery.value)) {
+            if (
+                searchQuery.value.trim() &&
+                !searchHistory.value.includes(searchQuery.value)
+            ) {
                 searchHistory.value.unshift(searchQuery.value.trim())
                 searchHistory.value = searchHistory.value.slice(0, 3)
-                sessionStorage.setItem('searchHistory', JSON.stringify(searchHistory.value))
+                sessionStorage.setItem(
+                    'searchHistory',
+                    JSON.stringify(searchHistory.value)
+                )
             }
         }
 
@@ -164,7 +202,7 @@ export const componentFilter = {
             }, searchDelay)
         }
 
-        onMounted( () => {
+        onMounted(() => {
             const storedHistory = sessionStorage.getItem('searchHistory')
             if (storedHistory) {
                 searchHistory.value = JSON.parse(storedHistory)
@@ -172,19 +210,21 @@ export const componentFilter = {
         })
 
         return {
-            searchQuery, selectedOption, onSearchClick: filterSensors, searchHistory, saveSearchHistory, onSearchInput
+            searchQuery,
+            selectedOption,
+            onSearchClick: filterSensors,
+            searchHistory,
+            saveSearchHistory,
+            onSearchInput,
         }
     },
-    template:
-    `<div class="d-flex justify-content-end">
-        <div class="input-group input-group-sm rounded w-auto pe-4">
-            <input list="filters" type="search" class="form-control form-control-sm rounded tiny-search" placeholder="Select" v-model="searchQuery" @input="onSearchInput" @keyup.enter="onSearchClick"/>
+    template: `<div class="d-flex justify-content-end">
+            <input list="filters" type="search" class="form-control" placeholder="Select" v-model="searchQuery" @input="onSearchInput" @keyup.enter="onSearchClick"/>
             <datalist id="filters">
                 <option v-for="(historyItem, index) in searchHistory" :key="index" :value="historyItem"></option>
                 <option value="..Z"></option>
                 <option value="..[EN]"></option>
             </datalist>
-        </div>
     </div>`,
 }
 
@@ -208,7 +248,6 @@ export const componentTable = {
 
         const gates = squirrelGates()
 
-
         const sensors = gates.sensors
         const responses = gates.responses
         const channels = gates.channels
@@ -220,7 +259,6 @@ export const componentTable = {
         // watch(sensors, () => {
         //     filteredSensors.value = [...sensors.value]
         // })
-
 
         const sortedSensors = computed(() => {
             return [...filteredSensors.value].sort((a, b) => {
@@ -248,7 +286,6 @@ export const componentTable = {
             const stage = response.stages[0]
             return `${stage.input_quantity} -> ${stage.output_quantity}`
         }
-
 
         return {
             sortTable,
@@ -365,53 +402,60 @@ export const componentCatalog = {
     setup() {
         const gates = squirrelGates()
 
-        const event_groups = gates.eventGroups;
+        const event_groups = gates.eventGroups
 
         const fmt = (format, value) => {
-            return d3.format(format)(value);
-        };
+            return d3.format(format)(value)
+        }
 
         const toParams = (o) => {
-            return new URLSearchParams(o).toString();
-        };
+            return new URLSearchParams(o).toString()
+        }
 
         const depth_scale = d3
             .scaleThreshold()
             .domain([15e3, 30e3, 60e3, 120e3, 240e3, 480e3])
             .range([
-                "brick",
-                "sienna",
-                "ochre",
-                "foliage",
-                "ocean",
-                "sky",
-                "plum",
-            ]);
+                'brick',
+                'sienna',
+                'ochre',
+                'foliage',
+                'ocean',
+                'sky',
+                'plum',
+            ])
 
-        const get_m6 = ({mnn, mee, mdd, mne, mnd, med}) => ({mnn, mee, mdd, mne, mnd, med})
+        const get_m6 = ({ mnn, mee, mdd, mne, mnd, med }) => ({
+            mnn,
+            mee,
+            mdd,
+            mne,
+            mnd,
+            med,
+        })
 
         const beachball_link = (ev) => {
             if (ev.moment_tensor) {
                 return (
-                    "beachball?" +
+                    'beachball?' +
                     toParams(get_m6(ev.moment_tensor)) +
-                    "&" +
+                    '&' +
                     toParams({ theme: depth_scale(ev.depth) })
-                );
+                )
             } else {
-                return "";
+                return ''
             }
-        };
+        }
 
         const get_region = (group) => {
-            for (let i=0; i<group.length; i++) {
+            for (let i = 0; i < group.length; i++) {
                 if (group[i].region) {
                     return group[i].region
                 }
             }
         }
 
-        return { event_groups, timeToStr, fmt, beachball_link, get_region };
+        return { event_groups, timeToStr, fmt, beachball_link, get_region }
     },
     template: `
 

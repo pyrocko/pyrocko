@@ -978,6 +978,9 @@ class Carpet(Object):
             log_frequencies[0] <= log_frequencies_out,
             log_frequencies_out <= log_frequencies[-1]))[0]
 
+        if iok.size == 0:
+            raise ValueError('No frequency values in requested range.')
+
         fslice = slice(iok[0], iok[-1]+1)
         fslice_out = slice(iok[0], iok[-1])
 

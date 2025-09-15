@@ -48,6 +48,7 @@ const setupConnection = () => {
                 if (heartbeats.length > 10) {
                     heartbeats.splice(0, heartbeats.length - 10)
                 }
+                serverInfo.value = heartbeat.server_info
             }
         } catch (e) {
             heartbeats = []

@@ -43,13 +43,13 @@
             >
                 DELAY {{ fmtDuration(connection.connected.delay) }}
             </div>
-            <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <nav class="navbar navbar-expand-md navbar-light bg-light">
                 <div class="container-fluid">
                     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                         <span class="navbar-toggler-icon"></span>
                     </button>
                     <div class="collapse navbar-collapse" id="navbarNav">
-                        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <ul class="navbar-nav me-auto">
                             <li
                                     class="nav-item has-close-btn"
                                     v-for="(tab, name) in tabs"
@@ -57,13 +57,13 @@
                                 <a
                                         class="nav-link"
                                         :class="{ active: selectedTab === name }"
-                                        @click="selectTab(name)" >
+                                        @click="selectTab(name)" style="font-size: 2rem; margin-top: -1rem; margin-bottom: -1rem;">
                                     {{ tab.label }}
                                     <!--<span class="close-btn" v-if="!isDefaultTab(name)" @click="closeTab(name, $event)">&times;</span> -->
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" @click="addTab()">+</a>
+                                <a class="nav-link" @click="addTab()" style="font-size: 2rem; margin-top: -1rem; margin-bottom: -1rem;">+</a>
                             </li>
                         </ul>
                     </div>
@@ -90,10 +90,11 @@
             <div class="connection-monitor">
                 <div v-if="connection.connected">
                     <footer>
-                        Version: {{ connection.serverInfo.pyrocko_version }} |
-                        Connected:
+                        🐿️
+                        <span class="d-none d-sm-inline">Version:</span> {{ connection.serverInfo.pyrocko_version }} |
+                        <span class="d-none d-sm-inline">Connected:</span>
                         {{ fmtDuration(connection.connected.duration) }} |
-                        Requests:
+                        <span class="d-none d-sm-inline">Requests:</span>
                         {{
                             connection.serverInfo
                                 ? connection.serverInfo.n_requests
@@ -151,9 +152,6 @@
 
                 gates.addGate()
 
-                console.log('gate added in index.html')
-                console.log('gates in index.html: ', gates)
-
                 onMounted(() => {
                     //const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
                     //tooltipTriggerList.forEach((tooltipTriggerEl) => {
@@ -162,7 +160,6 @@
                 })
 
                 const selectTab = (tabName) => {
-                    console.log('SELECTING TAB')
                     selectedTab.value = tabName
                 }
 
@@ -173,19 +170,11 @@
 
                 const closeTab = (tabName, event) => {
                     event.stopPropagation()
-                    console.log('before close:', selectedTab.value)
                     delete tabs[tabName]
 
-                    console.log(tabs)
-                    console.log('after close:', selectedTab.value)
                     if (selectedTab.value === tabName) {
                         selectedTab.value = 'info'
-                        console.log('in if')
                     }
-                    console.log(
-                        'after changing tab to info:',
-                        selectedTab.value
-                    )
                 }
 
                 const isDefaultTab = (name) => {

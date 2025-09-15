@@ -168,21 +168,24 @@ export const squirrelBlock = (block) => {
         if (updateInProgress) {
             my.rescheduleUpdate()
         } else {
-            updateInProgress = true
-            const params = my.nextParams
-            coverages = await fetchCoverage('carpet')
-            counter.value++
-            const newCarpets = await fetchCarpets(my.nextParams)
-            for (const carpet of carpets || []) {
-                carpet.zombie1 = true
-                carpet.zombie1Timestamp = Date.now()
-                oldCarpets.push(carpet)
-            }
-            carpets = newCarpets
-            setTimeout(my.cleanup, 1100)
+            try {
+                updateInProgress = true
+                const params = my.nextParams
+                coverages = await fetchCoverage('carpet')
+                counter.value++
+                const newCarpets = await fetchCarpets(my.nextParams)
+                for (const carpet of carpets || []) {
+                    carpet.zombie1 = true
+                    carpet.zombie1Timestamp = Date.now()
+                    oldCarpets.push(carpet)
+                }
+                carpets = newCarpets
+                setTimeout(my.cleanup, 1100)
 
-            counter.value++
-            updateInProgress = false
+                counter.value++
+            } finally {
+                updateInProgress = false
+            }
         }
     }
 
@@ -191,8 +194,11 @@ export const squirrelBlock = (block) => {
             clearTimeout(updateTimeoutId)
         }
         updateTimeoutId = setTimeout(async () => {
-            await my.doUpdate()
-            updateTimeoutId = null
+            try {
+                await my.doUpdate()
+            } finally {
+                updateTimeoutId = null
+            }
         }, 100)
     }
 
@@ -573,7 +579,6 @@ let gates = null
 export const squirrelGates = () => {
     if (gates === null) {
         gates = setupGates()
-        console.log('gates === null, in squirrelGates now running setupGates()')
     }
     return gates
 }

@@ -8,6 +8,8 @@ body{
     font-size: 80%;
     margin-top: auto;
     background-color: #f8f9fa;
+    border-top: 1px solid #eee;
+    padding-left: 0.5rem;
 }
 
 .curtain {
@@ -98,8 +100,4 @@ svg text{
 .close-btn:hover {
     color: rgba(0, 0, 0, 0.8);
     transform: scale(1.2);
-}
-
-.tiny-search {
-    height: 1em;
 }

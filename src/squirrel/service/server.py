@@ -157,7 +157,8 @@ class SquirrelHeartbeatHandler(SquirrelRequestHandler):
                 self.write(
                     json.dumps(dict(
                         time_start=time_start,
-                        time_now=time.time())))
+                        time_now=time.time(),
+                        server_info=self._server_info)))
 
                 try:
                     await self.flush()
@@ -328,7 +329,12 @@ class Gate(guts.Object):
         def carpet_to_image(carpet):
             times_this = []
             times_this.append(time.time())
-            carpet = carpet.resample_band(ymin, ymax, ny)
+            try:
+                carpet = carpet.resample_band(ymin, ymax, ny)
+            except ValueError as e:
+                logger.error('Cannot create carpet: %s', str(e))
+                return None, None
+
             if carpet.nsamples == 0 or carpet.ncomponents == 0:
                 return None, None
 
