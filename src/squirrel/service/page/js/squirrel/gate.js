@@ -147,6 +147,7 @@ export const squirrelBlock = (block) => {
                 carpet.ymax,
                 carpet.shape[0],
                 carpet.codes,
+                carpet.overview_method,
             ].join('+++')
             carpet.zombie1 = false
             carpet.tmin = strToTime(carpet.tmin)
@@ -271,6 +272,7 @@ export const setupGates = () => {
     const codesVisible = shallowRef(null)
     const yMin = ref(null)
     const yMax = ref(null)
+    const overviewMethod = ref('mean')
     const blockFactor = 4
     const blocks = new Map()
     let counter = ref(0)
@@ -319,6 +321,7 @@ export const setupGates = () => {
                     ymax: yMax.value,
                     ny: imageHeight.value,
                     codes: codesVisible.value,
+                    overview_method: overviewMethod.value,
                 })
             } else {
                 blocks.delete(k)
@@ -326,7 +329,7 @@ export const setupGates = () => {
         }
     }
 
-    watch([yMin, yMax, imageHeight, codesVisible], updateBlocks)
+    watch([yMin, yMax, imageHeight, codesVisible, overviewMethod], updateBlocks)
 
     const update = () => {
         const block = makeTimeBlock(timeMin.value, timeMax.value)
@@ -339,6 +342,7 @@ export const setupGates = () => {
                 ymax: yMax.value,
                 ny: imageHeight.value,
                 codes: codesVisible.value,
+                overview_method: overviewMethod.value,
             })
         }
         blocks.get(k).touch(counter.value)
@@ -552,6 +556,7 @@ export const setupGates = () => {
         timeMax,
         yMin,
         yMax,
+        overviewMethod,
         counter,
         setTimeSpan,
         setImageHeight,

@@ -41,9 +41,9 @@ def cascade(
     assert kinds is None or kinds == ['carpet']
 
     method_functions = {
-        'min': num.min,
-        'max': num.max,
-        'mean': num.mean,
+        'min': num.nanmin,
+        'max': num.nanmax,
+        'mean': num.nanmean,
     }
 
     tmin_content, tmax_content = squirrel.get_time_span(['carpet'])
@@ -85,6 +85,8 @@ def cascade(
                         tmax=batch.tmax+tpad,
                         kind_codes_ids=[kind_codes_id],
                         accessor_id=accessor_id):
+
+                    carpet.data[carpet.data > 10000.] = num.nan
 
                     try:
                         folded = carpet.fold(

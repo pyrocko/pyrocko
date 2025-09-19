@@ -20,7 +20,7 @@ export const squirrelRangeSelect = () => {
     let brushSelectionFill = '#998'
     
 
-    const scale = d3.scaleLog([0.001, 1000], [0, 1])
+    const scale = d3.scaleLog([0.00001, 1000], [0, 1])
 
     const resizeHandler = () => {
         bounds = container.node().getBoundingClientRect()

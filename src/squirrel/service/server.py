@@ -22,6 +22,7 @@ from io import BytesIO
 
 import numpy as num
 from matplotlib import pyplot as plt
+import matplotlib as mpl
 from tornado import web, autoreload
 
 from pyrocko import info
@@ -105,6 +106,7 @@ class SquirrelRequestHandler(web.RequestHandler):
             'ymin': float,
             'ymax': float,
             'ny': int,
+            'overview_method': lambda x: str_choice(x, ['mean', 'min', 'max']),
         }
 
         def clean_or_none(f, x):
@@ -222,6 +224,7 @@ class CarpetImage(guts.Object):
     ymin = guts.Float.T()
     ymax = guts.Float.T()
     fscale = ScaleChoice.T()
+    overview_method = guts.String.T(optional=True)
     image_data_base64 = guts.String.T()
 
     @property
@@ -321,14 +324,14 @@ class Gate(guts.Object):
             ymin=None,
             ymax=None,
             ny=100,
+            overview_method='mean',
             format='webp',
             **kwargs):
-
-        print('get_carpet_images', ymin, ymax, ny)
 
         def carpet_to_image(carpet):
             times_this = []
             times_this.append(time.time())
+            overview_method = carpet.meta['overview_method']
             try:
                 carpet = carpet.resample_band(ymin, ymax, ny)
             except ValueError as e:
@@ -339,21 +342,30 @@ class Gate(guts.Object):
                 return None, None
 
             vmin, vmax = carpet.stats.min, carpet.stats.max
+            print(vmin, vmax)
             if vmin == vmax:
                 vmin -= 0.5
                 vmax += 0.5
+
+            vmin = -40.
+            vmax = 0.
+
+            rgb = (num.round(mpl.colormaps['inferno'](
+                num.linspace(0., 1., 256)) * 255.)).astype(num.uint8)[:, :3]
 
             image_data = num.zeros(
                 carpet.data.shape + (4,), dtype=num.uint8)
 
             ok = num.isfinite(carpet.data)
             values = num.zeros(carpet.data.shape)
-            values[ok] = carpet.data[ok]
+            values[ok] = num.clip(carpet.data[ok], vmin, vmax)
             values[ok] -= vmax
             values[ok] *= 255.0 / (vmin - vmax)
 
+            # image_data[::-1, :, :3] \
+            #     = values.astype(num.uint8)[:, :, num.newaxis]
             image_data[::-1, :, :3] \
-                = values.astype(num.uint8)[:, :, num.newaxis]
+                = rgb[values.astype(num.uint8)]
             ok_alpha = num.array([[[False, False, False, True]]], dtype=bool)
             ok3 = num.logical_and(ok[:, :, num.newaxis], ok_alpha)
             image_data[ok3[::-1, :, :]] = 255
@@ -375,27 +387,51 @@ class Gate(guts.Object):
                 ymax=carpet.component_axes['frequency'][-1],
                 fscale='log',
                 shape=carpet.data.shape,
+                overview_method=overview_method,
                 image_data_base64='data:image/%s;base64,%s' % (
                     format,
                     base64.b64encode(buffer.getvalue()).decode('ascii')))
 
-            print(image.summary)
-
             times_this.append(time.time())
             return image, times_this
 
+        codes = kwargs.pop('codes', None)
+        if codes is not None and not isinstance(codes, list):
+            codes = [codes]
+
+        if overview_method is not None:
+            if codes is None:
+                codes = [
+                    model.CodesNSLCE('*.*.*.*.'),
+                    model.CodesNSLCE('*.*.*.*.-L%s??' % overview_method)]
+
+            else:
+                codes_overview = [
+                    v.replace(extra='-L%s??' % overview_method)
+                    for v in codes
+                    if v is not None]
+
+                codes.extend(codes_overview)
+
         t0 = time.time()
+
         carpets = self._outlet.get_carpets(
-            *args, **kwargs, nsamples_limit=3000)
+            *args, **kwargs, codes=codes, nsamples_limit=3000)
+
+        for carpet in carpets:
+            carpet.meta['overview_method'] = overview_method
 
         images = []
         times = []
+
         t1 = time.time()
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             for (image, times_this) in executor.map(carpet_to_image, carpets):
                 if image is not None:
                     images.append(image)
                     times.append(times_this)
+
         t2 = time.time()
 
         if times:
@@ -494,8 +530,8 @@ class SquirrelGateHandler(SquirrelRequestHandler):
             ymax=ymax)
 
     def p_get_carpets(self, parameters, gate):
-        tmin, tmax, ymin, ymax, ny, codes = self.get_cleaned(
-            'tmin tmax ymin ymax ny codes',
+        tmin, tmax, ymin, ymax, ny, codes, overview_method = self.get_cleaned(
+            'tmin tmax ymin ymax ny codes overview_method',
             parameters)
 
         images = gate.get_carpet_images(
@@ -504,7 +540,8 @@ class SquirrelGateHandler(SquirrelRequestHandler):
             codes=codes,
             ymin=ymin,
             ymax=ymax,
-            ny=ny or 400)
+            ny=ny or 400,
+            overview_method=overview_method)
 
         gate.advance_accessor()
         return images

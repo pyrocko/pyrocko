@@ -1,4 +1,10 @@
-import { ref, computed, onMounted, onActivated, watch } from '../vue.esm-browser.js'
+import {
+    ref,
+    computed,
+    onMounted,
+    onActivated,
+    watch,
+} from '../vue.esm-browser.js'
 import { squirrelMap } from '../squirrel/map.js'
 import { squirrelTimeline } from '../squirrel/timeline.js'
 import { squirrelRangeSelect } from '../squirrel/range_select.js'
@@ -65,6 +71,7 @@ export const componentTimeline = {
         const yMaxInput = ref('')
         const yMinError = ref(null)
         const yMaxError = ref(null)
+
         let muteIn = false
         let muteOut = false
 
@@ -131,21 +138,27 @@ export const componentTimeline = {
 
         watch([gates.yMin, gates.yMax], propagateIn, { flush: 'sync' })
 
-        return { yMinInput, yMaxInput, yMinError, yMaxError, gates }
+        return { yMinInput, yMaxInput, yMinError, yMaxError, gates, overviewMethod: gates.overviewMethod }
     },
     template: `
-        <div id="timeline" tabindex="0" class="vbox-main tab-pane">
-        </div>
+        <div id="timeline" tabindex="0" class="vbox-main tab-pane"></div>
         <div class="container-fluid bg-light pt-2" style="border-top: 1px solid #eee;">
             <div class="form-group row">
                 <div class="col-2">
                     <input type="text" class="form-control" :class="{ 'input-error': yMinError }" v-model="yMinInput" />
                 </div>
-                <div class="col-8">
+                <div class="col-6">
                     <component-range-select :min="gates.yMin" :max="gates.yMax" style="height: 3.5em;"></component-range-select>
                 </div>
                 <div class="col-2">
                     <input type="text" class="form-control" :class="{ 'input-error': yMaxError }" v-model="yMaxInput" />
+                </div>
+                <div class="col-2">
+                    <select v-model="overviewMethod" class="form-select">
+                        <option value="mean">Mean</option>
+                        <option value="min">Min</option>
+                        <option value="max">Max</option>
+                    </select>
                 </div>
             </div>
         </div>
@@ -219,7 +232,7 @@ export const componentFilter = {
         }
     },
     template: `<div class="d-flex justify-content-end">
-            <input list="filters" type="search" class="form-control" placeholder="Select" v-model="searchQuery" @input="onSearchInput" @keyup.enter="onSearchClick"/>
+            <input list="filters" type="search" class="form-control" placeholder="🔍" v-model="searchQuery" @input="onSearchInput" @keyup.enter="onSearchClick"/>
             <datalist id="filters">
                 <option v-for="(historyItem, index) in searchHistory" :key="index" :value="historyItem"></option>
                 <option value="..Z"></option>
