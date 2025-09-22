@@ -75,9 +75,16 @@ const setupConnection = () => {
     })
 
     getServerInfo()
-    receiveHeartbeat()
 
-    return { connected, serverInfo, request: squirrelRequest, latestError,
+    const connect = () => {
+        if (connected.value === null) {
+            receiveHeartbeat()
+        }
+    }
+
+    connect()
+
+    return { connect, connected, serverInfo, request: squirrelRequest, latestError,
         activeRequests }
 }
 

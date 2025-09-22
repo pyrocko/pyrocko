@@ -146,6 +146,7 @@ export const squirrelBlock = (block) => {
                 carpet.ymin,
                 carpet.ymax,
                 carpet.shape[0],
+                carpet.shape[1],
                 carpet.codes,
                 carpet.overview_method,
             ].join('+++')
@@ -269,11 +270,13 @@ export const setupGates = () => {
     const timeMin = ref(TIME_MIN)
     const timeMax = ref(TIME_MAX)
     const imageHeight = ref(100)
+    const imageWidth = ref(100)
     const codesVisible = shallowRef(null)
     const yMin = ref(null)
     const yMax = ref(null)
     const overviewMethod = ref('mean')
-    const blockFactor = 4
+    const blockFactor = 2
+    const resolutionFactor = 1.0
     const blocks = new Map()
     let counter = ref(0)
     let initialTimeSpanSet = false
@@ -319,6 +322,7 @@ export const setupGates = () => {
                 blocks.get(k).update({
                     ymin: yMin.value,
                     ymax: yMax.value,
+                    nx: imageWidth.value,
                     ny: imageHeight.value,
                     codes: codesVisible.value,
                     overview_method: overviewMethod.value,
@@ -329,7 +333,7 @@ export const setupGates = () => {
         }
     }
 
-    watch([yMin, yMax, imageHeight, codesVisible, overviewMethod], updateBlocks)
+    watch([yMin, yMax, imageWidth, imageHeight, codesVisible, overviewMethod], updateBlocks)
 
     const update = () => {
         const block = makeTimeBlock(timeMin.value, timeMax.value)
@@ -340,6 +344,7 @@ export const setupGates = () => {
             block.update({
                 ymin: yMin.value,
                 ymax: yMax.value,
+                nx: blockFactor * imageWidth.value * resolutionFactor,
                 ny: imageHeight.value,
                 codes: codesVisible.value,
                 overview_method: overviewMethod.value,
@@ -354,6 +359,11 @@ export const setupGates = () => {
         timeMin.value = Math.max(tmin, TIME_MIN)
         timeMax.value = Math.min(tmax, TIME_MAX)
         update()
+    }
+
+    const setImageWidth = (nx) => {
+        console.log('yy', nx)
+        imageWidth.value = Math.round(nx)
     }
 
     const setImageHeight = (ny) => {
@@ -559,6 +569,7 @@ export const setupGates = () => {
         overviewMethod,
         counter,
         setTimeSpan,
+        setImageWidth,
         setImageHeight,
         setCodesVisible,
         pageForward,

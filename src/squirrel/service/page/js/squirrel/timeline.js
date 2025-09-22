@@ -157,6 +157,7 @@ export const squirrelTimeline = () => {
     let needScrollMargins = false
 
     const trackHeight = shallowRef(100)
+    const trackWidth = shallowRef(800)
     const timeSpan = shallowRef([0, 1])
     const visibleCodes = shallowRef([])
 
@@ -233,6 +234,8 @@ export const squirrelTimeline = () => {
             return
         }
         timeline.attr('width', bounds.width).attr('height', bounds.height)
+        console.log('xx', bounds.width)
+        trackWidth.value = bounds.width
         update()
     }
 
@@ -844,6 +847,11 @@ export const squirrelTimeline = () => {
         watch(gates.counter, update)
         watch(gates.codes, updateCodes)
         watch(trackHeight, gates.setImageHeight)
+        watch(trackWidth, gates.setImageWidth)
+
+        gates.setImageHeight(trackHeight.value)
+        gates.setImageWidth(trackWidth.value)
+
         watch(timeSpan, (newVal, oldVal) => {
             gates.setTimeSpan(newVal[0], newVal[1])
         })

@@ -36,7 +36,16 @@
     <body>
         <div id="app" class="vbox-container">
             <!--{{ selectedTab }}-->
-            <div v-if="!connection.connected" class="curtain">DISCONNECTED</div>
+            <div
+                @click="connection.connect()"
+                v-if="!connection.connected"
+                class="curtain"
+            >
+                <div>DISCONNECTED</div>
+                <div>
+                    <small>Click to reconnect.</small>
+                </div>
+            </div>
             <div
                 v-if="connection.connected && connection.connected.delay > 5.0"
                 class="curtain"
@@ -45,25 +54,46 @@
             </div>
             <nav class="navbar navbar-expand-md navbar-light bg-light">
                 <div class="container-fluid">
-                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <button
+                        class="navbar-toggler"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#navbarNav"
+                    >
                         <span class="navbar-toggler-icon"></span>
                     </button>
                     <div class="collapse navbar-collapse" id="navbarNav">
                         <ul class="navbar-nav me-auto">
                             <li
-                                    class="nav-item has-close-btn"
-                                    v-for="(tab, name) in tabs"
-                                    :key="name">
+                                class="nav-item has-close-btn"
+                                v-for="(tab, name) in tabs"
+                                :key="name"
+                            >
                                 <a
-                                        class="nav-link"
-                                        :class="{ active: selectedTab === name }"
-                                        @click="selectTab(name)" style="font-size: 2rem; margin-top: -1rem; margin-bottom: -1rem;">
+                                    class="nav-link"
+                                    :class="{ active: selectedTab === name }"
+                                    @click="selectTab(name)"
+                                    style="
+                                        font-size: 2rem;
+                                        margin-top: -1rem;
+                                        margin-bottom: -1rem;
+                                    "
+                                >
                                     {{ tab.label }}
                                     <!--<span class="close-btn" v-if="!isDefaultTab(name)" @click="closeTab(name, $event)">&times;</span> -->
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" @click="addTab()" style="font-size: 2rem; margin-top: -1rem; margin-bottom: -1rem;">+</a>
+                                <a
+                                    class="nav-link"
+                                    @click="addTab()"
+                                    style="
+                                        font-size: 2rem;
+                                        margin-top: -1rem;
+                                        margin-bottom: -1rem;
+                                    "
+                                    >+</a
+                                >
                             </li>
                         </ul>
                     </div>
@@ -91,7 +121,8 @@
                 <div v-if="connection.connected">
                     <footer>
                         🐿️
-                        <span class="d-none d-sm-inline">Version:</span> {{ connection.serverInfo.pyrocko_version }} |
+                        <span class="d-none d-sm-inline">Version:</span>
+                        {{ connection.serverInfo.pyrocko_version }} |
                         <span class="d-none d-sm-inline">Connected:</span>
                         {{ fmtDuration(connection.connected.duration) }} |
                         <span class="d-none d-sm-inline">Requests:</span>
@@ -101,10 +132,31 @@
                                 : ''
                         }}
                         <span v-if="connection.activeRequests > 0">
-                            | <strong style="padding-left: 0.5em; padding-right: 0.5em; background-color: #ccc;"> Active: {{ connection.activeRequests }}</strong>
+                            |
+                            <strong
+                                style="
+                                    padding-left: 0.5em;
+                                    padding-right: 0.5em;
+                                    background-color: #ccc;
+                                "
+                            >
+                                Active: {{ connection.activeRequests }}</strong
+                            >
                         </span>
                         <span v-if="connection.connected.delay > 2.0">
-                            | <strong style="padding-left: 0.5em; padding-right: 0.5em; background-color: #ecc;"> Delay: {{ fmtDuration(connection.connected.delay) }}</strong>
+                            |
+                            <strong
+                                style="
+                                    padding-left: 0.5em;
+                                    padding-right: 0.5em;
+                                    background-color: #ecc;
+                                "
+                            >
+                                Delay:
+                                {{
+                                    fmtDuration(connection.connected.delay)
+                                }}</strong
+                            >
                         </span>
                     </footer>
                 </div>

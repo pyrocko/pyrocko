@@ -105,6 +105,7 @@ class SquirrelRequestHandler(web.RequestHandler):
             'codes': to_codes_list,
             'ymin': float,
             'ymax': float,
+            'nx': int,
             'ny': int,
             'overview_method': lambda x: str_choice(x, ['mean', 'min', 'max']),
         }
@@ -323,6 +324,7 @@ class Gate(guts.Object):
             *args,
             ymin=None,
             ymax=None,
+            nx=6000,
             ny=100,
             overview_method='mean',
             format='webp',
@@ -342,13 +344,9 @@ class Gate(guts.Object):
                 return None, None
 
             vmin, vmax = carpet.stats.min, carpet.stats.max
-            print(vmin, vmax)
             if vmin == vmax:
                 vmin -= 0.5
                 vmax += 0.5
-
-            vmin = -40.
-            vmax = 0.
 
             rgb = (num.round(mpl.colormaps['inferno'](
                 num.linspace(0., 1., 256)) * 255.)).astype(num.uint8)[:, :3]
@@ -416,7 +414,7 @@ class Gate(guts.Object):
         t0 = time.time()
 
         carpets = self._outlet.get_carpets(
-            *args, **kwargs, codes=codes, nsamples_limit=3000)
+            *args, **kwargs, codes=codes, nsamples_limit=nx)
 
         for carpet in carpets:
             carpet.meta['overview_method'] = overview_method
@@ -530,9 +528,10 @@ class SquirrelGateHandler(SquirrelRequestHandler):
             ymax=ymax)
 
     def p_get_carpets(self, parameters, gate):
-        tmin, tmax, ymin, ymax, ny, codes, overview_method = self.get_cleaned(
-            'tmin tmax ymin ymax ny codes overview_method',
-            parameters)
+        tmin, tmax, ymin, ymax, nx, ny, codes, overview_method \
+            = self.get_cleaned(
+                'tmin tmax ymin ymax nx ny codes overview_method',
+                parameters)
 
         images = gate.get_carpet_images(
             tmin=tmin,
@@ -540,6 +539,7 @@ class SquirrelGateHandler(SquirrelRequestHandler):
             codes=codes,
             ymin=ymin,
             ymax=ymax,
+            nx=nx or 6000,
             ny=ny or 400,
             overview_method=overview_method)
 
