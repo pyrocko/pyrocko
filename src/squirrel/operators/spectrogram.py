@@ -6,7 +6,7 @@
 import logging
 import math
 import hashlib
-from functools import cache
+from collections import OrderedDict
 
 import numpy as num
 
@@ -18,6 +18,25 @@ from . import base
 from ... import multitrace
 
 logger = logging.getLogger('psq.ops.spectrogram')
+
+
+class LRU:
+    def __init__(self, func, maxsize=128):
+        self.cache = OrderedDict()
+        self.func = func
+        self.maxsize = maxsize
+
+    def __call__(self, *args):
+        if args in self.cache:
+            self.cache.move_to_end(args)
+            return self.cache[args]
+
+        result = self.func(*args)
+        self.cache[args] = result
+        if len(self.cache) > self.maxsize:
+            self.cache.popitem(last=False)
+
+        return result
 
 
 def is_pow2(x):
@@ -441,6 +460,13 @@ class MultiSpectrogramOperator(base.Operator):
 
     windowing = Pow2Windowing.T()
     restitute = guts.Bool.T(default=True)
+    tinc_max = guts.Float.T(optional=True)
+
+    def __init__(self, *args, **kwargs):
+        base.Operator.__init__(self, *args, **kwargs)
+        self._caches = {}
+        self._tinc_max_effective = self.tinc_max
+        self._accessor_id = 'spectrogram_%s' % str(self._operator_id)
 
     @property
     def kind_requires(self):
@@ -449,8 +475,8 @@ class MultiSpectrogramOperator(base.Operator):
         else:
             return ('waveform',)
 
-    @cache
-    def get_block(self, deltat, kind_codes_id, ilevel, iwindow):
+    def make_block(self, deltat, kind_codes_id, ilevel, iwindow):
+        #print('++', deltat, kind_codes_id, ilevel, iwindow)
 
         if ilevel == 0:
             tmin_window = iwindow * self.windowing.time_increment(
@@ -461,7 +487,8 @@ class MultiSpectrogramOperator(base.Operator):
                 tmin=tmin_window,
                 tmax=tmax_window,
                 kind_codes_ids=[kind_codes_id],
-                want_incomplete=False)
+                want_incomplete=False,
+                accessor_id=self._accessor_id)
 
             ntraces = len(trs)
             assert ntraces <= 1
@@ -490,6 +517,35 @@ class MultiSpectrogramOperator(base.Operator):
 
             return make_block(ilevel, self.windowing, samples)
 
+    def get_block(self, deltat, kind_codes_id, ilevel, iwindow):
+        # print('--', deltat, kind_codes_id, ilevel, iwindow)
+        k1 = (deltat, kind_codes_id, ilevel)
+        if k1 not in self._caches:
+            def make_get_block_window(deltat, kind_codes_id, ilevel):
+                def get_block_window(iwindow):
+                    return self.make_block(
+                        deltat, kind_codes_id, ilevel, iwindow)
+
+                # print(self._tinc_max_effective)
+                # print(8*self.windowing.time_increment(
+                #             deltat, self.windowing.nlevels-1))
+                cachesize = int(
+                    max(
+                        4 * self._tinc_max_effective,
+                        16 * self.windowing.time_increment(
+                            deltat, self.windowing.nlevels-1))
+                    / (deltat*self.windowing.nblock))
+
+                logger.info('Cache size: %i' % cachesize)
+                return LRU(get_block_window, maxsize=cachesize)
+
+            self._caches[k1] = make_get_block_window(
+                deltat, kind_codes_id, ilevel)
+
+            # print(k1, len(self._caches))
+
+        return self._caches[k1](iwindow)
+
     def get_spectrogram_groups(
             self,
             obj=None,
@@ -498,6 +554,14 @@ class MultiSpectrogramOperator(base.Operator):
             codes=None,
             nsamples_limit=None,
             **kwargs):
+
+        if self._tinc_max_effective is None:
+            self._tinc_max_effective = tmax - tmin
+
+        if tmax - tmin > self._tinc_max_effective:
+            logger.warning(
+                'MultiSpectrogramOperator: Cache size may be too small. '
+                'Try setting or increasing `tinc_max` parameter.')
 
         tmin, tmax, codes = model.get_selection_args(
             model.CHANNEL, obj, tmin, tmax, None, codes)
@@ -566,6 +630,8 @@ class MultiSpectrogramOperator(base.Operator):
                 windowing=self.windowing,
                 levels=levels))
 
+        self.advance_accessor(self._accessor_id, 'waveform')
+
         return groups
 
 
@@ -575,4 +641,3 @@ __all__ = [
     'SpectrogramGroup',
     'MultiSpectrogramOperator',
 ]
-
