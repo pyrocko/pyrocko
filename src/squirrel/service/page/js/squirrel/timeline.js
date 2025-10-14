@@ -78,6 +78,7 @@ const projectionHelper = () => {
         scale.domain([xminNew, xmaxNew])
     }
 
+
     my.scroll = (delta) => {
         if (discrete) {
             delta = Math.round(delta)
@@ -143,6 +144,9 @@ export const squirrelTimeline = () => {
     let x = d3.scaleLinear()
     let y = d3.scaleLinear()
     let trackStart = null
+    let pinchStart = null
+    let pinchScaleStart = null
+    let pinchFinalize = null
     let codes
     let codesToTracks = new Map()
     let tracks = []
@@ -152,10 +156,12 @@ export const squirrelTimeline = () => {
     let dataRanges = new Map()
     let scrollDeltaY = 0
     let scrollTime = 0
+    let updateTimeoutId = null
 
     let deactivateScrollMarginsTimeoutId = null
     let needScrollMargins = false
 
+    const pointerEvents = []
     const trackHeight = shallowRef(100)
     const trackWidth = shallowRef(800)
     const timeSpan = shallowRef([0, 1])
@@ -228,13 +234,22 @@ export const squirrelTimeline = () => {
         updateTracks(t)
     }
 
+    const updateSoon = () => {
+        if (updateTimeoutId !== null) {
+             clearTimeout(updateTimeoutId)
+        }
+        updateTimeoutId = setTimeout(() => {
+            update()
+            updateTimeoutId = null
+        }, 100)
+    }
+
     const resizeHandler = () => {
         bounds = containerBounds()
         if (bounds.width <= 0 || bounds.height <= 0) {
             return
         }
         timeline.attr('width', bounds.width).attr('height', bounds.height)
-        console.log('xx', bounds.width)
         trackWidth.value = bounds.width
         update()
     }
@@ -254,48 +269,139 @@ export const squirrelTimeline = () => {
     }
 
     const pointerDownHandler = (ev) => {
+        pointerEvents.push(ev)
         container.node().setPointerCapture(ev.pointerId)
-        trackStart = {
-            position: [ev.clientX, ev.clientY],
-            domain: [...x.domain()],
-            mode:
-                ev.clientY > bounds.height - marginBottom
-                    ? 'global_fixed'
-                    : 'global',
+        if (pointerEvents.length == 1) {
+            trackStart = {
+                position: [ev.clientX, ev.clientY],
+                domain: [...x.domain()],
+                mode:
+                    ev.clientY > bounds.height - marginBottom
+                        ? 'global_fixed'
+                        : 'global',
+            }
+        } else {
+            trackStart = null
         }
     }
 
     const pointerMoveHandler = (ev) => {
-        //if (ev.buttons == 0) {
-        //    trackStart = null
-        //    return
-        //}
-        if (trackStart) {
-            let x1 = ev.clientX
-            let y1 = ev.clientY
-            let x0 = trackStart.position[0]
-            let y0 = trackStart.position[1]
-            let w = bounds.width
-            let h = bounds.height
-            let tmin0 = trackStart.domain[0]
-            let tmax0 = trackStart.domain[1]
-            let mode = trackStart.mode
-            let scale, xfrac, dx, dy, dt, dtr
+        for (let i=0; i<pointerEvents.length; i++) {
+            if (ev.pointerId == pointerEvents[i].pointerId) {
+                pointerEvents[i] = ev;
+                break
+            }
+        }
 
-            dx = (x1 - x0) / w
-            dy = (y1 - y0) / h
-            xfrac = x0 / w
-            scale = mode == 'global' ? (scale = Math.exp(-dy * 5)) : 1.0
-            dtr = (tmax0 - tmin0) * (scale - 1.0)
-            dt = dx * (tmax0 - tmin0) * scale
-            let timeMin = tmin0 - dt - dtr * xfrac
-            let timeMax = tmax0 - dt + dtr * (1 - xfrac)
-            timeSpan.value = [timeMin, timeMax]
+        if (pointerEvents.length == 1) {
+            if (trackStart) {
+                let x1 = ev.clientX
+                let y1 = ev.clientY
+                let x0 = trackStart.position[0]
+                let y0 = trackStart.position[1]
+                let w = bounds.width
+                let h = bounds.height
+                let tmin0 = trackStart.domain[0]
+                let tmax0 = trackStart.domain[1]
+                let mode = trackStart.mode
+                let scale, xfrac, dx, dy, dt, dtr
+
+                dx = (x1 - x0) / w
+                dy = (y1 - y0) / h
+                xfrac = x0 / w
+                scale = mode == 'global' ? (scale = Math.exp(-dy * 5)) : 1.0
+                dtr = (tmax0 - tmin0) * (scale - 1.0)
+                dt = dx * (tmax0 - tmin0) * scale
+                let timeMin = tmin0 - dt - dtr * xfrac
+                let timeMax = tmax0 - dt + dtr * (1 - xfrac)
+                timeSpan.value = [timeMin, timeMax]
+            }
+
+        } else if (pointerEvents.length == 2) {
+            let pinch = [
+                [pointerEvents[0].clientX, pointerEvents[0].clientY],
+                [pointerEvents[1].clientX, pointerEvents[1].clientY],
+            ];
+
+            if (pinchStart == null) {
+                pinchStart = pinch;
+                pinchScaleStart = trackProjection.scale.copy()
+            } else {
+                const [[p0x, p0y], [p1x, p1y]] = pinch
+                const [[s0x, s0y], [s1x, s1y]] = pinchStart
+                let f = 1.0
+                if (Math.abs(s1y-s0y) > 2 * Math.abs(s1x-s0x)) {
+                    // vertical pinch
+                    f = Math.abs(p1y-p0y) / Math.abs(s1y-s0y)
+                }
+
+                const csy = 0.5 * (s0y + s1y)
+                const cpy = 0.5 * (p0y + p1y)
+
+                const cs = pinchScaleStart.invert(csy)
+                const cp = pinchScaleStart.invert(cpy)
+
+                const [a, b] = pinchScaleStart.domain()
+
+                let aNew = cs + 1.0 / f * (a - cs) - (cp - cs)
+                let bNew = cs + 1.0 / f * (b - cs) - (cp - cs)
+
+                let dNew = bNew - aNew
+                dNew = Math.round(dNew)
+
+                if (dNew < 1) {
+                    dNew = 1
+                }
+
+                if (dNew > tracks.length) {
+                    dNew = tracks.length
+                }
+
+                if (aNew + dNew > tracks.length) {
+                    bNew = tracks.length
+                    aNew = bNew - dNew
+                }
+
+                if (aNew < 0) {
+                    aNew = 0
+                    bNew = aNew + dNew
+                }
+
+                let aNewRounded = Math.round(aNew)
+                if (Math.abs(aNewRounded - aNew) < 0.2) {
+                    aNew = aNewRounded
+                }
+                bNew = aNew + dNew
+
+                let aNewFinal = aNewRounded
+                let bNewFinal = aNewFinal + dNew
+
+                trackProjection.domain([aNew, bNew])
+                update()
+
+                pinchFinalize = () => {
+                    trackProjection.domain([aNewFinal, bNewFinal])
+                    update()
+                }
+            }
         }
     }
 
     const pointerUpHandler = (ev) => {
+        for (let i=0; i<pointerEvents.length; i++) {
+            if (pointerEvents[i].pointerId == ev.pointerId) {
+                pointerEvents.splice(i, 1);
+                break
+            }
+        }
         trackStart = null
+        if (pointerEvents.length < 2) {
+            pinchStart = null
+        }
+        if (pinchFinalize !== null) {
+            pinchFinalize()
+            pinchFinalize = null
+        }
     }
 
     const scrollHandler = (ev) => {
@@ -334,7 +440,6 @@ export const squirrelTimeline = () => {
 
     const zoomTracks = (anchor, delta) => {
         trackProjection.zoom(anchor, delta)
-
         update()
     }
 
@@ -499,7 +604,7 @@ export const squirrelTimeline = () => {
             ][i]
         }
 
-        let napprox = 5
+        let napprox = 5 * bounds.width / 1200.
         let [tinc, tinc_units] = niceTimeTickInc(
             (gates.timeMax.value - gates.timeMin.value) / napprox
         )
@@ -507,7 +612,8 @@ export const squirrelTimeline = () => {
             gates.timeMin.value,
             gates.timeMax.value,
             tinc,
-            tinc_units
+            tinc_units,
+            napprox,
         )
         let ticks = times.map((t, i) => ({
             t: t,
@@ -832,6 +938,9 @@ export const squirrelTimeline = () => {
 
         container.on('pointerdown', pointerDownHandler)
         container.on('pointerup', pointerUpHandler)
+        container.on('pointercancel', pointerUpHandler)
+        //container.on('pointerout', pointerUpHandler)
+        container.on('pointerleave', pointerUpHandler)
         container.on('pointermove', pointerMoveHandler)
         container.on('keydown', keyDownHandler)
         container.on('wheel', scrollHandler)

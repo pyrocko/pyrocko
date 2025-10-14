@@ -1,7 +1,9 @@
 /* {border:1px solid red; } */
 
-body{
+html, body {
     user-select: none;
+    overscroll-behavior: none;
+    overflow: hidden;
 }
 
 .connection-monitor {

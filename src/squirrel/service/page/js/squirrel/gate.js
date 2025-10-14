@@ -362,7 +362,6 @@ export const setupGates = () => {
     }
 
     const setImageWidth = (nx) => {
-        console.log('yy', nx)
         imageWidth.value = Math.round(nx)
     }
 

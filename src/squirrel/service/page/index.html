@@ -4,28 +4,38 @@
         <meta charset="utf-8" />
         <meta
             name="viewport"
-            content="width=device-width, initial-scale=1, interactive-widget=resizes-content"
+            content="width=device-width, initial-scale=1, user-scalable=0, interactive-widget=resizes-content"
         />
 
         <title>Squirrel</title>
         <link
+            rel="icon"
+            type="image/png"
+            sizes="any"
+            href="images/squirrel.svg"
+            crossorigin="use-credentials"
+        />
+        <link
             rel="apple-touch-icon"
             sizes="180x180"
             href="images/apple-touch-icon.png"
+            crossorigin="use-credentials"
         />
         <link
             rel="icon"
             type="image/png"
             sizes="32x32"
             href="images/favicon-32x32.png"
+            crossorigin="use-credentials"
         />
         <link
             rel="icon"
             type="image/png"
             sizes="16x16"
             href="images/favicon-16x16.png"
+            crossorigin="use-credentials"
         />
-        <link rel="manifest" href="site.webmanifest" />
+        <link rel="manifest" href="site.webmanifest" crossorigin="use-credentials" />
 
         <link href="css/bootstrap.min.css" rel="stylesheet" />
         <link href="css/local.css" rel="stylesheet" />
@@ -35,7 +45,6 @@
 
     <body>
         <div id="app" class="vbox-container">
-            <!--{{ selectedTab }}-->
             <div
                 @click="connection.connect()"
                 v-if="!connection.connected"

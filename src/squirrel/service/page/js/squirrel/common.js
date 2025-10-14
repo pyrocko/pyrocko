@@ -208,7 +208,7 @@ export const niceTimeTickIncApproxSecs = (tincApprox) => {
     return v * niceTimeTickIncUnits[unit]
 }
 
-export const timeTickLabels = (tmin, tmax, tinc, tinc_unit) => {
+export const timeTickLabels = (tmin, tmax, tinc, tinc_unit, napprox) => {
     let times = []
     let labels = []
 
@@ -247,7 +247,7 @@ export const timeTickLabels = (tmin, tmax, tinc, tinc_unit) => {
         if (tinc_unit == 'days') {
             label_every = Math.max(
                 1,
-                Math.min(niceValue((tmax - tmin) / (tinc * days) / 5), 10)
+                Math.min(niceValue((tmax - tmin) / (tinc * days) / napprox), 10)
             )
         }
         while (t_ym <= tmax_ym) {
@@ -265,11 +265,13 @@ export const timeTickLabels = (tmin, tmax, tinc, tinc_unit) => {
                         0,
                         0
                     )
-                    if (gmtime(t / 1000)[1] == (t_ym % 12) + 1) {
+                    let d = new Date(t)
+
+                    if (gmtime(t / 1000)[1] == (t_ym % 12) + 1 && d.getUTCMonth() == t_ym % 12) {
                         times.push(t / 1000)
                         labels.push(
-                            (iday - 1) % label_every == 0 && iday < 30
-                                ? d3.utcFormat('%Y-%m-%d')(new Date(t))
+                            (iday - 1) % label_every == 0 && (label_every == 1 || iday != 31)  // last condition not fully correct, but works with the possible time increments.
+                                ? d3.utcFormat('%Y-%m-%d')(d)
                                 : ''
                         )
                     }

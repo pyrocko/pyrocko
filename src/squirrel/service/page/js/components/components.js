@@ -232,7 +232,7 @@ export const componentFilter = {
         }
     },
     template: `<div class="d-flex justify-content-end">
-            <input list="filters" type="search" class="form-control" placeholder="🔍" v-model="searchQuery" @input="onSearchInput" @keyup.enter="onSearchClick"/>
+            <input list="filters" type="search" class="form-control" placeholder="" v-model="searchQuery" @input="onSearchInput" @keyup.enter="onSearchClick"/>
             <datalist id="filters">
                 <option v-for="(historyItem, index) in searchHistory" :key="index" :value="historyItem"></option>
                 <option value="..Z"></option>
