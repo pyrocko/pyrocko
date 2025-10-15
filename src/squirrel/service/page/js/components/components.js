@@ -1,5 +1,6 @@
 import {
     ref,
+    shallowRef,
     computed,
     onMounted,
     onActivated,
@@ -139,22 +140,26 @@ export const componentTimeline = {
 
         watch([gates.yMin, gates.yMax], propagateIn, { flush: 'sync' })
 
-        return { yMinInput, yMaxInput, yMinError, yMaxError, gates, overviewMethod: gates.overviewMethod }
+        const blur = (e) => {
+            e.target.blur()
+        }
+
+        return { yMinInput, yMaxInput, yMinError, yMaxError, gates, overviewMethod: gates.overviewMethod, blur}
     },
     template: `
         <div id="timeline" tabindex="0" class="vbox-main tab-pane"></div>
-        <div class="container-fluid bg-light pt-2" style="border-top: 1px solid #eee;">
+        <div class="container-fluid bg-light pt-2 pb-2" style="border-top: 1px solid #eee;">
             <div class="form-group row">
-                <div class="col-2">
-                    <input type="text" class="form-control" :class="{ 'input-error': yMinError }" v-model="yMinInput" />
+                <div class="col-4 col-md-2">
+                    <input placeholder="fₘᵢₙ" type="text" class="form-control" @keyup.enter="blur" :class="{ 'input-error': yMinError }" v-model="yMinInput" />
                 </div>
-                <div class="col-6">
-                    <component-range-select :min="gates.yMin" :max="gates.yMax" style="height: 3.5em;"></component-range-select>
+                <div class="d-none d-md-block col-4 col-md-6">
+                    <component-range-select :min="gates.yMin" :max="gates.yMax" style="height: 3em;"></component-range-select>
                 </div>
-                <div class="col-2">
-                    <input type="text" class="form-control" :class="{ 'input-error': yMaxError }" v-model="yMaxInput" />
+                <div class="col-4 col-md-2">
+                    <input placeholder="fₘₐₓ" type="text" class="form-control" @keyup.enter="blur" :class="{ 'input-error': yMaxError }" v-model="yMaxInput" />
                 </div>
-                <div class="col-2">
+                <div class="col-4 col-md-2">
                     <select v-model="overviewMethod" class="form-select">
                         <option value="mean">Mean</option>
                         <option value="min">Min</option>
@@ -216,6 +221,12 @@ export const componentFilter = {
             }, searchDelay)
         }
 
+        const onSearchFinalize = (e) => {
+            e.target.blur()
+            filterSensors()
+
+        }
+
         onMounted(() => {
             const storedHistory = sessionStorage.getItem('searchHistory')
             if (storedHistory) {
@@ -223,17 +234,18 @@ export const componentFilter = {
             }
         })
 
+
         return {
             searchQuery,
             selectedOption,
-            onSearchClick: filterSensors,
             searchHistory,
             saveSearchHistory,
             onSearchInput,
+            onSearchFinalize,
         }
     },
     template: `<div class="d-flex justify-content-end">
-            <input list="filters" type="search" class="form-control" placeholder="" v-model="searchQuery" @input="onSearchInput" @keyup.enter="onSearchClick"/>
+            <input list="filters" type="search" class="form-control" placeholder="" v-model="searchQuery" @input="onSearchInput" @keyup.enter="onSearchFinalize"/>
             <datalist id="filters">
                 <option v-for="(historyItem, index) in searchHistory" :key="index" :value="historyItem"></option>
                 <option value="..Z"></option>
@@ -246,10 +258,10 @@ export const componentTabs = {
     components: {
         componentFilter
     },
-    setup() {       
+    setup() {
         const selectedTab = ref('timeline')
 
-        const tabs = ref({
+        const tabs = shallowRef({
             timeline: componentTimeline,
             map: componentMap,
             info: componentTable,
@@ -263,7 +275,7 @@ export const componentTabs = {
             const newTabName = `tab_${Date.now()}`
             tabs.value[newTabName] = componentTable
         }
-        
+
         const closeTab = (tabName, event) => {
             event.stopPropagation()
             delete tabs.value[tabName]
@@ -333,7 +345,7 @@ export const componentTabs = {
                             <tr v-if="sensor.tmin != null"><th>Start Time</th><td>{{ sensor.tmin }}</td></tr>
                             <tr v-if="sensor.tmax != null"><th>End Time</th><td>{{ sensor.tmax }}</td></tr>
                             <tr v-if="sensor.deltat != null"><th>Delta T</th><td>{{ sensor.deltat }}</td></tr>
-                            
+
                         </tbody>
                     </table>
 
@@ -353,7 +365,7 @@ export const componentTabs = {
                             <tr v-if="channel.dip != null"><th>Dip</th><td>{{ channel.dip }}</td></tr>
                             <tr v-if="channel.azimuth != null"><th>Azimuth</th><td>{{ channel.azimuth }}</td></tr>
                         </tbody>
-                    </table>                    
+                    </table>
                 </div>
 
                 <div id="leaflet-map" class="col-12 col-md-6"></div>
@@ -366,8 +378,47 @@ export const componentTabs = {
     return {selectedTab, selectTab, tabs, addTab, closeTab, isDefaultTab, openInfoTab}
     },
 
-    template:
-    `           <ul class="nav nav-tabs mt-1" role="tablist">
+    template: `
+            <nav class="navbar navbar-expand-md navbar-light bg-light">
+                <div class="container-fluid">
+                    <button
+                        class="navbar-toggler"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#navbarNav"
+                    >
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <div class="collapse navbar-collapse" id="navbarNav">
+                        <ul class="navbar-nav me-auto">
+                            <li
+                                class="nav-item has-close-btn"
+                                v-for="(tab, name) in tabs"
+                                :key="name"
+                            >
+                                <a
+                                    class="nav-link"
+                                    :class="{ active: selectedTab === name }"
+                                    @click="selectTab(name)"
+                                    style="
+                                        margin-top: -1rem;
+                                        margin-bottom: -1rem;
+                                        font-size: 2rem;
+                                    "
+                                >
+                                    <span v-if="tab.label">{{ tab.label }}</span>
+                                    <span v-if="!tab.label">{{ name.charAt(0).toUpperCase() + name.slice(1) }}</span>
+                                    <span class="close-btn" v-if="!isDefaultTab(name)" @click="closeTab(name, $event)">&times;</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <component-filter class="ms-auto"></component-filter>
+                </div>
+            </nav>
+
+            <!--
+           <ul class="nav nav-tabs mt-1" role="tablist">
                 <li class="nav-item" v-for="(tab, name) in tabs" :key="name">
                     <a
                         class="nav-link"
@@ -386,6 +437,7 @@ export const componentTabs = {
                 <button class="add-tab-btn" @click="addTab()">+</button>
                 <component-filter class="ms-auto"></component-filter>
             </ul>
+            -->
 
             <keep-alive>
                 <component :is="tabs[selectedTab]" @open-tab="openInfoTab"></component>
@@ -525,9 +577,9 @@ export const componentTable = {
                             <template v-for="sensor in sortedSensors">
 
                                 <tr v-for="channel in sensor.channels">
-                                    
+
                                     <td class="table-code" @click="$emit('open-tab', {sensor,channel,sortedSensors})">
-                                        
+
                                         <template v-if="selectedOption === 'Sensor'">
                                             {{sensor.codes}}
                                         </template>

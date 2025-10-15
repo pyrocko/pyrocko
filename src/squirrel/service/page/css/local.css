@@ -2,12 +2,8 @@
 
 html, body {
     user-select: none;
-<<<<<<< HEAD
     overscroll-behavior: none;
     overflow: hidden;
-=======
-    width: 100%;
->>>>>>> 81055b5a (service: update sensor info layout)
 }
 
 .connection-monitor {
@@ -113,8 +109,8 @@ svg text{
     transform: scale(1.2);
 }
 
-#leaflet-map { 
-    height: 80em; 
+#leaflet-map {
+    height: 80em;
     width: 80em;
     margin: auto;
 }
