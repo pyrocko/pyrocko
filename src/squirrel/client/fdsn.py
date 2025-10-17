@@ -701,9 +701,9 @@ class FDSNSource(Source, has_paths.HasPaths):
         squirrel.add_virtual(
             (make_waveform_promise_nut(
                 file_path=path,
-                file_format = 'virtual',
-                file_mtime = 0.0,
-                file_size = 0,
+                file_format='virtual',
+                file_mtime=0.0,
+                file_size=0,
                 **nut.waveform_promise_kwargs) for nut in wanted(nuts)),
             virtual_paths=[path])
 
