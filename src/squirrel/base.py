@@ -3254,7 +3254,7 @@ class Squirrel(Selection):
                 raise exc
 
         def use_first(node_type_name, codes, k, group):
-            if on_error == 'warn':
+            if on_error == 'warn' and len(group) > 1:
                 logger.warning(
                     'Duplicates for %s %s, %s - %s -> using first' % (
                         node_type_name,
