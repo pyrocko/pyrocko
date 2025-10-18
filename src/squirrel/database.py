@@ -491,10 +491,26 @@ class Database(object):
         return s
 
     def optimize(self):
-        logger.info('Optimizing database')
+        logger.info('Optimizing database...')
         with self.transaction('optimize') as cursor:
             cursor.execute('''PRAGMA optimize''')
-        logger.info('Database optimized')
+        logger.info('Done optimizing database.')
+
+    def activate_wal_mode(self):
+        result = self.get_connection().execute(
+            '''PRAGMA journal_mode''')[0][0]
+
+        if result == 'wal':
+            logger.info('WAL mode already active.')
+            return
+
+        logger.info('Activating WAL mode on database.')
+        result = self.get_connection().execute(
+            '''PRAGMA journal_mode=WAL''')[0][0]
+        if result != 'wal':
+            raise error.SquirrelError(
+                'Could not activate WAL mode. Result from '
+                '"PRAGMA journal_mode=WAL" was "%s".' % result)
 
     def _initialize_db(self):
         with self.transaction('initialize') as cursor:
@@ -1113,10 +1129,13 @@ class Database(object):
         return [row[0] for row in self._conn.execute(sql)]
 
     def vacuum(self):
+
+        logger.info('Vacuuming database...')
         sql = '''
             VACUUM
         '''
         self._conn.execute(sql)
+        logger.info('Done vacuuming database.')
 
     def get_stats(self):
         return DatabaseStats(

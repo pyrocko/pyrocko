@@ -132,7 +132,7 @@ class Vacuum(SquirrelCommand):
 
     def make_subparser(self, subparsers):
         headline = \
-            'Run sqlite `VACUUM` command.'
+            'Run SQLite `VACUUM` command.'
 
         return subparsers.add_parser(
             'vacuum',
@@ -149,7 +149,7 @@ class Optimize(SquirrelCommand):
 
     def make_subparser(self, subparsers):
         headline = \
-            'Run sqlite `PRAGMA optimize` command.'
+            'Run SQLite `PRAGMA optimize` command.'
 
         return subparsers.add_parser(
             'optimize',
@@ -160,6 +160,23 @@ class Optimize(SquirrelCommand):
         s = sq.Squirrel()
         db = s.get_database()
         db.optimize()
+
+
+class ActivateWAL(SquirrelCommand):
+
+    def make_subparser(self, subparsers):
+        headline = \
+            'Activate SQLite\'s WAL mode (Write-Ahead Log mode).'
+
+        return subparsers.add_parser(
+            'wal',
+            help=headline,
+            description=headline)
+
+    def run(self, parser, args):
+        s = sq.Squirrel()
+        db = s.get_database()
+        db.activate_wal_mode()
 
 
 class Remove(SquirrelCommand):
@@ -198,7 +215,7 @@ def make_subparser(subparsers):
         help=headline,
         subcommands=[
             Env(), Stats(), Files(), Nuts(), Cleanup(), Remove(), Vacuum(),
-            Optimize()],
+            Optimize(), ActivateWAL()],
         description=description)
 
 
