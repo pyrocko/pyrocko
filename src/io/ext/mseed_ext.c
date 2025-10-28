@@ -84,6 +84,37 @@ pyrocko_ms_readtraces(MSTraceGroup **ppmstg, const char *msfile, flag dataflag, 
     return retcode;
 }
 
+static int pyrocko_ms_readtraces_time_window(MSTraceGroup** ppmstg,
+                                             const char* msfile, flag dataflag,
+                                             hptime_t tmin, hptime_t tmax) {
+    MSRecord* msr = NULL;
+    MSFileParam* msfp = NULL;
+    int retcode;
+
+    if (!ppmstg) return MS_GENERROR;
+
+    /* Initialize MSTraceGroup if needed */
+    if (!*ppmstg) {
+        *ppmstg = mst_initgroup(*ppmstg);
+        if (!*ppmstg) return MS_GENERROR;
+    }
+    hptime_t record_endtime = 0;
+
+    /* Loop over the input file */
+    while ((retcode = ms_readmsr_main(&msfp, &msr, msfile, 0, NULL, NULL, 1, 0,
+                                    NULL, 0)) == MS_NOERROR) {
+        if (msr->starttime > tmax) continue;
+        if (msr_endtime(msr) < tmin) continue;
+        if (dataflag != 0) {
+            retcode = msr_unpack(msr->record, msr->reclen, &msr, dataflag, 0);
+        }
+        /* Add to trace group */
+        mst_addmsrtogroup(*ppmstg, msr, 0, -1., -1.);
+    }
+    ms_readmsr_main(&msfp, &msr, NULL, 0, NULL, NULL, 0, 0, NULL, 0);
+    return retcode;
+}
+
 static PyObject *
 mseed_get_traces(PyObject *m, PyObject *args, PyObject *kwds)
 {
@@ -104,13 +135,22 @@ mseed_get_traces(PyObject *m, PyObject *args, PyObject *kwds)
     long long offset_temp = 0;
     long long segment_size_temp = 0;
 
+    unsigned long _tmin = 0;
+    unsigned long _tmax = 0;
+
+    hptime_t tmin = 0;
+    hptime_t tmax = 0;
+
     struct module_state *st = GETSTATE(m);
     (void)m;
 
-    static char *kwlist[] = {"filename", "dataflag", "offset", "segment_size", NULL};
+    static char *kwlist[] = {"filename", "dataflag", "offset", "segment_size", "tmin", "tmax", NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|OLi", kwlist, &filename, &unpackdata, &offset_temp, &segment_size_temp))
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|OLikk", kwlist, &filename, &unpackdata, &offset_temp, &segment_size_temp, &_tmin, &_tmax))
         return NULL;
+
+    tmin = (hptime_t)_tmin;
+    tmax = (hptime_t)_tmax;
 
     if (offset_temp > OFF_MAX || offset_temp < OFF_MIN)
     {
@@ -140,11 +180,25 @@ mseed_get_traces(PyObject *m, PyObject *args, PyObject *kwds)
     }
 
     /* get data from mseed file */
-    Py_BEGIN_ALLOW_THREADS
-    retcode = pyrocko_ms_readtraces(&mstg, filename, (unpackdata == Py_True), &offset, segment_size);
-    Py_END_ALLOW_THREADS
 
-        if (retcode < 0)
+    if (tmin != 0 || tmax != 0) {
+        if (segment_size != 0 || offset != 0) {
+            PyErr_SetString(
+                st->error, "Cannot use offset/segment_size together with tmin/tmax.");
+            return NULL;
+        }
+        tmax = tmax ? tmax : -HPTERROR;
+        Py_BEGIN_ALLOW_THREADS;
+        retcode = pyrocko_ms_readtraces_time_window(
+            &mstg, filename, (unpackdata == Py_True), tmin, tmax);
+        Py_END_ALLOW_THREADS;
+    } else {
+        Py_BEGIN_ALLOW_THREADS;
+        retcode = pyrocko_ms_readtraces(&mstg, filename, (unpackdata == Py_True), &offset, segment_size);
+        Py_END_ALLOW_THREADS;
+    }
+
+    if (retcode < 0)
     {
         PyErr_Format(st->error, "Cannot read file '%s': %s", filename, ms_errorstr(retcode));
         if (mstg != NULL)

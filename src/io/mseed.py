@@ -32,7 +32,8 @@ class CodeTooLong(FileSaveError):
     pass
 
 
-def iload(filename, load_data=True, offset=0, segment_size=0, nsegments=0):
+def iload(filename, load_data=True, offset=0, segment_size=0, nsegments=0,
+          tmin=0.0, tmax=0.0):
     from pyrocko import mseed_ext
 
     global g_bytes_read
@@ -41,7 +42,9 @@ def iload(filename, load_data=True, offset=0, segment_size=0, nsegments=0):
         isegment = 0
         while isegment < nsegments or nsegments == 0:
             tr_tuples = mseed_ext.get_traces(
-                filename, load_data, offset, segment_size)
+                filename, load_data, offset, segment_size,
+                tmin=int(tmin*float(mseed_ext.HPTMODULUS)),
+                tmax=int(tmax*float(mseed_ext.HPTMODULUS)))
 
             if not tr_tuples:
                 break
@@ -53,8 +56,8 @@ def iload(filename, load_data=True, offset=0, segment_size=0, nsegments=0):
 
             for tr_tuple in tr_tuples:
                 network, station, location, channel = tr_tuple[1:5]
-                tmin = float(tr_tuple[5])/float(mseed_ext.HPTMODULUS)
-                tmax = float(tr_tuple[6])/float(mseed_ext.HPTMODULUS)
+                _tmin = float(tr_tuple[5])/float(mseed_ext.HPTMODULUS)
+                _tmax = float(tr_tuple[6])/float(mseed_ext.HPTMODULUS)
                 try:
                     deltat = reuse(1.0/float(tr_tuple[7]))
                 except ZeroDivisionError:
@@ -67,8 +70,8 @@ def iload(filename, load_data=True, offset=0, segment_size=0, nsegments=0):
                     station.strip(),
                     location.strip(),
                     channel.strip(),
-                    tmin,
-                    tmax,
+                    _tmin,
+                    _tmax,
                     deltat,
                     ydata)
 
@@ -78,6 +81,13 @@ def iload(filename, load_data=True, offset=0, segment_size=0, nsegments=0):
                     'last': tr_tuple[10],
                     'segment_size': segment_size
                 }
+
+                if tmin or tmax:
+                    try:
+                        tr.chop(tmin or tr.tmin, tmax or tr.tmax,
+                                include_last=False)
+                    except trace.NoData:
+                        pass
 
                 yield tr
 
