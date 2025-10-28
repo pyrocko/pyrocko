@@ -1003,7 +1003,7 @@ def plot_fuzzy_beachball_mpl_pixmap(
             grid_resolution=grid_resolution,
             projection=projection,
             beachball_type=beachball_type,
-            mask=False)
+            mask=False, view=view)
 
         axes.contour(
             position[0] + by * size, position[1] + bx * size, best_amps.T,
