@@ -294,6 +294,42 @@ class IOTestCase(unittest.TestCase):
         assert len(trs) == 1
         assert trs[0].tmin != 0.
 
+    def testMSeedWindow(self):
+        from pyrocko.io.mseed import iload
+
+        c = '12'
+        deltat = .01
+        length_seconds = 60*5  # 30 minutes
+        nsamples = int(length_seconds // deltat)
+
+        def get_ydata():
+            return num.random.randint(
+                0, 1000, size=nsamples).astype(num.int32)
+
+        tr1 = trace.Trace(
+            c, c, c, c,
+            ydata=get_ydata(), tmin=0., deltat=deltat)
+
+        fn = os.path.join(self.tmpdir, 'mseed_window')
+        io.save([tr1], fn, record_length=512)
+
+        trs = tuple(iload(fn))
+
+        trs_nsamples = sum(tr.ydata.size for tr in trs)
+        assert nsamples == trs_nsamples
+
+
+        load_from = 60.0
+        length = 120.0
+        trs = [tr for tr in iload(
+                fn,
+                tmin=load_from,
+                tmax=load_from + length
+        )]
+        assert len(trs) == 1
+        assert trs[0].tmin == load_from
+        assert trs[0].tmax == load_from + length
+
     def testReadSEGY(self):
         fpath = common.test_data_file('test2.segy')
         i = 0
