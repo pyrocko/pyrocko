@@ -85,7 +85,7 @@ def iload(filename, load_data=True, offset=0, segment_size=0, nsegments=0,
                 if tmin or tmax:
                     try:
                         tr.chop(tmin or tr.tmin, tmax or tr.tmax,
-                                include_last=False)
+                                include_last=True)
                     except trace.NoData:
                         ...
 
