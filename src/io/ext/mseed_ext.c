@@ -99,10 +99,11 @@ static int pyrocko_ms_readtraces_time_window(MSTraceGroup **ppmstg,
   /* Loop over the input file */
   while ((retcode = ms_readmsr_main(&msfp, &msr, msfile, 0, NULL, NULL, 1, 0,
                                     NULL, 0)) == MS_NOERROR) {
-    record_endtime = msr_endtime(msr);
-    if (record_endtime < tmin || msr->starttime > tmax) {
+
+    if (msr->starttime > tmax)
       continue;
-    }
+    if (msr_endtime(msr) < tmin)
+      continue;
 
     if (dataflag != 0) {
       retcode = msr_unpack(msr->record, msr->reclen, &msr, dataflag, 0);
