@@ -51,6 +51,8 @@ sources:
   # Uncomment to let metadata expire in 10 days:
   #expires: 10d
 
+  # anxious: 600s
+
   # Waveforms can be optionally shared with other FDSN client configurations,
   # so that data is not downloaded multiple times. The downside may be that in
   # some cases more data than expected is available (if data was previously
@@ -61,7 +63,7 @@ sources:
   #auth_token_path: 'tokens/{site}.pgp'
 
   # Plain text user credentials:
-  #auth_credentials: ['username', 'password']
+  #user_credentials: ['username', 'password']
 
   # Path to user Python module to locally patch metadata errors while
   # importing:
