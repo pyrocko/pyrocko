@@ -1707,7 +1707,7 @@ class HomogeneousLayer(Layer):
         if num.isscalar(z):
             return v
         else:
-            return filled(v, len(z))
+            return num.full(len(z), v)
 
     def v_top_bottom(self, mode):
         v = self.v(mode)
@@ -2183,7 +2183,7 @@ class HeadwaveStraight(Straight):
         return self.interface.z
 
     def zturn(self, p):
-        return filled(self.interface.z, len(p))
+        return num.full(len(p), self.interface.z)
 
     def xt(self, p, zpart=None):
         return 0., 0.
@@ -2604,7 +2604,8 @@ class RayPath(object):
     def zxt_path_subdivided(
             self, p, endgaps,
             points_per_straight=20,
-            x_for_headwave=None):
+            x_for_headwave=None,
+            annotated=False):
 
         '''
         Get geometrical representation of ray path.
@@ -2635,27 +2636,53 @@ class RayPath(object):
                 for i in range(n):
                     xs = float(i)/(n-1) * xstretch
                     ts = s.x2t_headwave(xs)
-                    zxt.append((filled(z, xstretch.size), sx+xs, st+ts))
+                    zs = num.full(xstretch.size, z)
+                    zxt.append((
+                        zs,
+                        sx+xs,
+                        st+ts,
+                        num.full(xstretch.size, s.mode),
+                        num.full(xstretch.size, 2),
+                        s.layer.v(s.mode, zs)))
             else:
                 if zin != zout:  # normal traversal
-                    zs = num.linspace(zin, zout, n).tolist()
-                    for z in zs:
+                    zs = num.linspace(zin, zout, n)
+                    vs = s.layer.v(s.mode, zs)
+                    for z, v in zip(zs, vs):
                         x, t = s.xt(p, zpart=sorted([zin, z]))
-                        zxt.append((filled(z, nout), sx + x, st + t))
+                        zxt.append((
+                            num.full(nout, z),
+                            sx + x,
+                            st + t,
+                            num.full(nout, s.mode),
+                            num.full(nout, 0),
+                            num.full(nout, v)))
 
                 else:  # ray turns in layer
-                    zturn = s.zturn(p)
+                    zturns = s.zturn(p)
                     back = []
                     for i in range(n):
-                        z = zin + (zturn - zin) * num.sin(
+                        zs = zin + (zturns - zin) * num.sin(
                             float(i)/(n-1)*math.pi/2.0) * 0.999
 
-                        if zturn[0] >= zin:
-                            x, t = s.xt(p, zpart=[zin, z])
+                        vs = s.layer.v(s.mode, zs)
+
+                        if zturns[0] >= zin:
+                            x, t = s.xt(p, zpart=[zin, zs])
                         else:
-                            x, t = s.xt(p, zpart=[z, zin])
-                        zxt.append((z, sx + x, st + t))
-                        back.append((z, x, t))
+                            x, t = s.xt(p, zpart=[zs, zin])
+
+                        zxt.append((
+                            zs, sx + x, st + t,
+                            num.full(zs.size, s.mode),
+                            num.full(zs.size, 1),
+                            vs))
+
+                        back.append((
+                            zs, x, t,
+                            num.full(zs.size, s.mode),
+                            num.full(zs.size, 1),
+                            vs))
 
             if type(s) is HeadwaveStraight:
                 x = xstretch
@@ -2666,41 +2693,63 @@ class RayPath(object):
             sx += x
             st += t
             if back:
-                for z, x, t in reversed(back):
-                    zxt.append((z, sx - x, st - t))
+                for z, x, t, mode, kind, v in reversed(back):
+                    zxt.append((z, sx - x, st - t, mode, kind, v))
 
         # gather results as arrays with such that x[ip, ipoint]
-        fanz, fanx, fant = [], [], []
-        for z, x, t in zxt:
-            fanz.append(z)
-            fanx.append(x)
-            fant.append(t)
+        fan_z, fan_x, fan_t, fan_mode, fan_kind, fan_v = [], [], [], [], [], []
+        for z, x, t, mode, kind, v in zxt:
+            fan_z.append(z)
+            fan_x.append(x)
+            fan_t.append(t)
+            fan_mode.append(mode)
+            fan_kind.append(kind)
+            fan_v.append(v)
 
-        z = num.array(fanz).T
-        x = num.array(fanx).T
-        t = num.array(fant).T
+        z = num.array(fan_z).T
+        x = num.array(fan_x).T
+        t = num.array(fan_t).T
+        mode = num.array(fan_mode).T
+        kind = num.array(fan_kind).T
+        v = num.array(fan_v).T
 
         # cut off the endgaps, add exact endpoints
         xmax = x[:, -1] - dxr
         tmax = t[:, -1] - dtr
         zstart, zstop = endgaps[:2]
-        zs, xs, ts = [], [], []
+        zs, xs, ts, modes, kinds, vs = [], [], [], [], [], []
         for i in range(nout):
             t_ = t[i]
             indices = num.where(num.logical_and(0. <= t_, t_ <= tmax[i]))[0]
             n = indices.size + 2
-            zs_, xs_, ts_ = [num.empty(n, dtype=float) for j in range(3)]
+            zs_, xs_, ts_, modes_, kinds_, vs_ = [
+                num.empty(n, dtype=float) for j in range(6)]
             zs_[1:-1] = z[i, indices]
             xs_[1:-1] = x[i, indices]
             ts_[1:-1] = t[i, indices]
+            modes_[1:-1] = mode[i, indices]
+            kinds_[1:-1] = kind[i, indices]
+            vs_[1:-1] = v[i, indices]
             zs_[0], zs_[-1] = zstart, zstop
             xs_[0], xs_[-1] = 0., xmax[i]
             ts_[0], ts_[-1] = 0., tmax[i]
+            modes_[0] = modes_[1]
+            modes_[-1] = modes_[-2]
+            kinds_[0] = kinds_[1]
+            kinds_[-1] = kinds_[-2]
+            vs_[0] = vs_[1]
+            vs_[-1] = vs_[-2]
             zs.append(zs_)
             xs.append(xs_)
             ts.append(ts_)
+            modes.append(modes_)
+            kinds.append(kinds_)
+            vs.append(vs_)
 
-        return zs, xs, ts
+        if annotated:
+            return zs, xs, ts, modes, kinds, vs
+        else:
+            return zs, xs, ts
 
     def _analyse(self):
         if self._p is not None:
@@ -2749,7 +2798,7 @@ class RayPath(object):
             p, x, t = p[0], x[0], t[0]
             xh = num.linspace(0., x*10-x, 10)
             th = self.headwave_straight().x2t_headwave(xh)
-            return filled(p, xh.size), x+xh, t+th
+            return num.full(xh.size, p), x+xh, t+th
 
     def interpolate_x2pt_linear(self, x, endgaps):
         '''
@@ -3039,7 +3088,7 @@ class Ray(object):
         x2, y2 = r2*math.sin(self.x*d2r), r2*math.cos(self.x*d2r)
         return ((x2-x1)**2 + (y2-y1)**2)*4.0*math.pi
 
-    def zxt_path_subdivided(self, points_per_straight=20):
+    def zxt_path_subdivided(self, points_per_straight=20, annotated=False):
         '''
         Get geometrical representation of ray path.
 
@@ -3051,7 +3100,8 @@ class Ray(object):
         return self.path.zxt_path_subdivided(
             num.atleast_1d(self.p), self.endgaps,
             points_per_straight=points_per_straight,
-            x_for_headwave=num.atleast_1d(self.x))
+            x_for_headwave=num.atleast_1d(self.x),
+            annotated=annotated)
 
     def __str__(self, as_degrees=False):
         if as_degrees:
@@ -4303,18 +4353,6 @@ def evenize(x, y, minsize=10):
     x2[0] = x[0]
     x2[-1] = x[-1]
     return x2
-
-
-def filled(v, *args, **kwargs):
-    '''
-    Create NumPy array filled with given value.
-
-    This works like :py:func:`numpy.ones` but initializes the array with ``v``
-    instead of ones.
-    '''
-    x = num.empty(*args, **kwargs)
-    x.fill(v)
-    return x
 
 
 def next_or_none(i):
