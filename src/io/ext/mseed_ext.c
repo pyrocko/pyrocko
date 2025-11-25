@@ -170,21 +170,23 @@ static PyObject* mseed_get_traces(PyObject* m, PyObject* args, PyObject* kwds) {
   }
 
   /* get data from mseed file */
-  Py_BEGIN_ALLOW_THREADS;
   if (tmin != 0 || tmax != 0) {
     if (segment_size != 0 || offset != 0) {
       PyErr_SetString(
           st->error, "Cannot use offset/segment_size together with tmin/tmax.");
       return NULL;
     }
+    Py_BEGIN_ALLOW_THREADS;
     tmax = tmax ? tmax : -HPTERROR;
     retcode = pyrocko_ms_readtraces_time_window(
         &mstg, filename, (unpackdata == Py_True), tmin, tmax);
+    Py_END_ALLOW_THREADS;
   } else {
+    Py_BEGIN_ALLOW_THREADS;
     retcode = pyrocko_ms_readtraces(&mstg, filename, (unpackdata == Py_True),
                                     &offset, segment_size);
+    Py_END_ALLOW_THREADS;
   }
-  Py_END_ALLOW_THREADS;
 
   if (retcode < 0) {
     PyErr_Format(st->error, "Cannot read file '%s': %s", filename,
@@ -373,11 +375,11 @@ static int tuple2mst(PyObject* in_trace, MSTrace* mst, int* msdetype,
   mst->samplecnt = length;
 
   if (size_bytes >= GIL_THRESHOLD) {
-    Py_BEGIN_ALLOW_THREADS mst->datasamples =
-        calloc(length, ms_samplesize(mst->sampletype));
+    Py_BEGIN_ALLOW_THREADS;
+    mst->datasamples = calloc(length, ms_samplesize(mst->sampletype));
     ret = memcpy(mst->datasamples, PyArray_DATA(contiguous_array),
                  length * PyArray_ITEMSIZE(contiguous_array));
-    Py_END_ALLOW_THREADS
+    Py_END_ALLOW_THREADS;
   } else {
     mst->datasamples = calloc(length, ms_samplesize(mst->sampletype));
     ret = memcpy(mst->datasamples, PyArray_DATA(contiguous_array),
@@ -461,9 +463,9 @@ static PyObject* mseed_store_traces(PyObject* m, PyObject* args,
     mst_pack(mst, &write_mseed_file, outfile, record_length, msdetype, 1,
              &psamples, 1, 0, NULL);
     mst_free(&mst);
-    Py_END_ALLOW_THREADS
+    Py_END_ALLOW_THREADS;
 
-        Py_DECREF(in_trace);
+    Py_DECREF(in_trace);
   }
   fclose(outfile);
   Py_RETURN_NONE;
