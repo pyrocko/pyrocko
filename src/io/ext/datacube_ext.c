@@ -71,6 +71,8 @@ static const size_t N_GPS_TAGS_WANTED = 200;
 #define posint(x) ((((int)(x) % 256) + 256) % 256)
 #define isnull(x) ((x) == NULL)
 
+#define WEEK_SECONDS (7 * 24 * 3600)
+
 struct module_state {
   PyObject* error;
 };
@@ -149,6 +151,7 @@ typedef struct {
   double lon;
   double elevation;
   double temp;
+  int gps_utc_offset;
 } gps_tag_t;
 
 typedef struct {
@@ -256,8 +259,8 @@ datacube_error_t int32_array_append(int32_array_t* arr, int32_t x) {
 
 datacube_error_t gps_tag_array_append(gps_tag_array_t* arr, size_t ipos,
                                       double t, int fix, int nsvs, double lat,
-                                      double lon, double elevation,
-                                      double temp) {
+                                      double lon, double elevation, double temp,
+                                      int gps_utc_offset) {
   gps_tag_t *p, *el;
   size_t n;
   if (arr->fill == arr->size) {
@@ -280,6 +283,7 @@ datacube_error_t gps_tag_array_append(gps_tag_array_t* arr, size_t ipos,
   el->lon = lon;
   el->elevation = elevation;
   el->temp = temp;
+  el->gps_utc_offset = gps_utc_offset;
 
   arr->fill++;
 
@@ -647,10 +651,12 @@ datacube_error_t datacube_read_gps_block(reader_t* reader) {
   if (posint(b[0]) >> 4 != 11) {
     return BAD_GPS_BLOCK;
   }
+  // Shift between sample and GPS time stamp
   tshift = (posint(b[1]) * 128 + posint(b[2])) * 2.44140625;
 
-  tgps = t + tshift / 1000000.0 - reader->tdelay +
-         ((gps_utc_offset_flag == 0) ? 0 : gps_utc_time_offset);
+  tgps = t + tshift / 1000000.0 - reader->tdelay;
+  // Add GPS UTC offset if not applied by GPS receiver
+  tgps += (gps_utc_offset_flag == 0) ? 0 : gps_utc_time_offset;
 
   b = strstr(reader->buf, ">XPV");
   if (b != NULL) {
@@ -683,7 +689,7 @@ finish:
   if (current_fix_source != 0 || number_usable_svs >= 1) {
     err = gps_tag_array_append(&reader->gps_tags, reader->ipos_gps, tgps,
                                current_fix_source, number_usable_svs, lat, lon,
-                               elevation, temp);
+                               elevation, temp, gps_utc_time_offset);
 
     if (err != SUCCESS) {
       return err;
@@ -890,7 +896,6 @@ datacube_error_t datacube_load(reader_t* reader) {
    * block (at end???) 0xf0  240  15: header block
    *
    */
-
   err = datacube_read_blocktype(reader, &blocktype);
   if (err != SUCCESS) {
     return err;
@@ -937,7 +942,6 @@ datacube_error_t datacube_load(reader_t* reader) {
       bookmark_array_append(&reader->bookmarks, reader->ipos,
                             datacube_tell(reader) - 1);
     }
-
     if (blocktype == 8) {
       err = datacube_read_data_block(reader);
     } else if (blocktype == 9) {
@@ -1078,7 +1082,8 @@ static PyObject* transfer_arrays(reader_t* reader) {
 
 static PyObject* gps_tags_to_pytup(reader_t* reader) {
   PyObject* out;
-  PyObject *aipos, *at, *afix, *ansvs, *lats, *lons, *elevations, *temps;
+  PyObject *aipos, *at, *afix, *ansvs, *lats, *lons, *elevations, *temps,
+      *gps_utc_offsets;
   size_t n;
   size_t i;
   npy_intp array_dims[1];
@@ -1095,6 +1100,7 @@ static PyObject* gps_tags_to_pytup(reader_t* reader) {
   lons = PyArray_SimpleNew(1, array_dims, NPY_FLOAT64);
   elevations = PyArray_SimpleNew(1, array_dims, NPY_FLOAT64);
   temps = PyArray_SimpleNew(1, array_dims, NPY_FLOAT64);
+  gps_utc_offsets = PyArray_SimpleNew(1, array_dims, NPY_FLOAT64);
 
   if (aipos == NULL || at == NULL || afix == NULL || ansvs == NULL) {
     return NULL;
@@ -1118,9 +1124,11 @@ static PyObject* gps_tags_to_pytup(reader_t* reader) {
         reader->gps_tags.elements[i].elevation;
     ((double*)PyArray_DATA((PyArrayObject*)temps))[i] =
         reader->gps_tags.elements[i].temp;
+    ((double*)PyArray_DATA((PyArrayObject*)gps_utc_offsets))[i] =
+        reader->gps_tags.elements[i].gps_utc_offset;
   }
-  out = Py_BuildValue("(NNNNNNNN)", aipos, at, afix, ansvs, lats, lons,
-                      elevations, temps);
+  out = Py_BuildValue("(NNNNNNNNN)", aipos, at, afix, ansvs, lats, lons,
+                      elevations, temps, gps_utc_offsets);
   return out;
 }
 
