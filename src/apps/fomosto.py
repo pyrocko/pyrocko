@@ -1167,18 +1167,23 @@ def command_server(args):
     from pyrocko.gf import server
 
     def setup(parser):
-        parser.add_option(
-            '--port', dest='port', metavar='PORT', type='int', default=8080,
-            help='serve on port PORT')
-
-        parser.add_option(
-            '--ip', dest='ip', metavar='IP', default='',
-            help='serve on ip address IP')
+        server.add_cli_options(
+            parser,
+            exclude=('page', 'open'),
+            default_port=8080)
 
     parser, options, args = cl_parse('server', args, setup=setup)
 
+    if len(args) == 0:
+        sys.exit(parser.format_help())
+
     engine = gf.LocalEngine(store_superdirs=args)
-    server.run(options.ip, options.port, engine)
+
+    server.run(
+        engine,
+        host=options.host,
+        port=options.port,
+        debug=options.debug)
 
 
 def command_download(args):
