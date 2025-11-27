@@ -9,10 +9,3 @@ repos:
     language: system
     files: ^(src/|test/|examples/|setup.py)
     types: [python]
--   repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: v21.1.6
-    hooks:
-    - id: clang-format
-      files: \.(c|h|cpp|hpp)$
-      args: [--style=Google]
-      exclude: ^(src/ext/pyavl-1.12/)

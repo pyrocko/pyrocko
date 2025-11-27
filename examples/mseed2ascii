@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 
 from pyrocko import io
-import sys
-import os
+import sys, os
 
 if len(sys.argv) < 3:
     sys.exit('usage mseed2ascii <inputfiles> ... <outputdirectory>')
@@ -18,3 +17,4 @@ for fn in in_filenames:
     traces = io.load(fn, format='mseed')
     for tr in traces:
         io.save(tr, os.path.join(out_dirname, fn_tmpl))
+
