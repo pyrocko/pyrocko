@@ -13,9 +13,7 @@ import asyncio
 import json
 import logging
 import os
-import signal
 import time
-import uuid
 import base64
 from datetime import datetime
 from io import BytesIO
@@ -23,10 +21,9 @@ from io import BytesIO
 import numpy as num
 from matplotlib import pyplot as plt
 import matplotlib as mpl
-from tornado import web, autoreload
+from tornado import web
 
-from pyrocko import info
-from pyrocko import util
+from pyrocko import util, server, info
 from pyrocko import squirrel as squirrel_module
 from pyrocko.squirrel import model
 from pyrocko import guts
@@ -35,6 +32,10 @@ from pyrocko.squirrel import operators as ops
 from pyrocko import moment_tensor as pmt
 from pyrocko.plot import beachball
 from pyrocko.color import Color, g_pyrocko_color_cycle_base
+
+
+add_cli_arguments = server.add_cli_arguments
+
 
 logger = logging.getLogger('psq.service.server')
 
@@ -85,14 +86,10 @@ class GutsJSONEncoder(json.JSONEncoder):
             return json.JSONEncoder.default(self, o)
 
 
-class SquirrelRequestHandler(web.RequestHandler):
+class SquirrelRequestHandler(server.RequestHandler):
 
-    def initialize(self, squirrel=None, server_info=None):
+    def initialize(self, squirrel=None):
         self._squirrel = squirrel
-        self._server_info = server_info
-
-    def prepare(self):
-        self._server_info['n_requests'] += 1
 
     def get_cleaned(self, names, parameters):
         if isinstance(names, str):
@@ -154,14 +151,14 @@ class SquirrelHeartbeatHandler(SquirrelRequestHandler):
         try:
             time_start = time.time()
             while True:
-                if g_shutdown:
+                if server.g_shutdown:
                     break
 
                 self.write(
                     json.dumps(dict(
                         time_start=time_start,
                         time_now=time.time(),
-                        server_info=self._server_info)))
+                        server_info=server.g_server_info)))
 
                 try:
                     await self.flush()
@@ -176,7 +173,7 @@ class SquirrelHeartbeatHandler(SquirrelRequestHandler):
 
 class SquirrelInfoHandler(SquirrelRequestHandler):
     def p_server(self, parameters):
-        return self._server_info
+        return server.g_server_info
 
 
 class SquirrelRawHandler(SquirrelRequestHandler):
@@ -590,218 +587,6 @@ class BeachballHandler(SquirrelRequestHandler):
         self.write(buffer.getvalue())
 
 
-def get_ip(host):
-    if host == 'localhost':
-        return '::1'
-
-    elif host == 'public':
-        import socket
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(('4.4.4.4', 80))
-            try:
-                return s.getsockname()[0]
-            finally:
-                s.close()
-
-        except Exception:
-            raise ToolError(
-                'Could not determine default external IP address to bind to.')
-
-    elif host == 'all':
-        return ''
-    else:
-        return host
-
-
-def describe_ip(ip):
-    ip_describe = {
-        '': 'all available interfaces',
-        '::': 'all available IPv6 interfaces',
-        '0.0.0.0': 'all available IPv4 interfaces'}
-
-    return ip_describe.get(ip, 'ip "%s"' % ip)
-
-
-def url_ip(ip):
-    if '' == ip:
-        return '[::1]'
-    elif '0.0.0.0' == ip:
-        return '127.0.0.1'
-    elif ':' in ip:
-        return '[%s]' % ip
-    else:
-        return ip
-
-
-def log_request(handler):
-    if handler.get_status() < 400:
-        log_method = logger.debug
-    elif handler.get_status() < 500:
-        log_method = logger.warning
-    else:
-        log_method = logger.error
-    request_time = 1000.0 * handler.request.request_time()
-    log_method(
-        "%d %s %.2fms",
-        handler.get_status(),
-        handler._request_summary(),
-        request_time,
-    )
-
-
-async def serve(
-        squirrel,
-        host='localhost',
-        port=8000,
-        open=False,
-        debug=False,
-        page_path=None):
-
-    ip = get_ip(host)
-
-    if page_path is None:
-        page_path = os.path.join(
-            os.path.split(squirrel_module.__file__)[0],
-            'service',
-            'page')
-
-    server_info = dict(
-        run_id=str(uuid.uuid4()),
-        n_requests=0,
-        debug=debug,
-        pyrocko_version=info.version,
-    )
-
-    if debug:
-        server_info.update(
-            ip=ip,
-            port=port,
-            page_path=page_path,
-            pyrocko_long_version=info.long_version,
-            pyrocko_src_path=info.src_path)
-
-    squirrel_handler_dict = dict(
-        squirrel=squirrel,
-        server_info=server_info,
-    )
-
-    app = web.Application(
-        [
-            (
-                r'/((?:css|js|images)/.*'
-                r'|index.html|site.webmanifest|favicon.ico|)',
-                web.StaticFileHandler,
-                dict(
-                    path=page_path,
-                    default_filename='index.html'
-                )
-            ),
-            (
-                r'/squirrel/heartbeat',
-                SquirrelHeartbeatHandler,
-                squirrel_handler_dict,
-            ),
-            (
-                r'/squirrel/info/([a-z0-9_]+)',
-                SquirrelInfoHandler,
-                squirrel_handler_dict,
-            ),
-            (
-                r'/squirrel/raw/([a-z0-9_]+)',
-                SquirrelRawHandler,
-                squirrel_handler_dict,
-            ),
-            (
-                r'/squirrel/gate(?:/([a-z0-9_]+|/?))',
-                SquirrelGatesHandler,
-                squirrel_handler_dict,
-            ),
-            (
-                r'/squirrel/gate/([a-z0-9_]+)/([a-z0-9_]+)',
-                SquirrelGateHandler,
-                squirrel_handler_dict,
-            ),
-            (
-                r'/beachball',
-                BeachballHandler,
-                squirrel_handler_dict,
-            ),
-        ],
-        log_function=log_request,
-        debug=debug,
-    )
-
-    logger.info(
-        'Binding service to %s, port %i.',
-        describe_ip(ip), port)
-
-    try:
-        http_server = app.listen(port, ip)
-    except OSError as e:
-        if e.errno == 98:
-            await fail(ToolError(
-                'Address already in use, try specifying a different port '
-                'number with --port INT.'))
-            return
-
-    url = 'http://%s:%d' % (url_ip(ip), port)
-    if open:
-        import webbrowser
-        logger.info('Pointing browser to: %s', url)
-        webbrowser.open(url)
-    else:
-        logger.info('Point browser to: %s', url)
-
-    while True:
-        try:
-            await asyncio.sleep(3)
-        finally:
-            if g_shutdown:
-                logger.info('Shutting down service.')
-                http_server.stop()
-                await http_server.close_all_connections()
-                break
-
-
-g_shutdown = False
-g_exception = None
-
-
-async def fail(e):
-    global g_exception
-    g_exception = e
-    await shutdown()
-
-
-async def shutdown(sig=None, loop=None):
-    global g_shutdown
-
-    if sig is not None:
-        logger.debug(
-            'Received exit signal %s.', sig.name)
-
-    g_shutdown = True
-
-    tasks = [
-        t for t in asyncio.all_tasks()
-        if t is not asyncio.current_task()]
-
-    [task.cancel() for task in tasks]
-
-    logger.debug(
-        'Cancelling %s outstanding task%s.',
-        len(tasks), '' if len(tasks) == 1 else 's')
-
-    await asyncio.gather(*tasks)
-
-    logger.debug(
-        'Done waiting for tasks to finish.')
-
-    loop = asyncio.get_event_loop()
-    loop.stop()
-
-
 def run(
         squirrel,
         gates={},
@@ -811,44 +596,74 @@ def run(
         debug=False,
         page_path=None):
 
+    from pyrocko import server
+
     for gate in gates.values():
         gate.set_squirrel(squirrel)
 
     g_gates.update(gates)
 
-    if debug:
-        logger.setLevel(logging.DEBUG)
-        logger.debug('Debug mode activated.')
-        autoreload.add_reload_hook(lambda: time.sleep(2))
-        if page_path is None:
-            dev_static_path = os.path.join(
-                info.src_path, 'src', 'squirrel', 'service', 'page')
-            if os.path.exists(dev_static_path):
-                page_path = dev_static_path
+    if page_path is None:
+        page_path = os.path.join(
+            os.path.split(squirrel_module.__file__)[0],
+            'service',
+            'page')
 
-        logger.debug('Serving static files from: %s', page_path)
+        if debug:
+            page_path_debug = os.path.join(
+                info.src_path, 'src',
+                'squirrel',
+                'service',
+                'page')
 
-    loop = asyncio.get_event_loop()
-    signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
-    for s in signals:
-        loop.add_signal_handler(
-            s, lambda s=s: asyncio.create_task(shutdown(s)))
+            if os.path.exists(page_path_debug):
+                page_path = page_path_debug
+
+    handler_data = dict(
+        squirrel=squirrel,
+    )
+
+    handlers = [
+        (
+            r'/squirrel/heartbeat',
+            SquirrelHeartbeatHandler,
+            handler_data,
+        ),
+        (
+            r'/squirrel/info/([a-z0-9_]+)',
+            SquirrelInfoHandler,
+            handler_data,
+        ),
+        (
+            r'/squirrel/raw/([a-z0-9_]+)',
+            SquirrelRawHandler,
+            handler_data,
+        ),
+        (
+            r'/squirrel/gate(?:/([a-z0-9_]+|/?))',
+            SquirrelGatesHandler,
+            handler_data,
+        ),
+        (
+            r'/squirrel/gate/([a-z0-9_]+)/([a-z0-9_]+)',
+            SquirrelGateHandler,
+            handler_data,
+        ),
+        (
+            r'/beachball',
+            BeachballHandler,
+            handler_data,
+        ),
+    ]
 
     try:
-        loop.create_task(
-            serve(
-                squirrel,
-                host=host,
-                port=port,
-                open=open,
-                debug=debug,
-                page_path=page_path))
+        server.run(
+            host=host,
+            port=port,
+            handlers=handlers,
+            open=open,
+            debug=debug,
+            page_path=page_path)
 
-        loop.run_forever()
-
-    finally:
-        loop.close()
-        if g_exception is not None:
-            raise g_exception
-
-        logger.debug('Shutdown complete.')
+    except server.ServerError as e:
+        raise ToolError(e) from e
