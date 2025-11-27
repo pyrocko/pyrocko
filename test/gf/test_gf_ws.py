@@ -1,10 +1,11 @@
 import unittest
 import shutil
 import os
-import sys
 import threading
 import logging
 import tempfile
+import time
+import asyncio
 
 from pyrocko.gf import LocalEngine, store, ws
 from pyrocko import util
@@ -14,7 +15,6 @@ op = os.path
 logger = logging.getLogger('pyrocko.test.test_gf_ws')
 
 
-@unittest.skipIf(sys.version_info[:2] >= (3, 12), 'requires Python < 3.12')
 class GFWSTestCase(unittest.TestCase):
 
     @classmethod
@@ -41,22 +41,23 @@ class GFWSTestCase(unittest.TestCase):
     def test_local_server(self):
         from pyrocko.gf import server
 
+        loop = asyncio.new_event_loop()
+
         class ServerThread(threading.Thread):
             def __init__(self, serve_dir):
                 threading.Thread.__init__(self)
                 self.engine = LocalEngine(
                     store_dirs=[serve_dir])
-                self.s = server.Server(
-                    'localhost', 32483, server.SeismosizerHandler, self.engine)
 
             def run(self):
-                import asyncore
-                asyncore.loop(1., use_poll=True)
+                asyncio.set_event_loop(loop)
+                server.run(self.engine, host='localhost', port=32483)
 
         t_ws = ServerThread(self.serve_dir)
         t_ws.start()
 
         try:
+            time.sleep(1)
             ws.download_gf_store(
                 site='http://localhost:32483',
                 store_id=self.store_id,
@@ -65,10 +66,8 @@ class GFWSTestCase(unittest.TestCase):
             gfstore.check()
 
         finally:
-            # import time
-            # time.sleep(100)
-            t_ws.s.close()
-            t_ws.join(1.)
+            loop.call_soon_threadsafe(server.stop)
+            t_ws.join(5.)
 
 
 if __name__ == '__main__':
