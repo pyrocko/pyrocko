@@ -23,7 +23,9 @@ g_url_static = '%(site)s/gfws/%(service)s'
 
 g_site_abbr = {
     'localhost': 'http://localhost:8080',
-    'kinherd': 'http://kinherd.org:8080'}
+    'kinherd': 'https://gf.pyrocko.org',
+    'pyrocko': 'https://gf.pyrocko.org',
+}
 
 g_default_site = 'localhost'
 

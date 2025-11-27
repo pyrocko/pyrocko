@@ -11,7 +11,7 @@ store_id = 'iceland_reg_v2'
 # the next step to that directory.
 
 if not os.path.exists(store_id):
-    ws.download_gf_store(site='kinherd', store_id=store_id)
+    ws.download_gf_store(site='pyrocko', store_id=store_id)
 
 # We need a pyrocko.gf.Engine object which provides us with the traces
 # extracted from the store.

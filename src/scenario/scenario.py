@@ -343,7 +343,7 @@ class ScenarioGenerator(LocationGenerator):
             print("We could not find the following Green's function stores:\n"
                   '%s\n'
                   'We can try to download the stores from '
-                  'http://kinherd.org into one of the following '
+                  'https://greens-mill.pyrocko.org into one of the following '
                   'directories:'
                   % '\n'.join('  ' + s for s in self.stores_missing))
             for idr, dr in enumerate(gf_store_superdirs):
@@ -373,7 +373,7 @@ class ScenarioGenerator(LocationGenerator):
         oldwd = os.getcwd()
         for store in self.stores_missing:
             os.chdir(download_dir)
-            ws.download_gf_store(site='kinherd', store_id=store)
+            ws.download_gf_store(site='pyrocko', store_id=store)
 
         os.chdir(oldwd)
 

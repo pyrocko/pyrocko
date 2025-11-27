@@ -65,7 +65,7 @@ The available stores include dynamic stores for simulating waveforms at global a
 .. code-block:: sh
     :caption: Downloading a store with :program:`fomosto`
 
-    fomosto download kinherd global_2s_25km 
+    fomosto download pyrocko global_2s_25km
 
 Using GF Stores
 ---------------
@@ -223,7 +223,7 @@ A volumetric linear vector dipole, a uniaxial rotational symmetric moment tensor
     :caption: Initialise a VLVD source.
 
     vlvd_source = gf.VLVDSource(
-       lat=-30., lon=184., depth=5e3, 
+       lat=-30., lon=184., depth=5e3,
        volume_change=1e9, clvd_moment=20e9, dip=10., azimuth=110.)
 
 Rectangular fault
@@ -335,7 +335,7 @@ Resonator STF
   :alt: smooth ramp source time function
 
 .. code-block :: python
-    :caption: Initialise a resonator STF with duration of 5 s and a resonance frequency of 1 Hz. 
+    :caption: Initialise a resonator STF with duration of 5 s and a resonance frequency of 1 Hz.
 
     stf = gf.ResonatorSTF(5., frequency=1.0)
 
@@ -352,7 +352,7 @@ interpolate the discrete, gridded GF components. Please also see the
 :doc:`Pyrocko GF modelling example <../library/examples/gf_forward>`.
 
 .. note ::
-    
+
     In Pyrocko locations are given with five coordinates: ``lat``, ``lon``, ``east_shift``, ``north_shift`` and ``depth``.
 
     Latitude and longitude are the origin of an optional local Cartesian coordinate system for which an ``east_shift`` and a ``north_shift`` [m] can be defined. A target has a depth below the surface. However, the surface can have topography and the target can also have an ``elevation``.
@@ -370,7 +370,7 @@ quantity, and optionally a time interval
 
     # Define a list of pyrocko.gf.Target objects, representing the recording
     # devices. In this case one three-component seismometer is represented with
-    # three distinct target objects. The channel orientations are guessed from 
+    # three distinct target objects. The channel orientations are guessed from
     # the channel codes here.
     waveform_targets = [
         gf.Target(
@@ -438,7 +438,7 @@ Forward modelling with Pyrocko-GF
 =================================
 
 Forward modelling, given a source and target description, is handled in the
-so-called :class:`~pyrocko.gf.seismosizer.Engine` using the 
+so-called :class:`~pyrocko.gf.seismosizer.Engine` using the
 :meth:`~pyrocko.gf.seismosizer.LocalEngine.process` method.
 
 Initialisation of the engine requires setting the folder, where it should look
@@ -485,7 +485,7 @@ For static targets, the results are retrieved in the following way:
 .. code-block :: python
     :caption: forward model static surface displacements of a rectangular fault
 
-    # Get a default engine (will look into directories configured in 
+    # Get a default engine (will look into directories configured in
     # ~/.pyrocko/config.pf to find GF stores)
     engine = gf.get_engine()
 

@@ -50,7 +50,7 @@ class CombiSource(gf.Source):
 # Download a Greens Functions store, programmatically.
 store_id = 'gf_abruzzo_nearfield_vmod_Ameri'
 if not os.path.exists(store_id):
-    gf.ws.download_gf_store(site='kinherd', store_id=store_id)
+    gf.ws.download_gf_store(site='pyrocko', store_id=store_id)
 
 km = 1e3   # distance in kilometer
 

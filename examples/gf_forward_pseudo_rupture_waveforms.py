@@ -11,7 +11,7 @@ store_id = 'crust2_mf'
 # would like to use, you can skip this step and point the *store_superdirs* in
 # the next step to that directory.
 if not op.exists(store_id):
-    gf.ws.download_gf_store(site='kinherd', store_id=store_id)
+    gf.ws.download_gf_store(site='pyrocko', store_id=store_id)
 
 # We need a pyrocko.gf.Engine object which provides us with the traces
 # extracted from the store. In this case we are going to use a local

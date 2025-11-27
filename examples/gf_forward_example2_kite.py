@@ -9,7 +9,7 @@ d2r = num.pi/180.
 # Download a Greens Functions store
 store_id = 'gf_abruzzo_nearfield_vmod_Ameri'
 if not os.path.exists(store_id):
-    gf.ws.download_gf_store(site='kinherd', store_id=store_id)
+    gf.ws.download_gf_store(site='pyrocko', store_id=store_id)
 
 # Setup the modelling LocalEngine
 # *store_superdirs* is a list of directories where to look for GF Stores.
