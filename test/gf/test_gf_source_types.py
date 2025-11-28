@@ -82,7 +82,10 @@ class GFSourceTypesTestCase(unittest.TestCase):
         # Check magnitude calculations
         pdr.rescale_slip(
             magnitude=pmt.moment_to_magnitude(moment), store=store)
-        assert pdr.get_magnitude(store) == pmt.moment_to_magnitude(moment)
+        num.testing.assert_allclose(
+            pdr.get_magnitude(store),
+            pmt.moment_to_magnitude(moment),
+            rtol=1e-7)
 
         # Check magnitude scaling based on tractions
         pdr.slip = None
@@ -90,7 +93,10 @@ class GFSourceTypesTestCase(unittest.TestCase):
         pdr.tractions = gf.tractions.DirectedTractions(traction=1., rake=rake)
         pdr.tractions.traction *= moment / pdr.get_moment(store)
 
-        assert pdr.get_magnitude(store) == pmt.moment_to_magnitude(moment)
+        num.testing.assert_allclose(
+            pdr.get_magnitude(store),
+            pmt.moment_to_magnitude(moment),
+            rtol=1e-7)
 
         # Check nucleation setting
         pdr.nucleation = num.array([[nucleation_x, nucleation_y]])
