@@ -1161,6 +1161,10 @@ class SquirrelTestCase(unittest.TestCase):
         datadir = self.make_many_files(
             nfiles, nsamples, networks, stations, channels, tmin)
 
+        sq = squirrel.Squirrel(datadir, persistent='bla')
+        sq.add(os.path.join(datadir, 'data'))
+        sq.close()
+
         squirrel.init_environment(datadir)
 
         try:
