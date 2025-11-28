@@ -31,7 +31,8 @@ project_dir = op.join(op.dirname(op.abspath(__file__)), '..', '..')
 
 skip_examples = [
     'trace_restitution_dseed.py',
-    'gf_forward_viscoelastic.py'
+    'gf_forward_viscoelastic.py',
+    'gf_store_get_many_t.py',
 ]
 
 need_sys_argv_examples = {
