@@ -888,7 +888,7 @@ platform:
 
 steps:
 - name: build-test
-  image: quay.io/pypa/manylinux2014_x86_64
+  image: quay.io/pypa/manylinux_2_28_x86_64
   commands:
   - cd maintenance/conda
   - ./build_packages.sh dryrun
@@ -899,7 +899,7 @@ steps:
       - conda
 
 - name: build-test-upload
-  image: quay.io/pypa/manylinux2014_x86_64
+  image: quay.io/pypa/manylinux_2_28_x86_64
   commands:
   - cd maintenance/conda
   - ./build_packages.sh upload
