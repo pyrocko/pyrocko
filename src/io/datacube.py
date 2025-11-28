@@ -18,10 +18,16 @@ import numpy as num
 
 from pyrocko import trace, util, plot
 from pyrocko.guts import Object, Int, String, Timestamp
+from typing import NamedTuple
 
 from . import io_common
 
 logger = logging.getLogger(__name__)
+
+HOUR = 3600.
+DAY = 24 * HOUR
+WEEK = 7 * DAY
+WNRO = 1024 * WEEK  # GPS Week Number Rollover period
 
 N_GPS_TAGS_WANTED = 200  # must match definition in datacube_ext.c
 
@@ -39,6 +45,28 @@ class DataCubeError(io_common.FileLoadError):
 
 class ControlPointError(Exception):
     pass
+
+
+class GPSTags(NamedTuple):
+    position: num.ndarray
+    gps_time: num.ndarray
+    fix: num.ndarray
+    sat_count: num.ndarray
+    latitudes: num.ndarray
+    longitudes: num.ndarray
+    elevations: num.ndarray
+    temperatures: num.ndarray
+    gps_utc_offsets: num.ndarray
+
+    @classmethod
+    def from_tuple(cls, tup):
+        return cls(*tup)
+
+
+def check_WNRO(utc_gps_offsets: num.ndarray, leap_seconds: int) -> bool:
+    """Checks for GPS week number rollover offset."""
+    # give some tolerance, we expect larger offsets from 1024 week rollovers
+    return abs(leap_seconds + utc_gps_offsets.max()) > 1
 
 
 def make_control_point(ipos_block, t_block, tref, deltat):
@@ -95,17 +123,17 @@ def make_control_point(ipos_block, t_block, tref, deltat):
 
 def analyse_gps_tags(header, gps_tags, offset, nsamples):
 
-    ipos, t, fix, nsvs = gps_tags
+    ipos, times, fix, sat_count = gps_tags
     deltat = 1.0 / int(header['S_RATE'])
 
     tquartz = offset + ipos * deltat
 
-    toff = t - tquartz
+    toff = times - tquartz
     toff_median = num.median(toff)
 
-    n = t.size
+    n = times.size
 
-    dtdt = (t[1:n] - t[0:n-1]) / (tquartz[1:n] - tquartz[0:n-1])
+    dtdt = (times[1:n] - times[0:n-1]) / (tquartz[1:n] - tquartz[0:n-1])
 
     ok = abs(toff_median - toff) < 10.
 
@@ -119,9 +147,9 @@ def analyse_gps_tags(header, gps_tags, offset, nsamples):
         ok[n-1] = False
 
     ipos = ipos[ok]
-    t = t[ok]
+    times = times[ok]
     fix = fix[ok]
-    nsvs = nsvs[ok]
+    sat_count = sat_count[ok]
 
     blocksize = N_GPS_TAGS_WANTED // 2
     if ipos.size < blocksize:
@@ -139,10 +167,10 @@ def analyse_gps_tags(header, gps_tags, offset, nsamples):
 
         j = 0
         control_points = []
-        tref = num.median(t - ipos*deltat)
+        tref = num.median(times - ipos*deltat)
         while j < ipos.size - blocksize:
             ipos_block = ipos[j:j+blocksize]
-            t_block = t[j:j+blocksize]
+            t_block = times[j:j+blocksize]
             try:
                 ic, tc = make_control_point(ipos_block, t_block, tref, deltat)
                 control_points.append((ic, tc))
@@ -152,7 +180,7 @@ def analyse_gps_tags(header, gps_tags, offset, nsamples):
             j += blocksize
 
         ipos_last = ipos[-blocksize:]
-        t_last = t[-blocksize:]
+        t_last = times[-blocksize:]
         try:
             ic, tc = make_control_point(ipos_last, t_last, tref, deltat)
             control_points.append((ic, tc))
@@ -210,7 +238,7 @@ def analyse_gps_tags(header, gps_tags, offset, nsamples):
         if idat == 0:
             tmin = tmin + util.gps_utc_offset(tmin)
         else:
-            tmin = util.day_start(tmin + idat * 24.*3600.) \
+            tmin = util.day_start(tmin + idat * DAY) \
                 + util.gps_utc_offset(tmin)
 
         tmax = tmin + (nsamples - 1) * deltat
@@ -223,7 +251,6 @@ def plot_gnss_location_timeline(fns):
     from matplotlib import pyplot as plt
     from pyrocko.orthodrome import latlon_to_ne_numpy
     not_ = num.logical_not
-    h = 3600.
 
     fig = plt.figure()
 
@@ -239,7 +266,10 @@ def plot_gnss_location_timeline(fns):
     tref = None
     for ifn, fn in enumerate(fns):
         header, gps_tags, nsamples = get_time_infos(fn)
-        _, t, fix, nsvs, lats, lons, elevations, _ = gps_tags
+        _, t, fix, nsvs, lats, lons, elevations, _, gps_utc_offset = gps_tags
+        leap_seconds = util.utc_gps_offset(num.median(t))
+        if check_WNRO(gps_utc_offset, leap_seconds):
+            t += WNRO
 
         fix = fix.astype(bool)
 
@@ -256,10 +286,11 @@ def plot_gnss_location_timeline(fns):
 
             tspan = t[num.array([0, -1])]
 
-            ax.axvspan(*((tspan - tref) / h), color=background_colors[ifn % 2])
+            ax.axvspan(*((tspan - tref) / HOUR),
+                       color=background_colors[ifn % 2])
             med = num.median(data)
             ax.plot(
-                (tspan - tref) / h,
+                (tspan - tref) / HOUR,
                 [med, med],
                 ls='--',
                 c='k',
@@ -267,13 +298,13 @@ def plot_gnss_location_timeline(fns):
                 alpha=0.5)
 
             ax.plot(
-                (t[not_(fix)] - tref) / h, data[not_(fix)], 'o',
+                (t[not_(fix)] - tref) / HOUR, data[not_(fix)], 'o',
                 ms=1.5,
                 mew=0,
                 color=color('scarletred2'))
 
             ax.plot(
-                (t[fix] - tref) / h, data[fix], 'o',
+                (t[fix] - tref) / HOUR, data[fix], 'o',
                 ms=1.5,
                 mew=0,
                 color=color('aluminium6'))
@@ -301,7 +332,8 @@ def plot_gnss_location_timeline(fns):
 
 
 def coordinates_from_gps(gps_tags):
-    ipos, t, fix, nsvs, lats, lons, elevations, temps = gps_tags
+    ipos, t, fix, nsvs, lats, lons, elevations, temps, gps_utc_offset = \
+        gps_tags
     return tuple(num.median(x) for x in (lats, lons, elevations))
 
 
@@ -345,8 +377,6 @@ def plot_timeline(fns):
     fig = plt.figure()
     axes = fig.gca()
 
-    h = 3600.
-
     if isinstance(fns, str):
         fn = fns
         if os.path.isdir(fn):
@@ -387,22 +417,22 @@ def plot_timeline(fns):
     nok = num.logical_not(ok)
 
     axes.plot(
-        x[la(bfix, ok)]/h, y[la(bfix, ok)], '+',
+        x[la(bfix, ok)]/HOUR, y[la(bfix, ok)], '+',
         ms=5, color=color('chameleon3'))
     axes.plot(
-        x[la(bfix, nok)]/h, y[la(bfix, nok)], '+',
+        x[la(bfix, nok)]/HOUR, y[la(bfix, nok)], '+',
         ms=5, color=color('aluminium4'))
 
     axes.plot(
-        x[la(bnofix, ok)]/h, y[la(bnofix, ok)], 'x',
+        x[la(bnofix, ok)]/HOUR, y[la(bnofix, ok)], 'x',
         ms=5, color=color('chocolate3'))
     axes.plot(
-        x[la(bnofix, nok)]/h, y[la(bnofix, nok)], 'x',
+        x[la(bnofix, nok)]/HOUR, y[la(bnofix, nok)], 'x',
         ms=5, color=color('aluminium4'))
 
     tred = tcontrol - icontrol*deltat - tref
-    axes.plot(icontrol*deltat/h, tred, color=color('aluminium6'))
-    axes.plot(icontrol*deltat/h, tred, 'o', ms=5, color=color('aluminium6'))
+    axes.plot(icontrol*deltat/HOUR, tred, color=color('aluminium6'))
+    axes.plot(icontrol*deltat/HOUR, tred, 'o', ms=5, color=color('aluminium6'))
 
     ymin = (math.floor(tred.min() / deltat)-1) * deltat
     ymax = (math.ceil(tred.max() / deltat)+1) * deltat
@@ -415,8 +445,8 @@ def plot_timeline(fns):
             axes.axhline(ygrid, color=color('aluminium4'), alpha=0.3)
             ygrid += deltat
 
-    xmin = icontrol[0]*deltat/h
-    xmax = icontrol[-1]*deltat/h
+    xmin = icontrol[0]*deltat/HOUR
+    xmax = icontrol[-1]*deltat/HOUR
     xsize = xmax - xmin
     xmin -= xsize * 0.1
     xmax += xsize * 0.1
@@ -536,7 +566,7 @@ def get_time_infos(fn):
             e.set_context('filename', fn)
             raise e
 
-    return dict(header), gps_tags, nsamples
+    return dict(header), GPSTags.from_tuple(gps_tags), nsamples
 
 
 def get_timing_context(fns):
@@ -545,7 +575,9 @@ def get_timing_context(fns):
     for fn in fns:
         header, gps_tags, nsamples = get_time_infos(fn)
 
-        ipos = gps_tags[0]
+        gps_tags = GPSTags.from_tuple(gps_tags)
+
+        ipos = gps_tags.position
         ipos += ioff
 
         for i in range(4):
@@ -563,26 +595,27 @@ def get_extended_timing_context(fn):
     c = context(fn)
 
     header, gps_tags, nsamples_base = get_time_infos(fn)
+    gps_tags = GPSTags.from_tuple(gps_tags)
 
     ioff = 0
     aggregated = [gps_tags]
 
     nsamples_total = nsamples_base
 
-    if num.sum(gps_tags[2]) == 0:
+    if num.sum(gps_tags.fix) == 0:
 
         ioff = nsamples_base
         for entry in c.iter_entries(fn, 1):
 
             _, gps_tags, nsamples = get_time_infos(entry.path)
 
-            ipos = gps_tags[0]
+            ipos = gps_tags.position
             ipos += ioff
 
             aggregated.append(gps_tags)
             nsamples_total += nsamples
 
-            if num.sum(gps_tags[2]) > 0:
+            if num.sum(gps_tags.fix) > 0:
                 break
 
             ioff += nsamples
@@ -594,20 +627,26 @@ def get_extended_timing_context(fn):
 
             ioff -= nsamples
 
-            ipos = gps_tags[0]
+            ipos = gps_tags.position
             ipos += ioff
 
             aggregated[0:0] = [gps_tags]
 
             nsamples_total += nsamples
 
-            if num.sum(gps_tags[2]) > 0:
+            if num.sum(gps_tags.fix) > 0:
                 break
 
-    ipos, t, fix, nsvs = [num.concatenate(x) for x in zip(*aggregated)][:4]
+    concat = num.concatenate
 
-#    return ipos, t, fix, nsvs, header, ioff, nsamples_total
-    return ipos, t, fix, nsvs, header, 0, nsamples_base
+    ipos = concat([tag.position for tag in aggregated])
+    time = concat([tag.gps_time for tag in aggregated])
+    fix = concat([tag.fix for tag in aggregated])
+    sat_count = concat([tag.sat_count for tag in aggregated])
+    gps_utc_offsets = concat([tag.gps_utc_offsets for tag in aggregated])
+
+    return ipos, time, fix, sat_count, gps_utc_offsets, header, \
+        0, nsamples_base
 
 
 def iload(fn, load_data=True, interpolation='sinc', yield_gps_tags=False):
@@ -619,10 +658,7 @@ def iload(fn, load_data=True, interpolation='sinc', yield_gps_tags=False):
             'no such interpolation method: %s' % interpolation)
 
     with open(fn, 'rb') as f:
-        if load_data:
-            loadflag = 2
-        else:
-            loadflag = 1
+        loadflag = 2 if load_data else 1
 
         try:
             header, data_arrays, gps_tags, nsamples, _ = datacube_ext.load(
@@ -637,11 +673,11 @@ def iload(fn, load_data=True, interpolation='sinc', yield_gps_tags=False):
     deltat = 1.0 / int(header['S_RATE'])
     nchannels = int(header['CH_NUM'])
 
-    ipos, t, fix, nsvs, header_, offset_, nsamples_ = \
-        get_extended_timing_context(fn)
+    ipos, times, fix, sat_count, utc_gps_offsets, \
+        header_, offset_, nsamples_ = get_extended_timing_context(fn)
 
     tmin, tmax, icontrol, tcontrol, _ = analyse_gps_tags(
-        header_, (ipos, t, fix, nsvs), offset_, nsamples_)
+        header_, (ipos, times, fix, sat_count), offset_, nsamples_)
 
     if icontrol is None:
         warnings.warn(
@@ -706,7 +742,6 @@ def iload(fn, load_data=True, interpolation='sinc', yield_gps_tags=False):
 
         tr = trace.Trace('', header['DEV_NO'], '', 'p%i' % i, deltat=deltat,
                          ydata=ydata, tmin=tr_tmin, tmax=tr_tmax, meta=header)
-
         bleaps = num.logical_and(tmin_ip <= leaps, leaps < tmax_ip)
 
         if num.any(bleaps):
@@ -718,8 +753,13 @@ def iload(fn, load_data=True, interpolation='sinc', yield_gps_tags=False):
 
                 try:
                     tr_cut = tr.chop(tmin_cut, tmax_cut, inplace=False)
-                    tr_cut.shift(
-                        util.utc_gps_offset(0.5*(tr_cut.tmin+tr_cut.tmax)))
+                    ref_time = 0.5*(tr_cut.tmin+tr_cut.tmax)
+                    leap_second = util.utc_gps_offset(ref_time)
+                    if check_WNRO(utc_gps_offsets, leap_second):
+                        tr_cut.shift(WNRO)
+                        leap_second = util.utc_gps_offset(ref_time + WNRO)
+
+                    tr_cut.shift(leap_second)
                     if yield_gps_tags:
                         yield tr_cut, gps_tags
                     else:
@@ -729,7 +769,13 @@ def iload(fn, load_data=True, interpolation='sinc', yield_gps_tags=False):
                     pass
 
         else:
-            tr.shift(util.utc_gps_offset(0.5*(tr.tmin+tr.tmax)))
+            t_ref = 0.5*(tr.tmin+tr.tmax)
+            leap_second = util.utc_gps_offset(t_ref)
+            if check_WNRO(utc_gps_offsets, leap_second):
+                tr.shift(WNRO)
+                leap_second = util.utc_gps_offset(t_ref + WNRO)
+
+            tr.shift(leap_second)
             if yield_gps_tags:
                 yield tr, gps_tags
             else:

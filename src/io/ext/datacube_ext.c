@@ -157,6 +157,7 @@ typedef struct {
     double lon;
     double elevation;
     double temp;
+    int gps_utc_offset;
 } gps_tag_t;
 
 typedef struct {
@@ -252,7 +253,8 @@ datacube_error_t int32_array_append(int32_array_t *arr, int32_t x) {
 datacube_error_t gps_tag_array_append(
         gps_tag_array_t *arr, size_t ipos,
         double t, int fix, int nsvs,
-        double lat, double lon, double elevation, double temp) {
+        double lat, double lon, double elevation, double temp,
+        int gps_utc_offset) {
     gps_tag_t *p, *el;
     size_t n;
     if (arr->fill == arr->size) {
@@ -275,6 +277,7 @@ datacube_error_t gps_tag_array_append(
     el->lon = lon;
     el->elevation = elevation;
     el->temp = temp;
+    el->gps_utc_offset = gps_utc_offset;
 
     arr->fill++;
 
@@ -683,7 +686,7 @@ datacube_error_t datacube_read_gps_block(reader_t *reader) {
         err = gps_tag_array_append(
                 &reader->gps_tags, reader->ipos_gps, tgps,
                 current_fix_source, number_usable_svs,
-                lat, lon, elevation, temp);
+                lat, lon, elevation, temp, gps_utc_time_offset);
 
         if (err != SUCCESS) {
             return err;
@@ -1079,7 +1082,7 @@ static PyObject* transfer_arrays(reader_t *reader) {
 
 static PyObject* gps_tags_to_pytup(reader_t *reader) {
     PyObject *out;
-    PyObject *aipos, *at, *afix, *ansvs, *lats, *lons, *elevations, *temps;
+    PyObject *aipos, *at, *afix, *ansvs, *lats, *lons, *elevations, *temps, *gps_utc_offsets;
     size_t n;
     size_t i;
     npy_intp array_dims[1];
@@ -1096,6 +1099,7 @@ static PyObject* gps_tags_to_pytup(reader_t *reader) {
     lons = PyArray_SimpleNew(1, array_dims, NPY_FLOAT64);
     elevations = PyArray_SimpleNew(1, array_dims, NPY_FLOAT64);
     temps = PyArray_SimpleNew(1, array_dims, NPY_FLOAT64);
+    gps_utc_offsets = PyArray_SimpleNew(1, array_dims, NPY_INT64);
 
     if (aipos == NULL || at == NULL || afix == NULL || ansvs == NULL) {
         return NULL;
@@ -1111,8 +1115,9 @@ static PyObject* gps_tags_to_pytup(reader_t *reader) {
         ((double*)PyArray_DATA((PyArrayObject*)lons))[i] = reader->gps_tags.elements[i].lon;
         ((double*)PyArray_DATA((PyArrayObject*)elevations))[i] = reader->gps_tags.elements[i].elevation;
         ((double*)PyArray_DATA((PyArrayObject*)temps))[i] = reader->gps_tags.elements[i].temp;
+        ((int64_t*)PyArray_DATA((PyArrayObject*)gps_utc_offsets))[i] = reader->gps_tags.elements[i].gps_utc_offset;
     }
-    out = Py_BuildValue("(NNNNNNNN)", aipos, at, afix, ansvs, lats, lons, elevations, temps);
+    out = Py_BuildValue("(NNNNNNNNN)", aipos, at, afix, ansvs, lats, lons, elevations, temps, gps_utc_offsets);
     return out;
 }
 
