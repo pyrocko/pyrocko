@@ -148,7 +148,7 @@ def eventtags_to_array(events, tab):
         elif all(isinstance(v, float) for v in column):
             dtype = float
         else:
-            dtype = num.string_
+            dtype = str
             column = [v or '' for v in column]
 
         arr = num.array(column, dtype=dtype)
@@ -174,7 +174,7 @@ def eventextras_to_array(events, tab):
                 msg + ' Several non-zero shapes detected. Please check.')
 
     for key, val in ev0.extras.items():
-        dtype = num.string_
+        dtype = str
         values = num.array(['' for x in range(n_extras.shape[0])], dtype=dtype)
 
         if type(val) is float:
