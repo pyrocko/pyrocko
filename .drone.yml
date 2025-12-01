@@ -725,18 +725,10 @@ steps:
 - name: build
   commands:
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\Lib\\site-packages\\pyrocko
-  - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py38
-  - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py39
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py310
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py311
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py312
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py313
-
-  - conda create -y -n py38 python=3.8 m2-tar m2-gzip m2-patch setuptools pip numpy=1.14
-  - conda run --no-capture-output -n py38 python -m pip wheel -v -w dist "--only-binary=:all:" .
-
-  - conda create -y -n py39 python=3.9 m2-tar m2-gzip m2-patch setuptools pip numpy=1.16
-  - conda run --no-capture-output -n py39 python -m pip wheel -v -w dist "--only-binary=:all:" .
 
   - conda create -y -n py310 python=3.10 m2-tar m2-gzip m2-patch setuptools pip numpy=1.21
   - conda run --no-capture-output -n py310 python -m pip wheel -v -w dist "--only-binary=:all:" .
@@ -782,8 +774,6 @@ steps:
 - name: cleanup
   commands:
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\Lib\\site-packages\\pyrocko
-  - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py38
-  - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py39
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py310
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py311
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py312
