@@ -66,7 +66,10 @@ class GPSTags(NamedTuple):
 def check_WNRO(utc_gps_offsets: num.ndarray, leap_seconds: int) -> bool:
     """Checks for GPS week number rollover offset."""
     # give some tolerance, we expect larger offsets from 1024 week rollovers
-    return abs(leap_seconds + utc_gps_offsets.max()) > 1
+    max_utc_gps_offset = utc_gps_offsets.max()
+    if max_utc_gps_offset == 0:
+        return False
+    return abs(leap_seconds + max_utc_gps_offset) > 1
 
 
 def make_control_point(ipos_block, t_block, tref, deltat):
