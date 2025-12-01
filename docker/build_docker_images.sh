@@ -14,14 +14,14 @@ cp -r pyrocko-test-data fat-nest
 rm -rf pyrocko/pyrocko.git
 git clone --bare .. pyrocko/pyrocko.git
 
-for version in 11 12 ; do
+for version in 12 13 ; do
     docker build nest -t pyrocko-nest-debian-$version --build-arg base_image=debian:$version
     docker build fat-nest -t pyrocko-fat-nest-debian-$version --build-arg base_image=pyrocko-nest-debian-$version
     docker build build-deb -t pyrocko-build-deb-debian-$version --build-arg base_image=debian:$version
     docker build test-deb -t pyrocko-test-deb-debian-$version --build-arg base_image=debian:$version
 done
 
-for version in 20.04 22.04 24.04 ; do
+for version in 22.04 24.04 ; do
     docker build nest -t pyrocko-nest-ubuntu-$version --build-arg base_image=ubuntu:$version
     docker build fat-nest -t pyrocko-fat-nest-ubuntu-$version --build-arg base_image=pyrocko-nest-ubuntu-$version
     docker build build-deb -t pyrocko-build-deb-ubuntu-$version --build-arg base_image=ubuntu:$version
