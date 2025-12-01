@@ -6,7 +6,7 @@ name: flake8
 
 steps:
 - name: flake8
-  image: pyrocko-nest-debian-12
+  image: pyrocko-nest-debian-13
   pull: never
   commands:
   - flake8 src test examples setup.py
@@ -112,22 +112,22 @@ trigger:
 steps:
 
 - name: test-base
-  image: pyrocko-fat-nest-debian-12
+  image: pyrocko-fat-nest-debian-13
   pull: never
   commands:
   - pip3 install --no-deps --no-build-isolation .
   - python3 -m coverage run --parallel-mode -m pytest -v test/base
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
-- name: test-base-debian-11
-  image: pyrocko-fat-nest-debian-11
+- name: test-base-debian-12
+  image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
   - pip3 install --no-deps --no-build-isolation .
   - python3 -m pytest -v test/base
 
 - name: test-base-hptime
-  image: pyrocko-fat-nest-debian-12
+  image: pyrocko-fat-nest-debian-13
   pull: never
   commands:
   - pip3 install --no-deps --no-build-isolation .
@@ -154,7 +154,7 @@ steps:
     RSYNC_KEY:
       from_secret: rsync-key
   depends_on:
-  - test-base-debian-11
+  - test-base-debian-12
   - test-base-hptime
 
 ---
@@ -178,22 +178,22 @@ trigger:
 
 steps:
 - name: test-gf
-  image: pyrocko-fat-nest-debian-12
+  image: pyrocko-fat-nest-debian-13
   pull: never
   commands:
   - pip3 install --no-deps --no-build-isolation .
   - python3 -m coverage run --parallel-mode -m pytest -v test/gf
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
-- name: test-gf-debian-11
-  image: pyrocko-fat-nest-debian-11
+- name: test-gf-debian-12
+  image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
   - pip3 install --no-deps --no-build-isolation .
   - python3 -m pytest -v test/gf
 
 - name: test-gf-hptime
-  image: pyrocko-fat-nest-debian-12
+  image: pyrocko-fat-nest-debian-13
   pull: never
   commands:
   - pip3 install --no-deps --no-build-isolation .
@@ -221,7 +221,7 @@ steps:
     RSYNC_KEY:
       from_secret: rsync-key
   depends_on:
-  - test-gf-debian-11
+  - test-gf-debian-12
   - test-gf-hptime
 
 ---
@@ -245,7 +245,7 @@ trigger:
 
 steps:
 - name: test-examples
-  image: pyrocko-fat-nest-debian-12
+  image: pyrocko-fat-nest-debian-13
   pull: never
   commands:
   - mkdir -p /pyrocko-test-data/example_run_dir
@@ -254,8 +254,8 @@ steps:
   - python3 -m coverage run --parallel-mode -m pytest -v test/examples
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
-- name: test-examples-debian-11
-  image: pyrocko-fat-nest-debian-11
+- name: test-examples-debian-12
+  image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
   - mkdir -p /pyrocko-test-data/example_run_dir
@@ -264,7 +264,7 @@ steps:
   - python3 -m pytest -v test/examples
 
 - name: test-examples-hptime
-  image: pyrocko-fat-nest-debian-12
+  image: pyrocko-fat-nest-debian-13
   pull: never
   commands:
   - mkdir -p /pyrocko-test-data/example_run_dir
@@ -294,7 +294,7 @@ steps:
     RSYNC_KEY:
       from_secret: rsync-key
   depends_on:
-  - test-examples-debian-11
+  - test-examples-debian-12
   - test-examples-hptime
 
 ---
@@ -318,22 +318,22 @@ trigger:
 
 steps:
 - name: test-gui
-  image: pyrocko-fat-nest-debian-12
+  image: pyrocko-fat-nest-debian-13
   pull: never
   commands:
   - pip3 install --no-deps --no-build-isolation .
   - xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
-- name: test-gui-debian-11
-  image: pyrocko-fat-nest-debian-11
+- name: test-gui-debian-12
+  image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
   - pip3 install --no-deps --no-build-isolation .
   - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
 
 - name: test-gui-hptime
-  image: pyrocko-fat-nest-debian-12
+  image: pyrocko-fat-nest-debian-13
   pull: never
   commands:
   - pip3 install --no-deps --no-build-isolation .
@@ -361,7 +361,7 @@ steps:
     RSYNC_KEY:
       from_secret: rsync-key
   depends_on:
-  - test-gui-debian-11
+  - test-gui-debian-12
   - test-gui-hptime
 
 ---
@@ -391,7 +391,7 @@ trigger:
 
 steps:
 - name: build
-  image: pyrocko-nest-debian-12
+  image: pyrocko-nest-debian-13
   pull: never
   commands:
   - pip3 install --no-deps --no-build-isolation .
@@ -563,7 +563,7 @@ trigger:
 steps:
 
 - name: build
-  image: pyrocko-nest-debian-12
+  image: pyrocko-nest-debian-13
   pull: never
   commands:
   - python3 setup.py sdist
@@ -582,7 +582,7 @@ steps:
       from_secret: rsync-key
 
 - name: upload-testing
-  image: pyrocko-nest-debian-12
+  image: pyrocko-nest-debian-13
   pull: never
   when:
     branch:
@@ -598,7 +598,7 @@ steps:
       from_secret: pypitest-password
 
 - name: upload
-  image: pyrocko-nest-debian-12
+  image: pyrocko-nest-debian-13
   pull: never
   when:
     branch:
@@ -649,7 +649,7 @@ steps:
   - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v
 
 - name: test-mixed
-  image: pyrocko-fat-nest-debian-12
+  image: pyrocko-fat-nest-debian-13
   pull: never
   when:
     branch:
@@ -674,7 +674,7 @@ steps:
       from_secret: rsync-key
 
 - name: upload-testing
-  image: pyrocko-nest-debian-12
+  image: pyrocko-nest-debian-13
   pull: never
   when:
     branch:
@@ -690,7 +690,7 @@ steps:
       from_secret: pypitest-password
 
 - name: upload
-  image: pyrocko-nest-debian-12
+  image: pyrocko-nest-debian-13
   pull: never
   when:
     branch:
@@ -1039,32 +1039,6 @@ steps:
 
 kind: pipeline
 type: docker
-name: package-deb-debian-11
-
-steps:
-- name: build
-  image: pyrocko-build-deb-debian-11
-  pull: never
-  commands:
-  - maintenance/deb/build.sh 1 debian-11
-
-- name: stage
-  image: pyrocko-util
-  pull: never
-  commands:
-  - maintenance/drone-rsync.sh deb-packages-debian-11 ${DRONE_COMMIT}/deb/debian-11
-  environment:
-    RSYNC_HOST:
-      from_secret: rsync-host
-    RSYNC_USER:
-      from_secret: rsync-user
-    RSYNC_KEY:
-      from_secret: rsync-key
-
----
-
-kind: pipeline
-type: docker
 name: package-deb-debian-12
 
 steps:
@@ -1091,20 +1065,20 @@ steps:
 
 kind: pipeline
 type: docker
-name: package-deb-ubuntu-20.04
+name: package-deb-debian-13
 
 steps:
 - name: build
-  image: pyrocko-build-deb-ubuntu-20.04
+  image: pyrocko-build-deb-debian-13
   pull: never
   commands:
-  - maintenance/deb/build.sh 1 ubuntu-20.04
+  - maintenance/deb/build.sh 1 debian-13
 
 - name: stage
   image: pyrocko-util
   pull: never
   commands:
-  - maintenance/drone-rsync.sh deb-packages-ubuntu-20.04 ${DRONE_COMMIT}/deb/ubuntu-20.04
+  - maintenance/drone-rsync.sh deb-packages-debian-13 ${DRONE_COMMIT}/deb/debian-13
   environment:
     RSYNC_HOST:
       from_secret: rsync-host
@@ -1218,9 +1192,8 @@ depends_on:
 - package-conda-linux
 - package-conda-osx-64-arm64
 - package-conda-windows
-- package-deb-debian-11
 - package-deb-debian-12
-- package-deb-ubuntu-20.04
+- package-deb-debian-13
 - package-deb-ubuntu-22.04
 - package-deb-ubuntu-24.04
 - app-osx
