@@ -11,10 +11,10 @@ RUN apt-get install -y \
     xvfb libgles2-mesa-dev \
     python3-coverage python3-pytest \
     python3-numpy python3-scipy python3-matplotlib \
-    python3-requests python3-future \
+    python3-requests \
     python3-yaml \
     python3-pyqt5 python3-pyqt5.qtopengl python3-pyqt5.qtsvg \
-    python3-pyqt5.qtwebengine python3-pyqt5.qtwebkit \
+    python3-pyqt5.qtwebengine \
     python3-jinja2 python3-pybtex \
     python3-geojson python3-pyqtgraph \
     gmt gmt-gshhg poppler-utils imagemagick \
@@ -33,13 +33,9 @@ RUN [ "$base_image" = "debian:11" ] \
         || apt-get install -y python3-vtk7 \
     )
 
-# obspy does not work properly on debian-10 and ubuntu-20.04
 ARG base_image
-RUN [ "$base_image" != "debian:10" ] \
-    && [ "$base_image" != "ubuntu:20.04" ] \
-    && ( apt-get install -y \
-        python3-sqlalchemy python3-lxml python3-greenlet \
-    && pip3 install --no-deps obspy==1.3 || exit 1 ) || :
+RUN apt-get install -y python3-sqlalchemy python3-lxml python3-greenlet \
+    && pip3 install --no-deps obspy==1.3 || exit 1
 
 RUN mkdir -p /src \
     && cd /src && git clone https://git.pyrocko.org/pyrocko/fomosto-qseis.git \
