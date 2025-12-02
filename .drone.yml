@@ -34,7 +34,7 @@ steps:
   image: pyrocko-docs
   pull: never
   commands:
-  - pip3 install --no-deps --no-build-isolation . && cd doc && make html
+  - pip3 install --no-deps . && cd doc && make html
   - python3 -m pyrocko.print_version short > build/html/version.txt
 
 - name: stage
@@ -115,7 +115,7 @@ steps:
   image: pyrocko-fat-nest-debian-13
   pull: never
   commands:
-  - pip3 install --no-deps --no-build-isolation .
+  - pip3 install --no-deps .
   - python3 -m coverage run --parallel-mode -m pytest -v test/base
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
@@ -123,14 +123,14 @@ steps:
   image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
-  - pip3 install --no-deps --no-build-isolation .
+  - pip3 install --no-deps .
   - python3 -m pytest -v test/base
 
 - name: test-base-hptime
   image: pyrocko-fat-nest-debian-13
   pull: never
   commands:
-  - pip3 install --no-deps --no-build-isolation .
+  - pip3 install --no-deps .
   - python3 -m pytest -v test/base
   environment:
     PYROCKO_USE_HIGH_PRECISION_TIME: 1
@@ -181,7 +181,7 @@ steps:
   image: pyrocko-fat-nest-debian-13
   pull: never
   commands:
-  - pip3 install --no-deps --no-build-isolation .
+  - pip3 install --no-deps .
   - python3 -m coverage run --parallel-mode -m pytest -v test/gf
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
@@ -189,14 +189,14 @@ steps:
   image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
-  - pip3 install --no-deps --no-build-isolation .
+  - pip3 install --no-deps .
   - python3 -m pytest -v test/gf
 
 - name: test-gf-hptime
   image: pyrocko-fat-nest-debian-13
   pull: never
   commands:
-  - pip3 install --no-deps --no-build-isolation .
+  - pip3 install --no-deps .
   - python3 -m coverage run --parallel-mode -m pytest -v test/gf
   - for x in .coverage.* ; do mv $x $${x#.} ; done
   environment:
@@ -250,7 +250,7 @@ steps:
   commands:
   - mkdir -p /pyrocko-test-data/example_run_dir
   - ln -sf /pyrocko-test-data/gf_stores/* /pyrocko-test-data/example_run_dir
-  - pip3 install --no-deps --no-build-isolation .
+  - pip3 install --no-deps .
   - python3 -m coverage run --parallel-mode -m pytest -v test/examples
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
@@ -260,7 +260,7 @@ steps:
   commands:
   - mkdir -p /pyrocko-test-data/example_run_dir
   - ln -sf /pyrocko-test-data/gf_stores/* /pyrocko-test-data/example_run_dir
-  - pip3 install --no-deps --no-build-isolation .
+  - pip3 install --no-deps .
   - python3 -m pytest -v test/examples
 
 - name: test-examples-hptime
@@ -269,7 +269,7 @@ steps:
   commands:
   - mkdir -p /pyrocko-test-data/example_run_dir
   - ln -sf /pyrocko-test-data/gf_stores/* /pyrocko-test-data/example_run_dir
-  - pip3 install --no-deps --no-build-isolation .
+  - pip3 install --no-deps .
   - python3 -m coverage run --parallel-mode -m pytest -v test/examples
   - for x in .coverage.* ; do mv $x $${x#.} ; done
   environment:
@@ -321,7 +321,7 @@ steps:
   image: pyrocko-fat-nest-debian-13
   pull: never
   commands:
-  - pip3 install --no-deps --no-build-isolation .
+  - pip3 install --no-deps .
   - xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
@@ -329,14 +329,14 @@ steps:
   image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
-  - pip3 install --no-deps --no-build-isolation .
+  - pip3 install --no-deps .
   - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
 
 - name: test-gui-hptime
   image: pyrocko-fat-nest-debian-13
   pull: never
   commands:
-  - pip3 install --no-deps --no-build-isolation .
+  - pip3 install --no-deps .
   - xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
   - for x in .coverage.* ; do mv $x $${x#.} ; done
   environment:
@@ -394,7 +394,7 @@ steps:
   image: pyrocko-nest-debian-13
   pull: never
   commands:
-  - pip3 install --no-deps --no-build-isolation .
+  - pip3 install --no-deps .
   - wget -r -nH --cut-dirs=2 --no-parent --reject="index.html*" https://data.pyrocko.org/builds/${DRONE_COMMIT}/coverage/data/
   - python3 -m coverage combine coverage/data/coverage.*
   - python3 -m coverage html
