@@ -9,7 +9,6 @@ steps:
   image: pyrocko-nest-debian-13
   pull: never
   commands:
-  - env
   - flake8 src test examples setup.py
 
 ---
