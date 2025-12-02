@@ -7,8 +7,6 @@
 Drum - interactive drum plot to display continuous seismic waveforms.
 '''
 
-from __future__ import absolute_import, print_function, division
-
 
 def main():
     '''
