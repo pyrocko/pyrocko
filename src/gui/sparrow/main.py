@@ -97,8 +97,8 @@ class NoLocationChoices(Exception):
 
 
 class QVTKWidget(QVTKRenderWindowInteractor):
-    def __init__(self, viewer, *args):
-        QVTKRenderWindowInteractor.__init__(self, *args)
+    def __init__(self, viewer):
+        QVTKRenderWindowInteractor.__init__(self)
         self._viewer = viewer
         self._ctrl_state = False
 
@@ -459,7 +459,7 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
 
         self.vtk_frame = CenteringScrollArea()
 
-        self.vtk_widget = QVTKWidget(self, self)
+        self.vtk_widget = QVTKWidget(self)
         self.vtk_frame.setWidget(self.vtk_widget)
 
         self.main_layout = qw.QVBoxLayout()
