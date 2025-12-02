@@ -51,7 +51,7 @@ intersphinx_mapping = {
     'scipy': ('https://docs.scipy.org/doc/scipy/', None),
     'matplotlib': ('https://matplotlib.org/stable/', None),
     'PyQt5': ('https://www.riverbankcomputing.com/static/Docs/PyQt5/', None),
-    'python': ('https://docs.python.org/3.8', None),
+    'python': ('https://docs.python.org/3.10', None),
     'kite': ('https://pyrocko.org/kite/docs/current', None),
     'obspy': ('https://docs.obspy.org/', None),
 }
