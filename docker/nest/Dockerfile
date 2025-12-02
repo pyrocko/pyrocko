@@ -17,6 +17,7 @@ RUN apt-get install -y \
     python3-pyqt5.qtwebengine \
     python3-jinja2 python3-pybtex \
     python3-geojson python3-pyqtgraph \
+    python3-tornado \
     gmt gmt-gshhg poppler-utils imagemagick \
     autoconf gfortran \
     && rm -f /usr/lib/python*/EXTERNALLY-MANAGED \
@@ -27,11 +28,7 @@ RUN apt-get install -y \
 ARG base_image
 RUN [ "$base_image" = "debian:11" ] \
     && pip3 install vtk \
-    || ( \
-        apt-get install -y python3-vtk9 \
-        || apt-get install -y python3-vtk8 \
-        || apt-get install -y python3-vtk7 \
-    )
+    || apt-get install -y python3-vtk9
 
 ARG base_image
 RUN apt-get install -y python3-sqlalchemy python3-lxml python3-greenlet \

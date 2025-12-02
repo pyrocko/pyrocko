@@ -2,10 +2,10 @@ Source: pyrocko
 Section: science
 Priority: optional
 Maintainer: Sebastian Heimann <sebastian.heimann@uni-potsdam.de>
-Build-Depends: debhelper-compat (= 12), dh-python, python3-all, python3-dev, python3-numpy, git, python3-setuptools, debmake
-Standards-Version: 4.5.0
+Build-Depends: debhelper-compat (= 13), dh-python, python3-all, python3-dev, python3-numpy, git, python3-setuptools, debmake
+Standards-Version: 4.7.0
 Homepage: https://pyrocko.org/
-X-Python3-Version: >= 3.8
+X-Python3-Version: >= 3.10
 
 Package: pyrocko
 Architecture: amd64
@@ -15,5 +15,5 @@ Depends: ${misc:Depends}, ${python3:Depends},
     python3-matplotlib, python3-pyqt5, python3-pyqt5.qtopengl,
     python3-pyqt5.qtsvg, python3-yaml,
     python3-jinja2, python3-requests, python3-pyqt5.qtwebengine,
-    python3-vtk9 | python3-vtk7
+    python3-vtk9
 Description: Software for Seismology

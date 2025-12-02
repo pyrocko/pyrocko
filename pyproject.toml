@@ -17,7 +17,7 @@ maintainers = [
 ]
 description = "A versatile seismology toolkit for Python."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = {text = "GPLv3"}
 keywords = [
     "seismology", "waveform analysis", "earthquake modelling", "geophysics",
