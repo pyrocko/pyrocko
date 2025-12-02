@@ -111,7 +111,7 @@ trigger:
 
 steps:
 
-- name: test-base
+- name: test-base-debian-13
   image: pyrocko-fat-nest-debian-13
   pull: never
   commands:
@@ -139,7 +139,7 @@ steps:
     - hptime
     - candidate
   depends_on:
-  - test-base
+  - test-base-debian-13
 
 - name: stage
   image: pyrocko-util
@@ -177,7 +177,7 @@ trigger:
     - app
 
 steps:
-- name: test-gf
+- name: test-gf-debian-13
   image: pyrocko-fat-nest-debian-13
   pull: never
   commands:
@@ -206,7 +206,7 @@ steps:
     - hptime
     - candidate
   depends_on:
-  - test-gf
+  - test-gf-debian-13
 
 - name: stage
   image: pyrocko-util
@@ -244,7 +244,7 @@ trigger:
     - app
 
 steps:
-- name: test-examples
+- name: test-examples-debian-13
   image: pyrocko-fat-nest-debian-13
   pull: never
   commands:
@@ -279,7 +279,7 @@ steps:
     - hptime
     - candidate
   depends_on:
-  - test-examples
+  - test-examples-debian-13
 
 - name: stage
   image: pyrocko-util
@@ -317,7 +317,7 @@ trigger:
     - app
 
 steps:
-- name: test-gui
+- name: test-gui-debian-13
   image: pyrocko-fat-nest-debian-13
   pull: never
   commands:
@@ -346,7 +346,7 @@ steps:
     - hptime
     - candidate
   depends_on:
-  - test-gui
+  - test-gui-debian-13
 
 - name: stage
   image: pyrocko-util
