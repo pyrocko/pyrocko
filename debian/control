@@ -2,7 +2,7 @@ Source: pyrocko
 Section: science
 Priority: optional
 Maintainer: Sebastian Heimann <sebastian.heimann@uni-potsdam.de>
-Build-Depends: debhelper-compat (= 13), dh-python, python3-all, python3-dev, python3-numpy, git, python3-setuptools, debmake
+Build-Depends: debhelper-compat (= 13), dh-python, python3-all, python3-dev, python3-numpy, git, python3-setuptools, debmake, pybuild-plugin-pyproject
 Standards-Version: 4.7.0
 Homepage: https://pyrocko.org/
 X-Python3-Version: >= 3.10
