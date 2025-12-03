@@ -18,13 +18,12 @@ maintainers = [
 description = "A versatile seismology toolkit for Python."
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "GPLv3"}
+license = {text = 'GPL-3.0-or-later'}
 keywords = [
     "seismology", "waveform analysis", "earthquake modelling", "geophysics",
     "geophysical inversion"
 ]
 classifiers = [
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3",
