@@ -496,9 +496,8 @@ if not have_pep621_support:
         author='The Pyrocko Developers',
         author_email='info@pyrocko.org',
         url='https://pyrocko.org',
-        license='GPLv3',
+        license='GPL-3.0-or-later',
         classifiers=[
-            'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
             'Development Status :: 5 - Production/Stable',
             'Intended Audience :: Science/Research',
             'Programming Language :: Python :: 2.7',
