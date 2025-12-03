@@ -259,7 +259,7 @@ class TableElement(base.Element):
         if state.color_parameter:
             values = self._table.get_col(state.color_parameter)
 
-            if num.issubdtype(values.dtype, num.string_):
+            if num.issubdtype(values.dtype, str):
                 values = string_to_sorted_idx(values)
 
             self.cpt_handler._values = values
