@@ -78,9 +78,9 @@ def to_message():
         excluded = 0
 
         for file in coverage['files'].values():
-            statements += file['index']['nums'][2]
-            excluded += file['index']['nums'][3]
-            missing += file['index']['nums'][4]
+            statements += file['index']['nums']['n_statements']
+            excluded += file['index']['nums']['n_excluded']
+            missing += file['index']['nums']['n_missing']
 
         if statements > 0:
             total_coverage = (statements - missing) / statements
