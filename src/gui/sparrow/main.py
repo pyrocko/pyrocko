@@ -33,7 +33,10 @@ from . import common, light, snapshots as snapshots_mod
 
 import vtk
 import vtk.qt
-vtk.qt.QVTKRWIBase = 'QGLWidget'  # noqa
+import vtkmodules.qt
+
+vtkmodules.qt.PyQtImpl = 'PyQt5'
+vtk.qt.QVTKRWIBase = 'QGLWidget'
 
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor  # noqa
 
@@ -98,7 +101,7 @@ class NoLocationChoices(Exception):
 
 class QVTKWidget(QVTKRenderWindowInteractor):
     def __init__(self, viewer):
-        QVTKRenderWindowInteractor.__init__(self)
+        QVTKRenderWindowInteractor.__init__(self, parent=viewer)
         self._viewer = viewer
         self._ctrl_state = False
 
