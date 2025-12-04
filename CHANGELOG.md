@@ -7,22 +7,45 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## Unreleased
 
 ### Added
-- `squirrel summon`: add possibility to download event data windows.
+- `squirrel summon`: Add possibility to download event data windows.
 - Squirrel and `str_to_time_fillup`: add "yesterday" shortcut
 - `orthodrome`: Crosstrack distance calculations.
+- `squirrel database`: New subcommands: `vacuum`, `optimize`, `wal`
+- `squirrel`: New subcommand `benchmark` to investigate data loading
+  performance
+- Squirrel: Async waveform loading option
+- Squirrel: add possibility to maintain downloaded waveforms (SDS or default
+  layout) in user specified directory, outside of `.squirrel`.
+- Squirrel waveform downloads: support `anxious` time period, to retry waveform
+  downloads when fresh data is arriving at the data-center with some delay.
+- Limited support for LOG and some other non-waveform type data channels.
+- Squirrel selections in CLI tools: add `--exclude-codes` option.
+- `squirrel summon`: New option `--tinc` to adjust the logical processing
+  window size, and `--samples-block` to fine-tune the download block sizes -
+  beneficial e.g. for efficient downloading of teleseismic phase waveforms.
+- Support loading of time windows from Mini-SEED files.
 
 ### Fixed
 - Squirrel: Fix some issues with relative paths in dataset configurations.
-- `squirrel jackseis`: fix an error causing data corruption when merging data
+- Squirrel: Improved multithreading support
+- `squirrel jackseis`: Fix an error causing data corruption when merging data
   into existing files.
-- Various bug and compatibility fixes.
+- `squirrel jackseis`: Fix broken `--out-path`
 - Spectrogram snuffling: Fix handling of mixed sampling rates.
+- Improved merging of downloaded data into local archives.
+- Various bug and compatibility fixes.
+- Squirrel FDSN: Fix broken user/password authentication.
 
 ### Changed
 - Squirrel CLI tools now warn and exit with explanation on how to add data when
   started with empty data selection.
+- `squirrel summon`: improved heuristics for automatic time selection.
 - Enable persistent connections in FDSN and some catolog clients.
 - Improved SeisBench snuffling.
+- Cake plots: Improved global ray plots
+- Rewritten Fomosto server based on `tornado`.
+- Dropped Python 3.8 and 3.9 support.
+- Added Python 3.13 support.
 
 ## v2025.01.21
 
