@@ -1139,40 +1139,40 @@ steps:
     RSYNC_KEY:
       from_secret: rsync-key
 
----
-
-kind: pipeline
-type: exec
-name: app-osx
-
-platform:
-  os: darwin
-  arch: arm64
-
-trigger:
-  branch:
-    - app
-    - candidate
-    - packaging
-    - release
-
-steps:
-- name: build-arm64
-  commands:
-   - maintenance/osx-app/build.sh
-- name: build-x86_64
-  commands:
-   - maintenance/osx-app/build_x86_64.sh
-- name: stage
-  commands:
-  - maintenance/drone-rsync.sh dist/ ${DRONE_COMMIT}/apps/
-  environment:
-    RSYNC_HOST:
-      from_secret: rsync-host
-    RSYNC_USER:
-      from_secret: rsync-user
-    RSYNC_KEY:
-      from_secret: rsync-key
+#---
+#
+#kind: pipeline
+#type: exec
+#name: app-osx
+#
+#platform:
+#  os: darwin
+#  arch: arm64
+#
+#trigger:
+#  branch:
+#    - app
+#    - candidate
+#    - packaging
+#    - release
+#
+#steps:
+#- name: build-arm64
+#  commands:
+#   - maintenance/osx-app/build.sh
+#- name: build-x86_64
+#  commands:
+#   - maintenance/osx-app/build_x86_64.sh
+#- name: stage
+#  commands:
+#  - maintenance/drone-rsync.sh dist/ ${DRONE_COMMIT}/apps/
+#  environment:
+#    RSYNC_HOST:
+#      from_secret: rsync-host
+#    RSYNC_USER:
+#      from_secret: rsync-user
+#    RSYNC_KEY:
+#      from_secret: rsync-key
 
 ---
 
@@ -1196,7 +1196,7 @@ depends_on:
 - package-deb-debian-13
 - package-deb-ubuntu-22.04
 - package-deb-ubuntu-24.04
-- app-osx
+#- app-osx
 
 trigger:
   status:
