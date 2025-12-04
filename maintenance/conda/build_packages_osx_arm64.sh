@@ -30,7 +30,7 @@ fi
 conda install -q -y 'python=3.12' conda-build conda-verify anaconda-client numpy
 
 if [ "$ACTION" == "upload" ] ; then
-    anaconda login --username "$CONDA_USERNAME" --password "$CONDA_PASSWORD" --hostname conda-builder-`uname`
+    anaconda login -s anaconda.org --username "$CONDA_USERNAME" --password "$CONDA_PASSWORD" --hostname conda-builder-`uname`
     conda config --set anaconda_upload yes
     function anaconda_logout {
         anaconda logout
