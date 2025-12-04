@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+*empty*
+
+## v2025.12.04
+
 ### Added
 - `squirrel summon`: Add possibility to download event data windows.
 - Squirrel and `str_to_time_fillup`: add "yesterday" shortcut

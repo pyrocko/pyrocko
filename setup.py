@@ -16,7 +16,7 @@ is_windows = sys.platform.startswith('win')
 have_pep621_support = pv(setuptools_version) >= pv('61.0.0')
 
 packname = 'pyrocko'
-version = '2025.01.21'
+version = '2025.12.04'
 
 
 def get_numpy_include():

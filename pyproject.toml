@@ -8,7 +8,7 @@ requires = [
 
 [project]
 name = "pyrocko"
-version = "2025.01.21"
+version = "2025.12.04"
 authors = [
     {name = "The Pyrocko Developers", email = "info@pyrocko.org"},
 ]
