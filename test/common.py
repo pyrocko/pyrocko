@@ -192,8 +192,13 @@ def on_ci():
     return os.environ.get('CI', 'false') == 'true'
 
 
+def on_windows():
+    return os.name == 'nt'
+
+
 skip_on_vagrant = unittest.skipIf(on_vagrant(), 'disabled on vagrant')
 skip_on_ci = unittest.skipIf(on_ci(), 'disabled on vagrant')
+skip_on_windows = unittest.skipIf(on_windows(), 'disabled on windows')
 
 
 class BenchmarkCM(object):

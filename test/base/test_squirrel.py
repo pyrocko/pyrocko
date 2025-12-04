@@ -1148,6 +1148,7 @@ class SquirrelTestCase(unittest.TestCase):
         io.save(traces, fnt, format='mseed')
         return datadir
 
+    @common.skip_on_windows
     def test_chopper(self):
 
         nfiles = 200
