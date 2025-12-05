@@ -616,7 +616,7 @@ steps:
 
 kind: pipeline
 type: docker
-name: package-pip-manylinux2014
+name: package-pip-manylinux
 
 trigger:
   branch:
@@ -628,11 +628,11 @@ trigger:
 
 steps:
 - name: build
-  image: quay.io/pypa/manylinux2014_x86_64
+  image: quay.io/pypa/manylinux_2_28_x86_64
   commands:
   - maintenance/pip/build_wheels.sh
   environment:
-    PLAT: manylinux2014_x86_64
+    PLAT: manylinux_2_28_x86_64
 
 - name: test-pure
   image: pyrocko-util
@@ -729,6 +729,7 @@ steps:
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py311
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py312
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py313
+  - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py314
 
   - conda create -y -n py310 python=3.10 m2-tar m2-gzip m2-patch setuptools pip numpy=1.21
   - conda run --no-capture-output -n py310 python -m pip wheel -v -w dist "--only-binary=:all:" .
@@ -741,6 +742,9 @@ steps:
 
   - conda create -y -n py313 python=3.13 m2-tar m2-gzip m2-patch setuptools pip numpy>2
   - conda run --no-capture-output -n py313 python -m pip wheel -v -w dist "--only-binary=:all:" .
+
+  - conda create -y -n py314 python=3.14 m2-tar m2-gzip m2-patch setuptools pip numpy>2
+  - conda run --no-capture-output -n py314 python -m pip wheel -v -w dist "--only-binary=:all:" .
 
 - name: upload-testing
   when:
@@ -778,6 +782,7 @@ steps:
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py311
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py312
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py313
+  - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py314
 
 ---
 
@@ -798,6 +803,13 @@ platform:
   arch: arm64
 
 steps:
+- name: build-3.14
+  commands:
+  - mkdir -p wheels
+  - /usr/local/bin/python3.14 -m venv venv-3.14
+  - venv-3.14/bin/python -m pip install --upgrade pip
+  - venv-3.14/bin/python -m pip install wheel
+  - venv-3.14/bin/python -m pip wheel -v . -w dist "--only-binary=:all:"
 - name: build-3.13
   commands:
   - mkdir -p wheels
@@ -834,10 +846,10 @@ steps:
     - packaging
     - pip
   commands:
-  - /usr/local/bin/python3.11 -m pip install twine
+  - /usr/local/bin/python3.13 -m pip install twine
   - bash maintenance/pip/upload_wheels.sh testing
   environment:
-    TWINE: "/usr/local/bin/python3.11 -m twine"
+    TWINE: "/usr/local/bin/python3.13 -m twine"
     PYPI_USERNAME:
       from_secret: pypitest-username
     PYPI_PASSWORD:
@@ -849,10 +861,10 @@ steps:
     - release
     - deploy-pip
   commands:
-  - /usr/local/bin/python3.11 -m pip install twine
+  - /usr/local/bin/python3.13 -m pip install twine
   - bash maintenance/pip/upload_wheels.sh live
   environment:
-    TWINE: "/usr/local/bin/python3.11 -m twine"
+    TWINE: "/usr/local/bin/python3.13 -m twine"
     PYPI_USERNAME:
       from_secret: pypi-username
     PYPI_PASSWORD:
@@ -1227,7 +1239,7 @@ depends_on:
 - test-windows
 - test-osx-arm64
 - package-pip-sdist
-- package-pip-manylinux2014
+- package-pip-manylinux
 - package-pip-windows
 - package-conda-linux
 - package-conda-osx-64-arm64
