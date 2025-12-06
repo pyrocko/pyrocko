@@ -812,7 +812,7 @@ def MakePileViewerMainClass(base):
             self.pile = pile
             self.ax_height = 80
             self.panel_parent = panel_parent
-
+            self.station_xmls = []
             self.click_tolerance = 5
 
             self.ntracks_shown_max = ntracks_shown_max
@@ -1113,6 +1113,10 @@ def MakePileViewerMainClass(base):
             self.menuitem_demean.setChecked(self.config.demean)
             self.menuitem_demean.setShortcut(
                 qg.QKeySequence(qc.Qt.Key_Underscore))
+
+            self.menuitem_remove_resp = options_menu.addAction(
+                'Deconvolution')
+            self.menuitem_remove_resp.setCheckable(True)
 
             self.menuitem_distances_3d = options_menu.addAction(
                 '3D distances',
@@ -1689,10 +1693,11 @@ def MakePileViewerMainClass(base):
                            ';;All files (*)')
 
             try:
-                stations = [
-                    stationxml.load_xml(filename=str(x)).get_pyrocko_stations()
-                    for x in fns]
-
+                stations = []
+                for st in fns:
+                    xml_station = stationxml.load_xml(filename=str(st))
+                    stations.append(xml_station.get_pyrocko_stations())
+                    self.station_xmls.append(xml_station)
                 for stat in stations:
                     self.add_stations(stat)
 
@@ -3766,6 +3771,53 @@ def MakePileViewerMainClass(base):
                                 bydata = -a.get_ydata()*sphi+b.get_ydata()*cphi
                                 a.set_ydata(aydata)
                                 b.set_ydata(bydata)
+
+                if self.menuitem_remove_resp.isChecked():
+                    new_tr = []
+                    for tr in processed_traces:
+                        nslc = (
+                            tr.network,
+                            tr.station,
+                            tr.location,
+                            tr.channel)
+                        resp = None
+                        for station in self.station_xmls:
+                            try:
+                                resp = station.get_pyrocko_response(
+                                    nslc,
+                                    time=tmin,
+                                    timespan=tmax-tmin)
+                            except Exception as e:
+                                logger.warning('Response get error "%s"' % e)
+                        if resp:
+                            nyquist_safe = (1/(2*tr.deltat))*0.9
+                            ABS_MIN = 0.01/(len(tr.ydata)*tr.deltat)
+                            TAPER_WIDTH = 0.5
+                            if self.highpass:
+                                f2 = min(max(ABS_MIN, self.highpass),
+                                         nyquist_safe)
+                                f1 = min(max(ABS_MIN, f2*(1.0-TAPER_WIDTH)),
+                                         nyquist_safe)
+                            else:
+                                f1 = f2 = ABS_MIN
+                            if self.lowpass:
+                                f3 = min(self.lowpass, nyquist_safe)
+                                f4 = min(f3*(1.0+TAPER_WIDTH), nyquist_safe)
+                            else:
+                                f3 = f4 = nyquist_safe
+
+                            mytrace = tr.transfer(
+                                freqlimits=(f1, f2, f3, f4),
+                                transfer_function=resp,
+                                cut_off_fading=True,
+                                demean=True,
+                                invert=True
+                            )
+                            new_tr.append(mytrace)
+                        else:
+                            new_tr.append(tr)
+
+                        processed_traces = new_tr
 
                 processed_traces = self.post_process_hooks(processed_traces)
 
