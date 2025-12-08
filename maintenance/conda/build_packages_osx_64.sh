@@ -44,7 +44,8 @@ conda-build --python 3.10 build
 conda-build --python 3.11 build
 conda-build --python 3.12 build
 conda-build --python 3.13 build
-conda-build --python 3.14 build
+# conda dropped support for intel macs in August 2025
+# conda-build --python 3.14 build
 
 if [ "$ACTION" == "upload" ] ; then
     trap - EXIT
