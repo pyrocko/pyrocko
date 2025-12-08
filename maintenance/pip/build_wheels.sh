@@ -24,7 +24,7 @@ done
 
 mkdir wheels
 for wheel in wheels_temp/pyrocko-*.whl ; do
-    auditwheel repair "$wheel" -w dist
+    auditwheel repair "$wheel" --plat $PLAT -w dist
     rm "$wheel"
 done
 
