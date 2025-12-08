@@ -12,18 +12,15 @@ requirements:
   build:
     - python
     - {{ compiler('c') }}
-    - numpy
+    - numpy >=1.25,<3
     - setuptools
-    - m2-patch  # [win]
-    - m2-bash  # [win]
-    - m2-tar  # [win]
-    - m2-gzip  # [win]
   host:
     - python
-    - numpy
+    - numpy >=1.25,<3
+    - setuptools
   run:
     - python
-    - numpy
+    - numpy >=1.25,<3
     - scipy
     - matplotlib
     - pyqt

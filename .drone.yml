@@ -906,10 +906,12 @@ steps:
   - cd maintenance/conda
   - ./build_packages.sh upload
   environment:
-    CONDA_USERNAME:
-      from_secret: conda-username
-    CONDA_PASSWORD:
-      from_secret: conda-password
+    #CONDA_USERNAME:
+    #  from_secret: conda-username
+    #CONDA_PASSWORD:
+    #  from_secret: conda-password
+    ANACONDA_API_TOKEN:
+      from_secret: conda-api-token
   when:
     branch:
       - release
@@ -963,10 +965,12 @@ steps:
   - cp /Users/drone/.conda/conda_build_config.yaml .
   - /Users/drone/miniconda3_arm64/bin/conda run --no-capture-output -n base bash build_packages_osx_arm64.sh upload
   environment:
-    CONDA_USERNAME:
-      from_secret: conda-username
-    CONDA_PASSWORD:
-      from_secret: conda-password
+    #CONDA_USERNAME:
+    #  from_secret: conda-username
+    #CONDA_PASSWORD:
+    #  from_secret: conda-password
+    ANACONDA_API_TOKEN:
+      from_secret: conda-api-token
   when:
     branch:
       - release
@@ -978,10 +982,12 @@ steps:
   - cp /Users/drone/.conda/conda_build_config.yaml .
   - /Users/drone/miniconda3_x86_64/bin/conda run --no-capture-output -n base bash build_packages_osx_64.sh upload
   environment:
-    CONDA_USERNAME:
-      from_secret: conda-username
-    CONDA_PASSWORD:
-      from_secret: conda-password
+    #CONDA_USERNAME:
+    #  from_secret: conda-username
+    #CONDA_PASSWORD:
+    #  from_secret: conda-password
+    ANACONDA_API_TOKEN:
+      from_secret: conda-api-token
   when:
     branch:
       - release
@@ -1029,10 +1035,12 @@ steps:
   - cd maintenance\\conda\\
   - conda run --no-capture-output -n base bash build_packages_windows.sh upload
   environment:
-    CONDA_USERNAME:
-      from_secret: conda-username
-    CONDA_PASSWORD:
-      from_secret: conda-password
+    #CONDA_USERNAME:
+    #  from_secret: conda-username
+    #CONDA_PASSWORD:
+    #  from_secret: conda-password
+    ANACONDA_API_TOKEN:
+      from_secret: conda-api-token
   when:
     branch:
       - release

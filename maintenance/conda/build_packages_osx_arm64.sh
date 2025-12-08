@@ -21,31 +21,22 @@ if [ -z "$ACTION" ] ; then
 fi
 
 if [ "$ACTION" == "upload" ] ; then
-    if [ -z "$CONDA_USERNAME" -o -z "$CONDA_PASSWORD" ] ; then
-        echo "need anaconda credentials as env variables"
+    if [ -z "$ANACONDA_API_TOKEN" ] ; then
+        echo "need anaconda api token as env variable"
         exit 1
     fi
 fi
 
-conda install -q -y 'python=3.12' conda-build conda-verify anaconda-client numpy
+conda install -q -y conda-build anaconda-client numpy
 
 if [ "$ACTION" == "upload" ] ; then
-    anaconda login --username "$CONDA_USERNAME" --password "$CONDA_PASSWORD" --hostname conda-builder-`uname`
     conda config --set anaconda_upload yes
-    function anaconda_logout {
-        anaconda logout
-    }
-    trap anaconda_logout EXIT
 else
     conda config --set anaconda_upload no
 fi
 
-conda-build --python 3.10 --numpy 2.01 build
-conda-build --python 3.11 --numpy 2.01 build
-conda-build --python 3.12 --numpy 2.01 build
-conda-build --python 3.13 --numpy 2.01 build
-
-if [ "$ACTION" == "upload" ] ; then
-    trap - EXIT
-    anaconda_logout
-fi
+conda-build --python 3.10 build
+conda-build --python 3.11 build
+conda-build --python 3.12 build
+conda-build --python 3.13 build
+conda-build --python 3.14 build

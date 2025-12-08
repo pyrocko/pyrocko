@@ -3,7 +3,7 @@ m2-gzip
 m2-patch
 setuptools
 wheel
-numpy>=1.25
+numpy>=1.25,<3
 scipy>=1.0
 pyyaml
 matplotlib
