@@ -27,7 +27,7 @@ if [ "$ACTION" == "upload" ] ; then
     fi
 fi
 
-conda install -q -y 'python=3.12' conda-build conda-verify anaconda-client numpy
+conda install -q -y conda-build conda-verify anaconda-client numpy
 
 if [ "$ACTION" == "upload" ] ; then
     anaconda login --username "$CONDA_USERNAME" --password "$CONDA_PASSWORD" --hostname conda-builder-`uname`
@@ -44,6 +44,7 @@ conda-build --python 3.10 --numpy 2.01 build
 conda-build --python 3.11 --numpy 2.01 build
 conda-build --python 3.12 --numpy 2.01 build
 conda-build --python 3.13 --numpy 2.01 build
+conda-build --python 3.14 --numpy 2.01 build
 
 if [ "$ACTION" == "upload" ] ; then
     trap - EXIT
