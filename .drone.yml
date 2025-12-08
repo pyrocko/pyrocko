@@ -1040,6 +1040,16 @@ steps:
 kind: pipeline
 type: docker
 name: package-deb-debian-12
+trigger:
+  branch:
+    exclude:  # special branches
+    - pip
+    - conda
+    - docs
+    - deploy-pip
+    - deploy-conda
+    - deploy-docs
+    - app
 
 steps:
 - name: build
@@ -1066,6 +1076,16 @@ steps:
 kind: pipeline
 type: docker
 name: package-deb-debian-13
+trigger:
+  branch:
+    exclude:  # special branches
+    - pip
+    - conda
+    - docs
+    - deploy-pip
+    - deploy-conda
+    - deploy-docs
+    - app
 
 steps:
 - name: build
@@ -1092,6 +1112,16 @@ steps:
 kind: pipeline
 type: docker
 name: package-deb-ubuntu-22.04
+trigger:
+  branch:
+    exclude:  # special branches
+    - pip
+    - conda
+    - docs
+    - deploy-pip
+    - deploy-conda
+    - deploy-docs
+    - app
 
 steps:
 - name: build
@@ -1118,6 +1148,16 @@ steps:
 kind: pipeline
 type: docker
 name: package-deb-ubuntu-24.04
+trigger:
+  branch:
+    exclude:  # special branches
+    - pip
+    - conda
+    - docs
+    - deploy-pip
+    - deploy-conda
+    - deploy-docs
+    - app
 
 steps:
 - name: build
