@@ -616,7 +616,7 @@ steps:
 
 kind: pipeline
 type: docker
-name: package-pip-manylinux2014
+name: package-pip-manylinux
 
 trigger:
   branch:
@@ -628,11 +628,11 @@ trigger:
 
 steps:
 - name: build
-  image: quay.io/pypa/manylinux2014_x86_64
+  image: quay.io/pypa/manylinux_2_28_x86_64
   commands:
   - maintenance/pip/build_wheels.sh
   environment:
-    PLAT: manylinux2014_x86_64
+    PLAT: manylinux_2_28_x86_64
 
 - name: test-pure
   image: pyrocko-util
@@ -1187,7 +1187,7 @@ depends_on:
 - test-windows
 - test-osx-arm64
 - package-pip-sdist
-- package-pip-manylinux2014
+- package-pip-manylinux
 - package-pip-windows
 - package-conda-linux
 - package-conda-osx-64-arm64
