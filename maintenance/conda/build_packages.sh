@@ -59,7 +59,7 @@ fi
 cd "$HERE"
 
 if [ "$ACTION" == "upload" ] ; then
-    anaconda login --hostname conda-builder-`uname`
+    #anaconda login --hostname conda-builder-`uname`
     conda config --set anaconda_upload yes
     function anaconda_logout {
         anaconda logout
