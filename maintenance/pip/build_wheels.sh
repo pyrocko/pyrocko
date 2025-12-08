@@ -11,9 +11,7 @@ cp310-cp310
 cp311-cp311
 cp312-cp312
 cp313-cp313
-cp313-cp313t
 cp314-cp314
-cp314-cp314t
 "
 
 for pv in $pvs ; do
