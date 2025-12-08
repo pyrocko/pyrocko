@@ -20,9 +20,9 @@ if [ -z "$ACTION" ] ; then
     exit 1
 fi
 
-if [ "$ACTION" == "UPLOAD" ] ; then
-    if [ -z "$CONDA_USERNAME" -o -z "$CONDA_PASSWORD" ] ; then
-        echo "need anaconda credentials as env variables"
+if [ "$ACTION" == "upload" ] ; then
+    if [ -z "$ANACONDA_API_TOKEN" ] ; then
+        echo "need anaconda api token as env variable"
         exit 1
     fi
 fi
