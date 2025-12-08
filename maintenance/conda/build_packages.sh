@@ -55,7 +55,7 @@ fi
 
 if [ ! -d "$CONDA_PREFIX" ] ; then
     "./$CONDA_INSTALLER" -b -u -p "$CONDA_PREFIX"
-    conda install -q -y conda-build conda-verify anaconda-client numpy
+    conda install -q -y conda-build anaconda-client numpy
 fi
 
 cd "$HERE"

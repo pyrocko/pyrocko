@@ -27,7 +27,7 @@ if [ "$ACTION" == "upload" ] ; then
     fi
 fi
 
-conda install -q -y conda-build conda-verify anaconda-client numpy
+conda install -q -y conda-build anaconda-client numpy
 
 if [ "$ACTION" == "upload" ] ; then
     anaconda login --username "$CONDA_USERNAME" --password "$CONDA_PASSWORD" --hostname conda-builder-`uname`
