@@ -31,10 +31,6 @@ conda install -q -y conda-build anaconda-client numpy
 
 if [ "$ACTION" == "upload" ] ; then
     conda config --set anaconda_upload yes
-    function anaconda_logout {
-        anaconda logout
-    }
-    trap anaconda_logout EXIT
 else
     conda config --set anaconda_upload no
 fi
@@ -44,8 +40,3 @@ conda-build --python 3.11 build_windows
 conda-build --python 3.12 build_windows
 conda-build --python 3.13 build_windows
 conda-build --python 3.14 build_windows
-
-if [ "$ACTION" == "upload" ] ; then
-    trap - EXIT
-    anaconda_logout
-fi

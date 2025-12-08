@@ -60,10 +60,6 @@ cd "$HERE"
 
 if [ "$ACTION" == "upload" ] ; then
     conda config --set anaconda_upload yes
-    function anaconda_logout {
-        anaconda logout
-    }
-    trap anaconda_logout EXIT
 else
     conda config --set anaconda_upload no
 fi
@@ -73,8 +69,3 @@ conda-build --python 3.11 build
 conda-build --python 3.12 build
 conda-build --python 3.13 build
 conda-build --python 3.14 build
-
-if [ "$ACTION" == "upload" ] ; then
-    trap - EXIT
-    anaconda_logout
-fi
