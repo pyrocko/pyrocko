@@ -5,15 +5,24 @@ set -e
 rm -rf wheels_temp wheels
 
 mkdir wheels_temp
-for x in `ls /opt/python` ; do
-    [ "$x" == "cp313-cp313t" || "$x" == "cp314-cp314t" ] && continue
-    "/opt/python/$x/bin/python" -c 'import sys ; sys.exit(not ((3, 14, 0) <= sys.version_info < (3, 15, 0)) or sys.implementation.name != "cpython")' || continue
-    "/opt/python/$x/bin/pip" install --upgrade pip
-    "/opt/python/$x/bin/pip" wheel -v . -w wheels_temp --only-binary=:all:
+
+pvs="
+cp310-cp310
+cp311-cp311
+cp312-cp312
+cp313-cp313
+cp313-cp313t
+cp314-cp314
+cp314-cp314t
+"
+
+for pv in $pvs ; do
+    "/opt/python/$pv/bin/pip" install --upgrade pip
+    "/opt/python/$pv/bin/pip" wheel -v . -w wheels_temp --only-binary=:all:
 done
 
 mkdir wheels
 for wheel in wheels_temp/pyrocko-*.whl ; do
-    auditwheel repair "$wheel" --plat $PLAT -w dist
+    auditwheel repair "$wheel" -w dist
     rm "$wheel"
 done

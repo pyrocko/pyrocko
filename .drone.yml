@@ -631,8 +631,6 @@ steps:
   image: quay.io/pypa/manylinux_2_28_x86_64
   commands:
   - maintenance/pip/build_wheels.sh
-  environment:
-    PLAT: manylinux_2_28_x86_64
 
 - name: test-pure
   image: pyrocko-util
