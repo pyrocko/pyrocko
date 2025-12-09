@@ -2381,12 +2381,11 @@ class TraceStringFiller:
             return getattr(self.tr, k)
 
         method = getattr(self, 'get_' + k, None)
-        if self.additional[k]:
+        if k in self.additional:
             return self.additional[k]
         if method:
             return method()
         raise KeyError('Unknown placeholder: %s' % k)
-
 
     def _filename_safe(self, s):
         return re.sub(r'[^0-9A-Za-z_-]', '_', s)
