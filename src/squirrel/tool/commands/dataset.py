@@ -1,7 +1,8 @@
 import logging
+import os
 
 from pyrocko.util import glob_filter
-from pyrocko import squirrel
+from pyrocko import squirrel, guts
 from ..common import SquirrelCommand
 
 logger = logging.getLogger('psq.cli.dataset')
@@ -80,11 +81,43 @@ class Sources(SquirrelCommand):
             print(source.info())
 
 
+class Create(SquirrelCommand):
+
+    def make_subparser(self, subparsers):
+        return subparsers.add_parser(
+            'create',
+            help='Create dataset configuration from command line arguments.',
+            description='''
+Create dataset configuration file based on given data collection options
+(``--add``, ``--include``, ...) given on the command line. The resulting YAML
+file can be used with the ``--dataset`` option.'''.strip())
+
+    def setup(self, parser):
+        parser.add_argument(
+            '--out', '-o',
+            dest='out_path',
+            metavar='PATH',
+            help='Write output YAML document to PATH.')
+
+        parser.add_squirrel_selection_arguments_base()
+
+    def run(self, parser, args):
+        dataset = args.make_dataset()
+        if args.out_path:
+            basepath = dataset.get_basepath()
+            dirname = os.path.dirname(args.out_path) or '.'
+            dataset.change_basepath(dirname)
+            guts.dump(dataset, filename=args.out_path)
+            dataset.change_basepath(basepath)
+        else:
+            print(dataset)
+
+
 def make_subparser(subparsers):
     return subparsers.add_parser(
         'dataset',
         help=headline,
-        subcommands=[List(), Show(), Sources()],
+        subcommands=[List(), Show(), Sources(), Create()],
         description=description)
 
 

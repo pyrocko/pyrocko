@@ -195,6 +195,7 @@ class SquirrelArgumentParser(PyrockoArgumentParser):
         self._command = command
         self._subcommands = subcommands
         self._have_selection_arguments = False
+        self._have_selection_arguments_base = False
         self._have_query_arguments = False
 
         kwargs['epilog'] = kwargs.get('epilog', '''
@@ -264,6 +265,12 @@ Examples: https://pyrocko.org/docs/current/apps/squirrel/manual.html#examples
 
             args.make_squirrel = make_squirrel
 
+        if eff_parser._have_selection_arguments_base:
+            def make_dataset():
+                return dataset_from_selection_arguments(args)
+
+            args.make_dataset = make_dataset
+
         if eff_parser._have_query_arguments:
             try:
                 args.squirrel_query = squirrel_query_from_arguments(args)
@@ -314,21 +321,36 @@ Examples: https://pyrocko.org/docs/current/apps/squirrel/manual.html#examples
         if not self.dispatch(args):
             self.print_help()
 
-    def add_squirrel_selection_arguments(self):
+    def add_squirrel_selection_arguments(self, without=[]):
         '''
         Set up command line options commonly used to configure a
         :py:class:`~pyrocko.squirrel.base.Squirrel` instance.
 
-        This will  optional arguments ``--add``, ``--include``, ``--exclude``,
-        ``--optimistic``, ``--format``, ``--add-only``, ``--persistent``, and
-        ``--dataset``.
+        This will add optional arguments ``--add``, ``--include``,
+        ``--exclude``, ``--optimistic``, ``--format``, ``--add-only``,
+        ``--persistent``, and ``--dataset``.
 
         Call ``args.make_squirrel()`` on the arguments returned from
         :py:meth:`parse_args` to finally instantiate and configure the
         :py:class:`~pyrocko.squirrel.base.Squirrel` instance.
         '''
-        add_squirrel_selection_arguments(self)
+        add_squirrel_selection_arguments(self, without=without)
         self._have_selection_arguments = True
+
+    def add_squirrel_selection_arguments_base(self, without=[]):
+        '''
+        Set up command line options commonly used to configure a
+        :py:class:`~pyrocko.squirrel.dataset.Dataset` instance.
+
+        This will add optional arguments ``--add``, ``--include``,
+        ``--exclude``, ``--format``, ``--add-only``.
+
+        Call ``args.return make_dataset()`` on the arguments returned from
+        :py:meth:`parse_args` to finally instantiate and configure the
+        :py:class:`~pyrocko.squirrel.dataset.Dataset` instance.
+        '''
+        add_squirrel_selection_arguments_base(self)
+        self._have_selection_arguments_base = True
 
     def add_squirrel_query_arguments(self, without=[]):
         '''
@@ -420,7 +442,7 @@ def process_standard_arguments(parser, args):
     progress.set_default_viewer(pmode)
 
 
-def add_squirrel_selection_arguments(parser):
+def add_squirrel_selection_arguments(parser, without=[]):
     '''
     Set up command line options commonly used to configure a
     :py:class:`~pyrocko.squirrel.base.Squirrel` instance.
@@ -437,102 +459,137 @@ def add_squirrel_selection_arguments(parser):
         The argument parser to be configured.
     :type parser:
         argparse.ArgumentParser
+
+    :param without:
+        Suppress adding given options.
+    :type without:
+        :py:class:`list` of :py:class:`str`
     '''
     from pyrocko import squirrel as sq
 
     group = parser.add_argument_group('Data collection options')
 
-    group.add_argument(
-        '--add', '-a',
-        dest='paths',
-        metavar='PATH',
-        nargs='+',
-        help='Add files and directories with waveforms, metadata and events. '
-             'Content is indexed and added to the temporary (default) or '
-             'persistent (see ``--persistent``) data selection.')
+    if 'add' not in without:
+        group.add_argument(
+            '--add', '-a',
+            dest='paths',
+            metavar='PATH',
+            nargs='+',
+            help='Add files and directories with waveforms, metadata and '
+                 'events. Content is indexed and added to the temporary '
+                 '(default) or persistent (see ``--persistent``) data '
+                 'selection.')
 
-    group.add_argument(
-        '--include',
-        dest='include',
-        metavar='REGEX',
-        help='Only include files whose paths match the regular expression '
-             "``REGEX``. Examples: ``--include='\\.MSEED$'`` would only "
-             'match files ending with ```.MSEED```. '
-             "``--include='\\.BH[EN]\\.'`` would match paths containing "
-             "```.BHE.``` or ```.BHN.```. ``--include='/2011/'`` would "
-             'match paths with a subdirectory ```2011``` in their path '
-             'hierarchy.')
+    if 'include' not in without:
+        group.add_argument(
+            '--include',
+            dest='include',
+            metavar='REGEX',
+            help='Only include files whose paths match the regular expression '
+                 "``REGEX``. Examples: ``--include='\\.MSEED$'`` would only "
+                 'match files ending with ```.MSEED```. '
+                 "``--include='\\.BH[EN]\\.'`` would match paths containing "
+                 "```.BHE.``` or ```.BHN.```. ``--include='/2011/'`` would "
+                 'match paths with a subdirectory ```2011``` in their path '
+                 'hierarchy.')
 
-    group.add_argument(
-        '--exclude',
-        dest='exclude',
-        metavar='REGEX',
-        help='Only include files whose paths do not match the regular '
-             "expression ``REGEX``. Examples: ``--exclude='/\\.DS_Store/'`` "
-             'would exclude anything inside any ```.DS_Store``` subdirectory.')
+    if 'exclude' not in without:
+        group.add_argument(
+            '--exclude',
+            dest='exclude',
+            metavar='REGEX',
+            help='Only include files whose paths do not match the regular '
+                 "expression ``REGEX``. Examples: "
+                 "``--exclude='/\\.DS_Store/'`` would exclude anything inside "
+                 'any ```.DS_Store``` subdirectory.')
 
-    group.add_argument(
-        '--optimistic', '-o',
-        action='store_false',
-        dest='check',
-        default=True,
-        help='Disable checking file modification times for faster startup.')
+    if 'optimistic' not in without:
+        group.add_argument(
+            '--optimistic', '-o',
+            action='store_false',
+            dest='check',
+            default=True,
+            help='Disable checking file modification times for faster '
+                 'startup.')
 
-    group.add_argument(
-        '--format', '-f',
-        dest='format',
-        metavar='FORMAT',
-        default='detect',
-        choices=sq.supported_formats(),
-        help='Assume input files are of given ``FORMAT``. Choices: %s. '
-             'Default: %s.' % (
-                 ldq(sq.supported_formats()),
-                 dq('detect')))
+    if 'format' not in without:
+        group.add_argument(
+            '--format', '-f',
+            dest='format',
+            metavar='FORMAT',
+            default='detect',
+            choices=sq.supported_formats(),
+            help='Assume input files are of given ``FORMAT``. Choices: %s. '
+                 'Default: %s.' % (
+                     ldq(sq.supported_formats()),
+                     dq('detect')))
 
-    group.add_argument(
-        '--add-only',
-        type=csvtype(sq.supported_content_kinds()),
-        dest='kinds_add',
-        metavar='KINDS',
-        help='Restrict meta-data scanning to given content kinds. '
-             '``KINDS`` is a comma-separated list of content kinds. '
-             'Choices: %s. By default, all content kinds are indexed.'
-             % ldq(sq.supported_content_kinds()))
+    if 'add-only' not in without:
+        group.add_argument(
+            '--add-only',
+            type=csvtype(sq.supported_content_kinds()),
+            dest='kinds_add',
+            metavar='KINDS',
+            help='Restrict meta-data scanning to given content kinds. '
+                 '``KINDS`` is a comma-separated list of content kinds. '
+                 'Choices: %s. By default, all content kinds are indexed.'
+                 % ldq(sq.supported_content_kinds()))
 
-    group.add_argument(
-        '--persistent', '-p',
-        dest='persistent',
-        metavar='NAME',
-        help='Create/use persistent selection with given ``NAME``. Persistent '
-             'selections can be used to speed up startup of Squirrel-based '
-             'applications.')
+    if 'persistent' not in without:
+        group.add_argument(
+            '--persistent', '-p',
+            dest='persistent',
+            metavar='NAME',
+            help='Create/use persistent selection with given ``NAME``. '
+                 'Persistent selections can be used to speed up startup of '
+                 'Squirrel-based applications.')
 
-    group.add_argument(
-        '--samples-block',
-        dest='n_samples_block',
-        type=int,
-        metavar='N',
-        default=100000,
-        help='When downloading data, use blocks with approximately ``N`` '
-             'samples. Default: 100000')
+    if 'samples-block' not in without:
+        group.add_argument(
+            '--samples-block',
+            dest='n_samples_block',
+            type=int,
+            metavar='N',
+            default=100000,
+            help='When downloading data, use blocks with approximately ``N`` '
+                 'samples. Default: 100000')
 
-    group.add_argument(
-        '--dataset', '-d',
-        dest='datasets',
-        default=[],
-        action='append',
-        metavar='FILE',
-        help='Add files, directories and remote sources from dataset '
-             'description file. This option can be repeated to add multiple '
-             'datasets. Run ```squirrel template``` to obtain examples of '
-             'dataset description files.')
+    if 'dataset' not in without:
+        group.add_argument(
+            '--dataset', '-d',
+            dest='datasets',
+            default=[],
+            action='append',
+            metavar='FILE',
+            help='Add files, directories and remote sources from dataset '
+                 'description file. This option can be repeated to add '
+                 'multiple datasets. Run ```squirrel template``` to obtain '
+                 'examples of dataset description files.')
 
-    group.add_argument(
-        '--upgrade-storage',
-        dest='upgrade_storage',
-        default=False,
-        action='store_true',
-        help='Upgrade storage layout of cached data to latest version.')
+    if 'upgrade-storage' not in without:
+        group.add_argument(
+            '--upgrade-storage',
+            dest='upgrade_storage',
+            default=False,
+            action='store_true',
+            help='Upgrade storage layout of cached data to latest version.')
+
+
+def add_squirrel_selection_arguments_base(parser):
+    '''
+    Set up command line options used to configure a
+    :py:class:`~pyrocko.squirrel.dataset.Dataset` instance.
+
+    This is adds a subset of the arguments added by
+    :py:func:`add_squirrel_selection_arguments`.
+    '''
+
+    return add_squirrel_selection_arguments(parser, without=[
+        'dataset',
+        'upgrade-storage',
+        'samples-block',
+        'persistent',
+        'optimistic'])
 
 
 def squirrel_from_selection_arguments(args, check_have_data=True):
@@ -584,6 +641,38 @@ def squirrel_from_selection_arguments(args, check_have_data=True):
                     upgrade=args.upgrade_storage)
 
     return squirrel
+
+
+def dataset_from_selection_arguments(args):
+    '''
+    Create a :py:class:`~pyrocko.squirrel.dataset.Dataset` instance from
+    command line arguments.
+
+    The set of supported arguments for the dataset is a subset of the data
+    collection options. Use :py:func:`add_squirrel_selection_arguments_base` to
+    configure the parser with the necessary options.
+
+    :param args:
+        Parsed command line arguments, as returned by
+        :py:meth:`argparse.ArgumentParser.parse_args`.
+
+    :returns:
+        :py:class:`pyrocko.squirrel.dataset.Dataset` instance
+    '''
+    from pyrocko.squirrel.dataset import Dataset
+    from pyrocko.squirrel.client.local import LocalData
+    dataset = Dataset(
+        path_prefix='.',
+        sources=[
+            LocalData(
+                paths=args.paths,
+                kinds=args.kinds_add or None,
+                include=args.include,
+                exclude=args.exclude,
+                format=args.format)])
+
+    dataset.set_basepath('.')
+    return dataset
 
 
 def add_squirrel_query_arguments(parser, without=[]):
