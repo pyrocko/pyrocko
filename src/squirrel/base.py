@@ -1458,7 +1458,7 @@ class Squirrel(Selection):
         '''
         return sorted(list(self.iter_kinds(codes=codes)))
 
-    def get_deltats(self, kind=None):
+    def get_deltats(self, kind=None, codes=None):
         '''
         Get sampling intervals available in selection.
 
@@ -1472,7 +1472,13 @@ class Squirrel(Selection):
 
         :returns: Sorted list of available sampling intervals.
         '''
-        return sorted(list(self.iter_deltats(kind=kind)))
+
+        if codes is None:
+            return sorted(list(self.iter_deltats(kind=kind)))
+        else:
+            return sorted(set(
+                info[2]
+                for info in self._iter_codes_info(kind=kind, codes=codes)))
 
     def get_codes(self, kind=None):
         '''
