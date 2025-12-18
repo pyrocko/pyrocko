@@ -964,6 +964,27 @@ class TraceTestCase(unittest.TestCase):
 
         assert result == expect
 
+    def test_analyse_delay(self):
+        n = 1000
+        deltat = 0.1
+        a = trace.Trace(
+            '', 'S', 'A', 'Z',
+            tmin=0.,
+            deltat=deltat,
+            ydata=num.random.normal(0.0, 1.0, n))
+
+        for i in range(100):
+            tshift = num.random.uniform(-1., 1.)
+            b = a.copy()
+            b.set_codes(location='B')
+            b.shift(tshift)
+            result = trace.analyse_delay(a, b, min_samples=30)
+            assert abs(tshift-result.total_delay) < 0.1 * deltat
+
+            b.snap(interpolate=True)
+            result = trace.analyse_delay(a, b, min_samples=30)
+            assert abs(tshift-result.total_delay) < 0.1 * deltat
+
 
 if __name__ == '__main__':
     util.setup_logging('test_trace', 'warning')

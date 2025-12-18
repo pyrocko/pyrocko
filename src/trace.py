@@ -21,7 +21,7 @@ from scipy import signal
 from pyrocko import util, orthodrome, pchain, model, signal_ext
 from pyrocko.util import reuse
 from pyrocko.guts import Object, Float, Int, String, List, \
-    StringChoice, Timestamp
+    StringChoice, Timestamp, Bool
 from pyrocko.guts_array import Array
 from pyrocko.model import squirrel_content
 
@@ -161,6 +161,11 @@ class Trace(Object):
             for k in sorted(self.meta.keys()):
                 s += '  %s: %s\n' % (k, self.meta[k])
         return s
+
+    def is_aligned(self, eps=1e-2):
+        return bool(
+            abs(round(self.tmin / self.deltat) * self.deltat - self.tmin)
+            < self.deltat*eps)
 
     @property
     def codes(self):
@@ -4098,3 +4103,114 @@ def check_overlaps(traces_a, traces_b=None, message='Traces overlap.'):
                 raise OverlappingTraces(
                     message + '\n  Trace 1: %s\n  Trace 2: %s' % (
                         tr_a.summary, tr_b.summary))
+
+
+class DelayAnalysisResult(Object):
+    # codes_a = CodesNSLCE.T('Channel identifier of A.')
+    # codes_b = CodesNSLCE.T('Channel identifier of B.')
+    aligned_a = Bool.T(
+        optional=True,
+        help='Flag indicating if samples in A are globally aligned.')
+    aligned_b = Bool.T(
+        optional=True,
+        help='Flag indicating if samples in B are globally aligned.')
+    deltat = Float.T(
+        help='Sampling interval [s].')
+    tmin = Timestamp.T(
+        help='Beginning of analysis time window.')
+    tmax = Timestamp.T(
+        help='End of analysis time window.')
+    cc_coefficient = Float.T(
+        help='Maximum of cross correlation.')
+    cc_delay = Float.T(
+        help='Time delay of B with respect to A obtained from cross '
+             'correlation [s].')
+    subsample_delay = Float.T(
+        help='Time delay of B with respect to A after alignment with cross '
+             'correlation [s].')
+    subsample_delay_std = Float.T(
+        help='Standard deviation of values used to calculate '
+             '``subsample_delay`` [s].')
+    sampling_instants_delay = Float.T(
+        help='Delay of sampling instants in B with respect to sampling '
+             'instants in A.')
+    total_delay = Float.T(
+        help='Time delay of B with respect to A, ``A(time - delay) == '
+             'B(time)``. To align B with A use ``trace_b.shift(-delay)``.')
+
+
+def analyse_delay(tr_a, tr_b, min_samples=500, span=(0.3, 0.45)):
+
+    assert tr_a.deltat == tr_b.deltat
+
+    deltat = tr_a.deltat
+
+    tmin_common = max(tr_a.tmin, tr_b.tmin)
+    tmax_common = min(tr_a.tmax, tr_b.tmax)
+
+    if tmax_common - tmin_common < deltat * min_samples:
+        raise TraceTooShort(
+            'analyse_delay: Not enough overlap between traces.')
+
+    aligned_a = tr_a.is_aligned()
+    aligned_b = tr_b.is_aligned()
+
+    tr_a = tr_a.chop(tmin_common, tmax_common, inplace=False)
+    tr_b = tr_b.chop(tmin_common, tmax_common, inplace=False)
+
+    tr_a = tr_a.copy(data=False)
+    tr_a.set_ydata(tr_a.get_ydata().astype(float))
+    tr_b = tr_b.copy(data=False)
+    tr_b.set_ydata(tr_b.get_ydata().astype(float))
+
+    tr_c = correlate(
+        tr_a, tr_b, normalization='normal', mode='same', use_fft=True)
+
+    cc_delay, cc_coefficient = tr_c.max()
+
+    tr_b.shift(-cc_delay)
+
+    # shrink common span by one sample to avoid any
+    # rounding error later
+    tmin_common = max(tr_a.tmin, tr_b.tmin) + deltat
+    tmax_common = min(tr_a.tmax, tr_b.tmax) - deltat
+
+    tr_common_a = tr_a.chop(tmin_common, tmax_common, inplace=False)
+    # make sure we have same number of samples (avoid any rounding
+    # errors)
+    n = tr_common_a.data_len()
+    tmin_b_common = round(tmin_common / deltat) * deltat
+    tmax_b_common = tmin_b_common + n * deltat
+    tr_common_b = tr_b.chop(tmin_b_common, tmax_b_common, inplace=False)
+
+    onset_delay = tr_common_b.tmin - tr_common_a.tmin
+
+    frequencies, sp_a = tr_common_a.spectrum(
+        pad_to_pow2=True)
+    _, sp_b = tr_common_b.spectrum(
+        pad_to_pow2=True)
+
+    mask = num.logical_and(
+        span[0] / deltat < frequencies,
+        frequencies < span[1] / deltat)
+
+    rel_delays = - num.angle(sp_b[mask] / sp_a[mask]) \
+        / (2.0 * num.pi * frequencies[mask])
+
+    subsample_delay = num.median(rel_delays) + onset_delay
+    subsample_delay_std = num.std(rel_delays)
+
+    return DelayAnalysisResult(
+        # codes_a=tr_a.codes,
+        # codes_b=tr_b.codes,
+        deltat=deltat,
+        aligned_a=aligned_a,
+        aligned_b=aligned_b,
+        tmin=tmin_common,
+        tmax=tmax_common,
+        cc_delay=cc_delay,
+        cc_coefficient=cc_coefficient,
+        subsample_delay=subsample_delay,
+        subsample_delay_std=subsample_delay_std,
+        sampling_instants_delay=onset_delay,
+        total_delay=cc_delay + subsample_delay)
