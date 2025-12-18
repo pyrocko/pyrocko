@@ -2695,38 +2695,58 @@ def degapper(
     return out_traces
 
 
-def deoverlap(traces):
+def deoverlap(traces, precedence='longest', snap_times_globally=False):
+    assert precedence in ('longest', 'first')
+
+    def snap(t, dt):
+        return round(t/dt) * dt
+
     groups = util.group_by(lambda tr: tr.codes, traces)
     traces_out = []
     for codes, group in groups.items():
         group_out = []
-        group.sort(key=lambda tr: -(tr.tmax - tr.tmin))
+        if precedence == 'longest':
+            group.sort(key=lambda tr: -(tr.tmax - tr.tmin))
+
         for tr in group:
             keep = tr
+            tr_tmin = tr.tmin
+            tr_tmax = tr.tmax
+
+            if snap_times_globally:
+                tr_tmin = snap(tr_tmin, tr.deltat)
+                tr_tmax = snap(tr_tmax, tr.deltat)
+
             for have in group_out:
-                if tr.tmax < have.tmin or tr.tmin > have.tmax:
+                have_tmin = have.tmin
+                have_tmax = have.tmax
+                if snap_times_globally:
+                    have_tmin = snap(have_tmin, have.deltat)
+                    have_tmax = snap(have_tmax, have.deltat)
+
+                if tr_tmax < have_tmin or tr_tmin > have_tmax:
                     pass
-                elif tr.tmin < have.tmin and tr.tmax >= have.tmin:
+                elif tr_tmin < have_tmin and tr_tmax >= have_tmin:
                     if keep is tr:
                         keep = keep.copy()
                     try:
-                        keep.chop(tr.tmin, have.tmin)
+                        keep.chop(tr_tmin, have_tmin)
                     except NoData:
                         keep = None
                         break
-                elif tr.tmin >= have.tmin and tr.tmax <= have.tmax:
+                elif tr_tmin >= have_tmin and tr_tmax <= have_tmax:
                     keep = None
                     break
-                elif tr.tmin <= have.tmax and tr.tmax > have.tmax:
+                elif tr_tmin <= have_tmax and tr_tmax > have_tmax:
                     if keep is tr:
                         keep = keep.copy()
                     try:
-                        keep.chop(have.tmax+tr.deltat, tr.tmax+tr.deltat)
+                        keep.chop(have_tmax+tr.deltat, tr_tmax+tr.deltat)
                     except NoData:
                         keep = None
                         break
                 else:
-                    print(tr.tmin, tr.tmax, have.tmin, have.tmax)
+                    print(tr_tmin, tr_tmax, have_tmin, have_tmax)
                     assert False
 
             if keep is not None:
