@@ -14,8 +14,9 @@ import argparse
 import logging
 import textwrap
 
-from pyrocko import util, progress
+from pyrocko import util, progress, io, guts
 from pyrocko.squirrel import error
+from pyrocko.squirrel import storage
 
 
 logger = logging.getLogger('psq.tool.common')
@@ -197,6 +198,7 @@ class SquirrelArgumentParser(PyrockoArgumentParser):
         self._have_selection_arguments = False
         self._have_selection_arguments_base = False
         self._have_query_arguments = False
+        self._have_storage_scheme_arguments = False
 
         kwargs['epilog'] = kwargs.get('epilog', '''
 
@@ -274,6 +276,14 @@ Examples: https://pyrocko.org/docs/current/apps/squirrel/manual.html#examples
         if eff_parser._have_query_arguments:
             try:
                 args.squirrel_query = squirrel_query_from_arguments(args)
+            except (error.SquirrelError, error.ToolError) as e:
+                logger.fatal(str(e))
+                sys.exit(1)
+
+        if eff_parser._have_storage_scheme_arguments:
+            try:
+                args.squirrel_effective_storage_scheme = \
+                    squirrel_effective_storage_scheme_from_arguments(args)
             except (error.SquirrelError, error.ToolError) as e:
                 logger.fatal(str(e))
                 sys.exit(1)
@@ -372,6 +382,23 @@ Examples: https://pyrocko.org/docs/current/apps/squirrel/manual.html#examples
 
         add_squirrel_query_arguments(self, without=without)
         self._have_query_arguments = True
+
+    def add_squirrel_storage_scheme_arguments(self):
+        '''
+        Set up command line options commonly used for saving.
+
+        This will add optional arguments ``--out-path``, ``--out-sds-path``,
+        ``--out-storage-path``, ``--out-storage-scheme``, ``--out-format``,
+        ``--out-mseed-record-length`` and ``--out-mseed-steim``.
+
+        Once finished with parsing, the
+        :py:class:`pyrocko.squirrel.storage.StorageScheme` is available as
+        ``args.squirrel_effective_storage_scheme`` on the arguments returned
+        from :py:meth:`parse_args`.
+        '''
+
+        add_squirrel_storage_scheme_arguments(self)
+        self._have_storage_scheme_arguments = True
 
 
 def csvtype(choices):
@@ -805,6 +832,162 @@ def squirrel_query_from_arguments(args):
     return d
 
 
+def add_squirrel_storage_scheme_arguments(parser):
+    '''
+    Set up command line options commonly used for saving.
+
+    This will add optional arguments ``--out-path``, ``--out-sds-path``,
+    ``--out-storage-path``, ``--out-storage-scheme``, ``--out-format``,
+    ``--out-mseed-record-length`` and ``--out-mseed-steim``.
+
+    Once finished with parsing, call
+    :py:func:`squirrel_effective_storage_scheme_from_arguments` to get the
+    configured :py:class:`pyrocko.squirrel.storage.StorageScheme` instance.
+
+    :param parser:
+        The argument parser to be configured.
+    :type parser:
+        argparse.ArgumentParser
+    '''
+
+    group = parser.add_argument_group('Storage options')
+
+    group.add_argument(
+        '--out-path',
+        dest='out_path',
+        metavar='TEMPLATE',
+        help='''
+Set output path to ``TEMPLATE``. Available placeholders are ``%%n``: network,
+``%%s``: station, ``%%l``: location, ``%%c``: channel, ``%%b``: begin time,
+``%%e``: end time, ``%%j``: julian day of year. The following additional
+placeholders use the current processing window's begin and end times rather
+than trace begin and end times (to suppress producing many small files for
+gappy traces), ``%%(wmin_year)s``, ``%%(wmin_month)s``, ``%%(wmin_day)s``,
+``%%(wmin)s``, ``%%(wmin_jday)s``, ``%%(wmax_year)s``, ``%%(wmax_month)s``,
+``%%(wmax_day)s``, ``%%(wmax)s``, ``%%(wmax_jday)s``. Example: ``--out-path
+'data/%%s/trace-%%s-%%c.mseed'``
+'''.strip())
+
+    group.add_argument(
+        '--out-sds-path',
+        dest='out_sds_path',
+        metavar='PATH',
+        help='''
+Set output path to create an SDS archive
+(https://www.seiscomp.de/seiscomp3/doc/applications/slarchive/SDS.html), rooted
+at PATH. Implies ``--tinc 3600`` if not specified otherwise. Equivalent to
+``--out-storage-path PATH --out-storage-scheme sds``. Example:
+``--out-sds-path data/sds``
+'''.strip())
+
+    group.add_argument(
+        '--out-storage-path',
+        dest='out_storage_path',
+        metavar='PATH',
+        help='''
+Create storage directory under PATH. The storage scheme can be set with
+``--out-storage-scheme``.
+'''.strip())
+
+    group.add_argument(
+        '--out-storage-scheme',
+        dest='out_storage_scheme',
+        default='default',
+        choices=storage.StorageSchemeChoice.choices,
+        metavar='SCHEME',
+        help='''
+Set storage scheme to produce when using ``--out-storage-path``. Choices: %s
+'''.strip() % ldq(storage.StorageSchemeChoice.choices))
+
+    group.add_argument(
+        '--out-format',
+        dest='out_format',
+        choices=io.allowed_formats('save'),
+        metavar='FORMAT',
+        help='Set output file format. Choices: %s' % io.allowed_formats(
+            'save', 'cli_help', 'mseed'))
+
+    group.add_argument(
+        '--out-mseed-record-length',
+        dest='out_mseed_record_length',
+        type=int,
+        choices=io.mseed.VALID_RECORD_LENGTHS,
+        metavar='INT',
+        help='Set the Mini-SEED record length in bytes. Choices: %s. '
+             'Default is 4096 bytes, which is commonly used for archiving, '
+             'unless the selected storage scheme specifies a different '
+             'default.' % ldq(str(b) for b in io.mseed.VALID_RECORD_LENGTHS))
+
+    group.add_argument(
+        '--out-mseed-steim',
+        dest='out_mseed_steim',
+        type=int,
+        choices=(1, 2),
+        metavar='INT',
+        help='Set the Mini-SEED STEIM compression. Choices: ``1`` or '
+             '``2``. Default is STEIM-2 unless the selected storage scheme '
+             'specifies a different default. Note: STEIM-2 is limited to 30 '
+             'bit dynamic range.')
+
+
+def squirrel_effective_storage_scheme_from_arguments(args):
+    '''
+    Get storage scheme from command line arguments.
+
+    Use :py:func:`add_squirrel_storage_scheme_arguments` to configure the
+    parser with the necessary options.
+
+    :param args:
+        Parsed command line arguments, as returned by
+        :py:meth:`argparse.ArgumentParser.parse_args`.
+
+    :returns:
+        :py:class:`pyrocko.squirrel.storage.StorageScheme` or ``None`` if
+        neither ``--out-path`` nor ``--out-sds-path`` nor
+        ``--out-storage-path`` is given.
+    '''
+
+    nset = sum(x is not None for x in (
+        args.out_path,
+        args.out_sds_path,
+        args.out_storage_path))
+
+    if nset > 1:
+        raise error.ToolError(
+            'Only one of the options --out-path, --out-sds-path, and '
+            '--out-storage-path may be selected.')
+
+    if args.out_path:
+        scheme = storage.StorageScheme(
+            name='custom',
+            layouts=[storage.StorageSchemeLayout(
+                name='custom',
+                path_template=args.out_path)])
+
+    elif args.out_sds_path:
+        scheme = guts.clone(storage.get_storage_scheme('sds'))
+        scheme.set_base_path(args.out_sds_path)
+
+    elif args.out_storage_path:
+        scheme = guts.clone(storage.get_storage_scheme(
+            args.out_storage_scheme))
+        scheme.set_base_path(args.out_storage_path)
+
+    else:
+        return None
+
+    if args.out_mseed_record_length is not None:
+        scheme.mseed_record_length = args.out_mseed_record_length
+
+    if args.out_mseed_steim is not None:
+        scheme.mseed_steim = args.out_mseed_steim
+
+    if args.out_format is not None:
+        scheme.format = args.out_format
+
+    return scheme
+
+
 class SquirrelCommand(object):
     '''
     Base class for Squirrel-based CLI programs and subcommands.
@@ -899,4 +1082,6 @@ __all__ = [
     'squirrel_from_selection_arguments',
     'add_squirrel_query_arguments',
     'squirrel_query_from_arguments',
+    'add_squirrel_storage_scheme_arguments',
+    'squirrel_effective_storage_scheme_from_arguments',
 ]

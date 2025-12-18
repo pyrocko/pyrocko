@@ -27,9 +27,9 @@ from pyrocko.squirrel.error import ToolError, SquirrelError
 from pyrocko.squirrel.model import CodesNSLCE, QuantityType
 from pyrocko.squirrel.operators.base import NetworkGrouping, StationGrouping, \
     ChannelGrouping, SensorGrouping
-from pyrocko.squirrel.storage import StorageSchemeChoice, StorageScheme, \
-    StorageSchemeLayout, get_storage_scheme
-from pyrocko.squirrel.tool.common import ldq
+from pyrocko.squirrel.storage import StorageSchemeChoice
+from pyrocko.squirrel.tool.common import ldq, \
+    squirrel_effective_storage_scheme_from_arguments
 
 tts = util.time_to_str
 
@@ -244,12 +244,12 @@ drop to zero at ``FMINCUT`` and ``FMAXCUT``. If ``CUTFACTOR`` is given,
             choices=['complete', 'sensor'],
             default='complete',
             help='''
-Select mode of the instrument correction when performing a restition with
+Select mode of the instrument correction when performing a restitution with
 ``--quantity``. This option selects which stages of the instrument response
 should be considered completely, i.e. including their frequency dependence, and
 which stages should be considered by only considering their overall gain
 factor. Choices: ``complete`` -- all stages are considered completely
-(default). ``sensor`` -- only the first stage of the insrument response is
+(default). ``sensor`` -- only the first stage of the instrument response is
 treated completely. The first stage of the instrument response conventionally
 represents the characteristics of the sensor and is usually given in poles and
 zeros representation. The frequency response of the FIR filters of the
@@ -272,61 +272,6 @@ last letter replaced by ``E``, ``N``, and ``Z`` respectively.
 '''.strip())
 
         p.add_argument(
-            '--out-path',
-            dest='out_path',
-            metavar='TEMPLATE',
-            help='''
-Set output path to ``TEMPLATE``. Available placeholders are ``%%n``: network,
-``%%s``: station, ``%%l``: location, ``%%c``: channel, ``%%b``: begin time,
-``%%e``: end time, ``%%j``: julian day of year. The following additional
-placeholders use the current processing window's begin and end times rather
-than trace begin and end times (to suppress producing many small files for
-gappy traces), ``%%(wmin_year)s``, ``%%(wmin_month)s``, ``%%(wmin_day)s``,
-``%%(wmin)s``, ``%%(wmin_jday)s``, ``%%(wmax_year)s``, ``%%(wmax_month)s``,
-``%%(wmax_day)s``, ``%%(wmax)s``, ``%%(wmax_jday)s``. Example: ``--out-path
-'data/%%s/trace-%%s-%%c.mseed'``
-'''.strip())
-
-        p.add_argument(
-            '--out-sds-path',
-            dest='out_sds_path',
-            metavar='PATH',
-            help='''
-Set output path to create an SDS archive
-(https://www.seiscomp.de/seiscomp3/doc/applications/slarchive/SDS.html), rooted
-at PATH. Implies ``--tinc 3600`` if not specified otherwise. Equivalent to
-``--out-storage-path PATH --out-storage-scheme sds``. Example:
-``--out-sds-path data/sds``
-'''.strip())
-
-        p.add_argument(
-            '--out-storage-path',
-            dest='out_storage_path',
-            metavar='PATH',
-            help='''
-Create storage directory under PATH. The storage scheme can be set with
-``--out-storage-scheme``.
-'''.strip())
-
-        p.add_argument(
-            '--out-storage-scheme',
-            dest='out_storage_scheme',
-            default='default',
-            choices=StorageSchemeChoice.choices,
-            metavar='SCHEME',
-            help='''
-Set storage scheme to produce when using ``--out-storage-path``. Choices: %s
-'''.strip() % ldq(StorageSchemeChoice.choices))
-
-        p.add_argument(
-            '--out-format',
-            dest='out_format',
-            choices=io.allowed_formats('save'),
-            metavar='FORMAT',
-            help='Set output file format. Choices: %s' % io.allowed_formats(
-                'save', 'cli_help', 'mseed'))
-
-        p.add_argument(
             '--out-data-type',
             dest='out_data_type',
             choices=OutputDataTypeChoice.choices,
@@ -335,26 +280,6 @@ Set storage scheme to produce when using ``--out-storage-path``. Choices: %s
                  'format must support the given type. By default, the data '
                  'type is kept unchanged.' % ldq(
                     OutputDataTypeChoice.choices))
-
-        p.add_argument(
-            '--out-mseed-record-length',
-            dest='out_mseed_record_length',
-            type=int,
-            choices=io.mseed.VALID_RECORD_LENGTHS,
-            metavar='INT',
-            help='Set the Mini-SEED record length in bytes. Choices: %s. '
-                 'Default is 4096 bytes, which is commonly used for archiving.'
-                 % ldq(str(b) for b in io.mseed.VALID_RECORD_LENGTHS))
-
-        p.add_argument(
-            '--out-mseed-steim',
-            dest='out_mseed_steim',
-            type=int,
-            choices=(1, 2),
-            metavar='INT',
-            help='Set the Mini-SEED STEIM compression. Choices: ``1`` or '
-                 '``2``. Default is STEIM-2. Note: STEIM-2 is limited to 30 '
-                 'bit dynamic range.')
 
         p.add_argument(
             '--out-meta-path',
@@ -408,6 +333,8 @@ replacements. Examples: Direct replacement: ```XX``` - set all network codes to
             metavar='REPLACEMENT',
             help='Replace extra code. See ``--rename-network``. Note: the '
                  '```extra``` code is not available in Mini-SEED.')
+
+        p.add_squirrel_storage_scheme_arguments()
 
     @classmethod
     def from_arguments(cls, args):
@@ -495,35 +422,8 @@ replacements. Examples: Direct replacement: ```XX``` - set all network codes to
         return d
 
     def get_effective_storage_scheme(self):
-        nset = sum(x is not None for x in (
-            self.out_path,
-            self.out_sds_path,
-            self.out_storage_path))
-
-        if nset > 1:
-            raise JackseisError(
-                'More than one out of [out_path, out_sds_path, '
-                'out_storage_path] set.')
-
-        if self.out_path:
-            scheme = StorageScheme(
-                name='custom',
-                layouts=[StorageSchemeLayout(
-                    name='custom',
-                    path_template=self.expand_path(self.out_path))])
-
-        elif self.out_sds_path:
-            scheme = clone(get_storage_scheme('sds'))
-            scheme.set_base_path(self.expand_path(self.out_sds_path))
-
-        elif self.out_storage_path:
-            scheme = clone(get_storage_scheme(self.out_storage_scheme))
-            scheme.set_base_path(self.expand_path(self.out_storage_path))
-
-        else:
-            scheme = None
-
-        return scheme
+        args = self
+        return squirrel_effective_storage_scheme_from_arguments(args)
 
     def get_effective_out_meta_path(self):
         if self.out_meta_path is not None:
@@ -559,6 +459,7 @@ replacements. Examples: Direct replacement: ```XX``` - set all network codes to
             squirrel_factory=None,
             force=False,
             append=False,
+            merge=False,
             overrides=None,
             chain=None):
 
@@ -576,6 +477,7 @@ replacements. Examples: Direct replacement: ```XX``` - set all network codes to
                     squirrel_factory,
                     force=force,
                     append=append,
+                    merge=merge,
                     overrides=overrides,
                     chain=chain)
 
@@ -639,13 +541,6 @@ replacements. Examples: Direct replacement: ```XX``` - set all network codes to
             target_deltat = None
             if downsample is not None:
                 target_deltat = 1.0 / float(downsample)
-
-            save_kwargs = {}
-            if out_format == 'mseed':
-                save_kwargs['record_length'] = chain.get(
-                    'out_mseed_record_length')
-                save_kwargs['steim'] = chain.get(
-                    'out_mseed_steim')
 
             traversal = chain.get('traversal')
             if traversal is not None:
@@ -782,24 +677,11 @@ replacements. Examples: Direct replacement: ```XX``` - set all network codes to
                     try:
                         g_filenames_all.update(storage_scheme.save(
                             traces,
-                            format=out_format,
+                            tmin=twmin,
+                            tmax=twmax,
                             overwrite=force,
-                            append=True,
-                            check_append=True,
-                            check_append_hook=check_append_hook
-                            if not append else None,
-                            additional=dict(
-                                wmin_year=tts(twmin, format='%Y'),
-                                wmin_month=tts(twmin, format='%m'),
-                                wmin_day=tts(twmin, format='%d'),
-                                wmin_jday=tts(twmin, format='%j'),
-                                wmin=tts(twmin, format='%Y-%m-%d_%H-%M-%S'),
-                                wmax_year=tts(twmax, format='%Y'),
-                                wmax_month=tts(twmax, format='%m'),
-                                wmax_day=tts(twmax, format='%d'),
-                                wmax_jday=tts(twmax, format='%j'),
-                                wmax=tts(twmax, format='%Y-%m-%d_%H-%M-%S')),
-                            **save_kwargs))
+                            check_append_hook=check_append_hook if not (append or merge) else None,  # noqa
+                            check_append_merge=merge))
 
                     except io.FileSaveError as e:
                         raise JackseisError(str(e))
@@ -865,6 +747,14 @@ data query options are ignored.
              'Checks are preformed to ensure that appended traces have no '
              'overlap with already existing traces.')
 
+    parser.add_argument(
+        '--merge',
+        dest='merge',
+        action='store_true',
+        default=False,
+        help='Merge with existing data in files. This only works for mseed '
+             'files.')
+
     Converter.add_arguments(parser)
 
 
@@ -907,4 +797,5 @@ def run(parser, args):
                 squirrel_factory=squirrel_factory,
                 force=args.force,
                 append=args.append,
+                merge=args.merge,
                 overrides=cli_overrides)

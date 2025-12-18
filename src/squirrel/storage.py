@@ -148,6 +148,12 @@ class StorageScheme(guts.Object):
     description = guts.String.T(
         default='',
         help='Description of the storage scheme.')
+    mseed_record_length = guts.IntChoice.T(
+        optional=True,
+        choices=list(io.mseed.VALID_RECORD_LENGTHS))
+    mseed_steim = guts.IntChoice.T(
+        optional=True,
+        choices=[1, 2])
 
     def post_init(self):
         self._base_path = None
@@ -164,14 +170,22 @@ class StorageScheme(guts.Object):
 
         return layout
 
-    def save(self, traces, **save_kwargs):
+    def save(
+            self, traces, tmin=None, tmax=None, overwrite=False,
+            check_append_hook=None, check_append_merge=False):
 
-        assert save_kwargs.get('append', True)
-        assert save_kwargs.get('check_append', True)
+        save_kwargs = dict(
+            append=self.format in io.g_formats_supporting_append,
+            check_append=True,
+            format=self.format,
+            overwrite=overwrite,
+            check_append_hook=check_append_hook,
+            check_append_merge=check_append_merge)
 
-        save_kwargs['append'] = True
-        save_kwargs['check_append'] = True
-        additional_external = save_kwargs.pop('additional', {})
+        if self.format == 'mseed':
+            save_kwargs.update(
+                record_length=self.mseed_record_length or 4096,
+                steim=self.mseed_steim or 2)
 
         by_deltat = defaultdict(list)
         for tr in traces:
@@ -182,8 +196,13 @@ class StorageScheme(guts.Object):
             layout = self.select_layout(deltat)
             traces_group.sort(key=lambda tr: tr.full_id)
             traces_group = trace.deoverlap(traces_group)
-            tmin = min(tr.tmin for tr in traces_group)
-            tmax = max(tr.tmax for tr in traces_group)
+
+            if tmin is None:
+                tmin = min(tr.tmin for tr in traces_group)
+
+            if tmax is None:
+                tmax = max(tr.tmax for tr in traces_group) + deltat
+
             for wmin, wmax in iter_windows(
                     tmin,
                     tmax,
@@ -199,7 +218,6 @@ class StorageScheme(guts.Object):
                         pass
 
                 additional = layout.get_additional(wmin, wmax)
-                additional.update(additional_external)
 
                 file_names.update(io.save(
                     traces_window,
@@ -270,4 +288,5 @@ __all__ = [
     'get_storage_scheme',
     'StorageScheme',
     'StorageSchemeLayout',
-    'StorageSchemeChoice']
+    'StorageSchemeChoice'
+]
