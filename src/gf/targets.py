@@ -200,6 +200,13 @@ class Target(meta.Receiver):
     def get_factor(self):
         return 1.0
 
+    def _call_post_process(self, engine, source, result):
+        from pyrocko.gf.seismosizer import SeismosizerError
+        try:
+            return self.post_process(engine, source, result.trace)
+        except SeismosizerError as e:
+            return e
+
     def post_process(self, engine, source, tr):
         return meta.Result(trace=tr)
 
@@ -276,6 +283,13 @@ class StaticTarget(meta.MultiLocation):
         target_lons = target_coords[:, 1]
         return distance_accurate50m_numpy(
             src_lats, src_lons, target_lats, target_lons)
+
+    def _call_post_process(self, engine, source, result):
+        from pyrocko.gf.seismosizer import SeismosizerError
+        try:
+            return self.post_process(engine, source, result.result)
+        except SeismosizerError as e:
+            return e
 
     def post_process(self, engine, source, statics):
         return meta.StaticResult(result=statics)

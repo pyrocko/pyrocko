@@ -89,10 +89,48 @@ class SeismosizerTrace(Object):
         d.update(kwargs)
         return cls(**d)
 
+    def copy(self):
+        return SeismosizerTrace(
+            codes=self.codes,
+            deltat=self.deltat,
+            tmin=self.tmin,
+            data=self.data.copy())
+
+    def add(self, other):
+        assert self.codes == other.codes
+        assert self.deltat == other.deltat
+        deltat = self.deltat
+        dtmin = other.tmin - self.tmin
+        otmin = int(round(dtmin / deltat))
+        assert abs(otmin * deltat - dtmin) < deltat * 1e-4
+
+        tmin_new = self.tmin
+        ntmin = 0
+        mtmin = 0
+        if otmin < 0:
+            tmin_new = self.tmin + otmin * deltat
+            ntmin = -otmin
+        else:
+            mtmin = otmin
+
+        n = max(ntmin+self.data.size, mtmin+other.data.size)
+
+        data_new = num.zeros(n, dtype=num.float32)
+        data_new[ntmin:ntmin+self.data.size] = self.data
+        data_new[ntmin+self.data.size:] = self.data[-1]
+        data_new[mtmin:mtmin+other.data.size] += other.data
+        data_new[mtmin+other.data.size:] += other.data[-1]
+        self.tmin = tmin_new
+        self.data = data_new
+
 
 class SeismosizerResult(Object):
     n_records_stacked = Int.T(optional=True, default=1)
     t_stack = Float.T(optional=True, default=0.)
+
+    def add(self, other):
+        self.n_records_stacked += other.n_records_stacked
+        self.t_stack += other.t_stack
 
 
 class Result(SeismosizerResult):
@@ -100,11 +138,31 @@ class Result(SeismosizerResult):
     n_shared_stacking = Int.T(optional=True, default=1)
     t_optimize = Float.T(optional=True, default=0.)
 
+    def add(self, other):
+        if other.trace is not None:
+            if self.trace is not None:
+                self.trace.add(other.trace)
+            else:
+                self.trace = other.trace.copy()
+
+        self.t_optimize += other.t_optimize
+        self.n_shared_stacking += other.n_shared_stacking
+        SeismosizerResult.add(self, other)
+
 
 class StaticResult(SeismosizerResult):
     result = Dict.T(
         String.T(),
         Array.T(shape=(None,), dtype=float, serialize_as='base64'))
+
+    def add(self, other):
+        keys = set()
+        keys.add(self.result.keys())
+        keys.add(other.result.keys())
+        for k in keys:
+            self.result[k] += other.result[k]
+
+        SeismosizerResult.add(self, other)
 
 
 class GNSSCampaignResult(StaticResult):
