@@ -1134,7 +1134,7 @@ class ResonatorSTF(STF):
         tmax_stf = tref + self.duration * 3
         tmin = math.floor(tmin_stf / deltat) * deltat
         tmax = math.ceil(tmax_stf / deltat) * deltat
-        times = util.arange2(tmin, tmax, deltat)
+        times = util.arange2(tmin, tmax, deltat, error='ceil')
         amplitudes = num.exp(-(times - tref) / self.duration) \
             * num.sin(2.0 * num.pi * self.frequency * (times - tref))
 
