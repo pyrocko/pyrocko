@@ -646,25 +646,47 @@ class GFTestCase(unittest.TestCase):
         engine = gf.LocalEngine(store_dirs=[store_dir])
         store = engine.get_store('pulse')
 
-        for duration in [0., 0.05, 0.1]:
-            trs = []
-            for mode in ['pre', 'post']:
-                source = gf.ExplosionSource(
+        sources = []
+
+        sources.extend([
+            gf.ExplosionSource(
+                name='d%g' % duration,
+                time=store.config.deltat * 0.5,
+                depth=200.,
+                moment=1.0,
+                stf=gf.BoxcarSTF(duration=duration))
+            for duration in [0., 0.05, 0.1]
+        ])
+
+        sources.extend([
+            gf.CombiExplosionSource(subsources=[
+                gf.ExplosionSource(
+                    name='d%g' % duration,
                     time=store.config.deltat * 0.5,
                     depth=200.,
                     moment=1.0,
-                    stf=gf.BoxcarSTF(duration=duration),
-                    stf_mode=mode)
+                    stf=gf.BoxcarSTF(duration=duration))
+                for duration in [0., 0.05, 0.1]
+            ])
+        ])
 
-                target = gf.Target(
-                    codes=('', 'STA', '', 'Z'),
-                    north_shift=500.,
-                    east_shift=0.,
-                    store_id='pulse')
+        target = gf.Target(
+            codes=('', 'STA', '', 'Z'),
+            north_shift=500.,
+            east_shift=0.,
+            store_id='pulse')
+
+        for source in sources:
+            trs = []
+            for mode in ['pre', 'post']:
+                source.stf_mode = mode
+                if isinstance(source, gf.CombiExplosionSource):
+                    for subsource in source.subsources:
+                        subsource.stf_mode = mode
 
                 xtrs = engine.process(source, target).pyrocko_traces()
                 for tr in xtrs:
-                    tr.set_codes(location='%3.1f_%s' % (duration, mode))
+                    tr.set_codes(location='%s_%s' % (source.name, mode))
                     trs.append(tr)
 
             tmin = max(tr.tmin for tr in trs)
@@ -672,8 +694,11 @@ class GFTestCase(unittest.TestCase):
             for tr in trs:
                 tr.chop(tmin, tmax)
 
+            # trace.snuffle(trs)
+
             amax = max(num.max(num.abs(tr.ydata)) for tr in trs)
-            perc = num.max(num.abs(trs[0].ydata - trs[1].ydata) / amax) * 100.
+            perc = num.max(
+                num.abs(trs[0].ydata - trs[1].ydata) / amax) * 100.
             if perc > 0.1:
                 logger.warning(
                     'test_stf_pre_post: max difference of %.1f %%' % perc)
@@ -1343,10 +1368,13 @@ class GFTestCase(unittest.TestCase):
         engine = gf.LocalEngine(use_config=True)
 
         sources = [
-            gf.ExplosionSource(
-                time=0.0,
-                depth=depth,
-                moment=moment)
+            gf.CombiExplosionSource(subsources=[
+                gf.ExplosionSource(
+                    time=0.0,
+                    depth=depth,
+                    moment=moment,
+                    stf=gf.BoxcarSTF(duration=20.)),
+            ])
 
             for moment in [2., 4., 8.] for depth in [3000., 6000., 12000.]
         ]
