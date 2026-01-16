@@ -39,6 +39,7 @@ from hashlib import sha1
 
 import numpy as num
 from scipy.interpolate import RegularGridInterpolator
+from scipy.signal import convolve
 
 from pyrocko.guts import (Object, Float, String, StringChoice, List,
                           Timestamp, Int, SObject, ArgumentError, Dict,
@@ -1806,6 +1807,9 @@ class Source(Location, Cloneable):
         raise NotImplementedError(
             '%s does not implement get_magnitude()'
             % self.__class__.__name__)
+
+    def decompose(self):
+        return [self]
 
 
 class SourceWithMagnitude(Source):
@@ -4977,109 +4981,111 @@ class RingfaultSource(SourceWithMagnitude):
                 amplitudes, n)[:, num.newaxis])
 
 
-class CombiSource(Source):
+class BaseCombiSource(Source):
+    '''
+    Base class for composite source models.
+    '''
+
+    subsources = List.T(Source.T())
+
+    def __init__(self, subsources=[], **kwargs):
+        if not subsources:
+            raise BadRequest(
+                'Need at least one sub-source to create a %s object.'
+                % self.__class__.__name__)
+
+        for subsource in subsources:
+            if subsource.discretized_source_class \
+                    is not self.discretized_source_class:
+
+                raise BadRequest(
+                    'CombiSource subsources must discretetize to %s.'
+                    % self.discretized_source_class)
+
+        lats = num.array(
+            [subsource.lat for subsource in subsources], dtype=float)
+        lons = num.array(
+            [subsource.lon for subsource in subsources], dtype=float)
+
+        lat, lon = lats[0], lons[0]
+        if not num.all(lats == lat) and num.all(lons == lon):
+            subsources = [s.clone() for s in subsources]
+            for subsource in subsources[1:]:
+                subsource.set_origin(lat, lon)
+
+        depth = float(num.mean([p.depth for p in subsources]))
+        time = float(num.mean([p.time for p in subsources]))
+        north_shift = float(num.mean([p.north_shift for p in subsources]))
+        east_shift = float(num.mean([p.east_shift for p in subsources]))
+        kwargs.update(
+            time=time,
+            lat=float(lat),
+            lon=float(lon),
+            north_shift=north_shift,
+            east_shift=east_shift,
+            depth=depth)
+
+        Source.__init__(self, subsources=subsources, **kwargs)
+
+
+class CombiSource(BaseCombiSource):
     '''
     Composite source model.
     '''
 
     discretized_source_class = meta.DiscretizedMTSource
 
-    subsources = List.T(Source.T())
-
-    def __init__(self, subsources=[], **kwargs):
-        if not subsources:
-            raise BadRequest(
-                'Need at least one sub-source to create a CombiSource object.')
-
-        lats = num.array(
-            [subsource.lat for subsource in subsources], dtype=float)
-        lons = num.array(
-            [subsource.lon for subsource in subsources], dtype=float)
-
-        lat, lon = lats[0], lons[0]
-        if not num.all(lats == lat) and num.all(lons == lon):
-            subsources = [s.clone() for s in subsources]
-            for subsource in subsources[1:]:
-                subsource.set_origin(lat, lon)
-
-        depth = float(num.mean([p.depth for p in subsources]))
-        time = float(num.mean([p.time for p in subsources]))
-        north_shift = float(num.mean([p.north_shift for p in subsources]))
-        east_shift = float(num.mean([p.east_shift for p in subsources]))
-        kwargs.update(
-            time=time,
-            lat=float(lat),
-            lon=float(lon),
-            north_shift=north_shift,
-            east_shift=east_shift,
-            depth=depth)
-
-        Source.__init__(self, subsources=subsources, **kwargs)
-
-    def get_factor(self):
-        return 1.0
-
     def discretize_basesource(self, store, target=None):
         dsources = []
-        for sf in self.subsources:
-            ds = sf.discretize_basesource(store, target)
-            ds.m6s *= sf.get_factor()
+        for subsource in self.subsources:
+            ds = subsource.discretize_basesource(store, target)
+            ds.m6s *= subsource.get_factor()
             dsources.append(ds)
 
         return meta.DiscretizedMTSource.combine(dsources)
 
+    def decompose(self):
+        return self.subsources
 
-class CombiSFSource(Source):
+
+class CombiSFSource(BaseCombiSource):
     '''
     Composite source model.
     '''
 
     discretized_source_class = meta.DiscretizedSFSource
 
-    subsources = List.T(Source.T())
-
-    def __init__(self, subsources=[], **kwargs):
-        if not subsources:
-            raise BadRequest(
-                'Need at least one sub-source to create a CombiSFSource '
-                'object.')
-
-        lats = num.array(
-            [subsource.lat for subsource in subsources], dtype=float)
-        lons = num.array(
-            [subsource.lon for subsource in subsources], dtype=float)
-
-        lat, lon = lats[0], lons[0]
-        if not num.all(lats == lat) and num.all(lons == lon):
-            subsources = [s.clone() for s in subsources]
-            for subsource in subsources[1:]:
-                subsource.set_origin(lat, lon)
-
-        depth = float(num.mean([p.depth for p in subsources]))
-        time = float(num.mean([p.time for p in subsources]))
-        north_shift = float(num.mean([p.north_shift for p in subsources]))
-        east_shift = float(num.mean([p.east_shift for p in subsources]))
-        kwargs.update(
-            time=time,
-            lat=float(lat),
-            lon=float(lon),
-            north_shift=north_shift,
-            east_shift=east_shift,
-            depth=depth)
-
-        Source.__init__(self, subsources=subsources, **kwargs)
-
-    def get_factor(self):
-        return 1.0
-
     def discretize_basesource(self, store, target=None):
         dsources = []
-        for sf in self.subsources:
-            ds = sf.discretize_basesource(store, target)
-            ds.forces *= sf.get_factor()
+        for subsource in self.subsources:
+            ds = subsource.discretize_basesource(store, target)
+            ds.forces *= subsource.get_factor()
             dsources.append(ds)
 
         return meta.DiscretizedSFSource.combine(dsources)
+
+    def decompose(self):
+        return self.subsources
+
+
+class CombiExplosionSource(BaseCombiSource):
+    '''
+    Composite source model.
+    '''
+
+    discretized_source_class = meta.DiscretizedExplosionSource
+
+    def discretize_basesource(self, store, target=None):
+        dsources = []
+        for subsource in self.subsources:
+            ds = subsource.discretize_basesource(store, target)
+            ds.m0s *= subsource.get_factor()
+            dsources.append(ds)
+
+        return meta.DiscretizedExplosionSource.combine(dsources)
+
+    def decompose(self):
+        return self.subsources
 
 
 class SFSource(Source):
@@ -5791,61 +5797,59 @@ def process_dynamic_timeseries(work, psources, ptargets, engine, nthreads=0):
 
     for isource, source in enumerate(psources):
 
+        engine_sources = source.decompose()
+
         components = set()
         for itarget, target in enumerate(targets):
             rule = engine.get_rule(source, target)
             components.update(rule.required_components(target))
 
-        for store_id in store_ids:
-            store_targets = [t for t in targets if t.store_id == store_id]
+        for engine_source in engine_sources:
+            for store_id in store_ids:
+                store_targets = [t for t in targets if t.store_id == store_id]
 
-            sample_rates = set([t.sample_rate for t in store_targets])
-            interpolations = set([t.interpolation for t in store_targets])
+                engine_groups = defaultdict(list)
+                for t in store_targets:
+                    engine_groups[t.sample_rate, t.interpolation].append(t)
 
-            base_seismograms = []
-            store_targets_out = []
+                base_seismograms = []
+                store_targets_out = []
+                for (sample_rate, interp), engine_targets \
+                        in engine_groups.items():
 
-            for samp_rate in sample_rates:
-                for interp in interpolations:
-                    engine_targets = [
-                        t for t in store_targets if t.sample_rate == samp_rate
-                        and t.interpolation == interp]
-
-                    if not engine_targets:
-                        continue
-
-                    store_targets_out += engine_targets
-
-                    base_seismograms += engine.base_seismograms(
-                        source,
+                    store_targets_out.extend(engine_targets)
+                    base_seismograms.extend(engine.base_seismograms(
+                        engine_source,
                         engine_targets,
                         components,
                         dsource_cache,
-                        nthreads)
+                        nthreads))
 
-            for iseis, seismogram in enumerate(base_seismograms):
-                for tr in seismogram.values():
-                    if tr.err != store.SeismosizerErrorEnum.SUCCESS:
-                        e = SeismosizerError(
-                            'Seismosizer failed with return code %i\n%s' % (
-                                tr.err, str(
-                                    OutOfBoundsContext(
-                                        source=source,
-                                        target=store_targets[iseis],
-                                        distance=source.distance_to(
-                                            store_targets[iseis]),
-                                        components=components))))
-                        raise e
+                for iseis, seismogram in enumerate(base_seismograms):
+                    for tr in seismogram.values():
+                        if tr.err != store.SeismosizerErrorEnum.SUCCESS:
+                            e = SeismosizerError(
+                                'Seismosizer failed with return code '
+                                '%i\n%s' % (
+                                    tr.err, str(
+                                        OutOfBoundsContext(
+                                            source=source,
+                                            target=store_targets[iseis],
+                                            distance=source.distance_to(
+                                                store_targets[iseis]),
+                                            components=components))))
+                            raise e
 
-            for seismogram, target in zip(base_seismograms, store_targets_out):
+                for seismogram, target in zip(
+                        base_seismograms, store_targets_out):
 
-                try:
-                    result = engine._post_process_dynamic(
-                        seismogram, source, target)
-                except SeismosizerError as e:
-                    result = e
+                    try:
+                        result = engine._post_process_dynamic(
+                            seismogram, engine_source, target)
+                    except SeismosizerError as e:
+                        result = e
 
-                yield (isource, target._id, result), tcounters
+                    yield (isource, target._id, result), tcounters
 
 
 def process_dynamic(work, psources, ptargets, engine, nthreads=0):
@@ -5857,47 +5861,51 @@ def process_dynamic(work, psources, ptargets, engine, nthreads=0):
         sources = [psources[isource] for isource in isources]
         targets = [ptargets[itarget] for itarget in itargets]
 
-        components = set()
-        for target in targets:
-            rule = engine.get_rule(sources[0], target)
-            components.update(rule.required_components(target))
-
         for isource, source in zip(isources, sources):
-            for itarget, target in zip(itargets, targets):
+            components = set()
+            for target in targets:
+                rule = engine.get_rule(source, target)
+                components.update(rule.required_components(target))
 
-                try:
-                    base_seismogram, tcounters = engine.base_seismogram(
-                        source, target, components, dsource_cache, nthreads)
-                except meta.OutOfBounds as e:
-                    e.context = OutOfBoundsContext(
-                        source=sources[0],
-                        target=targets[0],
-                        distance=sources[0].distance_to(targets[0]),
-                        components=components)
-                    raise
+            engine_sources = source.decompose()
+            for engine_source in engine_sources:
 
-                n_records_stacked = 0
-                t_optimize = 0.0
-                t_stack = 0.0
+                for itarget, target in zip(itargets, targets):
 
-                for _, tr in base_seismogram.items():
-                    n_records_stacked += tr.n_records_stacked
-                    t_optimize += tr.t_optimize
-                    t_stack += tr.t_stack
+                    try:
+                        base_seismogram, tcounters = engine.base_seismogram(
+                            engine_source, target, components, dsource_cache,
+                            nthreads)
+                    except meta.OutOfBounds as e:
+                        e.context = OutOfBoundsContext(
+                            source=source,
+                            target=target,
+                            distance=source.distance_to(target),
+                            components=components)
+                        raise
 
-                try:
-                    result = engine._post_process_dynamic(
-                        base_seismogram, source, target)
-                    result.n_records_stacked = n_records_stacked
-                    result.n_shared_stacking = len(sources) *\
-                        len(targets)
-                    result.t_optimize = t_optimize
-                    result.t_stack = t_stack
-                except SeismosizerError as e:
-                    result = e
+                    n_records_stacked = 0
+                    t_optimize = 0.0
+                    t_stack = 0.0
 
-                tcounters.append(xtime())
-                yield (isource, itarget, result), tcounters
+                    for _, tr in base_seismogram.items():
+                        n_records_stacked += tr.n_records_stacked
+                        t_optimize += tr.t_optimize
+                        t_stack += tr.t_stack
+
+                    try:
+                        result = engine._post_process_dynamic(
+                            base_seismogram, engine_source, target)
+                        result.n_records_stacked = n_records_stacked
+                        result.n_shared_stacking = len(sources) *\
+                            len(targets)
+                        result.t_optimize = t_optimize
+                        result.t_stack = t_stack
+                    except SeismosizerError as e:
+                        result = e
+
+                    tcounters.append(xtime())
+                    yield (isource, itarget, result), tcounters
 
 
 def process_static(work, psources, ptargets, engine, nthreads=0):
@@ -5986,6 +5994,7 @@ class LocalEngine(Engine):
         self._id_to_store_dir = {}
         self._open_stores = {}
         self._effective_default_store_id = None
+        self._rule_cache = {}
 
     def _check_store_dirs_type(self):
         for sdir in ['store_dirs', 'store_superdirs']:
@@ -6114,19 +6123,31 @@ class LocalEngine(Engine):
             self._open_stores.pop(store_id)
 
     def get_rule(self, source, target):
-        cprovided = self.get_store(target.store_id).get_provided_components()
+
+        store_id = target.store_id
+        if store_id is None:
+            store_id = self.get_store(target.store_id).config.id
+
+        quantity = target.quantity
+        if quantity is None:
+            quantity = target.effective_quantity()
+
+        k = (quantity, store_id)
+
+        if k in self._rule_cache:
+            return self._rule_cache[k]
 
         if isinstance(target, StaticTarget):
-            quantity = target.quantity
             available_rules = static_rules
         elif isinstance(target, Target):
-            quantity = target.effective_quantity()
             available_rules = channel_rules
 
+        cprovided = self.get_store(store_id).get_provided_components()
         try:
             for rule in available_rules[quantity]:
                 cneeded = rule.required_components(target)
                 if all(c in cprovided for c in cneeded):
+                    self._rule_cache[k] = rule
                     return rule
 
         except KeyError:
@@ -6284,25 +6305,35 @@ class LocalEngine(Engine):
             data = data * factor
 
         stf = source.effective_stf_post()
+        if stf is not g_unit_pulse:
+            times, amplitudes = stf.discretize_t(
+                deltat, 0.0)
 
-        times, amplitudes = stf.discretize_t(
-            deltat, 0.0)
+            toff = times[0]
 
-        # repeat end point to prevent boundary effects
-        padded_data = num.empty(data.size + amplitudes.size, dtype=float)
-        padded_data[:data.size] = data
-        padded_data[data.size:] = data[-1]
-        data = num.convolve(amplitudes, padded_data)
+            if amplitudes.size > 1:
+                # repeat end point to prevent boundary effects
+                padded_data = num.empty(
+                    data.size + amplitudes.size, dtype=float)
+                padded_data[:data.size] = data
+                padded_data[data.size:] = data[-1]
+                data = convolve(amplitudes, padded_data)
+                data = data[:-amplitudes.size]
+            else:
+                if amplitudes[0] != 1.0:
+                    data = data * amplitudes[0]
+        else:
+            toff = 0.0
 
-        tmin = itmin * deltat + times[0]
+        tmin = itmin * deltat + toff
 
         tr = meta.SeismosizerTrace(
             codes=target.codes,
-            data=data[:-amplitudes.size],
             deltat=deltat,
-            tmin=tmin)
+            tmin=tmin,
+            data=data)
 
-        return target.post_process(self, source, tr)
+        return meta.Result(trace=tr)
 
     def _post_process_statics(self, base_statics, source, starget):
         rule = self.get_rule(source, starget)
@@ -6313,7 +6344,7 @@ class LocalEngine(Engine):
             for v in data.values():
                 v *= factor
 
-        return starget.post_process(self, source, base_statics)
+        return meta.StaticResult(result=base_statics)
 
     def process(self, *args, **kwargs):
         '''
@@ -6399,13 +6430,15 @@ class LocalEngine(Engine):
                   if not isinstance(target, StaticTarget)])
                 for (i, k) in enumerate(skeys)]
 
-            for ii_results, tcounters_dyn in _process_dynamic(
+            for (isource, itarget, result), tcounters_dyn in _process_dynamic(
                     work_dynamic, request.sources, request.targets, self,
                     nthreads):
 
                 tcounters_dyn_list.append(num.diff(tcounters_dyn))
-                isource, itarget, result = ii_results
-                results_list[isource][itarget] = result
+                if results_list[isource][itarget] is None:
+                    results_list[isource][itarget] = result
+                else:
+                    results_list[isource][itarget].add(result)
 
                 if status_callback:
                     status_callback(isub, nsub)
@@ -6421,12 +6454,11 @@ class LocalEngine(Engine):
                   if isinstance(target, StaticTarget)])
                 for (i, k) in enumerate(skeys)]
 
-            for ii_results, tcounters_static in process_static(
+            for (isource, itarget, result), tcounters_static in process_static(
                     work_static, request.sources, request.targets, self,
                     nthreads=nthreads):
 
                 tcounters_static_list.append(num.diff(tcounters_static))
-                isource, itarget, result = ii_results
                 results_list[isource][itarget] = result
 
                 if status_callback:
@@ -6475,14 +6507,22 @@ class LocalEngine(Engine):
                 (rs0.ru_inblock + rc0.ru_inblock))
 
         n_records_stacked = 0.
-        for results in results_list:
-            for result in results:
-                if not isinstance(result, meta.Result):
+        for isource, source in enumerate(request.sources):
+            for itarget, target in enumerate(request.targets):
+                result = results_list[isource][itarget]
+
+                if not isinstance(result, (meta.Result, meta.StaticResult)):
                     continue
-                shr = float(result.n_shared_stacking)
-                n_records_stacked += result.n_records_stacked / shr
-                s.t_perc_optimize += result.t_optimize / shr
-                s.t_perc_stack += result.t_stack / shr
+
+                results_list[isource][itarget] = target._call_post_process(
+                    self, source, result)
+
+                if isinstance(result, meta.Result):
+                    shr = float(result.n_shared_stacking)
+                    n_records_stacked += result.n_records_stacked / shr
+                    s.t_perc_optimize += result.t_optimize / shr
+                    s.t_perc_stack += result.t_stack / shr
+
         s.n_records_stacked = int(n_records_stacked)
         if t_dyn != 0.:
             s.t_perc_optimize /= t_dyn * 100
@@ -6601,8 +6641,10 @@ source_classes = [
     PseudoDynamicRupture,
     DoubleDCSource,
     RingfaultSource,
+    BaseCombiSource,
     CombiSource,
     CombiSFSource,
+    CombiExplosionSource,
     SFSource,
     SimpleLandslideSource,
     PorePressurePointSource,
