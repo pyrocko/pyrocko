@@ -434,7 +434,8 @@ mantle
                     r = store_ext.store_sum(
                         cstore, irecords[sl], delays_t[sl],
                         weights[sl], pos, 1)
-                    res[t] = r[0]
+
+                    res[t] = r[0][0]
                 return res
 
             @benchmark.labeled('sum-static-np%d' % nthreads)
