@@ -1695,9 +1695,9 @@ def MakePileViewerMainClass(base):
             try:
                 stations = []
                 for st in fns:
-                    xml_station = stationxml.load_xml(filename=str(st))
-                    stations.append(xml_station.get_pyrocko_stations())
-                    self.station_xmls.append(xml_station)
+                    station_xml = stationxml.load_xml(filename=str(st))
+                    stations.append(station_xml.get_pyrocko_stations())
+                    self.station_xmls.append(station_xml)
                 for stat in stations:
                     self.add_stations(stat)
 
@@ -3602,12 +3602,15 @@ def MakePileViewerMainClass(base):
             tpad = self.get_adequate_tpad()
             tpad = min(tpad, tsee*3)
 
+            remove_resp = self.menuitem_remove_resp.isChecked()
+
             # state vector to decide if cached traces can be used
             vec = (
                 tmin, tmax, tpad, trace_selector, degap, demean, self.lowpass,
                 self.highpass, fft_filtering, lphp,
                 min_deltat_allow, self.rotate, self.shown_tracks_range,
-                ads, self.pile.get_update_count())
+                ads, remove_resp,
+                self.pile.get_update_count())
 
             if (self.cached_vec
                     and self.cached_vec[0] <= vec[0]
@@ -3773,23 +3776,25 @@ def MakePileViewerMainClass(base):
                                 b.set_ydata(bydata)
 
                 if self.menuitem_remove_resp.isChecked():
-                    new_tr = []
+                    restituted_traces = []
                     for tr in processed_traces:
-                        nslc = (
-                            tr.network,
-                            tr.station,
-                            tr.location,
-                            tr.channel)
                         resp = None
-                        for station in self.station_xmls:
+                        for station_xml in self.station_xmls:
                             try:
-                                resp = station.get_pyrocko_response(
-                                    nslc,
-                                    time=tmin,
-                                    timespan=tmax-tmin)
-                            except Exception as e:
-                                logger.warning('Response get error "%s"' % e)
-                        if resp:
+                                resp = station_xml.get_pyrocko_response(
+                                    tr.nslc_id,
+                                    timespan=(tmin, tmax))
+                                break
+
+                            except Exception:
+                                pass
+
+                        if not resp:
+                            logger.warning(
+                                'No instrument response information found '
+                                'for channel %s.%s.%s.%s.' % tr.nslc_id)
+
+                        else:
                             nyquist_safe = (1/(2*tr.deltat))*0.9
                             ABS_MIN = 0.01/(len(tr.ydata)*tr.deltat)
                             TAPER_WIDTH = 0.5
@@ -3806,18 +3811,16 @@ def MakePileViewerMainClass(base):
                             else:
                                 f3 = f4 = nyquist_safe
 
-                            mytrace = tr.transfer(
+                            restituted_tr = tr.transfer(
                                 freqlimits=(f1, f2, f3, f4),
                                 transfer_function=resp,
                                 cut_off_fading=True,
                                 demean=True,
                                 invert=True
                             )
-                            new_tr.append(mytrace)
-                        else:
-                            new_tr.append(tr)
+                            restituted_traces.append(restituted_tr)
 
-                        processed_traces = new_tr
+                    processed_traces = restituted_traces
 
                 processed_traces = self.post_process_hooks(processed_traces)
 

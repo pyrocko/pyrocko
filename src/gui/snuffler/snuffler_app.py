@@ -639,9 +639,9 @@ snufflings repository</a><br>you also have to pull an update from there.
 class SnufflerWindow(qw.QMainWindow):
 
     def __init__(
-            self, pile, stations=None, events=None, markers=None, ntracks=12,
-            marker_editor_sortable=True, follow=None, controls=True,
-            opengl=None, instant_close=False):
+            self, pile, stations=None, station_xmls=[], events=None,
+            markers=None, ntracks=12, marker_editor_sortable=True, follow=None,
+            controls=True, opengl=None, instant_close=False):
 
         qw.QMainWindow.__init__(self)
 
@@ -656,6 +656,8 @@ class SnufflerWindow(qw.QMainWindow):
             pile, ntracks_shown_max=ntracks, use_opengl=opengl,
             marker_editor_sortable=marker_editor_sortable,
             panel_parent=self)
+
+        self.pile_viewer.viewer.station_xmls.extend(station_xmls)
 
         self.marker_editor = self.pile_viewer.marker_editor()
         self.add_panel(
