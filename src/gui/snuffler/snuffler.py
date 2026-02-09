@@ -320,10 +320,11 @@ def snuffler_from_commandline(args=None):
     for stations_fn in extend_paths(options.station_fns):
         stations.extend(model.station.load_stations(stations_fn))
 
+    station_xmls = []
     for stationxml_fn in extend_paths(options.stationxml_fns):
-        stations.extend(
-            stationxml.load_xml(
-                filename=stationxml_fn).get_pyrocko_stations())
+        station_xml = stationxml.load_xml(filename=stationxml_fn)
+        stations.extend(station_xml.get_pyrocko_stations())
+        station_xmls.append(station_xml)
 
     events = []
     for event_fn in extend_paths(options.event_fns):
@@ -339,6 +340,7 @@ def snuffler_from_commandline(args=None):
         return pyrocko.snuffle(
             this_pile,
             stations=stations,
+            station_xmls=station_xmls,
             events=events,
             markers=markers,
             ntracks=options.ntracks,
