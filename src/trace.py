@@ -2457,7 +2457,8 @@ class TraceStringFiller:
         return util.time_to_str(self.tr.tmax, format='%d')
 
     def get_julianday(self):
-        return str(util.julian_day_of_year(self.tr.tmin))
+        tr = self.tr
+        return str(util.julian_day_of_year(tr.tmin + (tr.tmax - tr.tmin) / 2))
 
     def get_tmin_jday(self):
         return util.time_to_str(self.tr.tmin, format='%j')
