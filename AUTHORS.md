@@ -7,6 +7,7 @@ It is not a complete list, in the sense that many others have influenced the dev
 * Anne Mutzek
 * Carina Juretzek
 * Dmitry Sidorov-Biryukov
+* Eugenia Locchi
 * Francesco Grigoli
 * Gesa Petersen
 * Hannes Bathke
