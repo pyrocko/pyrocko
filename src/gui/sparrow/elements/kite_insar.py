@@ -71,7 +71,7 @@ class KiteMeshPipe(TrimeshPipe):
         assert data_center.shape == (nlat-1, nlon-1)
 
         ele = num.zeros((nlat, nlon))
-        ele[:-1, :-1] = data_center #* 100000.
+        ele[:-1, :-1] = data_center  # * 100000.
         vertices, faces = geometry.topo_to_mesh(
             lat_edge, lon_edge, ele, cake.earthradius)
 
@@ -127,7 +127,10 @@ class KiteElement(Element):
 
     def bind_state(self, state):
         Element.bind_state(self, state)
-        self.talkie_connect(state, ['visible', 'scenes', 'opacity'], self.update)
+        self.talkie_connect(
+            state,
+            ['visible', 'scenes', 'opacity'],
+            self.update)
 
         self.cpt_handler.bind_state(state.cpt, self.update)
 
@@ -261,9 +264,9 @@ class KiteElement(Element):
                     self.cpt_handler._values = values
 
                     mesh.set_shading('phong')
-                    
+
                     self._meshes[k] = mesh
-                    
+
                 mesh = self._meshes[k]
                 mesh.set_opacity(state.opacity)
                 self.update_cpt()

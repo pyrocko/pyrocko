@@ -22,7 +22,8 @@ from pyrocko.gui.vtk_util import cpt_to_vtk_lookuptable, ColorbarPipe
 
 from .. import common
 from ..state import \
-    state_bind_combobox, state_bind, state_bind_checkbox, state_bind_slider, state_bind_lineedit
+    state_bind_combobox, state_bind, state_bind_checkbox, state_bind_slider, \
+    state_bind_lineedit
 
 
 mpl_cmap_blacklist = [
