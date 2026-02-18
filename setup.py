@@ -6,7 +6,10 @@ import time
 import shutil
 import tempfile
 
-from pkg_resources import parse_version as pv
+try:
+    from packaging.version import Version as pv
+except ImportError:
+    from pkg_resources import parse_version as pv
 from setuptools import setup, Extension, __version__ as setuptools_version
 from setuptools.command.build_py import build_py
 from setuptools.command.build_ext import build_ext
