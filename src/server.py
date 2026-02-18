@@ -232,7 +232,7 @@ def run(
 
         logger.debug('Serving static files from: %s', page_path)
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
 
     if threading.current_thread() is threading.main_thread():
         # adding signal handlers only works on main thread
