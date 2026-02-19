@@ -91,10 +91,10 @@ steps:
 ---
 
 ### Testing Pipelines #########################################################
-
+#
 kind: pipeline
 type: docker
-name: test-base
+name: test-base-debian-12
 
 trigger:
   branch:
@@ -111,15 +111,7 @@ trigger:
 
 steps:
 
-- name: test-base-debian-13
-  image: pyrocko-fat-nest-debian-13
-  pull: never
-  commands:
-  - pip3 install --no-deps .
-  - python3 -m coverage run --parallel-mode -m pytest -v test/base
-  - for x in .coverage.* ; do mv $x $${x#.} ; done
-
-- name: test-base-debian-12
+- name: test-base
   image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
@@ -127,7 +119,7 @@ steps:
   - python3 -m pytest -v test/base
 
 - name: test-base-hptime
-  image: pyrocko-fat-nest-debian-13
+  image: pyrocko-fat-nest-debian-12
   pull: never
   commands:
   - pip3 install --no-deps .
@@ -138,8 +130,49 @@ steps:
     branch:
     - hptime
     - candidate
-  depends_on:
-  - test-base-debian-13
+
+---
+
+kind: pipeline
+type: docker
+name: test-base-debian-13
+
+trigger:
+  branch:
+    exclude:  # special branches
+    - packaging
+    - pip
+    - conda
+    - docs
+    - deploy-pip
+    - deploy-conda
+    - deploy-docs
+    - release
+    - app
+
+steps:
+
+- name: test-base
+  image: pyrocko-fat-nest-debian-13
+  pull: never
+  commands:
+  - pip3 install --no-deps .
+  - python3 -m coverage run --parallel-mode -m pytest -v test/base
+  - for x in .coverage.* ; do mv $x $${x#.} ; done
+
+- name: test-base-hptime
+  image: pyrocko-fat-nest-debian-13
+  pull: never
+  commands:
+  - pip3 install --no-deps .
+  - python3 -m coverage run --parallel-mode -m pytest -v test/base
+  - for x in .coverage.* ; do mv $x $${x#.} ; done
+  environment:
+    PYROCKO_USE_HIGH_PRECISION_TIME: 1
+  when:
+    branch:
+    - hptime
+    - candidate
 
 - name: stage
   image: pyrocko-util
@@ -153,15 +186,12 @@ steps:
       from_secret: rsync-user
     RSYNC_KEY:
       from_secret: rsync-key
-  depends_on:
-  - test-base-debian-12
-  - test-base-hptime
 
 ---
 
 kind: pipeline
 type: docker
-name: test-gf
+name: test-gf-debian-12
 
 trigger:
   branch:
@@ -177,20 +207,54 @@ trigger:
     - app
 
 steps:
-- name: test-gf-debian-13
+
+- name: test-gf
+  image: pyrocko-fat-nest-debian-12
+  pull: never
+  commands:
+  - pip3 install --no-deps .
+  - python3 -m pytest -v test/gf
+
+- name: test-gf-hptime
+  image: pyrocko-fat-nest-debian-12
+  pull: never
+  commands:
+  - pip3 install --no-deps .
+  - python3 -m pytest -v test/gf
+  environment:
+    PYROCKO_USE_HIGH_PRECISION_TIME: 1
+  when:
+    branch:
+    - hptime
+    - candidate
+
+---
+
+kind: pipeline
+type: docker
+name: test-gf-debian-13
+
+trigger:
+  branch:
+    exclude:  # special branches
+    - packaging
+    - pip
+    - conda
+    - docs
+    - deploy-pip
+    - deploy-conda
+    - deploy-docs
+    - release
+    - app
+
+steps:
+- name: test-gf
   image: pyrocko-fat-nest-debian-13
   pull: never
   commands:
   - pip3 install --no-deps .
   - python3 -m coverage run --parallel-mode -m pytest -v test/gf
   - for x in .coverage.* ; do mv $x $${x#.} ; done
-
-- name: test-gf-debian-12
-  image: pyrocko-fat-nest-debian-12
-  pull: never
-  commands:
-  - pip3 install --no-deps .
-  - python3 -m pytest -v test/gf
 
 - name: test-gf-hptime
   image: pyrocko-fat-nest-debian-13
@@ -205,8 +269,6 @@ steps:
     branch:
     - hptime
     - candidate
-  depends_on:
-  - test-gf-debian-13
 
 - name: stage
   image: pyrocko-util
@@ -220,15 +282,12 @@ steps:
       from_secret: rsync-user
     RSYNC_KEY:
       from_secret: rsync-key
-  depends_on:
-  - test-gf-debian-12
-  - test-gf-hptime
 
 ---
 
 kind: pipeline
 type: docker
-name: test-examples
+name: test-examples-debian-12
 
 trigger:
   branch:
@@ -244,7 +303,52 @@ trigger:
     - app
 
 steps:
-- name: test-examples-debian-13
+
+- name: test-examples
+  image: pyrocko-fat-nest-debian-12
+  pull: never
+  commands:
+  - mkdir -p /pyrocko-test-data/example_run_dir
+  - ln -sf /pyrocko-test-data/gf_stores/* /pyrocko-test-data/example_run_dir
+  - pip3 install --no-deps .
+  - python3 -m pytest -v test/examples
+
+- name: test-examples-hptime
+  image: pyrocko-fat-nest-debian-12
+  pull: never
+  commands:
+  - mkdir -p /pyrocko-test-data/example_run_dir
+  - ln -sf /pyrocko-test-data/gf_stores/* /pyrocko-test-data/example_run_dir
+  - pip3 install --no-deps .
+  - python3 -m pytest -v test/examples
+  environment:
+    PYROCKO_USE_HIGH_PRECISION_TIME: 1
+  when:
+    branch:
+    - hptime
+    - candidate
+
+---
+
+kind: pipeline
+type: docker
+name: test-examples-debian-13
+
+trigger:
+  branch:
+    exclude:  # special branches
+    - packaging
+    - pip
+    - conda
+    - docs
+    - deploy-pip
+    - deploy-conda
+    - deploy-docs
+    - release
+    - app
+
+steps:
+- name: test-examples
   image: pyrocko-fat-nest-debian-13
   pull: never
   commands:
@@ -253,15 +357,6 @@ steps:
   - pip3 install --no-deps .
   - python3 -m coverage run --parallel-mode -m pytest -v test/examples
   - for x in .coverage.* ; do mv $x $${x#.} ; done
-
-- name: test-examples-debian-12
-  image: pyrocko-fat-nest-debian-12
-  pull: never
-  commands:
-  - mkdir -p /pyrocko-test-data/example_run_dir
-  - ln -sf /pyrocko-test-data/gf_stores/* /pyrocko-test-data/example_run_dir
-  - pip3 install --no-deps .
-  - python3 -m pytest -v test/examples
 
 - name: test-examples-hptime
   image: pyrocko-fat-nest-debian-13
@@ -278,8 +373,6 @@ steps:
     branch:
     - hptime
     - candidate
-  depends_on:
-  - test-examples-debian-13
 
 - name: stage
   image: pyrocko-util
@@ -293,15 +386,12 @@ steps:
       from_secret: rsync-user
     RSYNC_KEY:
       from_secret: rsync-key
-  depends_on:
-  - test-examples-debian-12
-  - test-examples-hptime
 
 ---
 
 kind: pipeline
 type: docker
-name: test-gui
+name: test-gui-debian-12
 
 trigger:
   branch:
@@ -317,20 +407,53 @@ trigger:
     - app
 
 steps:
-- name: test-gui-debian-13
+- name: test-gui
+  image: pyrocko-fat-nest-debian-12
+  pull: never
+  commands:
+  - pip3 install --no-deps .
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
+
+- name: test-gui-hptime
+  image: pyrocko-fat-nest-debian-12
+  pull: never
+  commands:
+  - pip3 install --no-deps .
+  - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
+  environment:
+    PYROCKO_USE_HIGH_PRECISION_TIME: 1
+  when:
+    branch:
+    - hptime
+    - candidate
+
+---
+
+kind: pipeline
+type: docker
+name: test-gui-debian-13
+
+trigger:
+  branch:
+    exclude:  # special branches
+    - packaging
+    - pip
+    - conda
+    - docs
+    - deploy-pip
+    - deploy-conda
+    - deploy-docs
+    - release
+    - app
+
+steps:
+- name: test-gui
   image: pyrocko-fat-nest-debian-13
   pull: never
   commands:
   - pip3 install --no-deps .
   - xvfb-run -s '-screen 0 640x480x24' python3 -m coverage run --parallel-mode -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
   - for x in .coverage.* ; do mv $x $${x#.} ; done
-
-- name: test-gui-debian-12
-  image: pyrocko-fat-nest-debian-12
-  pull: never
-  commands:
-  - pip3 install --no-deps .
-  - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
 
 - name: test-gui-hptime
   image: pyrocko-fat-nest-debian-13
@@ -345,8 +468,6 @@ steps:
     branch:
     - hptime
     - candidate
-  depends_on:
-  - test-gui-debian-13
 
 - name: stage
   image: pyrocko-util
@@ -360,9 +481,6 @@ steps:
       from_secret: rsync-user
     RSYNC_KEY:
       from_secret: rsync-key
-  depends_on:
-  - test-gui-debian-12
-  - test-gui-hptime
 
 ---
 
@@ -371,10 +489,10 @@ type: docker
 name: test-coverage
 
 depends_on:
-- test-base
-- test-gf
-- test-examples
-- test-gui
+- test-base-debian-13
+- test-gf-debian-13
+- test-examples-debian-13
+- test-gui-debian-13
 
 trigger:
   branch:
