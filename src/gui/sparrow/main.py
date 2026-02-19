@@ -868,7 +868,7 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
             screens = common.get_app().screens()
             if len(screens) > 1:
                 for screen in screens:
-                    if screen is not self.screen():
+                    if screen is not self.windowHandle().screen():
                         self.detached_window.windowHandle().setScreen(screen)
                         # .setScreen() does not work reliably,
                         # therefore trying also with .move()...
