@@ -4164,7 +4164,7 @@ def MakePileViewerMainClass(base):
                     if command in quick_filter_commands:
                         if len(toks) >= 2:
                             patterns = [
-                                quick_filter_commands[toks[0]] % pat
+                                quick_filter_commands[toks[0].lower()] % pat
                                 for pat in toks[1:]]
                             self.set_quick_filter_patterns(patterns, line)
                         else:
