@@ -52,8 +52,8 @@ class FDSNStationSelection(StationSelection):
             site=self.site,
             format='text',
             level='channel',
-            startbefore=self.tmin,
-            endafter=self.tmax
+            **({'startbefore': self.tmin} if self.tmin is not None else {}),
+            **({'endafter': self.tmax} if self.tmax is not None else {}),
         ).get_pyrocko_stations()
 
 
