@@ -6,5 +6,5 @@ pyyaml
 matplotlib
 requests
 jinja2
-pyqt
+pyqt<6
 vtk

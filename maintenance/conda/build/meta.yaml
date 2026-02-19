@@ -23,7 +23,7 @@ requirements:
     - numpy >=1.25,<3
     - scipy
     - matplotlib
-    - pyqt
+    - pyqt <6
     - pyyaml
     - requests
     - jinja2
