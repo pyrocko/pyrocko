@@ -879,8 +879,15 @@ def check_params(
         encountered.
     '''
 
-    avail = supported_params_wadl(
-        service, site, url, majorversion, timeout, method)
+    from pyrocko.client.wadl import CannotCheck
+
+    try:
+        avail = supported_params_wadl(
+            service, site, url, majorversion, timeout, method)
+
+    except CannotCheck as e:
+        logger.warning('%s: %s' % (site, str(e)))
+        return
 
     unavail = sorted(set(kwargs.keys()) - avail)
     if unavail:

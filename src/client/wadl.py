@@ -98,6 +98,10 @@ class DerefError(Exception):
     pass
 
 
+class CannotCheck(Exception):
+    pass
+
+
 class Element(Object):
 
     def __init__(self, *args, **kwargs):
@@ -337,6 +341,11 @@ class Application(Element):
         for res_path, method_name, request in self.iter_requests():
             if res_path == path and method_name == method:
                 return [param.name for param in request.param_list]
+
+        raise CannotCheck(
+            'Cannot check params. Service description (WADL) does not '
+            'provide information for (path, method): (%s, %s)'
+            % (path, method))
 
     def describe(self, indent=''):
         lines = []
