@@ -45,9 +45,6 @@ MIN_LABEL_SIZE_PT = 6
 
 qc.QString = str
 
-qfiledialog_options = qw.QFileDialog.DontUseNativeDialog | \
-    qw.QFileDialog.DontUseSheet
-
 is_macos = platform.uname()[0] == 'Darwin'
 
 logger = logging.getLogger('pyrocko.gui.snuffler.pile_viewer')
@@ -1648,8 +1645,7 @@ def MakePileViewerMainClass(base):
         def open_waveforms(self):
             caption = 'Select one or more files to open'
 
-            fns, _ = qw.QFileDialog.getOpenFileNames(
-                self, caption, options=qfiledialog_options)
+            fns, _ = qw.QFileDialog.getOpenFileNames(self, caption)
 
             if fns:
                 self.load(list(str(fn) for fn in fns))
@@ -1657,8 +1653,7 @@ def MakePileViewerMainClass(base):
         def open_waveform_directory(self):
             caption = 'Select directory to scan for waveform files'
 
-            dn = qw.QFileDialog.getExistingDirectory(
-                self, caption, options=qfiledialog_options)
+            dn = qw.QFileDialog.getExistingDirectory(self, caption)
 
             if dn:
                 self.load([str(dn)])
@@ -1667,8 +1662,7 @@ def MakePileViewerMainClass(base):
             caption = 'Select one or more Pyrocko station files to open'
 
             if not fns:
-                fns, _ = qw.QFileDialog.getOpenFileNames(
-                    self, caption, options=qfiledialog_options)
+                fns, _ = qw.QFileDialog.getOpenFileNames(self, caption)
 
             try:
                 stations = [pyrocko.model.load_stations(str(x)) for x in fns]
@@ -1684,7 +1678,7 @@ def MakePileViewerMainClass(base):
             caption = 'Select one or more StationXML files'
             if not fns:
                 fns, _ = qw.QFileDialog.getOpenFileNames(
-                    self, caption, options=qfiledialog_options,
+                    self, caption,
                     filter='StationXML (*.xml *.XML *.stationxml *.stationXML)'
                            ';;All files (*)')
 
@@ -1858,8 +1852,7 @@ def MakePileViewerMainClass(base):
         def write_markers(self, fn=None):
             caption = 'Choose a file name to write markers'
             if not fn:
-                fn, _ = qw.QFileDialog.getSaveFileName(
-                    self, caption, options=qfiledialog_options)
+                fn, _ = qw.QFileDialog.getSaveFileName(self, caption)
             if fn:
                 try:
                     Marker.save_markers(
@@ -1872,8 +1865,7 @@ def MakePileViewerMainClass(base):
         def write_selected_markers(self, fn=None):
             caption = 'Choose a file name to write selected markers'
             if not fn:
-                fn, _ = qw.QFileDialog.getSaveFileName(
-                    self, caption, options=qfiledialog_options)
+                fn, _ = qw.QFileDialog.getSaveFileName(self, caption)
             if fn:
                 try:
                     Marker.save_markers(
@@ -1892,8 +1884,7 @@ def MakePileViewerMainClass(base):
             '''
             caption = 'Selet one or more files to open'
             if not fn:
-                fn, _ = qw.QFileDialog.getOpenFileName(
-                    self, caption, options=qfiledialog_options)
+                fn, _ = qw.QFileDialog.getOpenFileName(self, caption)
             if fn:
                 try:
                     self.add_events(pyrocko.model.load_events(fn))
@@ -1908,8 +1899,7 @@ def MakePileViewerMainClass(base):
             '''
             caption = 'Selet one or more marker files to open'
             if not fn:
-                fn, _ = qw.QFileDialog.getOpenFileName(
-                    self, caption, options=qfiledialog_options)
+                fn, _ = qw.QFileDialog.getOpenFileName(self, caption)
             if fn:
                 try:
                     self.add_markers(Marker.load_markers(fn))
@@ -2838,8 +2828,7 @@ def MakePileViewerMainClass(base):
                     self,
                     'Save as SVG|PNG',
                     os.path.expanduser(os.path.join('~', 'untitled.svg')),
-                    'SVG|PNG (*.svg *.png)',
-                    options=qfiledialog_options)
+                    'SVG|PNG (*.svg *.png)')
 
                 if fn == '':
                     return

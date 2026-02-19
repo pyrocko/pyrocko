@@ -920,8 +920,7 @@ class SparrowViewer(qw.QMainWindow, TalkieConnectionOwner):
 
         caption = 'Export Image'
         fn_out, _ = qw.QFileDialog.getSaveFileName(
-            self, caption, 'image.png',
-            options=common.qfiledialog_options)
+            self, caption, 'image.png')
 
         if fn_out:
             self.save_image(fn_out)

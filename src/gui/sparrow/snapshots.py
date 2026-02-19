@@ -488,8 +488,7 @@ class SnapshotsPanel(qw.QFrame):
 
         caption = 'Export Movie'
         fn_out, _ = qw.QFileDialog.getSaveFileName(
-            self, caption, 'movie.mp4',
-            options=common.qfiledialog_options)
+            self, caption, 'movie.mp4')
 
         if fn_out:
             self.animate_snapshots(output_path=fn_out)
@@ -497,7 +496,7 @@ class SnapshotsPanel(qw.QFrame):
     def export_snapshots(self):
         caption = 'Export Snapshots'
         fn, _ = qw.QFileDialog.getSaveFileName(
-            self, caption, options=common.qfiledialog_options)
+            self, caption)
 
         selected_indexes = self.list_view.selectedIndexes()
         items = self.model.get_series(selected_indexes)
@@ -515,7 +514,7 @@ class SnapshotsPanel(qw.QFrame):
     def import_snapshots(self):
         caption = 'Import Snapshots'
         path, _ = qw.QFileDialog.getOpenFileName(
-            self, caption, options=common.qfiledialog_options)
+            self, caption)
 
         if path:
             self.load_snapshots(path)

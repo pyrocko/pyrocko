@@ -13,7 +13,6 @@ from pyrocko.client import fdsn
 from pyrocko.gui.qt_compat import qw, qc
 
 from pyrocko.gui.vtk_util import ScatterPipe
-from .. import common
 
 from .base import Element, ElementState
 
@@ -168,7 +167,7 @@ class StationsElement(Element):
         caption = 'Select one or more files to open'
 
         fns, _ = qw.QFileDialog.getOpenFileNames(
-            self._parent, caption, options=common.qfiledialog_options)
+            self._parent, caption)
 
         self._state.station_selection = FileStationSelection(
             paths=[str(fn) for fn in fns])

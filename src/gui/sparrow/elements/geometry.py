@@ -140,7 +140,7 @@ class GeometryElement(base.Element):
     def open_file_load_dialog(self):
         caption = 'Select one file containing a geometry to open'
         fns, _ = qw.QFileDialog.getOpenFileNames(
-            self._parent, caption, options=common.qfiledialog_options)
+            self._parent, caption)
 
         if fns:
             self.load_file(str(fns[0]))

@@ -138,7 +138,7 @@ class CustomTopoElement(Element):
         caption = 'Select a file to open'
 
         fn, _ = qw.QFileDialog.getOpenFileName(
-            self._parent, caption, options=common.qfiledialog_options)
+            self._parent, caption)
 
         if fn:
             self._state.path = str(fn)

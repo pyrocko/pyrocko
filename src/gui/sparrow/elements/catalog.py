@@ -20,8 +20,6 @@ from pyrocko.plot import beachball
 
 # from pyrocko.gui.vtk_util import TrimeshPipe
 
-from .. import common
-
 from .table import TableElement, TableState
 
 logger = logging.getLogger('pyrocko.gui.sparrow.elements.catalog')
@@ -419,7 +417,7 @@ class CatalogElement(TableElement):
         caption = 'Select one or more files to open'
 
         fns, _ = qw.QFileDialog.getOpenFileNames(
-            self._parent, caption, options=common.qfiledialog_options)
+            self._parent, caption)
 
         if fns:
             self._state.selection = FileCatalogSelection(

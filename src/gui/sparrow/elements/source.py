@@ -218,7 +218,7 @@ class SourceElement(base.Element):
     def open_file_load_dialog(self):
         caption = 'Select one file to open'
         fns, _ = qw.QFileDialog.getOpenFileNames(
-            self._parent, caption, options=common.qfiledialog_options)
+            self._parent, caption)
 
         if fns:
             try:
@@ -253,7 +253,7 @@ class SourceElement(base.Element):
         caption = 'Choose a file name to write source'
         if not fn:
             fn, _ = qw.QFileDialog.getSaveFileName(
-                self._parent, caption, options=common.qfiledialog_options)
+                self._parent, caption)
         if fn:
             self.save_file(str(fn))
 

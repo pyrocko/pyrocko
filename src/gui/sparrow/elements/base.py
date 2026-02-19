@@ -199,7 +199,7 @@ class CPTHandler(Element):
         caption = 'Select one *.cpt file to open'
 
         fns, _ = qw.QFileDialog.getOpenFileNames(
-            self._parent, caption, options=common.qfiledialog_options)
+            self._parent, caption)
 
         if fns:
             self.load_cpt_file(fns[0])

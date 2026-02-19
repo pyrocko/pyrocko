@@ -96,10 +96,6 @@ def cover_region(lat, lon, delta, step=None, avoid_poles=False):
     return lat_min, lat_max, lon_min, lon_max, lon_closed
 
 
-qfiledialog_options = qw.QFileDialog.DontUseNativeDialog | \
-    qw.QFileDialog.DontUseSheet
-
-
 def _paint_cpt_rect(painter, cpt, rect):
     rect.adjust(+5, +2, -5, -2)
 

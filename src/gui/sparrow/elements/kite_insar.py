@@ -17,8 +17,6 @@ from pyrocko.guts import Bool, String, List, Float
 from pyrocko.gui.qt_compat import qw, qc
 from pyrocko.gui.vtk_util import TrimeshPipe, faces_to_cells
 
-from .. import common
-
 from .base import Element, ElementState, CPTHandler, CPTState
 
 logger = logging.getLogger('kite_scene')
@@ -199,8 +197,7 @@ class KiteElement(Element):
 
         fns, _ = qw.QFileDialog.getOpenFileNames(
             self._parent, caption,
-            filter='YAML file (*.yml *.yaml)',
-            options=common.qfiledialog_options)
+            filter='YAML file (*.yml *.yaml)')
 
         for fname in fns:
             scene = self._load_scene_from_fn(fname)
