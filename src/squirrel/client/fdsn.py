@@ -224,7 +224,7 @@ class Aborted(SquirrelError):
     pass
 
 
-class FDSNSource(Source, has_paths.HasPaths):
+class FDSNSource(Source):
 
     '''
     Squirrel data-source to transparently get data from FDSN web services.
@@ -383,7 +383,9 @@ class FDSNSource(Source, has_paths.HasPaths):
 
     def setup(self, squirrel, check=True, upgrade=False):
         self._cache_path = op.join(
-            self.cache_path or squirrel._cache_path, 'fdsn')
+            self.expand_path(self.cache_path)
+            if self.cache_path
+            else squirrel._cache_path, 'fdsn')
 
         util.ensuredir(self._cache_path)
         self._load_constraint()

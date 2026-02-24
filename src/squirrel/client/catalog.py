@@ -21,6 +21,7 @@ from pyrocko.guts import String, Dict, Duration, dump_all
 from .base import Source
 from ..model import ehash, g_tmin, g_tmax
 from ..lock import LockDir
+from pyrocko import has_paths
 
 guts_prefix = 'squirrel'
 
@@ -98,7 +99,7 @@ class CatalogSource(Source):
              'Preliminary information is refreshed on each query relevant '
              'to it.')
 
-    cache_path = String.T(
+    cache_path = has_paths.Path.T(
         optional=True,
         help='Directory path where the partial local copy of the catalog is '
              "kept. By default the Squirrel environment's cache directory is "
@@ -125,7 +126,9 @@ class CatalogSource(Source):
         self._catalog = get_catalog(self.catalog)
 
         self._cache_path = op.join(
-            self.cache_path or squirrel._cache_path,
+            self.expand_path(self.cache_path)
+            if self.cache_path
+            else squirrel._cache_path,
             'catalog',
             self.get_hash())
 

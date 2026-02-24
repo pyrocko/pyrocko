@@ -836,7 +836,9 @@ class Squirrel(Selection):
         :py:class:`~pyrocko.squirrel.client.catalog.CatalogSource`.
         '''
 
-        self.add_source(catalog.CatalogSource(*args, **kwargs))
+        source = catalog.CatalogSource(*args, **kwargs)
+        source.set_basepath('.')
+        self.add_source(source)
 
     def add_dataset(self, ds, check=True, upgrade=False):
         '''

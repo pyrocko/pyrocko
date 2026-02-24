@@ -8,6 +8,7 @@ Base class for Squirrel remote data clients.
 '''
 
 from pyrocko.guts import Object, Timestamp, List, String
+from pyrocko import has_paths
 
 from ..model import CodesNSLCE
 
@@ -95,7 +96,7 @@ class Constraint(Object):
             self.tmax = max(constraint.tmax, self.tmax)
 
 
-class Source(Object):
+class Source(has_paths.HasPaths):
 
     '''
     Base class for Squirrel data-sources.
