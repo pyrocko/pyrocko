@@ -125,13 +125,24 @@ def wrap(x, mi, ma):
     return x - num.floor((x-mi)/(ma-mi)) * (ma-mi)
 
 
+def _latlon(x):
+    try:
+        return x.effective_latlon
+    except AttributeError:
+        return x.lat, x.lon
+
+
 def _latlon_pair(args):
     if len(args) == 2:
-        a, b = args
-        return a.lat, a.lon, b.lat, b.lon
+        return _latlon(args[0]) + _latlon(args[1])
 
     elif len(args) == 4:
         return args
+
+    else:
+        raise ValueError(
+            'Must be called with `(alat, alon, blat, blon)` or `(a, b)` where '
+            'a and b are `Location` objects.')
 
 
 def cosdelta(*args):

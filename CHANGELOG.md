@@ -16,6 +16,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Fixed
 - Sparrow:
     - GeometryElement: aware to global and focal time windows for animations
+- Fixed an error, where offset coordinates on location objects (`east_shift`,
+  `north_shift`) were ignored in azimuth and distance computations `azimuth()`,
+  `azibazi()` and `distance_accurate50m()`.
 
 ## v2025.12.04
 
