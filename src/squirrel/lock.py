@@ -21,11 +21,12 @@ class LockDir(object):
         self._lockfile = op.join(path, '.buried')
 
     def __enter__(self):
-        if op.exists(self._lockfile):
+        try:
+            with open(self._lockfile, 'xb') as f:
+                f.write(b'')
+        except FileExistsError:
             raise EnvironmentError('Directory "%s" is locked' % self._path)
 
-        with open(self._lockfile, 'wb') as f:
-            f.write(b'')
         logger.debug('Locked directory "%s"', self._path)
         return self
 

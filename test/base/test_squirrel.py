@@ -1236,6 +1236,15 @@ class SquirrelTestCase(unittest.TestCase):
         sq.remove(handle)
         assert len(sq.get_waveforms(tmin=tmin, tmax=tmax)) == 0
 
+    def test_dir_lock(self):
+        from pyrocko.squirrel.lock import LockDir
+        tempdir = self.tempdir
+
+        with LockDir(tempdir):
+            with self.assertRaises(EnvironmentError):
+                with LockDir(tempdir):
+                    pass
+
 
 def do_chopper(params):
     ijob, datadir, nfiles, nsamples, tmin, (grouping, mult) = params
