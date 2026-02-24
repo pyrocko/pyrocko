@@ -27,7 +27,7 @@ class ContentKind(StringChoice):
     choices = io.base.g_content_kinds
 
 
-class LocalData(base.Source, has_paths.HasPaths):
+class LocalData(base.Source):
     '''
     A collection of local files attachable as a Squirrel data-source.
     '''
