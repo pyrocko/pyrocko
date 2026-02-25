@@ -8,7 +8,6 @@ Some basic geodetic functions.
 '''
 
 import math
-from functools import wraps
 
 import numpy as num
 from matplotlib.path import Path
