@@ -3661,7 +3661,8 @@ def MakePileViewerMainClass(base):
                                     but = pyrocko.response.ButterworthResponse
                                     multres = pyrocko.response.MultiplyResponse
                                     if self.lowpass is not None \
-                                            or self.highpass is not None:
+                                            or self.highpass is not None \
+                                            or remove_resp:
 
                                         it = num.arange(
                                             trace.data_len(), dtype=float)
@@ -3675,7 +3676,11 @@ def MakePileViewerMainClass(base):
 
                                         nfreqs = fdata.size
 
-                                        key = (trace.deltat, nfreqs)
+                                        key = (
+                                            trace.deltat,
+                                            nfreqs,
+                                            trace.nslc_id
+                                            if remove_resp else None)
 
                                         if key not in self.tf_cache:
                                             resps = []
@@ -3691,18 +3696,72 @@ def MakePileViewerMainClass(base):
                                                     corner=self.highpass,
                                                     type='high'))
 
-                                            resp = multres(resps)
-                                            self.tf_cache[key] = \
-                                                resp.evaluate(freqs)
+                                            if resps:
+                                                tf = multres(resps)\
+                                                    .evaluate(freqs)
+                                            else:
+                                                tf = num.ones(
+                                                    nfreqs,
+                                                    dtype=complex)
+
+                                            if remove_resp:
+                                                inst_resp = \
+                                                    self\
+                                                    .get_instrument_response(
+                                                        trace.nslc_id,
+                                                        tmin, tmax)
+
+                                                if inst_resp is not None:
+                                                    f1, f2, f3, f4 = \
+                                                        self.get_freq_limits(
+                                                            trace.deltat,
+                                                            trace.data_len())
+
+                                                    taper = \
+                                                        pyrocko.trace.CosTaper(
+                                                            f1, f2, f3, f4)
+                                                    taper_vals = \
+                                                        num.ones(nfreqs)
+                                                    taper(
+                                                        taper_vals,
+                                                        freqs[0],
+                                                        freqs[1] - freqs[0])
+
+                                                    inst_tf = \
+                                                        inst_resp\
+                                                        .evaluate(freqs)
+
+                                                    with num.errstate(
+                                                        divide='ignore',
+                                                        invalid='ignore'
+                                                            ):
+                                                        inv_inst_tf = \
+                                                            num.where(
+                                                                num.abs(
+                                                                    inst_tf)
+                                                                > 0.0,
+                                                                1.0
+                                                                / inst_tf,
+                                                                0.0)
+
+                                                    tf = (
+                                                        tf
+                                                        * taper_vals
+                                                        * inv_inst_tf)
+
+                                            self.tf_cache[key] = tf
 
                                         filtered_data = num.fft.irfft(
                                             fdata*self.tf_cache[key]
                                             )[:trace.data_len()]
 
-                                        retrended_data = retrend(
-                                            it, filtered_data, m, b)
+                                        if not remove_resp:
+                                            retrended_data = retrend(
+                                                it, filtered_data, m, b)
 
-                                        trace.set_ydata(retrended_data)
+                                            trace.set_ydata(retrended_data)
+                                        else:
+                                            trace.set_ydata(filtered_data)
 
                                 else:
 
@@ -3742,6 +3801,30 @@ def MakePileViewerMainClass(base):
 
                             processed_traces.append(trace)
 
+                        if self.menuitem_remove_resp.isChecked() \
+                                and not fft_filtering:
+                            restituted_traces = []
+                            for tr in processed_traces:
+                                resp = self.get_instrument_response(
+                                    tr.nslc_id, tmin, tmax)
+
+                                if resp is not None:
+                                    f1, f2, f3, f4 = \
+                                        self.get_freq_limits(
+                                            tr.deltat,
+                                            tr.data_len())
+
+                                    restituted_tr = tr.transfer(
+                                        freqlimits=(f1, f2, f3, f4),
+                                        transfer_function=resp,
+                                        cut_off_fading=True,
+                                        demean=True,
+                                        invert=True)
+                                    restituted_traces.append(
+                                        restituted_tr)
+
+                            processed_traces = restituted_traces
+
                 if self.rotate != 0.0:
                     phi = self.rotate/180.*math.pi
                     cphi = math.cos(phi)
@@ -3763,53 +3846,6 @@ def MakePileViewerMainClass(base):
                                 bydata = -a.get_ydata()*sphi+b.get_ydata()*cphi
                                 a.set_ydata(aydata)
                                 b.set_ydata(bydata)
-
-                if self.menuitem_remove_resp.isChecked():
-                    restituted_traces = []
-                    for tr in processed_traces:
-                        resp = None
-                        for station_xml in self.station_xmls:
-                            try:
-                                resp = station_xml.get_pyrocko_response(
-                                    tr.nslc_id,
-                                    timespan=(tmin, tmax))
-                                break
-
-                            except Exception:
-                                pass
-
-                        if not resp:
-                            logger.warning(
-                                'No instrument response information found '
-                                'for channel %s.%s.%s.%s.' % tr.nslc_id)
-
-                        else:
-                            nyquist_safe = (1/(2*tr.deltat))*0.9
-                            ABS_MIN = 0.01/(len(tr.ydata)*tr.deltat)
-                            TAPER_WIDTH = 0.5
-                            if self.highpass:
-                                f2 = min(max(ABS_MIN, self.highpass),
-                                         nyquist_safe)
-                                f1 = min(max(ABS_MIN, f2*(1.0-TAPER_WIDTH)),
-                                         nyquist_safe)
-                            else:
-                                f1 = f2 = ABS_MIN
-                            if self.lowpass:
-                                f3 = min(self.lowpass, nyquist_safe)
-                                f4 = min(f3*(1.0+TAPER_WIDTH), nyquist_safe)
-                            else:
-                                f3 = f4 = nyquist_safe
-
-                            restituted_tr = tr.transfer(
-                                freqlimits=(f1, f2, f3, f4),
-                                transfer_function=resp,
-                                cut_off_fading=True,
-                                demean=True,
-                                invert=True
-                            )
-                            restituted_traces.append(restituted_tr)
-
-                    processed_traces = restituted_traces
 
                 processed_traces = self.post_process_hooks(processed_traces)
 
@@ -4371,6 +4407,46 @@ def MakePileViewerMainClass(base):
                     hideit = False
 
             return clearit, hideit, error
+
+        def get_instrument_response(self, nslc_id, tmin, tmax):
+            resp = None
+            for station_xml in self.station_xmls:
+                try:
+                    resp = station_xml.get_pyrocko_response(
+                        nslc_id,
+                        timespan=(tmin, tmax))
+                    break
+                except Exception:
+                    pass
+
+            if resp is None:
+                logger.warning(
+                    'No instrument response information found '
+                    'for channel %s.%s.%s.%s.' % nslc_id)
+                return None
+
+            return resp
+
+        def get_freq_limits(self, deltat, data_len):
+            nyquist_safe = (1/(2*deltat))*0.9
+            abs_min = 0.01 / (data_len * deltat)
+            taper_width = 0.5
+
+            if self.highpass:
+                f2 = min(max(abs_min, self.highpass), nyquist_safe)
+                f1 = min(
+                    max(abs_min, f2 * (1.0 - taper_width)),
+                    nyquist_safe)
+            else:
+                f1 = f2 = abs_min
+
+            if self.lowpass:
+                f3 = min(self.lowpass, nyquist_safe)
+                f4 = min(f3 * (1.0 + taper_width), nyquist_safe)
+            else:
+                f3 = f4 = nyquist_safe
+
+            return f1, f2, f3, f4
 
     return PileViewerMain
 
