@@ -3076,7 +3076,7 @@ class Squirrel(Selection):
 
         def rkey(nut):
             return nut.codes.replace(
-                extra=re.sub(r'-L\d\d', '', nut.codes.extra))
+                extra=re.sub(r'-L(min|max|mean)\d\d', '', nut.codes.extra))
 
         def best_resolution(nuts):
             by_resolution = util.group_by(rkey, nuts)
