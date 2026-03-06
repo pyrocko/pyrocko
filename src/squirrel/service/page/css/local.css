@@ -1,0 +1,124 @@
+ /* * {border:1px solid red; } */
+
+html, body {
+    user-select: none;
+    overscroll-behavior: none;
+    overflow: hidden;
+}
+
+.connection-monitor {
+    font-size: 80%;
+    margin-top: auto;
+    background-color: #f8f9fa;
+    border-top: 1px solid #eee;
+    padding-left: 0.5rem;
+}
+
+.curtain {
+    position: absolute;
+    top: 0px;
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    height: 100dvh;
+    background-color: #00000055;
+    font-size: 200%;
+}
+
+.error-display {
+    position: absolute;
+    bottom: 2em;
+    width: 90%;
+    z-index: 50;
+    background-color: #cccccccc;
+    padding: 2em;
+    margin-left: 5%;
+    margin-right: 5%;
+    margin-bottom: 2em;
+    border: 1px solid #999999cc;
+    border-radius: 0.5em;
+}
+
+.vbox-container {
+    width: 100%;
+    height: 100dvh;
+    display: flex;
+    margin: 0;
+    flex-direction: column;
+    align-content: stretch;
+}
+
+.vbox-main {
+    min-height: 0em;
+    flex: 1 1 auto; /* grow shrink base */
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.sensor-table {
+    flex-grow: 1
+}
+
+.table-code:hover {
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.nav-tabs {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+
+th {
+    cursor: pointer;
+}
+
+.nav-item {
+    cursor: pointer;
+}
+
+svg text{
+   -webkit-user-select: none;
+   -moz-user-select: none;
+   -ms-user-select: none;
+   user-select: none;
+}
+
+.input-error, .input-error:focus {
+    background-color: #eebbbb;
+}
+
+.has-close-btn:hover .close-btn {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.close-btn {
+    color: rgba(0, 0, 0, 0);
+    cursor: pointer;
+    transition: color 0.2s ease, transform 0.1s ease;
+    padding-left: 0.25em;
+}
+
+.close-btn:hover {
+    color: rgba(0, 0, 0, 0.8);
+    transform: scale(1.2);
+}
+
+#leaflet-map {
+    height: 80em;
+    width: 80em;
+    margin: auto;
+}
+
+.tiny-search {
+    height: 1em;
+}
+
+#leaflet-map {
+    height: 100%;
+}
