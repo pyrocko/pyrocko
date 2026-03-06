@@ -1869,7 +1869,7 @@ class Squirrel(Selection):
 
             self._content_caches[cache_].advance_accessor(accessor_id)
 
-    def clear_accessor(self, accessor_id, cache_id=None):
+    def clear_accessor(self, accessor_id='default', cache_id=None):
         '''
         Notify memory caches about a consumer having finished.
 
@@ -1890,7 +1890,6 @@ class Squirrel(Selection):
         named accessor. Cache entries are then freed if not referenced by any
         other accessor.
         '''
-
         for cache_ in (
                 self._content_caches.keys()
                 if cache_id is None
@@ -2913,7 +2912,7 @@ class Squirrel(Selection):
                         operator_params=operator_params,
                         channel_priorities=channel_priorities)
 
-                    self.advance_accessor(accessor_id)
+                    self.advance_accessor(accessor_id, 'waveform')
 
                     yield Batch(
                         tmin=wmin,
