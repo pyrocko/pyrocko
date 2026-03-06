@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width, interactive-widget=resizes-content"
+        />
+
+        <title>Squirrel Service</title>
+
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="128x128"
+            href="images/favicon-128x128.png"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="96x96"
+            href="images/favicon-96x96.png"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="32x32"
+            href="images/favicon-32x32.png"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="16x16"
+            href="images/favicon-16x16.png"
+        />
+        <link rel="icon" type="image/ico" href="favicon.ico" />
+
+        <link rel="manifest" href="site.webmanifest" crossorigin="use-credentials" />
+
+        <link rel="stylesheet" href="/vendor/fonts/roboto.css" />
+        <link rel="stylesheet" href="/vendor/icons/material-icons.css" />
+
+        <link rel="stylesheet" type="text/css" href="/vendor/quasar.css" />
+        <link
+            rel="stylesheet"
+            type="text/css"
+            href="/vendor/leaflet/leaflet.css"
+        />
+
+        <link rel="stylesheet" href="/vendor/vue-flow/style.css" />
+        <link rel="stylesheet" href="/vendor/vue-flow/theme-default.css" />
+
+        <link rel="stylesheet" type="text/css" href="/css/app.css" />
+
+        <script src="/vendor/leaflet/leaflet.js"></script>
+        <script src="/vendor/d3.min.js"></script>
+
+        <script type="importmap">
+            {
+                "imports": {
+                    "vue": "/vendor/vue.esm-browser.js",
+                    "vue-router": "/vendor/vue-router.esm-browser.js",
+                    "@vue-flow/core": "/vendor/vue-flow/vue-flow-core.mjs"
+                }
+            }
+        </script>
+    </head>
+    <body>
+        <div id="q-app">
+            <router-view></router-view>
+        </div>
+
+        <script type="module">
+            window.process = {
+                env: {
+                    // NODE_ENV: 'development',
+                    NODE_ENV: 'production',
+                },
+            }
+            import * as VueModule from 'vue'
+            window.Vue = VueModule
+            await import('/vendor/quasar.umd.js')
+            await import('/js/app.js')
+        </script>
+    </body>
+</html>

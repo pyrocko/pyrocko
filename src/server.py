@@ -293,7 +293,7 @@ def run(
         loop=None,
         cookie_secret_path=None,
         page_path=None,
-        page_matcher=r'/((?:css|js|images)/.*'
+        page_matcher=r'/((?:css|js|images|icons|assets|vendor)/.*'
                      r'|index.html|site.webmanifest|favicon.ico|)'):
 
     global g_serve_task
@@ -307,8 +307,7 @@ def run(
 
     if page_path:
         handlers = [(
-            r'/((?:css|js|images)/.*'
-            r'|index.html|site.webmanifest|favicon.ico|)',
+            page_matcher,
             web.StaticFileHandler,
             dict(
                 path=page_path,

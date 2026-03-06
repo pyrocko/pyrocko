@@ -1,0 +1,375 @@
+:root {
+    --q-primary: #538246;
+    --q-secondary: #af7050;
+    --q-accent: #bf4443;
+
+    --q-dark: #1d1d1d;
+    --q-dark-page: #121212;
+
+    --q-positive: #8ead6e;
+    --q-negative: #bf4443;
+    --q-info: #4693d7;
+    --q-warning: #f0b01f;
+}
+
+.body--light {
+    --q-text-color: #222220;
+    --q-background-color: #ffffff;
+
+    --q-text-color-5: color-mix(
+        in oklab,
+        var(--q-text-color),
+        var(--q-background-color) 5%
+    );
+    --q-text-color-10: color-mix(
+        in oklab,
+        var(--q-text-color),
+        var(--q-background-color) 10%
+    );
+    --q-text-color-20: color-mix(
+        in oklab,
+        var(--q-text-color),
+        var(--q-background-color) 20%
+    );
+    --q-text-color-30: color-mix(
+        in oklab,
+        var(--q-text-color),
+        var(--q-background-color) 30%
+    );
+    --q-text-color-50: color-mix(
+        in oklab,
+        var(--q-text-color),
+        var(--q-background-color) 50%
+    );
+    --q-text-color-70: color-mix(
+        in oklab,
+        var(--q-text-color),
+        var(--q-background-color) 70%
+    );
+
+    --q-background-color-5: color-mix(
+        in oklab,
+        var(--q-background-color),
+        var(--q-text-color) 4%
+    );
+    --q-background-color-10: color-mix(
+        in oklab,
+        var(--q-background-color),
+        var(--q-text-color) 10%
+    );
+    --q-background-color-20: color-mix(
+        in oklab,
+        var(--q-background-color),
+        var(--q-text-color) 20%
+    );
+    --q-background-color-30: color-mix(
+        in oklab,
+        var(--q-background-color),
+        var(--q-text-color) 30%
+    );
+    --q-background-color-50: color-mix(
+        in oklab,
+        var(--q-background-color),
+        var(--q-text-color) 50%
+    );
+    --q-background-color-70: color-mix(
+        in oklab,
+        var(--q-background-color),
+        var(--q-text-color) 70%
+    );
+
+    color: var(--q-text-color);
+    background: var(--q-background-color);
+}
+
+.body--dark {
+    --q-text-color: #aaaa99;
+    --q-background-color: #121212;
+
+    --q-text-color-5: color-mix(
+        in oklab,
+        var(--q-text-color),
+        var(--q-background-color) 5%
+    );
+    --q-text-color-10: color-mix(
+        in oklab,
+        var(--q-text-color),
+        var(--q-background-color) 10%
+    );
+    --q-text-color-20: color-mix(
+        in oklab,
+        var(--q-text-color),
+        var(--q-background-color) 20%
+    );
+    --q-text-color-30: color-mix(
+        in oklab,
+        var(--q-text-color),
+        var(--q-background-color) 30%
+    );
+    --q-text-color-50: color-mix(
+        in oklab,
+        var(--q-text-color),
+        var(--q-background-color) 50%
+    );
+    --q-text-color-70: color-mix(
+        in oklab,
+        var(--q-text-color),
+        var(--q-background-color) 70%
+    );
+
+    --q-background-color-5: color-mix(
+        in oklab,
+        var(--q-background-color),
+        var(--q-text-color) 15%
+    );
+    --q-background-color-10: color-mix(
+        in oklab,
+        var(--q-background-color),
+        var(--q-text-color) 20%
+    );
+    --q-background-color-20: color-mix(
+        in oklab,
+        var(--q-background-color),
+        var(--q-text-color) 30%
+    );
+    --q-background-color-30: color-mix(
+        in oklab,
+        var(--q-background-color),
+        var(--q-text-color) 40%
+    );
+    --q-background-color-50: color-mix(
+        in oklab,
+        var(--q-background-color),
+        var(--q-text-color) 60%
+    );
+    --q-background-color-70: color-mix(
+        in oklab,
+        var(--q-background-color),
+        var(--q-text-color) 80%
+    );
+
+    color: var(--q-text-color);
+    background: var(--q-background-color);
+}
+
+.q-dark {
+    color: var(--q-text-color);
+}
+
+.q-item--light {
+    color: var(--q-text-color);
+}
+.q-item--dark {
+    color: var(--q-text-color);
+}
+
+.q-field--light {
+    color: var(--q-text-color);
+}
+
+.q-field--dark .q-field__native {
+    color: var(--q-text-color);
+}
+
+.q-field--dark .q-field__marginal {
+    color: var(--q-text-color);
+}
+
+body.body--dark {
+    color: var(--q-text-color);
+}
+
+.q-layout__section--marginal {
+    color: var(--q-text-color);
+}
+
+.q-toggle--dark .q-toggle__inner {
+    color: var(--q-text-color);
+}
+
+.q-list-dark {
+    color: var(--q-text-color);
+}
+
+.bg-20 {
+    background-color: var(--q-background-color-20);
+}
+
+.q-toggle__thumb::after {
+    background-color: var(--q-text-color);
+}
+
+.q-field--dark .q-field__control::before {
+    border-color: var(--q-text-color);
+}
+
+.search-invalid .q-field__control {
+    background-color: color-mix(
+        in oklab,
+        var(--q-background-color),
+        var(--q-negative) 15%
+    );
+}
+
+.curtain {
+    user-select: none;
+    position: absolute;
+    top: 0px;
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    height: 100dvh;
+    background-color: color-mix(in oklab, var(--q-text-color), #ffffff00 70%);
+    font-size: 200%;
+}
+
+.vbox-container {
+    display: flex;
+    flex-direction: column;
+    align-content: stretch;
+}
+
+.vbox-main {
+    min-height: 0px;
+    overflow: hidden;
+    flex: 1 1 auto;
+}
+
+#timeline text {
+    box-shadow: inset 0 0 1px var(--q-text-color-50);
+    fill: var(--q-text-color);
+}
+
+#timeline .boxes rect {
+    fill: var(--q-background-color-5);
+    stroke: var(--q-background-color-10);
+}
+
+#timeline .waveview polygon {
+    fill: var(--q-text-color-70);
+    stroke: var(--q-text-color-30);
+}
+
+#timeline .track-label rect {
+    fill: color-mix(in oklab, var(--q-background-color), #ffffff00 50%);
+}
+
+#timeline .track-axis rect {
+    fill: color-mix(in oklab, var(--q-background-color), #ffffff00 50%);
+}
+
+#timeline .axis-line {
+    stroke: var(--q-text-color-50);
+}
+
+#timeline .axis-tick {
+    stroke: var(--q-text-color-50);
+}
+
+#timeline:focus {
+    box-shadow: inset 0 0 1px var(--q-primary);
+}
+
+.range-select .overlay {
+    fill: var(--q-background-color-20);
+    stroke: none;
+}
+
+.range-select .selection {
+    fill: var(--q-background-color-70);
+    stroke: none;
+}
+
+.frequency-panel {
+    background-color: var(--q-background-color-5);
+}
+
+.station-icon {
+    background: transparent;
+    border: none;
+}
+
+.station-icon svg polygon {
+    stroke: color-mix(in oklab, var(--q-negative), var(--q-text-color) 20%);
+    fill: color-mix(in oklab, var(--q-negative), var(--q-background-color) 20%);
+}
+
+.station-icon-inactive svg polygon {
+    stroke: color-mix(in oklab, var(--q-negative), var(--q-text-color) 20%);
+    fill: none;
+}
+
+.body--dark {
+    .leaflet-container {
+        background: #000
+    }
+
+    .leaflet-layer,
+    .leaflet-control-zoom-in,
+    .leaflet-control-zoom-out,
+    .leaflet-control-attribution {
+      filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+    }
+}
+
+.drawer-resize-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -4px;
+    width: 8px;
+    cursor: ew-resize;
+    z-index: 1;
+}
+
+.drawer-resize-handle:hover,
+.drawer-resize-handle:active {
+    background-color: var(--q-background-color-30);
+}
+
+/* QDrawer transitions width/transform by default, which would make it
+   lag behind the pointer while a resize drag is in progress. */
+.no-drawer-transition {
+    transition: none !important;
+}
+
+.vue-flow__handle {
+  height: 8px;
+  width: 8px;
+  border-radius: 4px;
+}
+
+.vue-flow__node-special {
+  border: 2px solid #777;
+  color: #444;
+  padding: 10px;
+  border-radius: 10px;
+  background: #f5f5f5;
+  font-weight: bold;
+  min-width: 15em;
+}
+
+.vue-flow__node-special img {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.vue-flow__node-special .vue-flow__handle {
+  height: 0.7em;
+  width: 0.7em;
+  border-radius: 0.4em;
+  border: none;
+}
+
+.quick-search-help code {
+    color: var(--q-primary);
+}
+
+.quick-search-help td {
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+}
