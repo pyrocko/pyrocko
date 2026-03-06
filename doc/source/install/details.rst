@@ -30,6 +30,7 @@ installed from source:
    * `pyyaml <https://bitbucket.org/xi/pyyaml>`_
    * `PyQt5 <http://www.riverbankcomputing.co.uk/software/pyqt/intro>`_ (only needed for the GUI apps)
    * `requests <http://docs.python-requests.org/en/master/>`_
+   * `tornado <https://www.tornadoweb.org/en/stable/>`_
 
 * Optional Python modules:
    * `VTK <https://vtk.org>`_ (with Python bindings, required for the :program:`Sparrow` app)

@@ -31,6 +31,7 @@ requirements:
     - pyyaml
     - requests
     - jinja2
+    - tornado
 
 build:
   script: {{PYTHON}} -m pip install --no-deps --no-build-isolation .

@@ -23,6 +23,7 @@ _pyrocko_deps = {
         ('scipy', 'scipy', '__version__'),
         ('matplotlib', 'matplotlib', '__version__'),
         ('requests', 'requests', '__version__'),
+        ('tornado', 'tornado', 'version'),
     ],
     'optional': [
         ('PyQt5', 'PyQt5.Qt', 'PYQT_VERSION_STR'),

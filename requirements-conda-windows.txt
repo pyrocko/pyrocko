@@ -11,3 +11,4 @@ requests
 jinja2
 pyqt<6
 vtk
+tornado
