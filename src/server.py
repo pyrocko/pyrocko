@@ -1,4 +1,5 @@
 
+import os
 import asyncio
 import logging
 import signal
@@ -121,12 +122,26 @@ def stop():
     asyncio.create_task(shutdown())
 
 
+def get_cookie_secret(path):
+    if path is None:
+        return str(uuid.uuid4())
+
+    if not os.path.exists(path):
+        cookie_secret = str(uuid.uuid4())
+        with open(path, 'w') as f:
+            f.write(cookie_secret)
+
+    with open(path, 'r') as f:
+        return f.read()
+
+
 async def serve(
         host='localhost',
         port=8000,
         handlers=[],
         open=False,
-        debug=False):
+        debug=False,
+        cookie_secret_path=None):
 
     global g_server_info
     global g_shutdown_event
@@ -151,6 +166,7 @@ async def serve(
         handlers,
         log_function=log_request,
         debug=debug,
+        cookie_secret=get_cookie_secret(cookie_secret_path),
     )
 
     logger.info(
@@ -209,7 +225,7 @@ def run(
         debug=False,
         loop=None,
         page_path=None,
-        page_matcher=r'/((?:css|js|images)/.*'
+        page_matcher=r'/((?:css|js|images|icons|assets)/.*'
                      r'|index.html|site.webmanifest|favicon.ico|)'):
 
     global g_serve_task
@@ -223,8 +239,7 @@ def run(
 
     if page_path:
         handlers = [(
-            r'/((?:css|js|images)/.*'
-            r'|index.html|site.webmanifest|favicon.ico|)',
+            page_matcher,
             web.StaticFileHandler,
             dict(
                 path=page_path,
