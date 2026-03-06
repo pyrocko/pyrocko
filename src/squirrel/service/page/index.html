@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, user-scalable=0, interactive-widget=resizes-content"
+        />
+
+        <title>Squirrel</title>
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="any"
+            href="images/squirrel.svg"
+            crossorigin="use-credentials"
+        />
+        <link
+            rel="apple-touch-icon"
+            sizes="180x180"
+            href="images/apple-touch-icon.png"
+            crossorigin="use-credentials"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="32x32"
+            href="images/favicon-32x32.png"
+            crossorigin="use-credentials"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="16x16"
+            href="images/favicon-16x16.png"
+            crossorigin="use-credentials"
+        />
+        <link rel="manifest" href="site.webmanifest" crossorigin="use-credentials" />
+
+        <link href="css/bootstrap.min.css" rel="stylesheet" />
+        <link href="css/local.css" rel="stylesheet" />
+        <link href="css/leaflet.css" rel="stylesheet" />
+        <script src="js/d3.v7.min.js"></script>
+        <script src="js/bootstrap.bundle.min.js"></script>
+        <script src="js/squirrel/leaflet.js"></script>
+
+    </head>
+
+    <body>
+        <div id="app" class="vbox-container">
+            <div
+                @click="connection.connect()"
+                v-if="!connection.connected"
+                class="curtain"
+            >
+                <div>DISCONNECTED</div>
+                <div>
+                    <small>Click to reconnect.</small>
+                </div>
+            </div>
+            <div
+                v-if="connection.connected && connection.connected.delay > 5.0"
+                class="curtain"
+            >
+                DELAY {{ fmtDuration(connection.connected.delay) }}
+            </div>
+
+            <component-tabs></component-tabs>
+            
+
+            <div v-if="connection.latestError" class="error-display">
+                <pre><code>{{ connection.latestError }}</code></pre>
+                <div>
+                    <button
+                        class="btn btn-primary"
+                        @click="connection.latestError = ''"
+                    >
+                        Clear
+                    </button>
+                </div>
+            </div>
+
+            <div class="connection-monitor">
+                <div v-if="connection.connected">
+                    <footer>
+                        🐿️
+                        <span class="d-none d-sm-inline">Version:</span>
+                        {{ connection.serverInfo.pyrocko_version }} |
+                        <span class="d-none d-sm-inline">Connected:</span>
+                        {{ fmtDuration(connection.connected.duration) }} |
+                        <span class="d-none d-sm-inline">Requests:</span>
+                        {{
+                            connection.serverInfo
+                                ? connection.serverInfo.n_requests
+                                : ''
+                        }}
+                        <span v-if="connection.activeRequests > 0">
+                            |
+                            <strong
+                                style="
+                                    padding-left: 0.5em;
+                                    padding-right: 0.5em;
+                                    background-color: #ccc;
+                                "
+                            >
+                                Active: {{ connection.activeRequests }}</strong
+                            >
+                        </span>
+                        <span v-if="connection.connected.delay > 2.0">
+                            |
+                            <strong
+                                style="
+                                    padding-left: 0.5em;
+                                    padding-right: 0.5em;
+                                    background-color: #ecc;
+                                "
+                            >
+                                Delay:
+                                {{
+                                    fmtDuration(connection.connected.delay)
+                                }}</strong
+                            >
+                        </span>
+                    </footer>
+                </div>
+                <div v-else>Disconnected</div>
+            </div>
+        </div>
+    </body>
+
+    <script type="module">
+        import {
+            createApp,
+            ref,
+            onMounted,
+            computed,
+        } from './js/vue.esm-browser.js'
+
+        import { squirrelConnection } from './js/squirrel/connection.js'
+        import { squirrelGates } from './js/squirrel/gate.js'
+        import { fmtDuration } from './js/squirrel/common.js'
+        import {
+            componentTabs,
+            componentTimeline,
+            componentMap,
+            componentTable,
+            componentFilter,
+            componentCatalog,
+        } from './js/components/components.js'
+        import { squirrelMap } from './js/squirrel/map.js'
+
+        createApp({
+            components: {
+                ComponentFilter: componentFilter,
+                ComponentTabs: componentTabs
+            },
+
+            setup() {
+                const tabs = {
+                    timeline: componentTimeline,
+                    map: componentMap,
+                    info: componentTable,
+                    catalog: componentCatalog,
+                }
+
+                const selectedTab = ref('timeline')
+                let connection = ref(squirrelConnection())
+                const gates = squirrelGates()
+
+                gates.addGate()
+
+                onMounted(() => {
+                    //const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+                    //tooltipTriggerList.forEach((tooltipTriggerEl) => {
+                    //new bootstrap.Tooltip(tooltipTriggerEl)
+                    //})
+                })
+
+                const selectTab = (tabName) => {
+                    selectedTab.value = tabName
+                }
+
+                const addTab = () => {
+                    const newTabName = `tab_${Date.now()}`
+                    tabs[newTabName] = componentTable
+                }
+
+                const closeTab = (tabName, event) => {
+                    event.stopPropagation()
+                    delete tabs[tabName]
+
+                    if (selectedTab.value === tabName) {
+                        selectedTab.value = 'info'
+                    }
+                }
+
+                const isDefaultTab = (name) => {
+                    return ['timeline', 'map', 'info'].includes(name)
+                }
+
+                return {
+                    connection,
+                    selectedTab,
+                    selectTab,
+                    fmtDuration,
+                    tabs,
+                    addTab,
+                    closeTab,
+                    isDefaultTab,
+                }
+            },
+        }).mount('#app')
+    </script>
+</html>
