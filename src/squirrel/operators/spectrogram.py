@@ -546,7 +546,11 @@ class MultiSpectrogramOperator(base.Operator):
             tmin=None,
             tmax=None,
             show_construction=False,
-            nsamples_limit=None):
+            nsamples_limit=None,
+            accessor_id=None):
+
+        # `accessor_id` is accepted for compatibility with other providers
+        # but not used: this operator manages its own accessor.
 
         mappings, codes_want = self.get_mappings_and_matching_codes(codes)
 

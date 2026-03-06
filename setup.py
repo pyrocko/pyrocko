@@ -367,6 +367,8 @@ subpacknames = [
     'pyrocko.squirrel.tool',
     'pyrocko.squirrel.tool.commands',
     'pyrocko.squirrel.operators',
+    'pyrocko.squirrel.service',
+    'pyrocko.squirrel.service.scouts',
     'pyrocko.data',
     'pyrocko.data.colortables',
     'pyrocko.data.earthmodels',
@@ -574,7 +576,13 @@ setup(
             'data/fomosto_report/gfreport.*',
             'gui/snuffler/snufflings/map/*.kml',
             'gui/snuffler/snufflings/map/*.html',
-            'gui/snuffler/snufflings/map/*.js'],
+            'gui/snuffler/snufflings/map/*.js',
+            # 'squirrel/service/page/**/*',  # unsupported in older setuptools
+            'squirrel/service/page/*',
+            'squirrel/service/page/*/*',
+            'squirrel/service/page/*/*/*',
+            'squirrel/service/page/*/*/*/*',
+            ],
         '': ['README.md']},
     **metadata,
 )
