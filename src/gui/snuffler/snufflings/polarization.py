@@ -5,7 +5,7 @@ from matplotlib import patches
 from pyrocko import util, trace, plot
 from ..snuffling import Snuffling, Param, Marker, Switch, EventMarker
 
-logger = logging.getLogger('pyrocko.gui.snufflings.polarization')
+logger = logging.getLogger('pyrocko.gui.snuffler.snufflings.polarization')
 
 d2r = num.pi / 180.
 r2d = 1.0 / d2r
@@ -967,7 +967,7 @@ window). The currently used scaling factor can be frozen by checking
         self.fframe.draw()
         tabs = self.fframe.parent().parent()
         # bring plot to front if we are not looking at the markers
-        from pyrocko.gui.pile_viewer import PileViewer
+        from pyrocko.gui.snuffler.pile_viewer import PileViewer
         if not isinstance(tabs.currentWidget(), PileViewer):
             tabs.setCurrentWidget(self.fframe)
 

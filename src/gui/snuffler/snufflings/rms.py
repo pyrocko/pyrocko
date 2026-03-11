@@ -13,7 +13,7 @@ from ..snuffling import Snuffling, Param, Switch
 from pyrocko.trace import Trace, NoData
 from pyrocko import util
 
-logger = logging.getLogger('pyrocko.gui.snuffling.rms')
+logger = logging.getLogger('pyrocko.gui.snuffler.snufflings.rms')
 
 
 class RootMeanSquareSnuffling(Snuffling):
