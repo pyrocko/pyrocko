@@ -916,7 +916,7 @@ class SquirrelTestCase(unittest.TestCase):
         finally:
             shutil.rmtree(tempdir)
 
-    #@common.require_internet
+    # @common.require_internet
     def test_operators(self):
         # 1994 Bolivia earthquake
         tmin = util.str_to_time('1994-06-09 00:00:00')
@@ -1293,6 +1293,51 @@ class SquirrelTestCase(unittest.TestCase):
         assert squirrel.merge_codes(codes, 'replace_deep') \
             == C('GR.A0?.*.BH?.*')
 
+    def test_multi_spectrogram(self):
+
+        nsamples = 128*2
+        deltat = 1.0
+        tmin = util.str_to_time('1970-01-01 00:00:00')
+        traces = [
+            trace.Trace(
+                'N', 'STA', '', 'Z',
+                tmin=tmin,
+                deltat=deltat,
+                ydata=num.random.normal(size=nsamples))]
+
+        # traces[0].ydata[nsamples//2-1 + 4] = 100.
+        traces[0].ydata[nsamples//2 + 8] = 100.
+
+        database = squirrel.Database()
+        sq = squirrel.Squirrel(database=database)
+        handle = sq.add_volatile_waveforms(traces)
+
+        musop = squirrel.MultiSpectrogramOperator(
+            quantity='counts',
+            windowing=squirrel.Pow2Windowing(
+                nblock=2**4,
+                nlevels=2,
+                weighting_exponent=4
+            ),
+        )
+
+        musop.set_input(sq)
+
+        nwindows = 1
+        interpolation = 'cos'
+        tinc = nsamples * deltat
+        for iwindow in range(nwindows):
+            group = musop.get_spectrogram_groups(
+                codes=('N', 'STA', '', 'Z'),
+                tmin=tmin+iwindow*tinc,
+                tmax=tmin+(iwindow+1)*tinc)[0]
+
+            # group.plot_construction(interpolation=interpolation)
+            carpet = group.get_multi_spectrogram(interpolation=interpolation)
+            print(carpet.summary)
+
+        sq.remove(handle)
+
     def test_chopper_carpet(self):
 
         database = squirrel.Database()
@@ -1307,7 +1352,7 @@ class SquirrelTestCase(unittest.TestCase):
         tmin = util.str_to_time_fillup('2017-09-03')
         tmax = util.str_to_time_fillup('2017-09-03 02')
 
-        storage = squirrel.get_storage_scheme('rugstore-medium')
+        storage = squirrel.get_storage_scheme('rug-store-10')
         datadir = tempfile.mkdtemp(dir=self.tempdir)
         storage.set_base_path(datadir)
 
