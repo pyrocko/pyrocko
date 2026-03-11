@@ -823,38 +823,6 @@ class Response(Object):
         return resp
 
 
-@squirrel_content
-class Event(Object):
-    '''
-    A seismic event.
-    '''
-
-    name = String.T(optional=True)
-    time = Timestamp.T()
-    duration = Float.T(optional=True)
-
-    lat = Float.T()
-    lon = Float.T()
-    depth = Float.T(optional=True)
-
-    magnitude = Float.T(optional=True)
-
-    def get_pyrocko_event(self):
-        from pyrocko import model
-        model.Event(
-            name=self.name,
-            time=self.time,
-            lat=self.lat,
-            lon=self.lon,
-            depth=self.depth,
-            magnitude=self.magnitude,
-            duration=self.duration)
-
-    @property
-    def time_span(self):
-        return (self.time, self.time)
-
-
 def ehash(s):
     return hashlib.sha1(s.encode('utf8')).hexdigest()
 
