@@ -915,7 +915,7 @@ class SquirrelTestCase(unittest.TestCase):
         finally:
             shutil.rmtree(tempdir)
 
-    #@common.require_internet
+    @common.require_internet
     def test_operators(self):
         # 1994 Bolivia earthquake
         tmin = util.str_to_time('1994-06-09 00:00:00')
@@ -943,11 +943,11 @@ class SquirrelTestCase(unittest.TestCase):
                 frequency_max=10.0)
 
             op_enz = squirrel.ToENZ()
-            op_rest.set_input(sq)
-            op_enz.set_input(op_rest)
+            op_rest.add_input(sq)
+            op_enz.add_input(op_rest)
 
             op_enz2 = squirrel.ToENZ()
-            op_enz2.set_input(sq)
+            op_enz2.add_input(sq)
 
             print(op_rest.describe())
             print(op_enz.describe())
@@ -971,7 +971,7 @@ class SquirrelTestCase(unittest.TestCase):
                     codes=('GR', '*', '', 'LH?', '*')))
 
             op_trz = squirrel.ToTRZ(origin=pmodel.Location(lat=0., lon=0.))
-            op_trz.set_input(sq)
+            op_trz.add_input(sq)
             print(op_trz.describe())
             for channel in op_trz.get_channels():
                 print(channel)
@@ -1227,15 +1227,15 @@ class SquirrelTestCase(unittest.TestCase):
         squirrel.init_environment(datadir)
 
         try:
-            for (grouping, mult) in [
+            for (group_by, mult) in [
                     (None, 1),
-                    (squirrel.NetworkGrouping(), 1),
-                    (squirrel.StationGrouping(), 10),
-                    (squirrel.ChannelGrouping(), 30),
-                    (squirrel.SensorGrouping(), 10)]:
+                    ('{i.network}....', 1),
+                    ('{i.network}.{i.station}...', 10),
+                    ('{i.network}.{i.station}.{i.location}.{i.channel}.', 30),
+                    ('{i.network}.{i.station}.{i.location}.{i.channel_no_component}.', 10)]:  # noqa
 
                 do_chopper(
-                    (0, datadir, nfiles, nsamples, tmin, (grouping, mult)))
+                    (0, datadir, nfiles, nsamples, tmin, (group_by, mult)))
 
         finally:
             shutil.rmtree(datadir)
@@ -1292,6 +1292,51 @@ class SquirrelTestCase(unittest.TestCase):
         assert squirrel.merge_codes(codes, 'replace_deep') \
             == C('GR.A0?.*.BH?.*')
 
+    def test_multi_spectrogram(self):
+
+        nsamples = 128*2
+        deltat = 1.0
+        tmin = util.str_to_time('1970-01-01 00:00:00')
+        traces = [
+            trace.Trace(
+                'N', 'STA', '', 'Z',
+                tmin=tmin,
+                deltat=deltat,
+                ydata=num.random.normal(size=nsamples))]
+
+        # traces[0].ydata[nsamples//2-1 + 4] = 100.
+        traces[0].ydata[nsamples//2 + 8] = 100.
+
+        database = squirrel.Database()
+        sq = squirrel.Squirrel(database=database)
+        handle = sq.add_volatile_waveforms(traces)
+
+        musop = squirrel.MultiSpectrogramOperator(
+            quantity='counts',
+            windowing=squirrel.Pow2Windowing(
+                nblock=2**4,
+                nlevels=2,
+                weighting_exponent=4
+            ),
+        )
+
+        musop.add_input(sq)
+
+        nwindows = 1
+        interpolation = 'cos'
+        tinc = nsamples * deltat
+        for iwindow in range(nwindows):
+            group = musop.get_spectrogram_groups(
+                codes=('N', 'STA', '', 'Z'),
+                tmin=tmin+iwindow*tinc,
+                tmax=tmin+(iwindow+1)*tinc)[0]
+
+            # group.plot_construction(interpolation=interpolation)
+            carpet = group.get_multi_spectrogram(interpolation=interpolation)
+            print(carpet.summary)
+
+        sq.remove(handle)
+
     def test_chopper_carpet(self):
 
         database = squirrel.Database()
@@ -1306,7 +1351,7 @@ class SquirrelTestCase(unittest.TestCase):
         tmin = util.str_to_time_fillup('2017-09-03')
         tmax = util.str_to_time_fillup('2017-09-03 02')
 
-        storage = squirrel.get_storage_scheme('rugstore-medium')
+        storage = squirrel.get_storage_scheme('rug-store-10')
         datadir = tempfile.mkdtemp(dir=self.tempdir)
         storage.set_base_path(datadir)
 
@@ -1338,7 +1383,7 @@ class SquirrelTestCase(unittest.TestCase):
 
 
 def do_chopper(params):
-    ijob, datadir, nfiles, nsamples, tmin, (grouping, mult) = params
+    ijob, datadir, nfiles, nsamples, tmin, (group_by, mult) = params
 
     sq = squirrel.Squirrel(datadir, persistent='bla')
     sq.add(os.path.join(datadir, 'data'))
@@ -1370,7 +1415,7 @@ def do_chopper(params):
             tinc=tinc,
             degap=False,
             codes=codes,
-            grouping=grouping):
+            group_by=group_by):
 
         for tr in batch.traces:
             s += num.sum(tr.ydata)
