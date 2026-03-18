@@ -32,7 +32,8 @@ from pyrocko.response import FrequencyResponse, MultiplyResponse, \
     IntegrationResponse, DifferentiationResponse, simplify_responses, \
     FrequencyResponseCheckpoint, Gain
 from pyrocko.model.codes import CodesError, Codes, CodesNSLCE, CodesNSL, \
-    CodesX, CodesMatcher, match_codes, match_codes_any, classify_patterns  # noqa
+    CodesX, CodesMatcher, match_codes, match_codes_any, classify_patterns, \
+    merge_codes # noqa
 
 from .error import ConversionError
 
@@ -1544,6 +1545,7 @@ __all__ = [
     'to_kinds',
     'to_kind_id',
     'to_kind_ids',
+    'merge_codes',
     'match_codes',
     'codes_patterns_for_kind',
     'CodesMatcher',

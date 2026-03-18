@@ -374,3 +374,40 @@ def match_codes_any(patterns, codes):
         return True
 
     return any(match_codes(pattern, codes) for pattern in patterns)
+
+
+def _merge_strings(xs, symbol1, symbol2):
+    l0 = len(xs[0])
+    if all(len(x) == l0 for x in xs):
+        if all(x == xs[0] for x in xs):
+            return xs[0]
+        else:
+            ys = ''.join(
+                (cs[0] if all(c == cs[0] for c in cs) else symbol2)
+                for cs in zip(*xs))
+            if ys.count(symbol2) == len(ys):
+                return symbol1
+            else:
+                return ys
+    else:
+        return symbol1
+
+
+def merge_codes(codes_list, method='replace', symbol=None, symbol_deep='?'):
+    '''
+    Merge codes, keep identical, join or replace non-identical parts.
+    '''
+    assert method in ('replace', 'join', 'replace_deep')
+
+    if symbol is None:
+        symbol = '*' if method.startswith('replace') else '|'
+
+    return CodesNSLCE(*(
+        cs[0] if all(c == cs[0] for c in cs) else (
+            symbol.join(sorted(set(cs)))
+            if method == 'join'
+            else (
+                symbol
+                if method == 'replace' else
+                _merge_strings(cs, symbol, symbol_deep)))
+        for cs in zip(*(codes.as_tuple() for codes in codes_list))))
