@@ -1245,6 +1245,23 @@ class SquirrelTestCase(unittest.TestCase):
                 with LockDir(tempdir):
                     pass
 
+    def test_merge_codes(self):
+        C = squirrel.CodesNSLCE
+        codes = [
+            C('GR.A01.A.BH1.A'),
+            C('GR.A01.A.BH2.A'),
+            C('GR.A01.A.BH3.A'),
+            C('GR.A02.B.BH1.AB'),
+            C('GR.A02.B.BH2.AB'),
+            C('GR.A02.B.BH3.AB')]
+
+        assert squirrel.merge_codes(codes, 'join') \
+            == C('GR.A01|A02.A|B.BH1|BH2|BH3.A|AB')
+        assert squirrel.merge_codes(codes, 'replace') \
+            == C('GR.*.*.*.*')
+        assert squirrel.merge_codes(codes, 'replace_deep') \
+            == C('GR.A0?.*.BH?.*')
+
 
 def do_chopper(params):
     ijob, datadir, nfiles, nsamples, tmin, (grouping, mult) = params
