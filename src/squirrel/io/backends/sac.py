@@ -47,6 +47,7 @@ def iload(format, file_path, segment, content):
     assert format == 'sac'
 
     from pyrocko.io import sac
+    from pyrocko import model as pmodel
 
     load_data = 'waveform' in content
 
@@ -135,7 +136,7 @@ def iload(format, file_path, segment, content):
             tmax=etime)
 
         if 'event' in content:
-            nut.content = model.Event(
+            nut.content = pmodel.Event(
                 lat=s.evla,
                 lon=s.evlo,
                 depth=depth,
