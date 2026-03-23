@@ -33,7 +33,7 @@ except ImportError:
     from yaml import SafeLoader, SafeDumper
 
 from .util import time_to_str, str_to_time, TimeStrError, hpfloat, \
-    get_time_float
+    get_time_float, str_duration, parse_duration
 
 
 logger = logging.getLogger('pyrocko.guts')
@@ -1510,30 +1510,6 @@ class Tuple(Object):
                 return '``tuple`` of %s objects' % (
                     self.content_t.classname_for_help(
                         strip_module=strip_module))
-
-
-duration_unit_factors = dict(
-    s=1.0,
-    m=60.0,
-    h=3600.0,
-    d=24*3600.0,
-    y=365*24*3600.0)
-
-
-def parse_duration(s):
-    unit = s[-1]
-    if unit in duration_unit_factors:
-        return float(s[:-1]) * duration_unit_factors[unit]
-    else:
-        return float(s)
-
-
-def str_duration(d):
-    for k in 'ydhms':
-        if abs(d) >= duration_unit_factors[k]:
-            return '%g' % (d / duration_unit_factors[k]) + k
-
-    return '%g' % d
 
 
 class Duration(Object):
