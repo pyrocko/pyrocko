@@ -88,8 +88,8 @@ Secondary dataset (lower priority).'''.strip())
     parser.add_argument(
         '--tinc',
         dest='tinc',
-        type=float,
-        metavar='SECONDS',
+        type=guts.parse_duration,
+        metavar='DURATION',
         help='Set time length of processing batches [s].')
 
     parser.add_argument(
