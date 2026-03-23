@@ -631,6 +631,19 @@ def check_time_class(t, error='raise'):
             assert False
 
 
+class GeneratorWithLen(object):
+
+    def __init__(self, gen, length):
+        self.gen = gen
+        self.length = length
+
+    def __len__(self):
+        return self.length
+
+    def __iter__(self):
+        return self.gen
+
+
 def iter_windows(
         tmin=None,
         tmax=None,
@@ -638,7 +651,8 @@ def iter_windows(
         tpad=0.0,
         snap_window=False,
         tmin_content=None,
-        tmax_content=None):
+        tmax_content=None,
+        hook_startup=None):
 
     from pyrocko.squirrel import Batch
 
@@ -665,18 +679,25 @@ def iter_windows(
         eps = 1e-6
         nwin = max(1, int((tmax - tmin) / tinc - eps) + 1)
 
-    for iwin in range(nwin):
-        wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)
+    if hook_startup:
+        hook_startup(
+            dict(tmin=tmin, tmax=tmax, tinc=tinc, tpad=tpad, nwin=nwin))
 
-        yield Batch(
-            tmin=wmin,
-            tmax=wmax,
-            tpad=tpad,
-            i=iwin,
-            n=nwin,
-            igroup=0,
-            ngroups=1,
-            traces=[])
+    def gen():
+        for iwin in range(nwin):
+            wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)
+
+            yield Batch(
+                tmin=wmin,
+                tmax=wmax,
+                tpad=tpad,
+                i=iwin,
+                n=nwin,
+                igroup=0,
+                ngroups=1,
+                traces=[])
+
+    return GeneratorWithLen(gen(), nwin)
 
 
 class Stopwatch(object):
