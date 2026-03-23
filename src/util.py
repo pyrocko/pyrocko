@@ -3091,3 +3091,27 @@ def group_by(key, xs):
         groups[key(x)].append(x)
 
     return groups
+
+
+duration_unit_factors = dict(
+    s=1.0,
+    m=60.0,
+    h=3600.0,
+    d=24*3600.0,
+    y=365*24*3600.0)
+
+
+def parse_duration(s):
+    unit = s[-1]
+    if unit in duration_unit_factors:
+        return float(s[:-1]) * duration_unit_factors[unit]
+    else:
+        return float(s)
+
+
+def str_duration(d):
+    for k in 'ydhms':
+        if abs(d) >= duration_unit_factors[k]:
+            return '%g' % (d / duration_unit_factors[k]) + k
+
+    return '%g' % d
