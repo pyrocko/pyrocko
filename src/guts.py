@@ -672,6 +672,42 @@ class TBase(object):
             else:
                 return '%s%s' % (sclass(self._cls), sadd)
 
+    def typename_for_help(self, strip_module=''):
+        if self._dummy_cls is not self._cls:
+            if self._dummy_cls.__module__ == strip_module:
+                sadd = ' (%s)' % (
+                    self._dummy_cls.__name__)
+            else:
+                sadd = ' (%s.%s)' % (
+                    self._dummy_cls.__module__, self._dummy_cls.__name__)
+        else:
+            sadd = ''
+
+        if self._dummy_cls in guts_plain_dummy_types:
+            return '%s' % self._cls.__name__
+
+        elif self._dummy_cls.dummy_for_description:
+            return '%s%s' % (self._dummy_cls.dummy_for_description, sadd)
+
+        else:
+            def sclass(cls):
+                mod = cls.__module__
+                clsn = cls.__name__
+                if mod == '__builtin__' or mod == 'builtins':
+                    return '%s' % clsn
+
+                elif mod == strip_module:
+                    return '%s' % clsn
+
+                else:
+                    return '%s.%s' % (mod, clsn)
+
+            if isinstance(self._cls, tuple):
+                return '(%s)%s' % (
+                    ' | '.join(sclass(cls) for cls in self._cls), sadd)
+            else:
+                return '%s%s' % (sclass(self._cls), sadd)
+
     @classmethod
     def props_help_string(cls):
         baseprops = []
@@ -1365,6 +1401,10 @@ class Dict(Object):
             return '``dict`` of %s objects' % \
                 self.content_t.classname_for_help(strip_module=strip_module)
 
+        def typename_for_help(self, strip_module=''):
+            return 'dict[%s]' % \
+                self.content_t.typename_for_help(strip_module=strip_module)
+
 
 class List(Object):
     '''
@@ -1423,6 +1463,10 @@ class List(Object):
         def classname_for_help(self, strip_module=''):
             return '``list`` of %s objects' % \
                 self.content_t.classname_for_help(strip_module=strip_module)
+
+        def typename_for_help(self, strip_module=''):
+            return 'list[%s]' % \
+                self.content_t.typename_for_help(strip_module=strip_module)
 
 
 def make_typed_list_class(t):
@@ -1510,6 +1554,13 @@ class Tuple(Object):
                 return '``tuple`` of %s objects' % (
                     self.content_t.classname_for_help(
                         strip_module=strip_module))
+
+        def typename_for_help(self, strip_module=''):
+            st = self.content_t.typename_for_help(strip_module=strip_module)
+            if self.n is not None:
+                return 'tuple[%s]' % ', '.join([st] * self.n)
+            else:
+                return 'tuple[%s, ...]' % st
 
 
 class Duration(Object):
@@ -2764,6 +2815,39 @@ def iload_all_spickle(stream, **kwargs):
 def load_all_spickle(stream, **kwargs):
     kwargs.pop('filename', None)
     return _load_all_spickle(stream, **kwargs)
+
+
+def truncate(n, s):
+    if len(s) > n:
+        return s[:n-3] + '...'
+    else:
+        return s
+
+
+def print_registry(keywords=None, file=None):
+    if file is not None:
+        def lprint(*args, **kwargs):
+            print(*args, file=file, **kwargs)
+    else:
+        lprint = print
+
+    for k in sorted(g_tagname_to_class.keys()):
+        if keywords and any(
+                -1 == k.lower().find(keyword.lower()) for keyword in keywords):
+            continue
+
+        cls = g_tagname_to_class[k]
+        lprint('%-50s %-50s %s' % (k, cls.__name__, cls.__module__))
+        for prop in cls.T.properties:
+            lprint('  %-30s %1s %1s %-50s %s' % (
+                prop.name,
+                'o' if prop.optional else '',
+                'd' if prop.has_default() else '',
+                prop.typename_for_help(strip_module=cls.__module__),
+                truncate(50, prop.help) if prop.help else ''))
+
+            # print(dir(prop))
+        lprint()
 
 
 __all__ = guts_types + [
