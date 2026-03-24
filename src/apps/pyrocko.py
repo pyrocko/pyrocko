@@ -77,13 +77,35 @@ def main(args=None):
                 print()
                 deps.print_installations()
 
+        class PrintClasses(squirrel.SquirrelCommand):
+            def make_subparser(self, subparsers):
+                return subparsers.add_parser(
+                    'classes',
+                    help='Print information about Pyrocko classes.',
+                    description='Print information Pyrocko classes.')
+
+            def setup(self, parser):
+                parser.add_argument(
+                    dest='search',
+                    nargs='*',
+                    help='Search string.')
+
+            def run(self, parsers, args):
+                from pyrocko import guts
+                from pyrocko import model  # noqa
+                from pyrocko import gf  # noqa
+                from pyrocko import scenario  # noqa
+                from pyrocko.gui.sparrow import main  # noqa
+                guts.print_registry(keywords=args.search)
+
         squirrel.run(
             args=args,
             prog='pyrocko',
             subcommands=[
                 PrintVersion(),
                 PrintDependencies(),
-                PrintInfo()],
+                PrintInfo(),
+                PrintClasses()],
             description='Tools for seismology.')
 
     except ImportError as e:
