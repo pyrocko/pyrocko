@@ -208,6 +208,7 @@ def setup_logging(programname='pyrocko', levelname='warning'):
     logging.basicConfig(
         level=levels[levelname],
         format=programname+':%(name)-25s - %(levelname)-8s - %(message)s')
+    logging.captureWarnings(True)
 
 
 def subprocess_setup_logging_args():
