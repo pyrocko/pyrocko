@@ -11,7 +11,7 @@ import math
 import logging
 
 from pyrocko.squirrel.error import SquirrelError
-from pyrocko import progress, guts, util
+from pyrocko import progress, util
 
 logger = logging.getLogger('psq.cli.summon')
 
@@ -69,9 +69,9 @@ returned. Use in combination with ``--sample-rate-min`` and
     parser.add_argument(
         '--tinc',
         dest='tinc',
-        type=float,
+        type=util.parse_duration,
         default=3600.,
-        metavar='SECONDS',
+        metavar='DURATION',
         help='Download loop time window length [s].')
 
 
@@ -96,7 +96,7 @@ def run(parser, args):
 
         try:
             span_tmin, span_tmax = [
-                guts.parse_duration(s)
+                util.parse_duration(s)
                 for s in args.event_time_span.split(',')]
 
         except Exception:
