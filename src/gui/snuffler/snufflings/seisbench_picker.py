@@ -339,7 +339,7 @@ class SeisBenchDetector(Snuffling):
                         tmin=tpeak,
                         tmax=tpeak,
                         kind=0 if pick.phase == 'P' else 1,
-                        phasename=pick.phase,
+                        phasename=f'{pick.phase}{pick.peak_value:.2f}',
                         incidence_angle=pick.peak_value,
                     ))
 
