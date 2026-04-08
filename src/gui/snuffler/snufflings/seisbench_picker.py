@@ -30,7 +30,7 @@ ML_NETWORKS = (
 )
 TRAINED_MODELS = (
     'original', 'ethz', 'instance', 'scedc', 'stead', 'geofon',
-    'neic', 'cascadia', 'cms', 'jcms', 'jcs', 'jms', 'mexico',
+    'neic', 'obs', 'cascadia', 'cms', 'jcms', 'jcs', 'jms', 'mexico',
     'nankai', 'san_andreas'
 )
 
