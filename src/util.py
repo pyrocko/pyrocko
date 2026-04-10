@@ -3135,4 +3135,4 @@ def str_duration(d):
         if abs(d) >= duration_unit_factors[k]:
             return '%g' % (d / duration_unit_factors[k]) + k
 
-    return '%g' % d
+    return '%gs' % d
