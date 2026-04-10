@@ -2422,6 +2422,24 @@ def walk(x, typ=None, path=()):
                     yield y
 
 
+def equal(a, b):
+    if type(a) is not type(b):
+        return False
+
+    if a is b:
+        return True
+
+    for val_a, val_b in zip(a.T.ivals(a), b.T.ivals(b)):
+        if isinstance(val_a, Object) and isinstance(val_b, Object):
+            if not equal(val_a, val_b):
+                return False
+
+        if val_a != val_b:
+            return False
+
+    return True
+
+
 def clone(x, pool=None):
     '''
     Clone guts object tree.
