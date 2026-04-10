@@ -31,7 +31,7 @@ from ..model import (
     codes_patterns_list
 )
 
-from pyrocko.guts import Object, String, Duration, Float, clone, List
+from pyrocko.guts import Object, String, Duration, Float, clone, List, equal
 
 ichain = chain.from_iterable
 
@@ -130,6 +130,8 @@ class Filtering(Object):
     Base class for :py:class:`pyrocko.squirrel.model.Nut` filters.
     '''
 
+    __eq__ = equal
+
     def filter(self, it: Sequence[CodesNSLCE]) -> List[CodesNSLCE]:
         return list(it)
 
@@ -175,6 +177,8 @@ class Grouping(Object):
     '''
     Base class for :py:class:`pyrocko.squirrel.model.Nut` grouping mechanisms.
     '''
+
+    __eq__ = equal
 
     def key(self, codes: CodesNSLCE) -> Hashable:
         return codes
@@ -254,6 +258,8 @@ class Translation(Object):
     '''
     Base class for :py:class:`pyrocko.squirrel.model.Nut` translators.
     '''
+
+    __eq__ = equal
 
     def translate(self, codes: CodesNSLCE) -> CodesNSLCE:
         return codes
@@ -927,9 +933,9 @@ class Operator(BaseOperator):
     Base class for operators with typical filter-group-translate behaviour.
     '''
 
-    filtering = Filtering.T(default=Filtering.D())
-    grouping = Grouping.T(default=Grouping.D())
-    translation = Translation.T(default=Translation.D())
+    filtering = Filtering.T(optional=True, default=Filtering.D())
+    grouping = Grouping.T(optional=True, default=Grouping.D())
+    translation = Translation.T(optional=True, default=Translation.D())
 
     def translate_codes(
                 self,
@@ -973,7 +979,9 @@ class Operator(BaseOperator):
 
 
 class Restitution(Operator):
-    translation = AddSuffixTranslation(suffix='R{quantity}')
+    translation = Translation.T(
+        optional=True,
+        default=AddSuffixTranslation.D(suffix='R{quantity}'))
     quantity = QuantityType.T(default='velocity')
     frequency_min = Float.T()
     frequency_max = Float.T()
@@ -1093,13 +1101,17 @@ class Restitution(Operator):
 
 
 class Shift(Operator):
-    translation = AddSuffixTranslation(suffix='S')
+    translation = Translation.T(
+        optional=True,
+        default=AddSuffixTranslation.D(suffix='S'))
     delay = Duration.T()
 
 
 class Transform(Operator):
-    grouping = Grouping.T(default=SensorGrouping.D())
-    translation = ReplaceComponentTranslation(suffix='T{system}')
+    grouping = Grouping.T(optional=True, default=SensorGrouping.D())
+    translation = Translation.T(
+        optional=True,
+        default=ReplaceComponentTranslation.D(suffix='T{system}'))
 
     @property
     def kind_provides(self):
