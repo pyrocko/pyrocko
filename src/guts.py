@@ -1586,10 +1586,16 @@ class Duration(Object):
             return val
 
         def to_save(self, val):
-            return str_duration(val)
+            if abs(val) >= 600:
+                return str_duration(val)
+            else:
+                return val
 
         def to_save_xml(self, val):
-            return str_duration(val)
+            if abs(val) >= 600.:
+                return str_duration(val)
+            else:
+                return val
 
 
 class TimeFloat(Object):
