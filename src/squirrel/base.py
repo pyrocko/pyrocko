@@ -3479,6 +3479,28 @@ class Squirrel(Selection):
 
         return coverages
 
+    def get_rich_coverage(
+            self, tmin=None, tmax=None, codes=None, limit=None):
+
+        kinds = [
+            'channel',
+            'response',
+            'waveform',
+            'waveform_promise',
+            'carpet']
+
+        coverages_all = []
+        for kind in kinds:
+            coverages_all.extend(self.get_coverage(
+                kind, tmin=tmin, tmax=tmax, codes=codes, limit=limit))
+
+        coverages_by_codes = util.group_by(
+            lambda coverage: coverage.codes, coverages_all)
+
+        return [
+            model.make_rich_coverage(kinds, coverages)
+            for _, coverages in coverages_by_codes.items()]
+
     def get_stationxml(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None,
             level='response', on_error='raise'):
