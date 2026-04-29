@@ -928,7 +928,8 @@ class Squirrel(Selection):
 
         return dict(obj=obj, tmin=tmin, tmax=tmax, time=time, codes=codes)
 
-    def _timerange_sql(self, tmin, tmax, kind, cond, args, naiv):
+    def _timerange_sql(
+            self, tmin, tmax, kind, cond, args, naiv, tscale_min):
 
         tmin_seconds, tmin_offset = model.tsplit(tmin)
         tmax_seconds, tmax_offset = model.tsplit(tmax)
@@ -938,27 +939,28 @@ class Squirrel(Selection):
         else:
             tscale_edges = model.tscale_edges
             tmin_cond = []
-            for kscale in range(tscale_edges.size + 1):
-                if kscale != tscale_edges.size:
-                    tscale = int(tscale_edges[kscale])
+            for kscale in range(tscale_edges.size):
+                tscale = int(tscale_edges[kscale])
+                if tscale_min is None or tscale_min <= tscale:
                     tmin_cond.append('''
                         (%(db)s.%(nuts)s.kind_id = ?
                          AND %(db)s.%(nuts)s.kscale == ?
                          AND %(db)s.%(nuts)s.tmin_seconds BETWEEN ? AND ?)
                     ''')
+
                     args.extend(
                         (to_kind_id(kind), kscale,
                          tmin_seconds - tscale - 1, tmax_seconds + 1))
 
-                else:
-                    tmin_cond.append('''
-                        (%(db)s.%(nuts)s.kind_id == ?
-                         AND %(db)s.%(nuts)s.kscale == ?
-                         AND %(db)s.%(nuts)s.tmin_seconds <= ?)
-                    ''')
+            tmin_cond.append('''
+                (%(db)s.%(nuts)s.kind_id == ?
+                 AND %(db)s.%(nuts)s.kscale == ?
+                 AND %(db)s.%(nuts)s.tmin_seconds <= ?)
+            ''')
 
-                    args.extend(
-                        (to_kind_id(kind), kscale, tmax_seconds + 1))
+            args.extend(
+                (to_kind_id(kind), tscale_edges.size, tmax_seconds + 1))
+
             if tmin_cond:
                 cond.append(' ( ' + ' OR '.join(tmin_cond) + ' ) ')
 
@@ -993,7 +995,8 @@ class Squirrel(Selection):
     def iter_nuts(
             self, kind=None, tmin=None, tmax=None, codes=None,
             codes_exclude=None, kind_codes_ids=None, sample_rate_min=None,
-            sample_rate_max=None, naiv=False, path=None, limit=None):
+            sample_rate_max=None, naiv=False, path=None, limit=None,
+            tscale_min=None):
 
         '''
         Iterate over content entities matching given constraints.
@@ -1078,7 +1081,7 @@ class Squirrel(Selection):
             if tmax is None:
                 tmax = self.get_time_span()[1] + 1.0
 
-            self._timerange_sql(tmin, tmax, kind, cond, args, naiv)
+            self._timerange_sql(tmin, tmax, kind, cond, args, naiv, tscale_min)
 
         cond.append('kind_codes.kind_id == ?')
         args.append(kind_id)
@@ -1201,7 +1204,7 @@ class Squirrel(Selection):
                 cond = []
                 args = []
 
-                self._timerange_sql(tmin, tmax, kind, cond, args, False)
+                self._timerange_sql(tmin, tmax, kind, cond, args, False, None)
 
                 if codes is not None:
                     self._codes_match_sql(True, kind_id, codes, cond, args)
@@ -2473,7 +2476,8 @@ class Squirrel(Selection):
     def get_waveform_nuts(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None,
             codes_exclude=None, kind_codes_ids=None, sample_rate_min=None,
-            sample_rate_max=None, order_only=False):
+            sample_rate_max=None, order_only=False, tscale_min=None,
+            downloads_enabled=True):
 
         '''
         Get waveform content entities matching given constraints.
@@ -2489,7 +2493,7 @@ class Squirrel(Selection):
 
         args = self._get_selection_args(WAVEFORM, obj, tmin, tmax, time, codes)
 
-        if self.downloads_enabled:
+        if self.downloads_enabled and downloads_enabled:
             self._redeem_promises(
                 *args,
                 codes_exclude,
@@ -2500,7 +2504,8 @@ class Squirrel(Selection):
 
         nuts = sorted(
             self.iter_nuts(
-                'waveform', *args, codes_exclude, kind_codes_ids),
+                'waveform', *args, codes_exclude, kind_codes_ids,
+                tscale_min=tscale_min),
             key=lambda nut: nut.dkey)
 
         return nuts
@@ -2529,7 +2534,8 @@ class Squirrel(Selection):
             sample_rate_max=None, uncut=False, want_incomplete=True,
             degap=True, maxgap=5, maxlap=None, snap=None, include_last=False,
             load_data=True, accessor_id='default', operator_params=None,
-            order_only=False, channel_priorities=None):
+            order_only=False, channel_priorities=None, tscale_min=None,
+            downloads_enabled=True):
 
         '''
         Get waveforms matching given constraints.
@@ -2645,7 +2651,7 @@ class Squirrel(Selection):
                 order_only=order_only, channel_priorities=channel_priorities)
 
         kinds = ['waveform']
-        if self.downloads_enabled:
+        if self.downloads_enabled and downloads_enabled:
             kinds.append('waveform_promise')
 
         self_tmin, self_tmax = self.get_time_span(kinds)
@@ -2672,7 +2678,8 @@ class Squirrel(Selection):
 
         nuts = self.get_waveform_nuts(
             obj, tmin, tmax, time, codes, codes_exclude, kind_codes_ids,
-            sample_rate_min, sample_rate_max, order_only=order_only)
+            sample_rate_min, sample_rate_max, order_only=order_only,
+            tscale_min=tscale_min, downloads_enabled=downloads_enabled)
 
         if order_only or not nuts:
             return []
@@ -2770,7 +2777,7 @@ class Squirrel(Selection):
             degap=True, maxgap=5, maxlap=None,
             snap=None, include_last=False, load_data=True,
             accessor_id=None, clear_accessor=True, operator_params=None,
-            grouping=None, channel_priorities=None):
+            grouping=None, channel_priorities=None, downloads_enabled=True):
 
         '''
         Iterate window-wise over waveform archive.
@@ -2873,7 +2880,7 @@ class Squirrel(Selection):
             WAVEFORM, obj, tmin, tmax, time, codes)
 
         kinds = ['waveform']
-        if self.downloads_enabled:
+        if self.downloads_enabled and downloads_enabled:
             kinds.append('waveform_promise')
 
         self_tmin, self_tmax = self.get_time_span(kinds)
@@ -2945,7 +2952,8 @@ class Squirrel(Selection):
                         maxlap=maxlap,
                         accessor_id=accessor_id,
                         operator_params=operator_params,
-                        channel_priorities=channel_priorities)
+                        channel_priorities=channel_priorities,
+                        downloads_enabled=downloads_enabled)
 
                     self.advance_accessor(accessor_id, 'waveform')
 
