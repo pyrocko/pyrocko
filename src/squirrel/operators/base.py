@@ -20,6 +20,7 @@ import logging
 import re
 from itertools import chain
 
+from pyrocko import util
 from pyrocko.model import Location, Event
 from pyrocko.trace import Trace, TraceTooShort, NoData
 from pyrocko.carpet import Carpet
@@ -28,7 +29,7 @@ from pyrocko.response import InvalidResponseError
 from ..model import (
     QuantityType, CodesNSLCE, CodesMatcher, CHANNEL, WAVEFORM,
     get_selection_args, Sensor, Channel, Response, Coverage, join_coverages,
-    codes_patterns_list
+    codes_patterns_list, make_rich_coverage
 )
 
 from pyrocko.guts import Object, String, Duration, Float, clone, List, equal
@@ -548,6 +549,28 @@ class BaseOperator(Object):
 
         return by_codes_unique(coverages)
 
+    def get_rich_coverage(
+            self, tmin=None, tmax=None, codes=None, limit=None):
+
+        kinds = [
+            'channel',
+            'response',
+            'waveform',
+            'waveform_promise',
+            'carpet']
+
+        coverages_all = []
+        for kind in kinds:
+            coverages_all.extend(self.get_coverage(
+                kind, tmin=tmin, tmax=tmax, codes=codes, limit=limit))
+
+        coverages_by_codes = util.group_by(
+            lambda coverage: coverage.codes, coverages_all)
+
+        return [
+            make_rich_coverage(kinds, coverages)
+            for _, coverages in coverages_by_codes.items()]
+
     def get_channels(
                 self,
                 obj: HasTimeAndCodes = None,
@@ -743,38 +766,43 @@ class BaseOperator(Object):
                     for mapping in operator.iter_mappings()]
 
             ngroups = len(codes_list)
-            for igroup, scl in enumerate(codes_list):
-                for iwin in range(nwin):
-                    wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)
 
-                    chopped = self.get_waveforms(
-                        tmin=wmin-tpad,
-                        tmax=wmax+tpad,
-                        codes=scl,
-                        codes_exclude=codes_exclude,
-                        sample_rate_min=sample_rate_min,
-                        sample_rate_max=sample_rate_max,
-                        snap=snap,
-                        include_last=include_last,
-                        load_data=load_data,
-                        want_incomplete=want_incomplete,
-                        degap=degap,
-                        maxgap=maxgap,
-                        maxlap=maxlap,
-                        accessor_id=accessor_id,
-                        channel_priorities=channel_priorities)
+            def gen():
+                for igroup, scl in enumerate(codes_list):
+                    for iwin in range(nwin):
+                        wmin, wmax = tmin+iwin*tinc, min(
+                            tmin+(iwin+1)*tinc, tmax)
 
-                    self.advance_accessor(accessor_id, 'waveform')
+                        chopped = self.get_waveforms(
+                            tmin=wmin-tpad,
+                            tmax=wmax+tpad,
+                            codes=scl,
+                            codes_exclude=codes_exclude,
+                            sample_rate_min=sample_rate_min,
+                            sample_rate_max=sample_rate_max,
+                            snap=snap,
+                            include_last=include_last,
+                            load_data=load_data,
+                            want_incomplete=want_incomplete,
+                            degap=degap,
+                            maxgap=maxgap,
+                            maxlap=maxlap,
+                            accessor_id=accessor_id,
+                            channel_priorities=channel_priorities)
 
-                    yield Batch(
-                        tmin=wmin,
-                        tmax=wmax,
-                        tpad=tpad,
-                        i=iwin,
-                        n=nwin,
-                        igroup=igroup,
-                        ngroups=ngroups,
-                        traces=chopped)
+                        self.advance_accessor(accessor_id, 'waveform')
+
+                        yield Batch(
+                            tmin=wmin,
+                            tmax=wmax,
+                            tpad=tpad,
+                            i=iwin,
+                            n=nwin,
+                            igroup=igroup,
+                            ngroups=ngroups,
+                            traces=chopped)
+
+            return util.GeneratorWithLen(gen(), ngroups*nwin)
 
         finally:
             self._n_choppers_active -= 1

@@ -1516,6 +1516,13 @@ class Coverage(Object):
 
         return count
 
+    def get(self, time):
+        for (t, v) in self.changes:
+            if t <= time:
+                return v
+
+        return 0
+
 
 def same_or_none(xs):
     xs = list(xs)
@@ -1574,6 +1581,95 @@ def join_coverages(coverages, tbleed=0.0):
     return coverage
 
 
+def make_rich_coverage(kinds, coverages):
+
+    assert len(coverages) >= 1
+    assert all(coverage.codes == coverages[0].codes for coverage in coverages)
+    tmin = min(coverage.tmin for coverage in coverages)
+    tmax = max(coverage.tmax for coverage in coverages)
+
+    kind_ids = to_kind_ids(kinds)
+
+    all_times = []
+    all_diff_counts = []
+    all_ikinds = []
+    coverages_undefined = []
+
+    for coverage in coverages:
+        if coverage.changes is None:
+            coverages_undefined.append(coverage)
+            times = num.array([coverage.tmin, coverage.tmax])
+            diff_counts = num.array([1, -1])
+        else:
+            times, counts = coverage.changes_as_arrays()
+            diff_counts = counts.copy()
+            diff_counts[0] = counts[0]
+            diff_counts[1:] = counts[1:] - counts[:-1]
+
+        ikinds = num.full(
+            times.size,
+            kind_ids.index(coverage.kind_id),
+            dtype=int)
+
+        all_times.append(times)
+        all_diff_counts.append(diff_counts)
+        all_ikinds.append(ikinds)
+
+    times = num.concatenate(all_times)
+    diff_counts = num.concatenate(all_diff_counts)
+    ikinds = num.concatenate(all_ikinds)
+
+    iorder = num.argsort(times)
+
+    times = times[iorder]
+    diff_counts = diff_counts[iorder]
+    ikinds = ikinds[iorder]
+
+    diff_counts2 = num.zeros((diff_counts.size, len(kind_ids)), dtype=int)
+    diff_counts2[num.arange(times.size), ikinds] = diff_counts
+
+    counts2 = num.cumsum(diff_counts2, axis=0)
+    counts2 = num.clip(counts2, 0, 2)
+
+    for coverage in coverages_undefined:
+        mask = num.logical_and(coverage.tmin <= times, times < coverage.tmax)
+        counts2[mask, kind_ids.index(coverage.kind_id)] = 3
+
+    counts = num.zeros(times.size, dtype=int)
+    for ikind, kind_id in enumerate(kind_ids):
+        counts += counts2[:, ikind] << (2 * ikind)
+
+    tmask = num.ones(times.size, dtype=bool)
+    tmask[0:-1] = num.diff(times) != 0.0
+
+    times = times[tmask]
+    counts = counts[tmask]
+
+    changes = list(zip(times, counts))
+
+    deltat = same_or_none(
+        coverage.deltat for coverage in coverages
+        if coverage.deltat is not None)
+
+    coverage = Coverage(
+        kind_id=None,
+        codes=coverages[0].codes,
+        tmin=tmin,
+        tmax=tmax,
+        deltat=deltat,
+        changes=changes)
+
+    return coverage
+
+
+def unpack_rich(value):
+    return [(value >> (2 * i)) & 3 for i in range(16)]
+
+
+def pack_rich(values):
+    return sum(v << (2 * i) for (i, v) in enumerate(values))
+
+
 __all__ = [
     'UNDEFINED',
     'WAVEFORM',
@@ -1607,6 +1703,8 @@ __all__ = [
     'Response',
     'Nut',
     'Coverage',
+    'join_coverages',
+    'make_rich_coverage',
     'WaveformPromise',
     'QuantityType',
 ]
