@@ -1565,6 +1565,24 @@ class Duration(Object):
             return str_duration(val)
 
 
+class TimeFloat(Object):
+    '''
+    Placeholder for a UTC timestamp.
+    '''
+
+    dummy_for = (hpfloat, float)
+    dummy_for_description = 'pyrocko.util.get_time_float'
+
+    class __T(TBase):
+        def regularize_extra(self, val):
+            time_float = get_time_float()
+            return time_float(val)
+
+        to_save = str
+
+        to_save_xml = str
+
+
 re_tz = re.compile(r'(Z|([+-][0-2][0-9])(:?([0-5][0-9]))?)$')
 
 
@@ -1581,7 +1599,10 @@ class Timestamp(Object):
 
             time_float = get_time_float()
 
-            if isinstance(val, datetime.datetime):
+            if isinstance(val, (int, hpfloat, float)):
+                val = time_float(val)
+
+            elif isinstance(val, datetime.datetime):
                 tt = val.utctimetuple()
                 val = time_float(calendar.timegm(tt)) + val.microsecond * 1e-6
 
@@ -1610,9 +1631,6 @@ class Timestamp(Object):
                 except TimeStrError:
                     raise ValidationError(
                         '%s: cannot parse time/date: %s' % (self.xname(), val))
-
-            elif isinstance(val, (int, float)):
-                val = time_float(val)
 
             else:
                 raise ValidationError(
