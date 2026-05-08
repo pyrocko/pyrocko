@@ -116,12 +116,12 @@ def snuffle(pile=None, **kwargs):
                 store_path = pjoin(
                     tempdir,
                     'trace-%(network)s.%(station)s.%(location)s.%(channel)s.'
-                    '%(tmin_ms)s.mseed')
+                    '%(tmin_ms)s.yaff')
             elif os.path.isdir(store_path):
                 store_path = pjoin(
                     store_path,
                     'trace-%(network)s.%(station)s.%(location)s.%(channel)s.'
-                    '%(tmin_ms)s.mseed')
+                    '%(tmin_ms)s.yaff')
 
             interval = min(
                 source.get_wanted_poll_interval() for source in sources)
