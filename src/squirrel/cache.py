@@ -194,7 +194,7 @@ class ContentCache(object):
 
             for path_segment in delete:
                 logger.debug(
-                    'Forgetting (clear): %s %s' % path_segment)
+                    'Forgetting (advance): %s %s' % path_segment)
                 self._entries.pop(path_segment, None)
 
             self._accessor_ticks[accessor] += 1
