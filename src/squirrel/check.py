@@ -56,7 +56,8 @@ class SquirrelCheckProblemType(StringChoice):
               'waveform.',
         'p6': 'Sampling rate of waveform does not match rate listed in '
               'metadata.',
-        'p7': 'Waveform incompletely covered by channel/response epochs.'}
+        'p7': 'Waveform incompletely covered by channel/response epochs.',
+        'p8': 'Unexpected response input quantity.'}
 
     choices = list(types.keys())
 
@@ -66,6 +67,13 @@ SquirrelCheckProblemType.__doc__ %= {
        * - %s
          - %s''' % (k, v) for (k, v) in SquirrelCheckProblemType.types.items())
 }
+
+
+expected_quantity = {
+    'H': 'velocity',
+    'N': 'acceleration',
+    'J': 'rotation_velocity',
+    'D': 'pressure'}
 
 
 class SquirrelCheckProblem(Object):
@@ -253,6 +261,23 @@ def do_check(squirrel, codes=None, tmin=None, tmax=None, time=None, ignore=[]):
     entries = []
     for codes_ in list(sorted(codes_set)):
         problems = []
+
+        for response in squirrel.get_responses(
+                codes=[codes_],
+                tmin=tmin if tmin is not None else time,
+                tmax=tmax if tmax is not None else time):
+
+            if len(response.codes.channel) == 3:
+                instrument_code = response.codes.channel[1]
+                quantity = expected_quantity.get(instrument_code)
+                if quantity is not None \
+                        and quantity != response.input_quantity:
+
+                    problems.append(SquirrelCheckProblem(
+                        type='p8',
+                        symptom='response input quantity: %s'
+                        % response.input_quantity))
+
         coverage = {}
         for kind in ['waveform', 'channel', 'response']:
             coverage[kind] = squirrel.get_coverage(
