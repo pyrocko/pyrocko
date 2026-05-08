@@ -21,7 +21,7 @@ from scipy import signal
 from pyrocko import util, orthodrome, pchain, model, signal_ext
 from pyrocko.util import reuse
 from pyrocko.guts import Object, Float, Int, String, List, \
-    StringChoice, Timestamp, Bool
+    StringChoice, Timestamp, Bool, TimeFloat
 from pyrocko.guts_array import Array
 from pyrocko.model import squirrel_content
 
@@ -85,7 +85,7 @@ class Trace(Object):
     tmin = Timestamp.T(default=Timestamp.D('1970-01-01 00:00:00'))
     tmax = Timestamp.T()
 
-    deltat = Float.T(default=1.0)
+    deltat = TimeFloat.T(default=1.0)
     ydata = Array.T(optional=True, shape=(None,), serialize_as='base64+meta')
 
     mtime = Timestamp.T(optional=True)
