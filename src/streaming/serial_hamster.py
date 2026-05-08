@@ -8,6 +8,7 @@ Live stream reader for a few USB/serial digitizers.
 '''
 
 import time
+import struct
 import logging
 import math
 import numpy as num
@@ -91,7 +92,7 @@ class SerialHamster(object):
         self.timeout = timeout
         self.buffersize = buffersize
         self.ser = None
-        self.values = [[]]*len(channels)
+        self.values = [[] for i in range(len(channels))]
         self.times = []
         self.fixed_deltat = deltat
         self.deltat = None
@@ -311,7 +312,7 @@ class SerialHamster(object):
                 self.got_trace(tr)
             self.ncontinuous += v.size
 
-            self.values = [[]] * len(self.channels)
+            self.values = [[] for i in range(len(self.channels))]
             self.times = []
 
     def got_trace(self, tr):
@@ -459,6 +460,76 @@ class USBHB628Hamster(SerialHamster):
         self.times.append(t)
 
         if len(self.times) >= self.buffersize:
+            self._flush_buffer()
+
+        return True
+
+
+class ESP32Hamster(SerialHamster):
+
+    def __init__(
+            self,
+            baudrate=115200,
+            deltat=0.002,
+            device=None,
+            sync_length=100,
+            sync_tries_max=200,
+            *args,
+            **kwargs):
+
+        SerialHamster.__init__(
+            self,
+            baudrate=baudrate,
+            port=device,
+            channels=['GNX', 'GNY', 'GNZ', 'GJX', 'GJY', 'GJZ'],
+            deltat=deltat,
+            tune_to_quickones=False,
+            *args, **kwargs)
+
+        self.sync_length = sync_length
+        self.sync_tries_max = sync_tries_max
+
+    def acquisition_start(self):
+        SerialHamster.acquisition_start(self)
+        self.sync()
+
+    def sync(self):
+        ok = False
+        # for i in range(self.sync_tries_max):
+        while True:
+            buffer = self.ser.read(14*self.sync_length)
+            array = num.frombuffer(buffer, dtype=num.uint8)
+            array = array.reshape((self.sync_length, 14))
+            marker = num.all(array == 0, axis=0)
+            offset = num.where(marker)[0][0]
+            if num.sum(marker) == 2:
+                ok = True
+                break
+
+        if not ok:
+            raise SerialHamsterError(
+                'Could not get start marker... please shake the device!')
+
+        self.ser.read(offset)
+
+    def process(self):
+        buffer = self.ser.read(14)
+        t = time.time()
+        self.times.append(t)
+
+        values = struct.unpack("<hhhhhhh", buffer)
+        if values[0] != 0:
+            logger.warning('Bytes lost, resyncing...')
+            self.sync()
+            return
+
+        values = values[1:]
+
+        # print(values)
+        for i in range(len(self.values)):
+            self.values[i].append(values[i])
+
+        if len(self.values[0]) >= self.buffersize:
             self._flush_buffer()
 
         return True
