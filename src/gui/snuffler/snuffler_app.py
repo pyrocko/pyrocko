@@ -184,6 +184,20 @@ class PulseAcquisition(
         return 100.
 
 
+class ESP32Acquisition(
+        serial_hamster.ESP32Hamster, AcquisitionThread):
+
+    def __init__(self, *args, **kwargs):
+        serial_hamster.ESP32Hamster.__init__(self, *args, **kwargs)
+        AcquisitionThread.__init__(self)
+
+    def got_trace(self, tr):
+        AcquisitionThread.got_trace(self, tr)
+
+    def get_wanted_poll_interval(self):
+        return 100.
+
+
 def setup_acquisition_sources(args):
 
     sources = []
@@ -198,6 +212,7 @@ def setup_acquisition_sources(args):
         med = re.match(r'edl://([^:]+)', arg)
         mcu = re.match(r'cube://([^:]+)', arg)
         mpa = re.match(r'pulse://', arg)
+        mesp = re.match(r'esp32://(.+)', arg)
 
         if msl:
             host = msl.group(1)
@@ -307,8 +322,12 @@ def setup_acquisition_sources(args):
         elif mpa:
             pa = PulseAcquisition()
             sources.append(pa)
+        elif mesp:
+            device = mesp.group(1)
+            esp32 = ESP32Acquisition(device=device)
+            sources.append(esp32)
 
-        if msl or mca or mus or msc or med or mcu:
+        if msl or mca or mus or msc or med or mcu or mpa or mesp:
             args.pop(iarg)
         else:
             iarg += 1
