@@ -23,6 +23,7 @@ from pyrocko.streaming import serial_hamster
 from pyrocko.streaming import slink
 from pyrocko.streaming import edl
 from pyrocko.streaming import datacube
+from pyrocko.streaming import pulse
 
 from pyrocko import pile            # noqa
 from pyrocko import util            # noqa
@@ -169,6 +170,20 @@ class CubeAcquisition(
         AcquisitionThread.got_trace(self, tr)
 
 
+class PulseAcquisition(
+        pulse.PulseInput, AcquisitionThread):
+
+    def __init__(self, *args, **kwargs):
+        pulse.PulseInput.__init__(self, *args, **kwargs)
+        AcquisitionThread.__init__(self)
+
+    def got_trace(self, tr):
+        AcquisitionThread.got_trace(self, tr)
+
+    def get_wanted_poll_interval(self):
+        return 100.
+
+
 def setup_acquisition_sources(args):
 
     sources = []
@@ -182,6 +197,7 @@ def setup_acquisition_sources(args):
         msc = re.match(r'school://([^:?]+)(\?([^?]+))?', arg)
         med = re.match(r'edl://([^:]+)', arg)
         mcu = re.match(r'cube://([^:]+)', arg)
+        mpa = re.match(r'pulse://', arg)
 
         if msl:
             host = msl.group(1)
@@ -288,6 +304,9 @@ def setup_acquisition_sources(args):
             device = mcu.group(1)
             cube = CubeAcquisition(device=device)
             sources.append(cube)
+        elif mpa:
+            pa = PulseAcquisition()
+            sources.append(pa)
 
         if msl or mca or mus or msc or med or mcu:
             args.pop(iarg)
