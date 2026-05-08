@@ -467,6 +467,7 @@ else:
 
 g_time_float = None
 g_time_dtype = None
+g_time_hp_stack_traceback = None
 
 
 class TimeFloatSettingError(Exception):
@@ -495,11 +496,17 @@ def use_high_precision_time(enabled):
 def _setup_high_precision_time_mode(enabled_app=False):
     global g_time_float
     global g_time_dtype
+    global g_time_hp_stack_traceback
+    import traceback
 
     if not (g_time_float is None and g_time_dtype is None):
         raise TimeFloatSettingError(
+            '\n\nCall stack of earlier invocation:\n\n%s\n\n'
             'Cannot set time handling mode: too late, it has already been '
-            'fixed by an earlier call.')
+            'fixed by an earlier call (see above).' % ''.join(
+                traceback.format_list(g_time_hp_stack_traceback)))
+
+    g_time_hp_stack_traceback = traceback.extract_stack()
 
     from pyrocko import config
 
@@ -1328,6 +1335,13 @@ def working_system_time_range(year_min_lim=None, year_max_lim=None):
     :returns: ``(tmin, tmax, year_min, year_max)``
     '''
 
+    global g_time_float
+    global g_time_dtype
+    global g_time_hp_stack_traceback
+
+    # prevent fixation of time_float
+    temp_tf = (g_time_float, g_time_dtype, g_time_hp_stack_traceback)
+
     year0 = 2000
     year_min = year0
     year_max = year0
@@ -1356,10 +1370,14 @@ def working_system_time_range(year_min_lim=None, year_max_lim=None):
         else:
             year_max = year
 
-    return (
+    result = (
         _year_to_time(year_min),
         _year_to_time(year_max),
         year_min, year_max)
+
+    (g_time_float, g_time_dtype, g_time_hp_stack_traceback) = temp_tf
+
+    return result
 
 
 g_working_system_time_range = None
