@@ -221,8 +221,8 @@ def iload(filename, load_data=True, offset=0, nsegments=0):
         f.seek(offset, SEEK_SET)
         tf = CarpetFileIO(f)
         isegment = 0
-        for carpet in tf.load(load_data=load_data):
-            yield carpet
+        for offset, carpet in tf.load(load_data=load_data):
+            yield offset, carpet
             isegment += 1
             if isegment == nsegments:
                 break
