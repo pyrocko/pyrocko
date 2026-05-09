@@ -253,7 +253,7 @@ class Spectrogram(Snuffling):
         times = []
         for batch in self.chopper_selected_traces(
                 tinc=tinc, tpad=tpad, want_incomplete=False, fallback=True,
-                load_data=False, mode='inview', style='batch'):
+                load_data=False, mode='inview', style='batch', degap=False):
 
             times.append(batch.tmin)
             times.append(batch.tmax)
@@ -315,7 +315,7 @@ class Spectrogram(Snuffling):
             zvalues.append(zmax)
 
             c = axes.pcolormesh(
-                t, f, a,
+                t.astype(float), f.astype(float), a,
                 cmap=get_cmap(self.ctb_name),
                 shading='gouraud')
             frame.plot.set_color_dim(c, 'psd')
