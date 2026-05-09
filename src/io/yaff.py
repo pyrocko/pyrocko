@@ -56,10 +56,12 @@ class TracesFileIO(File):
         return extract(tr, record_formats['trace'])
 
     def load(self, load_data=True):
+        position = self._f.tell()
+        offset = position
         while True:
             try:
-                r = None
                 r = self.next_record()
+                offset = position
 
                 if r.type == 'trace':
                     exclude = None
@@ -68,7 +70,13 @@ class TracesFileIO(File):
 
                     d = r.unpack(exclude=exclude)
                     tr = self.from_dict(d)
+                    tr.meta = {
+                        'offset': offset,
+                    }
+
                     yield tr
+
+                position += r.size_record
 
             except NoDataAvailable:
                 break
@@ -80,12 +88,17 @@ class TracesFileIO(File):
             r.close()
 
 
-def iload(filename, load_data=True):
+def iload(filename, load_data=True, offset=0, nsegments=0):
     try:
         f = open(filename, 'rb')
+        f.seek(offset, os.SEEK_SET)
         tf = TracesFileIO(f)
+        isegment = 0
         for tr in tf.load(load_data=load_data):
             yield tr
+            isegment += 1
+            if isegment == nsegments:
+                break
 
     except (OSError, FileError) as e:
         raise FileLoadError(e)
