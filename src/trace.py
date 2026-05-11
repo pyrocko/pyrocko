@@ -112,6 +112,9 @@ class Trace(Object):
         if ydata is not None and not isinstance(ydata, num.ndarray):
             ydata = Trace.ydata.regularize_extra(ydata)
 
+        if not isinstance(deltat, time_float):
+            deltat = Trace.deltat.regularize_extra(deltat)
+
         self._growbuffer = None
 
         tmin = time_float(tmin)
