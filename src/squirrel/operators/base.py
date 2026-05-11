@@ -33,6 +33,7 @@ from ..model import (
 )
 
 from pyrocko.guts import Object, String, Duration, Float, clone, List, equal
+from pyrocko import cake
 
 ichain = chain.from_iterable
 
@@ -1275,6 +1276,43 @@ class ToTRZ(Transform):
             'Z': (0, -90.)}[component]
 
 
+class ToLQT(Transform):
+    components = 'LQT'
+    origin = Location.T()
+    incidence = Float.T()
+    earthmodel = String.T('ak135')
+
+
+    def project(self, sensor, trs_sensor):
+        _, bazi = self.origin.azibazi_to(sensor)
+        bazi + 180.
+        dist = self.origin.distance_to(sensor) * cake.m2d
+        cakemodel = cake.load_model(self.earthmodel)
+        phases = [ cake.PhaseDef(x) for x in ['p', 'P'] ]
+        rays = cakemodel.arrivals([dist], phases, zstart=self.origin.depth, zstop=sensor.elevation)
+        if len(rays) == 0:
+            self.incidence = None
+        else:
+            self.incidence = rays[0].incidence_angle()
+        return sensor.project_to_lqt(None, trs_sensor, azimuth=bazi, incidence=self.incidence)
+
+    def get_orientation(self, sensor, component):
+        _, bazi = self.origin.azibazi_to(sensor)
+        dist = self.origin.distance_to(sensor) * cake.m2d
+        cakemodel = cake.load_model(self.earthmodel)
+        phases = [ cake.PhaseDef(x) for x in ['p', 'P'] ]
+        rays = cakemodel.arrivals([dist], phases, zstart=self.origin.depth, zstop=sensor.elevation)
+        if len(rays) == 0:
+            self.incidence = None
+        else:
+            self.incidence = rays[0].incidence_angle()
+
+        return {
+            'L': ((bazi + 180. + 180.) % 360. - 180., self.incidence),
+            'Q': ((bazi + 180. + 180.) % 360. - 180., 90.-self.incidence),
+            'T': ((bazi + 270. + 180.) % 360. - 180., 0.)}[component]
+
+
 __all__ = [
     'CodesConvertible',
     'HasTimeAndCodes',
@@ -1301,4 +1339,5 @@ __all__ = [
     'Shift',
     'ToENZ',
     'ToTRZ',
+    'ToLQT',
 ]
