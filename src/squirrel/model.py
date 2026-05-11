@@ -553,6 +553,36 @@ class Sensor(ChannelBase):
             [math.sin(azimuth*d2r), math.cos(azimuth*d2r), 0.],
             [0., 0., 1.]], dtype=float), 'TRZ')
 
+    def projection_to_lqt(self, source, azimuth=None, incidence=None):
+        if azimuth is not None:
+            assert source is None
+        else:
+            #azimuth = source.azibazi_to(self)[1] + 180.
+            azimuth = source.azibazi_to(self)[1]
+
+        if incidence is None:
+            dist = source.distance_to(self)*cake.m2d
+            cakemodel = cake.load_model(self.earthmodel)
+            phases = [ cake.PhaseDef(x) for x in ['p', 'P'] ]
+            rays = cakemodel.arrivals([dist], phaes, zstart=source.depth)
+            if len(rays) == 0:
+                return None
+            else:
+                incidence = rays[0].incidence_angle()
+
+        print(azimuth, incidence)
+        # reference is Plesinger et al., 1986
+        iprime = incidence
+        ca =  math.cos(azimuth*d2r)
+        sa =  math.sin(azimuth*d2r)
+        ci =  math.cos(iprime*d2r)
+        si =  math.sin(iprime*d2r)
+
+        return self.projection_to(num.array([
+            [-si*sa, -si*ca, ci],
+            [ ci*sa,  ci*ca, si],
+            [   -ca,     sa, 0.]], dtype=float), 'LQT')
+
     def project_to_enz(self, traces):
         from pyrocko import trace
 
@@ -565,6 +595,14 @@ class Sensor(ChannelBase):
 
         matrix, in_channels, out_channels = self.projection_to_trz(
             source, azimuth=azimuth)
+
+        return trace.project(traces, matrix, in_channels, out_channels)
+
+    def project_to_lqt(self, source, traces, azimuth=None, incidence=None):
+        from pyrocko import trace
+
+        matrix, in_channels, out_channels = self.projection_to_lqt(
+            source, azimuth=azimuth, incidence=incidence)
 
         return trace.project(traces, matrix, in_channels, out_channels)
 
