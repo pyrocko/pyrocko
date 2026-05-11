@@ -1279,8 +1279,8 @@ class ToTRZ(Transform):
 class ToLQT(Transform):
     components = 'LQT'
     origin = Location.T()
-    incidence = Float.T()
-    earthmodel = String.T('ak135')
+    incidence = Float.T() # mapping?
+    earthmodel = String.T(default='ak135-f-continental.m')
 
 
     def project(self, sensor, trs_sensor):
@@ -1294,7 +1294,7 @@ class ToLQT(Transform):
             self.incidence = None
         else:
             self.incidence = rays[0].incidence_angle()
-        return sensor.project_to_lqt(None, trs_sensor, azimuth=bazi, incidence=self.incidence)
+        return sensor.project_to_lqt(None, trs_sensor, azimuth=bazi, incidence=self.incidence, earthmodel=self.earthmodel)
 
     def get_orientation(self, sensor, component):
         _, bazi = self.origin.azibazi_to(sensor)
