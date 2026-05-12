@@ -1,7 +1,6 @@
 
 import time
 import numpy as num
-import pasimple
 import logging
 
 from pyrocko import trace, util
@@ -13,6 +12,7 @@ logger = logging.getLogger('pyrocko.streaming.pulse')
 class PulseInput(object):
 
     def __init__(self):
+        import pasimple
 
         # Audio attributes for the recording
         self.format = pasimple.PA_SAMPLE_S32LE
@@ -28,6 +28,7 @@ class PulseInput(object):
         self.tdone = None
 
     def acquisition_start(self):
+        import pasimple
         self.pa = pasimple.PaSimple(
             pasimple.PA_STREAM_RECORD, self.format, self.nchannels, self.rate)
 
