@@ -474,6 +474,22 @@ def cut_intervals(channels):
     return channels_out
 
 
+class ProjectionError(Exception):
+    pass
+
+
+g_default_earthmodel = None
+
+
+def get_default_earthmodel():
+    from pyrocko import cake
+    global g_default_earthmodel
+    if g_default_earthmodel is None:
+        g_default_earthmodel = cake.load_model()
+
+    return g_default_earthmodel
+
+
 class Sensor(ChannelBase):
     '''
     Representation of a channel group.
@@ -553,35 +569,86 @@ class Sensor(ChannelBase):
             [math.sin(azimuth*d2r), math.cos(azimuth*d2r), 0.],
             [0., 0., 1.]], dtype=float), 'TRZ')
 
-    def projection_to_lqt(self, source, azimuth=None, incidence=None):
-        if azimuth is not None:
-            assert source is None
-        else:
-            #azimuth = source.azibazi_to(self)[1] + 180.
+    def incidence_angle(
+            self,
+            source=None,
+            earthmodel=None,
+            phases=None,
+            distance=None,
+            source_depth=None):
+
+        from pyrocko import cake
+        if earthmodel is None:
+            earthmodel = get_default_earthmodel()
+
+        if phases is None:
+            phases = [cake.PhaseDef(x) for x in ['p', 'P']]
+
+        if distance is None:
+            if source is None:
+                raise ProjectionError(
+                    'Cannot determine incidence angle: '
+                    'Neither `source` nor `distance` given.')
+
+            distance = source.distance_to(self) * cake.m2d
+
+        if source_depth is None:
+            if source is None:
+                raise ProjectionError(
+                    'Cannot determine incidence angle: '
+                    'Neither `source` nor `source_depth` given.')
+
+            source_depth = source.depth
+
+        rays = earthmodel.arrivals(
+            [distance],
+            phases,
+            zstart=source_depth,
+            zstop=self.depth)
+
+        if len(rays) == 0:
+            raise ProjectionError(
+                'Cannot determine incidence angle: No rays connecting '
+                'source and sensor could be determined.')
+
+        return rays[0].incidence_angle()
+
+    def projection_to_lqt(
+            self,
+            source=None,
+            earthmodel=None,
+            phases=None,
+            distance=None,
+            source_depth=None,
+            azimuth=None,
+            incidence=None):
+
+        if azimuth is None:
+            if source is None:
+                raise ProjectionError(
+                    'Cannot determine azimuth angle: No `source` given.')
+
             azimuth = source.azibazi_to(self)[1]
 
         if incidence is None:
-            dist = source.distance_to(self)*cake.m2d
-            cakemodel = cake.load_model(self.earthmodel)
-            phases = [ cake.PhaseDef(x) for x in ['p', 'P'] ]
-            rays = cakemodel.arrivals([dist], phaes, zstart=source.depth)
-            if len(rays) == 0:
-                return None
-            else:
-                incidence = rays[0].incidence_angle()
+            incidence = self.incidence_angle(
+                source=source,
+                earthmodel=earthmodel,
+                phases=phases,
+                distance=distance,
+                source_depth=source_depth)
 
-        print(azimuth, incidence)
         # reference is Plesinger et al., 1986
         iprime = incidence
-        ca =  math.cos(azimuth*d2r)
-        sa =  math.sin(azimuth*d2r)
-        ci =  math.cos(iprime*d2r)
-        si =  math.sin(iprime*d2r)
+        ca = math.cos(azimuth*d2r)
+        sa = math.sin(azimuth*d2r)
+        ci = math.cos(iprime*d2r)
+        si = math.sin(iprime*d2r)
 
         return self.projection_to(num.array([
-            [-si*sa, -si*ca, ci],
-            [ ci*sa,  ci*ca, si],
-            [   -ca,     sa, 0.]], dtype=float), 'LQT')
+            [-si*sa, -si*ca, ci],  # noqa
+            [ ci*sa,  ci*ca, si],  # noqa
+            [   -ca,     sa, 0.]], dtype=float), 'LQT')  # noqa
 
     def project_to_enz(self, traces):
         from pyrocko import trace
@@ -598,11 +665,27 @@ class Sensor(ChannelBase):
 
         return trace.project(traces, matrix, in_channels, out_channels)
 
-    def project_to_lqt(self, source, traces, azimuth=None, incidence=None):
+    def project_to_lqt(
+            self,
+            source,
+            traces,
+            earthmodel=None,
+            phases=None,
+            distance=None,
+            source_depth=None,
+            azimuth=None,
+            incidence=None):
+
         from pyrocko import trace
 
         matrix, in_channels, out_channels = self.projection_to_lqt(
-            source, azimuth=azimuth, incidence=incidence)
+            source=source,
+            earthmodel=earthmodel,
+            phases=phases,
+            distance=distance,
+            source_depth=source_depth,
+            azimuth=azimuth,
+            incidence=incidence)
 
         return trace.project(traces, matrix, in_channels, out_channels)
 

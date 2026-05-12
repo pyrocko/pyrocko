@@ -25,6 +25,7 @@ from pyrocko.model import Location, Event
 from pyrocko.trace import Trace, TraceTooShort, NoData
 from pyrocko.carpet import Carpet
 from pyrocko.response import InvalidResponseError
+from pyrocko.gf import Earthmodel1D
 
 from ..model import (
     QuantityType, CodesNSLCE, CodesMatcher, CHANNEL, WAVEFORM,
@@ -33,7 +34,6 @@ from ..model import (
 )
 
 from pyrocko.guts import Object, String, Duration, Float, clone, List, equal
-from pyrocko import cake
 
 ichain = chain.from_iterable
 
@@ -1262,55 +1262,72 @@ class ToENZ(Transform):
 
 class ToTRZ(Transform):
     components = 'TRZ'
-    origin = Location.T()
+    origin = Location.T(optional=True)
+    azimuth = Float.T(optional=True)
 
     def project(self, sensor, trs_sensor):
-        return sensor.project_to_trz(self.origin, trs_sensor)
+        return sensor.project_to_trz(
+            origin=self.origin,
+            traces=trs_sensor,
+            azimuth=self.azimuth)
 
     def get_orientation(self, sensor, component):
-        _, bazi = self.origin.azibazi_to(sensor)
+        if self.azimuth is not None:
+            azimuth = self.azimuth
+        else:
+            azimuth = self.origin.azibazi_to(sensor)[1] + 180
 
         return {
-            'T': ((bazi + 270. + 180.) % 360. - 180., 0.),
-            'R': ((bazi + 180. + 180.) % 360. - 180., 0.),
+            'T': ((azimuth + 90 + 180.) % 360. - 180., 0.),
+            'R': ((azimuth + 180.) % 360. - 180., 0.),
             'Z': (0, -90.)}[component]
 
 
 class ToLQT(Transform):
     components = 'LQT'
-    origin = Location.T()
-    incidence = Float.T() # mapping?
-    earthmodel = String.T(default='ak135-f-continental.m')
-
+    origin = Location.T(optional=True)
+    earthmodel = Earthmodel1D.T(optional=True)
+    phases = List.T(String.T())
+    distance = Float.T(optional=True)
+    source_depth = Float.T(optional=True)
+    azimuth = Float.T(optional=True)
+    incidence = Float.T(optional=True)
 
     def project(self, sensor, trs_sensor):
-        _, bazi = self.origin.azibazi_to(sensor)
-        bazi + 180.
-        dist = self.origin.distance_to(sensor) * cake.m2d
-        cakemodel = cake.load_model(self.earthmodel)
-        phases = [ cake.PhaseDef(x) for x in ['p', 'P'] ]
-        rays = cakemodel.arrivals([dist], phases, zstart=self.origin.depth, zstop=sensor.elevation)
-        if len(rays) == 0:
-            self.incidence = None
-        else:
-            self.incidence = rays[0].incidence_angle()
-        return sensor.project_to_lqt(None, trs_sensor, azimuth=bazi, incidence=self.incidence, earthmodel=self.earthmodel)
+        from pyrocko import cake
+
+        return sensor.project_to_lqt(
+            source=self.origin,
+            traces=trs_sensor,
+            earthmodel=self.earthmodel,
+            phases=[cake.PhaseDef(name) for name in self.phases],
+            distance=self.distance,
+            source_depth=None,
+            azimuth=None,
+            incidence=None)
 
     def get_orientation(self, sensor, component):
-        _, bazi = self.origin.azibazi_to(sensor)
-        dist = self.origin.distance_to(sensor) * cake.m2d
-        cakemodel = cake.load_model(self.earthmodel)
-        phases = [ cake.PhaseDef(x) for x in ['p', 'P'] ]
-        rays = cakemodel.arrivals([dist], phases, zstart=self.origin.depth, zstop=sensor.elevation)
-        if len(rays) == 0:
-            self.incidence = None
+        from pyrocko import cake
+
+        if self.azimuth is None:
+            azimuth = self.origin.azibazi_to(sensor)[1] + 180.
         else:
-            self.incidence = rays[0].incidence_angle()
+            azimuth = self.azimuth
+
+        if self.incidence is None:
+            incidence = sensor.incidence_angle(
+                source=self.origin,
+                earthmodel=self.earthmodel,
+                phases=[cake.PhaseDef(name) for name in self.phases],
+                distance=self.distance,
+                source_depth=self.source_depth)
+        else:
+            incidence = self.incidence
 
         return {
-            'L': ((bazi + 180. + 180.) % 360. - 180., self.incidence),
-            'Q': ((bazi + 180. + 180.) % 360. - 180., 90.-self.incidence),
-            'T': ((bazi + 270. + 180.) % 360. - 180., 0.)}[component]
+            'L': ((azimuth + 180.) % 360. - 180., incidence),
+            'Q': ((azimuth + 180.) % 360. - 180., 90.-incidence),
+            'T': ((azimuth + 90. + 180.) % 360. - 180., 0.)}[component]
 
 
 __all__ = [
