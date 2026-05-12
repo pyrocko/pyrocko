@@ -1300,7 +1300,7 @@ class ToLQT(Transform):
             source=self.origin,
             traces=trs_sensor,
             earthmodel=self.earthmodel,
-            phases=[cake.PhaseDef(name) for name in self.phases],
+            phases=self.phases,
             distance=self.distance,
             source_depth=None,
             azimuth=None,
