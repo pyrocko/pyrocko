@@ -581,7 +581,7 @@ class Sensor(ChannelBase):
         if earthmodel is None:
             earthmodel = get_default_earthmodel()
 
-        if phases is None:
+        if len(phases) == 0:
             phases = [cake.PhaseDef(x) for x in ['p', 'P']]
 
         if distance is None:
