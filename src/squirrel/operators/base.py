@@ -1267,7 +1267,7 @@ class ToTRZ(Transform):
 
     def project(self, sensor, trs_sensor):
         return sensor.project_to_trz(
-            origin=self.origin,
+            source=self.origin,
             traces=trs_sensor,
             azimuth=self.azimuth)
 
