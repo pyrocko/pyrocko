@@ -32,6 +32,14 @@ class Mantra(Object):
 
             self.outlet = operator
 
+    def print_operator_mappings(self):
+        print()
+        print('Mantra: %s' % self.name)
+        for operator in self.operators:
+            print(operator.describe())
+
+        print()
+
 
 __all__ = [
     'Mantra',

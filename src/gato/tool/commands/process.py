@@ -59,6 +59,12 @@ def setup(parser):
         metavar='PATH',
         help='Store output in directory PATH.')
 
+    parser.add_argument(
+        '--debug-operators',
+        dest='debug_operators',
+        action='store_true',
+        help='Show operator mappings and exit.')
+
     gato.add_array_selection_arguments(parser)
     parser.add_squirrel_selection_arguments()
     parser.add_squirrel_query_arguments(without=['time', 'kinds'])
@@ -100,11 +106,17 @@ def run(parser, args):
         storage.set_base_path(args.out_storage_path)
 
         sq = args.make_squirrel()
+        print(sq)
 
         arrays = [arrays[name] for name in sorted(arrays.keys())]
 
         for mantra in mantras:
             mantra.setup(sq, arrays)
+
+            if args.debug_operators:
+                mantra.print_operator_mappings()
+                continue
+
             sq_tmin, sq_tmax = sq.get_time_span('waveform')
 
             tmin = args.squirrel_query.get('tmin', sq_tmin)
