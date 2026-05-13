@@ -5,7 +5,7 @@
 
 import numpy as num
 
-from pyrocko.guts import Float
+from pyrocko.guts import Float, Int
 from pyrocko.carpet import Carpet
 from .csm import CSMOperator
 
@@ -15,10 +15,11 @@ guts_prefix = 'gato'
 class ACMEOperator(CSMOperator):
     frequency_min = Float.T(default=0.1)
     frequency_max = Float.T(default=0.3)
+    contributors_min = Int.T(default=3)
 
     @property
     def kind_provides(self):
-        return ('carpet')
+        return ('carpet',)
 
     def get_out_channels(self):
         return {
@@ -34,8 +35,14 @@ class ACMEOperator(CSMOperator):
                  codes_use) in self.iter_csms(
                     mapping, tmin=tmin, tmax=tmax, codes=codes):
 
+                if cspectrum_sum is None:
+                    continue
+
                 nrecords = cspectrum_sum.shape[0]
                 nfrequencies = cspectrum_sum.shape[2]
+
+                if nrecords < self.contributors_min:
+                    continue
 
                 ifmin = int(num.ceil(
                     self.frequency_min / frequency_delta))

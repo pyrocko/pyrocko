@@ -74,7 +74,7 @@ class CSMOperator(GatoOperator):
         in_codes = list(mapping.in_codes)
 
         codes_ok = None
-        for kind in ('response', 'channel', 'waveform'):
+        for kind in ('channel', 'waveform'):
             coverages = self._input.get_coverage(
                 kind, codes=in_codes, tmin=tmin, tmax=tmax)
 
@@ -113,10 +113,13 @@ class CSMOperator(GatoOperator):
 
                 if not batch.traces:
                     yield batch, None, None, None, None
+                    continue
 
                 if len(batch.traces) != len(codes_use):
                     logger.warning(
-                        'Preprocessing failed for some traces.')
+                        'Preprocessing failed for %i of %i traces.',
+                        len(codes_use) - len(batch.traces),
+                        len(codes_use))
 
                 carpet = batch.as_carpet(deltat=self.downsampling_deltat)
 
@@ -145,7 +148,12 @@ class CSMOperator(GatoOperator):
 
                 yield batch, carpet, frequency_delta, cspectrum_sum, codes_use
 
-        return util.GeneratorWithLen(gen(), len(chopper))
+        try:
+            nwindows = len(chopper)
+            return util.GeneratorWithLen(gen(), nwindows)
+
+        except TypeError:
+            return gen()
 
     def make_carpets(self, tmin=None, tmax=None, codes=None):
         raise NotImplementedError()
