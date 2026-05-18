@@ -133,6 +133,8 @@ def draw(
             eff_label = slabel if new else None
         else:
             eff_label = '%s %s' % (slabel, label)
+    else:
+        eff_label = label
 
     if axes_amplitude:
         axes_amplitude.plot(f, ta, label=eff_label, **style)
@@ -212,6 +214,7 @@ def setup_axes(axes_amplitude=None, axes_phase=None):
 def plot(
         responses,
         filename=None,
+        format=None,
         dpi=100,
         fmin=0.01, fmax=100., nf=100,
         normalize=False,
@@ -336,7 +339,8 @@ def plot(
         axes_phase.set_xlim(fmin, fmax)
 
     if filename is not None:
-        fig.savefig(filename, dpi=dpi)
+        fig.savefig(filename, dpi=dpi, format=format)
+        plt.close(fig)
     else:
         plt.show()
 
