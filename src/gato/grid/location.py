@@ -450,6 +450,7 @@ __all__ = [
     'distances_3d',
     'distances_surface',
     'distances_projected',
+    'LocationGrid',
     'CartesianLocationGrid',
     'UnstructuredLocationGrid',
 ]

@@ -8,7 +8,8 @@ import numpy as num
 from pyrocko.guts import Float
 from pyrocko.model.codes import match_codes_any
 from pyrocko.carpet import Carpet
-from pyrocko.gato.grid import Grid, UnstructuredLocationGrid, distances_3d
+from pyrocko.gato.grid import (
+    Grid, LocationGrid, UnstructuredLocationGrid, distances_3d)
 from pyrocko.gato.delay.base import DelayMethod
 from pyrocko.squirrel.model import unpack_rich, pack_rich
 from .csm import CSMOperator
@@ -60,7 +61,9 @@ class FKBeamOperator(CSMOperator):
             # array_info = self._array_infos[array.name]
             receiver_grid = UnstructuredLocationGrid.from_locations(
                 array_info.sensors)
-            receiver_grid.origin = self.source_grid.origin
+
+            if isinstance(self.source_grid, LocationGrid):
+                receiver_grid.origin = self.source_grid.origin
 
             gdts.append(GenericDelayTable(
                 source_grid=self.source_grid,
@@ -98,7 +101,8 @@ class FKBeamOperator(CSMOperator):
             for (batch, carpet_in, frequency_delta, cspectrum_sum,
                     codes_use) in iterator:
 
-                print(batch)
+                if carpet_in is None:
+                    continue
 
                 if availability:
                     codes_avail = set(tr.codes for tr in batch.traces)

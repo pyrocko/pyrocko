@@ -95,9 +95,23 @@ class CartesianSlownessGrid(SlownessGrid):
 
     def native_coordinates(self):
         return [
-            ('sz', self._z),
-            ('sy', self._y),
-            ('sx', self._x)]
+            ('z', self._z),
+            ('y', self._y),
+            ('x', self._x)]
+
+    def native_coordinates_projected(self, projection):
+
+        mapping = {
+            'z': (self._z,),
+            'y': (self._y,),
+            'x': (self._x,),
+            'zy': (self._z, self._y),
+            'zx': (self._z, self._x),
+            'yx': (self._y, self._x),
+            'zyx': (self._z, self._y, self._x)}
+
+        return num.vstack([v.flatten() for v in num.meshgrid(
+            *mapping[projection], indexing='ij')]).T
 
     def clear_cached(self):
         self._xyz = None
@@ -243,8 +257,22 @@ class SphericalSlownessGrid(SlownessGrid):
     def native_coordinates(self):
         return [
             ('r', self._r),
-            ('theta', self._theta),
-            ('phi', self._phi)]
+            ('t', self._theta),
+            ('p', self._phi)]
+
+    def native_coordinates_projected(self, projection):
+
+        mapping = {
+            'r': (self._r,),
+            't': (self._theta,),
+            'p': (self._phi,),
+            'rt': (self._r, self._theta),
+            'rp': (self._r, self._phi),
+            'tp': (self._theta, self._phi),
+            'rtp': (self._r, self._theta, self._phi)}
+
+        return num.vstack([v.flatten() for v in num.meshgrid(
+            *mapping[projection], indexing='ij')]).T
 
     def clear_cached(self):
         self._xyz = None
