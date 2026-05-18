@@ -30,12 +30,20 @@ logger = logging.getLogger('pyrocko.carpet')
 EMPTY_CODES = CodesNSLCE()
 
 
-class OverlappingCarpets(Exception):
+class CarpetError(Exception):
+    pass
+
+
+class CarpetOverlapError(CarpetError):
     '''
     This exception is raised by some :py:class:`Carpet` operations when overlap
     occurs but should not.
     '''
 
+    pass
+
+
+class CarpetResampleError(CarpetError):
     pass
 
 
@@ -973,18 +981,28 @@ class Carpet(Object):
         if scale == 'log':
             log, exp, condition = num.log, num.exp, lambda y: y > 0
         elif scale == 'lin':
-            log, exp, condition = lambda y: y, lambda y: y, lambda y: True
+            log, exp, condition = (
+                lambda y: y,
+                lambda y: y,
+                lambda y: num.ones_like(y, dtype=bool))
         elif isinstance(scale, tuple):
             log, exp, condition = scale
         else:
-            raise ValueError(
+            raise CarpetResampleError(
                 'Carpet.resample_band: Scale must be "lin", "log" or a tuple '
                 'with scaling, inverse scaling, and condition functions, e.g. '
                 '`(log, exp, lambda y: y > 0)`.')
 
-        frequencies = self.component_axes[component_axis]
+        def get_frequencies(cp):
+            frequencies = cp.component_axes.get(component_axis)
+            if frequencies is None:
+                frequencies = num.arange(cp.ncomponents, dtype=float)
+
+            return frequencies
+
+        frequencies = get_frequencies(self)
         if not num.all(num.diff(frequencies) > 0.0):
-            raise ValueError(
+            raise CarpetResampleError(
                 'Carpet.resample_band: Component axis must be monotonically '
                 'increasing.')
 
@@ -992,12 +1010,12 @@ class Carpet(Object):
 
         if iok.size < self.ncomponents:
             if iok.size == 0:
-                raise ValueError(
+                raise CarpetResampleError(
                     'Carpet.resample_band: No elements of component axis meet '
                     'scaling condition (e.g. y > 0 for log scaling)')
 
             self = self.crop(fslice=slice(iok[0], None))
-            frequencies = self.component_axes[component_axis]
+            frequencies = get_frequencies(self)
 
         if fmin is None:
             fmin = frequencies[0]
@@ -1022,7 +1040,8 @@ class Carpet(Object):
             log_frequencies_out <= log_frequencies[-1]))[0]
 
         if iok.size == 0:
-            raise ValueError('No frequency values in requested range.')
+            raise CarpetResampleError(
+                'No frequency values in requested range.')
 
         fslice = slice(iok[0], iok[-1]+1)
         fslice_out = slice(iok[0], iok[-1])
@@ -1130,7 +1149,7 @@ def check_overlaps(carpets_a, carpets_b=None, message='Carpets overlap.'):
     for ia, cp_a in enumerate(carpets_a):
         for cp_b in carpets_a[ia+1:] if carpets_b is None else carpets_b:
             if cp_a.codes == cp_b.codes and cp_a.overlaps(cp_b):
-                raise OverlappingCarpets(
+                raise CarpetOverlapError(
                     message + '\n  Carpet 1: %s\n  Carpet 2: %s' % (
                         cp_a.summary, cp_b.summary))
 
