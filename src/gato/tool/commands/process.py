@@ -11,7 +11,7 @@ import sys  # noqa
 import logging
 
 from pyrocko import squirrel, guts, util, gato
-from pyrocko.carpet import OverlappingCarpets
+from pyrocko.carpet import CarpetOverlapError
 from pyrocko import progress
 
 guts_prefix = 'gato'
@@ -138,5 +138,5 @@ def run(parser, args):
                 if args.out_storage_path:
                     try:
                         storage.save_carpets(carpets)
-                    except OverlappingCarpets as e:
+                    except CarpetOverlapError as e:
                         raise squirrel.ToolError(str(e))
