@@ -25,14 +25,17 @@ import matplotlib as mpl
 from tornado import web
 
 from pyrocko import util, server, info, trace
+from pyrocko.carpet import CarpetResampleError
 from pyrocko import squirrel as squirrel_module
 from pyrocko.squirrel import model
 from pyrocko import guts
 from pyrocko.squirrel.error import ToolError, SquirrelError
-from pyrocko.squirrel import operators as ops
+from pyrocko.squirrel import mantra
 from pyrocko import moment_tensor as pmt
 from pyrocko.plot import beachball
 from pyrocko.color import Color, g_pyrocko_color_cycle_base
+
+from . import context_inspectors
 
 
 add_cli_arguments = server.add_cli_arguments
@@ -103,6 +106,23 @@ class GutsJSONEncoder(json.JSONEncoder):
             return json.JSONEncoder.default(self, o)
 
 
+g_session_data = {}
+
+
+def get_session_data(session_id):
+    return g_session_data[session_id]
+
+
+g_accessor_data = {}
+
+
+def get_accessor_data(accessor_id):
+    if accessor_id not in g_accessor_data:
+        g_accessor_data[accessor_id] = {}
+
+    return g_accessor_data[accessor_id]
+
+
 class SquirrelRequestHandler(server.RequestHandler):
 
     def initialize(self, squirrel=None):
@@ -121,6 +141,9 @@ class SquirrelRequestHandler(server.RequestHandler):
             self.set_secure_cookie(
                 'session', session_id.encode('ascii'), expires_days=None)
 
+        if session_id not in g_session_data:
+            g_session_data[session_id] = {}
+
         self.session_id = session_id
 
     def get_cleaned(self, names, parameters):
@@ -129,9 +152,11 @@ class SquirrelRequestHandler(server.RequestHandler):
 
         clean = {
             'kind': lambda x: str_choice(x, model.g_content_kinds),
+            'time': util.str_to_time_fillup,
             'tmin': util.str_to_time_fillup,
             'tmax': util.str_to_time_fillup,
             'codes': to_codes_list,
+            'codes_visible': to_codes_list,
             'ymin': float,
             'ymax': float,
             'fmin': float,
@@ -332,12 +357,7 @@ def drop_resolution_codes(codes_list):
 
 class Gate(guts.Object):
 
-    tmin = guts.Timestamp.T(optional=True)
-    tmax = guts.Timestamp.T(optional=True)
-    operators = guts.List.T(ops.Operator.T())
-
-    def post_init(self):
-        self._outlet = None
+    mantra = mantra.Mantra.T()
 
     @classmethod
     def from_query_arguments(cls, codes=None, tmin=None, tmax=None, time=None):
@@ -357,93 +377,73 @@ class Gate(guts.Object):
         #         frequency_max=5.0))
 
         return cls(
-            tmin=tmin,
-            tmax=tmax,
-            operators=operators)
+            mantra=mantra.Mantra(operators=operators))
 
     def set_squirrel(self, squirrel):
-        source = squirrel
-        for operator in self.operators:
-            operator.set_input(source)
-            source = operator
-
-        self._outlet = source
+        self.mantra.setup(squirrel)
 
     def get_time_span(self, *args, **kwargs):
-        return self._outlet.get_time_span(*args, **kwargs)
+        return self.mantra.outlet.get_time_span(*args, **kwargs)
 
     def get_codes(self, *args, **kwargs):
-        return drop_resolution_codes(self._outlet.get_codes(*args, **kwargs))
+        return drop_resolution_codes(
+            self.mantra.outlet.get_codes(*args, **kwargs))
 
     def get_channels(self, *args, **kwargs):
-        return self._outlet.get_channels(*args, **kwargs)
+        return self.mantra.outlet.get_channels(*args, **kwargs)
 
     def get_sensors(self, *args, **kwargs):
-        return self._outlet.get_sensors(*args, **kwargs)
+        return self.mantra.outlet.get_sensors(*args, **kwargs)
 
     def get_responses(self, *args, **kwargs):
-        return self._outlet.get_responses(*args, **kwargs)
+        return self.mantra.outlet.get_responses(*args, **kwargs)
 
     def get_events(self, *args, **kwargs):
-        return self._outlet.get_events(*args, **kwargs)
+        return self.mantra.outlet.get_events(*args, **kwargs)
 
     def get_coverage(self, *args, **kwargs):
         kwargs['codes'] = '*.*.*.*.*'
-        return self._outlet.get_coverage(*args, **kwargs)
+        return self.mantra.outlet.get_coverage(*args, **kwargs)
 
     def get_rich_coverage(self, *args, **kwargs):
         kwargs['codes'] = '*.*.*.*.*'
-        return self._outlet.get_rich_coverage(*args, **kwargs)
+        return self.mantra.outlet.get_rich_coverage(*args, **kwargs)
 
     def get_carpet_images(
             self,
             *args,
-            ymin=None,
-            ymax=None,
+            limits={},
             nx=6000,
             ny=100,
             overview_method='mean',
             format='webp',
             **kwargs):
 
+        def select_axis_and_scale(carpet):
+            axes = list(carpet.component_axes.keys())
+            axis = None
+            if len(axes) == 1:
+                axis = axes[0]
+
+            scale = 'lin'
+            if axis == 'frequency':
+                scale = 'log'
+
+            return axis, scale
+
         def carpet_to_image(carpet):
             times_this = []
             times_this.append(time.time())
             overview_method = carpet.meta['overview_method']
             try:
-                if 'frequency' in carpet.component_axes:
-                    scale = 'log'
-                    component_axis = 'frequency'
-
-                elif 'phi' in carpet.component_axes:
-                    scale = 'lin'
-                    component_axis = 'phi'
-
-                elif 'r' in carpet.component_axes:
-                    scale = 'lin'
-                    component_axis = 'r'
-
-                elif 'x' in carpet.component_axes:
-                    scale = 'lin'
-                    component_axis = 'x'
-
-                elif 'y' in carpet.component_axes:
-                    scale = 'lin'
-                    component_axis = 'y'
-
-                elif 'z' in carpet.component_axes:
-                    scale = 'lin'
-                    component_axis = 'z'
-
-                else:
-                    raise ValueError('Unknown component axis quantity')
-
+                component_axis, scale = select_axis_and_scale(carpet)
+                ymin, ymax = limits.get(component_axis, (None, None))
                 carpet = carpet.resample_band(
                     ymin, ymax, ny,
                     scale=scale,
                     component_axis=component_axis)
 
-            except ValueError as e:
+            except CarpetResampleError as e:
                 logger.error('Cannot create carpet: %s', str(e))
                 return None, None
 
@@ -520,7 +520,7 @@ class Gate(guts.Object):
 
         t0 = time.time()
 
-        carpets = self._outlet.get_carpets(
+        carpets = self.mantra.outlet.get_carpets(
             *args, **kwargs, codes=codes, nsamples_limit=nx)
 
         for carpet in carpets:
@@ -575,7 +575,7 @@ class Gate(guts.Object):
 
         checkpoints.add('waveform query')
 
-        traces = self._outlet.get_waveforms(
+        traces = self.mantra.outlet.get_waveforms(
             tmin=tmin,
             tmax=tmax,
             codes=codes,
@@ -639,8 +639,31 @@ class Gate(guts.Object):
 
         return waveviews
 
+    def get_inspector_classes(self):
+        return {
+            'response': context_inspectors.ResponseCI,
+        }
+
+    def get_inspector(self, accessor_id, name):
+        ad = get_accessor_data(accessor_id)
+        adk = 'inspector'
+        if adk not in ad:
+            ad[adk] = self.get_inspector_classes()[name](
+                name=name,
+                mantra=self.mantra)
+
+        return ad[adk]
+
+    def get_context(
+            self,
+            name,
+            context,
+            accessor_id):
+
+        return self.get_inspector(accessor_id, name).update(context)
+
     def advance_accessor(self, accessor_id='default', cache_id=None):
-        self._outlet.advance_accessor(accessor_id, cache_id)
+        self.mantra.outlet.advance_accessor(accessor_id, cache_id)
 
 
 g_gates = {}
@@ -736,12 +759,15 @@ class SquirrelGateHandler(SquirrelRequestHandler):
         if tmin == tmax:
             tmax += 1.0
 
+        limits = {
+            'frequency': (ymin, ymax),
+        }
+
         images = gate.get_carpet_images(
             tmin=tmin,
             tmax=tmax,
             codes=codes,
-            ymin=ymin,
-            ymax=ymax,
+            limits=limits,
             nx=nx or 6000,
             ny=ny or 400,
             overview_method=overview_method,
@@ -768,6 +794,37 @@ class SquirrelGateHandler(SquirrelRequestHandler):
 
         gate.advance_accessor(accessor_id=self.session_id, cache_id='waveform')
         return waveviews
+
+    def p_get_context(self, parameters, gate):
+        time, tmin, tmax, frequency_min, frequency_max, codes, codes_visible \
+            = self.get_cleaned(
+                'time tmin tmax fmin fmax codes codes_visible',
+                parameters)
+
+        names = ['response']
+
+        context = context_inspectors.CIContext(
+            time=time,
+            tmin=tmin,
+            tmax=tmax,
+            codes=codes,
+            codes_visible=codes_visible,
+            frequency_min=frequency_min,
+            frequency_max=frequency_max)
+
+        accessor_id = self.session_id + '_context'
+
+        results = []
+        for name in names:
+            results.extend(gate.get_context(
+                name=name,
+                context=context,
+                accessor_id=accessor_id))
+
+        gate.advance_accessor(accessor_id=accessor_id, cache_id='waveform')
+        gate.advance_accessor(accessor_id=accessor_id, cache_id='carpet')
+
+        return results
 
 
 color_themes = {
