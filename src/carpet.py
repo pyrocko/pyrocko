@@ -429,6 +429,9 @@ class Carpet(Object):
 
         istart = max(0, istart)
         iend = min(self.nsamples, iend)
+        if istart >= iend:
+            raise trace.NoData()
+
         return Carpet(
             data=self.data[:, istart:iend],
             codes=self.codes,
@@ -1117,6 +1120,9 @@ def join(carpets):
     carpets = sorted(carpets, key=lambda cp: (cp.codes, cp.tmin))
     groups = []
     for current in carpets:
+        if current.nsamples == 0:
+            continue
+
         lastgroup = groups[-1] if groups else None
         last = lastgroup[-1] if lastgroup else None
         deltat = current.deltat
