@@ -299,7 +299,10 @@ class StorageScheme(guts.Object):
 
                 carpet_window = []
                 for cp in carpet_group:
-                    carpet_window.append(cp.chop(wmin, wmax))
+                    try:
+                        carpet_window.append(cp.chop(wmin, wmax))
+                    except trace.NoData:
+                        pass
 
                 additional = layout.get_additional(wmin, wmax)
 
