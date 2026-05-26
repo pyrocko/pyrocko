@@ -3219,6 +3219,8 @@ class Squirrel(Selection):
             except trace.NoData:
                 pass
 
+        chopped.sort(key=lambda carpet: (carpet.codes, carpet.tmin))
+
         if join:
             return carpet.join(chopped)
         else:
