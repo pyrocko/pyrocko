@@ -1294,7 +1294,6 @@ class ToLQT(Transform):
     incidence = Float.T(optional=True)
 
     def project(self, sensor, trs_sensor):
-        from pyrocko import cake
 
         return sensor.project_to_lqt(
             source=self.origin,
