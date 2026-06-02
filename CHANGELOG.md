@@ -8,17 +8,46 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 - Sparrow:
-    - global colorbar handling added to CPTHandler
+- global colorbar handling added to CPTHandler
     - added Elements: Rivers, Borders, Geonames
 - datasets:
     - gshhg: added classes Coastlines, Rivers, Borders
     - geonames: added Countries
+- Squirrel:
+    - New subcommand `squirrel dataset create` to create dataset config from
+      command line arguments.
+    - New subcommand `squirrel merge`: May help when merging two partially
+      incomplete datasets, like one version from a stream dump and another one
+      downloaded from the recorder.
+    - Experimental support to read waveforms from live streams.
+- Add converter from IMS to StationXML
+- Improved `Trace.deoverlap`, precedence can now be tuned and time snapping may improve
+  robustness in certain cases.
+- Pyrocko-GF:
+    - Multi-triangular STF (piecewise linear function).
+    - Simple landslide source model
+    - Support separate STFs for different single-force components; horizontal
+      vs vertical or all.
+    - Regularized Yoffe STF.
+
 ### Fixed
+- Fix failing meta-data downloads from IRIS.
 - Sparrow:
     - GeometryElement: aware to global and focal time windows for animations
 - Fixed an error, where offset coordinates on location objects (`east_shift`,
   `north_shift`) were ignored in azimuth and distance computations `azimuth()`,
   `azibazi()` and `distance_accurate50m()`.
+- View angle was ignored in fuzzy beachball plots.
+- Various small fixes.
+- Improved NumPy/Matplotlib compatibility.
+
+### Changed
+- `Trace.get_julianday()` now uses mid of trace.
+- Use native dialogs in Sparrow and Snuffler which may help in some cases to
+  access files from network volumes.
+- Rewritten `fomosto server`. New version is now based on tornado.
+- When converting `CodesNSLCE` to strings, the trailing dot before the *extra*
+  code is now always shown, even when the *extra* code is empty.
 
 ## v2025.12.04
 
