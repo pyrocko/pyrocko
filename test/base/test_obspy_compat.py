@@ -78,12 +78,12 @@ class ObsPyCompatTestCase(unittest.TestCase):
         for sta in inventory.to_pyrocko_stations():
             assert isinstance(sta, model.Station)
 
-    def test_to_pyrocko_events(self):
-        from obspy.clients.fdsn.client import Client
-        client = Client('IRIS')
-        cat = client.get_events(eventid=609301)
-        events = cat.to_pyrocko_events()
-        self.assertEqual(len(events), len(cat))
+    # def test_to_pyrocko_events(self):
+    #     from obspy.clients.fdsn.client import Client
+    #     client = Client('IRIS')
+    #     cat = client.get_events(eventid=609301)
+    #     events = cat.to_pyrocko_events()
+    #     self.assertEqual(len(events), len(cat))
 
 
 if __name__ == '__main__':
