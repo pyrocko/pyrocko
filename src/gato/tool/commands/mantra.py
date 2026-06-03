@@ -37,7 +37,7 @@ def run(parser, args):
                     frequency_max=10.0),
                 squirrel.ToENZ(),
                 gato.ACMEOperator(
-                    codes=['*.*.*.*Z.*'],
+                    in_codes=['*.*.*.*Z.*'],
                     downsampling_deltat=0.02,
                     whitening_bandwidth=1.0,
                     time_normalization_deltat=5.,
