@@ -1,5 +1,6 @@
 
 import os
+import sys
 import asyncio
 import logging
 import signal
@@ -135,6 +136,46 @@ def get_cookie_secret(path):
         return f.read()
 
 
+class ParseError(ServerError):
+    pass
+
+
+def get_external_url(
+        port,
+        mappings_path='/etc/pyrocko/service-mappings'):
+
+    port = int(port)
+    mappings = {}
+    if os.path.exists(mappings_path):
+        try:
+            with open(mappings_path) as f:
+                for iline, line in enumerate(f):
+                    line = line.strip()
+                    if line.startswith('#'):
+                        continue
+
+                    words = line.split()
+                    if len(words) != 2:
+                        raise ParseError(
+                            'Expected "PORT URL" in line %i of "%s".' % (
+                                iline, mappings_path))
+
+                    try:
+                        _port = int(words[0])
+                    except ValueError:
+                        raise ParseError(
+                            'Could not get port number in line %i of "%s".' % (
+                                iline, mappings_path))
+
+                    mappings[_port] = words[1]
+
+        except OSError:
+            raise ParseError(
+                'Could not read URL mappings file: %s' % mappings_path)
+
+    return mappings.get(port)
+
+
 async def serve(
         host='localhost',
         port=8000,
@@ -147,6 +188,7 @@ async def serve(
     global g_shutdown_event
 
     address = get_address(host)
+    port = int(port)
 
     g_server_info = dict(
         run_id=str(uuid.uuid4()),
@@ -190,6 +232,9 @@ async def serve(
         webbrowser.open(url)
     else:
         logger.info('Point browser to: %s', url)
+        external_url = get_external_url(port)
+        if external_url:
+            logger.info('External URL available: %s', external_url)
 
     try:
         g_shutdown_event = asyncio.Event()
@@ -278,7 +323,206 @@ def run(
         logger.debug('Shutdown complete.')
 
 
+def help_pfw_and_exit():
+    print('''
+# Accessing the Service Remotely
+
+When running the service on a remote server behind a firewall, you can still
+access it using several mechanisms. Two common approaches are **SSH port
+forwarding** and **reverse proxying**.
+
+SSH port forwarding is typically available to any user with SSH access to the
+server. It is simple to set up and provides secure access from your local
+machine.
+
+Reverse proxying exposes the service through a regular web URL and usually
+requires administrative access to the server.
+
+## SSH Port Forwarding
+
+If the service is running on a server that you can access via SSH, you can use
+SSH port forwarding to access it from your local machine.
+
+Assume the service is listening on port `2323` on the server's `localhost`
+interface and the server is reachable as `your.server.net`. Run the following
+command on your local machine (for example, in a separate terminal):
+
+```bash
+ssh -L 2323:localhost:2323 your.server.net
+```
+
+This forwards connections to port `2323` on your local machine to the service
+running on `localhost:2323` on the server.
+
+Note that the `localhost` specified in the `-L` argument refers to the server,
+not your local machine. All HTTP traffic is securely tunneled through the SSH
+connection.
+
+Once the tunnel is established, open the following URL in your web browser:
+
+```text
+http://localhost:2323/
+```
+
+### Notes
+
+* The chosen ports must be available on both the local machine and the server.
+* The local and remote port numbers do not need to be the same.
+
+## Reverse Proxying
+
+A reverse proxy can expose the service through a public URL while keeping the
+service itself bound to the server's local interface.
+
+For example, requests to:
+
+```text
+https://my-2323.server.net/
+```
+
+can be forwarded to a service running on:
+
+```text
+http://localhost:2323/
+```
+
+This section uses NGINX as the reverse proxy and Certbot to manage TLS
+certificates.
+
+### Prerequisites
+
+Basic familiarity with Linux system administration, networking, and security is
+recommended.
+
+### Setup
+
+1. Create a DNS record that points `my-2323.server.net` to your server's public
+   IP address.
+
+2. Ensure that ports `80` and `443` are accessible and not blocked by a
+   firewall.
+
+3. Install the required packages:
+
+   ```bash
+   sudo apt install nginx certbot python3-certbot-nginx apache2-utils
+   ```
+
+   The `apache2-utils` package is only required if you want to enable HTTP
+   Basic Authentication.
+
+4. Create the NGINX configuration file `/etc/nginx/sites-available/my-2323`:
+
+   ```nginx
+   server {
+
+       # Uncomment the following lines to enable HTTP Basic Authentication.
+       # Create /etc/nginx/htpasswd first.
+       #
+       # auth_basic "Restricted";
+       # auth_basic_user_file /etc/nginx/htpasswd;
+
+       server_name my-2323.server.net;
+
+       location / {
+           proxy_pass http://localhost:2323/;
+       }
+
+       listen 80;
+   }
+   ```
+
+5. Enable the site:
+
+   ```bash
+   sudo ln -s /etc/nginx/sites-available/my-2323 \
+              /etc/nginx/sites-enabled/my-2323
+   ```
+
+6. Restart NGINX:
+
+   ```bash
+   sudo systemctl restart nginx.service
+   ```
+
+7. Obtain and configure TLS certificates:
+
+   ```bash
+   sudo certbot --nginx
+   ```
+
+   Certbot will automatically update the NGINX configuration to enable HTTPS
+   and redirect HTTP traffic to HTTPS.
+
+8. Start the service and ensure it is listening on `localhost:2323`.
+
+9. To run the service persistently, create a systemd unit file such as
+   `/etc/systemd/system/my-2323.service`:
+
+   ```ini
+   [Unit]
+   Description=My Service
+
+   [Service]
+   User=myusername
+   WorkingDirectory=/home/myusername/Projects/my-2323-service
+   ExecStart=/home/myusername/Projects/my-2323-service/bin/run_service.sh
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+   Enable and start the service:
+
+   ```bash
+   sudo systemctl enable my-2323.service
+   sudo systemctl start my-2323.service
+   ```
+
+10. Optionally, create `/etc/pyrocko/service-mappings`:
+
+    ```text
+    2323 https://my-2323.server.net
+    # 2324 https://my-2324.server.net
+    ```
+
+    This allows the service to display the correct external URL when a user
+    starts the service on a port that has been configured through a reverse
+    proxy.
+
+''')
+    sys.exit()
+
+
 def _add_cli_arguments(method, exclude=(), default_port=2323):
+
+    if 'help_port_forwarding' not in exclude:
+        import argparse
+
+        class PFWHelpAction(argparse.Action):
+            def __init__(self, option_strings, dest, nargs=None, **kwargs):
+                super().__init__(option_strings, dest, nargs=0, **kwargs)
+
+            def __call__(self, parser, namespace, values, option_string=None):
+                help_pfw_and_exit()
+
+        def pfw_callback(option, opt, value, parser):
+            help_pfw_and_exit()
+
+        try:  # for argparse
+            method(
+                '--help-port-forwarding',
+                action=PFWHelpAction,
+                help='Print help about how to set up SSH port forwarding or '
+                     'reverse proxying.')
+        except Exception:  # for optparse
+            method(
+                '--help-port-forwarding',
+                nargs=0,
+                action='callback',
+                callback=pfw_callback,
+                help='Print help about how to set up SSH port forwarding or '
+                     'reverse proxying.')
 
     if 'port' not in exclude:
         method(
