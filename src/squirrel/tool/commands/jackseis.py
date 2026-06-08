@@ -667,7 +667,11 @@ replacements. Examples: Direct replacement: ```XX``` - set all network codes to
                 chopped_traces = []
                 for tr in traces:
                     try:
-                        otr = tr.chop(twmin, twmax, inplace=False)
+                        otr = tr.chop(
+                            max(twmin, tmin),
+                            min(twmax, tmax),
+                            inplace=False)
+
                         chopped_traces.append(otr)
                     except trace.NoData:
                         pass
