@@ -64,62 +64,45 @@ def state_bind_slider(
 
     def make_funcs():
         if scale == 'log':
-            if not base or not factor:
+            if base <= 0 or factor <= 0 or factor == 1.0:
                 raise ValueError(
-                    'Logarithmic scale requires "base" and "factor" arguments.'
-                    )
+                    'Logarithmic slider binding requires base > 0 and '
+                    'factor > 0, factor != 1.')
 
-            def update_state(widget, state):
-                value = widget.value()
-                if (min_is_none and value == widget.minimum()) \
-                        or (max_is_none and value == widget.maximum()):
-                    state.set(path, None)
-                    return
-                new_state_val = base * (factor ** - value)
-                viewer.status(f'{new_state_val:.2f}')
-                state.set(path, new_state_val)
+            def value_to_state(val):
+                return dtype(base * factor**(-val))
 
-            def update_widget(state, widget):
-                state_val = state.get(path)
-
-                if min_is_none and state_val is None:
-                    widget.blockSignals(True)
-                    widget.setValue(widget.minimum())
-                    widget.blockSignals(False)
-                    return
-
-                if max_is_none and state_val is None:
-                    widget.blockSignals(True)
-                    widget.setValue(widget.maximum())
-                    widget.blockSignals(False)
-                    return
-
-                if state_val > 0:
-                    new_widget_val = -math.log(state_val / base) \
-                        / math.log(factor)
-                    widget.blockSignals(True)
-                    widget.setValue(int(round(new_widget_val)))
-                    widget.blockSignals(False)
+            def state_to_value(state_val):
+                return -math.log(state_val / base) / math.log(factor)
 
         else:
-            def update_state(widget, state):
-                val = widget.value()
-                if (min_is_none and val == widget.minimum()) \
-                        or (max_is_none and val == widget.maximum()):
-                    state.set(path, None)
-                else:
-                    viewer.status('%g' % (val * factor))
-                    state.set(path, dtype(val * factor))
+            def value_to_state(val):
+                return dtype(val * factor)
 
-            def update_widget(state, widget):
-                val = state.get(path)
-                widget.blockSignals(True)
-                if min_is_none and val is None:
+            def state_to_value(state_val):
+                return state_val / factor
+
+        def update_state(widget, state):
+            val = widget.value()
+            if (min_is_none and val == widget.minimum()) \
+                    or (max_is_none and val == widget.maximum()):
+                state.set(path, None)
+            else:
+                state_val = value_to_state(val)
+                viewer.status('%g' % state_val)
+                state.set(path, state_val)
+
+        def update_widget(state, widget):
+            state_val = state.get(path)
+            widget.blockSignals(True)
+            try:
+                if min_is_none and state_val is None:
                     widget.setValue(widget.minimum())
-                elif max_is_none and val is None:
+                elif max_is_none and state_val is None:
                     widget.setValue(widget.maximum())
                 else:
-                    widget.setValue(int(state.get(path) * 1. / factor))
+                    widget.setValue(int(round(state_to_value(state_val))))
+            finally:
                 widget.blockSignals(False)
 
         return update_state, update_widget
