@@ -117,6 +117,8 @@ steps:
   commands:
   - pip3 install --no-deps .
   - python3 -m pytest -v test/base
+  environment:
+    PYROCKO_TEST_SKIP_INTERNET: 1
 
 - name: test-base-hptime
   image: pyrocko-fat-nest-debian-12
@@ -125,6 +127,7 @@ steps:
   - pip3 install --no-deps .
   - python3 -m pytest -v test/base
   environment:
+    PYROCKO_TEST_SKIP_INTERNET: 1
     PYROCKO_USE_HIGH_PRECISION_TIME: 1
   when:
     branch:
@@ -214,6 +217,8 @@ steps:
   commands:
   - pip3 install --no-deps .
   - python3 -m pytest -v test/gf
+  environment:
+    PYROCKO_TEST_SKIP_INTERNET: 1
 
 - name: test-gf-hptime
   image: pyrocko-fat-nest-debian-12
@@ -222,6 +227,7 @@ steps:
   - pip3 install --no-deps .
   - python3 -m pytest -v test/gf
   environment:
+    PYROCKO_TEST_SKIP_INTERNET: 1
     PYROCKO_USE_HIGH_PRECISION_TIME: 1
   when:
     branch:
@@ -312,6 +318,8 @@ steps:
   - ln -sf /pyrocko-test-data/gf_stores/* /pyrocko-test-data/example_run_dir
   - pip3 install --no-deps .
   - python3 -m pytest -v test/examples
+  environment:
+    PYROCKO_TEST_SKIP_INTERNET: 1
 
 - name: test-examples-hptime
   image: pyrocko-fat-nest-debian-12
@@ -322,6 +330,7 @@ steps:
   - pip3 install --no-deps .
   - python3 -m pytest -v test/examples
   environment:
+    PYROCKO_TEST_SKIP_INTERNET: 1
     PYROCKO_USE_HIGH_PRECISION_TIME: 1
   when:
     branch:
@@ -413,6 +422,8 @@ steps:
   commands:
   - pip3 install --no-deps .
   - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
+  environment:
+    PYROCKO_TEST_SKIP_INTERNET: 1
 
 - name: test-gui-hptime
   image: pyrocko-fat-nest-debian-12
@@ -421,6 +432,7 @@ steps:
   - pip3 install --no-deps .
   - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v test/gui test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_fiddle test/base/test_obspy_compat.py::ObsPyCompatTestCase::test_obspy_snuffle
   environment:
+    PYROCKO_TEST_SKIP_INTERNET: 1
     PYROCKO_USE_HIGH_PRECISION_TIME: 1
   when:
     branch:
@@ -765,6 +777,8 @@ steps:
   - pip3 install -f dist pyrocko --break-system-packages
   - pip3 install --only-binary=PyQt5 PyQt5 jinja2 pytest --break-system-packages
   - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v
+  environment:
+    PYROCKO_TEST_SKIP_INTERNET: 1
 
 - name: test-mixed
   image: pyrocko-fat-nest-debian-13
@@ -777,6 +791,8 @@ steps:
   commands:
   - pip3 install -f dist --no-index --no-deps pyrocko --break-system-packages
   - xvfb-run -s '-screen 0 640x480x24' python3 -m pytest -v
+  environment:
+    PYROCKO_TEST_SKIP_INTERNET: 1
 
 - name: stage
   image: pyrocko-util

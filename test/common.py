@@ -117,6 +117,9 @@ def test_data_file(fn):
 
 
 def have_internet():
+    if os.environ.get('PYROCKO_TEST_SKIP_INTERNET', '0') == '1':
+        return False
+
     try:
         return 0 < len([
             (s.connect(('8.8.8.8', 80)), s.close())
