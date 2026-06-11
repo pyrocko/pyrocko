@@ -79,7 +79,7 @@ Changelog](https://keepachangelog.com/en/1.0.0/).
 * Use topic branches to develop new features. Follow the naming convention:
   - `feature/<name>`:
     Any code changes for a new module or use case should be done on a
-    feature branch. This branch is created based on the current `master` branch.
+    feature branch. This branch is created based on the current `main` branch.
   - `bugfix/<name>`:
     Any necessary fixes after that should be done on the bugfix branch.
   - `hotfix/<name>`:
@@ -96,26 +96,26 @@ Changelog](https://keepachangelog.com/en/1.0.0/).
 
 * Open a pull request and use the Gitea-tags `Need Review`, `Need Revision`, to
   signal its state.
-* When a topic is complete, all tests pass and it is rebased to current master:
+* When a topic is complete, all tests pass and it is rebased to current `main`:
   merge with `--ff-only` and don't forget to update the changelog.
-* The `master` branch should always point to a stable version.
+* The `main` branch should always point to a stable version.
 * Extra CI pipelines and pipeline steps are run on branches named `release`,
   `candidate`, `pip`, `conda`, `deploy-docs`, and `hptime`. See also CI
   section above.
 
 ### Rebase small changes before pushing
 
-Try to rebase little changes on top of master (or any other development branch)
+Try to rebase little changes on top of `main` (or any other development branch)
 before pushing, it makes the history much better readable. Here is a safe way
 to do so.
 
-*If we have already commited and merged changes to local master:*
+*If we have already commited and merged changes to local `main`:*
 
 ```sh
-git checkout master
+git checkout main
 git fetch origin    # important, otherwise we rebase to outdated
-git rebase origin/master
-git push origin master
+git rebase origin/main
+git push origin main
 ```
 
 with `git config --global pull.rebase true` this can be shortcutted to
@@ -129,11 +129,11 @@ git pull
 ```sh
 git checkout feature
 git fetch origin
-git rebase origin/master
-git checkout master
-git merge origin/master --ff-only
+git rebase origin/main
+git checkout main
+git merge origin/main --ff-only
 git merge feature --ff-only
-git push origin master
+git push origin main
 ```
 
 If during push it refuses to upload ('not fast forward...') then repeat the

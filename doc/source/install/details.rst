@@ -115,7 +115,7 @@ assumes that you have used *git* to download Pyrocko).
 
 **(B2)** Update the project directory tree with *git*::
 
-    git pull origin master --ff-only
+    git pull origin main --ff-only
 
 **(B3)** **Build and reinstall Pyrocko (A4).**
 

@@ -88,7 +88,7 @@ snuffling class from the ``__snufflings__()`` function.
 
 The :py:class:`~pyrocko.gui.snuffler.snuffling.Snuffling` base class documentation can also
 be accessed with the command ``pydoc pyrocko.gui.snuffler.snuffling.Snuffling`` from the
-shell. Example snufflings can be found in `src/gui/snuffler/snufflings/ <https://git.pyrocko.org/pyrocko/pyrocko/src/master/src/gui/snuffler/snufflings>`_
+shell. Example snufflings can be found in `src/gui/snuffler/snufflings/ <https://git.pyrocko.org/pyrocko/pyrocko/src/main/src/gui/snuffler/snufflings>`_
 in the pyrocko source code. More examples may be found in the 
 `contrib-snufflings repository <https://git.pyrocko.org/pyrocko/contrib-snufflings>`_ repository.
 
