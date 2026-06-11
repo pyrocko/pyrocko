@@ -3822,7 +3822,8 @@ def MakePileViewerMainClass(base):
                                         invert=True)
                                     restituted_traces.append(
                                         restituted_tr)
-
+                                else:
+                                    restituted_traces.append(tr)
                             processed_traces = restituted_traces
 
                 if self.rotate != 0.0:
