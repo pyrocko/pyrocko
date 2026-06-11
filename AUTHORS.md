@@ -1,6 +1,6 @@
 # The Pyrocko developers
 
-This following list includes contributors how have directly touched code or documentation of Pyrocko. 
+This following list includes contributors how have directly touched code or documentation of Pyrocko.
 It is not a complete list, in the sense that many others have influenced the development of Pyrocko through discussion, bug reports and more.
 
 * Andreas Steinberg
@@ -15,6 +15,7 @@ It is not a complete list, in the sense that many others have influenced the dev
 * Henriette Sudhaus
 * Johanna Lehr
 * Malte Metz
+* Marin Govorcin
 * Marius Isken
 * Marius Kriegerowski
 * Maximilian Dwars
