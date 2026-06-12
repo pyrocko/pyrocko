@@ -1275,6 +1275,7 @@ def MakePileViewerMainClass(base):
             self.view_mode = ViewMode.Wiggle
 
             self.automatic_updates = True
+            self.set_uncertainty_y = False
 
             self.closing = False
             self.in_paint_event = False
@@ -2040,6 +2041,8 @@ def MakePileViewerMainClass(base):
 
             if mouse_ev.button() == qc.Qt.LeftButton:
                 marker = self.marker_under_cursor(point.x(), point.y())
+                self._last_y = point.y()
+
                 if self.picking:
                     if self.picking_down is None:
                         self.picking_down = (
@@ -2055,6 +2058,9 @@ def MakePileViewerMainClass(base):
                 else:
                     self.track_start = mouse_ev.x(), mouse_ev.y()
                     self.track_trange = self.tmin, self.tmax
+
+                if mouse_ev.modifiers() & qc.Qt.ShiftModifier:
+                    self.set_uncertainty_y = self.time_projection(point.y())
 
             if mouse_ev.button() == qc.Qt.RightButton \
                     and isinstance(self.menu, qw.QMenu):
@@ -2076,6 +2082,8 @@ def MakePileViewerMainClass(base):
 
             self.track_start = None
             self.track_trange = None
+            self.set_uncertainty_y = False
+
             self.update_status()
 
         def mouseDoubleClickEvent(self, mouse_ev):
@@ -2090,6 +2098,9 @@ def MakePileViewerMainClass(base):
 
             if self.picking:
                 self.update_picking(point.x(), point.y())
+
+            if self.set_uncertainty_y:
+                self.update_uncertainty(point.y())
 
             elif self.track_start is not None:
                 x0, y0 = self.track_start
@@ -2115,6 +2126,17 @@ def MakePileViewerMainClass(base):
                 self.hoovering(point.x(), point.y())
 
             self.update_status()
+
+        def update_uncertainty(self, y):
+            d = self.time_projection.rev(y) - self.time_projection.rev(
+                self._last_y)
+            for m in self.selected_markers():
+                if isinstance(m, PhaseMarker):
+                    m._uncertainty = m._uncertainty or 0.
+                    m._uncertainty = max(0., m._uncertainty + d)
+
+            self.emit_selected_markers()
+            self._last_y = y
 
         def nslc_ids_under_cursor(self, x, y):
             ftrack = self.track_to_screen.rev(y)
@@ -2216,6 +2238,7 @@ def MakePileViewerMainClass(base):
                         else:
                             p = 1 if m.get_polarity() != 1 else None
                         m.set_polarity(p)
+                self.emit_selected_markers()
 
             elif key == qc.Qt.Key_Down:
                 for m in self.floating_or_selected_markers():
@@ -2225,6 +2248,7 @@ def MakePileViewerMainClass(base):
                         else:
                             p = -1 if m.get_polarity() != -1 else None
                         m.set_polarity(p)
+                self.emit_selected_markers()
 
             elif key == qc.Qt.Key_B:
                 dt = self.tmax - self.tmin
