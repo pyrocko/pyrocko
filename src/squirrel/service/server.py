@@ -35,7 +35,7 @@ from pyrocko import moment_tensor as pmt
 from pyrocko.plot import beachball
 from pyrocko.color import Color, g_pyrocko_color_cycle_base
 
-from . import context_inspectors
+from . import scouts
 
 
 add_cli_arguments = server.add_cli_arguments
@@ -641,7 +641,7 @@ class Gate(guts.Object):
 
     def get_inspector_classes(self):
         return {
-            'response': context_inspectors.ResponseCI,
+            'response': scouts.ResponseScout,
         }
 
     def get_inspector(self, accessor_id, name):
@@ -803,7 +803,7 @@ class SquirrelGateHandler(SquirrelRequestHandler):
 
         names = ['response']
 
-        context = context_inspectors.CIContext(
+        context = scouts.ScoutContext(
             time=time,
             tmin=tmin,
             tmax=tmax,

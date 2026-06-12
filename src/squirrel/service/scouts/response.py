@@ -1,10 +1,10 @@
 import io
 import base64
 
-from .base import ContextInspector, CIResult
+from .base import Scout, ScoutResult
 
 
-class ResponseCI(ContextInspector):
+class ResponseScout(Scout):
 
     format = 'webp'
     nfrequencies = 200
@@ -41,7 +41,7 @@ class ResponseCI(ContextInspector):
             show_breakpoints=self.show_breakpoints)
 
         return [
-            CIResult(
+            ScoutResult(
                 name=self.name,
                 context=context,
                 image_data_base64='data:image/%s;base64,%s' % (
@@ -51,5 +51,5 @@ class ResponseCI(ContextInspector):
 
 
 __all__ = [
-    'ResponseCI'
+    'ResponseScout'
 ]
