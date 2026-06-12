@@ -4064,6 +4064,7 @@ def MakePileViewerMainClass(base):
                 self.picking_timer = None
 
                 if not abort:
+                    previous = self.floating_marker
                     self.add_marker(self.floating_marker)
                     self.floating_marker.selected = True
                     self.emit_selected_markers()
@@ -4071,11 +4072,11 @@ def MakePileViewerMainClass(base):
                 self.floating_marker = None
 
                 if self.batch_picking and not abort:
-                    self.start_picking(batch=True)
+                    self.start_picking(batch=True, previous=previous)
                 else:
                     self.batch_picking = False
 
-        def start_picking(self, batch=False):
+        def start_picking(self, batch=False, previous=None):
             if not self.picking:
                 self.batch_picking = batch
                 self.deselect_all()
@@ -4090,6 +4091,19 @@ def MakePileViewerMainClass(base):
                 ftrack = self.track_to_screen.rev(point.y())
                 nslc_ids = self.get_nslc_ids_for_track(ftrack)
                 self.floating_marker = Marker(nslc_ids, t, t)
+                if previous:
+                    self.floating_marker.kind = previous.kind
+
+                    if isinstance(previous, PhaseMarker):
+                        self.floating_marker.convert_to_phase_marker(
+                            previous.get_event(),
+                            previous.get_phasename(),
+                            previous.get_polarity(),
+                            False)
+
+                    if isinstance(previous, EventMarker):
+                        self.floating_marker.convert_to_event_marker()
+
                 self.floating_marker.selected = True
 
                 self.picking_timer = qc.QTimer()
