@@ -2,10 +2,12 @@ import unittest
 import numpy as num
 from pyrocko import util
 from pyrocko.dataset import topo
+from .. import common
 
 
 class TopoTestCase(unittest.TestCase):
 
+    @common.require_internet
     def test_srtm(self):
         srtm = topo._srtmgl3
         tiles = list(srtm.available_tilenames())

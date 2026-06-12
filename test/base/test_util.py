@@ -10,6 +10,8 @@ from random import random, randint, choice
 import numpy as num
 from pyrocko import util
 
+from .. import common
+
 try:
     range = xrange
 except NameError:
@@ -239,6 +241,7 @@ class UtilTestCase(unittest.TestCase):
 |   3.33E+09 |
 |   3.33E+10 |'''.strip())
 
+    @common.require_internet
     def test_download(self):
         fn = self.fpath('responses.xml')
         url = 'https://data.pyrocko.org/examples/responses.xml'

@@ -35,6 +35,12 @@ skip_examples = [
     'gf_store_get_many_t.py',
 ]
 
+if not common.have_internet():
+    skip_examples.extend([
+        'catalog_search_geofon.py',
+        'catalog_search_globalcmt.py',
+        'gnss_unr_campaign.py'])
+
 need_sys_argv_examples = {
     'squirrel_rms2.py':
         [['', '--dataset', ':fdsn-bgr-gr-bfo']],

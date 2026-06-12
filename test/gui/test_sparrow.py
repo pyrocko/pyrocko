@@ -111,6 +111,7 @@ class SparrowTest(unittest.TestCase):
         self.trigger_all_actions(self.get_menu('Panels'))
         self.trigger_all_actions(self.get_menu('Panels'))
 
+    @common.require_internet
     def test_snapshots(self):
         from pyrocko.gui.sparrow import snapshots as snapshots_mod
         snapshots_ = snapshots_mod.load_snapshots(
