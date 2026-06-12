@@ -987,13 +987,15 @@ class Trace(Object):
                 raise AboveNyquist(message)
 
     def lowpass(self, order, corner, nyquist_warn=True,
-                nyquist_exception=False, demean=True):
+                nyquist_exception=False, demean=True, sos=False):
 
         '''
         Apply Butterworth lowpass to the trace.
 
         :param order: order of the filter
         :param corner: corner frequency of the filter
+        :param sos: if ``True``, apply the filter in second-order sections
+            (SOS) representation for improved numerical stability.
 
         Mean is removed before filtering.
         '''
@@ -1002,23 +1004,37 @@ class Trace(Object):
             corner, 'Corner frequency of lowpass', nyquist_warn,
             nyquist_exception)
 
-        sos = _get_cached_filter_coefs(
-            order, [corner*2.0*self.deltat], btype='low')
+        coefs = _get_cached_filter_coeffs(
+            order, [corner*2.0*self.deltat], btype='low',
+            output='sos' if sos else 'ba')
+
+        if not sos:
+            (b, a) = coefs
+            if len(a) != order+1 or len(b) != order+1:
+                logger.warning(
+                    'Erroneous filter coefficients returned by '
+                    'scipy.signal.butter(). You may need to downsample the '
+                    'signal before filtering.')
 
         data = self.ydata.astype(num.float64)
         if demean:
             data -= num.mean(data)
         self.drop_growbuffer()
-        self.ydata = signal.sosfilt(sos, data)
+        if sos:
+            self.ydata = signal.sosfilt(coefs, data)
+        else:
+            self.ydata = signal.lfilter(b, a, data)
 
     def highpass(self, order, corner, nyquist_warn=True,
-                 nyquist_exception=False, demean=True):
+                 nyquist_exception=False, demean=True, sos=False):
 
         '''
         Apply butterworth highpass to the trace.
 
         :param order: order of the filter
         :param corner: corner frequency of the filter
+        :param sos: if ``True``, apply the filter in second-order sections
+            (SOS) representation for improved numerical stability.
 
         Mean is removed before filtering.
         '''
@@ -1027,22 +1043,36 @@ class Trace(Object):
             corner, 'Corner frequency of highpass', nyquist_warn,
             nyquist_exception)
 
-        sos = _get_cached_filter_coefs(
-            order, [corner*2.0*self.deltat], btype='high')
+        coefs = _get_cached_filter_coeffs(
+            order, [corner*2.0*self.deltat], btype='high',
+            output='sos' if sos else 'ba')
+
+        if not sos:
+            (b, a) = coefs
+            if len(a) != order+1 or len(b) != order+1:
+                logger.warning(
+                    'Erroneous filter coefficients returned by '
+                    'scipy.signal.butter(). You may need to downsample the '
+                    'signal before filtering.')
 
         data = self.ydata.astype(num.float64)
         if demean:
             data -= num.mean(data)
         self.drop_growbuffer()
-        self.ydata = signal.sosfilt(sos, data)
+        if sos:
+            self.ydata = signal.sosfilt(coefs, data)
+        else:
+            self.ydata = signal.lfilter(b, a, data)
 
-    def bandpass(self, order, corner_hp, corner_lp, demean=True):
+    def bandpass(self, order, corner_hp, corner_lp, demean=True, sos=False):
         '''
         Apply butterworth bandpass to the trace.
 
         :param order: order of the filter
         :param corner_hp: lower corner frequency of the filter
         :param corner_lp: upper corner frequency of the filter
+        :param sos: if ``True``, apply the filter in second-order sections
+            (SOS) representation for improved numerical stability.
 
         Mean is removed before filtering.
         '''
@@ -1050,24 +1080,30 @@ class Trace(Object):
         self.nyquist_check(corner_hp, 'Lower corner frequency of bandpass')
         self.nyquist_check(corner_lp, 'Higher corner frequency of bandpass')
 
-        sos = _get_cached_filter_coefs(
+        coefs = _get_cached_filter_coeffs(
             order,
             [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)],
-            btype='band')
+            btype='band',
+            output='sos' if sos else 'ba')
 
         data = self.ydata.astype(num.float64)
         if demean:
             data -= num.mean(data)
         self.drop_growbuffer()
-        self.ydata = signal.sosfilt(sos, data)
+        if sos:
+            self.ydata = signal.sosfilt(coefs, data)
+        else:
+            self.ydata = signal.lfilter(coefs[0], coefs[1], data)
 
-    def bandstop(self, order, corner_hp, corner_lp, demean=True):
+    def bandstop(self, order, corner_hp, corner_lp, demean=True, sos=False):
         '''
         Apply bandstop (attenuates frequencies in band) to the trace.
 
         :param order: order of the filter
         :param corner_hp: lower corner frequency of the filter
         :param corner_lp: upper corner frequency of the filter
+        :param sos: if ``True``, apply the filter in second-order sections
+            (SOS) representation for improved numerical stability.
 
         Mean is removed before filtering.
         '''
@@ -1075,16 +1111,20 @@ class Trace(Object):
         self.nyquist_check(corner_hp, 'Lower corner frequency of bandstop')
         self.nyquist_check(corner_lp, 'Higher corner frequency of bandstop')
 
-        sos = _get_cached_filter_coefs(
+        coefs = _get_cached_filter_coeffs(
             order,
             [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)],
-            btype='bandstop')
+            btype='bandstop',
+            output='sos' if sos else 'ba')
 
         data = self.ydata.astype(num.float64)
         if demean:
             data -= num.mean(data)
         self.drop_growbuffer()
-        self.ydata = signal.sosfilt(sos, data)
+        if sos:
+            self.ydata = signal.sosfilt(coefs, data)
+        else:
+            self.ydata = signal.lfilter(coefs[0], coefs[1], data)
 
     def envelope(self, inplace=True):
         '''
@@ -3460,15 +3500,14 @@ class GaussTaper(Taper):
 cached_coefficients = {}
 
 
-def _get_cached_filter_coeffs(order, corners, btype):
-    ck = (order, tuple(corners), btype)
+def _get_cached_filter_coeffs(order, corners, btype, output='ba'):
+    ck = (order, tuple(corners), btype, output)
     if ck not in cached_coefficients:
-        if len(corners) == 0:
-            cached_coefficients[ck] = signal.butter(
-                order, corners[0], btype=btype, output='sos')
-        else:
-            cached_coefficients[ck] = signal.butter(
-                order, corners, btype=btype, output='sos')
+        if len(corners) == 1:
+            corners = corners[0]
+
+        cached_coefficients[ck] = signal.butter(
+            order, corners, btype=btype, output=output)
 
     return cached_coefficients[ck]
 
