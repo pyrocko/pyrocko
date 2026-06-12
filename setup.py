@@ -368,7 +368,7 @@ subpacknames = [
     'pyrocko.squirrel.tool.commands',
     'pyrocko.squirrel.operators',
     'pyrocko.squirrel.service',
-    'pyrocko.squirrel.service.context_inspectors',
+    'pyrocko.squirrel.service.scouts',
     'pyrocko.gato',
     'pyrocko.gato.grid',
     'pyrocko.gato.delay',

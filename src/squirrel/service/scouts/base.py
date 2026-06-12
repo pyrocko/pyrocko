@@ -4,7 +4,7 @@ from pyrocko.model.codes import CodesNSLCE
 from pyrocko.squirrel.mantra import Mantra
 
 
-class CIContext(Object):
+class ScoutContext(Object):
     time = Timestamp.T()
     tmin = Timestamp.T()
     tmax = Timestamp.T()
@@ -14,13 +14,13 @@ class CIContext(Object):
     frequency_max = Float.T()
 
 
-class CIResult(Object):
+class ScoutResult(Object):
     name = String.T()
-    context = CIContext.T()
+    context = ScoutContext.T()
     image_data_base64 = String.T(optional=True)
 
 
-class ContextInspector(Object):
+class Scout(Object):
     name = String.T()
     mantra = Mantra.T()
 
@@ -29,7 +29,7 @@ class ContextInspector(Object):
 
 
 __all__ = [
-    'ContextInspector',
-    'CIResult',
-    'CIContext',
+    'Scout',
+    'ScoutResult',
+    'ScoutContext',
 ]
