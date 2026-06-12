@@ -987,15 +987,16 @@ class Trace(Object):
                 raise AboveNyquist(message)
 
     def lowpass(self, order, corner, nyquist_warn=True,
-                nyquist_exception=False, demean=True, sos=False):
+                nyquist_exception=False, demean=True, type='ba'):
 
         '''
         Apply Butterworth lowpass to the trace.
 
         :param order: order of the filter
         :param corner: corner frequency of the filter
-        :param sos: if ``True``, apply the filter in second-order sections
-            (SOS) representation for improved numerical stability.
+        :param type: representation of the filter: ``'ba'`` (transfer function
+            polynomials (b, a), default) or ``'sos'`` (cascade of second-order
+            sections)
 
         Mean is removed before filtering.
         '''
@@ -1005,10 +1006,9 @@ class Trace(Object):
             nyquist_exception)
 
         coefs = _get_cached_filter_coeffs(
-            order, [corner*2.0*self.deltat], btype='low',
-            output='sos' if sos else 'ba')
+            order, [corner*2.0*self.deltat], btype='low', output=type)
 
-        if not sos:
+        if type == 'ba':
             (b, a) = coefs
             if len(a) != order+1 or len(b) != order+1:
                 logger.warning(
@@ -1020,21 +1020,22 @@ class Trace(Object):
         if demean:
             data -= num.mean(data)
         self.drop_growbuffer()
-        if sos:
+        if type == 'sos':
             self.ydata = signal.sosfilt(coefs, data)
         else:
             self.ydata = signal.lfilter(b, a, data)
 
     def highpass(self, order, corner, nyquist_warn=True,
-                 nyquist_exception=False, demean=True, sos=False):
+                 nyquist_exception=False, demean=True, type='ba'):
 
         '''
         Apply butterworth highpass to the trace.
 
         :param order: order of the filter
         :param corner: corner frequency of the filter
-        :param sos: if ``True``, apply the filter in second-order sections
-            (SOS) representation for improved numerical stability.
+        :param type: representation of the filter: ``'ba'`` (transfer function
+            polynomials (b, a), default) or ``'sos'`` (cascade of second-order
+            sections)
 
         Mean is removed before filtering.
         '''
@@ -1044,10 +1045,9 @@ class Trace(Object):
             nyquist_exception)
 
         coefs = _get_cached_filter_coeffs(
-            order, [corner*2.0*self.deltat], btype='high',
-            output='sos' if sos else 'ba')
+            order, [corner*2.0*self.deltat], btype='high', output=type)
 
-        if not sos:
+        if type == 'ba':
             (b, a) = coefs
             if len(a) != order+1 or len(b) != order+1:
                 logger.warning(
@@ -1059,20 +1059,21 @@ class Trace(Object):
         if demean:
             data -= num.mean(data)
         self.drop_growbuffer()
-        if sos:
+        if type == 'sos':
             self.ydata = signal.sosfilt(coefs, data)
         else:
             self.ydata = signal.lfilter(b, a, data)
 
-    def bandpass(self, order, corner_hp, corner_lp, demean=True, sos=False):
+    def bandpass(self, order, corner_hp, corner_lp, demean=True, type='ba'):
         '''
         Apply butterworth bandpass to the trace.
 
         :param order: order of the filter
         :param corner_hp: lower corner frequency of the filter
         :param corner_lp: upper corner frequency of the filter
-        :param sos: if ``True``, apply the filter in second-order sections
-            (SOS) representation for improved numerical stability.
+        :param type: representation of the filter: ``'ba'`` (transfer function
+            polynomials (b, a), default) or ``'sos'`` (cascade of second-order
+            sections)
 
         Mean is removed before filtering.
         '''
@@ -1084,26 +1085,27 @@ class Trace(Object):
             order,
             [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)],
             btype='band',
-            output='sos' if sos else 'ba')
+            output=type)
 
         data = self.ydata.astype(num.float64)
         if demean:
             data -= num.mean(data)
         self.drop_growbuffer()
-        if sos:
+        if type == 'sos':
             self.ydata = signal.sosfilt(coefs, data)
         else:
             self.ydata = signal.lfilter(coefs[0], coefs[1], data)
 
-    def bandstop(self, order, corner_hp, corner_lp, demean=True, sos=False):
+    def bandstop(self, order, corner_hp, corner_lp, demean=True, type='ba'):
         '''
         Apply bandstop (attenuates frequencies in band) to the trace.
 
         :param order: order of the filter
         :param corner_hp: lower corner frequency of the filter
         :param corner_lp: upper corner frequency of the filter
-        :param sos: if ``True``, apply the filter in second-order sections
-            (SOS) representation for improved numerical stability.
+        :param type: representation of the filter: ``'ba'`` (transfer function
+            polynomials (b, a), default) or ``'sos'`` (cascade of second-order
+            sections)
 
         Mean is removed before filtering.
         '''
@@ -1115,13 +1117,13 @@ class Trace(Object):
             order,
             [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)],
             btype='bandstop',
-            output='sos' if sos else 'ba')
+            output=type)
 
         data = self.ydata.astype(num.float64)
         if demean:
             data -= num.mean(data)
         self.drop_growbuffer()
-        if sos:
+        if type == 'sos':
             self.ydata = signal.sosfilt(coefs, data)
         else:
             self.ydata = signal.lfilter(coefs[0], coefs[1], data)
@@ -3501,6 +3503,11 @@ cached_coefficients = {}
 
 
 def _get_cached_filter_coeffs(order, corners, btype, output='ba'):
+    if output not in ('ba', 'sos'):
+        raise ValueError(
+            "filter coefficient type must be 'ba' or 'sos', got %r"
+            % (output,))
+
     ck = (order, tuple(corners), btype, output)
     if ck not in cached_coefficients:
         if len(corners) == 1:
