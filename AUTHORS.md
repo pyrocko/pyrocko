@@ -14,6 +14,7 @@ It is not a complete list, in the sense that many others have influenced the dev
 * Henning Lilienkamp
 * Henriette Sudhaus
 * Johanna Lehr
+* Lukas Schattenhofer
 * Malte Metz
 * Marin Govorcin
 * Marius Isken
