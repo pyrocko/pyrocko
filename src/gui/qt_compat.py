@@ -25,7 +25,12 @@ if gui_toolkit == 'qt4':
         'Pyrocko has dropped support for Qt4. The last release with Qt4 '
         'support was v2021.09.14.')
 
-qt5_backend_available = 'Qt5Agg' in matplotlib.rcsetup.all_backends
+try:
+    qt5_backend_available = 'Qt5Agg' in matplotlib.rcsetup.all_backends
+except AttributeError:
+    qt5_backend_available = \
+        'qt5agg' in matplotlib.rcsetup.backend_registry.list_all()
+
 
 if not qt5_backend_available:
     logger.warning(
