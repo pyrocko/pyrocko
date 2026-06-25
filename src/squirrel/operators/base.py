@@ -721,7 +721,7 @@ class BaseOperator(Object):
         kinds = ['waveform', 'waveform_promise']
         self_tmin, self_tmax = self.get_time_span(kinds, dummy_limits=False)
 
-        if None in (self_tmin, self_tmax):
+        if None in (self_tmin, self_tmax) and (tmin is None and tmax is None):
             logger.warning(
                 'Content has undefined time span. No waveforms and no '
                 'waveform promises?')
