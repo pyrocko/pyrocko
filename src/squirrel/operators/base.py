@@ -718,14 +718,14 @@ class BaseOperator(Object):
         tmin, tmax, codes = get_selection_args(
             WAVEFORM, obj, tmin, tmax, time, codes)
 
-        kinds = ['waveform']
+        kinds = ['waveform', 'waveform_promise']
         self_tmin, self_tmax = self.get_time_span(kinds, dummy_limits=False)
 
         if None in (self_tmin, self_tmax):
             logger.warning(
                 'Content has undefined time span. No waveforms and no '
                 'waveform promises?')
-            return
+            return []
 
         if snap_window and tinc is not None:
             tmin = tmin if tmin is not None else self_tmin
