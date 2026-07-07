@@ -10,13 +10,17 @@ Implementation of :app:`squirrel mseed`.
 import logging
 import numpy as num
 from matplotlib import pyplot as plt
-from pyrocko import plot, progress, util
+from pyrocko import plot, progress, util, signal_ext, trace
 from pyrocko.plot import smartplot
-from pyrocko.io import mseed
-from pyrocko.guts import Object, Int, Float, Timestamp, List
+from pyrocko.io import mseed, FileSaveError
+from pyrocko.guts import Object, Int, Float, Timestamp, List, String
 from pyrocko.guts_array import Array
+from pyrocko.squirrel.error import ToolError
 from ..common import SquirrelCommand
 from pyrocko.model.codes import CodesNSLCE
+from pyrocko.squirrel.tool.common import \
+    squirrel_effective_storage_scheme_from_arguments
+
 
 logger = logging.getLogger('psq.cli.mseed')
 
@@ -27,6 +31,13 @@ description = '''%s''' % headline
 
 def make_task(*args):
     return progress.task(*args, logger=logger)
+
+
+g_filenames_all = set()
+
+
+def check_append_hook(fn):
+    return fn in g_filenames_all
 
 
 def bin_edges(ibins):
@@ -158,6 +169,8 @@ def plot_results(results):
 
 
 class Record(Object):
+    path = String.T()
+    file_offset = Int.T()
     offset = Int.T()
     nsamples = Int.T()
     tmin = Timestamp.T()
@@ -182,10 +195,10 @@ class Chunk(Object):
     deviation_ip = Array.T(
         optional=True, shape=(None,), serialize_as='base64+meta')
 
-    def analyse(self, eps_wrap=0.01, control_point_interval=3600 * 24):
+    def analyse(self, eps_wrap=0.01, control_point_interval=3600.):
         self.offsets = num.array([r.offset for r in self.records], dtype=int)
         self.tmins = num.array(
-            [r.nsamples for r in self.records],
+            [r.tmin for r in self.records],
             dtype=util.get_time_float())
 
         self.tmin = self.tmins[0]
@@ -195,7 +208,7 @@ class Chunk(Object):
         self.deltat_est = num.diff(self.tmins) / num.diff(self.offsets)
         self.deviation = self.deltat_est / self.deltat - 1.0
 
-        if self.deltat_est.size > 1:
+        if self.deltat_est.size > 0:
             self.mean_deltat_est = num.mean(self.deltat_est)
             self.mean_deviation = self.mean_deltat_est / self.deltat - 1.0
 
@@ -208,6 +221,114 @@ class Chunk(Object):
             self.deltat_est_ip = num.diff(self.tmins_ip) \
                 / num.diff(self.offsets)
             self.deviation_ip = self.deltat_est_ip / self.deltat - 1.0
+
+        else:
+            self.mean_deltat_est = self.deltat
+            self.mean_deviation = 0.0
+            self.tmins_ip = self.tmins-self.tmin
+            self.deltat_est_ip = num.array([], dtype=float)
+            self.deviation_ip = num.array([], dtype=float)
+
+    def resample(
+            self,
+            storage_scheme,
+            force=False,
+            append=False,
+            merge=False):
+
+        blocksize = 100
+        nsamples_polluted = 26
+
+        nblocks = (len(self.records) - 1) // blocksize + 1
+        tmin_cut = None
+        task = make_task('Resampling blocks')
+        for iblock in task(list(range(nblocks))):
+            irecord_min = iblock * blocksize
+            irecord_max = min((iblock + 1) * blocksize, len(self.records))
+
+            if irecord_min != 0:
+                irecord_min -= 1
+
+            if irecord_max != len(self.records):
+                irecord_max += 1
+
+            records = self.records[irecord_min:irecord_max]
+            tmins_ip = self.tmins_ip[irecord_min:irecord_max]
+            offsets = self.offsets[irecord_min:irecord_max] \
+                - self.offsets[irecord_min]
+
+            tr_complete = None
+
+            for record in records:
+                (tr,) = list(mseed.iload(
+                        record.path,
+                        segment_size=1,
+                        nsegments=1,
+                        offset=record.file_offset))
+
+                if tr_complete is None:
+                    tr_complete = tr.copy()
+                else:
+                    tr_complete.append(tr.ydata)
+
+            tmax_ip = tmins_ip[-1] \
+                + self.deltat * (records[-1].nsamples - 1)
+
+            tmin_new = num.ceil(
+                (self.tmin + tmins_ip[0]) / self.deltat) * self.deltat
+            tmax_new = num.floor(
+                (self.tmin + tmax_ip) / self.deltat) * self.deltat
+
+            n_new = int(round((tmax_new - tmin_new) / self.deltat))
+
+            i_control = num.concatenate((
+                offsets,
+                [tr_complete.ydata.size-1]), dtype=int)
+
+            t_control = num.concatenate((
+                tmins_ip,
+                [tmax_ip]),
+                dtype=float) + self.tmin
+
+            ydata_new = num.empty(n_new, dtype=float)
+            signal_ext.antidrift(i_control, t_control,
+                                 tr_complete.ydata.astype(float),
+                                 tmin_new, self.deltat, ydata_new)
+
+            tr_new = trace.Trace(
+                network=tr_complete.network,
+                station=tr_complete.station,
+                location=tr_complete.location,
+                channel=tr_complete.channel,
+                extra=tr_complete.extra,
+                deltat=self.deltat,
+                tmin=tmin_new,
+                ydata=ydata_new.astype(tr_complete.ydata.dtype))
+
+            if irecord_max == len(self.records):
+                tmax_cut = tr_new.tmax
+            else:
+                tmax_cut = tr_new.tmax - tr_new.deltat * nsamples_polluted
+
+            if tmin_cut is None:
+                tmin_cut = tr_new.tmin
+
+            try:
+                tr_new.chop(tmin_cut, tmax_cut)
+                try:
+                    g_filenames_all.update(storage_scheme.save(
+                        [tr_new],
+                        overwrite=force,
+                        check_append_hook=check_append_hook if not (append or merge) else None,  # noqa
+                        check_append_merge=merge))
+
+                except FileSaveError as e:
+                    raise ToolError(str(e))
+
+                tmin_cut = tmax_cut
+
+            except trace.NoData:
+                pass
 
 
 class ChannelResult(Object):
@@ -229,27 +350,56 @@ class Clockdrift(SquirrelCommand):
     def setup(self, parser):
         parser.add_squirrel_selection_arguments()
         parser.add_squirrel_query_arguments()
+        parser.add_squirrel_storage_scheme_arguments()
+
+        parser.add_argument(
+            '--force',
+            dest='force',
+            action='store_true',
+            default=False,
+            help='Force overwriting of existing files.')
+
+        parser.add_argument(
+            '--append',
+            dest='append',
+            action='store_true',
+            default=False,
+            help='Append to existing files. This only works for mseed files. '
+                 'Checks are preformed to ensure that appended traces have no '
+                 'overlap with already existing traces.')
+
+        parser.add_argument(
+            '--merge',
+            dest='merge',
+            action='store_true',
+            default=False,
+            help='Merge with existing data in files. This only works for '
+                 'mseed files.')
 
     def run(self, parser, args):
         with progress.view():
             self.run_main(parser, args)
 
     def run_main(self, parser, args):
-        eps_connected = 0.1
+        eps_connected = 0.3
 
         sq = args.make_squirrel()
 
         codes_all = [codes for (_, _, codes, _) in sq.get_codes_info(
-            'waveform', codes=args.squirrel_query['codes'])]
+            'waveform', codes=args.squirrel_query.get('codes'))]
 
         by_sensor = util.group_by(lambda c: c[:3] + (c[3][:2],), codes_all)
+
+        tmin = args.squirrel_query.get('tmin')
+        tmax = args.squirrel_query.get('tmax')
+        storage_scheme = squirrel_effective_storage_scheme_from_arguments(args)
 
         task_sensors = make_task('Processing sensors')
         for (scodes, codes_sensor) in task_sensors(by_sensor.items()):
             task_channels = make_task('Processing channels')
             results = []
             for icodes, codes in task_channels(list(enumerate(codes_sensor))):
-                nuts = sq.iter_nuts(codes=codes)
+                nuts = sq.iter_nuts(codes=codes, tmin=tmin, tmax=tmax)
                 nuts = sorted(nuts, key=lambda nut: nut.tmin)
                 paths = [nut.file_path for nut in nuts]
 
@@ -267,6 +417,8 @@ class Clockdrift(SquirrelCommand):
                             chunks.append(Chunk(deltat=tr.deltat))
 
                         chunks[-1].records.append(Record(
+                            path=path,
+                            file_offset=tr.meta['offset_start'],
                             offset=offset,
                             nsamples=tr.data_len(),
                             tmin=tr.tmin))
@@ -274,8 +426,18 @@ class Clockdrift(SquirrelCommand):
                         offset += tr.data_len()
                         tr_previous = tr
 
-                for chunk in chunks:
+                task_analyse = make_task('Analysing drift')
+                for chunk in task_analyse(chunks):
                     chunk.analyse()
+
+                if storage_scheme:
+                    task_resample = make_task('Resampling chunks')
+                    for chunk in task_resample(chunks):
+                        chunk.resample(
+                            storage_scheme=storage_scheme,
+                            force=args.force,
+                            append=args.append,
+                            merge=args.merge)
 
                 results.append(ChannelResult(
                     codes=codes,
