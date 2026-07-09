@@ -113,7 +113,7 @@ class Cell(object):
             for i in ndim_range:
                 s = [npoints] + [1] * ndim
                 s[1+i] = 2
-                ws_pimped[i].shape = tuple(s)
+                ws_pimped[i] = ws_pimped[i].reshape(tuple(s))
 
             wn = ws_pimped[0]
             for idim in ndim_range[1:]:
