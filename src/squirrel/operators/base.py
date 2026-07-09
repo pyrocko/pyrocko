@@ -292,10 +292,12 @@ class CodesFilter(CodesFilterBase):
             :py:class:`list` of
             :py:class:`~pyrocko.squirrel.model.CodesNSLCE`
         '''
-        if self._matcher is None:
+        if self._matcher is None and self._matcher_exclude is None:
             return list(it)
-        else:
+        elif self._matcher_exclude is None:
             return list(self._matcher.filter(it))
+        else:
+            return [codes for codes in it if self.match(codes)]
 
 
 class CodesMapping:
@@ -1847,18 +1849,22 @@ codes`).
             if not coverages_group:
                 continue
 
-            coverage_common = join_coverages(
-                coverages_group,
-                tbleed=self.get_time_padding())
+            try:
+                coverage_common = join_coverages(
+                    coverages_group,
+                    tbleed=self.get_time_padding())
 
-            for out_codes in mapping.out_codes:
-                coverages.append(Coverage(
-                    kind_id=coverage_common.kind_id,
-                    codes=out_codes,
-                    tmin=coverage_common.tmin,
-                    tmax=coverage_common.tmax,
-                    deltat=coverage_common.deltat,
-                    changes=coverage_common.changes))
+                for out_codes in mapping.out_codes:
+                    coverages.append(Coverage(
+                        kind_id=coverage_common.kind_id,
+                        codes=out_codes,
+                        tmin=coverage_common.tmin,
+                        tmax=coverage_common.tmax,
+                        deltat=coverage_common.deltat,
+                        changes=coverage_common.changes))
+
+            except NoData:
+                continue
 
         return coverages
 
