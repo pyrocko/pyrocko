@@ -290,7 +290,7 @@ class SquirrelRawHandler(SquirrelRequestHandler):
     def p_get_rich_coverage(self, parameters):
         tmin, tmax = self.get_cleaned('tmin tmax', parameters)
         return self._squirrel.get_rich_coverage(
-            tmin=tmin, tmax=tmax, limit=150)
+            tmin=tmin, tmax=tmax, limit=500)
 
 
 class ScaleChoice(guts.StringChoice):
@@ -737,7 +737,7 @@ class SquirrelGateHandler(SquirrelRequestHandler):
 
     def p_get_rich_coverage(self, parameters, gate):
         tmin, tmax = self.get_cleaned('tmin tmax', parameters)
-        return gate.get_rich_coverage(tmin=tmin, tmax=tmax, limit=150)
+        return gate.get_rich_coverage(tmin=tmin, tmax=tmax, limit=500)
 
     def p_get_spectrograms(self, parameters, gate):
         tmin, tmax, ymin, ymax = self.get_cleaned(
