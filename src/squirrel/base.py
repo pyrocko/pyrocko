@@ -3510,6 +3510,7 @@ class Squirrel(Selection):
 
     def get_stationxml(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None,
+            codes_exclude=None,
             level='response', on_error='raise'):
 
         '''
