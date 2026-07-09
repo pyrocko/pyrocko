@@ -628,9 +628,9 @@ mantle
                 conf.time_reduction_velocity = 0.0
                 conf.nsamples = nsamples
                 conf.source_mech = qseis.QSeisSourceMechMT(
-                    mnn=float(m0s),
-                    mee=float(m0s),
-                    mdd=float(m0s),
+                    mnn=float(m0s[0, 0]),
+                    mee=float(m0s[0, 0]),
+                    mdd=float(m0s[0, 0]),
                     mne=0.,
                     mnd=0.,
                     med=0.)
