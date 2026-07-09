@@ -3505,6 +3505,7 @@ class Squirrel(Selection):
 
     def get_stationxml(
             self, obj=None, tmin=None, tmax=None, time=None, codes=None,
+            codes_exclude=None,
             level='response', on_error='raise'):
 
         '''
@@ -3560,7 +3561,9 @@ class Squirrel(Selection):
                 use_first(node_type_name, codes, k, group)
                 for (k, group) in groups.items()]
 
-        filtering = CodesPatternFiltering(codes=codes)
+        filtering = CodesPatternFiltering(
+            codes=codes,
+            codes_exclude=codes_exclude)
 
         nslcs = list(set(
             codes.nslc for codes in

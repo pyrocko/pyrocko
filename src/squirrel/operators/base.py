@@ -157,6 +157,7 @@ class CodesPatternFiltering(Filtering):
     Filter by codes pattern.
     '''
     codes = List.T(CodesNSLCE.T(), optional=True)
+    codes_exclude = List.T(CodesNSLCE.T(), optional=True)
 
     def __init__(self, **kwargs):
         Filtering.__init__(self, **kwargs)
@@ -165,14 +166,23 @@ class CodesPatternFiltering(Filtering):
         else:
             self._matcher = None
 
+        if self.codes_exclude is not None:
+            self._matcher_exclude = CodesMatcher(self.codes_exclude)
+        else:
+            self._matcher_exclude = None
+
     def match(self, codes):
-        return True if self._matcher is None else self._matcher.match(codes)
+        return (self._matcher is None or self._matcher.match(codes)) \
+            and (self.codes_exclude is None
+                 or not self._matcher_exclude.match(codes))
 
     def filter(self, it: Sequence[CodesNSLCE]) -> List[CodesNSLCE]:
-        if self._matcher is None:
+        if self._matcher is None and self._matcher_exclude is None:
             return list(it)
-        else:
+        elif self.matcher_exclude is None:
             return list(self._matcher.filter(it))
+        else:
+            return [codes for codes in it if self.match(codes)]
 
 
 class Grouping(Object):
@@ -925,18 +935,22 @@ class BaseOperator(Object):
             if not coverages_group:
                 continue
 
-            coverage_common = join_coverages(
-                coverages_group,
-                tbleed=self.get_time_padding())
+            try:
+                coverage_common = join_coverages(
+                    coverages_group,
+                    tbleed=self.get_time_padding())
 
-            for out_codes in mapping.out_codes:
-                coverages.append(Coverage(
-                    kind_id=coverage_common.kind_id,
-                    codes=out_codes,
-                    tmin=coverage_common.tmin,
-                    tmax=coverage_common.tmax,
-                    deltat=coverage_common.deltat,
-                    changes=coverage_common.changes))
+                for out_codes in mapping.out_codes:
+                    coverages.append(Coverage(
+                        kind_id=coverage_common.kind_id,
+                        codes=out_codes,
+                        tmin=coverage_common.tmin,
+                        tmax=coverage_common.tmax,
+                        deltat=coverage_common.deltat,
+                        changes=coverage_common.changes))
+
+            except NoData:
+                continue
 
         return coverages
 

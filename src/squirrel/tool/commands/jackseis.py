@@ -62,6 +62,14 @@ def parse_rename_rule_from_string(s):
         return s
 
 
+def nonemin(a, b):
+    return min(x for x in [a, b] if x is not None)
+
+
+def nonemax(a, b):
+    return max(x for x in [a, b] if x is not None)
+
+
 class JackseisError(ToolError):
     pass
 
@@ -134,6 +142,7 @@ class Converter(HasPaths):
     in_paths = List.T(String.T(optional=True))
 
     codes = List.T(CodesNSLCE.T(), optional=True)
+    codes_exclude = List.T(CodesNSLCE.T(), optional=True)
 
     rename = Dict.T(
         String.T(),
@@ -498,6 +507,7 @@ replacements. Examples: Direct replacement: ```XX``` - set all network codes to
             tmax = chain.get('tmax')
             tinc = chain.get('tinc')
             codes = chain.get('codes')
+            codes_exclude = chain.get('codes_exclude')
             downsample = chain.get('downsample')
             rotate_to_enz = chain.get('rotate_to_enz')
             storage_scheme = chain.fcall('get_effective_storage_scheme')
@@ -532,7 +542,12 @@ replacements. Examples: Direct replacement: ```XX``` - set all network codes to
             out_meta_path = chain.fcall('get_effective_out_meta_path')
 
             if out_meta_path is not None:
-                sx = sq.get_stationxml(codes=codes, tmin=tmin, tmax=tmax)
+                sx = sq.get_stationxml(
+                    codes=codes,
+                    codes_exclude=codes_exclude,
+                    tmin=tmin,
+                    tmax=tmax)
+
                 util.ensuredirs(out_meta_path)
                 sx.dump_xml(filename=out_meta_path)
                 if storage_scheme is None:
@@ -580,6 +595,7 @@ replacements. Examples: Direct replacement: ```XX``` - set all network codes to
             for batch in sq.chopper_waveforms(
                     tmin=tmin, tmax=tmax, tpad=tpad, tinc=tinc,
                     codes=codes,
+                    codes_exclude=codes_exclude,
                     snap_window=True,
                     grouping=grouping):
 
@@ -668,8 +684,8 @@ replacements. Examples: Direct replacement: ```XX``` - set all network codes to
                 for tr in traces:
                     try:
                         otr = tr.chop(
-                            max(twmin, tmin),
-                            min(twmax, tmax),
+                            nonemax(twmin, tmin),
+                            nonemin(twmax, tmax),
                             inplace=False)
 
                         chopped_traces.append(otr)
