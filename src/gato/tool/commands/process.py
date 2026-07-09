@@ -46,6 +46,12 @@ def setup(parser):
              '`gato mantra` to obtain default configuration files.')
 
     parser.add_argument(
+        '--mantra-name',
+        dest='mantra_name',
+        metavar='NAMES',
+        help='Restrict proccessing to given list of mantra names.')
+
+    parser.add_argument(
         '--tinc',
         dest='tinc',
         type=util.parse_duration,
@@ -83,6 +89,18 @@ def run(parser, args):
 
         else:
             raise squirrel.ToolError('No --mantra defined.')
+
+        if args.mantra_name:
+            mantra_names = [
+                name.strip() for name in args.mantra_name.split(',')]
+
+            mantra_names_avail = set(mantra.name for mantra in mantras)
+            for name in mantra_names:
+                if name not in mantra_names_avail:
+                    raise squirrel.ToolError('Mantra `%s` not available.')
+
+            mantras = [
+                mantra for mantra in mantras if mantra.name in mantra_names]
 
         arrays = gato.get_matching_arrays(
             args.array_names, args.array_paths, args.use_builtin_arrays)
