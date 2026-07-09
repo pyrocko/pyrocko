@@ -1667,12 +1667,16 @@ def same_or_none(xs):
 
 
 def join_coverages(coverages, tbleed=0.0):
-    assert len(coverages) > 0
+    from pyrocko import trace
+
+    if not coverages:
+        raise trace.NoData
 
     tmin = min(coverage.tmin for coverage in coverages) + tbleed
     tmax = max(coverage.tmax for coverage in coverages) - tbleed
 
-    assert tmax >= tmin
+    if tmax < tmin:
+        raise trace.NoData
 
     kind_id = same_or_none(coverage.kind_id for coverage in coverages)
     deltat = same_or_none(coverage.deltat for coverage in coverages)
