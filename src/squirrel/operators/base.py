@@ -179,7 +179,7 @@ class CodesPatternFiltering(Filtering):
     def filter(self, it: Sequence[CodesNSLCE]) -> List[CodesNSLCE]:
         if self._matcher is None and self._matcher_exclude is None:
             return list(it)
-        elif self.matcher_exclude is None:
+        elif self._matcher_exclude is None:
             return list(self._matcher.filter(it))
         else:
             return [codes for codes in it if self.match(codes)]
