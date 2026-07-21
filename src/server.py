@@ -127,13 +127,35 @@ def get_cookie_secret(path):
     if path is None:
         return str(uuid.uuid4())
 
-    if not os.path.exists(path):
-        cookie_secret = str(uuid.uuid4())
-        with open(path, 'w') as f:
-            f.write(cookie_secret)
+    try:
+        # exclusive creation, readable by owner only
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        pass
+    except OSError as e:
+        raise ServerError(
+            'Could not create cookie secret file "%s": %s' % (path, e))
+    else:
+        with os.fdopen(fd, 'w') as f:
+            f.write(str(uuid.uuid4()))
 
-    with open(path, 'r') as f:
-        return f.read()
+    try:
+        with open(path, 'r') as f:
+            cookie_secret = f.read().strip()
+
+        if os.stat(path).st_mode & 0o077:
+            logger.warning(
+                'Cookie secret file "%s" is accessible by other users. '
+                'Consider restricting its permissions (chmod 600).' % path)
+
+    except OSError as e:
+        raise ServerError(
+            'Could not read cookie secret file "%s": %s' % (path, e))
+
+    if not cookie_secret:
+        raise ServerError('Cookie secret file "%s" is empty.' % path)
+
+    return cookie_secret
 
 
 class ParseError(ServerError):
@@ -149,9 +171,9 @@ def get_external_url(
     if os.path.exists(mappings_path):
         try:
             with open(mappings_path) as f:
-                for iline, line in enumerate(f):
+                for iline, line in enumerate(f, 1):
                     line = line.strip()
-                    if line.startswith('#'):
+                    if not line or line.startswith('#'):
                         continue
 
                     words = line.split()
@@ -181,7 +203,8 @@ async def serve(
         port=8000,
         handlers=[],
         open=False,
-        debug=False):
+        debug=False,
+        cookie_secret_path=None):
 
     global g_server_info
     global g_shutdown_event
@@ -207,6 +230,7 @@ async def serve(
         handlers,
         log_function=log_request,
         debug=debug,
+        cookie_secret=get_cookie_secret(cookie_secret_path),
     )
 
     logger.info(
@@ -267,6 +291,7 @@ def run(
         open=False,
         debug=False,
         loop=None,
+        cookie_secret_path=None,
         page_path=None,
         page_matcher=r'/((?:css|js|images)/.*'
                      r'|index.html|site.webmanifest|favicon.ico|)'):
@@ -308,6 +333,7 @@ def run(
                 host=host,
                 port=port,
                 handlers=handlers,
+                cookie_secret_path=cookie_secret_path,
                 open=open,
                 debug=debug))
 
@@ -493,7 +519,11 @@ recommended.
     sys.exit()
 
 
-def _add_cli_arguments(method, exclude=(), default_port=2323):
+def _add_cli_arguments(
+        method,
+        exclude=(),
+        default_port=2323,
+        default_cookie_secret_path=None):
 
     if 'help_port_forwarding' not in exclude:
         import argparse
@@ -557,7 +587,17 @@ def _add_cli_arguments(method, exclude=(), default_port=2323):
             '--page',
             dest='page_path',
             metavar='PATH',
-            help='Serve custom pages from PATH.')
+            help='Serve custom pages from directory PATH.')
+
+    if 'cookie_secret_path' not in exclude:
+        method(
+            '--cookie-secret-path',
+            dest='cookie_secret_path',
+            metavar='PATH',
+            default=default_cookie_secret_path,
+            help='Use cookie secret stored in file PATH. The file will be '
+                 'created on first run. Default: ```%s```.'
+                 % default_cookie_secret_path)
 
     if 'debug' not in exclude:
         method(
@@ -573,15 +613,27 @@ def _add_cli_arguments(method, exclude=(), default_port=2323):
                  'rather than from the installed files.')
 
 
-def add_cli_arguments(parser, exclude=(), default_port=2323):
+def add_cli_arguments(
+        parser,
+        exclude=(),
+        default_port=2323,
+        default_cookie_secret_path=None):
+
     _add_cli_arguments(
         parser.add_argument,
         exclude=exclude,
-        default_port=default_port)
+        default_port=default_port,
+        default_cookie_secret_path=default_cookie_secret_path)
 
 
-def add_cli_options(parser, exclude=(), default_port=2323):
+def add_cli_options(
+        parser,
+        exclude=(),
+        default_port=2323,
+        default_cookie_secret_path=None):
+
     _add_cli_arguments(
         parser.add_option,
         exclude=exclude,
-        default_port=default_port)
+        default_port=default_port,
+        default_cookie_secret_path=default_cookie_secret_path)
