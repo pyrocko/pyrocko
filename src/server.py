@@ -269,6 +269,7 @@ def run(
         open=False,
         debug=False,
         loop=None,
+        cookie_secret_path=None,
         page_path=None,
         page_matcher=r'/((?:css|js|images|icons|assets)/.*'
                      r'|index.html|site.webmanifest|favicon.ico|)'):
@@ -309,6 +310,7 @@ def run(
                 host=host,
                 port=port,
                 handlers=handlers,
+                cookie_secret_path=cookie_secret_path,
                 open=open,
                 debug=debug))
 
@@ -494,7 +496,11 @@ recommended.
     sys.exit()
 
 
-def _add_cli_arguments(method, exclude=(), default_port=2323):
+def _add_cli_arguments(
+        method,
+        exclude=(),
+        default_port=2323,
+        default_cookie_secret_path=None):
 
     if 'help_port_forwarding' not in exclude:
         import argparse
@@ -558,7 +564,17 @@ def _add_cli_arguments(method, exclude=(), default_port=2323):
             '--page',
             dest='page_path',
             metavar='PATH',
-            help='Serve custom pages from PATH.')
+            help='Serve custom pages from directory PATH.')
+
+    if 'cookie_secret_path' not in exclude:
+        method(
+            '--cookie-secret-path',
+            dest='cookie_secret_path',
+            metavar='PATH',
+            default=default_cookie_secret_path,
+            help='Use cookie secret stored in file PATH. The file will be '
+                 'created on first run. Default: ```%s```.'
+                 % default_cookie_secret_path)
 
     if 'debug' not in exclude:
         method(
@@ -574,15 +590,27 @@ def _add_cli_arguments(method, exclude=(), default_port=2323):
                  'rather than from the installed files.')
 
 
-def add_cli_arguments(parser, exclude=(), default_port=2323):
+def add_cli_arguments(
+        parser,
+        exclude=(),
+        default_port=2323,
+        default_cookie_secret_path=None):
+
     _add_cli_arguments(
         parser.add_argument,
         exclude=exclude,
-        default_port=default_port)
+        default_port=default_port,
+        default_cookie_secret_path=default_cookie_secret_path)
 
 
-def add_cli_options(parser, exclude=(), default_port=2323):
+def add_cli_options(
+        parser,
+        exclude=(),
+        default_port=2323,
+        default_cookie_secret_path=None):
+
     _add_cli_arguments(
         parser.add_option,
         exclude=exclude,
-        default_port=default_port)
+        default_port=default_port,
+        default_cookie_secret_path=default_cookie_secret_path)
