@@ -76,6 +76,12 @@ class Location(Object):
         Object.__setattr__(self, name, value)
 
     @property
+    def summary(self):
+        return '%12.5g, %12.5g, %12.5g, %12.5g, %12.5g, %12.5g' % (
+            self.lat, self.lon, self.north_shift, self.east_shift,
+            self.elevation, self.depth)
+
+    @property
     def effective_latlon(self):
         '''
         Property holding the offset-corrected lat/lon pair of the location.
@@ -272,6 +278,15 @@ class Location(Object):
         return num.array([
             self.lat, self.lon, self.north_shift, self.east_shift,
             -self.elevation + self.depth])
+
+    def location(self):
+        return Location(
+            lat=self.lat,
+            lon=self.lon,
+            north_shift=self.north_shift,
+            east_shift=self.east_shift,
+            elevation=self.elevation,
+            depth=self.depth)
 
 
 def filter_azimuths(locations, center, azimuth, azimuth_width):
