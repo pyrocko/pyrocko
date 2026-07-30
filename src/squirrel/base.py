@@ -35,7 +35,7 @@ from .model import to_kind_id, WaveformOrder, to_kind, to_codes, \
 from .client import fdsn, catalog
 from .selection import Selection, filldocs
 from .database import abspath
-from .operators.base import Operator, CodesPatternFiltering
+from .operators.base import Operator, CodesProjection, CodesFilter
 from . import client, environment, error
 
 logger = logging.getLogger('psq.base')
@@ -447,10 +447,12 @@ class Squirrel(Selection):
         self._operator_registry = {}
         self._recent_orders = {}
         self._recent_orders_prune_time = 3600.
-        self._mapping_counter = 0
+        self._mapping_counter = 1
 
-        def inc_mapping_counter(event):
-            self._Nonemapping_counter += 1
+        def inc_mapping_counter(event, *args):
+            self._mapping_counter += 1
+
+        self._inc_mapping_counter = inc_mapping_counter
 
         self.get_database().add_listener(inc_mapping_counter)
 
@@ -472,6 +474,9 @@ class Squirrel(Selection):
 
         self._streams = []
         self._injector = None
+
+    def update_mappings(self):
+        return self._mapping_counter
 
     def _create_tables_squirrel(self, cursor):
 
@@ -2903,7 +2908,7 @@ class Squirrel(Selection):
             degap=True, maxgap=5, maxlap=None,
             snap=None, include_last=False, load_data=True,
             accessor_id=None, clear_accessor=True,
-            grouping=None, channel_priorities=None,
+            group_by=None, channel_priorities=None,
             downloads_enabled=True):
 
         '''
@@ -2987,14 +2992,14 @@ class Squirrel(Selection):
         :type clear_accessor:
             bool
 
-        :param grouping:
+        :param group_by:
             By default, traversal over the data is over time and all matching
             traces of a time window are yielded. Using this option, it is
             possible to traverse the data first by group (e.g. station or
             network) and second by time. This can reduce the number of traces
             in each batch and thus reduce the memory footprint of the process.
-        :type grouping:
-            :py:class:`~pyrocko.squirrel.operators.base.Grouping`
+        :type group_by:
+            :py:class:`str`
 
         :yields:
             For each extracted time window or waveform group a
@@ -3042,14 +3047,16 @@ class Squirrel(Selection):
 
             self._n_choppers_active += 1
 
-            if grouping is None:
+            if group_by is None:
                 codes_list = [codes]
             else:
                 operator = Operator(
-                    filtering=CodesPatternFiltering(codes=codes),
-                    grouping=grouping)
+                    codes_projection=CodesProjection(
+                        include=codes,
+                        exclude=codes_exclude,
+                        group_by=group_by))
 
-                operator.set_input(self)
+                operator.add_input(self)
 
                 codes_list = [
                     codes_patterns_list(mapping.in_codes)
@@ -3103,14 +3110,14 @@ class Squirrel(Selection):
             degap=True, maxgap=5, maxlap=None,
             snap=None, include_last=False, load_data=True,
             accessor_id=None, clear_accessor=True, operator_params=None,
-            grouping=None, channel_priorities=None):
+            group_by=None, channel_priorities=None):
 
         await asyncio.to_thread(
             self.chopper_waveforms, obj, tmin, tmax, time, codes,
             codes_exclude, sample_rate_min, sample_rate_max,
             tinc, tpad, want_incomplete, snap_window,
             degap, maxgap, maxlap, snap, include_last, load_data,
-            accessor_id, clear_accessor, operator_params, grouping,
+            accessor_id, clear_accessor, operator_params, group_by,
             channel_priorities)
 
     chopper_waveforms_async.__doc__ = chopper_waveforms.__doc__
@@ -3561,9 +3568,9 @@ class Squirrel(Selection):
                 use_first(node_type_name, codes, k, group)
                 for (k, group) in groups.items()]
 
-        filtering = CodesPatternFiltering(
-            codes=codes,
-            codes_exclude=codes_exclude)
+        filtering = CodesFilter(
+            include=codes,
+            exclude=codes_exclude)
 
         nslcs = list(set(
             codes.nslc for codes in
@@ -3672,23 +3679,39 @@ class Squirrel(Selection):
     def get_sources(self):
         return self._sources
 
+    def default_preparator_mantra(
+            self,
+            frequency_min,
+            frequency_max,
+            name='mantra0',
+            **kwargs):
+
+        from .operators.base import Restitution, ToENZ
+        from .mantra import Mantra
+
+        mantra = Mantra(
+            name=name,
+            operators=[
+                Restitution(
+                    frequency_min=frequency_min,
+                    frequency_max=frequency_max,
+                    **kwargs),
+                ToENZ(),
+            ]
+        )
+        return mantra
+
     def default_preparator(
             self,
             frequency_min,
             frequency_max,
             **kwargs):
 
-        from .operators.base import Restitution, ToENZ
+        mantra = self.default_preparator_mantra(
+            frequency_min, frequency_max, **kwargs)
 
-        restitution = Restitution(
-            frequency_min=frequency_min,
-            frequency_max=frequency_max,
-            **kwargs)
-
-        restitution.set_input(self)
-        to_enz = ToENZ()
-        to_enz.set_input(restitution)
-        return to_enz
+        mantra.setup(self)
+        return mantra.outlet
 
     def print_tables(self, table_names=None, stream=None):
         '''

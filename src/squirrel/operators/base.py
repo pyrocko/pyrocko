@@ -8,7 +8,7 @@ from __future__ import annotations
 import math
 import uuid
 
-from typing import TYPE_CHECKING, Generator, Sequence, Hashable, TypeVar, Union
+from typing import TYPE_CHECKING, Generator, Sequence, TypeVar, Union
 from typing import List as tList, Set as tSet
 from typing import Tuple as tTuple
 
@@ -17,23 +17,26 @@ if TYPE_CHECKING:
 
 from collections import defaultdict
 import logging
-import re
 from itertools import chain
 
 from pyrocko import util
 from pyrocko.model import Location, Event
 from pyrocko.trace import Trace, TraceTooShort, NoData
-from pyrocko.carpet import Carpet
+from pyrocko.carpet import Carpet, sum as sum_carpets, CarpetError
 from pyrocko.response import InvalidResponseError
 from pyrocko.gf import Earthmodel1D
 
 from ..model import (
-    QuantityType, CodesNSLCE, CodesMatcher, CHANNEL, WAVEFORM,
+    QuantityType, CodesNSLCE, CodesMatcher, CHANNEL, WAVEFORM, CARPET,
     get_selection_args, Sensor, Channel, Response, Coverage, join_coverages,
     codes_patterns_list, make_rich_coverage
 )
 
-from pyrocko.guts import Object, String, Duration, Float, clone, List, equal
+from ..error import SquirrelError
+
+from pyrocko.guts import (
+    Object, String, Duration, Float, Bool, clone, List, Dict, equal
+)
 
 ichain = chain.from_iterable
 
@@ -52,6 +55,10 @@ CodesConvertible \
 guts_prefix = 'squirrel.ops'
 
 logger = logging.getLogger('psq.ops')
+
+
+class OperatorError(SquirrelError):
+    pass
 
 
 def odiff(a, b):
@@ -99,7 +106,7 @@ def scodes(codes):
     css = list(zip(*codes))
     if sum(not all(c == cs[0] for c in cs) for cs in css) == 1:
         return '.'.join(
-            cs[0] if all(c == cs[0] for c in cs) else '(%s)' % ','.join(cs)
+            cs[0] if all(c == cs[0] for c in cs) else '{%s}' % ','.join(cs)
             for cs in css)
     else:
         return ', '.join(str(c) for c in codes)
@@ -127,7 +134,7 @@ def by_codes_unique(xs: HasCodes) -> dict[CodesNSLCE, HasCodes]:
         if len(xs_group) == 1)
 
 
-class Filtering(Object):
+class CodesFilterBase(Object):
     '''
     Base class for :py:class:`pyrocko.squirrel.model.Nut` filters.
     '''
@@ -138,42 +145,28 @@ class Filtering(Object):
         return list(it)
 
 
-class RegexFiltering(Filtering):
+class CodesFilter(CodesFilterBase):
     '''
-    Filter by regex.
+    Filter by codes patterns.
     '''
-    pattern = String.T(default=r'(.*)')
+    include = List.T(CodesNSLCE.T(), optional=True)
+    exclude = List.T(CodesNSLCE.T(), optional=True)
 
     def __init__(self, **kwargs):
-        Filtering.__init__(self, **kwargs)
-        self._compiled_pattern = re.compile(self.pattern)
-
-    def filter(self, it: Sequence[CodesNSLCE]) -> List[CodesNSLCE]:
-        return list(filter(self._compiled_pattern.fullmatch), it)
-
-
-class CodesPatternFiltering(Filtering):
-    '''
-    Filter by codes pattern.
-    '''
-    codes = List.T(CodesNSLCE.T(), optional=True)
-    codes_exclude = List.T(CodesNSLCE.T(), optional=True)
-
-    def __init__(self, **kwargs):
-        Filtering.__init__(self, **kwargs)
-        if self.codes is not None:
-            self._matcher = CodesMatcher(self.codes)
+        CodesFilterBase.__init__(self, **kwargs)
+        if self.include is not None:
+            self._matcher = CodesMatcher(self.include)
         else:
             self._matcher = None
 
-        if self.codes_exclude is not None:
-            self._matcher_exclude = CodesMatcher(self.codes_exclude)
+        if self.exclude is not None:
+            self._matcher_exclude = CodesMatcher(self.exclude)
         else:
             self._matcher_exclude = None
 
     def match(self, codes):
         return (self._matcher is None or self._matcher.match(codes)) \
-            and (self.codes_exclude is None
+            and (self.exclude is None
                  or not self._matcher_exclude.match(codes))
 
     def filter(self, it: Sequence[CodesNSLCE]) -> List[CodesNSLCE]:
@@ -185,173 +178,150 @@ class CodesPatternFiltering(Filtering):
             return [codes for codes in it if self.match(codes)]
 
 
-class Grouping(Object):
-    '''
-    Base class for :py:class:`pyrocko.squirrel.model.Nut` grouping mechanisms.
-    '''
-
-    __eq__ = equal
-
-    def key(self, codes: CodesNSLCE) -> Hashable:
-        return codes
-
-
-class RegexGrouping(Grouping):
-    '''
-    Group by regex pattern.
-    '''
-    pattern = String.T(default=r'(.*)')
-
-    def __init__(self, **kwargs):
-        Grouping.__init__(self, **kwargs)
-        self._compiled_pattern = re.compile(self.pattern)
-
-    def key(self, codes: CodesNSLCE) -> Hashable:
-        return self._compiled_pattern.fullmatch(codes.safe_str).groups()
-
-
-class AllGrouping(Grouping):
-    def key(self, codes: CodesNSLCE) -> Hashable:
-        return None
-
-
-class NetworkGrouping(RegexGrouping):
-    '''
-    Group by *network* code.
-    '''
-    pattern = String.T(default=_cglob_translate('(*).*.*.*.*'))
-
-
-class StationGrouping(RegexGrouping):
-    '''
-    Group by *network.station* codes.
-    '''
-    pattern = String.T(default=_cglob_translate('(*.*).*.*.*'))
-
-
-class LocationGrouping(RegexGrouping):
-    '''
-    Group by *network.station.location* codes.
-    '''
-    pattern = String.T(default=_cglob_translate('(*.*.*).*.*'))
-
-
-class ChannelGrouping(RegexGrouping):
-    '''
-    Group by *network.station.location.channel* codes.
-
-    This effectively groups all processings of a channel, which may differ in
-    the *extra* codes attribute.
-    '''
-    pattern = String.T(default=_cglob_translate('(*.*.*.*).*'))
-
-
-class SensorGrouping(RegexGrouping):
-    '''
-    Group by *network.station.location.sensor* and *extra* codes.
-
-    For *sensor* all but the last character of the channel code (indicating the
-    component) are used. This effectively groups all components of a sensor,
-    or processings of a sensor.
-    '''
-    pattern = String.T(default=_cglob_translate('(*.*.*.*)?(.*)'))
-
-
-class ComponentGrouping(RegexGrouping):
-    '''
-    Group by component code.
-
-    All matching channels with the same component code are put into one group.
-    '''
-    pattern = String.T(default=_cglob_translate('*.*.*.*(?).*'))
-
-
-class Translation(Object):
-    '''
-    Base class for :py:class:`pyrocko.squirrel.model.Nut` translators.
-    '''
-
-    __eq__ = equal
-
-    def translate(self, codes: CodesNSLCE) -> CodesNSLCE:
-        return codes
-
-
-class AddSuffixTranslation(Translation):
-    '''
-    Add a suffix to :py:attr:`~pyrocko.squirrel.model.CodesNSLCEBase.extra`.
-    '''
-    suffix = String.T(default='')
-
-    def translate(self, codes: CodesNSLCE) -> CodesNSLCE:
-        return codes.replace(extra=codes.extra + self.suffix)
-
-
-class RegexTranslation(AddSuffixTranslation):
-    '''
-    Translate :py:class:`pyrocko.squirrel.model.Codes` using a regular
-    expression.
-    '''
-    pattern = String.T(default=r'(.*)')
-    replacement = String.T(default=r'\1')
-
-    def __init__(self, **kwargs):
-        AddSuffixTranslation.__init__(self, **kwargs)
-        self._compiled_pattern = re.compile(self.pattern)
-
-    def translate(self, codes: CodesNSLCE) -> CodesNSLCE:
-        return AddSuffixTranslation.translate(
-            self,
-            codes.__class__(
-                self._compiled_pattern.sub(self.replacement, codes.safe_str)))
-
-
-class ReplaceComponentTranslation(RegexTranslation):
-    '''
-    Translate :py:class:`pyrocko.squirrel.model.Codes` by replacing a
-    component.
-    '''
-    pattern = String.T(default=_cglob_translate('(*.*.*.*)?(.*)'))
-    replacement = String.T(default=r'\1{component}\2')
-
-
-class KeepComponentTranslation(RegexTranslation):
-    '''
-    '''
-    pattern = String.T(default=_cglob_translate('*.*.*.*(?).*'))
-    replacement = String.T(default=r'...\1.')
-
-
 class CodesMapping:
-    __slots__ = ['in_codes_set', 'in_codes', 'out_codes']
+    __slots__ = ['in_codes_set', 'in_codes', 'out_codes', 'group_key']
 
     def __init__(self):
         self.in_codes_set = set()
         self.in_codes = ()
         self.out_codes = ()
+        self.group_key = ''
+
+    def describe(self):
+        return '%i <- %i' % (len(self.out_codes), len(self.in_codes))
 
 
 def new_operator_id():
     return uuid.uuid4()
 
 
+class Outlet(Object):
+    kinds = List.T(String.T())
+    attributes = Dict.T(String.T(), String.T())
+
+
+class InputCombinator:
+
+    def __init__(self, inputs):
+        for input in inputs:
+            self.add_input(input)
+
+    def add_input(self, input):
+        if input in self._inputs:
+            raise OperatorError(
+                f'Input "{input.name}" already among inputs.')
+
+        self._inputs.append(input)
+
+    def reset(self):
+        self._input_mapping_counters = None
+        self._mapping_counter = 0
+
+    def update_mappings(self):
+        self._input_mapping_counters = [0] * len(self._inputs)
+        need_update = False
+        for iinput, input in enumerate(self._inputs):
+            input_mapping_counter = input.update_mappings()
+            if input_mapping_counter != self._input_mapping_counters[iinput]:
+                self._input_mapping_counters[iinput] = input_mapping_counter
+                need_update = True
+
+        if need_update:
+            self._mapping_counter += 1
+
+        return self._mapping_counter
+
+    def _aggregate(self, method_name, *args, **kwargs):
+        xs = []
+        for input in self._inputs:
+            xs.extend(getattr(input, method_name)(*args, **kwargs))
+
+        return xs
+
+    def get_time_span(
+            self,
+            kinds,
+            dummy_limits=True) -> tTuple[TimeFloat, TimeFloat]:
+
+        tmins, tmaxs = zip(*(
+            input.get_time_span(kinds, dummy_limits=dummy_limits)
+            for input in self._inputs))
+
+        tmins = [tmin for tmin in tmins if tmin is not None]
+        tmaxs = [tmax for tmax in tmaxs if tmax is not None]
+
+        if not tmins or not tmaxs:
+            return (None, None)
+
+        return min(tmins), max(tmaxs)
+
+    def iter_in_codes(self, *args, **kwargs):
+        return iter(
+            sorted(set(self._aggregate('get_in_codes', *args, **kwargs))))
+
+    def iter_codes(self, *args, **kwargs):
+        return iter(
+            sorted(set(self._aggregate('get_codes', *args, **kwargs))))
+
+    def get_in_codes(self, *args, **kwargs):
+        return sorted(set(self._aggregate('get_in_codes', *args, **kwargs)))
+
+    def get_codes(self, *args, **kwargs):
+        return sorted(set(self._aggregate('get_codes', *args, **kwargs)))
+
+    def get_carpets(self, *args, **kwargs):
+        return self._aggregate('get_carpets', *args, **kwargs)
+
+    def get_channels(self, *args, **kwargs):
+        return self._aggregate('get_channels', *args, **kwargs)
+
+    def get_events(self, *args, **kwargs):
+        return self._aggregate('get_events', *args, **kwargs)
+
+    def get_waveforms(self, *args, **kwargs):
+        return self._aggregate('get_waveforms', *args, **kwargs)
+
+    def get_responses(self, *args, **kwargs):
+        return self._aggregate('get_responses', *args, **kwargs)
+
+    def get_rich_coverage(self, *args, **kwargs):
+        return self._aggregate('get_rich_coverage', *args, **kwargs)
+
+    def get_sensors(self, *args, **kwargs):
+        return self._aggregate('get_sensors', *args, **kwargs)
+
+    def get_squirrel(self, *args, **kwargs):
+        squirrels = [input.get_squirrel() for input in self._inputs]
+        if not all(squirrels[0] is squirrel for squirrel in squirrels):
+            raise OperatorError(
+                'Currently, only a single root Squirrel is supported.')
+
+        return squirrels[0]
+
+    def advance_accessor(self, *args, **kwargs):
+        for input in self._inputs:
+            input.advance_accessor(*args, **kwargs)
+
+
 class BaseOperator(Object):
+
+    name = String.T(default='base_op')
+    input_names = List.T(String.T(), optional=True)
 
     def post_init(self):
         self.reset()
+        if self.name is None:
+            self.name = self.__class__.__name__
 
     def reset(self):
         self._operator_id = new_operator_id()
         self._input = None
+        self._mantra = None
         self._input_mapping_counter = None
         self._mapping_counter = 0
         self._mappings = {}
         self._available = set()
         self._n_choppers_active = 0
-
-    @property
-    def name(self) -> str:
-        return self.__class__.__name__
 
     @property
     def kind_provides(self):
@@ -361,30 +331,64 @@ class BaseOperator(Object):
     def kind_requires(self):
         return ()
 
-    def set_input(self, input: Operator | Squirrel) -> None:
-        self.reset()
+    def add_input(self, input: Operator | Squirrel) -> None:
         for kind in self.kind_requires:
             if kind not in input.kind_provides:
                 raise Exception(
                     'Operator %s requires "%s" but input operator %s does not '
                     'provide it.' % (self.__class__, kind, input.__class__))
 
-        self._input = input
+        if self._input is None:
+            self._input = input
+        elif not isinstance(self._input, InputCombinator):
+            self._input = InputCombinator([input, self._input])
+        elif isinstance(self._input, InputCombinator):
+            self._input.add_input(input)
+        else:
+            assert False
 
     def get_input(self) -> (Operator | Squirrel):
         return self._input
 
+    def set_mantra(self, mantra):
+        self._mantra = mantra
+
+    @property
+    def mantra_name(self):
+        return self._mantra.name if self._mantra is not None else ''
+
     def describe(self) -> str:
-        return '%s\n  provides: %s\n  requires: %s\n%s' % (
+        return '''%s:
+  provides: %s
+  requires: %s
+  outlets:
+%s
+  mappings:
+%s''' % (
             self.name,
             ', '.join(self.kind_provides),
             ', '.join(self.kind_requires),
+            self._str_outlets,
             self._str_mappings)
+
+    @property
+    def _str_outlets(self) -> str:
+        lines = []
+        for ioutlet, outlet in enumerate(self.get_outlets()):
+            lines.append(
+                '    %i: %s :: %s' % (
+                    ioutlet,
+                    ', '.join(outlet.kinds),
+                    ', '.join(
+                        '%s=%s' % (k, v)
+                        for (k, v) in outlet.attributes.items())))
+
+        return '\n'.join(lines)
 
     @property
     def _str_mappings(self) -> str:
         return '\n'.join([
-            '  %s <- %s' % (
+            '    %s <- %s' % (
                 scodes(mapping.out_codes),
                 scodes(mapping.in_codes))
             for mapping in self.iter_mappings()])
@@ -400,7 +404,7 @@ class BaseOperator(Object):
             if len(codes) == 0:
                 return
 
-            cpf = CodesPatternFiltering(codes=codes)
+            cpf = CodesFilter(include=codes)
 
             for mapping in self._mappings.values():
                 if any(cpf.match(out_codes)
@@ -430,7 +434,7 @@ class BaseOperator(Object):
 
             mappings_match = []
             codes_out_match = []
-            cpf = CodesPatternFiltering(codes=codes)
+            cpf = CodesFilter(include=codes)
             for mapping in self._mappings.values():
                 codes_match_this = [
                     out_codes for out_codes in mapping.out_codes
@@ -473,17 +477,15 @@ class BaseOperator(Object):
     def get_in_codes(
                 self,
                 mappings: tList[CodesMapping] | None = None
-            ) -> Generator[CodesNSLCE]:
+            ) -> tList[CodesNSLCE]:
 
         return sorted(self.iter_in_codes(mappings))
 
     def update_mappings(self) -> None:
 
-        if isinstance(self._input, Operator):
-            self._input.update_mappings()
-
-        if self._input._mapping_counter == self._input_mapping_counter:
-            return
+        input_mapping_counter = self._input.update_mappings()
+        if input_mapping_counter == self._input_mapping_counter:
+            return self._mapping_counter
 
         available = None
         for kind in self.kind_requires or [None]:
@@ -496,14 +498,19 @@ class BaseOperator(Object):
         added = available - self._available
         removed = self._available - available
 
-        need_update = self._update_mappings_specific(added, removed)
-        if not isinstance(need_update, bool):
-            raise Exception(
-                '_update_mappings_specific(...) must return bool')
+        self._available = available
 
-        self._input_mapping_counter = self._input._mapping_counter
+        need_update = self._update_mappings_specific(added, removed)
+        assert isinstance(need_update, bool), \
+            '_update_mappings_specific(...) must return bool'
+
+        self._input_mapping_counter = input_mapping_counter
         if need_update:
             self._mapping_counter += 1
+            logger.debug(
+                f'Mapping updated for {self.name}: {self._mapping_counter}')
+
+        return self._mapping_counter
 
     def get_in_channels(
                 self,
@@ -546,6 +553,19 @@ class BaseOperator(Object):
 
         return by_codes(traces)
 
+    def get_in_carpets(
+                self,
+                in_codes: tList[CodesNSLCE],
+                tmin: TimeFloat,
+                tmax: TimeFloat,
+                **kwargs,
+            ) -> dict[CodesNSLCE, Carpet]:
+
+        carpets = self._input.get_carpets(
+            codes=in_codes, tmin=tmin, tmax=tmax, **kwargs)
+
+        return by_codes(carpets)
+
     def get_in_coverages(
                 self,
                 kind: str,
@@ -577,6 +597,9 @@ class BaseOperator(Object):
 
         coverages_by_codes = util.group_by(
             lambda coverage: coverage.codes, coverages_all)
+
+        def str_codes(codes):
+            return ', '.join(c.safe_str for c in codes)
 
         return [
             make_rich_coverage(kinds, coverages)
@@ -689,7 +712,58 @@ class BaseOperator(Object):
                 **kwargs
             ) -> tList[Carpet]:
 
-        return []
+        tmin, tmax, codes = get_selection_args(
+            CHANNEL, obj, tmin, tmax, time, codes)
+
+        mappings, codes_want = self.get_mappings_and_matching_codes(codes)
+        in_codes = self.get_in_codes(mappings)
+
+        tpad = self.get_time_padding()
+
+        in_tmin = tmin - tpad
+        in_tmax = tmax + tpad
+
+        codes_to_carpets = self.get_in_carpets(
+            in_codes, in_tmin, in_tmax, **kwargs)
+
+        if not codes_to_carpets:
+            return []
+
+        carpets = self.process_carpets(
+            mappings, in_codes, codes_to_carpets, tmin, tmax)
+
+        if codes_want is not None:
+            carpets = [
+                carpet for carpet in carpets if carpet.codes in codes_want]
+
+        return carpets
+
+    def chopper_carpets(
+            self, obj=None, tmin=None, tmax=None, time=None, codes=None,
+            tinc=None, tpad=0., want_incomplete=True, snap_window=False):
+
+        tmin, tmax, codes = get_selection_args(
+            CARPET, obj, tmin, tmax, time, codes)
+
+        tmin_content, tmax_content = self.get_time_span(['carpet'])
+
+        source_gen = util.iter_windows(
+                    tmin=tmin,
+                    tmax=tmax,
+                    tinc=tinc,
+                    tpad=tpad,
+                    snap_window=snap_window,
+                    tmin_content=tmin_content,
+                    tmax_content=tmax_content)
+
+        def gen():
+            for batch in source_gen:
+                carpets = self.get_carpets(
+                    tmin=batch.tmin-tpad, tmax=batch.tmax+tpad, codes=codes)
+                batch.carpets = carpets
+                yield batch
+
+        return util.GeneratorWithLen(gen(), len(source_gen))
 
     def get_events(
                 self,
@@ -721,7 +795,7 @@ class BaseOperator(Object):
             degap=True, maxgap=5, maxlap=None,
             snap=None, include_last=False, load_data=True,
             accessor_id=None, clear_accessor=True,   # operator_params=None,
-            grouping=None, channel_priorities=None):
+            group_by=None, channel_priorities=None):
 
         from ..base import Batch
 
@@ -763,12 +837,13 @@ class BaseOperator(Object):
 
             self._n_choppers_active += 1
 
-            if grouping is None:
+            if group_by is None:
                 codes_list = [codes]
             else:
                 operator = Operator(
-                    filtering=CodesPatternFiltering(codes=codes),
-                    grouping=grouping)
+                    codes_projection=CodesProjection(
+                        include=codes,
+                        group_by=group_by))
 
                 operator.set_input(self)
 
@@ -842,8 +917,17 @@ class BaseOperator(Object):
         codes_to_coverage = self.get_in_coverages(
             kind, in_codes, in_tmin, in_tmax)
 
-        return self.process_coverage(
+        coverages = self.process_coverage(
             mappings, in_codes, codes_to_coverage, tmin, tmax)
+
+        if codes is None:
+            return coverages
+
+        matcher = CodesMatcher(codes)
+        return [
+            coverage
+            for coverage in coverages
+            if matcher.match(coverage.codes)]
 
     def process_channels(
                 self,
@@ -916,6 +1000,17 @@ class BaseOperator(Object):
 
         return lchain(codes_to_traces.values())
 
+    def process_carpets(
+                self,
+                mappings: tList[CodesMapping],
+                in_codes: tList[CodesNSLCE],
+                codes_to_carpets: dict[CodesNSLCE, Carpet],
+                tmin: TimeFloat = None,
+                tmax: TimeFloat = None,
+            ) -> tList[Carpet]:
+
+        return lchain(codes_to_carpets.values())
+
     def process_coverage(
                 self,
                 mappings: tList[CodesMapping],
@@ -971,28 +1066,80 @@ class BaseOperator(Object):
         return tmin + self.get_time_padding(), tmax - self.get_time_padding()
 
 
+class EmptyStrings:
+    def __getattr__(self, k):
+        return ''
+
+
+empty_strings = EmptyStrings()
+
+
+class CodesProjectionBase(CodesFilter):
+
+    def group_key(self, codes):
+        raise NotImplementedError()
+
+    def project(self, operator, codes, outlets):
+        raise NotImplementedError()
+
+
+class CodesProjection(CodesProjectionBase):
+
+    template = String.T(
+        default='{i.network}.{i.station}.{i.location}.{i.channel}.{i.extra}')
+
+    group_by = String.T(optional=True)
+
+    def __init__(self, template=None, group_by=None):
+        d = {}
+        if template is not None:
+            d['template'] = template
+
+        if group_by is not None:
+            d['group_by'] = group_by
+
+        CodesProjectionBase.__init__(self, **d)
+
+    def group_key(self, codes):
+        return (self.group_by or self.template).format(
+            i=codes, o=empty_strings)
+
+    def _project_single(self, operator, codes, outlet):
+        d = dict(name=operator.name, mantra=operator.mantra_name)
+        d.update(outlet.attributes)
+        o = util.Anon(**d)
+        return CodesNSLCE(self.template.format(i=codes, o=o))
+
+    def project(self, operator, codes_group, outlets):
+        return tuple(sorted(set(
+            self._project_single(operator, codes, outlet)
+            for codes in codes_group
+            for outlet in outlets)))
+
+
+def basic_codes_projection_t(template):
+    return CodesProjectionBase.T(default=CodesProjection.D(template=template))
+
+
 class Operator(BaseOperator):
     '''
     Base class for operators with typical filter-group-translate behaviour.
     '''
 
-    filtering = Filtering.T(optional=True, default=Filtering.D())
-    grouping = Grouping.T(optional=True, default=Grouping.D())
-    translation = Translation.T(optional=True, default=Translation.D())
+    name = String.T(default='op')
+    codes_projection = basic_codes_projection_t(
+        '{i.network}.{i.station}.{i.location}.{i.channel}.{i.extra}')
 
-    def translate_codes(
-                self,
-                in_codes: tList[CodesNSLCE]
-            ) -> tList[CodesNSLCE]:
-        return [self.translation.translate(codes) for codes in in_codes]
+    def get_outlets(self):
+        return [Outlet()]
 
     def _update_mappings_specific(
             self,
             added: tSet[CodesNSLCE],
             removed: tSet[CodesNSLCE]) -> bool:
 
-        filt = self.filtering.filter
-        gkey = self.grouping.key
+        filt = self.codes_projection.filter
+        gkey = self.codes_projection.group_key
         mappings = self._mappings
 
         need_update = set()
@@ -1006,6 +1153,7 @@ class Operator(BaseOperator):
             k = gkey(codes)
             if k not in mappings:
                 mappings[k] = CodesMapping()
+                mappings[k].group_key = k
 
             mappings[k].in_codes_set.add(codes)
             need_update.add(k)
@@ -1016,15 +1164,17 @@ class Operator(BaseOperator):
                 del self._mappings[k]
             else:
                 mapping.in_codes = tuple(sorted(mapping.in_codes_set))
-                mapping.out_codes = self.translate_codes(mapping.in_codes)
+                mapping.out_codes = self.codes_projection.project(
+                    self, mapping.in_codes, self.get_outlets())
 
         return bool(need_update)
 
 
 class Restitution(Operator):
-    translation = Translation.T(
-        optional=True,
-        default=AddSuffixTranslation.D(suffix='R{quantity}'))
+    name = String.T(default='rest')
+    codes_projection = basic_codes_projection_t(
+        '{i.network}.{i.station}.{i.location}.{i.channel}'
+        '.{i.extra}R{o.quantity}')
     quantity = QuantityType.T(default='velocity')
     frequency_min = Float.T()
     frequency_max = Float.T()
@@ -1042,18 +1192,10 @@ class Restitution(Operator):
     def kind_requires(self):
         return ('waveform', 'response')
 
-    @property
-    def name(self) -> str:
-        return 'Restitution(%s)' % self.quantity[0]
-
-    def translate_codes(
-            self,
-            in_codes: tList[CodesNSLCE]) -> tList[CodesNSLCE]:
-
-        return [
-            codes.__class__(self.translation.translate(codes).safe_str.format(
-                quantity=self.quantity[0]))
-            for codes in in_codes]
+    def get_outlets(self) -> tList[Outlet]:
+        return [Outlet(
+            kinds=['channel', 'waveform'],
+            attributes=dict(quantity=self.quantity[0]))]
 
     def get_time_padding(self) -> float:
         return self.time_taper_factor \
@@ -1113,7 +1255,7 @@ class Restitution(Operator):
 
                 for tr in codes_to_traces[in_codes]:
                     if freqlimits[-1] > 0.5/tr.deltat:
-                        print(
+                        logger.warning(
                             'sampling rate too low for restitution frequency '
                             'range: %s' % tr.summary)
                         continue
@@ -1144,17 +1286,18 @@ class Restitution(Operator):
 
 
 class Shift(Operator):
-    translation = Translation.T(
-        optional=True,
-        default=AddSuffixTranslation.D(suffix='S'))
+    name = String.T(default='shift')
+    codes_projection = basic_codes_projection_t(
+        '{i.network}.{i.station}.{i.location}.{i.channel}.{i.extra}S')
     delay = Duration.T()
 
 
 class Transform(Operator):
-    grouping = Grouping.T(optional=True, default=SensorGrouping.D())
-    translation = Translation.T(
-        optional=True,
-        default=ReplaceComponentTranslation.D(suffix='T{system}'))
+    name = String.T(default='trans')
+    codes_projection = basic_codes_projection_t(
+        '{i.network}.{i.station}.{i.location}'
+        '.{i.channel_no_component}{o.component}'
+        '.{i.extra}T{o.system}')
 
     @property
     def kind_provides(self):
@@ -1162,17 +1305,15 @@ class Transform(Operator):
 
     @property
     def kind_requires(self):
-        return ('channel',)
+        return ('channel', 'waveform')
 
-    def translate_codes(
-            self,
-            in_codes: tList[CodesNSLCE]) -> tList[CodesNSLCE]:
-
-        proto = in_codes[0]
+    def get_outlets(self):
         return [
-            proto.__class__(
-                self.translation.translate(proto).safe_str.format(
-                    component=c, system=self.components.lower()))
+            Outlet(
+                kinds=['channel', 'waveform'],
+                attributes=dict(
+                    system=self.components.lower(),
+                    component=c))
             for c in self.components]
 
     def process_channels(
@@ -1262,6 +1403,7 @@ class Transform(Operator):
 
 
 class ToENZ(Transform):
+    name = String.T(default='enz')
     components = 'ENZ'
 
     def project(self, sensor, trs_sensor):
@@ -1275,6 +1417,7 @@ class ToENZ(Transform):
 
 
 class ToTRZ(Transform):
+    name = String.T(default='trz')
     components = 'TRZ'
     origin = Location.T(optional=True)
     azimuth = Float.T(optional=True)
@@ -1298,6 +1441,7 @@ class ToTRZ(Transform):
 
 
 class ToLQT(Transform):
+    name = String.T(default='lqt')
     components = 'LQT'
     origin = Location.T(optional=True)
     earthmodel = Earthmodel1D.T(optional=True)
@@ -1343,26 +1487,123 @@ class ToLQT(Transform):
             'T': ((azimuth + 90. + 180.) % 360. - 180., 0.)}[component]
 
 
+class CarpetSum(Operator):
+    name = String.T(default='csum')
+
+    codes_projection = basic_codes_projection_t('.SUM...')
+    nan_aware = Bool.T(default=False, help='Treat NaNs as zero.')
+    normalize = Bool.T(default=False, help='Calculate average.')
+
+    @property
+    def kind_requires(self):
+        return ('carpet',)
+
+    @property
+    def kind_provides(self):
+        return ('carpet',)
+
+    def get_outlets(self):
+        return [Outlet(kinds=['carpet'])]
+
+    def process_carpets(
+                self,
+                mappings: tList[CodesMapping],
+                in_codes: tList[CodesNSLCE],
+                codes_to_carpets: dict[CodesNSLCE, Carpet],
+                tmin: TimeFloat = None,
+                tmax: TimeFloat = None,
+            ) -> tList[Trace]:
+
+        carpets_out = []
+        for mapping in mappings:
+            carpets = []
+            for codes in mapping.in_codes:
+                carpets.extend(codes_to_carpets[codes])
+
+            try:
+                carpet = sum_carpets(
+                    carpets,
+                    nan_aware=self.nan_aware,
+                    normalize=self.normalize)
+
+                carpet.codes, = mapping.out_codes
+                carpets_out.append(carpet)
+
+            except CarpetError as e:
+                logger.warn(str(e))
+
+        return carpets_out
+
+
+class CarpetHOverV(Operator):
+    name = String.T(default='chv')
+
+    codes_projection = basic_codes_projection_t(
+        '{i.network}.{i.station}.{i.location}.'
+        '{i.channel_no_component}.{i.extra}HV')
+
+    @property
+    def kind_requires(self):
+        return ('carpet',)
+
+    @property
+    def kind_provides(self):
+        return ('carpet',)
+
+    def get_outlets(self):
+        return [Outlet(kinds=['carpet'])]
+
+    def process_carpets(
+                self,
+                mappings: tList[CodesMapping],
+                in_codes: tList[CodesNSLCE],
+                codes_to_carpets: dict[CodesNSLCE, Carpet],
+                tmin: TimeFloat = None,
+                tmax: TimeFloat = None,
+            ) -> tList[Trace]:
+
+        carpets_out = []
+        for mapping in mappings:
+            carpets = []
+            for codes in mapping.in_codes:
+                carpets.extend(codes_to_carpets[codes])
+
+            carpets_h = [
+                carpet for carpet in carpets
+                if carpet.codes.channel[-1] in 'NE']
+            carpets_v = [
+                carpet for carpet in carpets
+                if carpet.codes.channel[-1] in 'Z']
+
+            try:
+                carpet = sum_carpets(
+                    carpets_h,
+                    nan_aware=False,
+                    normalize=True)
+
+                carpet_v_avg = sum_carpets(
+                    carpets_v,
+                    nan_aware=False,
+                    normalize=True)
+
+                carpet.data -= carpet_v_avg.data
+
+                carpet.codes, = mapping.out_codes
+                carpets_out.append(carpet)
+
+            except CarpetError as e:
+                logger.warn(str(e))
+
+        return carpets_out
+
+
 __all__ = [
     'CodesConvertible',
     'HasTimeAndCodes',
-    'Filtering',
-    'RegexFiltering',
-    'CodesPatternFiltering',
-    'Grouping',
-    'AllGrouping',
-    'RegexGrouping',
-    'NetworkGrouping',
-    'StationGrouping',
-    'LocationGrouping',
-    'SensorGrouping',
-    'ChannelGrouping',
-    'ComponentGrouping',
-    'Translation',
-    'AddSuffixTranslation',
-    'RegexTranslation',
-    'ReplaceComponentTranslation',
-    'KeepComponentTranslation',
+    'CodesFilterBase',
+    'CodesFilter',
+    'CodesProjectionBase',
+    'CodesProjection',
     'BaseOperator',
     'Operator',
     'Restitution',
@@ -1370,4 +1611,6 @@ __all__ = [
     'ToENZ',
     'ToTRZ',
     'ToLQT',
+    'CarpetSum',
+    'CarpetHOverV',
 ]

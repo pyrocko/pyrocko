@@ -25,8 +25,6 @@ from pyrocko.squirrel.dataset import Dataset
 from pyrocko.squirrel.client.local import LocalData
 from pyrocko.squirrel.error import ToolError, SquirrelError
 from pyrocko.squirrel.model import CodesNSLCE, QuantityType
-from pyrocko.squirrel.operators.base import NetworkGrouping, StationGrouping, \
-    ChannelGrouping, SensorGrouping
 from pyrocko.squirrel.storage import StorageSchemeChoice
 from pyrocko.squirrel.tool.common import ldq, \
     squirrel_effective_storage_scheme_from_arguments
@@ -125,10 +123,10 @@ class OutputDataTypeChoice(StringChoice):
 class TraversalChoice(StringChoice):
     choices = ['network', 'station', 'channel', 'sensor']
     name_to_grouping = {
-        'network': NetworkGrouping(),
-        'station': StationGrouping(),
-        'sensor': SensorGrouping(),
-        'channel': ChannelGrouping()}
+        'network': '{i.network}....',
+        'station': '{i.network}.{i.station}...',
+        'sensor': '{i.network}.{i.station}.{i.location}.{i.channel_no_component}.',  # noqa
+        'channel': '{i.network}.{i.station}.{i.location}.{i.channel}.'}
 
 
 class InstrumentCorrectionMode(StringChoice):

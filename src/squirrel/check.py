@@ -11,7 +11,7 @@ from pyrocko.guts import StringChoice, Object, String, List
 from pyrocko import util
 
 from pyrocko.squirrel.model import CodesNSLCE
-from pyrocko.squirrel.operators.base import CodesPatternFiltering
+from pyrocko.squirrel.operators.base import CodesFilter
 from pyrocko.squirrel.model import codes_patterns_for_kind, to_kind_id
 
 guts_prefix = 'squirrel'
@@ -254,7 +254,7 @@ def do_check(squirrel, codes=None, tmin=None, tmax=None, time=None, ignore=[]):
         else:
             codes_pat = None
 
-        codes_filter = CodesPatternFiltering(codes=codes_pat)
+        codes_filter = CodesFilter(include=codes_pat)
         codes_set.update(
             codes_filter.filter(squirrel.get_codes(kind=kind)))
 
