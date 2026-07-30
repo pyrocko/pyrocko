@@ -10,12 +10,12 @@ Implementation of :app:`gato simulate`.
 import numpy as num
 
 from pyrocko import util, trace, model
-from pyrocko.gato.tool.common import add_array_selection_arguments, \
-    get_matching_arrays
+from pyrocko.gato.tool.common import add_sensor_array_arguments, \
+    sensor_arrays_from_arguments
 from pyrocko.squirrel.storage import get_storage_scheme
 
 from pyrocko.gato.error import GatoToolError
-from pyrocko.gato.array import SensorArrayAndInfoContext, \
+from pyrocko.gato.array import SensorArrayAndIncarnationContext, \
     get_named_arrays_dataset
 
 
@@ -30,7 +30,7 @@ def make_subparser(subparsers):
 
 
 def setup(parser):
-    add_array_selection_arguments(parser)
+    add_sensor_array_arguments(parser)
     parser.add_squirrel_selection_arguments()
     parser.add_squirrel_query_arguments(without=['kinds'])
 
@@ -42,11 +42,11 @@ def setup(parser):
 
 
 def run(parser, args):
-    arrays = get_matching_arrays(
-        args.array_names, args.array_paths, args.use_builtin_arrays)
+    arrays = sensor_arrays_from_arguments(args)
 
     sq = args.make_squirrel()
-    sq.add_dataset(get_named_arrays_dataset(sorted(arrays.keys())))
+    sq.add_dataset(get_named_arrays_dataset(
+        sorted(array.name for array in arrays)))
 
     squirrel_query = dict(args.squirrel_query)
     tmin = squirrel_query['tmin']
@@ -60,14 +60,15 @@ def run(parser, args):
 
     storage.set_base_path(args.out_storage_path)
 
-    for array in arrays.values():
-        info = array.get_info(sq, **squirrel_query)
+    for array in arrays:
+        incarnation = array.get_incarnation(sq, **squirrel_query)
 
-        if info.n_codes == 0:
+        if incarnation.n_codes == 0:
             raise GatoToolError(
                 'No sensors match given combination of array definition '
                 'and available metadata. Context:\n'
-                + str(SensorArrayAndInfoContext(array=array, info=info)))
+                + str(SensorArrayAndIncarnationContext(
+                    array=array, incarnation=incarnation)))
 
         source_location = model.Location(
             lat=63.879167, lon=-22.387222,
@@ -77,11 +78,11 @@ def run(parser, args):
 
         distance_max = max(
             source_location.distance_to(channel)
-            for sensor in info.sensors for channel in sensor.channels)
+            for sensor in incarnation.sensors for channel in sensor.channels)
 
         deltat_min = min(
             channel.deltat
-            for sensor in info.sensors for channel in sensor.channels)
+            for sensor in incarnation.sensors for channel in sensor.channels)
 
         tpad = 1.1 * distance_max / velocity
         nsamples = int(round(((tmax+tpad) - (tmin-tpad)) / deltat_min))
@@ -93,7 +94,7 @@ def run(parser, args):
             deltat=deltat_min)
 
         for batch in util.iter_windows(tmin=tmin, tmax=tmax, tinc=tinc):
-            for isensor, sensor in enumerate(info.sensors):
+            for isensor, sensor in enumerate(incarnation.sensors):
                 for channel in sensor.channels:
                     nsamples = int(round(
                         (batch.tmax - batch.tmin) / channel.deltat))

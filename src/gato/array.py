@@ -12,6 +12,7 @@ from pyrocko.squirrel import CodesNSLCE, FDSNSource, Dataset, CodesNSL, \
 
 from pyrocko.has_paths import HasPaths, Path
 from .grid.location import UnstructuredLocationGrid, distances_3d
+from .error import GatoError
 
 guts_prefix = 'gato'
 km = 1000.
@@ -61,7 +62,11 @@ class CodesTimeQueryArgs(Object):
     tmax = Timestamp.T(optional=True)
 
 
-class SensorArrayInfo(Object):
+class SensorArrayIncarnation(Object):
+    '''
+    Concrete selection of channels for a sensor array.
+    '''
+
     codes = List.T(CodesNSLCE.T())
     tmin = Timestamp.T(optional=True)
     tmax = Timestamp.T(optional=True)
@@ -71,6 +76,64 @@ class SensorArrayInfo(Object):
     codes_nsl_by_channels = Dict.T(Tuple.T(String.T()), List.T(CodesNSL.T()))
     sensors = List.T(Sensor.T())
     request_query_args = CodesTimeQueryArgs.T()
+
+    def post_init(self):
+        self.channels = [
+            channel
+            for sensor in self.sensors
+            for channel in sensor.channels]
+
+        def location_key(channel):
+            return (
+                channel.lat,
+                channel.lon,
+                channel.elevation,
+                channel.north_shift,
+                channel.east_shift,
+                channel.depth)
+
+        ilocations = util.igroup_by(location_key, self.channels)
+        locations = [None] * (max(ilocations) + 1)
+        for ichannel, channel in enumerate(self.channels):
+            ilocation = ilocations[ichannel]
+            if locations[ilocation] is None:
+                locations[ilocation] = channel.location()
+
+        self.ilocations = ilocations
+        self.locations = locations
+
+    def codes_to_ilocation_unique(self, tmin, tmax):
+        codes_to_ilocations = defaultdict(set)
+        for ichannel, channel in enumerate(self.channels):
+            if not channel.overlaps(tmin, tmax):
+                continue
+
+            codes = channel.codes
+            ilocation = self.ilocations[ichannel]
+
+            codes_to_ilocations[codes].add(ilocation)
+
+        codes_to_ilocation_unique = {}
+        for codes, ilocations in codes_to_ilocations.items():
+            if len(ilocations) == 1:
+                codes_to_ilocation_unique[codes], = ilocations
+            else:
+                locations = [
+                    self.locations[ilocation] for ilocation in ilocation]
+
+                logger.warning(
+                    'Multiple locations match codes %s for time span %s - %s.'
+                    '\n%s',
+                    codes.safe_str,
+                    util.time_to_str(tmin),
+                    util.time_to_str(tmax),
+                    '\n'.join(
+                        '  ' + location.summary for location in locations))
+
+        return codes_to_ilocation_unique
+
+    def get_location_grid(self):
+        return UnstructuredLocationGrid.from_locations(self.locations)
 
     @property
     def n_codes_nsl(self):
@@ -127,6 +190,9 @@ class SensorArrayType(StringChoice):
 
 
 class SensorArray(Object):
+    '''
+    Abstract definition of a sensor array.
+    '''
     name = String.T()
     codes = List.T(CodesNSLCE.T())
     type = SensorArrayType.T(optional=True)
@@ -151,7 +217,7 @@ class SensorArray(Object):
         return ' | '.join(
             ('%-17s' % self.name, self.type[:1], self.comment or ''))
 
-    def get_info(
+    def get_incarnation(
             self, sq,
             codes=None,
             time=None,
@@ -240,7 +306,7 @@ class SensorArray(Object):
         codes_nsl_by_channels = dict(
             (k, sorted(v)) for (k, v) in nsl_by_chas.items())
 
-        return SensorArrayInfo(
+        return SensorArrayIncarnation(
             codes=codes,
             codes_nsl_by_channels=codes_nsl_by_channels,
             tmin=tmin,
@@ -411,9 +477,9 @@ class SensorArrayFromFile(SensorArray, HasPaths):
     stations_path = Path.T()
 
 
-class SensorArrayAndInfoContext(Object):
+class SensorArrayAndIncarnationContext(Object):
     array = SensorArray.T()
-    info = SensorArrayInfo.T()
+    incarnation = SensorArrayIncarnation.T()
 
 
 def get_named_arrays_dataset(names=None):
@@ -438,19 +504,25 @@ def get_named_arrays_dataset(names=None):
     return Dataset(sources=sources, comment=comment)
 
 
-def get_named_arrays():
-    return g_sensor_arrays_dict
-
-
 def get_named_array(name):
-    return g_sensor_arrays_dict[name]
+    try:
+        return g_sensor_arrays_dict[name]
+    except KeyError:
+        raise GatoError(f'No such built-in array: {name}')
+
+
+def get_named_arrays(names=None):
+    if names is not None:
+        return [get_named_array(name) for name in names]
+    else:
+        return list(g_sensor_arrays_dict.values())
 
 
 __all__ = [
-    'SensorArrayInfo',
+    'SensorArrayIncarnation',
     'SensorArray',
     'SensorArrayFromFDSN',
-    'SensorArrayAndInfoContext',
+    'SensorArrayAndIncarnationContext',
     'get_named_arrays_dataset',
     'get_named_arrays',
     'get_named_array',

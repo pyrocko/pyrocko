@@ -121,15 +121,22 @@ class CartesianLocationGrid(LocationGrid):
         self._ny = self._y.size
         self._nz = self._z.size
 
-    def native_coordinates(self):
-        return [
-            ('z', self._z),
-            ('y', self._y),
-            ('x', self._x)]
+        self._native_coordinates = {
+            'z': self._z,
+            'y': self._y,
+            'x': self._x}
 
-    def native_coordinates_projected(self, projection):
+        self._native_coordinate_labels = {
+            'z': 'Z',
+            'y': 'Y',
+            'x': 'X'}
 
-        mapping = {
+        self._native_coordinate_units = {
+            'z': 'm',
+            'y': 'm',
+            'x': 'm'}
+
+        self._native_coordinate_slices = {
             'z': (self._z,),
             'y': (self._y,),
             'x': (self._x,),
@@ -137,9 +144,6 @@ class CartesianLocationGrid(LocationGrid):
             'zx': (self._z, self._x),
             'yx': (self._y, self._x),
             'zyx': (self._z, self._y, self._x)}
-
-        return num.vstack([v.flatten() for v in num.meshgrid(
-            *mapping[projection], indexing='ij')]).T
 
     def clear_cached(self):
         self._xyz = None

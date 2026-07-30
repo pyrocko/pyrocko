@@ -191,14 +191,22 @@ class SquirrelArgumentParser(PyrockoArgumentParser):
         Handed through to base class's init.
     '''
 
-    def __init__(self, *args, command=None, subcommands=[], **kwargs):
+    def __init__(
+            self, *args,
+            command=None,
+            subcommands=[],
+            nice_fatal_errors=[],
+            **kwargs):
 
+        self._nice_fatal_errors = (error.SquirrelError, error.ToolError) \
+            + tuple(nice_fatal_errors)
         self._command = command
         self._subcommands = subcommands
         self._have_selection_arguments = False
         self._have_selection_arguments_base = False
         self._have_query_arguments = False
         self._have_storage_scheme_arguments = False
+        self._have_sensor_array_arguments = False
 
         kwargs['epilog'] = kwargs.get('epilog', '''
 
@@ -261,9 +269,20 @@ Examples: https://pyrocko.org/docs/current/apps/squirrel/manual.html#examples
         process_standard_arguments(eff_parser, args)
 
         if eff_parser._have_selection_arguments:
-            def make_squirrel(check_have_data=True):
-                return squirrel_from_selection_arguments(
+            def make_squirrel(check_have_data=True, check_have_arrays=True):
+                sq = squirrel_from_selection_arguments(
                     args, check_have_data=check_have_data)
+
+                if eff_parser._have_sensor_array_arguments:
+                    from pyrocko.gato.tool.common import (
+                        sensor_arrays_from_arguments)
+
+                    arrays = sensor_arrays_from_arguments(
+                        args, check_have_arrays=check_have_arrays)
+                    for array in arrays:
+                        sq.add_sensor_array(array)
+
+                return sq
 
             args.make_squirrel = make_squirrel
 
@@ -276,7 +295,7 @@ Examples: https://pyrocko.org/docs/current/apps/squirrel/manual.html#examples
         if eff_parser._have_query_arguments:
             try:
                 args.squirrel_query = squirrel_query_from_arguments(args)
-            except (error.SquirrelError, error.ToolError) as e:
+            except self._nice_fatal_errors as e:
                 logger.fatal(str(e))
                 sys.exit(1)
 
@@ -284,7 +303,7 @@ Examples: https://pyrocko.org/docs/current/apps/squirrel/manual.html#examples
             try:
                 args.squirrel_effective_storage_scheme = \
                     squirrel_effective_storage_scheme_from_arguments(args)
-            except (error.SquirrelError, error.ToolError) as e:
+            except self._nice_fatal_errors as e:
                 logger.fatal(str(e))
                 sys.exit(1)
 
@@ -313,7 +332,7 @@ Examples: https://pyrocko.org/docs/current/apps/squirrel/manual.html#examples
                 target(eff_parser, args)
                 return True
 
-            except (error.SquirrelError, error.ToolError) as e:
+            except self._nice_fatal_errors as e:
                 logger.fatal(str(e))
                 sys.exit(1)
 
@@ -355,7 +374,7 @@ Examples: https://pyrocko.org/docs/current/apps/squirrel/manual.html#examples
         This will add optional arguments ``--add``, ``--include``,
         ``--exclude``, ``--format``, ``--add-only``.
 
-        Call ``args.return make_dataset()`` on the arguments returned from
+        Call ``args.make_dataset()`` on the arguments returned from
         :py:meth:`parse_args` to finally instantiate and configure the
         :py:class:`~pyrocko.squirrel.dataset.Dataset` instance.
         '''
@@ -399,6 +418,11 @@ Examples: https://pyrocko.org/docs/current/apps/squirrel/manual.html#examples
 
         add_squirrel_storage_scheme_arguments(self)
         self._have_storage_scheme_arguments = True
+
+    def add_sensor_array_arguments(self):
+        from pyrocko.gato.tool.common import add_sensor_array_arguments
+        add_sensor_array_arguments(self)
+        self._have_sensor_array_arguments = True
 
 
 def csvtype(choices):

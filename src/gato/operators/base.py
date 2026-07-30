@@ -3,12 +3,12 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
-from pyrocko.squirrel import BaseOperator
+from pyrocko.squirrel import Operator
 
 guts_prefix = 'gato'
 
 
-class GatoOperator(BaseOperator):
+class GatoOperator(Operator):
     pass
 
 

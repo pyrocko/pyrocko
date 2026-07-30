@@ -13,7 +13,7 @@ from pyrocko.squirrel import SquirrelCommand, QuantityType
 from pyrocko.guts import Object, Float, Bool, StringChoice
 
 from pyrocko.gato.error import GatoToolError
-from pyrocko.gato.array import SensorArrayAndInfoContext, \
+from pyrocko.gato.array import SensorArrayAndIncarnationContext, \
     get_named_arrays_dataset
 
 from pyrocko.gato.io import load
@@ -22,8 +22,8 @@ from pyrocko.gato.grid.base import Grid
 from pyrocko.gato.grid.location import UnstructuredLocationGrid
 from pyrocko.gato.delay import GenericDelayTable
 from pyrocko.gato.delay.plane_wave import PlaneWaveDM
-from pyrocko.gato.tool.common import add_array_selection_arguments, \
-    get_matching_arrays
+from pyrocko.gato.tool.common import add_sensor_array_arguments, \
+    sensor_arrays_from_arguments
 
 guts_prefix = 'gato'
 
@@ -93,7 +93,7 @@ class DelayAndSumTD(SquirrelCommand):
             description='Compute delay and sum operation in time domain.')
 
     def setup(self, parser):
-        add_array_selection_arguments(parser)
+        add_sensor_array_arguments(parser)
 
         parser.add_squirrel_selection_arguments()
         parser.add_squirrel_query_arguments(without=['kinds'])
@@ -107,13 +107,13 @@ class DelayAndSumTD(SquirrelCommand):
 
     def run(self, parser, args):
 
-        arrays = get_matching_arrays(
-            args.array_names, args.array_paths, args.use_builtin_arrays)
+        arrays = sensor_arrays_from_arguments(args)
 
         config = load(args.config_path, want=None)
 
         sq = args.make_squirrel()
-        sq.add_dataset(get_named_arrays_dataset(sorted(arrays.keys())))
+        sq.add_dataset(get_named_arrays_dataset(
+            sorted(array.name for array in arrays)))
 
         downloads_enabled = False
         sq.downloads_enabled = downloads_enabled
@@ -136,17 +136,18 @@ class DelayAndSumTD(SquirrelCommand):
         if squirrel_query.get('tmax', None) is None:
             squirrel_query['tmax'] = tmax_data
 
-        for array in arrays.values():
-            info = array.get_info(sq, **squirrel_query)
+        for array in arrays:
+            incarnation = array.get_incarnation(sq, **squirrel_query)
 
-            if info.n_codes == 0:
+            if incarnation.n_codes == 0:
                 raise GatoToolError(
                     'No sensors match given combination of array definition '
                     'and available metadata. Context:\n'
-                    + str(SensorArrayAndInfoContext(array=array, info=info)))
+                    + str(SensorArrayAndIncarnationContext(
+                        array=array, incarnation=incarnation)))
 
             receiver_grid = UnstructuredLocationGrid.from_locations(
-                info.sensors, ignore_position_duplicates=False)
+                incarnation.sensors, ignore_position_duplicates=False)
 
             gdt = GenericDelayTable(
                 source_grid=config.source_grid,
@@ -171,7 +172,7 @@ class DelayAndSumTD(SquirrelCommand):
                     tpad=tpad,
                     **args.squirrel_query):
 
-                mtrace = batch.as_carpet(codes=info.codes)
+                mtrace = batch.as_carpet(codes=incarnation.codes)
                 # delta_frequency, ntrans, spectrum =  mtrace.get_spectrum()
                 mtrace.snuffle()
                 sys.exit()
