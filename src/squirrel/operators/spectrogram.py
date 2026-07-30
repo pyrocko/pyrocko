@@ -17,6 +17,8 @@ from pyrocko.squirrel import model, error
 from . import base
 from ...carpet import Carpet
 
+guts_prefix = 'squirrel.ops'
+
 logger = logging.getLogger('psq.ops.spectrogram')
 
 
@@ -351,8 +353,9 @@ class SpectrogramGroup(guts.Object):
 
 class MultiSpectrogramOperator(base.Operator):
 
-    translation = base.Translation.T(
-        default=base.AddSuffixTranslation.D(suffix='MS'))
+    codes_projection = base.basic_codes_projection_t(
+        '{i.network}.{i.station}.{i.location}.{i.channel}.{i.extra}MS')
+
     windowing = Pow2Windowing.T(
         default=Pow2Windowing.D())
     quantity = model.QuantityType.T(default='velocity')
@@ -486,7 +489,7 @@ class MultiSpectrogramOperator(base.Operator):
                         .get_effective(self.quantity)
 
                 except error.SquirrelError as e:
-                    logger.error(e)
+                    logger.debug(e)
                     continue
 
             levels = []
@@ -506,12 +509,14 @@ class MultiSpectrogramOperator(base.Operator):
                     values[:, i] = self.get_block(
                         deltat, kind_codes_id, ilevel, iwindows[i])[0]
 
+                all_nan = not num.any(num.isfinite(values))
+
                 frequency_delta = 1.0 \
                     / (deltat * self.windowing.nblock * 2**ilevel)
 
                 frequencies = num.arange(nfrequencies) * frequency_delta
 
-                if resp:
+                if resp and not all_nan:
                     values[1:, :] -= 2.0 * num.log(num.abs(resp.evaluate(
                         frequencies[1:])))[:, num.newaxis]
 
@@ -543,25 +548,34 @@ class MultiSpectrogramOperator(base.Operator):
             show_construction=False,
             nsamples_limit=None):
 
-        groups = self.get_spectrogram_groups(
-            codes=codes,
-            tmin=tmin,
-            tmax=tmax,
-            nsamples_limit=nsamples_limit)
+        mappings, codes_want = self.get_mappings_and_matching_codes(codes)
+
+        mappings.sort(key=lambda mapping: mapping.in_codes[0])
 
         carpets = []
-        for group in groups:
-            if show_construction:
-                group.plot_construction(interpolation=self.interpolation)
+        for mapping in mappings:
+            (in_codes,) = mapping.in_codes
+            (out_codes,) = mapping.out_codes
 
-            fslice = slice(2,
-                           None)
-            carpet = group.get_multi_spectrogram(
-                interpolation=self.interpolation).crop(fslice=fslice)
+            groups = self.get_spectrogram_groups(
+                codes=in_codes,
+                tmin=tmin,
+                tmax=tmax,
+                nsamples_limit=nsamples_limit)
 
-            carpet.data = carpet.data.astype(num.float32)
-            carpet.codes = self.translation.translate(carpet.codes)
-            carpets.append(carpet)
+            for group in groups:
+                if show_construction:
+                    group.plot_construction(
+                        interpolation=self.interpolation)
+
+                fslice = slice(2, None)
+                carpet = group.get_multi_spectrogram(
+                    interpolation=self.interpolation).crop(fslice=fslice)
+
+                carpet.data = carpet.data.astype(num.float32)
+                carpet.codes = out_codes
+                if carpet.codes in codes_want:
+                    carpets.append(carpet)
 
         return carpets
 
