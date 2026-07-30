@@ -142,6 +142,14 @@ class CodesNSLCE(CodesNSLCEBase, Codes):
         return CodesNSL(self)
 
     @property
+    def channel_no_component(self):
+        return self.channel[:-1]
+
+    @property
+    def channel_component(self):
+        return self.channel[-1]
+
+    @property
     def codes_nsl_star(self):
         return CodesNSL(self.network, self.station, '*')
 
