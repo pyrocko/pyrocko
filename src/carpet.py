@@ -382,6 +382,20 @@ class Carpet(Object):
         '''
         return self.get_trace(i)
 
+    def itime(self, time, out_of_bounds='raise'):
+        itime = int(round((time - self.tmin) / self.deltat))
+        if itime < 0 or itime > self.nsamples-1:
+            if out_of_bounds == 'raise':
+                raise ValueError('Out of bounds.')
+            elif out_of_bounds == 'clip':
+                itime = min(max(0, itime), self.carpet.nsamples-1)
+            elif out_of_bounds == 'ignore':
+                pass
+            else:
+                assert False, 'Invalid `out_of_bounds` handlig choice.'
+
+        return itime
+
     def fill_template(self, template, **additional):
         if '{' in template:
             return template.format_map(
@@ -411,7 +425,7 @@ class Carpet(Object):
             elif data == 'reference':
                 data = self.data
             else:
-                assert False
+                raise ValueError('Carpet.copy(): invalid argument for `data`.')
         else:
             assert isinstance(data, ma.MaskedArray)
 
@@ -420,6 +434,7 @@ class Carpet(Object):
             codes=self.codes,
             component_codes=list(self.component_codes),
             component_axes=self.component_axes,
+            nsamples=self.nsamples if data is None else None,
             tmin=self.tmin,
             deltat=self.deltat)
 
@@ -523,11 +538,16 @@ class Carpet(Object):
             self,
             axes,
             component_axis=None,
-            fslice=slice(1, None),
+            fslice=slice(None, None),
             **kwargs):
 
         if component_axis is None:
             ys = num.arange(self.ncomponents)
+        elif component_axis == 'default':
+            if len(self.component_axes) == 1:
+                ys = list(self.component_axes.values())[0]
+            else:
+                ys = num.arange(self.ncomponents)
         else:
             ys = self.component_axes[component_axis]
 
@@ -539,9 +559,9 @@ class Carpet(Object):
 
     def plot(
             self,
-            component_axis=None,
+            component_axis='default',
             component_axis_scale='linear',
-            fslice=slice(1, None),
+            fslice=slice(None, None),
             path=None, **kwargs):
 
         from pyrocko import plot
@@ -865,8 +885,9 @@ class Carpet(Object):
         self.apply_via_fft(smooth)
 
     def normalize(self, deltat, window=num.hanning):
-        from pyrocko.squirrel import Grouping
-        rms = self.get_rms(grouping=Grouping())
+        rms = self.get_rms(
+            translation='{i.network}.{i.station}.{i.location}.{i.channel}'
+                        '.{i.extra}')
         rms.smooth(deltat, window=window)
         self.data /= rms.data
 
@@ -890,29 +911,27 @@ class Carpet(Object):
             ntrans,
             num.einsum('ik,jk->ijk', spectrum, num.conj(spectrum)))
 
-    def get_component_codes_grouped(self, grouping):
+    def get_component_codes_grouped(self, translation):
+        from pyrocko.squirrel.operators.base import grouping_function
+        key = grouping_function(translation)
         groups = defaultdict(list)
         for irow, component_codes in enumerate(self.component_codes):
-            groups[grouping.key(component_codes)].append(irow)
+            groups[key(component_codes)].append(irow)
 
         return groups
 
     def get_energy(
             self,
-            grouping=None,
-            translation=None,
+            codes_projection=None,
             postprocessing=None):
 
-        from pyrocko.squirrel import \
-            SensorGrouping, ReplaceComponentTranslation
+        if codes_projection is None:
+            from pyrocko.squirrel.operators.base import CodesProjection
+            codes_projection = CodesProjection(
+                pattern='{i.network}.{i.station}.{i.location}'
+                        '.{i.channel_no_component}.P')
 
-        if grouping is None:
-            grouping = SensorGrouping()
-
-        if translation is None:
-            translation = ReplaceComponentTranslation()
-
-        groups = self.get_component_codes_grouped(grouping)
+        groups = self.get_component_codes_grouped(codes_projection)
 
         data = self.data.astype(num.float64)
         data **= 2
@@ -920,10 +939,8 @@ class Carpet(Object):
         component_codes = []
         for irow_out, irows_in in enumerate(groups.values()):
             data3[irow_out, :] = data[irows_in, :].sum(axis=0)
-            component_codes.append(CodesNSLCE(
-                translation.translate(
-                    self.component_codes[irows_in[0]]).safe_str.format(
-                        component='G')))
+            codes_out, = codes_projection.project(self.component_codes)
+            component_codes.append(codes_out)
 
         if data3.mask is ma.nomask:
             data3.mask = ma.make_mask_none(data3.shape)
@@ -1149,6 +1166,88 @@ def join(carpets):
             carpets_out.append(group[0])
 
     return carpets_out
+
+
+def check_same_components(a, b):
+    if a.ncomponents != b.ncomponents:
+        raise CarpetError('Different number of components.')
+
+    for i, (a_codes, b_codes) in enumerate(
+            zip(a.component_codes, b.component_codes)):
+
+        if a_codes != b_codes:
+            raise CarpetError(
+                'Component codes differ at component %i: %s != %s.' % (
+                    i, a_codes, b_codes))
+
+    ks = set(a.component_axes.keys())
+    ks.update(b.component_axes.keys())
+
+    for k in ks:
+        if k not in a.component_axes or k not in b.component_axes:
+            raise CarpetError('Component axis not present: %s' % k)
+
+        av = a.component_axes[k]
+        bv = b.component_axes[k]
+
+        if not num.all(av == bv):
+            raise CarpetError('Component axis values differ.')
+
+
+def check_compatible(carpets):
+    vecs = [
+        (carpet.deltat, carpet.tmin, carpet.nsamples) for carpet in carpets]
+
+    if not all(vec == vecs[0] for vec in vecs[1:]):
+        raise CarpetError(
+            'Carpets differ in sampling interval, onset time'
+            ' or number of samples.')
+
+    for carpet in carpets[1:]:
+        check_same_components(carpets[0], carpet)
+
+
+def sum(carpets, nan_aware=False, normalize=False, dtype=float):
+    if not carpets:
+        raise CarpetError('Need at least one carpet for summation.')
+
+    for carpet in carpets:
+        if carpet.data is None:
+            raise CarpetError(
+                'Carpets supplied for summation must contain data.')
+
+    try:
+        check_compatible(carpets)
+
+    except CarpetError as e:
+        raise CarpetError(
+            'Incompatible carpets supplied for summation (%s):\n%s' % (
+                str(e),
+                '\n'.join('  %s' % carpet.summary for carpet in carpets)))
+
+    data = num.zeros(carpets[0].data.shape, dtype=dtype)
+    count = num.zeros(carpets[0].data.shape, dtype=int)
+
+    for carpet in carpets:
+        ok = num.isfinite(carpet.data)
+
+        if nan_aware:
+            data += num.where(ok, carpet.data, 0.0)
+        else:
+            data += carpet.data
+
+        count += ok
+
+    if normalize:
+        data /= count
+
+    data[count == 0] = num.nan
+
+    carpet_sum = carpets[0].copy(data='drop')
+    carpet_sum.codes = CodesNSLCE('.SUM...')
+    carpet_sum.data = data
+
+    return carpet_sum
 
 
 def check_overlaps(carpets_a, carpets_b=None, message='Carpets overlap.'):
