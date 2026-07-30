@@ -371,6 +371,15 @@ class ChannelBase(Location):
     def time_span(self):
         return (self.tmin, self.tmax)
 
+    def overlaps(self, tmin, tmax):
+        return (
+            self.tmin is None or tmax is None
+            or self.tmin <= tmax
+        ) and (
+            tmin is None or self.tmax is None
+            or tmin < self.tmax
+        )
+
     def _get_sensor_codes(self):
         return self.codes.replace(
             channel=self.codes.channel[:-1] + '?')
