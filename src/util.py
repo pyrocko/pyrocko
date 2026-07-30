@@ -3139,6 +3139,21 @@ def group_by(key, xs):
     return groups
 
 
+def igroup_by(key, xs):
+    k_to_igroup = {}
+    igroup = 0
+    igroups = []
+    for x in xs:
+        k = key(x)
+        if k not in k_to_igroup:
+            k_to_igroup[k] = igroup
+            igroup += 1
+
+        igroups.append(k_to_igroup[k])
+
+    return igroups
+
+
 duration_unit_factors = dict(
     s=1.0,
     m=60.0,
