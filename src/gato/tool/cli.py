@@ -10,6 +10,7 @@ Gato command line tool main program.
 import logging
 from pyrocko.squirrel import run
 from .commands import command_modules
+from ..error import GatoError
 
 
 logger = logging.getLogger('gato.cli')
@@ -22,6 +23,7 @@ def main(args=None):
         args=args,
         prog=g_program_name,
         subcommands=command_modules,
+        nice_fatal_errors=[GatoError],
         description='''
 Pyrocko Gato - generalized array toolkit.
 

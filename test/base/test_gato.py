@@ -10,8 +10,13 @@ import numpy as num
 
 from numpy.testing import assert_almost_equal, assert_allclose
 
+from pyrocko import util
 from pyrocko.model import Location
 from pyrocko import gato, orthodrome as od
+from pyrocko.gato import plot as gato_plot
+from pyrocko import squirrel
+
+from .. import common
 
 logger = logging.getLogger('test_gato.py')
 
@@ -146,8 +151,8 @@ class GatoTestCase(unittest.TestCase):
         assert grid.size == 3*3*4
 
         rtp = grid._get_rtp()[0, :]
-        print(rtp[2], rtp[1]*r2d, rtp[0]*r2d)
-        print(grid._get_ned()[0, :])
+        # print(rtp[2], rtp[1]*r2d, rtp[0]*r2d)
+        # print(grid._get_ned()[0, :])
 
         # ojo - i got here x, y, z as right handed coordinate system
         # as standard - but not
@@ -255,7 +260,7 @@ class GatoTestCase(unittest.TestCase):
                     [0., 0., 1*km, -1*km, 0., 0.],
                     [0., 0., -1*km, 1*km, 0., 0.],
                     [0., 0., 1*km, 1*km, 0., 0.]])),
-            method=gato.PlaneWaveDM())
+            method=gato.PlaneWaveDM(sign=1))
 
         delays = gdt.get_delays()
 
@@ -263,4 +268,49 @@ class GatoTestCase(unittest.TestCase):
                 gdt.source_grid.get_nodes('ned')):
             for ireceiver, (rn, re, rd) in enumerate(
                     gdt.receiver_grid.get_nodes('ned')):
-                assert delays[isource, ireceiver] == sn*rn + se*re + sd*rd
+                assert_allclose(
+                    delays[isource, ireceiver],
+                    sn*rn + se*re + sd*rd, atol=1e-6)
+
+    def test_grf_nuke(self):
+
+        tmin = util.str_to_time_fillup('2017-09-03 03:40')
+        tmax = util.str_to_time_fillup('2017-09-03 03:50')
+        # tmax = util.str_to_time_fillup('2017-09-03 05:00')
+
+        database = squirrel.Database()
+        sq = squirrel.Squirrel(database=database)
+        sq.add(common.test_data_file('grf-nuke-2017.mseed'))
+        sq.add(common.test_data_file('grf-nuke-2017.stationxml'))
+
+        mantra = sq.default_preparator_mantra(
+            frequency_min=0.02,
+            frequency_max=1.)
+
+        slowness_max = 1.0 / 10000.
+        csmi_op = gato.CSMImageOperator(
+            sensor_arrays=[
+                gato.SensorArray(
+                    name='array0',
+                    codes='*.GRA*.*.*Z.*')],
+            codes_projection=squirrel.CodesProjection(
+                # '.{o.array}.{o.field}.{i.channel_component}.'),
+                '.{o.array}.{o.field}..'),
+            nsubwindows=1,
+            time_window=80.0,
+            frequency_min=0.02,
+            frequency_max=1.0,
+            downsampling_deltat=0.1,
+            source_grid=gato.CartesianSlownessGrid.from_smax_2d(
+                slowness_max, slowness_max / 50.))
+
+        mantra.operators.append(csmi_op)
+        mantra.setup(sq)
+
+        # print()
+        # print(mantra.describe())
+
+        for batch in mantra.outlet.chopper_carpets(
+                tmin=tmin, tmax=tmax):
+
+            gato_plot.plot_array_image(csmi_op, batch.carpets)

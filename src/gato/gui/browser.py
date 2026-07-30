@@ -38,7 +38,7 @@ class ArrayInventory(qc.QAbstractTableModel, talkie.TalkieConnectionOwner):
         self.talkie_connect(self.state, 'arrays', self.update_arrays)
 
         self.arrays = []
-        self.array_infos = []
+        self.array_incarnations = []
 
     def update_arrays(self, *args):
 
@@ -55,31 +55,32 @@ class ArrayInventory(qc.QAbstractTableModel, talkie.TalkieConnectionOwner):
                 pass
             elif tag == 'replace':
                 self.arrays[i1+ioff:i2+ioff] = arrays[j1:j2]
-                self.array_infos[i1+ioff:i2+ioff] = self.array_infos[j1:j2]
+                self.array_incarnations[i1+ioff:i2+ioff] \
+                    = self.array_incarnations[j1:j2]
 
             elif tag == 'delete':
                 self.beginRemoveRows(parent, i1+ioff, i2+ioff-1)
                 self.arrays[i1+ioff:i2+ioff] = []
-                self.array_infos[i1+ioff:i2+ioff] = []
+                self.array_incarnations[i1+ioff:i2+ioff] = []
                 ioff -= i2-i1
                 self.endRemoveRows()
 
             elif tag == 'insert':
                 self.beginInsertRows(parent, i1+ioff, i1+ioff+j2-j1-1)
                 self.arrays[i1+ioff:i2+ioff] = arrays[j1:j2]
-                self.array_infos[i1+ioff:i2+ioff] = [None] * (j2-j1)
+                self.array_incarnations[i1+ioff:i2+ioff] = [None] * (j2-j1)
                 self.endInsertRows()
                 ioff += j2-j1
 
-        self.update_array_infos()
+        self.update_array_incarnations()
 
     def get_array(self, index):
         return self.arrays[index.row()]
 
-    def get_array_and_info_by_name(self, name):
-        for array, info in zip(self.arrays, self.array_infos):
+    def get_array_and_incarnation_by_name(self, name):
+        for array, incarnation in zip(self.arrays, self.array_incarnations):
             if array.name == name:
-                return array, info
+                return array, incarnation
 
         return None, None
 
@@ -97,10 +98,10 @@ class ArrayInventory(qc.QAbstractTableModel, talkie.TalkieConnectionOwner):
 
         return self.index(i, 0)
 
-    def get_array_info(self, index):
-        return self.array_infos[index.row()]
+    def get_array_incarnation(self, index):
+        return self.array_incarnations[index.row()]
 
-    def update_array_infos(self):
+    def update_array_incarnations(self):
 
         win = get_app().get_main_window()
         channels = win.state.constraints.channels
@@ -112,7 +113,7 @@ class ArrayInventory(qc.QAbstractTableModel, talkie.TalkieConnectionOwner):
         tmax = win.state.constraints.tmax_effective
 
         for i in range(len(self.arrays)):
-            self.array_infos[i] = self.arrays[i].get_info(
+            self.array_incarnations[i] = self.arrays[i].get_incarnation(
                 win.squirrel,
                 codes=codes,
                 tmin=tmin,
@@ -146,9 +147,9 @@ class ArrayInventory(qc.QAbstractTableModel, talkie.TalkieConnectionOwner):
         icol = index.column()
         column = self.columns[icol]
         array = self.arrays[irow]
-        array_info = self.array_infos[irow]
+        array_incarnation = self.array_incarnations[irow]
 
-        obj = array if icol < 3 else array_info
+        obj = array if icol < 3 else array_incarnation
         if obj is None:
             return qc.QVariant()
 
@@ -186,7 +187,7 @@ class ArrayBrowserState(talkie.TalkieRoot):
 class ArrayBrowser(qw.QSplitter, talkie.TalkieConnectionOwner):
 
     current_array_changed = qc.pyqtSignal()
-    current_array_info_changed = qc.pyqtSignal()
+    current_array_incarnation_changed = qc.pyqtSignal()
 
     def __init__(self, state, **kwargs):
         qw.QSplitter.__init__(self, qc.Qt.Vertical)
@@ -287,7 +288,7 @@ class ArrayBrowser(qw.QSplitter, talkie.TalkieConnectionOwner):
         layout.addWidget(arf)
 
         self.current_array = None
-        self.current_array_info = None
+        self.current_array_incarnation = None
 
         self.talkie_connect(
             self.state, ['current_array_name'], self.update_current_array)
@@ -295,32 +296,32 @@ class ArrayBrowser(qw.QSplitter, talkie.TalkieConnectionOwner):
         # slider = qw.QSlider(qc.Qt.Horizontal)
         # self.arf.toolbar_frame.layout().addWidget(slider)
 
-    def update_array_infos_later(self):
-        call_later(self.update_array_infos, 200)
+    def update_array_incarnations_later(self):
+        call_later(self.update_array_incarnations, 200)
 
-    def update_array_infos(self):
-        self.inventory.update_array_infos()
+    def update_array_incarnations(self):
+        self.inventory.update_array_incarnations()
         self.update_current_array()
 
     def update_current_array(self, *args):
-        self.current_array, self.current_array_info = \
-            self.inventory.get_array_and_info_by_name(
+        self.current_array, self.current_array_incarnation = \
+            self.inventory.get_array_and_incarnation_by_name(
                 self.state.current_array_name)
 
         self.current_array_changed.emit()
-        self.current_array_info_changed.emit()
+        self.current_array_incarnation_changed.emit()
 
         self.update_plots()
 
     def update_plots(self):
         array = self.current_array
-        info = self.current_array_info
-        self.geometry.plot.set_array(array, info)
-        self.arf.plot.set_array(array, info)
+        incarnation = self.current_array_incarnation
+        self.geometry.plot.set_array(array, incarnation)
+        self.arf.plot.set_array(array, incarnation)
 
     def builtin_arrays(self, type=None):
         return [
-            array for array in gato.get_named_arrays().values()
+            array for array in gato.get_named_arrays()
             if type is None or array.type == type]
 
     def add_arrays_check(self, arrays):

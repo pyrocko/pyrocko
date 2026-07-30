@@ -5,14 +5,20 @@
 
 import numpy as num
 
-from pyrocko.guts import Float, Int
+from pyrocko.guts import Float, Int, String
 from pyrocko.carpet import Carpet
 from .csm import CSMOperator
+from pyrocko.squirrel.operators.base import basic_codes_projection_t, Outlet
 
 guts_prefix = 'gato'
 
 
 class ACMEOperator(CSMOperator):
+    name = String.T(default='acme')
+
+    codes_projection = basic_codes_projection_t(
+        '.{o.array}..ACME.{o.mantra}')
+
     frequency_min = Float.T(default=0.1)
     frequency_max = Float.T(default=0.3)
     contributors_min = Int.T(default=3)
@@ -21,10 +27,15 @@ class ACMEOperator(CSMOperator):
     def kind_provides(self):
         return ('carpet',)
 
-    def get_out_channels(self):
-        return {
-            'carpet': ['ACME'],
-        }
+    def get_outlets_for_array(self, array):
+        return [Outlet(kinds=['carpet'], attributes={'array': array.name})]
+
+    def get_outlets(self):
+        outlets = []
+        for array in self.get_squirrel().get_sensor_arrays():
+            outlets.extend(self.get_outlets_for_array(array))
+
+        return outlets
 
     def make_carpets(self, tmin=None, tmax=None, codes=None):
         mappings = self.get_mappings()

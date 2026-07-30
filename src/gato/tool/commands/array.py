@@ -16,8 +16,8 @@ from pyrocko.gato.array import \
     get_named_arrays_dataset, SensorArray, SensorArrayType
 
 
-from pyrocko.gato.tool.common import add_array_selection_arguments, \
-    get_matching_arrays
+from pyrocko.gato.tool.common import add_sensor_array_arguments, \
+    sensor_arrays_from_arguments
 
 
 class List(SquirrelCommand):
@@ -29,7 +29,7 @@ class List(SquirrelCommand):
             description='List array setups.')
 
     def setup(self, parser):
-        add_array_selection_arguments(parser)
+        add_sensor_array_arguments(parser)
 
         style_choices = ['summary', 'yaml', 'name']
 
@@ -41,10 +41,8 @@ class List(SquirrelCommand):
             help='Set style of presentation. Choices: %s' % ldq(style_choices))
 
     def run(self, parser, args):
-        arrays = get_matching_arrays(
-            args.array_names, args.array_paths, args.use_builtin_arrays)
-
-        for array in arrays.values():
+        arrays = sensor_arrays_from_arguments(args)
+        for array in arrays:
             if args.style == 'name':
                 print(array.name)
             elif args.style == 'summary':
@@ -63,7 +61,7 @@ class Info(SquirrelCommand):
             description='Print information about array.')
 
     def setup(self, parser):
-        add_array_selection_arguments(parser)
+        add_sensor_array_arguments(parser)
 
         style_choices = ['summary', 'yaml']
 
@@ -78,9 +76,8 @@ class Info(SquirrelCommand):
 
     def run(self, parser, args):
 
-        arrays = get_matching_arrays(
-            args.array_names, args.array_paths, args.use_builtin_arrays)
-        names = sorted(arrays.keys())
+        arrays = sensor_arrays_from_arguments(args)
+        names = [array.name for array in arrays]
 
         sq = Squirrel()
         sq.add_dataset(get_named_arrays_dataset(names))
@@ -98,13 +95,13 @@ class Info(SquirrelCommand):
             'interstation distances min, 10%, 50%, 90%, max [km]',
             'channel group: num. sites']))
 
-        for name, array in arrays.items():
-            info = array.get_info(sq, **args.squirrel_query)
+        for array in arrays:
+            incarnation = array.get_incarnation(sq, **args.squirrel_query)
             if args.style == 'summary':
-                print(' | '.join((array.summary, info.summary)))
+                print(' | '.join((array.summary, incarnation.summary)))
             elif args.style == 'yaml':
-                print('#', ' | '.join((array.summary, info.summary)))
-                print(info)
+                print('#', ' | '.join((array.summary, incarnation.summary)))
+                print(incarnation)
 
 
 class Sensors(SquirrelCommand):
@@ -116,7 +113,7 @@ class Sensors(SquirrelCommand):
             description='Print information about sensors of an array.')
 
     def setup(self, parser):
-        add_array_selection_arguments(parser)
+        add_sensor_array_arguments(parser)
 
         style_choices = ['summary', 'yaml']
 
@@ -131,10 +128,8 @@ class Sensors(SquirrelCommand):
 
     def run(self, parser, args):
 
-        arrays = get_matching_arrays(
-            args.array_names, args.array_paths, args.use_builtin_arrays)
-
-        names = sorted(arrays.keys())
+        arrays = sensor_arrays_from_arguments(args)
+        names = [array.name for array in arrays]
 
         sq = Squirrel()
         sq.add_dataset(get_named_arrays_dataset(names))
@@ -142,9 +137,9 @@ class Sensors(SquirrelCommand):
         with progress.view():
             sq.update()
 
-        for name, array in arrays.items():
-            info = array.get_info(sq, **args.squirrel_query)
-            for sensor in info.sensors:
+        for array in arrays:
+            incarnation = array.get_incarnation(sq, **args.squirrel_query)
+            for sensor in incarnation.sensors:
                 if args.style == 'summary':
                     print(sensor.summary)
                 elif args.style == 'yaml':

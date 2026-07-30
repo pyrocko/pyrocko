@@ -64,13 +64,28 @@ class Grid(Object):
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
+        self._native_coordinates = {}
+        self._native_coordinates_slices = {}
         self.update()
 
     def update(self):
         raise NotImplementedError()
 
     def native_coordinates(self):
-        raise []
+        return self._native_coordinates
+
+    def native_coordinate_labels(self):
+        return self._native_coordinate_labels
+
+    def native_coordinate_units(self):
+        return self._native_coordinate_units
+
+    def native_coordinates_slices(self):
+        return self._native_coordinates_slices
+
+    def native_coordinates_slice_grid(self, slice):
+        return num.vstack([v.flatten() for v in num.meshgrid(
+            *self.native_coordinates_slices()[slice], indexing='ij')]).T
 
     @property
     def shape(self):

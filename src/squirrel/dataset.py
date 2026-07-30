@@ -104,9 +104,9 @@ def make_builtin_datasets():
     from pyrocko import gato
     datasets[':' + 'gato-named-arrays'] = gato.get_named_arrays_dataset()
     arrays = gato.get_named_arrays()
-    for aname in sorted(arrays.keys()):
-        datasets[':' + 'gato-%s' % aname[1:]] \
-            = gato.get_named_arrays_dataset(aname)
+    for array in arrays:
+        datasets[':' + 'gato-%s' % array.name[1:]] \
+            = gato.get_named_arrays_dataset(array.name)
 
     return datasets
 

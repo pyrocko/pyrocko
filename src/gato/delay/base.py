@@ -53,6 +53,13 @@ class GenericDelayTable(Object):
         Object.__init__(self, **kwargs)
         self.clear_cached()
 
+    def describe(self):
+        return 'source_grid: %s (%s)\nreceiver_grid: %s (%s)' % (
+            'x'.join(str(v) for v in self.source_grid.shape),
+            self.source_grid.__class__.__name__,
+            'x'.join(str(v) for v in self.receiver_grid.shape),
+            self.receiver_grid.__class__.__name__)
+
     def clear_cached(self):
         self._delays = None
         self._delay_spectra = None

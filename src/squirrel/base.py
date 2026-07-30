@@ -360,6 +360,7 @@ class Squirrel(Selection):
         ~Squirrel.add_catalog
         ~Squirrel.add_dataset
         ~Squirrel.add_virtual
+        ~Squirrel.add_sensor_arrays
         ~Squirrel.update
         ~Squirrel.update_waveform_promises
         ~Squirrel.advance_accessor
@@ -474,6 +475,8 @@ class Squirrel(Selection):
 
         self._streams = []
         self._injector = None
+
+        self._sensor_arrays = {}
 
     def update_mappings(self):
         return self._mapping_counter
@@ -866,6 +869,26 @@ class Squirrel(Selection):
 
         self.add_volatile(nuts)
         return path
+
+    def add_sensor_array(self, array):
+        from pyrocko import gato
+        assert isinstance(array, gato.SensorArray)
+
+        if array.name in self._sensor_arrays:
+            raise error.SquirrelError(
+                'A sensor array named "%s" is already registered.')
+
+        self._sensor_arrays[array.name] = array
+
+    def remove_sensor_array(self, name):
+        if name not in self._sensor_arrays:
+            raise error.SquirrelError(
+                'No sensor array named "%s" registered.')
+
+        del self._sensor_arrays[name]
+
+    def get_sensor_arrays(self):
+        return list(self._sensor_arrays.values())
 
     def harvest_streams(self):
         from .streaming import Injector
