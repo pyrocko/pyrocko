@@ -1074,6 +1074,53 @@ class SquirrelCommand(object):
         pass
 
 
+def add_mantra_arguments(parser):
+    parser.add_argument(
+        '--mantra',
+        dest='mantra_selection',
+        metavar='PATH[:PATTERN,...]',
+        help='Read mantra configurations from PATH. If PATTERN(s) are '
+             'specified, restrict execution to matching mantra names.')
+
+
+def get_mantras_from_arguments(args):
+    from pyrocko import gato  # noqa
+    from pyrocko.squirrel.mantra import Mantra
+
+    if not args.mantra_selection:
+        return []
+
+    if ':' not in args.mantra_selection:
+        path = args.mantra_selection
+        patterns = None
+    else:
+        path, _patterns = args.mantra_selection.split(':')
+        patterns = _patterns.split(',')
+
+    try:
+        mantras = guts.load_all(filename=path)
+    except Exception as e:
+        raise error.ToolError(
+            'Error while reading mantra configurations from "%s": %s' % (
+                path, str(e)))
+
+    for mantra in mantras:
+        if not isinstance(mantra, Mantra):
+            raise error.ToolError(
+                'Configuration file "%s" must contain Mantra objects.' % path)
+
+    names = [mantra.name for mantra in mantras]
+    if patterns:
+        try:
+            names = set(util.glob_filter(
+                patterns, names, raise_if_nomatch=True))
+        except util.GlobFilterNoMatch as e:
+            raise error.ToolError(str(e)) from None
+
+    names = set(names)
+    return [mantra for mantra in mantras if mantra.name in names]
+
+
 __all__ = [
     'PyrockoArgumentParser',
     'SquirrelArgumentParser',
@@ -1084,4 +1131,6 @@ __all__ = [
     'squirrel_query_from_arguments',
     'add_squirrel_storage_scheme_arguments',
     'squirrel_effective_storage_scheme_from_arguments',
+    'add_mantra_arguments',
+    'get_mantras_from_arguments',
 ]

@@ -4,43 +4,105 @@
 # ---|P------/S----------~Lg----------
 
 
+from pyrocko import util
 from pyrocko.guts import Object, String, List
 
+from .error import SquirrelError
 from .operators.base import BaseOperator
 
 guts_prefix = 'squirrel'
 
 
+class MantraError(SquirrelError):
+    pass
+
+
 class Mantra(Object):
+    '''
+    Represents a connected graph of processing operators.
+    '''
+
     name = String.T(default='untitled')
     operators = List.T(BaseOperator.T())
 
-    def setup(self, sq, arrays=None):
+    def _raise_error(self, message):
+        raise MantraError(f'{message} (Mantra {self.name})')
+
+    def _plan_connections(self, squirrel):
         if not self.operators:
-            self.outlet = sq
-        else:
-            operators = list(self.operators)
-            previous = sq
-            while operators:
-                operator = operators.pop(0)
-                operator.set_input(previous)
-                if arrays is not None:
-                    if hasattr(operator, 'set_arrays'):
-                        operator.set_arrays(arrays)
+            return [], squirrel
 
-                previous = operator
+        previous_name, previous_operator = ('squirrel', squirrel)
+        by_name = {'squirrel': squirrel}
+        used = set()
+        connections = []
+        for ioperator, operator in enumerate(self.operators):
 
-            self.outlet = operator
+            name = operator.name or f'operator_{ioperator}'
 
-    def print_operator_mappings(self):
-        print()
-        print('Mantra: %s' % self.name)
+            if name in by_name:
+                self._raise_error(f'Duplicate operator name: {name}')
+
+            by_name[name] = operator
+
+            if not operator.input_names:
+                connections.append((operator, previous_operator))
+                used.add(previous_name)
+
+            else:
+                for input_name in operator.input_names:
+                    if input_name not in by_name:
+                        self._raise_error(
+                            f'Operator "{name}" requires input '
+                            f'from yet undefined operator "{input_name}".')
+
+                    used.add(input_name)
+                    connections.append((operator, by_name[input_name]))
+
+            previous_name, previous_operator = (name, operator)
+
+        used.add(previous_name)
+
+        unused = sorted(set(by_name) - used)
+
+        if unused:
+            self._raise_error(
+                'Unused provider%s: %s' % (
+                    util.plural_s(unused), ', '.join(unused)))
+
+        return connections, previous_operator
+
+    def setup(self, squirrel):
+        '''
+        Connect operators into a processing graph.
+        '''
+
+        connections, outlet = self._plan_connections(squirrel)
+
+        self.outlet = outlet
+
         for operator in self.operators:
-            print(operator.describe())
+            operator.set_mantra(self)
 
-        print()
+        for operator, input in connections:
+            operator.add_input(input)
+
+    def describe(self):
+        '''
+        Get textual description of the processing graph.
+        '''
+
+        lines = []
+        lines.append(f'Mantra: {self.name}\n  operators:')
+        for operator in self.operators:
+            lines.extend(
+                f'    {line}'
+                for line in operator.describe().splitlines())
+
+        return '\n'.join(lines)
 
 
 __all__ = [
     'Mantra',
+    'MantraError',
 ]
