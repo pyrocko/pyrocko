@@ -24,7 +24,7 @@ from pyrocko.squirrel.tool.common import \
 
 logger = logging.getLogger('psq.cli.mseed')
 
-headline = 'Mini-SEED specific utilities'
+headline = 'Mini-SEED specific utilities.'
 
 description = '''%s''' % headline
 
