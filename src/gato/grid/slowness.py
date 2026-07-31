@@ -108,7 +108,7 @@ class CartesianSlownessGrid(SlownessGrid):
             'y': 's/m',
             'x': 's/m'}
 
-        self._native_coordinates_slices = {
+        self._native_coordinate_slices = {
             'z': (self._z,),
             'y': (self._y,),
             'x': (self._x,),
@@ -273,7 +273,7 @@ class SphericalSlownessGrid(SlownessGrid):
             't': 'deg',
             'p': 'deg'}
 
-        self._native_coordinates_slices = {
+        self._native_coordinate_slices = {
             'r': (self._r,),
             't': (self._theta,),
             'p': (self._phi,),

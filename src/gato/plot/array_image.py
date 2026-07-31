@@ -33,7 +33,7 @@ def _configure(csmi_op, carpets):
             projection = field[:-4] if field.endswith('_max') else field
 
             source_grid = setup.generic_delay_table.source_grid
-            coords = source_grid.native_coordinates_slices()[projection]
+            coords = source_grid.native_coordinate_slices()[projection]
             dims = [arr.size for arr in coords]
 
             carpet = d_carpets[d_out_codes[array_name, group_key, field]]
@@ -226,7 +226,7 @@ class ArrayImageSectionPlot(ArrayImagePlot):
             axes = self.d_axes[field]
             projection = get_projection(field)
 
-            coords = source_grid.native_coordinates_slices()[projection]
+            coords = source_grid.native_coordinate_slices()[projection]
             dims = [arr.size for arr in coords]
 
             itmin = None if tmin is None else carpet.itime(tmin, 'clip')
@@ -238,7 +238,7 @@ class ArrayImageSectionPlot(ArrayImagePlot):
 
             data = data.reshape(dims)
 
-            x, y = source_grid.native_coordinates_slice_grid(projection).T
+            x, y = source_grid.native_coordinate_slice_grid(projection).T
             x = x.reshape(dims)
             y = y.reshape(dims)
             xscale = self.scales[projection[0]]

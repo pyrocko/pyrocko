@@ -65,7 +65,7 @@ class Grid(Object):
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
         self._native_coordinates = {}
-        self._native_coordinates_slices = {}
+        self._native_coordinate_slices = {}
         self.update()
 
     def update(self):
@@ -80,12 +80,12 @@ class Grid(Object):
     def native_coordinate_units(self):
         return self._native_coordinate_units
 
-    def native_coordinates_slices(self):
-        return self._native_coordinates_slices
+    def native_coordinate_slices(self):
+        return self._native_coordinate_slices
 
-    def native_coordinates_slice_grid(self, slice):
+    def native_coordinate_slice_grid(self, slice):
         return num.vstack([v.flatten() for v in num.meshgrid(
-            *self.native_coordinates_slices()[slice], indexing='ij')]).T
+            *self.native_coordinate_slices()[slice], indexing='ij')]).T
 
     @property
     def shape(self):

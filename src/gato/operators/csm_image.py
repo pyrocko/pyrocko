@@ -253,7 +253,7 @@ class CSMImageOperator(CSMOperator):
                             projection = field[:-4]
 
                         coords = gdt.source_grid \
-                            .native_coordinates_slice_grid(projection)
+                            .native_coordinate_slice_grid(projection)
 
                         axes = dict(
                             (name, vals)
