@@ -885,9 +885,10 @@ class Carpet(Object):
         self.apply_via_fft(smooth)
 
     def normalize(self, deltat, window=num.hanning):
+        from pyrocko.squirrel.operators.base import CodesProjection
         rms = self.get_rms(
-            translation='{i.network}.{i.station}.{i.location}.{i.channel}'
-                        '.{i.extra}')
+            codes_projection=CodesProjection(
+                '{i.network}.{i.station}.{i.location}.{i.channel}.{i.extra}'))
         rms.smooth(deltat, window=window)
         self.data /= rms.data
 
@@ -911,9 +912,8 @@ class Carpet(Object):
             ntrans,
             num.einsum('ik,jk->ijk', spectrum, num.conj(spectrum)))
 
-    def get_component_codes_grouped(self, translation):
-        from pyrocko.squirrel.operators.base import grouping_function
-        key = grouping_function(translation)
+    def get_component_codes_grouped(self, codes_projection):
+        key = codes_projection.group_key
         groups = defaultdict(list)
         for irow, component_codes in enumerate(self.component_codes):
             groups[key(component_codes)].append(irow)
@@ -925,8 +925,9 @@ class Carpet(Object):
             codes_projection=None,
             postprocessing=None):
 
+        from pyrocko.squirrel.operators.base import CodesProjection, Outlet
+
         if codes_projection is None:
-            from pyrocko.squirrel.operators.base import CodesProjection
             codes_projection = CodesProjection(
                 pattern='{i.network}.{i.station}.{i.location}'
                         '.{i.channel_no_component}.P')
@@ -938,8 +939,10 @@ class Carpet(Object):
         data3 = num.ma.empty((len(groups), self.nsamples))
         component_codes = []
         for irow_out, irows_in in enumerate(groups.values()):
+            codes_group_in = [self.component_codes[i] for i in irows_in]
             data3[irow_out, :] = data[irows_in, :].sum(axis=0)
-            codes_out, = codes_projection.project(self.component_codes)
+            codes_out, = codes_projection.project(
+                None, codes_group_in, [Outlet()])
             component_codes.append(codes_out)
 
         if data3.mask is ma.nomask:
