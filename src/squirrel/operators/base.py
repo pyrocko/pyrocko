@@ -1105,7 +1105,10 @@ class CodesProjection(CodesProjectionBase):
             i=codes, o=empty_strings)
 
     def _project_single(self, operator, codes, outlet):
-        d = dict(name=operator.name, mantra=operator.mantra_name)
+        if operator:
+            d = dict(name=operator.name, mantra=operator.mantra_name)
+        else:
+            d = {}
         d.update(outlet.attributes)
         o = util.Anon(**d)
         return CodesNSLCE(self.template.format(i=codes, o=o))
