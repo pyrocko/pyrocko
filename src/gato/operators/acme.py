@@ -7,7 +7,7 @@ import numpy as num
 
 from pyrocko.guts import Float, Int, String
 from pyrocko.carpet import Carpet
-from .csm import CSMOperator
+from .csm import CSMOperator, ArrayProcessingSetup
 from pyrocko.squirrel.operators.base import basic_codes_projection_t, Outlet
 
 guts_prefix = 'gato'
@@ -36,6 +36,9 @@ class ACMEOperator(CSMOperator):
             outlets.extend(self.get_outlets_for_array(array))
 
         return outlets
+
+    def make_array_processing_setup(self, array, incarnation, mapping):
+        return ArrayProcessingSetup(array, incarnation, mapping, None)
 
     def make_carpets(self, tmin=None, tmax=None, codes=None):
         mappings = self.get_mappings()
