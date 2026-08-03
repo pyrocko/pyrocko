@@ -177,8 +177,8 @@ pre-commit install
 
 ## Documentation
 
-Pyrocko's documentation is built using the `Sphinx` tool. See the `docs`
-in the project root directory. Build with `make html` in `docs`.
+Pyrocko's documentation is built using the `Sphinx` tool. See the `doc`
+in the project root directory. Build with `make html` in `doc`.
 
 *Build requirements for docs:*
 
