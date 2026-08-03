@@ -16,7 +16,7 @@ with Snuffler.  Download the file, then run the command::
 
 A window should open:
 
-.. image:: /static/Screenshot-1.png
+.. image:: /static/Snuffler-Tutorial-1.png
     :align: center
 
 Initially, no waveforms are shown. That is perfectly ok.
@@ -27,7 +27,7 @@ in, respectively.
 
 If you zoom in close enough, the trace data will appear:
 
-.. image:: /static/screenshot-2.png
+.. image:: /static/Snuffler-Tutorial-2.png
     :align: center
 
 There are some more commands to navigate. The :kbd:`<space>` key brings you one
@@ -37,8 +37,7 @@ key bindings.
 Things to remember for now are:
 
 * Full screen display is toggled by pressing :kbd:`f`.
-* Snuffler has a main menu, which is accessed by pressing the right mouse
-  button within the trace view.
+* Snuffler has a main menu, which is located at the top.
 * Snuffler has a command line, which is accessed by pressing :kbd:`:` (colon).
 * Using the mouse wheel while holding down :kbd:`<control>` allows you to
   quickly change the number of tracks shown on display.
