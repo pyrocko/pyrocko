@@ -180,6 +180,14 @@ pre-commit install
 Pyrocko's documentation is built using the `Sphinx` tool. See the `docs`
 in the project root directory. Build with `make html` in `docs`.
 
+*Build requirements for docs:*
+
+```
+    pip install git+https://git.pyrocko.org/pyrocko/sphinx-sleekcat-theme.git
+    pip install sphinxcontrib-programoutput
+    pip install sphinx_qt_documentation
+```
+
 *Text style rules:*
 
 * titles: only capitalize first word
