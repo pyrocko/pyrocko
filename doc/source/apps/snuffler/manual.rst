@@ -176,7 +176,7 @@ Key                         Effect
 :kbd:`<backspace>`          Delete marker
 :kbd:`<up>`, :kbd:`<down>`  Set first motion polarity on selected marker
 :kbd:`<shift> + <up>`       Unset first motion polarity on selected marker
-:kbd:`<escape>`             Abort picking 
+:kbd:`<escape>`             Enter batch-picking/ Abort picking 
 :kbd:`?`                    Help
 =========================== ===============================================================
 
@@ -192,8 +192,10 @@ Click on marker                  Select marker
 :kbd:`<shift>` + click on marker Select additional marker
 Wheel                            Scroll tracks vertically 
 :kbd:`<ctrl>` + wheel            Change number of tracks shown 
-Right-click                      Menu 
 Double-click                     Enter picking mode 
+:kbd:`<shift>` + left-click      Enter uncertainty selection for current phase marker, 
+                                 then click and drag up/down to define uncertainty. 
+                                 Requires first converting marker to phase marker.
 ================================ =========================================
 
 Commands
