@@ -218,7 +218,7 @@ Markers
 
 Three different types of markers are available in Snuffler: *normal markers*,
 *phase markers*, and *event markers*. To create a new *normal marker*
-interactively, double-click the mouse to activate picking mode, then click
+interactively, double-click the mouse to *activate picking* mode, then click
 where you want to put it. With click and drag, markers spanning a time interval
 may be created. The markers may either be attached to a certain trace (via
 network/station/location/channel ID) or may serve as time (span) markers only.
@@ -265,6 +265,18 @@ underlying field.
 
 .. image:: /static/screenshot-10.png
     :align: center
+
+
+Advanced phase picking methods
+-------------
+
+**Picking with uncertainties**:
+After marking the arrival of a seismic phase and converting the normal marker to a phase marker by assigning a phase type as described above (:kbd:`<F1>` - :kbd:`<F9>`), we can use
+:kbd:`shift` and left-click to enter the uncertainty picking mode. Drag up and down to define the picking uncertainty.
+
+**Batch picking**:
+In case of large datasets, it may be tiresome to pick one phase arrival after another. Activate batch-picking mode by pressing :kbd:`escape`. Once activated, every single left-click on a trace will result in a marker, without activating the picking mode through double-clicking for every single pick.
+
 
 Live seismograms
 ----------------
