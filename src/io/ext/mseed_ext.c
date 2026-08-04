@@ -259,7 +259,32 @@ mseed_get_traces(PyObject *m, PyObject *args, PyObject *kwds)
                     numpytype = NPY_FLOAT64;
                     break;
             }
+            /* Guard against corrupt/truncated records: `numsamples` is parsed
+             * straight from the record header and is not necessarily consistent
+             * with the amount of data libmseed actually decoded into
+             * `datasamples` (tracked precisely in `bufsize`). Validate before
+             * trusting it for allocation or as a memcpy length below - the
+             * check is done via division to avoid signed overflow in
+             * `numsamples * samplesize`. */
+            if (mst->numsamples < 0 ||
+                (size_t)mst->numsamples > mst->bufsize / (size_t)ms_samplesize(mst->sampletype))
+            {
+                PyErr_Format(st->error,
+                             "Data corruption: `numsamples` (%lld) is inconsistent "
+                             "with the decoded buffer size.",
+                             (long long)mst->numsamples);
+                Py_XDECREF(out_traces);
+                mst_freegroup(&mstg);
+                return NULL;
+            }
+
             array = PyArray_SimpleNew(1, array_dims, numpytype);
+            if (array == NULL)
+            {
+                Py_XDECREF(out_traces);
+                mst_freegroup(&mstg);
+                return NULL;
+            }
             size_bytes = PyArray_NBYTES((PyArrayObject *)array);
 
             if (size_bytes >= GIL_THRESHOLD) {
