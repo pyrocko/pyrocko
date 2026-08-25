@@ -1,4 +1,4 @@
-import { ref, computed, watch } from '../vue.esm-browser.js'
+const { ref, watch } = Vue
 import { squirrelGates } from '../squirrel/gate.js'
 
 const searchQuery = ref('')
@@ -18,7 +18,7 @@ function filterSensors() {
     let regex = null
     try {
         regex = new RegExp(query, 'i')
-    } catch (error) {
+    } catch {
         //no regex
     }
 
@@ -34,9 +34,7 @@ function filterSensors() {
                 const matchingChannels = sensor.channels.filter((channel) =>
                     regex
                         ? regex.test(channel.codes)
-                        : channel.codes
-                              .toLowerCase()
-                              .includes(query.toLowerCase())
+                        : channel.codes.toLowerCase().includes(query.toLowerCase())
                 )
                 if (matchingChannels.length > 0) {
                     return { ...sensor, channels: matchingChannels }

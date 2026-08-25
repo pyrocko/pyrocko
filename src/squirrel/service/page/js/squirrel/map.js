@@ -1,6 +1,5 @@
-import { watch } from '../vue.esm-browser.js'
+const { watch } = Vue
 import { createIfNeeded, colors, onResizeDebounced } from './common.js'
-import { squirrelConnection } from './connection.js'
 import { squirrelGates } from './gate.js'
 
 export const squirrelMap = () => {

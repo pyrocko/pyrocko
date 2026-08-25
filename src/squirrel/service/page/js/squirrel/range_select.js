@@ -1,4 +1,4 @@
-import { createIfNeeded } from './common.js'
+import { createIfNeeded, onResizeDebounced } from './common.js'
 
 export const squirrelRangeSelect = () => {
     let svg
@@ -7,16 +7,10 @@ export const squirrelRangeSelect = () => {
     let group_axis
     let group_brush
     let brush
-    let margin = { top: 0, right: 10, bottom: 25, left: 10 }
-    let spacing = 3
+    let margin = { top: 20, right: 10, bottom: 20, left: 10 }
+    let spacing = 5
     let handlers = {}
     let muted = false
-
-    let brushOverlayStroke = 'none'
-    let brushOverlayFill = '#eeeeeb'
-
-    let brushSelectionStroke = 'none'
-    let brushSelectionFill = '#998'
 
     const scale = d3.scaleLog([0.00001, 1000], [0, 1])
 
@@ -39,13 +33,9 @@ export const squirrelRangeSelect = () => {
         group_brush
             .call(brush)
             .selectAll('.overlay')
-            .attr('stroke', brushOverlayStroke)
-            .attr('fill', brushOverlayFill)
         group_brush
             .call(brush)
             .selectAll('.selection')
-            .attr('stroke', brushSelectionStroke)
-            .attr('fill', brushSelectionFill)
         update()
     }
 
@@ -74,7 +64,7 @@ export const squirrelRangeSelect = () => {
         brush = d3.brushX()
         brush.on('start brush end', brushed)
 
-        window.addEventListener('resize', resizeHandler)
+        onResizeDebounced(container.node(), resizeHandler)
         resizeHandler()
     }
 

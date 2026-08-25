@@ -1,0 +1,23 @@
+{
+    "name": "squirrel-service",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "update-vendor": "node scripts/sync-assets.js"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "type": "commonjs",
+    "dependencies": {
+        "@fontsource/roboto": "^5.3.0",
+        "@quasar/extras": "^2.0.4",
+        "@vue-flow/core": "^1.48.2",
+        "d3": "^7.9.0",
+        "leaflet": "^1.9.4",
+        "quasar": "^2.25.1",
+        "vue": "^3.5.41",
+        "vue-router": "^4.6.4"
+    }
+}

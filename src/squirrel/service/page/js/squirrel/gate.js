@@ -1,11 +1,12 @@
-import { ref, shallowRef, computed, watch } from '../vue.esm-browser.js'
+const { ref, shallowRef, computed, watch } = Vue
 
-import { strToTime, timeToStr, tomorrow } from './common.js'
+import { strToTime, timeToStr, tomorrow, sleep } from './common.js'
 
 import { squirrelConnection } from './connection.js'
 
 const TIME_MIN = strToTime('1900-01-01 00:00:00')
 const TIME_MAX = tomorrow() + 5 * 365 * 24 * 60 * 60
+const RE_2COMMA = new RegExp('([^,]+),([^,]+),', 'g')
 
 export const squirrelGate = (gate_id_) => {
     const gate_id = gate_id_
@@ -23,10 +24,14 @@ export const squirrelGate = (gate_id_) => {
         carpet: null,
     })
 
+    let contextRequest = null
+
+    const contextInfos = shallowRef([])
+
     const connection = squirrelConnection()
 
     const gateRequest = (method, data) => {
-        return connection.request('gate/' + gate_id + '/' + method, data)
+        return connection.value.request('gate/' + gate_id + '/' + method, data)
     }
 
     const fetchCodes = async () => {
@@ -49,27 +54,24 @@ export const squirrelGate = (gate_id_) => {
         return gateRequest('get_sensors')
     }
 
-    const fetchResponses = async () => {
-        return gateRequest('get_responses')
-    }
-
-    const fetchEvents = async () => {
-        const events = await gateRequest('get_events')
-        for (const ev of events) {
-            ev.time = strToTime(ev.time)
-        }
-        return events
-    }
+    //const fetchResponses = async () => {
+    //    return gateRequest('get_responses')
+    //}
+    //
+    //const fetchEvents = async () => {
+    //    const events = await gateRequest('get_events')
+    //    for (const ev of events) {
+    //        ev.time = strToTime(ev.time)
+    //    }
+    //    return events
+    //}
 
     const fetchTimeSpans = async () => {
         const newTimeSpans = {}
         for (const kind of ['waveform', 'channel', 'response', 'carpet']) {
             const span = await gateRequest('get_time_span', { kind: kind })
             span.tmin = span.tmin != null ? strToTime(span.tmin) : TIME_MIN
-            span.tmax =
-                span.tmax != null
-                    ? Math.min(strToTime(span.tmax), tomorrow())
-                    : tomorrow()
+            span.tmax = span.tmax != null ? Math.min(strToTime(span.tmax), tomorrow()) : tomorrow()
             newTimeSpans[kind] = span
         }
         return newTimeSpans
@@ -80,9 +82,35 @@ export const squirrelGate = (gate_id_) => {
         timeSpans.value = await fetchTimeSpans()
         channels.value = await fetchChannels()
         sensors.value = await fetchSensors()
-        responses.value = await fetchResponses()
-        events.value = await fetchEvents()
+        //responses.value = await fetchResponses()
+        //events.value = await fetchEvents()
     }
+
+    const fetchContextInfos = async (request) => {
+        return await gateRequest('get_context', request)
+    }
+
+    const contextRefreshLoop = async () => {
+        while (true) {
+            if (contextRequest != null) {
+                const request = contextRequest
+                contextRequest = null
+                try {
+                    contextInfos.value = await fetchContextInfos(request)
+                } catch (error) {
+                    console.log(error)
+                }
+            } else {
+                await sleep(1000)
+            }
+        }
+    }
+
+    const updateContext = (request) => {
+        contextRequest = request
+    }
+
+    contextRefreshLoop()
 
     return {
         codes,
@@ -94,6 +122,8 @@ export const squirrelGate = (gate_id_) => {
         update,
         counter,
         filter,
+        updateContext,
+        contextInfos,
     }
 }
 
@@ -104,42 +134,61 @@ export const squirrelBlock = (block) => {
     const connection = squirrelConnection()
     let lastTouched = -1
     let coverages = null
+    let waveviews = null
     let carpets = null
     let oldCarpets = []
     let updateTimeoutId = null
 
-    const fetchCoverage = async (kind) => {
-        const coverages = await connection.request(
-            'gate/default/get_coverage',
-            {
-                tmin: timeToStr(my.timeMin),
-                tmax: timeToStr(my.timeMax),
-                kind: kind,
-            }
-        )
+    const fetchCoverage = async () => {
+        const coverages = await connection.value.request('gate/default/get_rich_coverage', {
+            tmin: timeToStr(my.timeMin),
+            tmax: timeToStr(my.timeMax),
+        })
 
         for (const coverage of coverages) {
-            coverage.codes = coverage.codes
-            coverage.id = [
-                coverage.kind,
-                coverage.tmin,
-                coverage.tmax,
-                coverage.codes,
-            ].join('+++')
+            coverage.id = [coverage.kind, coverage.tmin, coverage.tmax, coverage.codes].join('+++')
             coverage.tmin = strToTime(coverage.tmin)
             coverage.tmax = strToTime(coverage.tmax)
         }
         return coverages
     }
 
+    const fetchWaveviews = async (params) => {
+        const waveviews = await connection.value.request('gate/default/get_waveviews', {
+            tmin: timeToStr(my.timeMin),
+            tmax: timeToStr(my.timeMax),
+            codes: params.codes,
+            fmin: params.ymin,
+            fmax: params.ymax,
+            nx: params.nx,
+            ny: params.ny,
+        })
+        for (const waveview of waveviews) {
+            waveview.id = [
+                waveview.kind,
+                waveview.tmin,
+                waveview.tmax,
+                waveview.codes,
+                waveview.fmin,
+                waveview.fmax,
+            ].join('+++')
+            waveview.tmin = strToTime(waveview.tmin)
+            waveview.tmax = strToTime(waveview.tmax)
+
+            const data_uint8 = Uint8Array.fromBase64(waveview.polygon_data_base64)
+            const data_float32 = new Float32Array(data_uint8.buffer)
+            waveview.points_string = data_float32.join(',').replaceAll(RE_2COMMA, '$1,$2 ')
+        }
+        return waveviews
+    }
+
     const fetchCarpets = async (params) => {
-        const carpets = await connection.request('gate/default/get_carpets', {
+        const carpets = await connection.value.request('gate/default/get_carpets', {
             tmin: timeToStr(my.timeMin),
             tmax: timeToStr(my.timeMax),
             ...params,
         })
         for (const carpet of carpets) {
-            carpet.codes = carpet.codes
             carpet.id = [
                 carpet.tmin,
                 carpet.tmax,
@@ -161,9 +210,7 @@ export const squirrelBlock = (block) => {
 
     my.cleanup = () => {
         const now = Date.now()
-        oldCarpets = oldCarpets.filter(
-            (carpet) => carpet.zombie1Timestamp > now - 1000
-        )
+        oldCarpets = oldCarpets.filter((carpet) => carpet.zombie1Timestamp > now - 1000)
     }
 
     my.doUpdate = async () => {
@@ -172,9 +219,10 @@ export const squirrelBlock = (block) => {
         } else {
             try {
                 updateInProgress = true
-                const params = my.nextParams
-                coverages = await fetchCoverage('carpet')
-                counter.value++
+                if (coverages === null) {
+                    coverages = await fetchCoverage()
+                }
+                waveviews = await fetchWaveviews(my.nextParams)
                 const newCarpets = await fetchCarpets(my.nextParams)
                 for (const carpet of carpets || []) {
                     carpet.zombie1 = true
@@ -221,6 +269,10 @@ export const squirrelBlock = (block) => {
         return coverages || []
     }
 
+    my.getWaveviews = () => {
+        return waveviews || []
+    }
+
     my.getCarpets = () => {
         return (carpets || []).concat(oldCarpets || [])
     }
@@ -230,7 +282,7 @@ export const squirrelBlock = (block) => {
     }
 
     my.ready = () => {
-        return coverages !== null && carpets !== null
+        return coverages !== null && carpets !== null && waveviews !== null
     }
 
     my.unwatch = null
@@ -269,6 +321,7 @@ export const setupGates = () => {
     const gates = ref([])
     const timeMin = ref(TIME_MIN)
     const timeMax = ref(TIME_MAX)
+    const hover = shallowRef(null)
     const imageHeight = ref(100)
     const imageWidth = ref(100)
     const codesVisible = shallowRef(null)
@@ -333,10 +386,7 @@ export const setupGates = () => {
         }
     }
 
-    watch(
-        [yMin, yMax, imageWidth, imageHeight, codesVisible, overviewMethod],
-        updateBlocks
-    )
+    watch([yMin, yMax, imageWidth, imageHeight, codesVisible, overviewMethod], updateBlocks)
 
     const update = () => {
         const block = makeTimeBlock(timeMin.value, timeMax.value)
@@ -362,6 +412,10 @@ export const setupGates = () => {
         timeMin.value = Math.max(tmin, TIME_MIN)
         timeMax.value = Math.min(tmax, TIME_MAX)
         update()
+    }
+
+    const setHover = (t) => {
+        hover.value = t
     }
 
     const setImageWidth = (nx) => {
@@ -399,11 +453,7 @@ export const setupGates = () => {
     const getRelevantBlocks = () => {
         const relevant = Array.from(blocks.values())
             .toSorted((a, b) => b.getLastTouched() - a.getLastTouched())
-            .filter(
-                (block) =>
-                    block.overlaps(timeMin.value, timeMax.value) &&
-                    block.ready()
-            )
+            .filter((block) => block.overlaps(timeMin.value, timeMax.value) && block.ready())
         if (
             relevant.length > 0 &&
             (_relevantBlocks.length == 0 || relevant[0] !== _relevantBlocks[0])
@@ -430,6 +480,12 @@ export const setupGates = () => {
             .flatMap((block) => block.getCoverages())
     }
 
+    const getWaveviews = () => {
+        return getRelevantBlocks()
+            .slice(0, 1)
+            .flatMap((block) => block.getWaveviews())
+    }
+
     const getCarpets = () => {
         const carpets = []
         for (const block of getRelevantBlocks()) {
@@ -443,18 +499,16 @@ export const setupGates = () => {
 
     const getDataRanges = () => {
         const ranges = new Map()
-        Map.groupBy(getCarpets(), (carpet) => carpet.codes).forEach(
-            (carpets, codes) => {
-                ranges.set(codes, [
-                    yMin.value !== null
-                        ? yMin.value
-                        : Math.min(...carpets.map((carpet) => carpet.ymin)),
-                    yMax.value !== null
-                        ? yMax.value
-                        : Math.max(...carpets.map((carpet) => carpet.ymax)),
-                ])
-            }
-        )
+        Map.groupBy(getCarpets(), (carpet) => carpet.codes).forEach((carpets, codes) => {
+            ranges.set(codes, [
+                yMin.value !== null
+                    ? yMin.value
+                    : Math.min(...carpets.map((carpet) => carpet.ymin)),
+                yMax.value !== null
+                    ? yMax.value
+                    : Math.max(...carpets.map((carpet) => carpet.ymax)),
+            ])
+        })
         return ranges
     }
 
@@ -462,10 +516,7 @@ export const setupGates = () => {
         const scales = new Map()
         for (const carpet of getCarpets()) {
             const scale = carpet.yscale
-            scales.set(
-                carpet.codes,
-                scale == (scales.get(carpet.codes) ?? scale) ? scale : lin
-            )
+            scales.set(carpet.codes, scale == (scales.get(carpet.codes) ?? scale) ? scale : 'lin')
         }
         return scales
     }
@@ -522,9 +573,7 @@ export const setupGates = () => {
     })
 
     const eventGroups = computed(() => {
-        const groups = Array.from(
-            Map.groupBy(events.value, (ev) => ev.extras.group_id).values()
-        )
+        const groups = Array.from(Map.groupBy(events.value, (ev) => ev.extras.group_id).values())
         groups.sort((a, b) => a[0].time - b[0].time)
         return groups
     })
@@ -543,10 +592,7 @@ export const setupGates = () => {
                     if (spans[kind] === null) {
                         spans[kind] = span
                     } else {
-                        const [tmin1, tmax1] = [
-                            spans[kind].tmin,
-                            spans[kind].tmax,
-                        ]
+                        const [tmin1, tmax1] = [spans[kind].tmin, spans[kind].tmax]
                         const [tmin2, tmax2] = [span.tmin, span.tmax]
                         spans[kind] = {
                             tmin: Math.min(tmin1, tmin2),
@@ -559,17 +605,46 @@ export const setupGates = () => {
         return spans
     })
 
+    const contextInfos = computed(() => {
+        const contextInfos = []
+        for (const gate of gates.value) {
+            for (const contextInfo of gate.contextInfos) {
+              contextInfos.push(contextInfo)
+            }
+        }
+        return contextInfos
+    })
+
     watch([timeSpans], () => {
         if (!initialTimeSpanSet) {
-            const span = timeSpans.value['carpet']
-            if (span != null) {
-                const duration = span.tmax - span.tmin
-                setTimeSpan(
-                    span.tmin - duration * 0.025,
-                    span.tmax + duration * 0.025
-                )
-                initialTimeSpanSet = true
+            for (const kind of ['carpet', 'waveform']) {
+                const span = timeSpans.value[kind]
+                if (span != null) {
+                    const duration = span.tmax - span.tmin
+                    setTimeSpan(span.tmin - duration * 0.025, span.tmax + duration * 0.025)
+                    initialTimeSpanSet = true
+                }
             }
+        }
+    })
+
+    const contextRequest = () => {
+        return {
+            time: hover.value !== null ? timeToStr(hover.value.time) : null,
+            tmin: timeToStr(timeMin.value),
+            tmax: timeToStr(timeMax.value),
+            codes:
+                hover.value !== null && hover.value.track !== null ? hover.value.track.codes : [],
+            codes_visible:
+                codesVisible.value,
+            fmin: yMin.value,
+            fmax: yMax.value,
+        }
+    }
+
+    watch([hover, timeMin, timeMax, yMin, yMax], () => {
+        for (const gate of gates.value) {
+            gate.updateContext(contextRequest())
         }
     })
 
@@ -578,11 +653,13 @@ export const setupGates = () => {
     return {
         timeMin,
         timeMax,
+        hover,
         yMin,
         yMax,
         overviewMethod,
         counter,
         setTimeSpan,
+        setHover,
         setImageWidth,
         setImageHeight,
         setCodesVisible,
@@ -592,6 +669,7 @@ export const setupGates = () => {
         halfPageBackward,
         addGate,
         codes,
+        codesVisible,
         channels,
         sensors,
         responses,
@@ -599,9 +677,11 @@ export const setupGates = () => {
         eventGroups,
         timeSpans,
         getCoverages,
+        getWaveviews,
         getCarpets,
         getDataRanges,
         getDataScales,
+        contextInfos,
     }
 }
 

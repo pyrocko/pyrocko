@@ -1,4 +1,4 @@
-import { ref, computed } from '../vue.esm-browser.js'
+const { ref, computed } = Vue
 import { now } from './common.js'
 
 const setupConnection = () => {
@@ -50,7 +50,7 @@ const setupConnection = () => {
                 }
                 serverInfo.value = heartbeat.server_info
             }
-        } catch (e) {
+        } catch {
             heartbeats = []
             abortHeartbeat = null
         }
@@ -84,14 +84,7 @@ const setupConnection = () => {
 
     connect()
 
-    return {
-        connect,
-        connected,
-        serverInfo,
-        request: squirrelRequest,
-        latestError,
-        activeRequests,
-    }
+    return ref({ connect, connected, serverInfo, request: squirrelRequest, latestError, activeRequests })
 }
 
 let connection = null

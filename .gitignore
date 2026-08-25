@@ -46,3 +46,5 @@ __pycache__/
 
 /docker/pyrocko-test-data/
 /docker/*/pyrocko-test-data/
+
+/webapps/*/node_modules

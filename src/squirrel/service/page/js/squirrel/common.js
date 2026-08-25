@@ -1,3 +1,20 @@
+
+export const format = d3.format
+
+export const positiveOrNull = (s) => {
+    if (s.trim() == '') {
+        return null
+    }
+    const x = Number(s)
+    if (!Number.isFinite(x)) {
+        throw new Error('Invalid number: ' + s)
+    }
+    if (x <= 0) {
+        throw new Error('Number is zero or negative: ' + x)
+    }
+    return x
+}
+
 export const arraysEqual = (a, b) => {
     if (a === b) return true
     if (a == null || b == null) return false
@@ -9,7 +26,7 @@ export const arraysEqual = (a, b) => {
     return true
 }
 
-const zeroPad = (places, num) => String(num).padStart(places, '0')
+export const zeroPad = (places, num) => String(num).padStart(places, '0')
 
 export const createIfNeeded = (selection, type) => {
     return selection.selectAll(type).data([null]).enter().append(type)
@@ -19,7 +36,7 @@ export const timeToStr = (time, fmt) => {
     const secs = Math.floor(time)
     const subsecs = time - secs
     if (fmt == null) {
-        fmt = '%Y-%m-%d %H:%M:%S'
+        fmt = '%Y-%m-%d %H:%M:%S.3FRAC'
     }
     let nfrac = 0
     const reFrac = /\.(\d)FRAC$/
@@ -33,10 +50,7 @@ export const timeToStr = (time, fmt) => {
         throw new Error('Subsecs should be smaller than 1.0 but it is not.')
     }
 
-    return (
-        d3.utcFormat(fmt)(new Date(secs * 1000)) +
-        subsecs.toFixed(nfrac).substr(1)
-    )
+    return d3.utcFormat(fmt)(new Date(secs * 1000)) + subsecs.toFixed(nfrac).substr(1)
 }
 
 export const strToTime = (s) => {
@@ -69,16 +83,7 @@ const gmtime = (time) => {
 
 export const tomorrow = () => {
     const date = new Date(new Date().getTime() + 24 * 3600 * 1000)
-    return (
-        Date.UTC(
-            date.getUTCFullYear(),
-            date.getUTCMonth(),
-            date.getUTCDate(),
-            0,
-            0,
-            0
-        ) / 1000
-    )
+    return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0) / 1000
 }
 
 export const colors = {
@@ -204,7 +209,7 @@ export const niceTimeTickInc = (tincApprox) => {
 }
 
 export const niceTimeTickIncApproxSecs = (tincApprox) => {
-    ;[v, unit] = niceTimeTickInc(tincApprox)
+    const [v, unit] = niceTimeTickInc(tincApprox)
     return v * niceTimeTickIncUnits[unit]
 }
 
@@ -230,10 +235,7 @@ export const timeTickLabels = (tmin, tmax, tinc, tinc_unit, napprox) => {
     } else if (tinc_unit == 'months' || tinc_unit == 'days') {
         const tt_tmin = gmtime(tmin)
         let tmin_ym = tt_tmin[0] * 12 + (tt_tmin[1] - 1)
-        if (
-            tinc_unit == 'months' &&
-            !arraysEqual(tt_tmin.slice(2, 6), [1, 0, 0, 0])
-        ) {
+        if (tinc_unit == 'months' && !arraysEqual(tt_tmin.slice(2, 6), [1, 0, 0, 0])) {
             tmin_ym += 1
         }
 
@@ -257,24 +259,13 @@ export const timeTickLabels = (tmin, tmax, tinc, tinc_unit, napprox) => {
                 labels.push(d3.utcFormat('%Y-%m')(new Date(t)))
             } else {
                 for (let iday = 1; iday <= 31; iday += tinc) {
-                    let t = Date.UTC(
-                        Math.floor(t_ym / 12),
-                        t_ym % 12,
-                        iday,
-                        0,
-                        0,
-                        0
-                    )
+                    let t = Date.UTC(Math.floor(t_ym / 12), t_ym % 12, iday, 0, 0, 0)
                     let d = new Date(t)
 
-                    if (
-                        gmtime(t / 1000)[1] == (t_ym % 12) + 1 &&
-                        d.getUTCMonth() == t_ym % 12
-                    ) {
+                    if (gmtime(t / 1000)[1] == (t_ym % 12) + 1 && d.getUTCMonth() == t_ym % 12) {
                         times.push(t / 1000)
                         labels.push(
-                            (iday - 1) % label_every == 0 &&
-                                (label_every == 1 || iday != 31) // last condition not fully correct, but works with the possible time increments.
+                            (iday - 1) % label_every == 0 && (label_every == 1 || iday != 31) // last condition not fully correct, but works with the possible time increments.
                                 ? d3.utcFormat('%Y-%m-%d')(d)
                                 : ''
                         )
@@ -284,11 +275,7 @@ export const timeTickLabels = (tmin, tmax, tinc, tinc_unit, napprox) => {
             t_ym += tinc_ym
         }
     } else if (tinc_unit == 'seconds') {
-        for (
-            let i = Math.ceil(tmin / tinc);
-            i <= Math.floor(tmax / tinc);
-            i++
-        ) {
+        for (let i = Math.ceil(tmin / tinc); i <= Math.floor(tmax / tinc); i++) {
             times.push(i * tinc)
         }
 
@@ -395,3 +382,19 @@ export const onResizeDebounced = (node, resizeHandler) => {
     resizeObserver.observe(node)
     return resizeObserver
 }
+
+export const decodeRichCoverage = (value) => {
+    const description = ['none', 'ok', 'dups', 'garbled']
+    const kinds = ['channel', 'response', 'waveform', 'waveform_promise', 'carpet']
+    const parts = []
+    for (let i = 0; i < 6; i++) {
+        const part_value = (value >> (i * 2)) & 3
+        if (part_value != 0) {
+            console.log(part_value)
+            parts.push(kinds[i] + ' ' + description[part_value])
+        }
+    }
+    return value + ': ' + parts.join(', ')
+}
+
+export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
