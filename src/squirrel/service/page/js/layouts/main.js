@@ -26,6 +26,40 @@ export default {
             rightDrawerOpen.value = !rightDrawerOpen.value
         }
 
+        // Quasar's QDrawer has no built-in resize handle, so this is a
+        // small drag handle on its left edge, driven by v-touch-pan.
+        const RIGHT_DRAWER_WIDTH_MIN = 250
+        const RIGHT_DRAWER_WIDTH_MAX = 800
+
+        const rightDrawerWidth = ref(400)
+        const rightDrawerResizing = ref(false)
+        let rightDrawerWidthAtDragStart = rightDrawerWidth.value
+
+        function resizeRightDrawer(ev) {
+            if (ev.isFirst) {
+                rightDrawerWidthAtDragStart = rightDrawerWidth.value
+                // QDrawer's width is transitioned by Quasar's own CSS,
+                // which would otherwise make it lag behind the pointer
+                // while dragging.
+                rightDrawerResizing.value = true
+            }
+
+            // Right-side drawer: dragging the handle left (negative
+            // offset) widens the drawer, since its right edge stays
+            // pinned to the window edge.
+            rightDrawerWidth.value = Math.min(
+                RIGHT_DRAWER_WIDTH_MAX,
+                Math.max(
+                    RIGHT_DRAWER_WIDTH_MIN,
+                    rightDrawerWidthAtDragStart - ev.offset.x
+                )
+            )
+
+            if (ev.isFinal) {
+                rightDrawerResizing.value = false
+            }
+        }
+
         const connection = squirrelConnection()
         const gates = squirrelGates()
         gates.addGate()
@@ -82,6 +116,9 @@ export default {
             toggleLeftDrawer,
             leftDrawerOpen,
             rightDrawerOpen,
+            rightDrawerWidth,
+            rightDrawerResizing,
+            resizeRightDrawer,
             dark_mode,
             fullscreen_mode,
         }
@@ -130,13 +167,21 @@ export default {
                 side="right"
                 v-model="rightDrawerOpen"
                 bordered
-                :width="400"
+                :width="rightDrawerWidth"
                 :breakpoint="500"
-                :class="dark.isActive ? 'bg-grey-9' : 'bg-grey-3'"
+                :class="[
+                    dark.isActive ? 'bg-grey-9' : 'bg-grey-3',
+                    rightDrawerResizing ? 'no-drawer-transition' : '',
+                ]"
             >
                 <q-scroll-area id="right-drawer-scroll-area" class="fit">
                     <component-scouts></component-scouts>
                 </q-scroll-area>
+
+                <div
+                    class="drawer-resize-handle"
+                    v-touch-pan.preserveCursor.prevent.mouse.horizontal="resizeRightDrawer"
+                ></div>
             </q-drawer>
 
             <q-page-container>

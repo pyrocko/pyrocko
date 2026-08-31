@@ -307,6 +307,27 @@ body.body--dark {
     }
 }
 
+.drawer-resize-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -4px;
+    width: 8px;
+    cursor: ew-resize;
+    z-index: 1;
+}
+
+.drawer-resize-handle:hover,
+.drawer-resize-handle:active {
+    background-color: var(--q-background-color-30);
+}
+
+/* QDrawer transitions width/transform by default, which would make it
+   lag behind the pointer while a resize drag is in progress. */
+.no-drawer-transition {
+    transition: none !important;
+}
+
 .vue-flow__handle {
   height: 8px;
   width: 8px;
