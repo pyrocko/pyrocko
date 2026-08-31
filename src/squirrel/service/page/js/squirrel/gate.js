@@ -1,12 +1,69 @@
 const { ref, shallowRef, computed, watch } = Vue
 
-import { strToTime, timeToStr, tomorrow, sleep } from './common.js'
+import { strToTime, timeToStr, tomorrow } from './common.js'
 
 import { squirrelConnection } from './connection.js'
 
 const TIME_MIN = strToTime('1900-01-01 00:00:00')
 const TIME_MAX = tomorrow() + 5 * 365 * 24 * 60 * 60
 const RE_2COMMA = new RegExp('([^,]+),([^,]+),', 'g')
+
+// Runs `fn` for the latest of possibly many arguments passed to the
+// returned function, allowing at most one call to `fn` to be in flight
+// at a time. A call that arrives while one is already running just
+// replaces the single pending argument (the queue is depth 1, latest
+// wins) instead of piling up; whichever argument is current the moment
+// the running call finishes is the only one run next. This is what
+// keeps fast repeated calls (e.g. from mouse movement, or from a user
+// panning quickly), or a slow round trip, from turning into a pile of
+// concurrent or stale requests.
+//
+// With `debounceMs` set, a fresh call made while idle waits that long
+// for the input to settle before the first `fn` call of a burst fires
+// (it keeps getting pushed back by further calls); once a call is
+// running, further updates take effect immediately, without waiting
+// out the debounce again -- there is no benefit in delaying a value
+// that is already just waiting for its turn.
+//
+// Errors from `fn` are logged and do not stop the runner.
+const makeLatestWinsRunner = (fn, { debounceMs = 0 } = {}) => {
+    let running = false
+    let hasWanted = false
+    let wanted
+    let debounceTimeoutId = null
+
+    const runLoop = async () => {
+        running = true
+        while (hasWanted) {
+            const arg = wanted
+            hasWanted = false
+            wanted = undefined
+            try {
+                await fn(arg)
+            } catch (error) {
+                console.log(error)
+            }
+        }
+        running = false
+    }
+
+    return (arg) => {
+        wanted = arg
+        hasWanted = true
+
+        if (running) {
+            return
+        }
+
+        if (debounceTimeoutId !== null) {
+            clearTimeout(debounceTimeoutId)
+        }
+        debounceTimeoutId = setTimeout(() => {
+            debounceTimeoutId = null
+            runLoop()
+        }, debounceMs)
+    }
+}
 
 export const squirrelGate = (gate_id_) => {
     const gate_id = gate_id_
@@ -23,8 +80,6 @@ export const squirrelGate = (gate_id_) => {
         response: null,
         carpet: null,
     })
-
-    let contextRequest = null
 
     const contextInfos = shallowRef([])
 
@@ -90,27 +145,9 @@ export const squirrelGate = (gate_id_) => {
         return await gateRequest('get_context', request)
     }
 
-    const contextRefreshLoop = async () => {
-        while (true) {
-            if (contextRequest != null) {
-                const request = contextRequest
-                contextRequest = null
-                try {
-                    contextInfos.value = await fetchContextInfos(request)
-                } catch (error) {
-                    console.log(error)
-                }
-            } else {
-                await sleep(1000)
-            }
-        }
-    }
-
-    const updateContext = (request) => {
-        contextRequest = request
-    }
-
-    contextRefreshLoop()
+    const updateContext = makeLatestWinsRunner(async (request) => {
+        contextInfos.value = await fetchContextInfos(request)
+    })
 
     return {
         codes,
@@ -129,7 +166,6 @@ export const squirrelGate = (gate_id_) => {
 
 export const squirrelBlock = (block) => {
     const counter = ref(0)
-    let updateInProgress = false
     const my = { ...block }
     const connection = squirrelConnection()
     let lastTouched = -1
@@ -137,7 +173,6 @@ export const squirrelBlock = (block) => {
     let waveviews = null
     let carpets = null
     let oldCarpets = []
-    let updateTimeoutId = null
 
     const fetchCoverage = async () => {
         const coverages = await connection.value.request('gate/default/get_rich_coverage', {
@@ -213,48 +248,25 @@ export const squirrelBlock = (block) => {
         oldCarpets = oldCarpets.filter((carpet) => carpet.zombie1Timestamp > now - 1000)
     }
 
-    my.doUpdate = async () => {
-        if (updateInProgress) {
-            my.rescheduleUpdate()
-        } else {
-            try {
-                updateInProgress = true
-                if (coverages === null) {
-                    coverages = await fetchCoverage()
-                }
-                waveviews = await fetchWaveviews(my.nextParams)
-                const newCarpets = await fetchCarpets(my.nextParams)
-                for (const carpet of carpets || []) {
-                    carpet.zombie1 = true
-                    carpet.zombie1Timestamp = Date.now()
-                    oldCarpets.push(carpet)
-                }
-                carpets = newCarpets
-                setTimeout(my.cleanup, 1100)
-
-                counter.value++
-            } finally {
-                updateInProgress = false
-            }
+    // Runs one fetch cycle for this block. Concurrency (making sure only
+    // one such cycle is ever in flight, and that a burst of calls
+    // collapses to just the latest one) is the caller's responsibility
+    // -- see the shared scheduler in `setupGates`.
+    my.fetch = async (params) => {
+        if (coverages === null) {
+            coverages = await fetchCoverage()
         }
-    }
-
-    my.rescheduleUpdate = () => {
-        if (updateTimeoutId !== null) {
-            clearTimeout(updateTimeoutId)
+        waveviews = await fetchWaveviews(params)
+        const newCarpets = await fetchCarpets(params)
+        for (const carpet of carpets || []) {
+            carpet.zombie1 = true
+            carpet.zombie1Timestamp = Date.now()
+            oldCarpets.push(carpet)
         }
-        updateTimeoutId = setTimeout(async () => {
-            try {
-                await my.doUpdate()
-            } finally {
-                updateTimeoutId = null
-            }
-        }, 100)
-    }
+        carpets = newCarpets
+        setTimeout(my.cleanup, 1100)
 
-    my.update = (params) => {
-        my.nextParams = params
-        my.rescheduleUpdate()
+        counter.value++
     }
 
     my.touch = (counter) => {
@@ -359,6 +371,23 @@ export const setupGates = () => {
         }
     }
 
+    // Across all blocks of this gate, allow only one fetch cycle
+    // (coverage + waveviews + carpets) to be in flight at a time, with
+    // a short leading debounce so a block only briefly passed through
+    // while panning quickly doesn't get fetched at all. This is what
+    // keeps a fast click-and-drag pan, or a slow server, from spawning
+    // a burst of concurrent requests: whichever block/params were
+    // current the moment the in-flight cycle completes are the only
+    // ones fetched next, and everything visited only fleetingly in
+    // between is skipped for good.
+    const scheduleBlockFetch = makeLatestWinsRunner(async ({ block, params }) => {
+        if (!blocks.has(block.key())) {
+            // Superseded and evicted before its turn came up.
+            return
+        }
+        await block.fetch(params)
+    }, { debounceMs: 100 })
+
     const updateBlocks = () => {
         const sorted = Array.from(blocks.values()).toSorted(
             (a, b) => b.getLastTouched() - a.getLastTouched()
@@ -372,13 +401,16 @@ export const setupGates = () => {
 
         for (const k of blocks.keys()) {
             if (k == kNewest) {
-                blocks.get(k).update({
-                    ymin: yMin.value,
-                    ymax: yMax.value,
-                    nx: imageWidth.value,
-                    ny: imageHeight.value,
-                    codes: codesVisible.value,
-                    overview_method: overviewMethod.value,
+                scheduleBlockFetch({
+                    block: blocks.get(k),
+                    params: {
+                        ymin: yMin.value,
+                        ymax: yMax.value,
+                        nx: imageWidth.value,
+                        ny: imageHeight.value,
+                        codes: codesVisible.value,
+                        overview_method: overviewMethod.value,
+                    },
                 })
             } else {
                 blocks.delete(k)
@@ -394,13 +426,16 @@ export const setupGates = () => {
         if (!blocks.has(k)) {
             blocks.set(k, block)
             watch([block.counter], () => counter.value++)
-            block.update({
-                ymin: yMin.value,
-                ymax: yMax.value,
-                nx: blockFactor * imageWidth.value * resolutionFactor,
-                ny: imageHeight.value,
-                codes: codesVisible.value,
-                overview_method: overviewMethod.value,
+            scheduleBlockFetch({
+                block,
+                params: {
+                    ymin: yMin.value,
+                    ymax: yMax.value,
+                    nx: blockFactor * imageWidth.value * resolutionFactor,
+                    ny: imageHeight.value,
+                    codes: codesVisible.value,
+                    overview_method: overviewMethod.value,
+                },
             })
         }
         blocks.get(k).touch(counter.value)
