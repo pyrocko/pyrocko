@@ -33,7 +33,9 @@ export default {
                 return
             }
 
-            const scrollArea = mapContainer.value.closest('.q-scrollarea')
+            const scrollArea = mapContainer.value.closest(
+                '#right-drawer-scroll-area'
+            )
             if (!scrollArea) {
                 return
             }
@@ -47,17 +49,29 @@ export default {
 
         const stationKey = (codes) => codes.split('.').slice(0, 3).join('.')
 
+        const getVisibleStationKeys = () =>
+            new Set((gates.codesVisible.value ?? []).map(stationKey))
+
+        // A sensor counts as currently shown when both its channel code
+        // is scrolled into view in the timeline *and* its operating
+        // time span overlaps the time window currently on screen.
+        // Shared by the map extent and the marker active/inactive
+        // styling, so the two never disagree about what "visible"
+        // means.
+        const isSensorVisible = (sensor, visibleStationKeys) =>
+            visibleStationKeys.has(stationKey(sensor.codes)) &&
+            (sensor.tmin === null || sensor.tmin < gates.timeMax.value) &&
+            (sensor.tmax === null || sensor.tmax > gates.timeMin.value)
+
         const fitToVisibleStations = () => {
             if (map === null) {
                 return
             }
 
-            const visible = new Set(
-                (gates.codesVisible.value ?? []).map(stationKey)
-            )
+            const visible = getVisibleStationKeys()
 
             const latlons = gates.sensors.value
-                .filter((sensor) => visible.has(stationKey(sensor.codes)))
+                .filter((sensor) => isSensorVisible(sensor, visible))
                 .map((sensor) => [sensor.lat, sensor.lon])
 
             if (latlons.length > 0) {
@@ -76,13 +90,7 @@ export default {
                 return
             }
 
-            const visible = new Set(
-                (gates.codesVisible.value ?? []).map(stationKey)
-            )
-            const isVisible = (sensor) =>
-                visible.has(stationKey(sensor.codes)) &&
-                (sensor.tmin === null || sensor.tmin < gates.timeMax.value) &&
-                (sensor.tmax === null || sensor.tmax > gates.timeMin.value)
+            const visible = getVisibleStationKeys()
 
             const markerKeysAll = new Set(
                 gates.sensors.value.map((sensor) => sensor.markerKey)
@@ -90,7 +98,7 @@ export default {
 
             const markerKeysVisible = new Set(
                 gates.sensors.value
-                    .filter(isVisible)
+                    .filter((sensor) => isSensorVisible(sensor, visible))
                     .map((sensor) => sensor.markerKey)
             )
 
@@ -157,8 +165,9 @@ export default {
                 resizeMapToFit()
 
                 if (mapResizeObserver === null) {
-                    const scrollArea =
-                        mapContainer.value.closest('.q-scrollarea')
+                    const scrollArea = mapContainer.value.closest(
+                        '#right-drawer-scroll-area'
+                    )
                     if (scrollArea) {
                         mapResizeObserver = onResizeDebounced(
                             scrollArea,

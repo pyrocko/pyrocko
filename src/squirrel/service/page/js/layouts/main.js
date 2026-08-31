@@ -134,7 +134,7 @@ export default {
                 :breakpoint="500"
                 :class="dark.isActive ? 'bg-grey-9' : 'bg-grey-3'"
             >
-                <q-scroll-area class="fit">
+                <q-scroll-area id="right-drawer-scroll-area" class="fit">
                     <component-scouts></component-scouts>
                 </q-scroll-area>
             </q-drawer>
