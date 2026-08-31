@@ -51,7 +51,7 @@ export const squirrelMap = () => {
         if (bounds.width <= 0 || bounds.height <= 0) {
             return
         }
-        updateSensors()
+        reconcileStations()
         map.attr('width', bounds.width).attr('height', bounds.height)
         reProject()
     }
@@ -99,19 +99,42 @@ export const squirrelMap = () => {
         projectBasemap()
     }
 
-    const updateSensors = () => {
-        const locations = gates.sensors.value
+    // Adds/removes circles to match `gates.stations` (the set of known
+    // stations, not how many are currently visible). Only runs when
+    // that set actually changes -- see gate.js -- so a pan/zoom drag
+    // never touches this, only `updateActiveState` below.
+    const reconcileStations = () => {
+        symbolGroup
+            .selectAll('circle')
+            .data(gates.stations.value, (station) => station.key)
+            .join('circle')
+            .attr('r', 3)
+
+        updateActiveState()
+        projectCircles()
+    }
+
+    // Restyles already-existing circles to match
+    // `gates.visibleStationKeys`. Runs on every pan/zoom, but only
+    // ever touches fill/stroke of circles that already exist -- no
+    // join, no DOM creation/removal here.
+    const updateActiveState = () => {
+        const visible = gates.visibleStationKeys.value
 
         symbolGroup
             .selectAll('circle')
-            .data(locations)
-            .enter()
-            .append('circle')
-            .attr('r', 3)
-            .attr('fill', colors['scarletred2'] + '33')
-            .attr('stroke', colors['scarletred3'] + '33')
-
-        projectCircles()
+            .attr(
+                'fill',
+                (station) =>
+                    colors['scarletred2'] +
+                    (visible.has(station.key) ? '' : '33')
+            )
+            .attr(
+                'stroke',
+                (station) =>
+                    colors['scarletred3'] +
+                    (visible.has(station.key) ? '' : '33')
+            )
     }
 
     let my = async (selection) => {
@@ -140,7 +163,8 @@ export const squirrelMap = () => {
             scaleDelta(ev.wheelDeltaY / 120)
         })
 
-        watch([gates.sensors], updateSensors)
+        watch([gates.stations], reconcileStations)
+        watch([gates.visibleStationKeys], updateActiveState)
     }
 
     my.scale = function (_) {

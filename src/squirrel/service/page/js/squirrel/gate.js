@@ -65,6 +65,12 @@ const makeLatestWinsRunner = (fn, { debounceMs = 0 } = {}) => {
     }
 }
 
+// Sensor and channel codes are dotted NET.STA.LOC.CHA[.EXTRA] strings;
+// comparing just the NET.STA.LOC prefix is enough to tell whether a
+// sensor belongs to a track currently shown in the timeline,
+// regardless of which channel/component it is.
+const stationKey = (codes) => codes.split('.').slice(0, 3).join('.')
+
 export const squirrelGate = (gate_id_) => {
     const gate_id = gate_id_
     const counter = ref(0)
@@ -631,6 +637,53 @@ export const setupGates = () => {
         return sensors
     })
 
+    // Deduplicated "virtual stations": one entry per unique
+    // (codes, lat, lon) combination, with every contributing Sensor
+    // record (e.g. distinct metadata epochs) attached for inspection.
+    // Only depends on `sensors`, which changes rarely (an actual data
+    // refresh) -- never on the time window, so panning/zooming leaves
+    // this computed untouched instead of forcing station identities
+    // to be rebuilt on every frame of a drag.
+    const stations = computed(() => {
+        const byKey = new Map()
+        for (const sensor of sensors.value) {
+            if (!byKey.has(sensor.markerKey)) {
+                byKey.set(sensor.markerKey, {
+                    key: sensor.markerKey,
+                    codes: sensor.codes,
+                    lat: sensor.lat,
+                    lon: sensor.lon,
+                    sensors: [],
+                })
+            }
+            byKey.get(sensor.markerKey).sensors.push(sensor)
+        }
+        return Array.from(byKey.values())
+    })
+
+    // Keys of the stations currently shown in the timeline: their
+    // channel code is scrolled into view *and* at least one
+    // contributing sensor's operating time span overlaps the time
+    // window on screen. Recomputed on every pan/zoom, but cheaply --
+    // no rebuilding of `stations` itself, just a pass over the
+    // already-grouped list.
+    const visibleStationKeys = computed(() => {
+        const visibleCodes = new Set((codesVisible.value ?? []).map(stationKey))
+        const keys = new Set()
+        for (const station of stations.value) {
+            const visible = station.sensors.some(
+                (sensor) =>
+                    visibleCodes.has(stationKey(sensor.codes)) &&
+                    (sensor.tmin === null || sensor.tmin < timeMax.value) &&
+                    (sensor.tmax === null || sensor.tmax > timeMin.value)
+            )
+            if (visible) {
+                keys.add(station.key)
+            }
+        }
+        return keys
+    })
+
     const codes = computed(() => {
         const codes = new Set()
         for (const gate of gates.value) {
@@ -778,6 +831,8 @@ export const setupGates = () => {
         codesVisible,
         channels,
         sensors,
+        stations,
+        visibleStationKeys,
         responses,
         events,
         eventGroups,

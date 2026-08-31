@@ -174,9 +174,7 @@ export default {
                     rightDrawerResizing ? 'no-drawer-transition' : '',
                 ]"
             >
-                <q-scroll-area id="right-drawer-scroll-area" class="fit">
-                    <component-scouts></component-scouts>
-                </q-scroll-area>
+                <component-scouts></component-scouts>
 
                 <div
                     class="drawer-resize-handle"

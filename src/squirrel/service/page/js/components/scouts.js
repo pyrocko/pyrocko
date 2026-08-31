@@ -28,51 +28,26 @@ export default {
         let map = null
         let mapResizeObserver = null
 
-        const resizeMapToFit = () => {
-            if (map === null || !mapContainer.value) {
-                return
+        // Leaflet has no resize-detection of its own -- it has to be
+        // told explicitly whenever its container's on-screen size
+        // changes, for any reason (window resize, drawer width drag,
+        // etc.), regardless of what CSS is doing to size it.
+        const mapResized = () => {
+            if (map !== null) {
+                map.invalidateSize()
             }
-
-            const scrollArea = mapContainer.value.closest(
-                '#right-drawer-scroll-area'
-            )
-            if (!scrollArea) {
-                return
-            }
-
-            const bottom = scrollArea.getBoundingClientRect().bottom
-            const top = mapContainer.value.getBoundingClientRect().top
-            mapContainer.value.style.height = Math.max(200, bottom - top) + 'px'
-
-            map.invalidateSize()
         }
-
-        const stationKey = (codes) => codes.split('.').slice(0, 3).join('.')
-
-        const getVisibleStationKeys = () =>
-            new Set((gates.codesVisible.value ?? []).map(stationKey))
-
-        // A sensor counts as currently shown when both its channel code
-        // is scrolled into view in the timeline *and* its operating
-        // time span overlaps the time window currently on screen.
-        // Shared by the map extent and the marker active/inactive
-        // styling, so the two never disagree about what "visible"
-        // means.
-        const isSensorVisible = (sensor, visibleStationKeys) =>
-            visibleStationKeys.has(stationKey(sensor.codes)) &&
-            (sensor.tmin === null || sensor.tmin < gates.timeMax.value) &&
-            (sensor.tmax === null || sensor.tmax > gates.timeMin.value)
 
         const fitToVisibleStations = () => {
             if (map === null) {
                 return
             }
 
-            const visible = getVisibleStationKeys()
+            const visible = gates.visibleStationKeys.value
 
-            const latlons = gates.sensors.value
-                .filter((sensor) => isSensorVisible(sensor, visible))
-                .map((sensor) => [sensor.lat, sensor.lon])
+            const latlons = gates.stations.value
+                .filter((station) => visible.has(station.key))
+                .map((station) => [station.lat, station.lon])
 
             if (latlons.length > 0) {
                 map.fitBounds(latlons, { padding: [20, 20] })
@@ -85,40 +60,63 @@ export default {
             markers.clear()
         }
 
-        const updateMarkers = () => {
+        // Adds/removes markers to match `gates.stations` (the set of
+        // known stations, not how many are currently visible). This
+        // only runs when that set actually changes -- see gate.js --
+        // so a pan/zoom drag never touches marker creation/removal at
+        // all, only `updateActiveState` below.
+        const reconcileMarkers = () => {
             if (map === null || !mapContainer.value) {
                 return
             }
 
-            const visible = getVisibleStationKeys()
-
-            const markerKeysAll = new Set(
-                gates.sensors.value.map((sensor) => sensor.markerKey)
-            )
-
-            const markerKeysVisible = new Set(
-                gates.sensors.value
-                    .filter((sensor) => isSensorVisible(sensor, visible))
-                    .map((sensor) => sensor.markerKey)
+            const stationKeys = new Set(
+                gates.stations.value.map((station) => station.key)
             )
 
             let markersAddedOrRemoved = false
 
-            for (const sensor of gates.sensors.value) {
-                let marker = null
-                if (!markers.has(sensor.markerKey)) {
-                    marker = leaflet.marker([sensor.lat, sensor.lon], {
-                        icon: stationIcon,
-                    })
+            for (const station of gates.stations.value) {
+                if (!markers.has(station.key)) {
+                    const marker = leaflet
+                        .marker([station.lat, station.lon], {
+                            icon: stationIcon,
+                        })
+                        .addTo(map)
+                        .bindPopup(station.codes)
 
-                    marker.addTo(map).bindPopup(sensor.codes)
-                    markers.set(sensor.markerKey, marker)
+                    markers.set(station.key, marker)
                     markersAddedOrRemoved = true
-                } else {
-                    marker = markers.get(sensor.markerKey)
                 }
+            }
 
-                if (markerKeysVisible.has(sensor.markerKey)) {
+            for (const key of markers.keys()) {
+                if (!stationKeys.has(key)) {
+                    map.removeLayer(markers.get(key))
+                    markers.delete(key)
+                    markersAddedOrRemoved = true
+                }
+            }
+
+            if (markersAddedOrRemoved) {
+                updateActiveState()
+                fitToVisibleStations()
+            }
+        }
+
+        // Toggles the active/inactive styling of already-existing
+        // markers to match `gates.visibleStationKeys`. Runs on every
+        // pan/zoom, but only ever touches a CSS class on markers that
+        // already exist -- no DOM creation/removal here.
+        const updateActiveState = () => {
+            if (map === null) {
+                return
+            }
+
+            const visible = gates.visibleStationKeys.value
+
+            for (const [key, marker] of markers) {
+                if (visible.has(key)) {
                     leaflet.DomUtil.removeClass(
                         marker._icon,
                         'station-icon-inactive'
@@ -129,18 +127,6 @@ export default {
                         'station-icon-inactive'
                     )
                 }
-            }
-
-            for (const key of markers.keys()) {
-                if (!markerKeysAll.has(key)) {
-                    map.removeLayer(markers.get(key))
-                    markers.delete(key)
-                    markersAddedOrRemoved = true
-                }
-            }
-
-            if (markersAddedOrRemoved) {
-                fitToVisibleStations()
             }
         }
 
@@ -162,32 +148,35 @@ export default {
                     )
                     .addTo(map)
 
-                resizeMapToFit()
+                mapResized()
 
-                if (mapResizeObserver === null) {
-                    const scrollArea = mapContainer.value.closest(
-                        '#right-drawer-scroll-area'
-                    )
-                    if (scrollArea) {
-                        mapResizeObserver = onResizeDebounced(
-                            scrollArea,
-                            resizeMapToFit
-                        )
-                    }
+                // The container is a fresh DOM node each time this
+                // tab is reopened (it's v-if'd, not kept alive), so
+                // the observer from a previous opening is watching an
+                // orphaned element by now -- drop it and watch the
+                // new one instead.
+                if (mapResizeObserver !== null) {
+                    mapResizeObserver.disconnect()
                 }
+                mapResizeObserver = onResizeDebounced(
+                    mapContainer.value,
+                    mapResized
+                )
 
                 resetMarkers()
-                updateMarkers()
+                reconcileMarkers()
+                updateActiveState()
             }
         })
 
-        watch(
-            [gates.codesVisible, gates.sensors, gates.timeMin, gates.timeMax],
-            updateMarkers
-        )
+        watch([gates.stations], reconcileMarkers)
+        watch([gates.visibleStationKeys], updateActiveState)
 
         let miniMap = squirrelMap()
         onMounted(() => {
+            // squirrelMap() watches its own container's size directly
+            // (see map.js), so as long as CSS gives #mini-map a real
+            // height -- which it now does, no extra wiring needed here.
             d3.select('#mini-map').call(miniMap)
             miniMap.addBasemap()
         })
@@ -196,7 +185,7 @@ export default {
     },
 
     template: `
-        <div id="scouts-container">
+        <div id="scouts-container" class="fit vbox-container">
             <div style="padding: 0.5rem">
                 <q-select v-model="scout" :options="inspectors"> </q-select>
             </div>
@@ -210,20 +199,20 @@ export default {
                 }}
             </div>
 
-            <div v-if="scout == 'response'">
+            <q-scroll-area v-if="scout == 'response'" class="vbox-main">
                 <div v-for="contextInfo in gates.contextInfos.value" :key="contextInfo.name">
                     <img :src="contextInfo.image_data_base64" style="max-width: 100%" />
                 </div>
-            </div>
+            </q-scroll-area>
 
             <KeepAlive>
-                <div v-if="scout == 'map'">
-                    <div id="map-container-x" ref="map-container" style="width: 100%; height: 50vh;"></div>
+                <div v-if="scout == 'map'" class="vbox-main">
+                    <div id="map-container-x" ref="map-container" style="width: 100%; height: 100%;"></div>
                 </div>
             </KeepAlive>
 
-            <div v-show="scout == 'mini-map'">
-              <div id="mini-map" class="vbox-main tab-pane" style="width: 100%; height: 50vh;"></div>
+            <div v-show="scout == 'mini-map'" class="vbox-main">
+              <div id="mini-map" style="width: 100%; height: 100%;"></div>
             </div>
         </div>
     `,
