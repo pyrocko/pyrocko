@@ -106,7 +106,15 @@ export const squirrelGate = (gate_id_) => {
     }
 
     const fetchSensors = async () => {
-        return gateRequest('get_sensors')
+        const sensors = await gateRequest('get_sensors')
+        for (const sensor of sensors) {
+            sensor.markerKey = [sensor.codes, sensor.lat, sensor.lon].join(
+                '+++'
+            )
+            sensor.tmin = sensor.tmin != null ? strToTime(sensor.tmin) : null
+            sensor.tmax = sensor.tmax != null ? strToTime(sensor.tmax) : null
+        }
+        return sensors
     }
 
     //const fetchResponses = async () => {
@@ -126,7 +134,10 @@ export const squirrelGate = (gate_id_) => {
         for (const kind of ['waveform', 'channel', 'response', 'carpet']) {
             const span = await gateRequest('get_time_span', { kind: kind })
             span.tmin = span.tmin != null ? strToTime(span.tmin) : null
-            span.tmax = span.tmax != null ? Math.min(strToTime(span.tmax), tomorrow()) : null
+            span.tmax =
+                span.tmax != null
+                    ? Math.min(strToTime(span.tmax), tomorrow())
+                    : null
             newTimeSpans[kind] = span
         }
         return newTimeSpans
@@ -175,13 +186,21 @@ export const squirrelBlock = (block) => {
     let oldCarpets = []
 
     const fetchCoverage = async () => {
-        const coverages = await connection.value.request('gate/default/get_rich_coverage', {
-            tmin: timeToStr(my.timeMin),
-            tmax: timeToStr(my.timeMax),
-        })
+        const coverages = await connection.value.request(
+            'gate/default/get_rich_coverage',
+            {
+                tmin: timeToStr(my.timeMin),
+                tmax: timeToStr(my.timeMax),
+            }
+        )
 
         for (const coverage of coverages) {
-            coverage.id = [coverage.kind, coverage.tmin, coverage.tmax, coverage.codes].join('+++')
+            coverage.id = [
+                coverage.kind,
+                coverage.tmin,
+                coverage.tmax,
+                coverage.codes,
+            ].join('+++')
             coverage.tmin = strToTime(coverage.tmin)
             coverage.tmax = strToTime(coverage.tmax)
         }
@@ -189,15 +208,18 @@ export const squirrelBlock = (block) => {
     }
 
     const fetchWaveviews = async (params) => {
-        const waveviews = await connection.value.request('gate/default/get_waveviews', {
-            tmin: timeToStr(my.timeMin),
-            tmax: timeToStr(my.timeMax),
-            codes: params.codes,
-            fmin: params.ymin,
-            fmax: params.ymax,
-            nx: params.nx,
-            ny: params.ny,
-        })
+        const waveviews = await connection.value.request(
+            'gate/default/get_waveviews',
+            {
+                tmin: timeToStr(my.timeMin),
+                tmax: timeToStr(my.timeMax),
+                codes: params.codes,
+                fmin: params.ymin,
+                fmax: params.ymax,
+                nx: params.nx,
+                ny: params.ny,
+            }
+        )
         for (const waveview of waveviews) {
             waveview.id = [
                 waveview.kind,
@@ -210,19 +232,26 @@ export const squirrelBlock = (block) => {
             waveview.tmin = strToTime(waveview.tmin)
             waveview.tmax = strToTime(waveview.tmax)
 
-            const data_uint8 = Uint8Array.fromBase64(waveview.polygon_data_base64)
+            const data_uint8 = Uint8Array.fromBase64(
+                waveview.polygon_data_base64
+            )
             const data_float32 = new Float32Array(data_uint8.buffer)
-            waveview.points_string = data_float32.join(',').replaceAll(RE_2COMMA, '$1,$2 ')
+            waveview.points_string = data_float32
+                .join(',')
+                .replaceAll(RE_2COMMA, '$1,$2 ')
         }
         return waveviews
     }
 
     const fetchCarpets = async (params) => {
-        const carpets = await connection.value.request('gate/default/get_carpets', {
-            tmin: timeToStr(my.timeMin),
-            tmax: timeToStr(my.timeMax),
-            ...params,
-        })
+        const carpets = await connection.value.request(
+            'gate/default/get_carpets',
+            {
+                tmin: timeToStr(my.timeMin),
+                tmax: timeToStr(my.timeMax),
+                ...params,
+            }
+        )
         for (const carpet of carpets) {
             carpet.id = [
                 carpet.tmin,
@@ -245,7 +274,9 @@ export const squirrelBlock = (block) => {
 
     my.cleanup = () => {
         const now = Date.now()
-        oldCarpets = oldCarpets.filter((carpet) => carpet.zombie1Timestamp > now - 1000)
+        oldCarpets = oldCarpets.filter(
+            (carpet) => carpet.zombie1Timestamp > now - 1000
+        )
     }
 
     // Runs one fetch cycle for this block. Concurrency (making sure only
@@ -385,13 +416,16 @@ export const setupGates = () => {
     // current the moment the in-flight cycle completes are the only
     // ones fetched next, and everything visited only fleetingly in
     // between is skipped for good.
-    const scheduleBlockFetch = makeLatestWinsRunner(async ({ block, params }) => {
-        if (!blocks.has(block.key())) {
-            // Superseded and evicted before its turn came up.
-            return
-        }
-        await block.fetch(params)
-    }, { debounceMs: 100 })
+    const scheduleBlockFetch = makeLatestWinsRunner(
+        async ({ block, params }) => {
+            if (!blocks.has(block.key())) {
+                // Superseded and evicted before its turn came up.
+                return
+            }
+            await block.fetch(params)
+        },
+        { debounceMs: 100 }
+    )
 
     const updateBlocks = () => {
         const sorted = Array.from(blocks.values()).toSorted(
@@ -423,7 +457,10 @@ export const setupGates = () => {
         }
     }
 
-    watch([yMin, yMax, imageWidth, imageHeight, codesVisible, overviewMethod], updateBlocks)
+    watch(
+        [yMin, yMax, imageWidth, imageHeight, codesVisible, overviewMethod],
+        updateBlocks
+    )
 
     const update = () => {
         const block = makeTimeBlock(timeMin.value, timeMax.value)
@@ -497,7 +534,11 @@ export const setupGates = () => {
     const getRelevantBlocks = () => {
         const relevant = Array.from(blocks.values())
             .toSorted((a, b) => b.getLastTouched() - a.getLastTouched())
-            .filter((block) => block.overlaps(timeMin.value, timeMax.value) && block.ready())
+            .filter(
+                (block) =>
+                    block.overlaps(timeMin.value, timeMax.value) &&
+                    block.ready()
+            )
         if (
             relevant.length > 0 &&
             (_relevantBlocks.length == 0 || relevant[0] !== _relevantBlocks[0])
@@ -543,16 +584,18 @@ export const setupGates = () => {
 
     const getDataRanges = () => {
         const ranges = new Map()
-        Map.groupBy(getCarpets(), (carpet) => carpet.codes).forEach((carpets, codes) => {
-            ranges.set(codes, [
-                yMin.value !== null
-                    ? yMin.value
-                    : Math.min(...carpets.map((carpet) => carpet.ymin)),
-                yMax.value !== null
-                    ? yMax.value
-                    : Math.max(...carpets.map((carpet) => carpet.ymax)),
-            ])
-        })
+        Map.groupBy(getCarpets(), (carpet) => carpet.codes).forEach(
+            (carpets, codes) => {
+                ranges.set(codes, [
+                    yMin.value !== null
+                        ? yMin.value
+                        : Math.min(...carpets.map((carpet) => carpet.ymin)),
+                    yMax.value !== null
+                        ? yMax.value
+                        : Math.max(...carpets.map((carpet) => carpet.ymax)),
+                ])
+            }
+        )
         return ranges
     }
 
@@ -560,7 +603,10 @@ export const setupGates = () => {
         const scales = new Map()
         for (const carpet of getCarpets()) {
             const scale = carpet.yscale
-            scales.set(carpet.codes, scale == (scales.get(carpet.codes) ?? scale) ? scale : 'lin')
+            scales.set(
+                carpet.codes,
+                scale == (scales.get(carpet.codes) ?? scale) ? scale : 'lin'
+            )
         }
         return scales
     }
@@ -617,7 +663,9 @@ export const setupGates = () => {
     })
 
     const eventGroups = computed(() => {
-        const groups = Array.from(Map.groupBy(events.value, (ev) => ev.extras.group_id).values())
+        const groups = Array.from(
+            Map.groupBy(events.value, (ev) => ev.extras.group_id).values()
+        )
         groups.sort((a, b) => a[0].time - b[0].time)
         return groups
     })
@@ -636,7 +684,10 @@ export const setupGates = () => {
                     if (spans[kind] === null) {
                         spans[kind] = span
                     } else {
-                        const [tmin1, tmax1] = [spans[kind].tmin, spans[kind].tmax]
+                        const [tmin1, tmax1] = [
+                            spans[kind].tmin,
+                            spans[kind].tmax,
+                        ]
                         const [tmin2, tmax2] = [span.tmin, span.tmax]
                         spans[kind] = {
                             tmin: Math.min(tmin1, tmin2),
@@ -653,7 +704,7 @@ export const setupGates = () => {
         const contextInfos = []
         for (const gate of gates.value) {
             for (const contextInfo of gate.contextInfos) {
-              contextInfos.push(contextInfo)
+                contextInfos.push(contextInfo)
             }
         }
         return contextInfos
@@ -684,9 +735,10 @@ export const setupGates = () => {
             tmin: timeToStr(timeMin.value),
             tmax: timeToStr(timeMax.value),
             codes:
-                hover.value !== null && hover.value.track !== null ? hover.value.track.codes : [],
-            codes_visible:
-                codesVisible.value,
+                hover.value !== null && hover.value.track !== null
+                    ? hover.value.track.codes
+                    : [],
+            codes_visible: codesVisible.value,
             fmin: yMin.value,
             fmax: yMax.value,
         }

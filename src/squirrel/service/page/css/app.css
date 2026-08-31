@@ -279,6 +279,33 @@ body.body--dark {
     background-color: var(--q-background-color-5);
 }
 
+.station-icon {
+    background: transparent;
+    border: none;
+}
+
+.station-icon svg polygon {
+    stroke: color-mix(in oklab, var(--q-negative), var(--q-text-color) 20%);
+    fill: color-mix(in oklab, var(--q-negative), var(--q-background-color) 20%);
+}
+
+.station-icon-inactive svg polygon {
+    stroke: color-mix(in oklab, var(--q-negative), var(--q-text-color) 20%);
+    fill: none;
+}
+
+.body--dark {
+    .leaflet-container {
+        background: #000
+    }
+
+    .leaflet-layer,
+    .leaflet-control-zoom-in,
+    .leaflet-control-zoom-out,
+    .leaflet-control-attribution {
+      filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+    }
+}
 
 .vue-flow__handle {
   height: 8px;
