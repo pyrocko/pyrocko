@@ -123,7 +123,7 @@ def run(parser, args):
             nlevels=args.nlevels,
             weighting_exponent=args.weighting_exponent))
 
-    musop.set_input(squirrel)
+    musop.add_input(squirrel)
 
     sq_tmin, sq_tmax = squirrel.get_time_span(['waveform'], dummy_limits=False)
     if None in (sq_tmin, sq_tmax):
