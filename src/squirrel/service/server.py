@@ -739,17 +739,6 @@ class SquirrelGateHandler(SquirrelRequestHandler):
         tmin, tmax = self.get_cleaned('tmin tmax', parameters)
         return gate.get_rich_coverage(tmin=tmin, tmax=tmax, limit=500)
 
-    def p_get_spectrograms(self, parameters, gate):
-        tmin, tmax, ymin, ymax = self.get_cleaned(
-            'tmin tmax ymin ymax',
-            parameters)
-
-        return gate.get_spectrogram_images(
-            tmin=tmin,
-            tmax=tmax,
-            ymin=ymin,
-            ymax=ymax)
-
     def p_get_carpets(self, parameters, gate):
         tmin, tmax, ymin, ymax, nx, ny, codes, overview_method \
             = self.get_cleaned(
