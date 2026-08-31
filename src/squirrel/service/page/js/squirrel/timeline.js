@@ -202,8 +202,10 @@ export const squirrelTimeline = () => {
     }
 
     const updateTrackHeight = () => {
-        trackHeight.value =
+        trackHeight.value = Math.max(
+            1,
             trackProjection.trackHeight() - 2 * effectiveTrackPadding
+        )
     }
 
     const updateVisibleCodes = () => {
@@ -240,12 +242,18 @@ export const squirrelTimeline = () => {
             0,
             bounds.width,
         ])
-        trackProjection.range([marginTop, bounds.height - marginBottom])
+        trackProjection.range([
+            marginTop,
+            Math.max(marginTop + 1, bounds.height - marginBottom),
+        ])
         effectiveTrackPadding = makeEffectiveTrackPadding()
         pageRect.attr('x', 0)
         pageRect.attr('y', marginTop)
         pageRect.attr('width', bounds.width)
-        pageRect.attr('height', bounds.height - marginTop - marginBottom)
+        pageRect.attr(
+            'height',
+            Math.max(0, bounds.height - marginTop - marginBottom)
+        )
     }
 
     const update = () => {
@@ -287,7 +295,7 @@ export const squirrelTimeline = () => {
         ' ': gates.halfPageForward,
         b: gates.halfPageBackward,
         B: () => {
-            ;(showBoxes.value = !showBoxes.value), update()
+            ;((showBoxes.value = !showBoxes.value), update())
         },
         PageUp: () => scrollTracks(-1.0),
         PageDown: () => scrollTracks(1.0),
@@ -369,7 +377,7 @@ export const squirrelTimeline = () => {
             } else {
                 const [[p0x, p0y], [p1x, p1y]] = pinch
                 const [[s0x, s0y], [s1x, s1y]] = pinchStart
-                p0x, p1x // eslint
+                ;(p0x, p1x) // eslint
                 let f = 1.0
                 if (Math.abs(s1y - s0y) > 2 * Math.abs(s1x - s0x)) {
                     // vertical pinch

@@ -123,6 +123,13 @@ def get_accessor_data(accessor_id):
     return g_accessor_data[accessor_id]
 
 
+def int_gt_zero(s):
+    i = int(s)
+    if i <= 0:
+        raise ValueError('Value must be greater than zero.')
+    return i
+
+
 class SquirrelRequestHandler(server.RequestHandler):
 
     def initialize(self, squirrel=None):
@@ -161,8 +168,8 @@ class SquirrelRequestHandler(server.RequestHandler):
             'ymax': float,
             'fmin': float,
             'fmax': float,
-            'nx': int,
-            'ny': int,
+            'nx': int_gt_zero,
+            'ny': int_gt_zero,
             'overview_method': lambda x: str_choice(x, ['mean', 'min', 'max']),
         }
 

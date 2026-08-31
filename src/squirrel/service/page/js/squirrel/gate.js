@@ -419,11 +419,11 @@ export const setupGates = () => {
     }
 
     const setImageWidth = (nx) => {
-        imageWidth.value = Math.round(nx)
+        imageWidth.value = Math.max(1, Math.round(nx))
     }
 
     const setImageHeight = (ny) => {
-        imageHeight.value = Math.round(ny)
+        imageHeight.value = Math.max(1, Math.round(ny))
     }
 
     const setCodesVisible = (codes) => {
