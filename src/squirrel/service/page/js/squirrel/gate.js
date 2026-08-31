@@ -340,6 +340,11 @@ export const setupGates = () => {
     const yMin = ref(null)
     const yMax = ref(null)
     const overviewMethod = ref('mean')
+    // Nobody can see context info (the inspector panel in the right
+    // drawer) while it's closed, so there is no point spending a
+    // request on it every time the mouse moves. Whoever owns that UI
+    // reports its visibility here.
+    const contextEnabled = ref(false)
     const blockFactor = 2
     const resolutionFactor = 1.0
     const blocks = new Map()
@@ -463,6 +468,10 @@ export const setupGates = () => {
 
     const setCodesVisible = (codes) => {
         codesVisible.value = codes
+    }
+
+    const setContextEnabled = (enabled) => {
+        contextEnabled.value = enabled
     }
 
     const makePageMove = (amount) => {
@@ -683,7 +692,10 @@ export const setupGates = () => {
         }
     }
 
-    watch([hover, timeMin, timeMax, yMin, yMax], () => {
+    watch([hover, timeMin, timeMax, yMin, yMax, contextEnabled], () => {
+        if (!contextEnabled.value) {
+            return
+        }
         for (const gate of gates.value) {
             gate.updateContext(contextRequest())
         }
@@ -704,6 +716,7 @@ export const setupGates = () => {
         setImageWidth,
         setImageHeight,
         setCodesVisible,
+        setContextEnabled,
         pageForward,
         pageBackward,
         halfPageForward,

@@ -30,6 +30,10 @@ export default {
         const gates = squirrelGates()
         gates.addGate()
 
+        // The inspector panel (context info) lives in the right drawer;
+        // no point fetching it while nobody can see it.
+        watch(rightDrawerOpen, gates.setContextEnabled, { immediate: true })
+
         const update_dark_mode = (dark_mode) => {
             $q.Dark.set(dark_mode)
         }
