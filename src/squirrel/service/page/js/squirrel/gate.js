@@ -70,8 +70,8 @@ export const squirrelGate = (gate_id_) => {
         const newTimeSpans = {}
         for (const kind of ['waveform', 'channel', 'response', 'carpet']) {
             const span = await gateRequest('get_time_span', { kind: kind })
-            span.tmin = span.tmin != null ? strToTime(span.tmin) : TIME_MIN
-            span.tmax = span.tmax != null ? Math.min(strToTime(span.tmax), tomorrow()) : tomorrow()
+            span.tmin = span.tmin != null ? strToTime(span.tmin) : null
+            span.tmax = span.tmax != null ? Math.min(strToTime(span.tmax), tomorrow()) : null
             newTimeSpans[kind] = span
         }
         return newTimeSpans
@@ -588,7 +588,7 @@ export const setupGates = () => {
         for (const gate of gates.value) {
             for (const kind of ['channel', 'response', 'waveform', 'carpet']) {
                 const span = gate.timeSpans[kind]
-                if (span !== null) {
+                if (span != null && span.tmin != null && span.tmax != null) {
                     if (spans[kind] === null) {
                         spans[kind] = span
                     } else {
@@ -617,13 +617,19 @@ export const setupGates = () => {
 
     watch([timeSpans], () => {
         if (!initialTimeSpanSet) {
+            let tmin = null
+            let tmax = null
             for (const kind of ['carpet', 'waveform']) {
                 const span = timeSpans.value[kind]
                 if (span != null) {
-                    const duration = span.tmax - span.tmin
-                    setTimeSpan(span.tmin - duration * 0.025, span.tmax + duration * 0.025)
-                    initialTimeSpanSet = true
+                    tmin = tmin === null ? span.tmin : Math.min(tmin, span.tmin)
+                    tmax = tmax === null ? span.tmax : Math.max(tmax, span.tmax)
                 }
+            }
+            if (tmin !== null) {
+                const duration = tmax - tmin
+                setTimeSpan(tmin - duration * 0.025, tmax + duration * 0.025)
+                initialTimeSpanSet = true
             }
         }
     })
