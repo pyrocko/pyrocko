@@ -33,6 +33,8 @@ __pycache__/
 /test/example_run_dir_local/
 /test/data/
 
+.squirrel
+
 /maintenance/**/pyrocko.git/
 /maintenance/conda/miniconda?.sh
 /maintenance/conda/miniconda?/
