@@ -1,16 +1,22 @@
-const { ref, watch, useTemplateRef, onMounted } = Vue
+const { watch, useTemplateRef, onMounted } = Vue
 
 import { squirrelGates } from './../squirrel/gate.js'
+import { squirrelConnection } from './../squirrel/connection.js'
 import { squirrelMap } from './../squirrel/map.js'
-import { timeToStr, format, onResizeDebounced } from './../squirrel/common.js'
+import { useScoutNav } from './../squirrel/scout_nav.js'
+import {
+    timeToStr,
+    format,
+    fmtDuration,
+    onResizeDebounced,
+} from './../squirrel/common.js'
 
 export default {
     setup: () => {
         const gates = squirrelGates()
+        const connection = squirrelConnection()
 
-        const inspectors = ['coordinates', 'response', 'map', 'mini-map']
-
-        const scout = ref('coordinates')
+        const { scout } = useScoutNav()
 
         const mapContainer = useTemplateRef('map-container')
 
@@ -181,23 +187,53 @@ export default {
             miniMap.addBasemap()
         })
 
-        return { gates, scout, inspectors, timeToStr, format }
+        return { gates, connection, scout, timeToStr, format, fmtDuration }
     },
 
     template: `
         <div id="scouts-container" class="fit vbox-container">
-            <div style="padding: 0.5rem">
-                <q-select v-model="scout" :options="inspectors"> </q-select>
-            </div>
+            <q-scroll-area v-if="scout == 'info'" class="vbox-main">
+                <div class="q-pa-md">
+                    <div class="text-overline" style="opacity: 0.6">Hover</div>
+                    <div class="q-mb-md">
+                        <div>
+                            {{ gates.hover.value ? timeToStr(gates.hover.value.time) : '-' }}
+                        </div>
+                        <div>
+                            {{
+                                gates.hover.value && gates.hover.value.y !== null
+                                    ? format('.3g')(gates.hover.value.y)
+                                    : '-'
+                            }}
+                        </div>
+                    </div>
 
-            <div v-if="scout == 'coordinates'" style="padding: 0.5rem">
-                {{ gates.hover.value ? timeToStr(gates.hover.value.time) : '-' }},
-                {{
-                    gates.hover.value && gates.hover.value.y !== null
-                        ? format('.3g')(gates.hover.value.y)
-                        : '-'
-                }}
-            </div>
+                    <div class="text-overline" style="opacity: 0.6">Connection</div>
+                    <div v-if="connection.connected" class="q-gutter-y-xs">
+                        <div>
+                            <q-badge color="positive">connected</q-badge>
+                            <span
+                                v-if="connection.connected.delay > 2.0"
+                                class="q-ml-sm text-negative"
+                            >
+                                {{ fmtDuration(connection.connected.delay) }} behind
+                            </span>
+                        </div>
+                        <div>Uptime: {{ fmtDuration(connection.connected.duration) }}</div>
+                        <div>
+                            Requests served:
+                            {{ connection.serverInfo ? connection.serverInfo.n_requests : '-' }}
+                        </div>
+                        <div>
+                            Pyrocko:
+                            v{{ connection.serverInfo ? connection.serverInfo.pyrocko_version : '-' }}
+                        </div>
+                    </div>
+                    <div v-else>
+                        <q-badge color="warning">disconnected</q-badge>
+                    </div>
+                </div>
+            </q-scroll-area>
 
             <q-scroll-area v-if="scout == 'response'" class="vbox-main">
                 <div v-for="contextInfo in gates.contextInfos.value" :key="contextInfo.name">

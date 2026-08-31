@@ -1,6 +1,7 @@
 const { ref, watch } = Vue
 import { squirrelConnection } from './../squirrel/connection.js'
 import { squirrelGates } from './../squirrel/gate.js'
+import { useScoutNav } from './../squirrel/scout_nav.js'
 import { fmtDuration } from './../squirrel/common.js'
 import ComponentQuickFilter from '../components/quick_filter.js'
 import ComponentScouts from '../components/scouts.js'
@@ -24,6 +25,13 @@ export default {
 
         function toggleRightDrawer() {
             rightDrawerOpen.value = !rightDrawerOpen.value
+        }
+
+        const { scout, scoutList, pinnedScoutCount } = useScoutNav()
+
+        function selectScout(value) {
+            scout.value = value
+            rightDrawerOpen.value = true
         }
 
         // Quasar's QDrawer has no built-in resize handle, so this is a
@@ -119,6 +127,10 @@ export default {
             rightDrawerWidth,
             rightDrawerResizing,
             resizeRightDrawer,
+            scout,
+            scoutList,
+            pinnedScoutCount,
+            selectScout,
             dark_mode,
             fullscreen_mode,
         }
@@ -207,35 +219,50 @@ export default {
                         <component-quick-filter></component-quick-filter>
                     </q-toolbar-title>
 
-                    <span v-if="connection.connected">
-                        <q-chip
-                            style="min-width: 8em"
-                            icon="pause"
-                            color="red"
-                            v-if="connection.connected.delay > 2.0"
-                        >
-                            {{ fmtDuration(connection.connected.delay) }}
-                        </q-chip>
-                        <q-chip
-                            style="min-width: 8em"
-                            icon="build"
-                            :color="connection.activeRequests > 4 ? 'red' : ''"
-                        >
-                            {{ connection.activeRequests }}
-                        </q-chip>
-                        <q-chip style="min-width: 8em" icon="functions">
-                            {{ connection.serverInfo ? connection.serverInfo.n_requests : '' }}
-                        </q-chip>
-                        <q-chip style="min-width: 8em" icon="cloud">
-                            {{ fmtDuration(connection.connected.duration) }}
-                        </q-chip>
-                        <q-chip style="min-width: 8em"
-                            >v{{ connection.serverInfo.pyrocko_version }}
-                        </q-chip>
-                    </span>
-                    <span v-else>
-                        <q-chip icon="cloud_off" color="yellow"> Disconnected </q-chip>
-                    </span>
+                    <q-chip
+                        style="min-width: 5em"
+                        icon="build"
+                        :color="connection.activeRequests > 4 ? 'red' : ''"
+                    >
+                        {{ connection.activeRequests }}
+                    </q-chip>
+
+                    <q-btn
+                        v-for="s in scoutList.slice(0, pinnedScoutCount)"
+                        :key="s.value"
+                        flat
+                        dense
+                        round
+                        :icon="s.icon"
+                        :color="scout === s.value ? 'primary' : ''"
+                        @click="selectScout(s.value)"
+                    >
+                        <q-tooltip>{{ s.label }}</q-tooltip>
+                    </q-btn>
+
+                    <q-btn flat dense round icon="more_vert">
+                        <q-tooltip>More</q-tooltip>
+                        <q-menu>
+                            <q-list>
+                                <q-item
+                                    v-for="s in scoutList.slice(pinnedScoutCount)"
+                                    :key="s.value"
+                                    clickable
+                                    v-close-popup
+                                    :active="scout === s.value"
+                                    @click="selectScout(s.value)"
+                                >
+                                    <q-item-section avatar>
+                                        <q-icon :name="s.icon" />
+                                    </q-item-section>
+                                    <q-item-section style="white-space: nowrap"
+                                        >{{ s.label }}</q-item-section
+                                    >
+                                </q-item>
+                            </q-list>
+                        </q-menu>
+                    </q-btn>
+
                     <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleRightDrawer" />
                 </q-toolbar>
             </q-footer>
