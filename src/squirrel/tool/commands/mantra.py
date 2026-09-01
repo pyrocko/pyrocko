@@ -22,6 +22,13 @@ description = '''%s''' % headline
 logger = logging.getLogger('main')
 
 
+g_filenames_all = set()
+
+
+def check_append_hook(fn):
+    return fn in g_filenames_all
+
+
 class Show(SquirrelCommand):
 
     def make_subparser(self, subparsers):
@@ -83,6 +90,29 @@ class Process(SquirrelCommand):
             metavar='PATH',
             help='Store output in directory PATH.')
 
+        parser.add_argument(
+            '--force',
+            dest='force',
+            action='store_true',
+            default=False,
+            help='Force overwriting of existing files.')
+
+        parser.add_argument(
+            '--append',
+            dest='append',
+            action='store_true',
+            default=False,
+            help='Append to existing files. Checks are preformed to ensure '
+                 'that appended data has no overlap with already existing '
+                 'data.')
+
+        parser.add_argument(
+            '--merge',
+            dest='merge',
+            action='store_true',
+            default=False,
+            help='Merge with existing data in files.')
+
         parser.add_squirrel_selection_arguments()
         parser.add_squirrel_query_arguments()
 
@@ -97,7 +127,7 @@ class Process(SquirrelCommand):
 
         storage = squirrel.get_storage_scheme('rug-store-100')
         if not args.out_storage_path:
-            raise squirrel.ToolError(
+            raise ToolError(
                 'Specify output storage directory with --out')
 
         storage.set_base_path(args.out_storage_path)
@@ -127,9 +157,14 @@ class Process(SquirrelCommand):
 
                 if args.out_storage_path:
                     try:
-                        storage.save_carpets(carpets)
+                        g_filenames_all.update(storage.save_carpets(
+                            carpet,
+                            overwrite=args.force,
+                            check_append_hook=check_append_hook if not (args.append or args.merge) else None,  # noqa
+                            check_append_merge=args.merge))
+
                     except FileSaveError as e:
-                        raise squirrel.ToolError(str(e))
+                        raise ToolError(str(e))
 
 
 def make_subparser(subparsers):
