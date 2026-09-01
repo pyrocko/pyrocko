@@ -2846,6 +2846,8 @@ def degapper(
 def deoverlap(traces, precedence='longest', snap_times_globally=False):
     assert precedence in ('longest', 'first')
 
+    # also used by pyrocko.carpet
+
     def snap(t, dt):
         return round(t/dt) * dt
 
@@ -2878,7 +2880,9 @@ def deoverlap(traces, precedence='longest', snap_times_globally=False):
                     if keep is tr:
                         keep = keep.copy()
                     try:
-                        keep.chop(tr_tmin, have_tmin)
+                        # Trace.chop is in-place by default
+                        # Carpet.chop is out-of-place
+                        keep = keep.chop(tr_tmin, have_tmin)
                     except NoData:
                         keep = None
                         break
@@ -2889,7 +2893,8 @@ def deoverlap(traces, precedence='longest', snap_times_globally=False):
                     if keep is tr:
                         keep = keep.copy()
                     try:
-                        keep.chop(have_tmax+tr.deltat, tr_tmax+tr.deltat)
+                        keep = keep.chop(
+                            have_tmax+tr.deltat, tr_tmax+tr.deltat)
                     except NoData:
                         keep = None
                         break
