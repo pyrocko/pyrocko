@@ -10,7 +10,7 @@ Implementation of :app:`squirrel mantra`.
 import logging
 
 from pyrocko import progress, squirrel, util
-from pyrocko.carpet import CarpetOverlapError
+from pyrocko.io import FileSaveError
 from pyrocko.squirrel.error import ToolError
 from ..common import SquirrelCommand, add_mantra_arguments, \
     get_mantras_from_arguments
@@ -128,7 +128,7 @@ class Process(SquirrelCommand):
                 if args.out_storage_path:
                     try:
                         storage.save_carpets(carpets)
-                    except CarpetOverlapError as e:
+                    except FileSaveError as e:
                         raise squirrel.ToolError(str(e))
 
 

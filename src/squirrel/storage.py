@@ -275,9 +275,8 @@ class StorageScheme(guts.Object):
             append=True,
             check_append=True,
             overwrite=overwrite,
-            # check_append_hook=check_append_hook,
-            # check_append_merge=check_append_merge)
-        )
+            check_append_merge=check_append_merge,
+            check_append_hook=check_append_hook)
 
         file_names = set()
         for deltat, carpet_group in by_deltat.items():

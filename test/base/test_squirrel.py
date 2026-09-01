@@ -18,7 +18,6 @@ from pyrocko import squirrel, util, pile, io, trace, model as pmodel
 from pyrocko import progress
 from pyrocko.parimap import parimap
 from pyrocko.client import fdsn
-from pyrocko.carpet import CarpetOverlapError
 try:
     from StringIO import StringIO
 except ImportError:
@@ -1379,7 +1378,7 @@ class SquirrelTestCase(unittest.TestCase):
             carpet.codes = squirrel.merge_codes(
                 carpet.component_codes, 'replace_deep')
 
-            with self.assertRaises(CarpetOverlapError):
+            with self.assertRaises(io.FileSaveError):
                 storage.save(carpet)
 
 

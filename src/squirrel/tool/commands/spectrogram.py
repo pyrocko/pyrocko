@@ -10,10 +10,10 @@ Implementation of :app:`squirrel spectrogram`.
 import logging
 
 from pyrocko import progress, util
+from pyrocko.io import FileSaveError
 from pyrocko.squirrel.error import ToolError
 from pyrocko.squirrel.storage import get_storage_scheme
 from pyrocko.squirrel.model import QuantityType
-from pyrocko.carpet import CarpetOverlapError
 from pyrocko.squirrel.tool.common import ldq
 
 logger = logging.getLogger('psq.cli.spectrogram')
@@ -166,5 +166,5 @@ def run(parser, args):
                 if args.out_storage_path:
                     try:
                         storage.save_carpets(carpet)
-                    except CarpetOverlapError as e:
+                    except FileSaveError as e:
                         raise ToolError(str(e))
