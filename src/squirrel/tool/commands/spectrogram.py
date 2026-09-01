@@ -21,6 +21,13 @@ logger = logging.getLogger('psq.cli.spectrogram')
 headline = 'Calculate multi-resolution spectrograms.'
 
 
+g_filenames_all = set()
+
+
+def check_append_hook(fn):
+    return fn in g_filenames_all
+
+
 def make_subparser(subparsers):
     return subparsers.add_parser(
         'spectrogram',
@@ -108,6 +115,28 @@ def setup(parser):
         metavar='PATH',
         help='Store output in directory PATH.')
 
+    parser.add_argument(
+        '--force',
+        dest='force',
+        action='store_true',
+        default=False,
+        help='Force overwriting of existing files.')
+
+    parser.add_argument(
+        '--append',
+        dest='append',
+        action='store_true',
+        default=False,
+        help='Append to existing files. Checks are preformed to ensure that '
+             'appended data has no overlap with already existing data.')
+
+    parser.add_argument(
+        '--merge',
+        dest='merge',
+        action='store_true',
+        default=False,
+        help='Merge with existing data in files.')
+
 
 def run(parser, args):
     from pyrocko.squirrel import MultiSpectrogramOperator, Pow2Windowing
@@ -165,6 +194,11 @@ def run(parser, args):
             for carpet in carpets:
                 if args.out_storage_path:
                     try:
-                        storage.save_carpets(carpet)
+                        g_filenames_all.update(storage.save_carpets(
+                            carpet,
+                            overwrite=args.force,
+                            check_append_hook=check_append_hook if not (args.append or args.merge) else None,  # noqa
+                            check_append_merge=args.merge))
+
                     except FileSaveError as e:
                         raise ToolError(str(e))
