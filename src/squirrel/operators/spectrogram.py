@@ -574,7 +574,7 @@ class MultiSpectrogramOperator(base.Operator):
 
                 carpet.data = carpet.data.astype(num.float32)
                 carpet.codes = out_codes
-                if carpet.codes in codes_want:
+                if codes_want is None or carpet.codes in codes_want:
                     carpets.append(carpet)
 
         return carpets
