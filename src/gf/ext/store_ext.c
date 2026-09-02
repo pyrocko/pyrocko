@@ -2237,15 +2237,15 @@ static store_error_t irecord_function_type_0(
         uint64_t *irecord) {
 
     float64_t v[2];
-    uint64_t i;
+    int64_t i;
     float64_t d3d;
 
     v[0] = source_coords[4] - receiver_coords[4];
     distance4(source_coords, receiver_coords, &v[1]);
     d3d = sqrt(SQR(v[0]) + SQR(v[1]));
 
-    i = (uint64_t)(round((d3d - mapping->mins[0]) / mapping->deltas[0]));
-    if (i >= mapping->ns[0]) {
+    i = (int64_t)(round((d3d - mapping->mins[0]) / mapping->deltas[0]));
+    if (i < 0 || i >= mapping->ns[0]) {
         return INDEX_OUT_OF_BOUNDS;
     }
     *irecord = i*mapping->ng;
@@ -2262,7 +2262,7 @@ static store_error_t vicinity_function_type_0(
     float64_t v[2], w_fl, w_ce;
     float64_t d3d;
     float64_t x, x_fl, x_ce;
-    uint64_t i_fl, i_ce;
+    int64_t i_fl, i_ce;
     uint64_t ns;
 
     v[0] = source_coords[4] - receiver_coords[4];
@@ -2278,10 +2278,10 @@ static store_error_t vicinity_function_type_0(
     w_fl = 1.0 - (x - x_fl);
     w_ce = (1.0 - (x_ce - x)) * (x_ce - x_fl);
 
-    i_fl = (uint64_t)x_fl;
-    i_ce = (uint64_t)x_ce;
+    i_fl = (int64_t)x_fl;
+    i_ce = (int64_t)x_ce;
 
-    if (i_fl >= ns || i_ce >= ns) {
+    if (i_fl < 0 || i_fl >= ns || i_ce < 0 || i_ce >= ns) {
         return INDEX_OUT_OF_BOUNDS;
     }
 
@@ -2302,12 +2302,12 @@ static store_error_t irecord_function_type_a(
         uint64_t *irecord) {
 
     float64_t v[2];
-    uint64_t i[2];
+    int64_t i[2];
     v[0] = source_coords[4];
     distance4(source_coords, receiver_coords, &v[1]);
-    i[0] = (uint64_t)(round((v[0] - mapping->mins[0]) / mapping->deltas[0]));
-    i[1] = (uint64_t)(round((v[1] - mapping->mins[1]) / mapping->deltas[1]));
-    if (i[0] >= mapping->ns[0] || i[1] >= mapping->ns[1]) {
+    i[0] = (int64_t)(round((v[0] - mapping->mins[0]) / mapping->deltas[0]));
+    i[1] = (int64_t)(round((v[1] - mapping->mins[1]) / mapping->deltas[1]));
+    if (i[0] < 0 || i[1] < 0 || i[0] >= mapping->ns[0] || i[1] >= mapping->ns[1]) {
         return INDEX_OUT_OF_BOUNDS;
     }
     *irecord = (i[0]*mapping->ns[1] + i[1])*mapping->ng;
@@ -2323,7 +2323,7 @@ static store_error_t vicinity_function_type_a(
 
     float64_t v[2], w_fl[2], w_ce[2];
     float64_t x, x_fl, x_ce;
-    uint64_t i_fl[2], i_ce[2];
+    int64_t i_fl[2], i_ce[2];
     const uint64_t *ns;
     size_t k;
 
@@ -2340,10 +2340,10 @@ static store_error_t vicinity_function_type_a(
         w_fl[k] = 1.0 - (x - x_fl);
         w_ce[k] = (1.0 - (x_ce - x)) * (x_ce - x_fl);
 
-        i_fl[k] = (uint64_t)x_fl;
-        i_ce[k] = (uint64_t)x_ce;
+        i_fl[k] = (int64_t)x_fl;
+        i_ce[k] = (int64_t)x_ce;
 
-        if (i_fl[k] >= ns[k] || i_ce[k] >= ns[k]) {
+        if (i_fl[k] < 0 || i_fl[k] >= ns[k] || i_ce[k] < 0 || i_ce[k] >= ns[k]) {
             return INDEX_OUT_OF_BOUNDS;
         }
     }
@@ -2367,15 +2367,17 @@ static store_error_t irecord_function_type_b(
         uint64_t *irecord) {
 
     float64_t v[3];
-    uint64_t i[3];
+    int64_t i[3];
     v[0] = receiver_coords[4];
     v[1] = source_coords[4];
     distance4(source_coords, receiver_coords, &v[2]);
 
-    i[0] = (uint64_t)(round((v[0] - mapping->mins[0]) / mapping->deltas[0]));
-    i[1] = (uint64_t)(round((v[1] - mapping->mins[1]) / mapping->deltas[1]));
-    i[2] = (uint64_t)(round((v[2] - mapping->mins[2]) / mapping->deltas[2]));
-    if (i[0] >= mapping->ns[0] || i[1] >= mapping->ns[1] || i[2] >= mapping->ns[2]) {
+    i[0] = (int64_t)(round((v[0] - mapping->mins[0]) / mapping->deltas[0]));
+    i[1] = (int64_t)(round((v[1] - mapping->mins[1]) / mapping->deltas[1]));
+    i[2] = (int64_t)(round((v[2] - mapping->mins[2]) / mapping->deltas[2]));
+    if (i[0] < 0 || i[0] >= mapping->ns[0] ||
+        i[1] < 0 || i[1] >= mapping->ns[1] ||
+        i[2] < 0 || i[2] >= mapping->ns[2]) {
         return INDEX_OUT_OF_BOUNDS;
     }
     *irecord = (i[0]*mapping->ns[1]*mapping->ns[2] + i[1]*mapping->ns[2] + i[2]) * mapping->ng;
@@ -2391,7 +2393,7 @@ static store_error_t vicinity_function_type_b(
 
     float64_t v[3], w_fl[3], w_ce[3];
     float64_t x, x_fl, x_ce;
-    uint64_t i_fl[3], i_ce[3];
+    int64_t i_fl[3], i_ce[3];
     const uint64_t *ns;
     size_t k;
 
@@ -2409,10 +2411,10 @@ static store_error_t vicinity_function_type_b(
         w_fl[k] = 1.0 - (x - x_fl);
         w_ce[k] = (1.0 - (x_ce - x)) * (x_ce - x_fl);
 
-        i_fl[k] = (uint64_t)x_fl;
-        i_ce[k] = (uint64_t)x_ce;
+        i_fl[k] = (int64_t)x_fl;
+        i_ce[k] = (int64_t)x_ce;
 
-        if (i_fl[k] >= ns[k] || i_ce[k] >= ns[k]) {
+        if (i_fl[k] < 0 || i_fl[k] >= ns[k] || i_ce[k] < 0 || i_ce[k] >= ns[k]) {
             return INDEX_OUT_OF_BOUNDS;
         }
     }
@@ -2445,7 +2447,7 @@ static store_error_t irecord_function_type_c(
         uint64_t *irecord) {
 
     float64_t v[3];
-    uint64_t i[3];
+    int64_t i[3];
 
     (void)receiver_coords;
 
@@ -2453,10 +2455,10 @@ static store_error_t irecord_function_type_c(
     v[1] = source_coords[3];
     v[2] = source_coords[2];
 
-    i[0] = (uint64_t)(round((v[0] - mapping->mins[0]) / mapping->deltas[0]));
-    i[1] = (uint64_t)(round((v[1] - mapping->mins[1]) / mapping->deltas[1]));
-    i[2] = (uint64_t)(round((v[2] - mapping->mins[2]) / mapping->deltas[2]));
-    if (i[0] >= mapping->ns[0] || i[1] >= mapping->ns[1] || i[2] >= mapping->ns[2]) {
+    i[0] = (int64_t)(round((v[0] - mapping->mins[0]) / mapping->deltas[0]));
+    i[1] = (int64_t)(round((v[1] - mapping->mins[1]) / mapping->deltas[1]));
+    i[2] = (int64_t)(round((v[2] - mapping->mins[2]) / mapping->deltas[2]));
+    if (i[0] < 0 || i[0] >= mapping->ns[0] || i[1] < 0 || i[1] >= mapping->ns[1] || i[2] < 0 || i[2] >= mapping->ns[2]) {
         return INDEX_OUT_OF_BOUNDS;
     }
     *irecord = (i[0]*mapping->ns[1]*mapping->ns[2] + i[1]*mapping->ns[2] + i[2]) * mapping->ng;
@@ -2472,7 +2474,7 @@ static store_error_t vicinity_function_type_c(
 
     float64_t v[3], w_fl[3], w_ce[3];
     float64_t x, x_fl, x_ce;
-    uint64_t i_fl[3], i_ce[3];
+    int64_t i_fl[3], i_ce[3];
     const uint64_t *ns;
     size_t k;
 
@@ -2492,10 +2494,10 @@ static store_error_t vicinity_function_type_c(
         w_fl[k] = 1.0 - (x - x_fl);
         w_ce[k] = (1.0 - (x_ce - x)) * (x_ce - x_fl);
 
-        i_fl[k] = (uint64_t)x_fl;
-        i_ce[k] = (uint64_t)x_ce;
+        i_fl[k] = (int64_t)x_fl;
+        i_ce[k] = (int64_t)x_ce;
 
-        if (i_fl[k] >= ns[k] || i_ce[k] >= ns[k]) {
+        if (i_fl[k] < 0 || i_fl[k] >= ns[k] || i_ce[k] < 0 || i_ce[k] >= ns[k]) {
             return INDEX_OUT_OF_BOUNDS;
         }
     }
