@@ -364,3 +364,12 @@ body.body--dark {
   border-radius: 0.4em;
   border: none;
 }
+
+.quick-search-help code {
+    color: var(--q-primary);
+}
+
+.quick-search-help td {
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+}

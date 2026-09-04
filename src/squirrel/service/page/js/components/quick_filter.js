@@ -71,6 +71,8 @@ export default {
             searchInput.value = val
         }
 
+        const showHelp = ref(false)
+
         return {
             dark,
             searchInput,
@@ -79,9 +81,9 @@ export default {
             onFilter,
             onInputValue,
             onSearchFinalize,
+            showHelp,
         }
-    },
-    template: `
+    }, template: `
     <div>
         <q-select
             :dark="dark"
@@ -101,6 +103,48 @@ export default {
             @keyup.enter="onSearchFinalize"
             style="max-width: 20em"
         >
+            <template v-slot:before-options>
+                <div class="quick-search-help q-px-md q-py-sm text-weight-bold text-grey-7">
+                    <div class="text-right">
+                    <q-btn size="xs" outline round color="primary" icon="question_mark" @click="showHelp = !showHelp" />
+                    </div>
+                    <div v-if="showHelp">
+                        <p></p>
+                        <p>Matching operators:</p>
+                        <table>
+                            <tr><td><code>n</code></td><td>network</td></tr>
+                            <tr><td><code>s</code></td><td>station</td></tr>
+                            <tr><td><code>l</code></td><td>location</td></tr>
+                            <tr><td><code>c</code></td><td>channel</td></tr>
+                            <tr><td><code>e</code></td><td>extra</td></tr>
+                            <tr><td><code>nslce</code></td><td>network.station.location.channel.extra</td></tr>
+                            <tr><td><code>sc</code></td><td>station.channel</td></tr>
+                            <tr><td></td><td>Any combination is supported.</td></tr>
+                        </table>
+                        <p></p>
+                        <p>Glob patterns:</p>
+                        <table>
+                            <tr><td><code>*</code></td><td>Match zero or more arbitrary characters.</td></tr>
+                            <tr><td><code>?</code></td><td>Match exactly one arbitrary character.</td></tr>
+                        </table>
+                        <p></p>
+                        <p>Logical operators:</p>
+                        <table>
+                            <tr><td><code>&amp;&amp;</code></td><td>and</td></tr>
+                            <tr><td><code>||</code></td><td>or</td></tr>
+                            <tr><td><code>!</code></td><td>negation</td></tr>
+                        </table>
+                        <p></p>
+                        <p>Examples:</p>
+                        <table>
+                            <tr><td><code>c *z</code></td><td>Show vertials, i.e. channels ending with Z.</td></tr>
+                            <tr><td><code>s GRA1 GRA2</code></td><td>Show only stations GRA1 and GRA2.</td></tr>
+                            <tr><td><code>c *z && ! n GR</code></td><td>Show vertical components but hide network GR.</td></tr>
+                            <tr><td><code>nslc GR.GRA1..BHZ</code></td><td>Show that specific channel.</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </template>
             <template v-slot:prepend>
                 <q-icon name="search" />
             </template>
