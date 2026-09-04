@@ -180,7 +180,8 @@ export const squirrelTimeline = () => {
     let scrollDeltaY = 0
     let scrollTime = 0
     let updateTimeoutId = null
-    let searchQuery = null
+    let activeQuery = null
+    let makeCodesMatcher = null
     // let updateCount = 0
 
     let deactivateScrollMarginsTimeoutId = null
@@ -1117,11 +1118,7 @@ export const squirrelTimeline = () => {
             return c.split('.')
         }
 
-        const query = searchQuery.value.trim().toLowerCase()
-
-        const filter = (c) => {
-            return c.toLowerCase().includes(query)
-        }
+        const filter = makeCodesMatcher(activeQuery.value)
 
         const groups = Map.groupBy(gates.codes.value.filter(filter), (c) =>
             groupKeyChannel(c)
@@ -1210,8 +1207,10 @@ export const squirrelTimeline = () => {
             gates.setTimeSpan(newVal[0], newVal[1])
         })
         watch(visibleCodes, gates.setCodesVisible)
-        searchQuery = useFilters()['searchQuery']
-        watch(searchQuery, updateCodes)
+        const filters = useFilters()
+        activeQuery = filters.activeQuery
+        makeCodesMatcher = filters.makeCodesMatcher
+        watch(activeQuery, updateCodes)
     }
 
     my.activate = () => {

@@ -203,6 +203,14 @@ body.body--dark {
     border-color: var(--q-text-color);
 }
 
+.search-invalid .q-field__control {
+    background-color: color-mix(
+        in oklab,
+        var(--q-background-color),
+        var(--q-negative) 15%
+    );
+}
+
 .curtain {
     user-select: none;
     position: absolute;
