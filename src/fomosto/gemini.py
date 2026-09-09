@@ -18,10 +18,6 @@ BASE_DIRECTORY = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 base_directory_path = Path(__file__).parent
 
 
-"""
-Das mit den suffixen ist von chat, damit die Binaries auf Mac und Linux laufen. Am Ende durchgehen, maybe gibts da was einfacheres.
-"""
-
 guts_prefix = "gemini"
 
 program_bins = {
@@ -67,7 +63,9 @@ class GeminiSource(Object):
     depth: float = Float.T(default=90.0)  # [pad] use centroid_depth
     mb: float = Float.T(default=2.0)  # [pad] body-wave magnitude
     MS: float = Float.T(default=4.0)  # [pad] surface-wave magnitude
-    region: str = String.T(default="KARAMURSEL TURKEI")  # [pad] max 24 characters
+    region: str = String.T(
+        default="KARAMURSEL TURKEI"
+    )  # [pad] max 24 characters
 
     # Line 2: CMT header and inversion errors.
     # Origin of the epicentre data: 'PDE' preliminary, 'MLI' NEIC monthly
@@ -79,23 +77,35 @@ class GeminiSource(Object):
     mw_stations: int = Int.T(default=0)  # [pad] mantle-wave stations used
     mw_records: int = Int.T(default=0)  # [pad] mantle-wave records used
     mw_cutoff: int = Int.T(default=0)  # [pad] cut-off in s, i4 in readcmt.f
-    centroid_time: float = Float.T(default=0.0)  # [phys] offset from origin_time in s
-    centroid_time_error: float = Float.T(default=0.0)  # [pad] standard error in s
+    centroid_time: float = Float.T(
+        default=0.0
+    )  # [phys] offset from origin_time in s
+    centroid_time_error: float = Float.T(
+        default=0.0
+    )  # [pad] standard error in s
     centroid_latitude: float = Float.T(
         default=40.64
     )  # [phys] source latitude in degrees
-    centroid_latitude_error: float = Float.T(default=0.0)  # [pad] standard error
+    centroid_latitude_error: float = Float.T(
+        default=0.0
+    )  # [pad] standard error
     centroid_longitude: float = Float.T(
         default=29.83
     )  # [phys] source longitude in degrees
-    centroid_longitude_error: float = Float.T(default=0.0)  # [pad] standard error
+    centroid_longitude_error: float = Float.T(
+        default=0.0
+    )  # [pad] standard error
     centroid_depth: float = Float.T(default=10.0)  # [phys] source depth in km
-    centroid_depth_error: float = Float.T(default=0.0)  # [pad] standard error in km
+    centroid_depth_error: float = Float.T(
+        default=0.0
+    )  # [pad] standard error in km
 
     # Line 3: moment tensor. Every component is scaled by 10**exponent and
     # carries the standard error of the inversion.
     duration: float = Float.T(default=0.0)  # [pad] read but never returned
-    exponent: int = Int.T(default=27)  # [phys] common exponent of all moment values
+    exponent: int = Int.T(
+        default=27
+    )  # [phys] common exponent of all moment values
     mrr: float = Float.T(default=2.02)  # [phys] radial-radial component
     mrr_error: float = Float.T(default=0.0)  # [pad] standard error of mrr
     mss: float = Float.T(default=-0.07)  # [phys] south-south component
@@ -120,10 +130,14 @@ class GeminiSource(Object):
     eigenvalue3: float = Float.T(default=0.0)  # [pad] principal axis 3
     plunge3: int = Int.T(default=0)  # [pad] 0-90 degrees, i3 in readcmt.f
     azimuth3: int = Int.T(default=0)  # [pad] 0-360 degrees, i4 in readcmt.f
-    scalar_moment: float = Float.T(default=1.38)  # [pad] scaled by 10**exponent
+    scalar_moment: float = Float.T(
+        default=1.38
+    )  # [pad] scaled by 10**exponent
     strike1: int = Int.T(default=0)  # [pad] 0-360 degrees, i4 in readcmt.f
     dip1: int = Int.T(default=0)  # [pad] 0-90 degrees, i3 in readcmt.f
-    rake1: int = Int.T(default=0)  # [pad] -180 to +180 degrees, i5 in readcmt.f
+    rake1: int = Int.T(
+        default=0
+    )  # [pad] -180 to +180 degrees, i5 in readcmt.f
     strike2: int = Int.T(default=0)  # [pad] auxiliary plane, i4 in readcmt.f
     dip2: int = Int.T(default=0)  # [pad] auxiliary plane, i3 in readcmt.f
     rake2: int = Int.T(default=0)  # [pad] auxiliary plane, i5 in readcmt.f
@@ -182,10 +196,12 @@ class CMTBuilder(object):
             else:
                 kind = "str"
 
-            source_column_values[data_attribute.name] = self.map_value_to_column_type(
-                getattr(self.source, data_attribute.name),
-                kind,
-                self.text_widths.get(data_attribute.name),
+            source_column_values[data_attribute.name] = (
+                self.map_value_to_column_type(
+                    getattr(self.source, data_attribute.name),
+                    kind,
+                    self.text_widths.get(data_attribute.name),
+                )
             )
 
         return source_column_values
@@ -378,7 +394,9 @@ class GeminiConfigFull(Object):
     )
 
 
-config_filename = join(BASE_DIRECTORY, "Configurations", "gemini_config_full.yaml")
+config_filename = join(
+    BASE_DIRECTORY, "Configurations", "gemini_config_full.yaml"
+)
 
 
 def dump_config(config, filename=config_filename):
@@ -459,9 +477,17 @@ def totido_input(conf):
                 conf.response_file,
                 conf.time_shift,
                 "%s %s %s"
-                % (conf.lowpass_number, conf.lowpass_order, conf.lowpass_cutoff),
+                % (
+                    conf.lowpass_number,
+                    conf.lowpass_order,
+                    conf.lowpass_cutoff,
+                ),
                 "%s %s %s"
-                % (conf.highpass_number, conf.highpass_order, conf.highpass_cutoff),
+                % (
+                    conf.highpass_number,
+                    conf.highpass_order,
+                    conf.highpass_cutoff,
+                ),
                 conf.zero_padding,
                 conf.seismo_type,
                 conf.seconds_out,
@@ -472,7 +498,9 @@ def totido_input(conf):
     )
 
 
-def run_program(program, input_string, current_working_direktory=BASE_DIRECTORY):
+def run_program(
+    program, input_string, current_working_direktory=BASE_DIRECTORY
+):
     """Feed one input block into one of the Fortran programs"""
     binary = program_bins[program]
     logger.info("running %s in %s", program, current_working_direktory)
@@ -523,7 +551,9 @@ class MseedConverter:
                     values = [float(value) for value in fields]
                 except ValueError:
                     if fields[0] == "RECLat":
-                        station_coords.append([float(fields[1]), float(fields[3])])
+                        station_coords.append(
+                            [float(fields[1]), float(fields[3])]
+                        )
                         block_number += 1
                         blocks_together.append([])
                 else:
@@ -554,8 +584,10 @@ class MseedConverter:
                         except ValueError:
                             continue
                         if (
-                            abs(catalog_latitude - latitude) < location_tolerance
-                            and abs(catalog_longitude - longitude) < location_tolerance
+                            abs(catalog_latitude - latitude)
+                            < location_tolerance
+                            and abs(catalog_longitude - longitude)
+                            < location_tolerance
                         ):
                             return fields[2], fields[1], catalog_elevation, ""
 
@@ -607,7 +639,11 @@ class MseedConverter:
             # (dispec.f, 'Transform to north-south and east-west components').
             # pyrocko and fomosto use NED with z downward, so north and east
             # pass through unchanged and only the vertical is flipped.
-            for direction, column, sign in (("N", 2, 1), ("E", 3, 1.0), ("D", 1, -1)):
+            for direction, column, sign in (
+                ("N", 2, 1),
+                ("E", 3, 1.0),
+                ("D", 1, -1),
+            ):
                 traces.append(
                     trace.Trace(
                         network=station.network,
@@ -627,7 +663,8 @@ class MseedConverter:
         io.save(
             traces,
             filename_template=str(
-                output_dir / "%(network)s.%(station)s.%(location)s.%(channel)s.mseed"
+                output_dir
+                / "%(network)s.%(station)s.%(location)s.%(channel)s.mseed"
             ),
             format="mseed",
         )
@@ -672,7 +709,9 @@ def run(
         logger.info("MSEED conversion completed")
     if snuffler_run:
         run_snuffler(
-            cwd=cwd, stations_filename=stations_filename, event_filename=event_filename
+            cwd=cwd,
+            stations_filename=stations_filename,
+            event_filename=event_filename,
         )
         logger.info("Snuffler opened")
 
@@ -751,7 +790,11 @@ def print_elastic10():
     """Show the four elementary sources in both conventions."""
     print(
         "%-6s %-30s %s"
-        % ("id", "NED (nn, ee, dd, ne, nd, ed)", "USE (rr, ss, ee, rs, re, se)")
+        % (
+            "id",
+            "NED (nn, ee, dd, ne, nd, ed)",
+            "USE (rr, ss, ee, rs, re, se)",
+        )
     )
     for name, tensor in elastic10_tensors:
         print(
@@ -768,9 +811,14 @@ def source_with_tensor(tensor, source):
     """Set the moment tensor of a GeminiSource, leave everything else alone."""
 
     source.exponent, komponenten = tensor.cmt_values()
-    (source.mrr, source.mss, source.mee, source.mrs, source.mre, source.mse) = (
-        komponenten
-    )
+    (
+        source.mrr,
+        source.mss,
+        source.mee,
+        source.mrs,
+        source.mre,
+        source.mse,
+    ) = komponenten
     return source
 
 
