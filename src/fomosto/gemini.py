@@ -1,46 +1,36 @@
 import logging
-import os
-from os.path import join
 from pathlib import Path
 from subprocess import PIPE, Popen
 
 import numpy as np
-import numpy as num
 from pyrocko import io, model, trace, util
 from pyrocko.guts import Float, Int, Object, String
 from pyrocko.moment_tensor import MomentTensor, symmat6
 
-logging.basicConfig(level=logging.INFO)
-
 logger = logging.getLogger("pyrocko.fomosto.gemini")
 
-BASE_DIRECTORY = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-base_directory_path = Path(__file__).parent
+# Data files (green/, sources/, stations/, iasp91, lw200mhz, spec3k,
+# seismogr). The programs run in here, so the file names in the configs stay
+# relative to it, just like in gemini.sc, disp.sc and to.sc.
+GEMINI_DIRECTORY = Path(
+    "~/GeminiInhalt/FunktionierendeVersion/gemini-2.2.1"
+).expanduser()
 
+# The Fortran binaries, installed outside the data directory.
+BIN_DIRECTORY = Path("~/.local/bin").expanduser()
 
 guts_prefix = "gemini"
 
 program_bins = {
-    "gemini": os.path.join(BASE_DIRECTORY, "Gemini", "gemini_inputfile"),
-    "dispec": os.path.join(BASE_DIRECTORY, "Dispec", "dispec_inputfile"),
-    "totido": os.path.join(BASE_DIRECTORY, "Totido", "totido_inputfile"),
-}
-
-program_bins_path = {
-    "gemini": base_directory_path / "Gemini" / "gemini_inputfile",
-    "dispec": base_directory_path / "Dispec" / "dispec_inputfile",
-    "totido": base_directory_path / "Totido" / "totido_inputfile",
+    "gemini": BIN_DIRECTORY / "gemini_inputfile",
+    "dispec": BIN_DIRECTORY / "dispec_inputfile",
+    "totido": BIN_DIRECTORY / "totido_inputfile",
 }
 
 
 # Tests the existence of the binaries.
 def have_backend():
-    file_existence_checks = []
-    for path in program_bins.values():
-        file_exists = os.path.isfile(path)
-        file_existence_checks.append(file_exists)
-
-    return all(file_existence_checks)
+    return all(binary.is_file() for binary in program_bins.values())
 
 
 # Here, the input parameters for the simulated source, Gemini, Dispec and Totido are defined.
@@ -156,9 +146,13 @@ class CMTBuilder(object):
     # line 4: 3(f7.2,i3,i4),f7.2,2(i4,i3,i5)
     line_widths = (79, 79, 80, 73)
 
-    def __init__(self, source, filename="sources/Quelle"):
+    def __init__(
+        self,
+        source,
+        filepath=GEMINI_DIRECTORY / "sources" / "Quelle",
+    ):
         self.source = source
-        self.filename = filename
+        self.filepath = Path(filepath)
 
     @staticmethod
     def map_value_to_column_type(value, kind, length=None):
@@ -226,14 +220,14 @@ class CMTBuilder(object):
                 )
         return lines
 
-    def write(self, filename: str = ""):
-        filename = filename or self.filename
+    def write(self, filepath=None):
+        filepath = Path(filepath or self.filepath)
         lines = self.check(self.lines())
-        with open(filename, "w") as f:
-            f.write("\n".join(lines) + "\n")
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        filepath.write_text("\n".join(lines) + "\n")
 
-        # logger.info('source written to %s', filename)
-        return filename
+        logger.info("source written to %s", filepath)
+        return filepath
 
 
 # SourceDescriptionConverter(GeminiSource()).write(filename='sources/QuellenTest')
@@ -241,16 +235,16 @@ class CMTBuilder(object):
 
 class GeminiStation(Object):
     # also read by Dispec, in the order of the columns of stations/GRSN_2003. for a greensfunction store, this would be the area to define the stations.
-    filename: str = String.T(default="stations/GRSN_2003")
+    filepath: str = String.T(default="stations/GRSN_2003")
 
 
 class GeminiEarthModel(Object):
     # Right now, the earth model is written in a text file and read by Gemini.
-    filename: str = String.T(default="iasp91")
+    filepath: str = String.T(default="iasp91")
 
 
 class GeminiMaximumDegreeWindow(Object):
-    filename: str = String.T(default="lw200mhz")
+    filepath: str = String.T(default="lw200mhz")
 
 
 class GeminiConfig(Object):
@@ -292,13 +286,12 @@ class GeminiConfig(Object):
     # 1.e-4 is sufficient.
     accuracy: float = Float.T(default=1.0e-4)
     # File name of the earth model.
-    earth_model: str = String.T(
-        default="iasp91"
-    )  # File name of the window in the frequency-degree domain, holding
+    earth_model: str = String.T(default="iasp91")
+    # File name of the window in the frequency-degree domain, holding
     # tabulated maximum degrees for selected frequencies.
     omega_ell_window: str = String.T(default="lw200mhz")
     # Name of the output file with the expansion coefficients.
-    output_filename: str = String.T(default="green/bas.f50.d100.3.out")
+    output_filepath: str = String.T(default="green/bas.f50.d100.3.out")
     # Confirm the input.
     confirmation: int = Int.T(default=1)
 
@@ -312,7 +305,8 @@ class DispecConfig(Object):
     # File with the basis solutions calculated by GEMINI.
     basis_solutions: str = String.T(default="green/bas.f50.d100.3.out")
     # Source file holding exactly ONE set of earthquake parameters in
-    # Harvard-CMT format.
+    # Harvard-CMT format. dispec.f reads this name with '(a70)', so it has to
+    # stay short.
     source_file: str = String.T(default="sources/Quelle")
     # Source mechanism: 'm' for moment tensor, 'f' for single force.
     source_mechanism: str = String.T(default="m")
@@ -348,7 +342,7 @@ class TotidoConfig(Object):
 
     # File with the spectra generated by DISPEC. In to.sc this is the only
     # value without a default, it has to be passed as '-f <spectrumfile>'.
-    spectrum_file: str = String.T(default="spec3k")
+    spectrum_filepath: str = String.T(default="spec3k")
     # File with real and imaginary part of the instrument transfer function at
     # the frequencies used in GEMINI and DISPEC, one line per frequency:
     # frequency, real part, imaginary part.
@@ -380,7 +374,7 @@ class TotidoConfig(Object):
     seconds_out: int = Int.T(default=5400)
     # getopts option string of to.sc, through which the values above are
     # overridden on the command line.
-    opts: str = String.T(default="L:l:H:h:s:o_O:p:r:f:")
+    opts: str = String.T(default="L:l:H:h:s:o:O:p:r:f:")
 
 
 class GeminiConfigFull(Object):
@@ -394,23 +388,22 @@ class GeminiConfigFull(Object):
     )
 
 
-config_filename = join(
-    BASE_DIRECTORY, "Configurations", "gemini_config_full.yaml"
+config_filepath = (
+    GEMINI_DIRECTORY / "Configurations" / "gemini_config_full.yaml"
 )
 
 
-def dump_config(config, filename=config_filename):
-    os.makedirs(os.path.dirname(filename), exist_ok=True)
-    config.dump(filename=filename)
-    return filename
+def dump_config(config, filepath=config_filepath):
+    filepath = Path(filepath)
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    config.dump(filename=str(filepath))
+    return filepath
 
 
-# dump_config(GeminiConfigFull(), filename=config_filename)
-def load_config(filename=config_filename):
-    return GeminiConfigFull.load(filename=filename)
+def load_config(filepath=config_filepath):
+    return GeminiConfigFull.load(filename=str(filepath))
 
 
-# load_config()
 def gemini_input(conf):
     """Build the stdin block for GEMINI, like the heredoc in gemini.sc."""
 
@@ -432,7 +425,7 @@ def gemini_input(conf):
                 conf.accuracy,
                 conf.earth_model,
                 conf.omega_ell_window,
-                conf.output_filename,
+                conf.output_filepath,
                 conf.confirmation,
             ]
         )
@@ -473,7 +466,7 @@ def totido_input(conf):
         "\n".join(
             str(value)
             for value in [
-                conf.spectrum_file,
+                conf.spectrum_filepath,
                 conf.response_file,
                 conf.time_shift,
                 "%s %s %s"
@@ -498,18 +491,16 @@ def totido_input(conf):
     )
 
 
-def run_program(
-    program, input_string, current_working_direktory=BASE_DIRECTORY
-):
+def run_program(program, input_string, gemini_directory=GEMINI_DIRECTORY):
     """Feed one input block into one of the Fortran programs"""
     binary = program_bins[program]
-    logger.info("running %s in %s", program, current_working_direktory)
+    logger.info("running %s in %s", binary, gemini_directory)
     program_execution = Popen(
-        [binary],
+        [str(binary)],
         stdin=PIPE,
         stdout=PIPE,
         stderr=PIPE,
-        cwd=current_working_direktory,
+        cwd=gemini_directory,
         text=True,
     )
 
@@ -527,22 +518,22 @@ class MseedConverter:
     def __init__(
         self,
         config,
-        asci_filename="seismogr",
-        stations_filename="demo_stations.txt",
-        event_filename="demo_event.txt",
-        mseeds_dir="mseed",
+        ascii_filepath=GEMINI_DIRECTORY / "seismogr",
+        stations_filepath=GEMINI_DIRECTORY / "demo_stations.txt",
+        event_filepath=GEMINI_DIRECTORY / "demo_event.txt",
+        mseeds_dir=GEMINI_DIRECTORY / "mseed",
     ):
         self.config = config
-        self.asci_filename = asci_filename
-        self.stations_filename = stations_filename
-        self.event_filename = event_filename
-        self.mseeds_dir = mseeds_dir
+        self.ascii_filepath = Path(ascii_filepath)
+        self.stations_filepath = Path(stations_filepath)
+        self.event_filepath = Path(event_filepath)
+        self.mseeds_dir = Path(mseeds_dir)
 
         station_coords = []
         blocks_together = []
         block_number = 0
 
-        with open(self.asci_filename) as input_file:
+        with open(self.ascii_filepath) as input_file:
             for line in input_file:
                 fields = line.split()
                 if not fields:
@@ -568,9 +559,9 @@ class MseedConverter:
 
         def find_station(latitude, longitude):
             for catalog in (
-                str(self.config.station.filename),
-                # "stations/GRSN_2003",
-                # "stations/IRIS_1996"
+                GEMINI_DIRECTORY / self.config.station.filepath,
+                # GEMINI_DIRECTORY / 'stations/GRSN_2003',
+                # GEMINI_DIRECTORY / 'stations/IRIS_1996'
             ):
                 with open(catalog) as catalog_file:
                     for line in catalog_file:
@@ -591,6 +582,11 @@ class MseedConverter:
                         ):
                             return fields[2], fields[1], catalog_elevation, ""
 
+            raise LookupError(
+                "no station at lat %g, lon %g in %s"
+                % (latitude, longitude, self.config.station.filepath)
+            )
+
         stations = []
         for i in range(len(station_coords)):
             network, station_code, elevation, location = find_station(
@@ -608,7 +604,7 @@ class MseedConverter:
                 )
             )
 
-        model.dump_stations(stations, filename=self.stations_filename)
+        model.dump_stations(stations, filename=str(self.stations_filepath))
 
         source = self.config.source
 
@@ -624,7 +620,7 @@ class MseedConverter:
             name=source.event_id,
         )
 
-        model.dump_events([event], filename=self.event_filename)
+        model.dump_events([event], filename=str(self.event_filepath))
 
         ## build traces
         traces = []
@@ -657,80 +653,88 @@ class MseedConverter:
                 )
 
         # save
-        output_dir = Path(self.mseeds_dir)
-        output_dir.mkdir(exist_ok=True)
+        self.mseeds_dir.mkdir(parents=True, exist_ok=True)
 
         io.save(
             traces,
             filename_template=str(
-                output_dir
+                self.mseeds_dir
                 / "%(network)s.%(station)s.%(location)s.%(channel)s.mseed"
             ),
             format="mseed",
         )
-        logger.info("Saved %d traces to %s", len(traces), output_dir)
+        logger.info("Saved %d traces to %s", len(traces), self.mseeds_dir)
 
 
 def run(
     config,
-    cwd=BASE_DIRECTORY,
+    gemini_directory=GEMINI_DIRECTORY,
     cmt_build=True,
-    cmt_filename=None,
+    cmt_filepath=None,
     gemini_run=True,
     dispec_run=True,
     totido_run=True,
     mseed_convert=True,
-    mseed_dir="mseed",
-    stations_filename="demo_stations.txt",
-    event_filename="demo_event.txt",
+    mseeds_dir=GEMINI_DIRECTORY / "mseed",
+    stations_filepath=GEMINI_DIRECTORY / "demo_stations.txt",
+    event_filepath=GEMINI_DIRECTORY / "demo_event.txt",
     snuffler_run=False,
 ):
     if cmt_build:
-        if cmt_filename is None:
-            cmt_filename = config.dispec_config.source_file
-        CMTBuilder(config.source).write(filename=cmt_filename)
-        logger.info("CMT file written to %s", cmt_filename)
+        if cmt_filepath is None:
+            cmt_filepath = gemini_directory / config.dispec_config.source_file
+        CMTBuilder(config.source).write(cmt_filepath)
+        logger.info("CMT file written to %s", cmt_filepath)
     if gemini_run:
-        run_program("gemini", gemini_input(config.gemini_config), cwd)
+        run_program(
+            "gemini", gemini_input(config.gemini_config), gemini_directory
+        )
         logger.info("GEMINI run completed")
     if dispec_run:
-        run_program("dispec", dispec_input(config.dispec_config), cwd)
+        run_program(
+            "dispec", dispec_input(config.dispec_config), gemini_directory
+        )
         logger.info("DISPEC run completed")
     if totido_run:
-        run_program("totido", totido_input(config.totido_config), cwd)
+        run_program(
+            "totido", totido_input(config.totido_config), gemini_directory
+        )
         logger.info("TOTIDO run completed")
     if mseed_convert:
         MseedConverter(
             config=config,
-            stations_filename=stations_filename,
-            event_filename=event_filename,
-            mseeds_dir=mseed_dir,
+            ascii_filepath=gemini_directory / "seismogr",
+            stations_filepath=stations_filepath,
+            event_filepath=event_filepath,
+            mseeds_dir=mseeds_dir,
         )
         logger.info("MSEED conversion completed")
     if snuffler_run:
         run_snuffler(
-            cwd=cwd,
-            stations_filename=stations_filename,
-            event_filename=event_filename,
+            gemini_directory=gemini_directory,
+            mseeds_dir=mseeds_dir,
+            stations_filepath=stations_filepath,
+            event_filepath=event_filepath,
         )
         logger.info("Snuffler opened")
 
 
 def run_snuffler(
-    cwd=BASE_DIRECTORY,
+    gemini_directory=GEMINI_DIRECTORY,
     wait=True,
-    stations_filename="demo_stations.txt",
-    event_filename="demo_event.txt",
+    mseeds_dir=GEMINI_DIRECTORY / "mseed",
+    stations_filepath=GEMINI_DIRECTORY / "demo_stations.txt",
+    event_filepath=GEMINI_DIRECTORY / "demo_event.txt",
 ):
 
     snuffler = Popen(
         [
             "snuffler",
-            "mseed/",
-            "--stations=" + stations_filename,
-            "--events=" + event_filename,
+            str(mseeds_dir),
+            "--stations=%s" % stations_filepath,
+            "--events=%s" % event_filepath,
         ],
-        cwd=cwd,
+        cwd=gemini_directory,
     )
 
     if not wait:
@@ -770,11 +774,11 @@ class GeminiMomentTensor(object):
         return self.moment_tensor.m6_up_south_east()
 
     def cmt_values(self):
-        scaled_values = num.array(self.m6_use()) * 1e7  # N m -> dyne cm
-        largest_scaled_value = num.abs(scaled_values).max()
+        scaled_values = np.array(self.m6_use()) * 1e7  # N m -> dyne cm
+        largest_scaled_value = np.abs(scaled_values).max()
         if largest_scaled_value == 0.0:
             return 0, scaled_values
-        exponent = int(num.floor(num.log10(largest_scaled_value)))
+        exponent = int(np.floor(np.log10(largest_scaled_value)))
         return exponent, scaled_values / 10.0**exponent
 
 
@@ -822,21 +826,21 @@ def source_with_tensor(tensor, source):
     return source
 
 
-def run_tensor(tensor, cwd=BASE_DIRECTORY):
+def run_tensor(tensor, gemini_directory=GEMINI_DIRECTORY):
     """Send one moment tensor through Dispec, Totido, Converter and snuffler."""
 
-    config = load_config(filename=config_filename)
+    config = load_config()
     config.source = source_with_tensor(tensor, config.source)
 
     # source_converter laeuft als Subprozess und liest die YAML von der
     # Platte, deshalb muss der neue Tensor erst dorthin.
     dump_config(config)
 
-    run(config, cwd, gemini_run=False, snuffler_run=True)
+    run(config, gemini_directory, gemini_run=False, snuffler_run=True)
 
 
-run_tensor(elastic10_tensors[0][1], cwd=BASE_DIRECTORY)
-run_tensor(elastic10_tensors[1][1], cwd=BASE_DIRECTORY)
-run_tensor(elastic10_tensors[2][1], cwd=BASE_DIRECTORY)
-run_tensor(elastic10_tensors[3][1], cwd=BASE_DIRECTORY)
-# run(config=load_config(),snuffler_run=True)
+# run_tensor(elastic10_tensors[0][1])
+# run_tensor(elastic10_tensors[1][1])
+# run_tensor(elastic10_tensors[2][1])
+# run_tensor(elastic10_tensors[3][1])
+run(config=load_config(), snuffler_run=True)
