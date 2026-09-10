@@ -226,7 +226,7 @@ class CMTBuilder(object):
         filepath.parent.mkdir(parents=True, exist_ok=True)
         filepath.write_text("\n".join(lines) + "\n")
 
-        logger.info("source written to %s", filepath)
+        logger.info(f"source written to {filepath}")
         return filepath
 
 
@@ -469,18 +469,8 @@ def totido_input(conf):
                 conf.spectrum_filepath,
                 conf.response_file,
                 conf.time_shift,
-                "%s %s %s"
-                % (
-                    conf.lowpass_number,
-                    conf.lowpass_order,
-                    conf.lowpass_cutoff,
-                ),
-                "%s %s %s"
-                % (
-                    conf.highpass_number,
-                    conf.highpass_order,
-                    conf.highpass_cutoff,
-                ),
+                f"{conf.lowpass_number} {conf.lowpass_order} {conf.lowpass_cutoff}"
+                f"{conf.highpass_number} {conf.highpass_order} {conf.highpass_cutoff}",
                 conf.zero_padding,
                 conf.seismo_type,
                 conf.seconds_out,
@@ -494,7 +484,7 @@ def totido_input(conf):
 def run_program(program, input_string, gemini_directory=GEMINI_DIRECTORY):
     """Feed one input block into one of the Fortran programs"""
     binary = program_bins[program]
-    logger.info("running %s in %s", binary, gemini_directory)
+    logger.info(f"running {binary} in {gemini_directory}")
     program_execution = Popen(
         [str(binary)],
         stdin=PIPE,
@@ -507,8 +497,7 @@ def run_program(program, input_string, gemini_directory=GEMINI_DIRECTORY):
     output, errors = program_execution.communicate(input_string)
     if program_execution.returncode != 0:
         raise RuntimeError(
-            "%s had an error with return code %i:\n%s"
-            % (program, program_execution.returncode, errors)
+            f"{program} had an error with return code {program_execution.returncode}:\n{errors}"
         )
     return output
 
@@ -583,8 +572,7 @@ class MseedConverter:
                             return fields[2], fields[1], catalog_elevation, ""
 
             raise LookupError(
-                "no station at lat %g, lon %g in %s"
-                % (latitude, longitude, self.config.station.filepath)
+                f"no station at lat {latitude}, lon {longitude} in {self.config.station.filepath}"
             )
 
         stations = []
@@ -610,7 +598,7 @@ class MseedConverter:
 
         day, month, year = source.date.split("/")
         start_time_string = f"20{year}-{month}-{day} {source.origin_time}"
-        formatted_start_time = util.str_to_time(start_time_string)
+        formatted_start_time = float(util.str_to_time(start_time_string))
 
         event = model.Event(
             lat=source.latitude,
@@ -659,11 +647,11 @@ class MseedConverter:
             traces,
             filename_template=str(
                 self.mseeds_dir
-                / "%(network)s.%(station)s.%(location)s.%(channel)s.mseed"
+                / f"{{network}}.{{station}}.{{location}}.{{channel}}.mseed"
             ),
             format="mseed",
         )
-        logger.info("Saved %d traces to %s", len(traces), self.mseeds_dir)
+        logger.info(f"Saved {len(traces)} traces to {self.mseeds_dir}")
 
 
 def run(
@@ -684,7 +672,7 @@ def run(
         if cmt_filepath is None:
             cmt_filepath = gemini_directory / config.dispec_config.source_file
         CMTBuilder(config.source).write(cmt_filepath)
-        logger.info("CMT file written to %s", cmt_filepath)
+        logger.info(f"CMT file written to {cmt_filepath}")
     if gemini_run:
         run_program(
             "gemini", gemini_input(config.gemini_config), gemini_directory
@@ -719,6 +707,16 @@ def run(
         logger.info("Snuffler opened")
 
 
+run(
+    config=load_config(),
+    gemini_run=True,
+    dispec_run=False,
+    totido_run=False,
+    mseed_convert=False,
+    snuffler_run=False,
+)
+
+
 def run_snuffler(
     gemini_directory=GEMINI_DIRECTORY,
     wait=True,
@@ -731,8 +729,8 @@ def run_snuffler(
         [
             "snuffler",
             str(mseeds_dir),
-            "--stations=%s" % stations_filepath,
-            "--events=%s" % event_filepath,
+            f"--stations={stations_filepath}",
+            f"--events={event_filepath}",
         ],
         cwd=gemini_directory,
     )
@@ -843,4 +841,3 @@ def run_tensor(tensor, gemini_directory=GEMINI_DIRECTORY):
 # run_tensor(elastic10_tensors[1][1])
 # run_tensor(elastic10_tensors[2][1])
 # run_tensor(elastic10_tensors[3][1])
-run(config=load_config(), snuffler_run=True)
