@@ -1,4 +1,6 @@
 import logging
+import os
+import signal
 from pathlib import Path
 from subprocess import PIPE, Popen
 
@@ -8,7 +10,7 @@ from pyrocko.guts import Float, Int, Object, String
 from pyrocko.moment_tensor import MomentTensor, symmat6
 
 logger = logging.getLogger("pyrocko.fomosto.gemini")
-
+logging.basicConfig(level=logging.INFO)
 # Data files (green/, sources/, stations/, iasp91, lw200mhz, spec3k,
 # seismogr). The programs run in here, so the file names in the configs stay
 # relative to it, just like in gemini.sc, disp.sc and to.sc.
@@ -481,27 +483,6 @@ def totido_input(conf):
     )
 
 
-def run_program(program, input_string, gemini_directory=GEMINI_DIRECTORY):
-    """Feed one input block into one of the Fortran programs"""
-    binary = program_bins[program]
-    logger.info(f"running {binary} in {gemini_directory}")
-    program_execution = Popen(
-        [str(binary)],
-        stdin=PIPE,
-        stdout=PIPE,
-        stderr=PIPE,
-        cwd=gemini_directory,
-        text=True,
-    )
-
-    output, errors = program_execution.communicate(input_string)
-    if program_execution.returncode != 0:
-        raise RuntimeError(
-            f"{program} had an error with return code {program_execution.returncode}:\n{errors}"
-        )
-    return output
-
-
 # run_program('dispec', dispec_input(load_config().dispec_config), base_directory)
 class MseedConverter:
     def __init__(
@@ -654,6 +635,57 @@ class MseedConverter:
         logger.info(f"Saved {len(traces)} traces to {self.mseeds_dir}")
 
 
+def run_program(program, input_string, gemini_directory=GEMINI_DIRECTORY):
+    """Feed one input block into one of the Fortran programs"""
+    binary = program_bins[program]
+    logger.info(f"running {binary} in {gemini_directory}")
+
+    ## Hier signal handler
+    ## kinds supprocess
+    ### signal.signal
+    process_container = []
+
+    def forward_signal(signum, frame):
+        logger.info(f"forwarding signal {signum} to subprocesses")
+        if process_container:
+            child_process = process_container[0]
+            if child_process.poll() is None:
+                try:
+                    os.kill(child_process.pid, signum)
+                    logger.info(
+                        f"signal {signum} sent to subprocess {child_process.pid}"
+                    )
+                except ProcessLookupError:
+                    logger.info(
+                        f"subprocess {child_process.pid} already terminated"
+                    )
+
+    old_sigint = signal.signal(signal.SIGINT, forward_signal)
+    old_sigterm = signal.signal(signal.SIGTERM, forward_signal)
+
+    try:
+        program_execution = Popen(
+            [str(binary)],
+            stdin=PIPE,
+            stdout=PIPE,
+            stderr=PIPE,
+            cwd=gemini_directory,
+            text=True,
+        )
+        process_container.append(program_execution)
+
+        output, errors = program_execution.communicate(input_string)
+    finally:
+        signal.signal(signal.SIGINT, old_sigint)
+        signal.signal(signal.SIGTERM, old_sigterm)
+
+    if program_execution.returncode != 0:
+        raise RuntimeError(
+            f"{program} had an error with return code {program_execution.returncode}:\n{errors}"
+        )
+    return output
+
+
 def run(
     config,
     gemini_directory=GEMINI_DIRECTORY,
@@ -707,13 +739,15 @@ def run(
         logger.info("Snuffler opened")
 
 
+configlong = load_config()
 run(
-    config=load_config(),
+    config=configlong,
+    cmt_build=True,
     gemini_run=True,
-    dispec_run=False,
-    totido_run=False,
-    mseed_convert=False,
-    snuffler_run=False,
+    dispec_run=True,
+    totido_run=True,
+    mseed_convert=True,
+    snuffler_run=True,
 )
 
 
