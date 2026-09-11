@@ -7,7 +7,7 @@ from pathlib import Path
 from subprocess import PIPE, Popen
 
 import numpy as np
-from pyrocko import io, model, trace, util
+from pyrocko import gf, io, model, trace, util
 from pyrocko.guts import Float, Int, Object, String
 from pyrocko.moment_tensor import MomentTensor, symmat6
 
@@ -300,6 +300,13 @@ class GeminiConfig(Object):
     output_filepath: str = String.T(default="green/bas.f50.d100.3.out")
     # Confirm the input.
     confirmation: int = Int.T(default=1)
+
+
+class GeminiRecieverSection(Object):
+    distance_min: float = Float.T(default=-30.0)
+    distance_max: float = Float.T(default=-71.0)
+    distance_delta: float = Float.T(default=10.0)
+    reciever_type: int = Int.T(default=4)
 
 
 class DispecConfig(Object):
@@ -759,7 +766,7 @@ async def run_parallel():
     )
 
 
-asyncio.run(run_parallel())
+# asyncio.run(run_parallel())
 
 
 def run_snuffler(
@@ -887,3 +894,39 @@ def run_tensor(tensor, gemini_directory=GEMINI_DIRECTORY):
 # run_tensor(elastic10_tensors[1][1])
 # run_tensor(elastic10_tensors[2][1])
 # run_tensor(elastic10_tensors[3][1])
+class GeminiStoreConfig(Object):
+    km = 1000
+    d = dict(
+        id="Store_Dir",
+        ncomponents=10,
+        component_scheme="elastic10",
+        stored_quantity=100,
+        sample_rate=10,
+        receiver_depth=0 * km,
+        source_depth_min=10 * km,
+        source_depth_max=20 * km,
+        source_depth_delta=10 * km,
+        distance_min=100 * km,
+        distance_max=1000 * km,
+        distance_delta=10 * km,
+        earthmodel_1d="cake.load_model()",
+        modelling_code_id="gemini",
+        tabulated_phases=[
+            gf.meta.TPDef(id="begin", definition="p,P,p\\,P\\,Pv_(cmb)p"),
+            gf.meta.TPDef(id="end", definition="2.5"),
+            gf.meta.TPDef(id="P", definition="!P"),
+            gf.meta.TPDef(id="S", definition="!S"),
+            gf.meta.TPDef(id="p", definition="!p"),
+            gf.meta.TPDef(id="s", definition="!s"),
+        ],
+    )
+    # if config_params is not None:
+    #        d.update(config_params)
+
+    configA = gf.meta.ConfigTypeA()
+    dump_config(
+        configA, filepath=Path(__file__).parent / "gemini_store_configA.yaml"
+    )
+
+
+GeminiStoreConfig.dump_config()  # create default config file for GEMINI store
