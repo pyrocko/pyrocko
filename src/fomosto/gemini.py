@@ -1,6 +1,8 @@
+import asyncio
 import logging
 import os
 import signal
+import subprocess
 from pathlib import Path
 from subprocess import PIPE, Popen
 
@@ -10,7 +12,9 @@ from pyrocko.guts import Float, Int, Object, String
 from pyrocko.moment_tensor import MomentTensor, symmat6
 
 logger = logging.getLogger("pyrocko.fomosto.gemini")
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
+
+
 # Data files (green/, sources/, stations/, iasp91, lw200mhz, spec3k,
 # seismogr). The programs run in here, so the file names in the configs stay
 # relative to it, just like in gemini.sc, disp.sc and to.sc.
@@ -399,6 +403,7 @@ def dump_config(config, filepath=config_filepath):
     filepath = Path(filepath)
     filepath.parent.mkdir(parents=True, exist_ok=True)
     config.dump(filename=str(filepath))
+    logger.info(f"config dumped to {filepath}")
     return filepath
 
 
@@ -471,7 +476,7 @@ def totido_input(conf):
                 conf.spectrum_filepath,
                 conf.response_file,
                 conf.time_shift,
-                f"{conf.lowpass_number} {conf.lowpass_order} {conf.lowpass_cutoff}"
+                f"{conf.lowpass_number} {conf.lowpass_order} {conf.lowpass_cutoff}",
                 f"{conf.highpass_number} {conf.highpass_order} {conf.highpass_cutoff}",
                 conf.zero_padding,
                 conf.seismo_type,
@@ -635,58 +640,46 @@ class MseedConverter:
         logger.info(f"Saved {len(traces)} traces to {self.mseeds_dir}")
 
 
-def run_program(program, input_string, gemini_directory=GEMINI_DIRECTORY):
+async def run_program(
+    program: str, input_string: str, gemini_directory: Path = GEMINI_DIRECTORY
+) -> str:
     """Feed one input block into one of the Fortran programs"""
     binary = program_bins[program]
     logger.info(f"running {binary} in {gemini_directory}")
+    logger.debug(f"input string:\n{input_string}")
 
-    ## Hier signal handler
-    ## kinds supprocess
-    ### signal.signal
-    process_container = []
-
-    def forward_signal(signum, frame):
-        logger.info(f"forwarding signal {signum} to subprocesses")
-        if process_container:
-            child_process = process_container[0]
-            if child_process.poll() is None:
-                try:
-                    os.kill(child_process.pid, signum)
-                    logger.info(
-                        f"signal {signum} sent to subprocess {child_process.pid}"
-                    )
-                except ProcessLookupError:
-                    logger.info(
-                        f"subprocess {child_process.pid} already terminated"
-                    )
-
-    old_sigint = signal.signal(signal.SIGINT, forward_signal)
-    old_sigterm = signal.signal(signal.SIGTERM, forward_signal)
+    prog = await asyncio.create_subprocess_shell(
+        str(binary),
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        cwd=gemini_directory,
+    )
 
     try:
-        program_execution = Popen(
-            [str(binary)],
-            stdin=PIPE,
-            stdout=PIPE,
-            stderr=PIPE,
-            cwd=gemini_directory,
-            text=True,
-        )
-        process_container.append(program_execution)
+        out, err = await prog.communicate(input=input_string.encode())
+    except BaseException:
+        prog.kill()
+        await prog.wait()
+        raise
 
-        output, errors = program_execution.communicate(input_string)
-    finally:
-        signal.signal(signal.SIGINT, old_sigint)
-        signal.signal(signal.SIGTERM, old_sigterm)
+    try:
+        ret_code = await prog.wait()
+    except asyncio.CancelledError:
+        prog.terminate()
+        raise
 
-    if program_execution.returncode != 0:
+    if ret_code != 0:
         raise RuntimeError(
-            f"{program} had an error with return code {program_execution.returncode}:\n{errors}"
+            f"{program} failed with return code {ret_code}\n"
+            f"Error: {err.decode()}\n"
+            f"Output: {out.decode()}"
         )
-    return output
+    logger.debug(f"{program} output:\n{out.decode()}")
+    return out.decode()
 
 
-def run(
+async def run(
     config,
     gemini_directory=GEMINI_DIRECTORY,
     cmt_build=True,
@@ -700,23 +693,24 @@ def run(
     event_filepath=GEMINI_DIRECTORY / "demo_event.txt",
     snuffler_run=False,
 ):
+    print(f"Running GEMINI pipeline with config: {config}")
     if cmt_build:
         if cmt_filepath is None:
             cmt_filepath = gemini_directory / config.dispec_config.source_file
         CMTBuilder(config.source).write(cmt_filepath)
         logger.info(f"CMT file written to {cmt_filepath}")
     if gemini_run:
-        run_program(
+        await run_program(
             "gemini", gemini_input(config.gemini_config), gemini_directory
         )
         logger.info("GEMINI run completed")
     if dispec_run:
-        run_program(
+        await run_program(
             "dispec", dispec_input(config.dispec_config), gemini_directory
         )
         logger.info("DISPEC run completed")
     if totido_run:
-        run_program(
+        await run_program(
             "totido", totido_input(config.totido_config), gemini_directory
         )
         logger.info("TOTIDO run completed")
@@ -740,15 +734,32 @@ def run(
 
 
 configlong = load_config()
-run(
-    config=configlong,
-    cmt_build=True,
-    gemini_run=True,
-    dispec_run=True,
-    totido_run=True,
-    mseed_convert=True,
-    snuffler_run=True,
-)
+
+
+async def run_parallel():
+    await asyncio.gather(
+        run(
+            config=configlong,
+            cmt_build=False,
+            gemini_run=False,
+            dispec_run=True,
+            totido_run=False,
+            mseed_convert=False,
+            snuffler_run=False,
+        ),
+        run(
+            config=configlong,
+            cmt_build=False,
+            gemini_run=False,
+            dispec_run=True,
+            totido_run=False,
+            mseed_convert=False,
+            snuffler_run=False,
+        ),
+    )
+
+
+asyncio.run(run_parallel())
 
 
 def run_snuffler(
@@ -867,8 +878,9 @@ def run_tensor(tensor, gemini_directory=GEMINI_DIRECTORY):
     # source_converter laeuft als Subprozess und liest die YAML von der
     # Platte, deshalb muss der neue Tensor erst dorthin.
     dump_config(config)
-
-    run(config, gemini_directory, gemini_run=False, snuffler_run=True)
+    asyncio.run(
+        run(config, gemini_directory, gemini_run=False, snuffler_run=True)
+    )
 
 
 # run_tensor(elastic10_tensors[0][1])
