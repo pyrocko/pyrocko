@@ -37,7 +37,7 @@ def setup(parser):
                  dq(level_default)))
 
     on_error_choices = ('raise', 'warn', 'ignore')
-    on_error_default = 'raise'
+    on_error_default = 'warn'
 
     parser.add_argument(
         '--on-error',
