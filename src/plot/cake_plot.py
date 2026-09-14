@@ -690,6 +690,7 @@ def my_rays_plot(
     xmin, xmax = axes.get_xlim()
     ymin, ymax = axes.get_ylim()
     sketch_model(mod, axes=axes, shade=shade_model)
+
     plot_source(zstart, axes=axes)
     if distances is not None:
         plot_receivers(zstop, distances, axes=axes)
@@ -718,25 +719,8 @@ def my_combi_plot(
     labelpos = mpl_margins(
         fig, nw=1, nh=2, w=7., h=5., hspace=2., units=fontsize)
 
-    ax1 = fig.add_subplot(2, 1, 1)
-    labelpos(ax1, 2., 1.5)
-
-    ax2 = fig.add_subplot(2, 1, 2, sharex=ax1)
+    ax2 = fig.add_subplot(2, 1, 2)
     labelpos(ax2, 2., 1.5)
-
-    xmin, xmax, ymin, ymax = plot_xt(
-        paths, zstart, zstop,
-        vred=vred,
-        distances=distances,
-        phase_colors=phase_colors,
-        axes=ax1)
-
-    if distances is None:
-        ax1.set_xlim(xmin, xmax)
-
-    labels_xt(axes=ax1, vred=vred, as_degrees=as_degrees)
-    ax1.set_xlabel('')
-    ax1.get_xaxis().set_tick_params(labelbottom=False)
 
     plot_rays(paths, rays, zstart, zstop, phase_colors=phase_colors, axes=ax2)
     xmin, xmax = ax2.get_xlim()
@@ -753,6 +737,31 @@ def my_combi_plot(
     my = (ymax-ymin)*0.05
     ax2.set_xlim(xmin-mx, xmax+mx)
     ax2.set_ylim(ymax+my, ymin-my)
+
+    ax1 = fig.add_subplot(2, 1, 1, sharex=ax2)
+    labelpos(ax1, 2., 1.5)
+
+    xmin, xmax, ymin, ymax = plot_xt(
+        paths, zstart, zstop,
+        vred=vred,
+        distances=distances,
+        phase_colors=phase_colors,
+        axes=ax1)
+
+    if distances is None:
+        ax1.set_xlim(xmin, xmax)
+
+    labels_xt(axes=ax1, vred=vred, as_degrees=as_degrees)
+    ax1.set_xlabel('')
+    ax1.get_xaxis().set_tick_params(labelbottom=False)
+
+    if rays:
+        times = [ray.t for ray in rays]
+        if times:
+            tmin = min(times)
+            tmax = max(times)
+
+            ax1.set_ylim(tmin, tmax)
 
     if plt:
         mpl_show(plt)
