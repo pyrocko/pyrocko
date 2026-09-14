@@ -25,13 +25,13 @@ Invocation
 Input ``waveforms`` can be any combination of the following data sources:
 
 * waveform files of supported formats
-* directories, which are recursively seached for waveform files
+* directories, which are recursively searched for waveform files
 * pseudo URLs, which are used to open real-time data streams from different sources
 
 The following pseudo URLs are supported:
 
 .. describe:: seedlink://<host>[:<port>]/<pattern>
-    
+
     Acquire data through SeedLink from given ``<host>``.  The specified ``<pattern>`` is matched against strings of the form ``<network>.<station>.<location>.<channel>``,   where the placeholders stand for the corresponding IDs of each SeedLink data stream. To use this feature, ``slinktool`` must be installed.
 
 .. describe:: school://<device>
@@ -62,7 +62,7 @@ Options
 
 .. option:: -h, --help
 
-    show help message and exit 
+    show help message and exit
 
 .. option:: --format=FORMAT
 
@@ -98,12 +98,12 @@ Options
 .. option:: --markers=MARKERS
 
     read marker information from file ``MARKERS``, this option can be given more than once
-    
+
 .. option:: --follow=N
 
     follow real time with a window of N seconds
 
-.. option:: --cache=DIR 
+.. option:: --cache=DIR
 
     use directory DIR to cache trace metadata (default: ``pyrocko_0.3_cache_<username>`` in the system's default temporary directory)
 
@@ -129,7 +129,7 @@ Options
 
 .. option:: --qt5
     use Qt5 for the GUI
- 
+
 .. option:: --qt4
     use Qt4 for the GUI
 
@@ -144,39 +144,39 @@ Keystrokes
 =========================== ===============================================================
 Key                         Effect
 =========================== ===============================================================
-:kbd:`q`                    Quit 
-:kbd:`r`                    Reload modified files 
+:kbd:`q`                    Quit
+:kbd:`r`                    Reload modified files
 :kbd:`R`                    Reload snufflings
-:kbd:`f`                    Toggle full screen mode 
+:kbd:`f`                    Toggle full screen mode
 :kbd:`m`                    Toggle marker sidebar
 :kbd:`c`                    Toggle main controls
-:kbd:`:`                    Enter command 
-:kbd:`<space>`              Forward one page in time 
-:kbd:`b`                    Backward one page in time 
-:kbd:`<pagedown>`           Scroll tracks one page down 
-:kbd:`<pageup>`             Scroll tracks one page up 
-:kbd:`+`                    Show one track more 
+:kbd:`:`                    Enter command
+:kbd:`<space>`              Forward one page in time
+:kbd:`b`                    Backward one page in time
+:kbd:`<pagedown>`           Scroll tracks one page down
+:kbd:`<pageup>`             Scroll tracks one page up
+:kbd:`+`                    Show one track more
 :kbd:`-`                    Show one track less
 :kbd:`=`                    Show initial number of tracks
 :kbd:`g`                    Go to selection / show all
 :kbd:`G`                    Zoom to selection / zoom to trace visibility
-:kbd:`n`                    Go to next marker 
-:kbd:`p`                    Go to previous marker 
+:kbd:`n`                    Go to next marker
+:kbd:`p`                    Go to previous marker
 :kbd:`N`                    Go to next event marker
-:kbd:`P`                    Go to previous event marker 
+:kbd:`P`                    Go to previous event marker
 :kbd:`<tab>`                Go to next marker of active event
 :kbd:`<shift> + <tab>`      Go to previous marker of active event
-:kbd:`a`                    Select all markers currently visible 
-:kbd:`A`                    Select all markers 
-:kbd:`d`                    Deselect all markers 
-:kbd:`0` ... :kbd:`5`       Change color of marker 
+:kbd:`a`                    Select all markers currently visible
+:kbd:`A`                    Select all markers
+:kbd:`d`                    Deselect all markers
+:kbd:`0` ... :kbd:`5`       Change color of marker
 :kbd:`<f1>` ... :kbd:`<f5>` Convert to phase marker
 :kbd:`e`                    Convert to event marker / set active event / associate to event
 :kbd:`<f10>`                Convert phase marker to normal marker
 :kbd:`<backspace>`          Delete marker
 :kbd:`<up>`, :kbd:`<down>`  Set first motion polarity on selected marker
 :kbd:`<shift> + <up>`       Unset first motion polarity on selected marker
-:kbd:`<escape>`             Enter batch-picking/ Abort picking 
+:kbd:`<escape>`             Enter batch-picking / Abort picking
 :kbd:`?`                    Help
 =========================== ===============================================================
 
@@ -186,15 +186,15 @@ Mouse
 ================================ =========================================
 Mouse                            Effect
 ================================ =========================================
-Click and drag                   Zoom and pan 
-Click and drag on time axis      Pan only 
-Click on marker                  Select marker 
+Click and drag                   Zoom and pan
+Click and drag on time axis      Pan only
+Click on marker                  Select marker
 :kbd:`<shift>` + click on marker Select additional marker
-Wheel                            Scroll tracks vertically 
-:kbd:`<ctrl>` + wheel            Change number of tracks shown 
-Double-click                     Enter picking mode 
-:kbd:`<shift>` + left-click      Enter uncertainty selection for current phase marker, 
-                                 then click and drag up/down to define uncertainty. 
+Wheel                            Scroll tracks vertically
+:kbd:`<ctrl>` + wheel            Change number of tracks shown
+Double-click                     Enter picking mode
+:kbd:`<shift>` + left-click      Enter uncertainty selection for current phase marker,
+                                 then click and drag up/down to define uncertainty.
                                  Requires first converting marker to phase marker.
 ================================ =========================================
 
@@ -289,8 +289,8 @@ Traces are scaled according to the range [``<vmin>``, ``<vmax>``]. Either of
 ``<vmin>`` or ``<vmax>`` may be set to the string 'nan', to maintain automatic
 scaling for the corresponding limit.  If three arguments are given, the first
 argument should be a pattern, restricting application of the given scaling rule
-to matching traces.  If no arguments are given, any previously set scalings
-rules are cleared. 
+to matching traces.  If no arguments are given, any previously set scaling
+rules are cleared.
 
 Goto
 ^^^^
