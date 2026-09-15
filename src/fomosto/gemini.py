@@ -966,9 +966,19 @@ def gemini_config_for_depth(store_config, extra, source_depth):
     return conf
 
 
+def check_sample_rate(samprat, store_config):
+    deltat = store_config.deltat
+    if abs(1.0 / samprat - deltat) > 1e-5 * deltat:
+        raise gf.store.StoreError(
+            f"seismogr samprat {samprat} does not fit store sample_rate "
+            f"{store_config.sample_rate}, check seismo_lenght and zero_padding"
+        )
+    return deltat
+
+
 def seismogr_traces(filepath, config, store_config):
     samprat, station_coords, blocks_together = read_seismogr(filepath)
-    deltat = store_config.deltat
+    deltat = check_sample_rate(samprat, store_config)
     source = config.source
 
     traces = []
