@@ -1,18 +1,16 @@
 import asyncio
 import logging
-import os
-import signal
-import subprocess
+import shutil
 from pathlib import Path
 from subprocess import PIPE, Popen
+from tempfile import mkdtemp
 
 import numpy as np
-from pyrocko import gf, io, model, trace, util
-from pyrocko.guts import Float, Int, Object, String
+from pyrocko import cake, gf, io, model, orthodrome, trace, util
+from pyrocko.guts import Float, Int, Object, String, clone
 from pyrocko.moment_tensor import MomentTensor, symmat6
 
 logger = logging.getLogger("pyrocko.fomosto.gemini")
-logging.basicConfig(level=logging.DEBUG)
 
 
 # Data files (green/, sources/, stations/, iasp91, lw200mhz, spec3k,
@@ -21,6 +19,7 @@ logging.basicConfig(level=logging.DEBUG)
 GEMINI_DIRECTORY = Path(
     "~/GeminiInhalt/FunktionierendeVersion/gemini-2.2.1"
 ).expanduser()
+
 
 # The Fortran binaries, installed outside the data directory.
 BIN_DIRECTORY = Path("~/.local/bin").expanduser()
@@ -236,9 +235,6 @@ class CMTBuilder(object):
         return filepath
 
 
-# SourceDescriptionConverter(GeminiSource()).write(filename='sources/QuellenTest')
-
-
 class GeminiStation(Object):
     # also read by Dispec, in the order of the columns of stations/GRSN_2003. for a greensfunction store, this would be the area to define the stations.
     filepath: str = String.T(default="stations/GRSN_2003")
@@ -246,7 +242,9 @@ class GeminiStation(Object):
 
 class GeminiEarthModel(Object):
     # Right now, the earth model is written in a text file and read by Gemini.
-    filepath: str = String.T(default="iasp91")
+    filepath: str = String.T(
+        default="iasp91 # the input is not used right now"
+    )
 
 
 class GeminiMaximumDegreeWindow(Object):
@@ -302,7 +300,7 @@ class GeminiConfig(Object):
     confirmation: int = Int.T(default=1)
 
 
-class GeminiRecieverSection(Object):
+class GeminiRecieverSection_NOT_IN_USE(Object):
     distance_min: float = Float.T(default=-30.0)
     distance_max: float = Float.T(default=-71.0)
     distance_delta: float = Float.T(default=10.0)
@@ -384,7 +382,7 @@ class TotidoConfig(Object):
     # 'g' accelerometer response.
     seismo_type: str = String.T(default="v")
     # Length of the output time series in seconds.
-    seconds_out: int = Int.T(default=5400)
+    seconds_out: int = Int.T(default=3600)
     # getopts option string of to.sc, through which the values above are
     # overridden on the command line.
     opts: str = String.T(default="L:l:H:h:s:o:O:p:r:f:")
@@ -495,7 +493,32 @@ def totido_input(conf):
     )
 
 
-# run_program('dispec', dispec_input(load_config().dispec_config), base_directory)
+def read_seismogr(filepath):
+    station_coords = []
+    blocks_together = []
+    block_number = 0
+
+    with open(filepath) as input_file:
+        input_file.readline()
+        samprat = float(input_file.readline().split()[3])
+        for line in input_file:
+            fields = line.split()
+            if not fields:
+                continue
+            try:
+                values = [float(value) for value in fields]
+            except ValueError:
+                if fields[0] == "RECLat":
+                    station_coords.append([float(fields[1]), float(fields[3])])
+                    block_number += 1
+                    blocks_together.append([])
+            else:
+                if block_number:
+                    blocks_together[block_number - 1].append(values)
+
+    return samprat, station_coords, blocks_together
+
+
 class MseedConverter:
     def __init__(
         self,
@@ -511,27 +534,7 @@ class MseedConverter:
         self.event_filepath = Path(event_filepath)
         self.mseeds_dir = Path(mseeds_dir)
 
-        station_coords = []
-        blocks_together = []
-        block_number = 0
-
-        with open(self.ascii_filepath) as input_file:
-            for line in input_file:
-                fields = line.split()
-                if not fields:
-                    continue
-                try:
-                    values = [float(value) for value in fields]
-                except ValueError:
-                    if fields[0] == "RECLat":
-                        station_coords.append(
-                            [float(fields[1]), float(fields[3])]
-                        )
-                        block_number += 1
-                        blocks_together.append([])
-                else:
-                    if block_number:
-                        blocks_together[block_number - 1].append(values)
+        _, station_coords, blocks_together = read_seismogr(self.ascii_filepath)
 
         # station position
         station_latitudes = [coord[0] for coord in station_coords]
@@ -640,7 +643,7 @@ class MseedConverter:
             traces,
             filename_template=str(
                 self.mseeds_dir
-                / f"{{network}}.{{station}}.{{location}}.{{channel}}.mseed"
+                / "%(network)s.%(station)s.%(location)s.%(channel)s.mseed"
             ),
             format="mseed",
         )
@@ -653,7 +656,7 @@ async def run_program(
     """Feed one input block into one of the Fortran programs"""
     binary = program_bins[program]
     logger.info(f"running {binary} in {gemini_directory}")
-    logger.debug(f"input string:\n{input_string}")
+    # logger.debug(f"input string:\n{input_string}")
 
     prog = await asyncio.create_subprocess_shell(
         str(binary),
@@ -700,7 +703,7 @@ async def run(
     event_filepath=GEMINI_DIRECTORY / "demo_event.txt",
     snuffler_run=False,
 ):
-    print(f"Running GEMINI pipeline with config: {config}")
+    logger.info(f"Running GEMINI pipeline with config: {config}")
     if cmt_build:
         if cmt_filepath is None:
             cmt_filepath = gemini_directory / config.dispec_config.source_file
@@ -766,9 +769,6 @@ async def run_parallel():
     )
 
 
-# asyncio.run(run_parallel())
-
-
 def run_snuffler(
     gemini_directory=GEMINI_DIRECTORY,
     wait=True,
@@ -792,13 +792,6 @@ def run_snuffler(
 
     snuffler.wait()
     return snuffler.returncode
-
-
-"""das init ding ist noch garnichts"""
-
-
-def init(store_dir, variant, config_params=None):
-    print("Init called")
 
 
 class GeminiMomentTensor(object):
@@ -876,32 +869,16 @@ def source_with_tensor(tensor, source):
     return source
 
 
-def run_tensor(tensor, gemini_directory=GEMINI_DIRECTORY):
-    """Send one moment tensor through Dispec, Totido, Converter and snuffler."""
-
-    config = load_config()
-    config.source = source_with_tensor(tensor, config.source)
-
-    # source_converter laeuft als Subprozess und liest die YAML von der
-    # Platte, deshalb muss der neue Tensor erst dorthin.
-    dump_config(config)
-    asyncio.run(
-        run(config, gemini_directory, gemini_run=False, snuffler_run=True)
-    )
+km = 1000.0
 
 
-# run_tensor(elastic10_tensors[0][1])
-# run_tensor(elastic10_tensors[1][1])
-# run_tensor(elastic10_tensors[2][1])
-# run_tensor(elastic10_tensors[3][1])
-class GeminiStoreConfig(Object):
-    km = 1000
+def gemini_store_config(**config_params):
     d = dict(
         id="Store_Dir",
         ncomponents=10,
         component_scheme="elastic10",
-        stored_quantity=100,
-        sample_rate=10,
+        stored_quantity="displacement",
+        sample_rate=0.7585185185185185,  # = 4096 / 5400
         receiver_depth=0 * km,
         source_depth_min=10 * km,
         source_depth_max=20 * km,
@@ -909,7 +886,7 @@ class GeminiStoreConfig(Object):
         distance_min=100 * km,
         distance_max=1000 * km,
         distance_delta=10 * km,
-        earthmodel_1d="cake.load_model()",
+        earthmodel_1d=cake.load_model(),
         modelling_code_id="gemini",
         tabulated_phases=[
             gf.meta.TPDef(id="begin", definition="p,P,p\\,P\\,Pv_(cmb)p"),
@@ -920,13 +897,217 @@ class GeminiStoreConfig(Object):
             gf.meta.TPDef(id="s", definition="!s"),
         ],
     )
-    # if config_params is not None:
-    #        d.update(config_params)
+    d.update(config_params)
+    return gf.meta.ConfigTypeA(**d)
 
-    configA = gf.meta.ConfigTypeA()
-    dump_config(
-        configA, filepath=Path(__file__).parent / "gemini_store_configA.yaml"
+
+def init(store_dir, variant, **config_params):
+    if variant is not None:
+        raise gf.store.StoreError(f"GEMINI does not have any variants yet")
+    config_params.setdefault("id", Path(store_dir).resolve().name)
+    config = gemini_store_config(**config_params)
+    config.validate()
+    return gf.store.Store.create_editables(
+        store_dir, config=config, extra={"gemini": GeminiConfigFull()}
     )
 
 
-GeminiStoreConfig.dump_config()  # create default config file for GEMINI store
+seismotypes = {"displacement": "d", "velocity": "v", "acceleration": "a"}
+max_receivers = 150
+
+
+def section_receivers(store_config):
+    distances = store_config.coords[1]
+    if len(distances) > max_receivers:
+        raise gf.store.StoreError(
+            f"dispec takes at most {max_receivers} receivers, store has {len(distances)}"
+        )
+    if store_config.distance_max * cake.m2d > 90.0:  #
+        raise gf.store.StoreError(
+            f"recievers are beyond 90 degrees so the North component would point back to the source"
+        )
+    start = (
+        store_config.distance_min - store_config.distance_delta
+    ) * cake.m2d
+    away = start - len(distances) * store_config.distance_delta * cake.m2d
+    return f"{start} 0.0 {away} 0.0 {len(distances)}"
+
+
+def gemini_config_for_depth(store_config, extra, source_depth):
+    depth_km = source_depth / km
+    if depth_km != round(depth_km):
+        raise gf.store.StoreError(
+            f"gemini only supports integer source depths in km, got {depth_km} this might be changeable in gemini.py"
+        )
+    if store_config.receiver_depth != 0.0:
+        raise gf.store.StoreError(
+            f"dispec only calculates receivers at the surface, got {store_config.receiver_depth}"
+        )
+    quantity = store_config.effective_stored_quantity
+    if quantity not in seismotypes:
+        raise gf.store.StoreError(
+            f"totido only supports stored_quantity in {list(seismotypes.keys())}, got {quantity}"
+        )
+
+    conf = clone(extra)
+    basic_file = f"green/bas.d{round(depth_km)}.out"
+
+    conf.gemini_config.source_depth = round(depth_km)
+    conf.gemini_config.output_filepath = basic_file
+    conf.dispec_config.basis_solutions = basic_file
+    conf.dispec_config.reciever_type = 4
+    conf.dispec_config.recievers_file = section_receivers(store_config)
+    conf.dispec_config.nsew_coordinates = 1
+    conf.totido_config.seismo_type = seismotypes[quantity]
+    conf.source.centroid_latitude = 0.0
+    conf.source.centroid_longitude = 0.0
+    conf.source.centroid_depth = depth_km
+    conf.source.centroid_time = 0.0
+    return conf
+
+
+def seismogr_traces(filepath, config, store_config):
+    samprat, station_coords, blocks_together = read_seismogr(filepath)
+    deltat = store_config.deltat
+    source = config.source
+
+    traces = []
+    for i, ((latitude, longitude), block) in enumerate(
+        zip(station_coords, blocks_together)
+    ):
+        data = np.array(block)
+        _, distance_deg = orthodrome.azidist_numpy(
+            source.centroid_latitude,
+            source.centroid_longitude,
+            latitude,
+            longitude,
+        )
+        for direction, column, sign in (
+            ("N", 2, 1.0),
+            ("E", 3, 1.0),
+            ("D", 1, -1.0),
+        ):
+            traces.append(
+                trace.Trace(
+                    station=f"{i:04d}",
+                    channel=direction,
+                    tmin=config.totido_config.time_shift,
+                    deltat=deltat,
+                    ydata=sign
+                    * 1e-9
+                    * data[:, column],  # convert from nm to m
+                    meta=dict(distance=float(distance_deg) * cake.d2m),
+                )
+            )
+    return traces
+
+
+SHARED_INPUTS = ("green", "stations", "iasp91", "lw200mhz")
+
+
+def prepare_workdirectory(gemini_directory=GEMINI_DIRECTORY, tmp=None):
+    work_directory = Path(mkdtemp(prefix="geminirun-", dir=tmp))
+    for name in SHARED_INPUTS:
+        (work_directory / name).symlink_to(gemini_directory / name)
+    return work_directory
+
+
+async def run_one_tensor(
+    name,
+    tensor,
+    config,
+    store_config,
+    gemini_directory=GEMINI_DIRECTORY,
+    keep_temp=False,
+):
+    work_directory = prepare_workdirectory(gemini_directory)
+    tensor_config = clone(config)
+    tensor_config.source = source_with_tensor(tensor, tensor_config.source)
+    try:
+        await run(
+            config=tensor_config,
+            gemini_directory=work_directory,
+            gemini_run=False,
+            mseed_convert=False,
+        )
+        traces = seismogr_traces(
+            work_directory / "seismogr", tensor_config, store_config
+        )
+    finally:
+        if keep_temp:
+            logger.warning(
+                f"not removing temporary work directory {work_directory}"
+            )
+        else:
+            shutil.rmtree(work_directory)
+            logger.info(f"removed temporary work directory {work_directory}")
+    return traces
+
+
+elastic10_gfmapping = [
+    ("mmt1", GeminiMomentTensor(1, 0, 0, 1, 0, 0), {"N": 0, "E": 3, "D": 5}),
+    ("mmt2", GeminiMomentTensor(0, 0, 0, 0, 1, 1), {"N": 1, "E": 4, "D": 6}),
+    ("mmt3", GeminiMomentTensor(0, 0, 1, 0, 0, 0), {"N": 2, "D": 7}),
+    ("mmt4", GeminiMomentTensor(0, 1, 0, 0, 0, 0), {"N": 8, "D": 9}),
+]
+
+
+async def run_tensors(
+    config,
+    store_config,
+    tensors=elastic10_gfmapping,
+    gemini_directory=GEMINI_DIRECTORY,
+    gemini_run=True,
+    keep_temp=False,
+):
+    if gemini_run:
+        await run_program(
+            "gemini", gemini_input(config.gemini_config), gemini_directory
+        )
+        logger.info("GEMINI run completed")
+    return await asyncio.gather(
+        *[
+            run_one_tensor(
+                name,
+                tensor,
+                config,
+                store_config,
+                gemini_directory=gemini_directory,
+                keep_temp=keep_temp,
+            )
+            for name, tensor, gfmap in tensors
+        ]
+    )
+
+
+def put_traces(store, source_depth, relsults, tensors=elastic10_gfmapping):
+    for (name, tensor, gfmap), traces in zip(tensors, relsults):
+        for tr in traces:
+            if tr.channel in gfmap:
+                store.put(
+                    (source_depth, tr.meta["distance"], gfmap[tr.channel]),
+                    gf.store.GFTrace.from_trace(tr),
+                )
+
+
+def build(
+    store_dir,
+    force=False,
+    nworkers=None,
+    continue_=False,
+    step=None,
+    iblock=None,
+):
+    gf.store.Store.create_dependants(store_dir, force)
+    store = gf.store.Store(store_dir, "w")
+    try:
+        extra = store.get_extra("gemini")
+        for source_depth in store.config.coords[0]:
+            conf = gemini_config_for_depth(store.config, extra, source_depth)
+            results = asyncio.run(run_tensors(conf, store.config))
+            put_traces(store, source_depth, results)
+            logger.info(
+                f"stored traces for source depth {source_depth / km:g} km"
+            )
+    finally:
+        store.close()
