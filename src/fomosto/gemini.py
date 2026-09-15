@@ -20,9 +20,15 @@ GEMINI_DIRECTORY = Path(
     "~/GeminiInhalt/FunktionierendeVersion/gemini-2.2.1"
 ).expanduser()
 
+GEMINI_DIRECTORY = Path(
+    "~/Users/konstantin/Desktop/GFZ/Gemini_richtiges_Projekt/gemini-2.2.1"
+).expanduser()
+
+print(f"GEMINI_DIRECTORY: {GEMINI_DIRECTORY.exists()=}, {GEMINI_DIRECTORY}")
 
 # The Fortran binaries, installed outside the data directory.
 BIN_DIRECTORY = Path("~/.local/bin").expanduser()
+print(f"BIN_DIRECTORY: {BIN_DIRECTORY.exists()=}, {BIN_DIRECTORY}")
 
 guts_prefix = "gemini"
 
@@ -236,7 +242,7 @@ class CMTBuilder(object):
 
 
 class GeminiStation(Object):
-    # also read by Dispec, in the order of the columns of stations/GRSN_2003. 
+    # also read by Dispec, in the order of the columns of stations/GRSN_2003.
     # for a greensfunction store, this would be the area to define the stations.
     filepath: str = String.T(default="stations/GRSN_2003")
 
@@ -386,7 +392,7 @@ class TotidoConfig(Object):
     seconds_out: int = Int.T(default=3600)
     # getopts option string of to.sc, through which the values above are
     # overridden on the command line.
-    opts: str = String.T(default="L:l:H:h:s:o:O:p:r:f:") 
+    opts: str = String.T(default="L:l:H:h:s:o:O:p:r:f:")
 
 
 class GeminiConfigFull(Object):
