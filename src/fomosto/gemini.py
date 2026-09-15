@@ -2,7 +2,7 @@ import asyncio
 import logging
 import shutil
 from pathlib import Path
-from subprocess import PIPE, Popen
+from subprocess import Popen
 from tempfile import mkdtemp
 
 import numpy as np
@@ -236,7 +236,8 @@ class CMTBuilder(object):
 
 
 class GeminiStation(Object):
-    # also read by Dispec, in the order of the columns of stations/GRSN_2003. for a greensfunction store, this would be the area to define the stations.
+    # also read by Dispec, in the order of the columns of stations/GRSN_2003. 
+    # for a greensfunction store, this would be the area to define the stations.
     filepath: str = String.T(default="stations/GRSN_2003")
 
 
@@ -385,7 +386,7 @@ class TotidoConfig(Object):
     seconds_out: int = Int.T(default=3600)
     # getopts option string of to.sc, through which the values above are
     # overridden on the command line.
-    opts: str = String.T(default="L:l:H:h:s:o:O:p:r:f:")
+    opts: str = String.T(default="L:l:H:h:s:o:O:p:r:f:") 
 
 
 class GeminiConfigFull(Object):
@@ -903,7 +904,7 @@ def gemini_store_config(**config_params):
 
 def init(store_dir, variant, **config_params):
     if variant is not None:
-        raise gf.store.StoreError(f"GEMINI does not have any variants yet")
+        raise gf.store.StoreError("GEMINI does not have any variants yet")
     config_params.setdefault("id", Path(store_dir).resolve().name)
     config = gemini_store_config(**config_params)
     config.validate()
@@ -924,7 +925,7 @@ def section_receivers(store_config):
         )
     if store_config.distance_max * cake.m2d > 90.0:  #
         raise gf.store.StoreError(
-            f"recievers are beyond 90 degrees so the North component would point back to the source"
+            "recievers are beyond 90 degrees so the North component would point back to the source"
         )
     start = (
         store_config.distance_min - store_config.distance_delta
