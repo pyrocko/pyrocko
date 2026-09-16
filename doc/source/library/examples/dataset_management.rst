@@ -57,5 +57,5 @@ list of formats supported for output.
 If station meta-data (for example to fill in station coordinates and channel
 orientation into the SAC headers) needs to be attached while converting with
 :func:`pyrocko.io.save` directly, pass a dict of
-:class:`~pyrocko.model.Station` objects, keyed by ``(network, station,
-location)``, as its ``stations`` argument.
+:class:`~pyrocko.model.station.Station` objects, keyed by ``(network,
+station, location)``, as its ``stations`` argument.
