@@ -1,4 +1,5 @@
-from pyrocko import io, trace, pile
+from pyrocko import io, trace
+from pyrocko.squirrel import Squirrel
 from pyrocko.example import get_example_data
 
 get_example_data('test.mseed')
@@ -18,6 +19,7 @@ for tr in traces:
 
 trace.snuffle(traces + new_traces)
 
-# it is also possible to 'snuffle' a pile:
-p = pile.make_pile(['test.mseed'])
-p.snuffle()
+# it is also possible to 'snuffle' a Squirrel-managed dataset:
+sq = Squirrel()
+sq.add(['test.mseed'])
+sq.snuffle()
