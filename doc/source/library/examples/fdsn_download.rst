@@ -1,21 +1,40 @@
 Downloading seismic data (FDSN)
 ================================
 
-Waveforms and meta data can be retrieved from online `FDSN services <http://www.fdsn.org>`_ using the :py:mod:`pyrocko.client.fdsn` modules.
+Waveforms and meta data can be retrieved from online `FDSN services <http://www.fdsn.org>`_. The recommended way to do so is through the :mod:`pyrocko.squirrel` framework, using :py:meth:`~pyrocko.squirrel.base.Squirrel.add_fdsn` to declare an FDSN web service as a data source; Squirrel uses the lower-level :py:mod:`pyrocko.client.fdsn` module under the hood.
 
 
-Seismic data from GEOFON
--------------------------
+Downloading and restituting waveform data
+------------------------------------------
 
-The following demo explains how to download waveform data and instrument
-response information. Latter is used to deconvolve the transfer function from
-the waveform traces in a second step.
+Downloading waveform data and instrument response information, and using the
+latter to deconvolve the transfer function from the waveform traces, is
+covered step by step in the :doc:`Squirrel tutorial
+</library/examples/squirrel/cli_tool>` (see the ``squirrel_rms1.py`` and
+``squirrel_rms2.py`` examples there).
 
+For a one-off download where Squirrel's indexing and caching machinery would
+be overkill, the lower-level :py:mod:`pyrocko.client.fdsn` module can be used
+directly instead:
 
- .. literalinclude :: /../../examples/fdsn_request_geofon.py
-    :language: python
+::
 
-Download :download:`fdsn_request_geofon.py </../../examples/fdsn_request_geofon.py>`
+    from pyrocko.client import fdsn
+    from pyrocko import io, util
+
+    tmin = util.stt('2014-01-01 16:10:00.000')
+    tmax = util.stt('2014-01-01 16:39:59.000')
+
+    selection = [
+        ('GE', 'EIL', '*', '*Z', tmin, tmax),   # all vertical components
+    ]
+
+    request_waveform = fdsn.dataselect(site='geofon', selection=selection)
+
+    with open('traces.mseed', 'wb') as file:
+        file.write(request_waveform.read())
+
+    traces = io.load('traces.mseed')
 
 
 StationXML data manipulation
