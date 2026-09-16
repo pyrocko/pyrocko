@@ -59,10 +59,11 @@ file with :meth:`pyrocko.io.save`.
 Other filtering methods are :meth:`pyrocko.trace.Trace.highpass` and
 :meth:`pyrocko.trace.Trace.bandpass`.
 
-If more than a single file should be read, it is much more convenient to use
-Pyrocko's :mod:`pyrocko.pile` module instead of :func:`pyrocko.io.load`. See
-section :doc:`/library/examples/dataset_management` for examples on how to use
-it.
+If more than a single file should be read, or if the dataset is large, spread
+over many files, or held by a remote data source, it is much more convenient
+to use Pyrocko's :mod:`pyrocko.squirrel` framework instead of
+:func:`pyrocko.io.load`. See section
+:doc:`/library/examples/dataset_management` for examples on how to use it.
 
 Visual inspection of traces
 ---------------------------
