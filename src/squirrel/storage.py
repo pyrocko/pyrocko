@@ -81,7 +81,8 @@ class StorageSchemeLayout(guts.Object):
     time_increment = guts.Float.T(
         optional=True,
         help='Time window length stored in each file[s]. Exact or '
-             'approximate, depending on :py:gattr:`time_incement_nonuniform`.')
+             'approximate, depending on '
+             ':py:gattr:`time_increment_nonuniform`.')
     time_increment_nonuniform = guts.String.T(
         optional=True,
         help='Identifier for non-uniform time windows. E.g. ``\'month\'`` or '

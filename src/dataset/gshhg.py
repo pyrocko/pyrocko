@@ -558,6 +558,9 @@ class GSHHGBase(object):
 
 
 class Coastlines(GSHHGBase):
+    '''
+    GSHHG coastline database access.
+    '''
 
     data_type = 'coastlines'
 

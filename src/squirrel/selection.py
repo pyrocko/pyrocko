@@ -67,7 +67,7 @@ doc_snippets = dict(
         :param codes:
             Pattern of content codes to query.
         :type codes:
-            :class:`list` of :py:class:`~pyrocko.squirrel.model.Codes`
+            :class:`list` of :py:class:`~pyrocko.model.codes.Codes`
             objects appropriate for the queried content type, or anything which
             can be converted to such objects.
 ''',

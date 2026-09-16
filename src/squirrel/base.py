@@ -1019,7 +1019,7 @@ class Squirrel(Selection):
         :param codes:
             List of code patterns to query.
         :type codes:
-            :py:class:`list` of :py:class:`~pyrocko.squirrel.model.Codes`
+            :py:class:`list` of :py:class:`~pyrocko.model.codes.Codes`
             objects appropriate for the queried content type, or anything which
             can be converted to such objects.
 
@@ -1400,7 +1400,7 @@ class Squirrel(Selection):
             Only a single identifier may be given here and no pattern matching
             is done, currently.
         :type codes:
-            :py:class:`~pyrocko.squirrel.model.Codes`
+            :py:class:`~pyrocko.model.codes.Codes`
 
         :yields:
             Available content kinds as :py:class:`str`.
@@ -1480,7 +1480,7 @@ class Squirrel(Selection):
             Only a single identifier may be given here and no pattern matching
             is done, currently.
         :type codes:
-            :py:class:`~pyrocko.squirrel.model.Codes`
+            :py:class:`~pyrocko.model.codes.Codes`
 
         :returns:
             Sorted list of available content types.
@@ -1575,7 +1575,7 @@ class Squirrel(Selection):
         :param codes:
             List of code patterns to query.
         :type codes:
-            :py:class:`list` of :py:class:`~pyrocko.squirrel.model.Codes`
+            :py:class:`list` of :py:class:`~pyrocko.model.codes.Codes`
             objects appropriate for the queried content type, or anything which
             can be converted to such objects.
 
@@ -3155,7 +3155,7 @@ class Squirrel(Selection):
         :param codes:
             If given, restrict query to given content codes patterns.
         :type codes:
-            :py:class:`list` of :py:class:`~pyrocko.squirrel.model.Codes`
+            :py:class:`list` of :py:class:`~pyrocko.model.codes.Codes`
             objects appropriate for the queried content type, or anything which
             can be converted to such objects.
 

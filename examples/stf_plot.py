@@ -1,14 +1,15 @@
 import matplotlib
 import matplotlib.pyplot as plt
 from pyrocko.gf.seismosizer import BoxcarSTF, TriangularSTF, HalfSinusoidSTF, \
-    SmoothRampSTF, ResonatorSTF
+    SmoothRampSTF, ResonatorSTF, RegularizedYoffeSTF
 
 font = {'size': 22}
 matplotlib.rc('font', **font)
 
 
 stf_classes = [
-    BoxcarSTF, TriangularSTF, HalfSinusoidSTF, SmoothRampSTF, ResonatorSTF]
+    BoxcarSTF, TriangularSTF, HalfSinusoidSTF, SmoothRampSTF, ResonatorSTF,
+    RegularizedYoffeSTF]
 
 
 def plot_stf(stf_cls, duration=5., tref=0., save=True, **kwargs):
