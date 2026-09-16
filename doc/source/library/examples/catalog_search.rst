@@ -2,7 +2,10 @@ Earthquake catalog
 ==================
 
 Pyrocko provides access to some online earthquake catalogs via the
-:mod:`pyrocko.client.catalog` module.
+:mod:`pyrocko.client.catalog` module. The recommended way to query them is
+through :py:meth:`~pyrocko.squirrel.base.Squirrel.add_catalog`, which wraps
+the same clients but integrates the results into Squirrel's unified,
+cached data access.
 
 
 QuakeML import
@@ -23,17 +26,23 @@ Creating QuakeML from scratch
     :language: python
 
 
-Searching the GlobalCMT catalog
---------------------------------
+Searching an online earthquake catalog
+---------------------------------------
 
 This example demonstrates how to query the `GlobalCMT
 <http://www.globalcmt.org/>`_ [#f1]_ database for events which occurred in 2011
-in northern Chile.
+in northern Chile, using :py:meth:`~pyrocko.squirrel.base.Squirrel.add_catalog`
+to declare it as a data source. Query arguments common to all queries made to
+the catalog (here: the region and magnitude constraints) are passed via
+``query_args``, as strings. Calling
+:py:meth:`~pyrocko.squirrel.base.Squirrel.update` for the time span of
+interest triggers the actual query, if the local copy of the catalog isn't
+already up to date for it.
 
-.. literalinclude :: /../../examples/catalog_search_globalcmt.py
+.. literalinclude :: /../../examples/squirrel_catalog_search.py
     :language: python
 
-Download :download:`catalog_search_globalcmt.py </../../examples/catalog_search_globalcmt.py>`
+Download :download:`squirrel_catalog_search.py </../../examples/squirrel_catalog_search.py>`
 
 
 We expect to see the following output:
@@ -45,12 +54,12 @@ We expect to see the following output:
     --- !pf.Event
     lat: -28.03
     lon: -71.55
-    time: 2011-12-07 22:23:14.250000
-    name: 201112072223A
+    time: '2011-12-07 22:23:14.25'
     depth: 22800.0
+    name: '201112072223A'
     magnitude: 6.106838394015895
-    region: NEAR COAST OF NORTHERN C
-    catalog: gCMT
+    region: 'NEAR COAST OF NORTHERN C'
+    catalog: 'gCMT'
     moment_tensor: !pf.MomentTensor
       mnn: 1.16e+17
       mee: -1.24e+18
@@ -68,37 +77,24 @@ We expect to see the following output:
       magnitude: 6.106838394015895
     duration: 5.4
 
+The same pattern works for the other catalogs supported by
+:py:meth:`~pyrocko.squirrel.base.Squirrel.add_catalog` (currently GEOFON and
+ISC) - just swap the catalog name and ``query_args``, e.g.
+``sq.add_catalog('geofon', query_args=dict(magmin='6.'))``.
 
-Search for an event in GEOFON catalog
---------------------------------------------------
-
-Search for an event name only in the `GEOFON <http://geofon.gfz-potsdam.de>`_
-catalog [#f2]_ using :meth:`~pyrocko.client.geofon.Geofon`, with a given magnitude
-range and timeframe.
-
-.. literalinclude :: /../../examples/catalog_search_geofon.py
-    :language: python
-
-Download :download:`catalog_search_geofon.py </../../examples/catalog_search_geofon.py>`
-
-
-We expect to see the following output (in YAML format):
+For a one-off query where Squirrel's indexing/caching would be unwanted
+overhead, the underlying clients in :mod:`pyrocko.client.catalog` can be
+used directly:
 
 ::
 
-    --- !pf.Event
-    lat: 18.37
-    lon: -72.55
-    time: 2010-01-12 21:53:11
-    name: gfz2010avtm
-    depth: 17000.0
-    magnitude: 7.2
-    region: Haiti Region
-    catalog: GEOFON
+    from pyrocko.client.catalog import GlobalCMT
+
+    events = GlobalCMT().get_events(
+        time_range=(tmin, tmax), magmin=2.,
+        latmin=-35., latmax=-20., lonmin=-76., lonmax=-65.)
 
 
 .. rubric:: Footnotes
 
 .. [#f1] Dziewonski, A. M., T.-A. Chou and J. H. Woodhouse, Determination of earthquake source parameters from waveform data for studies of global and regional seismicity, J. Geophys. Res., 86, 2825-2852, 1981. doi:10.1029/JB086iB04p02825
-
-.. [#f2] GEOFON Data Centre (1993): GEOFON Seismic Network. Deutsches GeoForschungsZentrum GFZ. Other/Seismic Network. doi:10.14470/TR560404. 
