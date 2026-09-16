@@ -263,15 +263,15 @@ class GeminiConfig(Object):
     # reports every degree l with mod(l, n) == 0.
     print_level: int = Int.T(default=0)
     # Length of the seismogram in seconds.
-    seismo_lenght: int = Int.T(default=5400)
+    seismo_lenght: int = Int.T(default=2048)
     # Damping time of the complex frequency (Laplace transform). A fifth of
     # seismo_lenght is a good choice.
-    damping_time: int = Int.T(default=2000)
+    damping_time: int = Int.T(default=400)
     # Minimum frequency in millihertz. May be 0, GEMINI then raises it to at
     # least 1/seismo_lenght.
     minimum_frequency: int = Int.T(default=0)
     # Maximum frequency in millihertz.
-    maximum_frequency: int = Int.T(default=50)
+    maximum_frequency: int = Int.T(default=100)
     # Take dispersion (attenuation) into account, which makes the elastic
     # moduli frequency-dependent: 1 for yes, 0 for no.
     dispersion_switch: int = Int.T(default=1)
@@ -377,12 +377,12 @@ class TotidoConfig(Object):
     # The FFT needs 2**n samples and zeros are appended to reach such a
     # length. A number n greater than zero multiplies the number of samples
     # by 2**n on top of that, interpolating and smoothing the time series.
-    zero_padding: int = Int.T(default=2)
+    zero_padding: int = Int.T(default=1)
     # Type of seismogram: 'd' displacement, 'v' velocity, 'a' acceleration,
     # 'g' accelerometer response.
     seismo_type: str = String.T(default="v")
     # Length of the output time series in seconds.
-    seconds_out: int = Int.T(default=3600)
+    seconds_out: int = Int.T(default=2048)
     # getopts option string of to.sc, through which the values above are
     # overridden on the command line.
     opts: str = String.T(default="L:l:H:h:s:o:O:p:r:f:")
@@ -878,10 +878,10 @@ def gemini_store_config(**config_params):
         ncomponents=10,
         component_scheme="elastic10",
         stored_quantity="displacement",
-        sample_rate=0.7585185185185185,  # = 4096 / 5400
+        sample_rate=0.5,
         receiver_depth=0 * km,
         source_depth_min=10 * km,
-        source_depth_max=20 * km,
+        source_depth_max=10 * km,
         source_depth_delta=10 * km,
         distance_min=100 * km,
         distance_max=1000 * km,
