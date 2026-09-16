@@ -30,12 +30,12 @@ Download :download:`squirrel_hour_files.py </../../examples/squirrel_hour_files.
 Downsampling a whole dataset
 ----------------------------
 
-Example for downsampling all trace files in the input folder to a common sampling rate with :py:meth:`pyrocko.trace.Trace.downsample_to`.
+Example for downsampling all trace files in the input folder to a common sampling rate with :py:meth:`pyrocko.trace.Trace.downsample_to`. Padding (``tpad``) is added around each window and trimmed off again after downsampling, to absorb filter edge effects at window boundaries.
 
-.. literalinclude :: /../../examples/pile_downsample.py
+.. literalinclude :: /../../examples/squirrel_downsample.py
     :language: python
 
-Download :download:`pile_downsample.py </../../examples/pile_downsample.py>`
+Download :download:`squirrel_downsample.py </../../examples/squirrel_downsample.py>`
 
 
 Converting a dataset from Mini-SEED to SAC format
