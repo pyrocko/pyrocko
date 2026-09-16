@@ -1,12 +1,15 @@
-Dataset management - The ``pile``
-==================================
+Dataset management - Squirrel
+=============================
 
 At the base of Pyrocko's waveform dataset handling is the
-:class:`~pyrocko.pile.Pile` class. It organizes and caches the meta-data of
-large waveform datasets split into many files and provides on-demand loading of
-waveform data so that only data relevant to the current process/view has to be
-read from disk into the limited computer memory. It can efficiently handle up
-to a few 100000 files for interactive processes.
+:mod:`pyrocko.squirrel` framework, centered around the
+:class:`~pyrocko.squirrel.base.Squirrel` class. It indexes and caches the
+meta-data of local and remote waveform datasets, however large or however many
+files they are split into, and provides on-demand loading of waveform data so
+that only data relevant to the current process/view has to be read from disk
+(or downloaded) into the limited computer memory. It can efficiently handle
+selections with millions of files. See :doc:`/topics/squirrel` for a
+conceptual overview.
 
 Reorganizing a dataset into hour-files
 --------------------------------------
