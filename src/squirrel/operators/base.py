@@ -178,7 +178,7 @@ class Translation(Object):
 
 class AddSuffixTranslation(Translation):
     '''
-    Add a suffix to :py:attr:`~pyrocko.squirrel.model.CodesNSLCEBase.extra`.
+    Add a suffix to :py:attr:`~pyrocko.model.codes.CodesNSLCEBase.extra`.
     '''
     suffix = String.T(default='')
 
@@ -188,7 +188,7 @@ class AddSuffixTranslation(Translation):
 
 class RegexTranslation(AddSuffixTranslation):
     '''
-    Translate :py:class:`pyrocko.squirrel.model.Codes` using a regular
+    Translate :py:class:`pyrocko.model.codes.Codes` using a regular
     expression.
     '''
     pattern = String.T(default=r'(.*)')
@@ -205,7 +205,7 @@ class RegexTranslation(AddSuffixTranslation):
 
 class ReplaceComponentTranslation(RegexTranslation):
     '''
-    Translate :py:class:`pyrocko.squirrel.model.Codes` by replacing a
+    Translate :py:class:`pyrocko.model.codes.Codes` by replacing a
     component.
     '''
     pattern = String.T(default=_cglob_translate('(*.*.*.*)?(.*)'))

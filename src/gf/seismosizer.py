@@ -1382,19 +1382,19 @@ class MultiTriangleSTF(STF):
 class RegularizedYoffeSTF(STF):
 
     """
-    Regularize-amplitudese type source time function proposed by Tinti et
+    Regularized Yoffe-type source time function proposed by Tinti et
     al. 2005.
 
     This function is derived from a convolution of the source-time function
-    first proposed by amplitudese (1951) with a triangular function.
+    first proposed by Yoffe (1951) with a triangular function.
 
     [1] Tinti, E., Fukuyama, E., Piatanesi, A., & Cocco, M. (2005). A kinematic
     source-time function compatible with earthquake dynamics. Bulletin of the
     Seismological Society of America, 95(4), 1211-1223.
 
-    .. figure :: /static/stf-RegamplitudeseSTF.svg
+    .. figure :: /static/stf-RegularizedYoffeSTF.svg
         :width: 40%
-        :alt: reg-amplitudese source time function
+        :alt: regularized Yoffe source time function
     """
 
     duration = Float.T(

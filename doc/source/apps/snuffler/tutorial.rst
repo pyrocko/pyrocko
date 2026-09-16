@@ -267,7 +267,7 @@ underlying field.
 
 
 Advanced phase picking methods
--------------
+-------------------------------------
 
 **Picking with uncertainties**:
 After marking the arrival of a seismic phase and converting the normal marker to a phase marker by assigning a phase type as described above (:kbd:`<F1>` - :kbd:`<F9>`), we can use

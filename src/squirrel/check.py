@@ -227,7 +227,7 @@ def do_check(squirrel, codes=None, tmin=None, tmax=None, time=None, ignore=[]):
     :param codes:
         Pattern of channel codes to query.
     :type codes:
-        :class:`list` of :py:class:`~pyrocko.squirrel.model.CodesNSLCE`
+        :class:`list` of :py:class:`~pyrocko.model.codes.CodesNSLCE`
         objects
 
     :param ignore:

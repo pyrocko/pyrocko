@@ -39,7 +39,8 @@ GSHHG coastal database
 The `GSHHG database <https://www.ngdc.noaa.gov/mgg/shorelines/gshhs.html>`_ is a high-resolution geography data set. We implement functions to extract coordinates of landmasks.
 
 Classes covered in this example:
- * :py:class:`pyrocko.dataset.gshhg.GSHHG`
+ * :py:class:`pyrocko.dataset.gshhg.Coastlines` (``GSHHG`` is a
+   backwards-compatibility alias for this class)
 
  .. literalinclude :: /../../examples/gshhg_example.py
     :language: python
