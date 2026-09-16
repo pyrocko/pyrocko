@@ -70,13 +70,14 @@ Visual inspection of traces
 To visualize a single :class:`~pyrocko.trace.Trace` object, use its
 :meth:`~pyrocko.trace.Trace.snuffle` method. To look at a list of traces, use
 the :func:`pyrocko.trace.snuffle` function. If you want to see the contents of
-a pile, the :meth:`pyrocko.pile.Pile.snuffle` method is your friend.
-Alternatively, you could of course save the traces to file and use the
-standalone :doc:`/apps/snuffler/index` to look at them.
+a larger dataset, the :meth:`pyrocko.squirrel.base.Squirrel.snuffle` method is
+your friend. Alternatively, you could of course save the traces to file and use
+the standalone :doc:`/apps/snuffler/index` to look at them.
 
 ::
 
-    from pyrocko import io, trace, pile
+    from pyrocko import io, trace
+    from pyrocko.squirrel import Squirrel
 
     traces = io.load('test.mseed')
     traces[0].snuffle() # look at a single trace
@@ -93,9 +94,10 @@ standalone :doc:`/apps/snuffler/index` to look at them.
 
     trace.snuffle(traces + new_traces)
 
-    # it is also possible to 'snuffle' a pile:
-    p = pile.make_pile(['test.mseed'])
-    p.snuffle()
+    # it is also possible to 'snuffle' a Squirrel-managed dataset:
+    sq = Squirrel()
+    sq.add(['test.mseed'])
+    sq.snuffle()
 
 If needed, station meta-information, event information, and marker objects can
 be passed into any of the ``snuffle()`` methods and  functions using keyword
