@@ -41,9 +41,18 @@ Download :download:`squirrel_downsample.py </../../examples/squirrel_downsample.
 Converting a dataset from Mini-SEED to SAC format
 -------------------------------------------------
 
-Conversion of a mseed file to SAC. See :mod:`pyrocko.io` for supported formats.
+Plain format conversion, possibly combined with time-windowing, downsampling,
+or restitution, does not require writing any Python code - the command line
+tool `squirrel jackseis` handles this directly. See :mod:`pyrocko.io` for the
+list of formats supported for output.
 
-.. literalinclude :: /../../examples/convert_mseed_sac.py
-    :language: python
+::
 
-Download :download:`convert_mseed_sac.py </../../examples/convert_mseed_sac.py>`
+    squirrel jackseis --add mseed/ --tinc 3600 --out-format sac \
+        --out-path 'sac/%(station)s_%(channel)s_%(wmin)s.sac'
+
+If station meta-data (for example to fill in station coordinates and channel
+orientation into the SAC headers) needs to be attached while converting with
+:func:`pyrocko.io.save` directly, pass a dict of
+:class:`~pyrocko.model.Station` objects, keyed by ``(network, station,
+location)``, as its ``stations`` argument.
