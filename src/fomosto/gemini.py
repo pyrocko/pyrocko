@@ -7,7 +7,7 @@ from tempfile import mkdtemp
 
 import numpy as np
 from pyrocko import cake, gf, io, model, orthodrome, trace, util
-from pyrocko.guts import Float, Int, Object, String, clone
+from pyrocko.guts import Float, Int, Object, String, Tuple, clone
 from pyrocko.moment_tensor import MomentTensor, symmat6
 
 logger = logging.getLogger("pyrocko.fomosto.gemini")
@@ -397,6 +397,12 @@ class GeminiConfigFull(Object):
     maximum_degree_based_on_frequency: GeminiMaximumDegreeWindow = (
         GeminiMaximumDegreeWindow.T(default=GeminiMaximumDegreeWindow.D())
     )
+    time_region = Tuple.T(
+        2,
+        gf.Timing.T(),
+        default=(gf.Timing("begin-50"), gf.Timing("end+100")),
+    )
+    window_factor: float = Float.T(default=2.0)
 
 
 config_filepath = (
@@ -933,7 +939,96 @@ def section_receivers(store_config):
     return f"{start} 0.0 {away} 0.0 {len(distances)}"
 
 
-def gemini_config_for_depth(store_config, extra, source_depth):
+# Array limits of the Fortran programs.
+totido_nfmax = 16384
+dispec_nfr = 3000
+
+
+def fortran_nint(x):
+    return int(np.floor(x + 0.5))
+
+
+def totido_nsamples(seismo_lenght, maximum_frequency, zero_padding):
+    """Last frequency index and number of samples, as gemini.f and totido.f
+    compute them."""
+    nend = max(1, fortran_nint(maximum_frequency * seismo_lenght / 1000.0))
+    nzh = 1
+    while nzh < nend + 1:
+        nzh *= 2
+    return nend, 2 * nzh * 2**zero_padding
+
+
+def gemini_timing(store, extra, force=False):
+    """Derive seismo_lenght, zero_padding and the time window from the store."""
+
+    target_deltat = store.config.deltat
+    maximum_frequency = extra.gemini_config.maximum_frequency  # mHz
+    fmax = maximum_frequency / 1000.0  # Hz
+
+    if 2.0 * fmax * target_deltat >= 1.0:
+        raise gf.store.StoreError(
+            f"maximum_frequency {maximum_frequency} mHz is above the Nyquist "
+            f"frequency of the store sample_rate {store.config.sample_rate} Hz"
+        )
+
+    # Largest zero_padding whose pseudo sampling still stays strictly below
+    # Nyquist. Strictly, because an fmax exactly on Nyquist pushes TOTIDO to
+    # the next power of two.
+
+    zero_padding = 0
+    while 2.0 * fmax * target_deltat * 2 ** (zero_padding + 1) < 1.0:
+        zero_padding += 1
+    pseudo_deltat = target_deltat * 2**zero_padding
+
+    d = store.make_timing_params(
+        extra.time_region[0], extra.time_region[1], force=force
+    )
+    tmin = float(np.floor(d["tmin"] / target_deltat) * target_deltat)
+    tmax = float(np.ceil(d["tmax"] / target_deltat) * target_deltat)
+
+    duration_max = (tmax - tmin) * extra.window_factor
+    nsamples = trace.nextpow2(int(np.ceil(duration_max / pseudo_deltat)))
+    seismo_lenght = nsamples * pseudo_deltat
+    if seismo_lenght != round(seismo_lenght):
+        raise gf.store.StoreError(
+            f"seismo_lenght {seismo_lenght} s is not an integer, which "
+            f"GeminiConfig.seismo_lenght needs"
+        )
+    seismo_lenght = round(seismo_lenght)
+
+    # Check against what the Fortran programs will really do.
+    nend, nsamp = totido_nsamples(
+        seismo_lenght, maximum_frequency, zero_padding
+    )
+    if nsamp * target_deltat != seismo_lenght:
+        raise gf.store.StoreError(
+            f"totido would sample with {seismo_lenght / nsamp} s instead of "
+            f"{target_deltat} s (nend {nend} is the last frequency index), maybe you can try another maximum_frequency"
+        )
+    if nsamp > totido_nfmax:
+        raise gf.store.StoreError(
+            f"totido takes at most {totido_nfmax} samples, would need {nsamp}"
+        )
+    if nend > dispec_nfr:
+        raise gf.store.StoreError(
+            f"dispec takes at most {dispec_nfr} frequencies, would need {nend}"
+        )
+
+    timing = dict(
+        seismo_lenght=seismo_lenght,
+        damping_time=max(1, round(seismo_lenght / 5)),
+        zero_padding=zero_padding,
+        time_shift=tmin,
+        seconds_out=int(np.ceil(tmax - tmin)),
+    )
+    logger.info(
+        f"gemini timing: {timing}, nend {nend}, nsamples {nsamp}, "
+        f"window [{tmin}, {tmax}] s"
+    )
+    return timing
+
+
+def gemini_config_for_depth(store_config, extra, source_depth, timing):
     depth_km = source_depth / km
     if depth_km != round(depth_km):
         raise gf.store.StoreError(
@@ -963,6 +1058,12 @@ def gemini_config_for_depth(store_config, extra, source_depth):
     conf.source.centroid_longitude = 0.0
     conf.source.centroid_depth = depth_km
     conf.source.centroid_time = 0.0
+
+    conf.gemini_config.seismo_lenght = timing["seismo_lenght"]
+    conf.gemini_config.damping_time = timing["damping_time"]
+    conf.totido_config.zero_padding = timing["zero_padding"]
+    conf.totido_config.time_shift = timing["time_shift"]
+    conf.totido_config.seconds_out = timing["seconds_out"]
     return conf
 
 
@@ -1112,12 +1213,22 @@ def build(
     store = gf.store.Store(store_dir, "w")
     try:
         extra = store.get_extra("gemini")
+        timing = gemini_timing(store, extra, force=force)
         for source_depth in store.config.coords[0]:
-            conf = gemini_config_for_depth(store.config, extra, source_depth)
-            results = asyncio.run(run_tensors(conf, store.config))
-            put_traces(store, source_depth, results)
-            logger.info(
-                f"stored traces for source depth {source_depth / km:g} km"
+            conf = gemini_config_for_depth(
+                store.config, extra, source_depth, timing
             )
+            basis_solutions = (
+                GEMINI_DIRECTORY / conf.gemini_config.output_filepath
+            )
+            try:
+                results = asyncio.run(run_tensors(conf, store.config))
+                put_traces(store, source_depth, results)
+                logger.info(
+                    f"stored traces for source depth {source_depth / km:g} km"
+                )
+            finally:
+                basis_solutions.unlink(missing_ok=True)
+                logger.info(f"soremoved basis solutions {basis_solutions}")
     finally:
         store.close()
