@@ -4,14 +4,14 @@ Traveltime calculation and raytracing
 Calculate traveltimes in layered media
 --------------------------------------
 
-Here we will excercise two example how to calculate traveltimes for the phases ``P`` and ``Pg`` for different earth velocity models.
+Here we will exercise two examples of how to calculate traveltimes for the phases ``P`` and ``Pg`` for different earth velocity models.
 
 Modules covered in this example:
- * :py:class:`pyrocko.cake`
+ * :py:mod:`pyrocko.cake`
 
- The first example is minimalistic and will give you a simple traveltime table.
+The first example is minimalistic and will give you a simple traveltime table.
 
-Download :download:`cake_ray_tracing.py </../../examples/cake_arrivals.py>`
+Download :download:`cake_arrivals.py </../../examples/cake_arrivals.py>`
 
 .. literalinclude :: /../../examples/cake_arrivals.py
     :language: python
@@ -19,7 +19,7 @@ Download :download:`cake_ray_tracing.py </../../examples/cake_arrivals.py>`
 
 The second code snippet includes some lines to plot a simple traveltime figure.
 
-Download :download:`cake_ray_tracing.py </../../examples/cake_first_arrivals.py>`
+Download :download:`cake_first_arrivals.py </../../examples/cake_first_arrivals.py>`
 
 .. literalinclude :: /../../examples/cake_first_arrivals.py
     :language: python

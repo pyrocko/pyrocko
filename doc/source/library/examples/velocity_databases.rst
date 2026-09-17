@@ -19,9 +19,9 @@ Here we utilize the :mod:`pyrocko.dataset.crust2x2` module to query the Crust 2.
 
 ::
     
-    >>> from pyrocko import crust2x2
+    >>> from pyrocko.dataset import crust2x2
     >>> profile = crust2x2.get_profile(23., 59.)
-    >>> print profile
+    >>> print(profile)
 
     type, name:              T9, thin Margin /shield  transition, 1 km seds.
     elevation:                          -764
@@ -44,7 +44,8 @@ We can use :mod:`pyrocko.cake` to access the data and handle the velocity model 
 
 ::
 
-    >>> from pyrocko import cake, cake_plot
+    >>> from pyrocko import cake
+    >>> from pyrocko.plot import cake_plot
     >>> model = cake.load_model(fn=None, crust2_profile=(23., 59.))
     >>> cake_plot.my_model_plot(model)
 
@@ -64,7 +65,7 @@ The `Global Crustal Database <https://earthquake.usgs.gov/data/crust/>`_ [#2]_ g
 
 .. code :: python
 
-    from pyrocko import crustdb
+    from pyrocko.dataset import crustdb
 
     cdb = crustdb.CrustDB()
     europe = cdb.selectLocation(lat=52., lon=20., radius=15.)\

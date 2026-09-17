@@ -30,7 +30,7 @@ Create a StationXML file with flat displacement responses
 ---------------------------------------------------------
 
 In this example, we read a Pyrocko basic station file, create an FDSN
-StationXML structure from it and add flat reponses to all channels. The created
+StationXML structure from it and add flat responses to all channels. The created
 StationXML file could e.g. be used in combination with restituted data, to
 properly indicate that we are dealing with displacement seismograms given in
 [m].

@@ -1,7 +1,8 @@
 Geographical datasets
 ======================
 
-Pyrocko offers access to commonly used geographical datasets, such as 
+Pyrocko offers access to commonly used geographical datasets, such as
+topography, coastlines, tectonic plate boundaries, and global strain rate.
 
 Topography
 ----------

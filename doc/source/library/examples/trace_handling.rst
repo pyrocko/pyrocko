@@ -43,7 +43,7 @@ Load, filter and save
 Read a test file :download:`test.mseed </static/test.mseed>` with
 :func:`pyrocko.io.load`, containing a three component seismogram, apply
 Butterworth lowpass filter to the seismograms and dump the results to a new
-file with :meth:`pyrocko.io.save`.
+file with :func:`pyrocko.io.save`.
 
 ::
 
@@ -208,12 +208,12 @@ convert some MiniSEED traces to ASCII tables:
 Download :download:`convert_mseed_ascii.py </../../examples/convert_mseed_ascii.py>`
 
 
-Finding the comparative misfits of mulitple traces
+Finding the comparative misfits of multiple traces
 --------------------------------------------------
 
 Three traces will be created, where one will be the used as a reference trace
 (``rt``).  Using :meth:`pyrocko.trace.Trace.misfit`, we can find the misfits
-of the other two traces (``tt1`` and ``tt2``) in comparision to ``rt``.
+of the other two traces (``tt1`` and ``tt2``) in comparison to ``rt``.
 Traces ``rt`` and ``tt1`` will have the same y-data, so the misfit between
 them will be zero.
 

@@ -11,7 +11,7 @@ cached data access.
 QuakeML import
 --------------
 
-This example shows how to read `QuakeML <https://quake.ethz.ch/quakeml/docs/REC?action=AttachFile&do=get&target=QuakeML-BED-20130214b.pdf>` event catalogs using :func:`~pyrocko.io.quakeml.QuakeML.load_xml`.
+This example shows how to read `QuakeML <https://quake.ethz.ch/quakeml/docs/REC?action=AttachFile&do=get&target=QuakeML-BED-20130214b.pdf>`_ event catalogs using :func:`~pyrocko.io.quakeml.QuakeML.load_xml`.
 The function :meth:`~pyrocko.io.quakeml.QuakeML.get_pyrocko_events()` is used to obtain events in pyrocko format.
 If a moment tensor is provided as [``Mrr, Mtt, Mpp, Mrt, Mrp, Mtp``], this is converted to [``mnn, mee, mdd, mne, mnd, med``]. The strike, dip and rake values appearing in the pyrocko event are calculated from the moment tensor.
 
