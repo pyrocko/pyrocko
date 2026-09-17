@@ -14,27 +14,53 @@ Example notebooks are available in the `Pyrocko Notebooks Repository <https://gi
 Scripts collection
 ------------------
 
-Annotated scripts and real-world use cases using Pyrocko.
+Annotated scripts and real-world use cases using Pyrocko, grouped roughly by
+how deep into the framework they go.
+
+Getting started
+................
+
+Data access and handling basics - start here if you are new to Pyrocko.
 
 .. toctree::
     :maxdepth: 2
 
-    trace_handling
     squirrel/index
-    dataset_management
-    obspy_compat
+    trace_handling
     metadata
-    gnss_data
     fdsn_download
     catalog_search
+    snuffler_markers
+
+Core toolbox
+............
+
+Datasets, coordinates, plotting, and other tools used across most
+Pyrocko-based projects.
+
+.. toctree::
+    :maxdepth: 2
+
+    cake_raytracing
+    velocity_databases
     moment_tensor
+    gnss_data
+    geographical_datasets
     plotting
     gmtpy/index
-    snuffler_markers
-    cake_raytracing
+    dataset_management
+    orthodrome
+    obspy_compat
+    guts
+
+Advanced functionality
+......................
+
+Green's function based forward modeling and source models for seismic and
+geodetic problems.
+
+.. toctree::
+    :maxdepth: 2
+
     gf_forward
     kindyn_modeling
-    orthodrome
-    geographical_datasets
-    velocity_databases
-    guts
