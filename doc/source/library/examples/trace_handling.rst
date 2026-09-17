@@ -266,9 +266,17 @@ Download :download:`trace_restitution_pz.py </../../examples/trace_restitution_p
 Restitute to displacement using SEED RESP response
 -------------------------------------------------------
 
-In this examples we 
+Instrument responses given as SEED ``RESP`` files can be used directly with
+:class:`pyrocko.response.InverseEvalresp`, which evaluates the response
+through the ``evalresp`` library:
 
-Download :download:`trace_restitution_resp.py </../../examples/trace_restitution_resp.py>`
+::
 
-.. literalinclude :: /../../examples/trace_restitution_resp.py
-    :language: python
+    from pyrocko import trace
+
+    resp = trace.InverseEvalresp(respfn, tr, target='dis')
+
+    displacement = tr.transfer(
+        tfade=100.,                          # rise/fall time of taper [s]
+        freqlimits=(0.005, 0.01, 1., 2.),    # frequency domain taper [Hz]
+        transfer_function=resp)
