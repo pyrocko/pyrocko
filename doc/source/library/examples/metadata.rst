@@ -1,6 +1,14 @@
 Metadata read & write
 =====================
 
+For most day-to-day use, station and channel metadata is best obtained
+through :py:meth:`~pyrocko.squirrel.base.Squirrel.get_stations` and
+:py:meth:`~pyrocko.squirrel.base.Squirrel.get_channels`, from local files or
+online FDSN services alike - see the :doc:`Squirrel tutorial
+</library/examples/squirrel/cli_tool>`. The lower-level examples below remain
+valuable for special tasks: direct StationXML file conversion and
+manipulation, or building custom metadata from scratch.
+
 
 StationXML import
 -----------------
