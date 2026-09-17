@@ -165,7 +165,7 @@ Download :download:`gf_forward_example2_kite.py </../../examples/gf_forward_exam
 Calculate forward model of thrust faulting and display wrapped phase
 --------------------------------------------------------------------
 
-In this example we compare the synthetic unwappred and wrapped LOS displacements caused by a thrust rupture.
+In this example we compare the synthetic unwrapped and wrapped LOS displacements caused by a thrust rupture.
 
 .. figure:: /static/gf_static_wrapper.png
     :align: center
@@ -251,7 +251,7 @@ The static store has to be setup with Burger material describing the viscoelasti
     distance_delta: 1000.0
 
 
-In the ``extra/psgrn_pscmp`` configruation file we have to define the timespan from `tmin_days` to `tmax_days`, covered by the `sampling_rate` (see above)
+In the ``extra/psgrn_pscmp`` configuration file we have to define the timespan from ``tmin_days`` to ``tmax_days``, covered by the ``sampling_rate`` (see above)
 
 .. code-block:: yaml
 

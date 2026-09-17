@@ -2,7 +2,7 @@ Moment tensor conversions
 =========================
 
 Transformations between different moment tensor representations using the
-:py:class:`pyrocko.moment_tensor` module.
+:py:mod:`pyrocko.moment_tensor` module.
 
 
 Convert moment tensor components to strike, dip and rake

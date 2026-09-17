@@ -17,7 +17,7 @@ Download :download:`gnss_campaign.py </../../examples/gnss_campaign.py>`
 Loading and mapping of GNSS campaign data from UNR
 ---------------------------------------------------
 
-The `Nevada Geodetic Laboratory (UNR) <http://geodesy.unr.edu/>`_ releases co-seismic GNSS surface displacements for significant earthquakes. This script shows the import of such co-seismic displacement tables for the 2019 Ridgecrest earthquake and mapping through :class:`~pyrocko.plot.automap`.
+The `Nevada Geodetic Laboratory (UNR) <http://geodesy.unr.edu/>`_ releases co-seismic GNSS surface displacements for significant earthquakes. This script shows the import of such co-seismic displacement tables for the 2019 Ridgecrest earthquake and mapping through :mod:`~pyrocko.plot.automap`.
 
 Download :download:`gnss_unr_campaign.py </../../examples/gnss_unr_campaign.py>`
 

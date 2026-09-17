@@ -1,13 +1,13 @@
 Geodesic functions
 ==================
 
-Pyrocko's :class:`~pyrocko.orthodrome` module offers geodesic functions to solve a variety of common geodetic problems, like distance and angle calculation on a spheroid.
+Pyrocko's :mod:`~pyrocko.orthodrome` module offers geodesic functions to solve a variety of common geodetic problems, like distance and angle calculation on a spheroid.
 
 
 Distance between points on earth
 --------------------------------
 
-In this example we use :func:`~pyrocko.orthodrome.distance_accurate50m` and :class:`pyrocko.model` to calculate the distance between two points on earth.
+In this example we use :func:`~pyrocko.orthodrome.distance_accurate50m` and :mod:`pyrocko.model` to calculate the distance between two points on earth.
 
 Download :download:`orthodrome_example1.py </../../examples/orthodrome_example1.py>`
 

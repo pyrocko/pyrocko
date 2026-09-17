@@ -5,7 +5,7 @@ Generating topographic maps with ``automap``
 --------------------------------------------
 
 The :mod:`pyrocko.plot.automap` module provides a painless and clean interface
-for the `Generic Mapping Tool (GMT) <http://gmt.soest.hawaii.edu/>`_ [#f1]_.
+for the `Generic Mapping Tool (GMT) <https://www.generic-mapping-tools.org/>`_ [#f1]_.
 
 Classes covered in these examples:
  * :class:`pyrocko.plot.automap.Map`
@@ -59,7 +59,7 @@ Plotting beachballs (focal mechanisms)
 --------------------------------------
 
 Classes covered in these examples:
- * :class:`pyrocko.plot.beachball` (visual representation of a focal mechanism)
+ * :mod:`pyrocko.plot.beachball` (visual representation of a focal mechanism)
  * :mod:`pyrocko.moment_tensor` (a 3x3 matrix representation of an
    earthquake source)
  * :class:`pyrocko.gf.seismosizer.DCSource` (a representation of a double
@@ -87,7 +87,7 @@ Download :download:`beachball_example01.py </../../examples/beachball_example01.
     :alt: Beachballs (focal mechanisms) created by moment tensors.
 
     An artistic display of focal mechanisms drawn by classes
-    :class:`pyrocko.plot.beachball` and :mod:`pyrocko.moment_tensor`.
+    :mod:`pyrocko.plot.beachball` and :mod:`pyrocko.moment_tensor`.
 
 
 This example shows how to plot a full, a deviatoric and a double-couple beachball
@@ -152,8 +152,8 @@ Download :download:`beachball_example05.py </../../examples/beachball_example05.
     Fuzzy beachball illustrating the solutions uncertainty.
 
 
-Beachballs views for cross-sections:
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Beachball views for cross-sections
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 It is useful to show beachballs from other view angles, as in cross-sections.
 For that, we can define a ``view`` for all beachball plotting functions as
@@ -241,7 +241,7 @@ homogeneous full space are computed within the example code by use of the
 ahfullgreen backend of Fomosto.
 
 Download
-:download:`plot_directivity.py </../../examples/plot_radiation_pattern.py>`
+:download:`plot_radiation_pattern.py </../../examples/plot_radiation_pattern.py>`
 
 .. literalinclude :: /../../examples/plot_radiation_pattern.py
     :language: python
@@ -261,7 +261,7 @@ Directivity effects
 
 Synthetic seismic traces (R, T or Z) are forward-modelled at a defined radius,
 covering the full or partial azimuthal range and projected on a polar plot.
-Difference in the amplitude are enhanced by hillshading the data.
+Differences in amplitude are enhanced by hillshading the data.
 
 Download :download:`plot_directivity.py </../../examples/plot_directivity.py>`
 
@@ -276,7 +276,7 @@ Download :download:`plot_directivity.py </../../examples/plot_directivity.py>`
     Source radiation pattern at 300 km distance of the Mw 6.8 2020
     Elazig-Sevrice earthquake. The dominantly
     unilateral strike-slip rupture is reconstructed by a finite
-    :py:mod:`~pyrocko.gf.seismosizer.RectangularSource` model.
+    :py:class:`~pyrocko.gf.seismosizer.RectangularSource` model.
 
 .. figure :: /static/directivity_envelope_rectangular.png
     :align: center
