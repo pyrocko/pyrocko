@@ -48,6 +48,7 @@ def run(
         args=None,
         command=None,
         subcommands=[],
+        nice_fatal_errors=[],
         description='''
 Pyrocko Squirrel based script.
 
@@ -100,6 +101,7 @@ Run with --help to get further help.''',
     parser = common.SquirrelArgumentParser(
         command=command,
         subcommands=subcommands,
+        nice_fatal_errors=nice_fatal_errors,
         description=description, **kwargs)
 
     return parser.run(args)
