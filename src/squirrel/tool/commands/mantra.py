@@ -54,7 +54,7 @@ class Show(SquirrelCommand):
         if not mantras:
             raise ToolError('No mantra given. Use --mantra option.')
 
-        sq = args.make_squirrel()
+        sq = args.make_squirrel(check_have_arrays=False)
         for mantra in mantras:
             mantra.setup(sq)
             print(mantra.describe())
@@ -130,7 +130,7 @@ class Process(SquirrelCommand):
 
         storage.set_base_path(args.out_storage_path)
 
-        sq = args.make_squirrel()
+        sq = args.make_squirrel(check_have_arrays=False)
         for mantra in mantras:
             mantra.setup(sq)
             hint_codes_patterns_extra(

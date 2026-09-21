@@ -25,6 +25,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
       solutions. Such files can be added to Squirrel like other data.
     - `squirrel service`: explore waveforms, spectrograms, metadata and
       events of a dataset in the web browser, on a timeline and a map.
+    - Gato, the generalized array toolkit (`pyrocko.gato`, with the
+      command line tool `gato` and a graphical user interface): sensor
+      array setups, search grids, delay tables and beamforming.
 - Support for Python 3.15.
 - Packages for Ubuntu 26.04.
 - Quick installation for trying out Pyrocko, with the new `pvc` installer:
