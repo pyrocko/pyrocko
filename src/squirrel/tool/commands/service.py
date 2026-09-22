@@ -23,12 +23,35 @@ def make_subparser(subparsers):
         help=headline,
         description=headline + '''
 
-Data is served through "gates". The ``default`` gate provides the data from
-the selected inputs as it is. Use ``--mantra`` to add gates with processed
-data: each of the selected mantras gets a gate named like the mantra. Mantra
-names must be unique and may only contain lowercase letters, digits and
-underscores. Data from all gates is shown together, so the codes of the
-provided data should be distinct between gates.
+Starts a local web server providing a browser-based UI to interactively explore
+the data available through a Squirrel selection: waveforms, carpets (e.g.
+spectrograms) and their data coverage, channel and response metadata, and
+events are shown on a scrollable timeline, station positions on a map.
+
+Downsampled waveform overviews are computed (up to a given threshold) on the
+fly while panning and zooming. Downsampled carpet overviews (cascades) can be
+pre-computed using ```squirrel cascade``` for seamless presentation of
+multi-year long datasets.
+
+Data is served through "gates". The ``default`` gate provides the data from the
+selected inputs as it is. Use ``--mantra`` to add gates with processed data:
+each of the selected mantras gets a gate named like the mantra, and its outputs
+(e.g. restituted waveforms or spectrograms) appear alongside the raw data in
+the timeline. Mantra names must be unique and may only contain lowercase
+letters, digits and underscores. Since data from all gates is shown together,
+the codes of the provided data should be distinct between gates; this can for
+example be achieved by including the mantra name in the operators' output
+codes (see ```squirrel mantra show```).
+
+By default, the service only listens on ``localhost`` and is not reachable
+from other machines. Use ``--host`` to bind to a different address, and see
+``--help-port-forwarding`` for ways to access a service running on a remote
+host. Use ``--open`` to open the UI in a web browser automatically.
+
+Examples: ```squirrel service --dataset campaign.dataset.yaml``` -- serve the
+data of a preconfigured dataset. ```squirrel service --add data/ --mantra
+mantras.yaml:restitution``` -- serve the raw data together with the additional
+data produced by the ``restitution`` mantra defined in ```mantras.yaml```.
 ''')
 
 
