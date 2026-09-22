@@ -70,7 +70,7 @@ export default {
 
         const connection = squirrelConnection()
         const gates = squirrelGates()
-        gates.addGate()
+        gates.loadGates()
 
         // The inspector panel (context info) lives in the right drawer;
         // no point fetching it while nobody can see it.

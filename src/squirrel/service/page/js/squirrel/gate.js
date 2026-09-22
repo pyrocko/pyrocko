@@ -167,6 +167,7 @@ export const squirrelGate = (gate_id_) => {
     })
 
     return {
+        id: gate_id,
         codes,
         timeSpans,
         channels,
@@ -181,7 +182,9 @@ export const squirrelGate = (gate_id_) => {
     }
 }
 
-export const squirrelBlock = (block) => {
+// Blocks hold the data of a time span from all gates. `getGateIds` returns the
+// ids of the gates to be queried.
+export const squirrelBlock = (block, getGateIds) => {
     const counter = ref(0)
     const my = { ...block }
     const connection = squirrelConnection()
@@ -191,17 +194,33 @@ export const squirrelBlock = (block) => {
     let carpets = null
     let oldCarpets = []
 
-    const fetchCoverage = async () => {
-        const coverages = await connection.value.request(
-            'gate/default/get_rich_coverage',
-            {
-                tmin: timeToStr(my.timeMin),
-                tmax: timeToStr(my.timeMax),
-            }
+    // Queries all gates and concatenates their results. Each result item is
+    // tagged with the id of the gate it came from.
+    const requestAllGates = async (method, params) => {
+        const results = await Promise.all(
+            getGateIds().map(async (gateId) => {
+                const items = await connection.value.request(
+                    'gate/' + gateId + '/' + method,
+                    params
+                )
+                for (const item of items) {
+                    item.gate = gateId
+                }
+                return items
+            })
         )
+        return results.flat()
+    }
+
+    const fetchCoverage = async () => {
+        const coverages = await requestAllGates('get_rich_coverage', {
+            tmin: timeToStr(my.timeMin),
+            tmax: timeToStr(my.timeMax),
+        })
 
         for (const coverage of coverages) {
             coverage.id = [
+                coverage.gate,
                 coverage.kind,
                 coverage.tmin,
                 coverage.tmax,
@@ -214,20 +233,18 @@ export const squirrelBlock = (block) => {
     }
 
     const fetchWaveviews = async (params) => {
-        const waveviews = await connection.value.request(
-            'gate/default/get_waveviews',
-            {
-                tmin: timeToStr(my.timeMin),
-                tmax: timeToStr(my.timeMax),
-                codes: params.codes,
-                fmin: params.ymin,
-                fmax: params.ymax,
-                nx: params.nx,
-                ny: params.ny,
-            }
-        )
+        const waveviews = await requestAllGates('get_waveviews', {
+            tmin: timeToStr(my.timeMin),
+            tmax: timeToStr(my.timeMax),
+            codes: params.codes,
+            fmin: params.ymin,
+            fmax: params.ymax,
+            nx: params.nx,
+            ny: params.ny,
+        })
         for (const waveview of waveviews) {
             waveview.id = [
+                waveview.gate,
                 waveview.kind,
                 waveview.tmin,
                 waveview.tmax,
@@ -250,16 +267,14 @@ export const squirrelBlock = (block) => {
     }
 
     const fetchCarpets = async (params) => {
-        const carpets = await connection.value.request(
-            'gate/default/get_carpets',
-            {
-                tmin: timeToStr(my.timeMin),
-                tmax: timeToStr(my.timeMax),
-                ...params,
-            }
-        )
+        const carpets = await requestAllGates('get_carpets', {
+            tmin: timeToStr(my.timeMin),
+            tmax: timeToStr(my.timeMax),
+            ...params,
+        })
         for (const carpet of carpets) {
             carpet.id = [
+                carpet.gate,
                 carpet.tmin,
                 carpet.tmax,
                 carpet.ymin,
@@ -290,6 +305,11 @@ export const squirrelBlock = (block) => {
     // collapses to just the latest one) is the caller's responsibility
     // -- see the shared scheduler in `setupGates`.
     my.fetch = async (params) => {
+        if (getGateIds().length === 0) {
+            // Gates not yet known. Fetching is triggered again when they
+            // are added.
+            return
+        }
         if (coverages === null) {
             coverages = await fetchCoverage()
         }
@@ -368,6 +388,7 @@ export const squirrelBlock = (block) => {
 
 export const setupGates = () => {
     const gates = ref([])
+    const connection = squirrelConnection()
     const timeMin = ref(TIME_MIN)
     const timeMax = ref(TIME_MAX)
     const hover = shallowRef(null)
@@ -393,13 +414,16 @@ export const setupGates = () => {
         const iscale = Math.ceil(Math.log2(blockFactor * (tmax - tmin)))
         const tstep = Math.pow(2, iscale)
         const itime = Math.round((tmin + tmax) / tstep)
-        return squirrelBlock({
-            iScale: iscale,
-            iTime: itime,
-            timeStep: tstep,
-            timeMin: (itime - 1) * tstep * 0.5,
-            timeMax: (itime + 1) * tstep * 0.5,
-        })
+        return squirrelBlock(
+            {
+                iScale: iscale,
+                iTime: itime,
+                timeStep: tstep,
+                timeMin: (itime - 1) * tstep * 0.5,
+                timeMax: (itime + 1) * tstep * 0.5,
+            },
+            () => gates.value.map((gate) => gate.id)
+        )
     }
 
     const dropOldBlocks = () => {
@@ -464,7 +488,15 @@ export const setupGates = () => {
     }
 
     watch(
-        [yMin, yMax, imageWidth, imageHeight, codesVisible, overviewMethod],
+        [
+            yMin,
+            yMax,
+            imageWidth,
+            imageHeight,
+            codesVisible,
+            overviewMethod,
+            () => gates.value.length,
+        ],
         updateBlocks
     )
 
@@ -531,10 +563,21 @@ export const setupGates = () => {
     const pageForward = makePageMove(1)
     const pageBackward = makePageMove(-1)
 
-    const addGate = () => {
-        const gate = squirrelGate('default')
+    const addGate = (gateId) => {
+        const gate = squirrelGate(gateId)
         gates.value.push(gate)
         gate.update()
+    }
+
+    // Adds the gates provided by the server.
+    const loadGates = async () => {
+        const infos = await connection.value.request('info/gates')
+        const known = new Set(gates.value.map((gate) => gate.id))
+        for (const info of infos) {
+            if (!known.has(info.name)) {
+                addGate(info.name)
+            }
+        }
     }
 
     const getRelevantBlocks = () => {
@@ -827,6 +870,7 @@ export const setupGates = () => {
         halfPageForward,
         halfPageBackward,
         addGate,
+        loadGates,
         codes,
         codesVisible,
         channels,

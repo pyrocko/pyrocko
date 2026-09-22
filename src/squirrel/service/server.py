@@ -30,7 +30,7 @@ from pyrocko import squirrel as squirrel_module
 from pyrocko.squirrel import model
 from pyrocko import guts
 from pyrocko.squirrel.error import ToolError, SquirrelError
-from pyrocko.squirrel import mantra
+from pyrocko.squirrel.mantra import Mantra
 from pyrocko import moment_tensor as pmt
 from pyrocko.plot import beachball
 from pyrocko.color import Color, g_pyrocko_color_cycle_base
@@ -279,6 +279,9 @@ class SquirrelInfoHandler(SquirrelRequestHandler):
     def p_server(self, parameters):
         return server.g_server_info
 
+    def p_gates(self, parameters):
+        return describe_gates()
+
 
 class SquirrelRawHandler(SquirrelRequestHandler):
 
@@ -381,29 +384,50 @@ def drop_resolution_codes(codes_list):
         if not re.search(r'-L(min|max|mean)\d\d$', codes.extra)]
 
 
-class Gate(guts.Object):
+GATE_NAME_PATTERN = r'[a-z0-9_]+'
+GATE_NAME_DEFAULT = 'default'
 
-    mantra = mantra.Mantra.T()
+
+class Gate(guts.Object):
+    '''
+    A named view on the data, produced by a processing pipeline.
+
+    The gate name is used in URLs, so it is restricted to lowercase letters,
+    digits and underscores.
+    '''
+
+    name = guts.String.T(default=GATE_NAME_DEFAULT)
+    mantra = Mantra.T()
+
+    @classmethod
+    def from_mantra(cls, mantra):
+        if not re.fullmatch(GATE_NAME_PATTERN, mantra.name):
+            raise ToolError(
+                'Invalid mantra name "%s": names of mantras used with the '
+                'service may only contain lowercase letters, digits and '
+                'underscores.' % mantra.name)
+
+        return cls(name=mantra.name, mantra=mantra)
 
     @classmethod
     def from_query_arguments(cls, codes=None, tmin=None, tmax=None, time=None):
         operators = []
 
-        # operators.append(
-        #     ops.MultiSpectrogramOperator(
-        #         filtering=ops.CodesPatternFiltering(codes=codes),
-        #         windowing=ops.Pow2Windowing(
-        #             nblock=2**10,
-        #             nlevels=3,
-        #             weighting_exponent=4)))
-
-        # operators.append(
-        #     ops.Restitution(
-        #         frequency_min=0.1,
-        #         frequency_max=5.0))
-
         return cls(
-            mantra=mantra.Mantra(operators=operators))
+            name=GATE_NAME_DEFAULT,
+            mantra=Mantra(name=GATE_NAME_DEFAULT, operators=operators))
+
+    def get_info(self, detailed=False):
+        info = dict(
+            name=self.name,
+            operators=[operator.name for operator in self.mantra.operators])
+
+        if detailed:
+            # This can be large (it lists the channel mappings), so it is
+            # not included in the summary of all gates.
+            info['description'] = self.mantra.describe()
+
+        return info
 
     def set_squirrel(self, squirrel):
         self.mantra.setup(squirrel)
@@ -672,7 +696,7 @@ class Gate(guts.Object):
 
     def get_inspector(self, accessor_id, name):
         ad = get_accessor_data(accessor_id)
-        adk = 'inspector'
+        adk = ('inspector', name)
         if adk not in ad:
             ad[adk] = self.get_inspector_classes()[name](
                 name=name,
@@ -695,34 +719,68 @@ class Gate(guts.Object):
 g_gates = {}
 
 
-class SquirrelGatesHandler(SquirrelRequestHandler):
-    icurrent = 0
+def describe_gates():
+    return [gate.get_info() for gate in g_gates.values()]
 
-    def next_name(self):
-        while True:
-            candidate = '%i' % self.icurrent
-            if '%i' % self.icurrent not in g_gates:
-                return candidate
-            self.icurrent += 1
+
+def gates_from_mantras(mantras, gates):
+    '''
+    Get gates for the given mantras, in addition to the already existing gates.
+    '''
+
+    gates = dict(gates)
+    for mantra in mantras:
+        gate = Gate.from_mantra(mantra)
+        if gate.name in gates:
+            raise ToolError(
+                'Duplicate gate name "%s". Mantra names must be unique and '
+                'must not be "%s".' % (gate.name, GATE_NAME_DEFAULT))
+
+        gates[gate.name] = gate
+
+    return gates
+
+
+def warn_about_shared_codes(gates):
+    '''
+    Warn if different gates provide data for the same codes.
+
+    Data from all gates is shown together, so their codes must be distinct.
+    Operators can include the mantra name in their output codes for this
+    purpose (e.g. by using ``{o.mantra}`` in their codes projection template).
+    '''
+
+    for kind in ('waveform', 'carpet'):
+        gate_names_by_codes = {}
+        for name, gate in gates.items():
+            for codes in gate.get_codes(kind=kind):
+                gate_names_by_codes.setdefault(codes, []).append(name)
+
+        for codes, gate_names in sorted(gate_names_by_codes.items()):
+            if len(gate_names) > 1:
+                logger.warning(
+                    'Codes "%s" (%s) are provided by multiple gates: %s',
+                    codes, kind, ', '.join(gate_names))
+
+
+class SquirrelGatesHandler(SquirrelRequestHandler):
+    SUPPORTED_METHODS = ('GET', 'HEAD')
 
     def get(self, name=None):
-        if not name:
-            self.set_header('Content-Type', 'application/json')
-            self.write(json.dumps(sorted(g_gates.keys())))
-
-    def post(self, name=None):
-        if not name:
-            name = self.next_name()
-
-        parameters = get_parameters_dict(self.request.body)
-        parameters
-        g_gates[name] = Gate()
-
         self.set_header('Content-Type', 'application/json')
-        self.write(json.dumps(name))
+        if not name:
+            self.write(json.dumps(describe_gates()))
+        elif name in g_gates:
+            self.write(json.dumps(g_gates[name].get_info(detailed=True)))
+        else:
+            raise web.HTTPError(404, reason='No such gate: %s' % name)
 
 
 class SquirrelGateHandler(SquirrelRequestHandler):
+
+    def get_accessor_id(self, gate, suffix=''):
+        # Caches must not be shared between gates or between sessions.
+        return '%s_%s%s' % (self.session_id, gate.name, suffix)
 
     def post(self, gate_name, method_name):
         try:
@@ -778,6 +836,8 @@ class SquirrelGateHandler(SquirrelRequestHandler):
             'frequency': (ymin, ymax),
         }
 
+        accessor_id = self.get_accessor_id(gate)
+
         images = gate.get_carpet_images(
             tmin=tmin,
             tmax=tmax,
@@ -786,9 +846,9 @@ class SquirrelGateHandler(SquirrelRequestHandler):
             nx=nx or 6000,
             ny=ny or 400,
             overview_method=overview_method,
-            accessor_id=self.session_id)
+            accessor_id=accessor_id)
 
-        gate.advance_accessor(accessor_id=self.session_id, cache_id='carpet')
+        gate.advance_accessor(accessor_id=accessor_id, cache_id='carpet')
         return images
 
     def p_get_waveviews(self, parameters, gate):
@@ -796,6 +856,8 @@ class SquirrelGateHandler(SquirrelRequestHandler):
             = self.get_cleaned(
                 'tmin tmax fmin fmax nx ny codes',
                 parameters)
+
+        accessor_id = self.get_accessor_id(gate)
 
         waveviews = gate.get_waveviews(
             tmin=tmin,
@@ -805,9 +867,9 @@ class SquirrelGateHandler(SquirrelRequestHandler):
             fmax=fmax,
             nx=nx or 6000,
             ny=ny or 400,
-            accessor_id=self.session_id)
+            accessor_id=accessor_id)
 
-        gate.advance_accessor(accessor_id=self.session_id, cache_id='waveform')
+        gate.advance_accessor(accessor_id=accessor_id, cache_id='waveform')
         return waveviews
 
     def p_get_context(self, parameters, gate):
@@ -827,7 +889,7 @@ class SquirrelGateHandler(SquirrelRequestHandler):
             frequency_min=frequency_min,
             frequency_max=frequency_max)
 
-        accessor_id = self.session_id + '_context'
+        accessor_id = self.get_accessor_id(gate, '_context')
 
         results = []
         for name in names:
@@ -904,6 +966,7 @@ def run(
         gate.set_squirrel(squirrel)
 
     g_gates.update(gates)
+    warn_about_shared_codes(g_gates)
 
     if page_path is None:
         page_path = os.path.join(
@@ -942,12 +1005,12 @@ def run(
             handler_data,
         ),
         (
-            r'/squirrel/gate(?:/([a-z0-9_]+|/?))',
+            r'/squirrel/gate(?:/(%s|/?))' % GATE_NAME_PATTERN,
             SquirrelGatesHandler,
             handler_data,
         ),
         (
-            r'/squirrel/gate/([a-z0-9_]+)/([a-z0-9_]+)',
+            r'/squirrel/gate/(%s)/([a-z0-9_]+)' % GATE_NAME_PATTERN,
             SquirrelGateHandler,
             handler_data,
         ),
