@@ -332,7 +332,7 @@ replacements. Examples: Direct replacement: ```XX``` - set all network codes to
             dest='rename_extra',
             metavar='REPLACEMENT',
             help='Replace extra code. See ``--rename-network``. Note: the '
-                 '```extra``` code is not available in Mini-SEED.')
+                 'extra code is not available in Mini-SEED.')
 
         p.add_squirrel_storage_scheme_arguments()
 

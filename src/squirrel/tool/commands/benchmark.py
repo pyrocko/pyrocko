@@ -74,7 +74,8 @@ def setup(parser):
         type=guts.parse_duration,
         metavar='DURATION',
         default=3600.,
-        help='Set processing time interval for ```chopper``` benchmark [s].')
+        help='Set processing time interval for the ``chopper-waveforms`` '
+             'benchmark [s].')
 
 
 class BatchInfo(Object):
