@@ -9,22 +9,30 @@ const setupConnection = () => {
 
     const squirrelRequest = async (method, args) => {
         activeRequests.value += 1
-        const response = await fetch('/squirrel/' + method, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(args),
-        })
-        activeRequests.value -= 1
-        if (!response.ok) {
-            latestError.value = await response.text()
-            throw new Error(
-                `Response status: ${response.status}, Server response text:\n'''\n${latestError.value}'''`
-            )
-        }
+        try {
+            const response = await fetch('/squirrel/' + method, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(args),
+            })
+            if (!response.ok) {
+                latestError.value = await response.text()
+                throw new Error(
+                    `Response status: ${response.status}, Server response text:\n'''\n${latestError.value}'''`
+                )
+            }
 
-        return response.json()
+            return response.json()
+        } finally {
+            // fetch() only rejects on a network-level failure (HTTP error
+            // statuses resolve normally with response.ok === false), so
+            // this must run on that path too, not just after a normal
+            // response -- otherwise a disconnect leaves activeRequests
+            // stuck incremented.
+            activeRequests.value -= 1
+        }
     }
 
     const getServerInfo = async () => {
@@ -34,13 +42,19 @@ const setupConnection = () => {
     let abortHeartbeat = null
 
     const receiveHeartbeat = async () => {
+        if (abortHeartbeat !== null) {
+            // Already streaming (or about to) -- avoid starting a second,
+            // overlapping stream that would orphan this one's abort
+            // handle.
+            return
+        }
         abortHeartbeat = new AbortController()
-        const response = await fetch('/squirrel/heartbeat', {
-            signal: abortHeartbeat.signal,
-        })
-
-        const decoder = new TextDecoder('utf-8')
         try {
+            const response = await fetch('/squirrel/heartbeat', {
+                signal: abortHeartbeat.signal,
+            })
+
+            const decoder = new TextDecoder('utf-8')
             for await (const chunk of response.body) {
                 const heartbeat = JSON.parse(decoder.decode(chunk))
                 heartbeat['time_now_client'] = now()
@@ -52,6 +66,7 @@ const setupConnection = () => {
             }
         } catch {
             heartbeats = []
+        } finally {
             abortHeartbeat = null
         }
     }

@@ -33,7 +33,7 @@ export const createIfNeeded = (selection, type) => {
 }
 
 export const timeToStr = (time, fmt) => {
-    const secs = Math.floor(time)
+    let secs = Math.floor(time)
     const subsecs = time - secs
     if (fmt == null) {
         fmt = '%Y-%m-%d %H:%M:%S.3FRAC'
@@ -50,7 +50,17 @@ export const timeToStr = (time, fmt) => {
         throw new Error('Subsecs should be smaller than 1.0 but it is not.')
     }
 
-    return d3.utcFormat(fmt)(new Date(secs * 1000)) + subsecs.toFixed(nfrac).substr(1)
+    let fracStr = subsecs.toFixed(nfrac)
+    if (fracStr.startsWith('1')) {
+        // toFixed() rounded the fractional part up to a full second (e.g.
+        // 5.9996 -> "1.000"): carry it into the integer seconds instead
+        // of silently dropping it (which would render as "...:05.000"
+        // rather than "...:06.000").
+        secs += 1
+        fracStr = (0).toFixed(nfrac)
+    }
+
+    return d3.utcFormat(fmt)(new Date(secs * 1000)) + fracStr.substr(1)
 }
 
 export const strToTime = (s) => {
@@ -63,10 +73,6 @@ export const strToTime = (s) => {
     }
     return msecs / 1000.0 + (m[4] ? +m[4] : 0.0)
 }
-
-//console.log('a: ', strToTime('1900-01-01 00:00:00'))
-//console.log('b: ', strToTime('2030-01-01 00:00:00'))
-//console.log('today: ', strToTime('2024-11-21T00:00:00'))
 
 const gmtime = (time) => {
     const secs = Math.floor(time)
@@ -157,6 +163,7 @@ const approxYears = days * 365
 
 const niceTimeTickIncUnits = {
     seconds: 1,
+    days: days,
     months: approxMonths,
     years: approxYears,
 }
@@ -167,7 +174,7 @@ export const niceTimeTickInc = (tincApprox) => {
     } else if (tincApprox >= approxMonths * 0.8) {
         const nice = [1, 2, 3, 6]
         for (const tinc of nice) {
-            if (tinc * approxMonths * 1.2 >= tincApprox || tinc == nice[-1]) {
+            if (tinc * approxMonths * 1.2 >= tincApprox) {
                 return [tinc, 'months']
             }
         }
@@ -198,7 +205,7 @@ export const niceTimeTickInc = (tincApprox) => {
         ]
 
         for (const tinc of nice) {
-            if (tinc >= tincApprox || tinc == nice[-1]) {
+            if (tinc >= tincApprox) {
                 return [tinc, 'seconds']
             }
         }
@@ -387,10 +394,9 @@ export const decodeRichCoverage = (value) => {
     const description = ['none', 'ok', 'dups', 'garbled']
     const kinds = ['channel', 'response', 'waveform', 'waveform_promise', 'carpet']
     const parts = []
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < kinds.length; i++) {
         const part_value = (value >> (i * 2)) & 3
         if (part_value != 0) {
-            console.log(part_value)
             parts.push(kinds[i] + ' ' + description[part_value])
         }
     }

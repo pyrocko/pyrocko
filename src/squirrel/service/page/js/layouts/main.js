@@ -11,13 +11,13 @@ export default {
         ComponentScouts,
         ComponentQuickFilter,
     },
-    setup: (props) => {
+    setup: () => {
         const $q = Quasar
 
         const leftDrawerOpen = ref(false)
         const rightDrawerOpen = ref(false)
-        const fullscreen_mode = ref(false)
-        const dark_mode = ref($q.Dark.isActive)
+        const fullscreenMode = ref(false)
+        const darkMode = ref($q.Dark.isActive)
 
         function toggleLeftDrawer() {
             leftDrawerOpen.value = !leftDrawerOpen.value
@@ -76,18 +76,18 @@ export default {
         // no point fetching it while nobody can see it.
         watch(rightDrawerOpen, gates.setContextEnabled, { immediate: true })
 
-        const update_dark_mode = (dark_mode) => {
-            $q.Dark.set(dark_mode)
+        const updateDarkMode = (darkMode) => {
+            $q.Dark.set(darkMode)
         }
 
-        watch(dark_mode, update_dark_mode)
+        watch(darkMode, updateDarkMode)
 
-        const update_fullscreen_mode = (fullscreen_mode) => {
-            const fullscreen_mode_active = $q.AppFullscreen.isActive
-            if (fullscreen_mode) {
-                if (!fullscreen_mode_active) {
+        const updateFullscreenMode = (active) => {
+            const fullscreenModeActive = $q.AppFullscreen.isActive
+            if (active) {
+                if (!fullscreenModeActive) {
                     $q.AppFullscreen.request().catch(() => {
-                        fullscreen_mode.value = false
+                        fullscreenMode.value = false
                     })
                 }
             } else {
@@ -98,23 +98,13 @@ export default {
         watch(
             () => $q.AppFullscreen.isActive,
             (val) => {
-                if (fullscreen_mode.value != val) {
-                    fullscreen_mode.value = $q.AppFullscreen.isActive
+                if (fullscreenMode.value != val) {
+                    fullscreenMode.value = $q.AppFullscreen.isActive
                 }
             }
         )
 
-        watch(fullscreen_mode, update_fullscreen_mode)
-
-        const disconnected_dialog = ref(true)
-
-        const update_disconnected_dialog = (connected) => {
-            if (!connected) {
-                disconnected_dialog.value = true
-            }
-        }
-
-        watch(() => connection.value.connected, update_disconnected_dialog)
+        watch(fullscreenMode, updateFullscreenMode)
 
         return {
             connection,
@@ -131,8 +121,8 @@ export default {
             scoutList,
             pinnedScoutCount,
             selectScout,
-            dark_mode,
-            fullscreen_mode,
+            darkMode,
+            fullscreenMode,
         }
     },
 
@@ -166,10 +156,10 @@ export default {
                         </q-item>
 
                         <q-item>
-                            <q-toggle v-model="dark_mode" label="Dark Mode" left-label />
+                            <q-toggle v-model="darkMode" label="Dark Mode" left-label />
                         </q-item>
                         <q-item>
-                            <q-toggle v-model="fullscreen_mode" label="Fullscreen" left-label />
+                            <q-toggle v-model="fullscreenMode" label="Fullscreen" left-label />
                         </q-item>
                     </q-list>
                 </q-scroll-area>

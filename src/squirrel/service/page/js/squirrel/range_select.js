@@ -30,12 +30,7 @@ export const squirrelRangeSelect = () => {
                 bounds.height - margin.bottom - spacing,
             ],
         ])
-        group_brush
-            .call(brush)
-            .selectAll('.overlay')
-        group_brush
-            .call(brush)
-            .selectAll('.selection')
+        group_brush.call(brush)
         update()
     }
 
@@ -43,13 +38,14 @@ export const squirrelRangeSelect = () => {
         if (muted) {
             return
         }
+        const handler = handlers['brushed']
+        if (!handler) {
+            return
+        }
         if (event.selection === null) {
-            handlers['brushed']([null, null])
+            handler([null, null])
         } else {
-            const range = event.selection.map(scale.invert)
-            if (handlers['brushed'] !== null) {
-                handlers['brushed'](range)
-            }
+            handler(event.selection.map(scale.invert))
         }
     }
 

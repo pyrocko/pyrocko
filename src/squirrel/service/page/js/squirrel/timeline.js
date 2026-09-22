@@ -55,8 +55,7 @@ const projectionHelper = () => {
         return (x - xmin) / (xmax - xmin)
     }
 
-    my.domainSpan = (x) => {
-        x
+    my.domainSpan = () => {
         const [xmin, xmax] = scale.domain()
         return xmax - xmin
     }
@@ -179,10 +178,8 @@ export const squirrelTimeline = () => {
     let dataScales = new Map()
     let scrollDeltaY = 0
     let scrollTime = 0
-    let updateTimeoutId = null
     let searchActive = null
     let makeCodesMatcher = null
-    // let updateCount = 0
 
     let deactivateScrollMarginsTimeoutId = null
     let needScrollMargins = false
@@ -258,7 +255,6 @@ export const squirrelTimeline = () => {
     }
 
     const update = () => {
-        // updateCount += 1
         const t = d3.transition('update').duration(100).ease(d3.easeLinear)
 
         updateVisibleCodes()
@@ -270,17 +266,6 @@ export const squirrelTimeline = () => {
         updateBoxes(t)
         updateTimeAxes()
     }
-
-    const updateSoon = () => {
-        if (updateTimeoutId !== null) {
-            clearTimeout(updateTimeoutId)
-        }
-        updateTimeoutId = setTimeout(() => {
-            update()
-            updateTimeoutId = null
-        }, 100)
-    }
-    updateSoon // eslint
 
     const resizeHandler = () => {
         bounds = containerBounds()
@@ -1109,11 +1094,6 @@ export const squirrelTimeline = () => {
     }
 
     const updateCodes = async () => {
-        //let groupKeySensor = (c) => {
-        //    const nslce = c.split('.')
-        //    const sensor = nslce[3].substring(0, nslce[3].length - 1)
-        //    return nslce.splice(0, 3) + [sensor]
-        //}
         const groupKeyChannel = (c) => {
             return c.split('.')
         }

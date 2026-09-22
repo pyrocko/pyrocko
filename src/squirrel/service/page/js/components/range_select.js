@@ -14,7 +14,7 @@ export default {
 
         rangeSelect.on('brushed', updateRange)
 
-        watch([props.min, props.max], rangeSelect.setRange)
+        watch(() => [props.min, props.max], rangeSelect.setRange)
 
         onMounted(() => {
             d3.select('#rangeSelect').call(rangeSelect)

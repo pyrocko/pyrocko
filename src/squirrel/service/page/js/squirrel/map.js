@@ -3,7 +3,7 @@ import { createIfNeeded, colors, onResizeDebounced } from './common.js'
 import { squirrelGates } from './gate.js'
 
 export const squirrelMap = () => {
-    let gates = squirrelGates()
+    const gates = squirrelGates()
 
     let map
     let basemapGroup
@@ -137,7 +137,7 @@ export const squirrelMap = () => {
             )
     }
 
-    let my = async (selection) => {
+    const my = (selection) => {
         container = selection
         map = createIfNeeded(container, 'svg')
 
@@ -168,7 +168,12 @@ export const squirrelMap = () => {
     }
 
     my.scale = function (_) {
-        return arguments.length ? ((scale = +_), reProject()) : scale
+        if (!arguments.length) {
+            return scale
+        }
+        scale = +_
+        reProject()
+        return my
     }
 
     my.addBasemap = () => {

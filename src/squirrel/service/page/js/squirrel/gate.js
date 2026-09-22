@@ -71,10 +71,7 @@ const makeLatestWinsRunner = (fn, { debounceMs = 0 } = {}) => {
 // regardless of which channel/component it is.
 const stationKey = (codes) => codes.split('.').slice(0, 3).join('.')
 
-export const squirrelGate = (gate_id_) => {
-    const gate_id = gate_id_
-    const counter = ref(0)
-    const filter = ref('')
+export const squirrelGate = (gate_id) => {
     const codes = shallowRef([])
     const channels = shallowRef([])
     const sensors = shallowRef([])
@@ -175,8 +172,6 @@ export const squirrelGate = (gate_id_) => {
         responses,
         events,
         update,
-        counter,
-        filter,
         updateContext,
         contextInfos,
     }
@@ -387,7 +382,10 @@ export const squirrelBlock = (block, getGateIds) => {
 }
 
 export const setupGates = () => {
-    const gates = ref([])
+    // A shallowRef: gate objects are kept as-is (not deep-reactive
+    // proxies), so every Ref-typed field on a gate must be read through
+    // its own `.value` -- see `flattenGates` below.
+    const gates = shallowRef([])
     const connection = squirrelConnection()
     const timeMin = ref(TIME_MIN)
     const timeMax = ref(TIME_MAX)
@@ -462,7 +460,7 @@ export const setupGates = () => {
             (a, b) => b.getLastTouched() - a.getLastTouched()
         )
 
-        if (sorted.size == 0) {
+        if (sorted.length == 0) {
             return
         }
 
@@ -565,7 +563,10 @@ export const setupGates = () => {
 
     const addGate = (gateId) => {
         const gate = squirrelGate(gateId)
-        gates.value.push(gate)
+        // Replace, don't mutate, the array: `gates` is a shallowRef, so
+        // an in-place push() here would go unnoticed by watchers and
+        // computeds depending on `gates.value`.
+        gates.value = [...gates.value, gate]
         gate.update()
     }
 
@@ -601,9 +602,10 @@ export const setupGates = () => {
                 _relevantBlocks.length = 4
             }
         }
-        _relevantBlocks = _relevantBlocks
-            .map((block, iblock) => (block.setActive(iblock == 0), block))
-            .filter((block) => block.isActiveOrZombie())
+        _relevantBlocks.forEach((block, iblock) =>
+            block.setActive(iblock == 0))
+        _relevantBlocks = _relevantBlocks.filter((block) =>
+            block.isActiveOrZombie())
 
         return _relevantBlocks
     }
@@ -660,25 +662,16 @@ export const setupGates = () => {
         return scales
     }
 
-    const channels = computed(() => {
-        const channels = []
-        for (const gate of gates.value) {
-            for (const channel of gate.channels.value) {
-                channels.push(channel)
-            }
-        }
-        return channels
-    })
+    // Collects and flattens one field across all gates. `pick` returns
+    // the value to read from a single gate, e.g. `(gate) =>
+    // gate.sensors.value`.
+    const flattenGates = (pick) => gates.value.flatMap(pick)
 
-    const sensors = computed(() => {
-        const sensors = []
-        for (const gate of gates.value) {
-            for (const sensor of gate.sensors) {
-                sensors.push(sensor)
-            }
-        }
-        return sensors
-    })
+    const channels = computed(() =>
+        flattenGates((gate) => gate.channels.value))
+
+    const sensors = computed(() =>
+        flattenGates((gate) => gate.sensors.value))
 
     // Deduplicated "virtual stations": one entry per unique
     // (codes, lat, lon) combination, with every contributing Sensor
@@ -727,15 +720,8 @@ export const setupGates = () => {
         return keys
     })
 
-    const codes = computed(() => {
-        const codes = new Set()
-        for (const gate of gates.value) {
-            for (const c of gate.codes) {
-                codes.add(c)
-            }
-        }
-        return Array.from(codes)
-    })
+    const codes = computed(() =>
+        Array.from(new Set(flattenGates((gate) => gate.codes.value))))
 
     //responses
     const responses = computed(() => {
@@ -775,7 +761,7 @@ export const setupGates = () => {
         }
         for (const gate of gates.value) {
             for (const kind of ['channel', 'response', 'waveform', 'carpet']) {
-                const span = gate.timeSpans[kind]
+                const span = gate.timeSpans.value[kind]
                 if (span != null && span.tmin != null && span.tmax != null) {
                     if (spans[kind] === null) {
                         spans[kind] = span
@@ -796,15 +782,8 @@ export const setupGates = () => {
         return spans
     })
 
-    const contextInfos = computed(() => {
-        const contextInfos = []
-        for (const gate of gates.value) {
-            for (const contextInfo of gate.contextInfos) {
-                contextInfos.push(contextInfo)
-            }
-        }
-        return contextInfos
-    })
+    const contextInfos = computed(() =>
+        flattenGates((gate) => gate.contextInfos.value))
 
     watch([timeSpans], () => {
         if (!initialTimeSpanSet) {
