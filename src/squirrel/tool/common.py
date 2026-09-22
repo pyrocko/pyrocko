@@ -10,6 +10,7 @@ Squirrel command line tool infrastructure and argument parsing.
 import os
 import sys
 import re
+import inspect
 import argparse
 import logging
 import textwrap
@@ -22,6 +23,132 @@ from pyrocko.squirrel import storage
 logger = logging.getLogger('psq.tool.common')
 
 help_time_format = 'Format: ```YYYY-MM-DD HH:MM:SS.FFF```, truncation allowed.'
+
+# Since Python 3.13, argparse may colorize its output with ANSI escape
+# sequences (see ``can_colorize`` in the standard library's ``_colorize``
+# module). The custom wrapping and paragraph-detection logic below predates
+# this and works on the assumption that its input is plain text: it uses
+# ``len()``-based wrapping (via ``textwrap``) and ``str.startswith('usage:')``
+# checks to recognize the usage line, both of which are thrown off by leading
+# or embedded escape sequences (e.g. the usage line then starts with
+# ``\x1b[1;34m`` rather than with ``usage:``, some words get glued to escape
+# sequences that count towards the wrap width although they render with zero
+# width, and a wrap point can end up splitting an escape sequence or a
+# colorized word in two).
+#
+# Colorized help is a nice feature for interactive use, so rather than
+# disabling it, ``_ansi_wrap`` below reimplements the relevant bits of
+# ``wrap``/``wrap_usage`` to treat ANSI SGR escape sequences as zero-width:
+# it wraps a color-stripped copy of the text with the real
+# ``textwrap.wrap`` (getting its exact word-splitting and whitespace
+# handling for free) and then replays the result against the original,
+# colorized text to reattach the escape sequences at the right positions.
+#
+# Colorized output is unwanted for the ``rst`` help used to build the docs
+# (see ``PyrockoArgumentParser``), where stray escape sequences would end up
+# in the generated ``rst`` source, so that path still asks argparse not to
+# colorize in the first place (see ``_argparse_supports_color`` below).
+#
+# ``color`` was added as a keyword argument to ``argparse.ArgumentParser``
+# and ``argparse.HelpFormatter`` in a later Python 3 version than the
+# minimum supported here, hence the feature check instead of a version
+# check.
+_argparse_supports_color = 'color' in inspect.signature(
+    argparse.ArgumentParser.__init__).parameters
+
+_ansi_sgr_re = re.compile(r'\x1b\[[0-9;]*m')
+
+_triple_backtick_re = re.compile(r'```(.*?)```', re.S)
+_double_backtick_re = re.compile(r'``(.*?)``', re.S)
+
+_markup_bold = '\x1b[1m'
+_markup_reset = '\x1b[0m'
+
+
+def _visible(s):
+    return _ansi_sgr_re.sub('', s)
+
+
+def _colorize_markup(s, color):
+    '''
+    Replace our own :literal:`\\`\\`code\\`\\`` /
+    :literal:`\\`\\`\\`code\\`\\`\\`` markup (see ``PyrockoArgumentParser``)
+    with its normal-``--help`` rendering: :literal:`\\`\\`code\\`\\`` becomes
+    ``code``,
+    :literal:`\\`\\`\\`code\\`\\`\\`` becomes ``'code'``. If ``color`` is set
+    (i.e. argparse is colorizing this output, see ``format_help``), the
+    replacement text is additionally set in bold, so it stands out from the
+    surrounding prose the same way inline code does in the ``rst`` docs.
+    '''
+
+    if color:
+        s = _triple_backtick_re.sub(
+            lambda m: "%s'%s'%s" % (
+                _markup_bold, m.group(1), _markup_reset), s)
+        s = _double_backtick_re.sub(
+            lambda m: '%s%s%s' % (
+                _markup_bold, m.group(1), _markup_reset), s)
+    else:
+        s = _triple_backtick_re.sub(lambda m: "'%s'" % m.group(1), s)
+        s = _double_backtick_re.sub(lambda m: m.group(1), s)
+
+    return s
+
+
+def _ansi_wrap(text, width, subsequent_indent=''):
+    '''
+    Like :py:func:`textwrap.wrap`, but treats ANSI SGR escape sequences
+    embedded in ``text`` as zero-width, so that e.g. a colorized option flag
+    does not count towards the wrap width and does not get split apart by a
+    wrap point landing inside it.
+    '''
+
+    fragments = _ansi_sgr_re.split(text)
+    codes = _ansi_sgr_re.findall(text)
+    if not codes:
+        return textwrap.wrap(text, width, subsequent_indent=subsequent_indent)
+
+    plain = ''.join(fragments)
+
+    # gaps[i]: escape sequences occurring in `text` immediately before the
+    # visible character at plain[i] (gaps[len(plain)]: trailing escape
+    # sequences occurring after the last visible character).
+    gaps = [''] * (len(plain) + 1)
+    pos = 0
+    for fragment, code in zip(fragments, codes):
+        pos += len(fragment)
+        gaps[pos] += code
+
+    # Locate each wrapped line's (start, end) span in `plain`.
+    spans = []
+    cursor = 0
+    for i, line in enumerate(
+            textwrap.wrap(plain, width, subsequent_indent=subsequent_indent)):
+
+        content = line[len(subsequent_indent):] if i > 0 else line
+        start = plain.index(content, cursor)
+        end = start + len(content)
+        spans.append((start, end))
+        cursor = end
+
+    # Build each line's colorized text. Escape sequences occurring exactly
+    # at a line's end (gaps[end], e.g. a reset right after the last word of
+    # that line) are attached to that line, unless the next line's span
+    # starts at that very same position -- which happens when a single
+    # word had to be split apart because it alone exceeded the width (no
+    # whitespace was dropped in between); in that case, the escape
+    # sequences are picked up as the leading gap of the next line instead,
+    # so that they are emitted exactly once either way.
+    lines = []
+    for i, (start, end) in enumerate(spans):
+        colorized = ''.join(
+            gaps[j] + plain[j] for j in range(start, end))
+        next_start = spans[i + 1][0] if i + 1 < len(spans) else None
+        if next_start != end:
+            colorized += gaps[end]
+        lines.append((subsequent_indent if i > 0 else '') + colorized)
+
+    return lines
 
 
 def unwrap(s):
@@ -47,7 +174,7 @@ def wrap(s):
     parts = re.split(r'\n{2,}', s)
     for part in parts:
         plines = part.splitlines()
-        if part.startswith('usage:') \
+        if _visible(part).startswith('usage:') \
                 or all(line.startswith('    ') for line in plines):
             lines.extend(plines)
         else:
@@ -56,10 +183,10 @@ def wrap(s):
                     lines.append(line)
                 if not line.startswith(' '):
                     lines.extend(
-                        textwrap.wrap(line, 79,))
+                        _ansi_wrap(line, 79))
                 else:
                     lines.extend(
-                        textwrap.wrap(line, 79, subsequent_indent=' '*24))
+                        _ansi_wrap(line, 79, subsequent_indent=' '*24))
 
         lines.append('')
 
@@ -119,6 +246,11 @@ class PyrockoArgumentParser(argparse.ArgumentParser):
 
         kwargs['formatter_class'] = formatter_with_width(1000000)
 
+        if _argparse_supports_color \
+                and os.environ.get('PYROCKO_RST_HELP', '0') != '0':
+            # Keep the docs free of stray escape sequences.
+            kwargs.setdefault('color', False)
+
         description = unwrap(description)
         epilog = unwrap(epilog)
 
@@ -142,6 +274,10 @@ class PyrockoArgumentParser(argparse.ArgumentParser):
     def format_help(self, *args, **kwargs):
         s = argparse.ArgumentParser.format_help(self, *args, **kwargs)
 
+        # If argparse put any color into its own output (flags, metavars,
+        # headers, ...), colorize our own backtick markup consistently.
+        color = bool(_ansi_sgr_re.search(s))
+
         # replace usage with wrapped one from argparse because naive wrapping
         # does not look good.
         formatter_class = self.formatter_class
@@ -151,7 +287,7 @@ class PyrockoArgumentParser(argparse.ArgumentParser):
 
         lines = []
         for line in s.splitlines():
-            if line.startswith('usage:'):
+            if _visible(line).startswith('usage:'):
                 lines.append(usage)
             else:
                 lines.append(line)
@@ -159,8 +295,7 @@ class PyrockoArgumentParser(argparse.ArgumentParser):
         s = '\n'.join(lines)
 
         if os.environ.get('PYROCKO_RST_HELP', '0') == '0':
-            s = s.replace('```', "'")
-            s = s.replace('``', '')
+            s = _colorize_markup(s, color)
             s = wrap(s)
         else:
             s = s.replace('```', '``')
