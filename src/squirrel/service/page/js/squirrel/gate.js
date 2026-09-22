@@ -503,7 +503,7 @@ export const setupGates = () => {
         const k = block.key()
         if (!blocks.has(k)) {
             blocks.set(k, block)
-            watch([block.counter], () => counter.value++)
+            watch(block.counter, () => counter.value++)
             scheduleBlockFetch({
                 block,
                 params: {
@@ -785,7 +785,7 @@ export const setupGates = () => {
     const contextInfos = computed(() =>
         flattenGates((gate) => gate.contextInfos.value))
 
-    watch([timeSpans], () => {
+    watch(timeSpans, () => {
         if (!initialTimeSpanSet) {
             let tmin = null
             let tmax = null

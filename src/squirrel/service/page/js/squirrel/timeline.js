@@ -1,5 +1,10 @@
-const { watch, shallowRef } = Vue
-import { now, arraysEqual, onResizeDebounced, colors } from './common.js'
+import {
+    now,
+    arraysEqual,
+    onResizeDebounced,
+    colors,
+    makeEmitter,
+} from './common.js'
 
 import {
     createIfNeeded,
@@ -7,8 +12,6 @@ import {
     timeTickLabels,
     tomorrow,
 } from './common.js'
-import { squirrelGates } from './gate.js'
-import { useFilters } from './filter.js'
 
 const projectionHelper = () => {
     let scale = d3.scaleLinear()
@@ -139,10 +142,36 @@ const projectionHelper = () => {
     return my
 }
 
-export const squirrelTimeline = () => {
+// A framework-agnostic timeline widget: it neither imports Vue nor
+// knows anything about `gates`/Squirrel. Everything it needs comes in
+// through `dataSource` (fixed at construction) and the `setX()`
+// methods below; everything it wants to report going the other way
+// goes out through `my.on(event, cb)`. Wiring this up to Vue-reactive
+// state is entirely the caller's job -- see pages/timeline.js.
+//
+// `dataSource` must provide: getCoverages(), getCarpets(),
+// getWaveviews(), getDataRanges(), getDataScales() -- all called
+// on-demand, synchronously, whenever a redraw is due.
+//
+// Inputs (call whenever the corresponding state changes):
+//   setTimeSpan(tmin, tmax) -- the time range currently in view
+//   setCodes(codes)         -- the flat list of all known codes
+//   setSearchFilter(fn)     -- fn(code) -> bool, narrows setCodes()
+//   refresh()               -- redraw with the current inputs (e.g.
+//                              when the underlying data changed but
+//                              none of the above did)
+//
+// Outputs (my.on(name, cb)):
+//   'hover'        -- cb(hoverInfo)
+//   'timeSpan'     -- cb(tmin, tmax), fired on user pan/zoom/paging
+//                     (note: also the name of an input -- this is the
+//                     one genuinely bidirectional channel, since the
+//                     view's time span can change from either side)
+//   'visibleCodes' -- cb(codes), the codes currently scrolled into view
+//   'imageSize'    -- cb(width, height), the pixel size backing-image
+//                     requests should be rendered at
+export const squirrelTimeline = (dataSource) => {
     // parameters
-
-    let gates = squirrelGates()
 
     let marginTop = 100
     let marginBottom = 110
@@ -178,18 +207,27 @@ export const squirrelTimeline = () => {
     let dataScales = new Map()
     let scrollDeltaY = 0
     let scrollTime = 0
-    let searchActive = null
-    let makeCodesMatcher = null
 
     let deactivateScrollMarginsTimeoutId = null
     let needScrollMargins = false
 
     const pointerEvents = []
-    const trackHeight = shallowRef(100)
-    const trackWidth = shallowRef(800)
-    const timeSpan = shallowRef([0, 1])
-    const visibleCodes = shallowRef([])
-    const showBoxes = shallowRef(true)
+
+    // Current inputs, kept in sync by the caller through the setters
+    // below.
+    let timeMin = 0
+    let timeMax = 1
+    let codes = []
+    let searchFilter = () => true
+
+    // Local rendering state -- never reported outward, so these stay
+    // plain variables rather than going through setX()/on().
+    let trackHeight = 100
+    let trackWidth = 800
+    let showBoxes = true
+    let lastVisibleCodes = []
+
+    const { on, emit } = makeEmitter()
 
     const visibleTracks = () => {
         return tracks.filter(trackVisible)
@@ -200,10 +238,11 @@ export const squirrelTimeline = () => {
     }
 
     const updateTrackHeight = () => {
-        trackHeight.value = Math.max(
+        trackHeight = Math.max(
             1,
             trackProjection.trackHeight() - 2 * effectiveTrackPadding
         )
+        emit('imageSize', trackWidth, trackHeight)
     }
 
     const updateVisibleCodes = () => {
@@ -211,14 +250,15 @@ export const squirrelTimeline = () => {
             .map((track) => track.codes)
             .flat()
         visible.sort()
-        if (!arraysEqual(visibleCodes.value, visible)) {
-            visibleCodes.value = visible
+        if (!arraysEqual(lastVisibleCodes, visible)) {
+            lastVisibleCodes = visible
+            emit('visibleCodes', visible)
         }
     }
 
     const updateDataRangesAndScales = () => {
-        dataRanges = gates.getDataRanges()
-        dataScales = gates.getDataScales()
+        dataRanges = dataSource.getDataRanges()
+        dataScales = dataSource.getDataScales()
     }
 
     const makeEffectiveTrackPadding = () => {
@@ -236,10 +276,7 @@ export const squirrelTimeline = () => {
     }
 
     const updateProjection = () => {
-        x.domain([gates.timeMin.value, gates.timeMax.value]).range([
-            0,
-            bounds.width,
-        ])
+        x.domain([timeMin, timeMax]).range([0, bounds.width])
         trackProjection.range([
             marginTop,
             Math.max(marginTop + 1, bounds.height - marginBottom),
@@ -273,15 +310,24 @@ export const squirrelTimeline = () => {
             return
         }
         timeline.attr('width', bounds.width).attr('height', bounds.height)
-        trackWidth.value = bounds.width
+        trackWidth = bounds.width
         update()
     }
 
+    // Shifts the current view by `amount` pages (e.g. 0.5 for a
+    // half-page forward) and reports the result -- the caller decides
+    // whether/how to apply it (see the 'timeSpan' event).
+    const emitPageMove = (amount) => {
+        const dt = timeMax - timeMin
+        emit('timeSpan', timeMin + amount * dt, timeMax + amount * dt)
+    }
+
     const keyHandlers = {
-        ' ': gates.halfPageForward,
-        b: gates.halfPageBackward,
+        ' ': () => emitPageMove(0.5),
+        b: () => emitPageMove(-0.5),
         B: () => {
-            ;((showBoxes.value = !showBoxes.value), update())
+            showBoxes = !showBoxes
+            update()
         },
         PageUp: () => scrollTracks(-1.0),
         PageDown: () => scrollTracks(1.0),
@@ -319,7 +365,7 @@ export const squirrelTimeline = () => {
         hover['track'] = track
         hover['y'] =
             track !== null ? getTrackScale(track).invert(ev.offsetY) : null
-        gates.setHover(hover)
+        emit('hover', hover)
 
         for (let i = 0; i < pointerEvents.length; i++) {
             if (ev.pointerId == pointerEvents[i].pointerId) {
@@ -347,9 +393,9 @@ export const squirrelTimeline = () => {
                 scale = mode == 'global' ? (scale = Math.exp(-dy * 5)) : 1.0
                 dtr = (tmax0 - tmin0) * (scale - 1.0)
                 dt = dx * (tmax0 - tmin0) * scale
-                let timeMin = tmin0 - dt - dtr * xfrac
-                let timeMax = tmax0 - dt + dtr * (1 - xfrac)
-                timeSpan.value = [timeMin, timeMax]
+                const newTimeMin = tmin0 - dt - dtr * xfrac
+                const newTimeMax = tmax0 - dt + dtr * (1 - xfrac)
+                emit('timeSpan', newTimeMin, newTimeMax)
             }
         } else if (pointerEvents.length == 2) {
             let pinch = [
@@ -600,7 +646,7 @@ export const squirrelTimeline = () => {
     }
 
     const getBoxes = () => {
-        const coverages = gates.getCoverages()
+        const coverages = dataSource.getCoverages()
         return coverages === null
             ? []
             : coverages
@@ -609,7 +655,7 @@ export const squirrelTimeline = () => {
                   .filter((box) => box !== null)
     }
     const getImages = () => {
-        return gates
+        return dataSource
             .getCarpets()
             .map(carpetToImage)
             .filter((img) => img !== null)
@@ -643,7 +689,7 @@ export const squirrelTimeline = () => {
     }
 
     const getPolygons = () => {
-        return gates
+        return dataSource
             .getWaveviews()
             .map(waveviewToWavepoly)
             .filter((poly) => poly !== null)
@@ -658,7 +704,7 @@ export const squirrelTimeline = () => {
         boxColorMap.set(21, colors.aluminium3)
         boxColorMap.set(53, colors.aluminium3)
 
-        const boxes = showBoxes.value ? getBoxes() : []
+        const boxes = showBoxes ? getBoxes() : []
 
         const is_garbled = (value) => {
             for (let i = 0; i < 5; i++) {
@@ -797,11 +843,11 @@ export const squirrelTimeline = () => {
 
         const napprox = (5 * bounds.width) / 1200
         const [tinc, tinc_units] = niceTimeTickInc(
-            (gates.timeMax.value - gates.timeMin.value) / napprox
+            (timeMax - timeMin) / napprox
         )
         const [times, labels] = timeTickLabels(
-            gates.timeMin.value,
-            gates.timeMax.value,
+            timeMin,
+            timeMax,
             tinc,
             tinc_units,
             napprox
@@ -835,7 +881,7 @@ export const squirrelTimeline = () => {
             .data(
                 (axisId) =>
                     ticks
-                        .filter((tick) => tick.t > gates.timeMin.value)
+                        .filter((tick) => tick.t > timeMin)
                         .map((tick) => ({ axisId, tick })),
                 (d) => d.tick.t
             )
@@ -882,7 +928,7 @@ export const squirrelTimeline = () => {
                         .style('font-size', fontSize + 'pt')
                         .call((enter) =>
                             enter
-                                .filter((d) => d.tick.t != gates.timeMin.value)
+                                .filter((d) => d.tick.t != timeMin)
                                 .style('opacity', 0)
                                 .transition()
                                 .duration(500)
@@ -895,7 +941,7 @@ export const squirrelTimeline = () => {
             )
             .text((d) => d.label)
             .style('text-anchor', (d) =>
-                d.tick.t == gates.timeMin.value ? 'start' : 'middle'
+                d.tick.t == timeMin ? 'start' : 'middle'
             )
             .attr(
                 'y',
@@ -907,9 +953,7 @@ export const squirrelTimeline = () => {
             )
             .attr('x', (d) => x(d.tick.t))
             .attr('dx', () => '0.5em')
-            .attr('dx', (d) =>
-                d.tick.t == gates.timeMin.value ? '0.5em' : '0'
-            )
+            .attr('dx', (d) => (d.tick.t == timeMin ? '0.5em' : '0'))
 
         axisGroups
     }
@@ -1093,14 +1137,12 @@ export const squirrelTimeline = () => {
             )
     }
 
-    const updateCodes = async () => {
+    const updateCodes = () => {
         const groupKeyChannel = (c) => {
             return c.split('.')
         }
 
-        const filter = makeCodesMatcher(searchActive.value)
-
-        const groups = Map.groupBy(gates.codes.value.filter(filter), (c) =>
+        const groups = Map.groupBy(codes.filter(searchFilter), (c) =>
             groupKeyChannel(c)
         )
         tracks.length = 0
@@ -1108,18 +1150,18 @@ export const squirrelTimeline = () => {
         ks.sort()
         let i = 0
         for (const k of ks) {
-            const codes = groups.get(k)
+            const trackCodes = groups.get(k)
             tracks.push({
-                id: codes.join('+++'),
+                id: trackCodes.join('+++'),
                 index: i,
-                codes: codes,
+                codes: trackCodes,
             })
             i++
         }
         codesToTracks.clear()
         for (const track of tracks) {
-            for (const codes of track.codes) {
-                codesToTracks.set(codes, track)
+            for (const c of track.codes) {
+                codesToTracks.set(c, track)
             }
         }
         trackProjection.domain([0, tracks.length])
@@ -1172,26 +1214,27 @@ export const squirrelTimeline = () => {
 
         onResizeDebounced(container.node(), resizeHandler)
         resizeHandler()
-
-        timeSpan.value = [gates.timeMin.value, gates.timeMax.value]
-
-        watch(gates.counter, update)
-        watch(gates.codes, updateCodes)
-        watch(trackHeight, gates.setImageHeight)
-        watch(trackWidth, gates.setImageWidth)
-
-        gates.setImageHeight(trackHeight.value)
-        gates.setImageWidth(trackWidth.value)
-
-        watch(timeSpan, (newVal) => {
-            gates.setTimeSpan(newVal[0], newVal[1])
-        })
-        watch(visibleCodes, gates.setCodesVisible)
-        const filters = useFilters()
-        searchActive = filters.searchActive
-        makeCodesMatcher = filters.makeCodesMatcher
-        watch(searchActive, updateCodes)
     }
+
+    my.setTimeSpan = (tmin, tmax) => {
+        timeMin = tmin
+        timeMax = tmax
+        update()
+    }
+
+    my.setCodes = (newCodes) => {
+        codes = newCodes
+        updateCodes()
+    }
+
+    my.setSearchFilter = (fn) => {
+        searchFilter = fn
+        updateCodes()
+    }
+
+    my.refresh = update
+
+    my.on = on
 
     my.activate = () => {
         resizeHandler()

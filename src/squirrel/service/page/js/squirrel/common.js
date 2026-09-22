@@ -28,6 +28,31 @@ export const arraysEqual = (a, b) => {
 
 export const zeroPad = (places, num) => String(num).padStart(places, '0')
 
+// A minimal multi-listener pub/sub helper. Used by framework-agnostic,
+// D3-style widget factories (e.g. squirrelTimeline, squirrelRangeSelect)
+// to expose their own events without depending on Vue or any other
+// reactivity framework -- the caller wires the widget's `on()` events
+// into whatever reactive store it likes from the outside. Emitting an
+// event with no listeners registered is a safe no-op.
+export const makeEmitter = () => {
+    const listeners = new Map()
+
+    const on = (name, handler) => {
+        if (!listeners.has(name)) {
+            listeners.set(name, [])
+        }
+        listeners.get(name).push(handler)
+    }
+
+    const emit = (name, ...args) => {
+        for (const handler of listeners.get(name) ?? []) {
+            handler(...args)
+        }
+    }
+
+    return { on, emit }
+}
+
 export const createIfNeeded = (selection, type) => {
     return selection.selectAll(type).data([null]).enter().append(type)
 }

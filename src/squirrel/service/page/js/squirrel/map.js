@@ -1,10 +1,16 @@
-const { watch } = Vue
 import { createIfNeeded, colors, onResizeDebounced } from './common.js'
-import { squirrelGates } from './gate.js'
 
+// A framework-agnostic world-map widget: it neither imports Vue nor
+// knows anything about `gates`/Squirrel. It has no outputs -- it's a
+// pure renderer -- so unlike timeline.js/range_select.js it doesn't
+// need an on()/emit() pair, just the two inputs below.
+//
+// Inputs (call whenever the corresponding state changes):
+//   setStations(stations)          -- the known stations to plot, each
+//                                      {key, lat, lon, ...}
+//   setVisibleStationKeys(keySet)  -- a Set of station keys to draw as
+//                                      "active" rather than dimmed
 export const squirrelMap = () => {
-    const gates = squirrelGates()
-
     let map
     let basemapGroup
     let symbolGroup
@@ -12,6 +18,9 @@ export const squirrelMap = () => {
     let projection
     let container
     let bounds
+
+    let stations = []
+    let visibleStationKeys = new Set()
 
     const containerBounds = () => {
         return container.node().getBoundingClientRect()
@@ -99,14 +108,14 @@ export const squirrelMap = () => {
         projectBasemap()
     }
 
-    // Adds/removes circles to match `gates.stations` (the set of known
+    // Adds/removes circles to match `stations` (the set of known
     // stations, not how many are currently visible). Only runs when
-    // that set actually changes -- see gate.js -- so a pan/zoom drag
-    // never touches this, only `updateActiveState` below.
+    // that set actually changes -- via setStations() -- so a pan/zoom
+    // drag never touches this, only `updateActiveState` below.
     const reconcileStations = () => {
         symbolGroup
             .selectAll('circle')
-            .data(gates.stations.value, (station) => station.key)
+            .data(stations, (station) => station.key)
             .join('circle')
             .attr('r', 3)
 
@@ -115,25 +124,23 @@ export const squirrelMap = () => {
     }
 
     // Restyles already-existing circles to match
-    // `gates.visibleStationKeys`. Runs on every pan/zoom, but only
-    // ever touches fill/stroke of circles that already exist -- no
-    // join, no DOM creation/removal here.
+    // `visibleStationKeys`. Runs on every pan/zoom, but only ever
+    // touches fill/stroke of circles that already exist -- no join, no
+    // DOM creation/removal here.
     const updateActiveState = () => {
-        const visible = gates.visibleStationKeys.value
-
         symbolGroup
             .selectAll('circle')
             .attr(
                 'fill',
                 (station) =>
                     colors['scarletred2'] +
-                    (visible.has(station.key) ? '' : '33')
+                    (visibleStationKeys.has(station.key) ? '' : '33')
             )
             .attr(
                 'stroke',
                 (station) =>
                     colors['scarletred3'] +
-                    (visible.has(station.key) ? '' : '33')
+                    (visibleStationKeys.has(station.key) ? '' : '33')
             )
     }
 
@@ -162,9 +169,16 @@ export const squirrelMap = () => {
         map.on('wheel', (ev) => {
             scaleDelta(ev.wheelDeltaY / 120)
         })
+    }
 
-        watch([gates.stations], reconcileStations)
-        watch([gates.visibleStationKeys], updateActiveState)
+    my.setStations = (newStations) => {
+        stations = newStations
+        reconcileStations()
+    }
+
+    my.setVisibleStationKeys = (keys) => {
+        visibleStationKeys = keys
+        updateActiveState()
     }
 
     my.scale = function (_) {

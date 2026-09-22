@@ -1,4 +1,4 @@
-import { createIfNeeded, onResizeDebounced } from './common.js'
+import { createIfNeeded, onResizeDebounced, makeEmitter } from './common.js'
 
 export const squirrelRangeSelect = () => {
     let svg
@@ -9,8 +9,9 @@ export const squirrelRangeSelect = () => {
     let brush
     let margin = { top: 20, right: 10, bottom: 20, left: 10 }
     let spacing = 5
-    let handlers = {}
     let muted = false
+
+    const { on, emit } = makeEmitter()
 
     const scale = d3.scaleLog([0.00001, 1000], [0, 1])
 
@@ -38,14 +39,10 @@ export const squirrelRangeSelect = () => {
         if (muted) {
             return
         }
-        const handler = handlers['brushed']
-        if (!handler) {
-            return
-        }
         if (event.selection === null) {
-            handler([null, null])
+            emit('brushed', [null, null])
         } else {
-            handler(event.selection.map(scale.invert))
+            emit('brushed', event.selection.map(scale.invert))
         }
     }
 
@@ -80,9 +77,7 @@ export const squirrelRangeSelect = () => {
         }
     }
 
-    my.on = (eventName, handler) => {
-        handlers[eventName] = handler
-    }
+    my.on = on
 
     return my
 }

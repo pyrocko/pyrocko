@@ -1,6 +1,7 @@
 const { onMounted, onActivated, ref, watch } = Vue
 import { squirrelTimeline } from '../squirrel/timeline.js'
 import { squirrelGates } from '../squirrel/gate.js'
+import { useFilters } from '../squirrel/filter.js'
 import { positiveOrNull } from '../squirrel/common.js'
 import ComponentRangeSelect from '../components/range_select.js'
 
@@ -10,10 +11,46 @@ export default {
     },
     setup: (props) => {
         const gates = squirrelGates()
-        const timeline = squirrelTimeline()
+
+        // timeline.js is deliberately Vue-free: it neither knows about
+        // `gates` nor about Vue's reactivity. Everything it needs comes
+        // in through this data source and the setX() calls below;
+        // everything it reports going the other way is wired up here
+        // through its on() events. This is the one place that
+        // translation needs to happen.
+        const timeline = squirrelTimeline({
+            getCoverages: gates.getCoverages,
+            getCarpets: gates.getCarpets,
+            getWaveviews: gates.getWaveviews,
+            getDataRanges: gates.getDataRanges,
+            getDataScales: gates.getDataScales,
+        })
 
         onMounted(() => {
             d3.select('#timeline').call(timeline)
+
+            timeline.on('hover', gates.setHover)
+            timeline.on('timeSpan', gates.setTimeSpan)
+            timeline.on('visibleCodes', gates.setCodesVisible)
+            timeline.on('imageSize', (width, height) => {
+                gates.setImageWidth(width)
+                gates.setImageHeight(height)
+            })
+
+            watch(gates.counter, timeline.refresh)
+            watch(gates.codes, timeline.setCodes)
+            watch(
+                [gates.timeMin, gates.timeMax],
+                ([tmin, tmax]) => timeline.setTimeSpan(tmin, tmax),
+                { immediate: true }
+            )
+
+            const filters = useFilters()
+            watch(filters.searchActive, () =>
+                timeline.setSearchFilter(
+                    filters.makeCodesMatcher(filters.searchActive.value)
+                )
+            )
         })
 
         onActivated(timeline.activate)

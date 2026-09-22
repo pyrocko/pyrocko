@@ -136,7 +136,7 @@ export default {
             }
         }
 
-        watch([mapContainer], () => {
+        watch(mapContainer, () => {
             if (mapContainer.value) {
                 map = leaflet.map(mapContainer.value, {
                     center: [0, 0],
@@ -175,16 +175,23 @@ export default {
             }
         })
 
-        watch([gates.stations], reconcileMarkers)
-        watch([gates.visibleStationKeys], updateActiveState)
+        watch(gates.stations, reconcileMarkers)
+        watch(gates.visibleStationKeys, updateActiveState)
 
         let miniMap = squirrelMap()
         onMounted(() => {
             // squirrelMap() watches its own container's size directly
             // (see map.js), so as long as CSS gives #mini-map a real
-            // height -- which it now does, no extra wiring needed here.
+            // height -- which it now does, no extra wiring needed for
+            // that. It's Vue-free otherwise, though, so its station
+            // data has to be pushed in explicitly.
             d3.select('#mini-map').call(miniMap)
             miniMap.addBasemap()
+
+            watch(gates.stations, miniMap.setStations, { immediate: true })
+            watch(gates.visibleStationKeys, miniMap.setVisibleStationKeys, {
+                immediate: true,
+            })
         })
 
         return { gates, connection, scout, timeToStr, format, fmtDuration }
