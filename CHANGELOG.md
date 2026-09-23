@@ -6,7 +6,106 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
-*empty*
+### Added
+- Squirrel:
+    - New subcommand `squirrel mseed` to inspect and work with
+      MiniSEED-specific details of waveform data.
+    - New subcommand `squirrel mseed clockdrift` to analyse and fix GPS
+      drift related issues by high quality resampling.
+    - `squirrel merge` and `squirrel summon` now accept human-friendly
+      durations for `--tinc` (e.g. `1h`, `30min`).
+    - `squirrel check` can now also flag waveforms whose response input
+      quantity (e.g. velocity vs. acceleration) looks inconsistent with
+      their channel code.
+    - `get_waveforms` gained `downloads_enabled` for finer control over
+      automatic data downloads.
+    - `get_waveforms` now offers `tscale_min`. This can be used to speed up
+      queries by skipping very short snippets of gappy waveforms.
+    - Added a YAFF input backend, so YAFF files can be read like any other
+      waveform data source.
+    - Added combined ("rich") coverage reporting, merging availability of
+      several data kinds (e.g. waveforms and metadata) into one signal.
+    - Added `merge_codes` to combine several sets of channel codes into
+      one, using wildcards where they differ.
+    - Content objects (waveforms, channels, ...) gained an `overlaps`
+      method to test whether two selections overlap in time.
+- Live data streaming: added waveform input from ESP32-based recorders
+  and from PulseAudio (e.g. a laptop's built-in microphone), for quick
+  experiments in Snuffler.
+- Snuffler:
+    - Batch picking: place markers on many traces at once, now also
+      with uncertainty ranges; picks remember the last-used marker
+      kind and type.
+    - SeisBench ML pickers: phase markers now carry the picker's
+      certainty, and the `obs` model is supported for PhaseNet and
+      EQ-Transformer.
+    - Pile viewer: added a trace deconvolution (instrument response
+      removal) option, usable together with rotation and filtering.
+- Sparrow: added a zoom slider to the Navigation panel.
+- Pyrocko-GF: `fomosto qseis` can now build scalar stores of volume
+  change and pressure.
+- Trace: `lowpass`/`highpass`/`bandpass`/`bandstop` gained a `type`
+  option to select between the default `'ba'` and the numerically more
+  stable `'sos'` filter representation.
+- Datasets: added the `EPcrust` 0.2°x0.2° crustal model, an alternative
+  to CRUST2.0/CRUST1.0 for Europe; `CrustDB` gained a
+  `getLayeredModel()` method.
+- `Location` objects gained `summary` and `location` convenience
+  properties.
+- `CodesNSLCE` gained `channel_component` and `channel_no_component`
+  properties.
+- Guts: added an `equal()` function to compare two Guts objects, and a
+  `TimeFloat` type to optionally support higher-precision time interval values,
+  following the logic of the Timestamp type.
+- Web-based services (e.g. `squirrel service`): added a
+  `--cookie-secret-path` option to control where the session cookie
+  secret is stored, and `--help-port-forwarding` for guidance on
+  remote/forwarded access.
+
+### Changed
+- `squirrel jackseis`: chopped output traces are now clipped exactly to
+  the requested time span, instead of being extended to the full
+  processing block.
+- `squirrel stationxml`: default of `--on-error` changed from `raise`
+  to `warn`, so one problematic station no longer aborts the whole
+  export.
+- Guts: short durations (under 10 minutes) are now stored as plain
+  numbers instead of formatted duration strings.
+- Command-line tools based on Squirrel: cleaned up help texts and
+  colored terminal output.
+- Live data read with Snuffler is now stored in YAFF format to better
+  support higher sampling rates, e.g. when viewing acoustic data from
+  microphones.
+- `Trace.deltat` now supports the optional high precision time mode,
+  matching the `Trace.tmin` and `Trace.tmax` data types.
+- Cake ray-path plots: improved automatic determination of axes limits.
+- Pyrocko-GF: composite source models (`CombiSource` and friends) now
+  check that their sub-sources are compatible with each other.
+
+### Fixed
+- Squirrel: fixed a crash in `join_coverages` when given no or
+  non-overlapping coverages.
+- Squirrel: fixed loading of associated event data in the SAC backend.
+- Response plots: fixed a plotting bug and added a `format` option to
+  control the output file type.
+- Snuffler: fixed instrument-response removal being applied in the
+  wrong order relative to rotation and filtering, and being skipped
+  for some traces.
+- Fixed compatibility with newer versions of NumPy and Matplotlib.
+
+### Security
+- Web-based services: the session cookie-secret file is now created
+  with owner-only permissions, and a warning is shown if an existing
+  one is more widely readable. This reduces the risk of session
+  hijacking on shared systems.
+- `mseed`: fixed a crash (segfault) that could be triggered by reading
+  a corrupted or truncated MiniSEED record whose declared sample count
+  didn't match its data. Such a record is now rejected with a regular
+  error instead.
+- Pyrocko-GF store reader: fixed a bounds check that relied on
+  unsigned-integer wraparound and could, depending on the compiler and
+  platform (observed with Clang on macOS), silently accept an
+  out-of-bounds lookup instead of raising an error.
 
 ## v2026.06.02
 
