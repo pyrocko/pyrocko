@@ -111,6 +111,11 @@ See `CONTRIBUTING.md` for the full policy; the essentials:
 - `main` is the stable branch; feature work happens on topic branches and
   is rebased before merging.
 - Notable changes belong in `CHANGELOG.md` (Keep a Changelog format).
+  Keep it brief: not every commit needs an entry, only ones that matter
+  to a user of Pyrocko. Write entries in plain, non-technical language,
+  about one line each, distinct in tone from commit messages. Security
+  issues and breaking changes are the exception and may get a longer,
+  more detailed entry.
 
 ## License
 

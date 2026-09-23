@@ -64,6 +64,14 @@ Notable changes must be documented in the file `CHANGELOG.md`. The format of
 the change log is based on [Keep a
 Changelog](https://keepachangelog.com/en/1.0.0/).
 
+Keep the changelog brief and readable for users, not a mirror of the
+commit log: not every commit needs an entry, only the ones that matter
+to someone using Pyrocko. Write entries in plain, non-technical language
+(different in tone from the imperative, component-prefixed commit
+messages) and keep them to about one line each. Security issues and
+breaking changes are the exception - describe those in enough detail
+that a user can tell whether they are affected and what to do about it.
+
 ### Commit message conventions
 
 * start with lower case
