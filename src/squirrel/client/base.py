@@ -31,11 +31,25 @@ class Constraint(Object):
     location boxes could be thought of.
     '''
 
-    tmin = Timestamp.T(optional=True)
-    tmax = Timestamp.T(optional=True)
-    codes = List.T(CodesNSLCE.T(), optional=True)
+    tmin = Timestamp.T(
+        optional=True,
+        help='Start time of constrained interval, or ``None`` for an open '
+             'start.')
+    tmax = Timestamp.T(
+        optional=True,
+        help='End time of constrained interval, or ``None`` for an open '
+             'end.')
+    codes = List.T(
+        CodesNSLCE.T(),
+        optional=True,
+        help='Codes patterns of channels the constraint applies to, or '
+             '``None`` for no restriction.')
 
     def __init__(self, **kwargs):
+        '''
+        Create constraint, converting ``codes`` to
+        :py:class:`~pyrocko.squirrel.model.CodesNSLCE` objects as needed.
+        '''
         codes = kwargs.pop('codes', None)
 
         if codes is None:
@@ -151,25 +165,73 @@ class Source(has_paths.HasPaths):
         pass
 
     def describe(self):
+        '''
+        Get short description of the source, for use as its :py:attr:`id`
+        in :py:meth:`info`.
+        '''
         return ''
 
     def get_cache_path(self):
+        '''
+        Get path to the source's on-disk cache directory, if any.
+
+        :rtype:
+            str or ``None``
+        '''
         return None
 
     def info(self):
+        '''
+        Get summary information about the source.
+
+        :rtype:
+            :py:class:`SourceInfo`
+        '''
         return SourceInfo(
             source=self,
             id=self.describe(),
             cache_path=self.get_cache_path())
 
     def setup(self, squirrel, check=True, upgrade=False):
+        '''
+        Set up the source so it is ready to be used with a squirrel
+        instance (internal use, see
+        :py:meth:`~pyrocko.squirrel.base.Squirrel.add_source`).
+
+        :param squirrel:
+            Squirrel instance the source is being attached to.
+        :type squirrel:
+            :py:class:`~pyrocko.squirrel.base.Squirrel`
+
+        :param check:
+            If ``True``, check file modification times of already indexed
+            local files (slow). If ``False``, use Squirrel's fast
+            ``--optimistic`` mode instead.
+        :type check:
+            bool
+
+        :param upgrade:
+            If ``True``, automatically migrate any FDSN waveform archives
+            found using an outdated on-disk storage layout.
+        :type upgrade:
+            bool
+        '''
         pass
 
 
 class SourceInfo(Object):
-    source = Source.T()
-    id = String.T()
-    cache_path = String.T(optional=True)
+    '''
+    Summary information about a data source.
+    '''
+
+    source = Source.T(
+        help='The described source.')
+    id = String.T(
+        help='Short identifying description of the source (see '
+             ':py:meth:`Source.describe`).')
+    cache_path = String.T(
+        optional=True,
+        help='Path to the source\'s on-disk cache directory, if any.')
 
 
 __all__ = [

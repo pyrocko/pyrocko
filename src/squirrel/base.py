@@ -839,6 +839,22 @@ class Squirrel(Selection):
             self._update_nuts(transaction=transaction)
 
     def add_volatile(self, nuts):
+        '''
+        Add content which is not backed by files, for the lifetime of the
+        selection.
+
+        :param nuts:
+            Content pieces to be added.
+        :type nuts:
+            iterator yielding :py:class:`~pyrocko.squirrel.model.Nut`
+            objects with their ``content`` attribute set
+
+        Like :py:meth:`add_virtual`, but content stays in memory (added to
+        the :py:mod:`~pyrocko.squirrel.io.backends.virtual` in-memory
+        backend) and is automatically removed again when the selection is
+        closed. Used e.g. by :py:meth:`add_volatile_waveforms`.
+        '''
+
         if not isinstance(nuts, list):
             nuts = list(nuts)
 
@@ -882,6 +898,16 @@ class Squirrel(Selection):
         return path
 
     def harvest_streams(self):
+        '''
+        Poll all attached live data streams and add newly received samples.
+
+        Polls every stream attached with e.g. :py:meth:`add_seedlink_stream`
+        and feeds any newly available traces into the squirrel as volatile
+        waveforms (see :py:meth:`add_volatile_waveforms`), appending them to
+        already buffered data where possible. Must be called repeatedly
+        (e.g. from an event loop or timer) to keep live data flowing in;
+        this experimental feature does not poll on its own.
+        '''
         from .streaming import Injector
         if self._injector is None:
             self._injector = Injector(self)
@@ -892,6 +918,29 @@ class Squirrel(Selection):
                 self._injector.inject(tr)
 
     def add_seedlink_stream(self, host, port=18000, codes=None):
+        '''
+        Attach a SeedLink live data stream.
+
+        :param host:
+            Hostname or IP address of the SeedLink server.
+        :type host:
+            str
+
+        :param port:
+            Port number of the SeedLink server.
+        :type port:
+            int
+
+        :param codes:
+            Channel code patterns of the streams to subscribe to.
+        :type codes:
+            :py:class:`list` of :py:class:`~pyrocko.squirrel.model.CodesNSLCE`
+            objects, or anything which can be converted to such objects
+
+        Starts a background SeedLink acquisition thread. Received data only
+        becomes available in the squirrel once :py:meth:`harvest_streams` is
+        called.
+        '''
         from pyrocko.gui.snuffler.snuffler_app import SlinkAcquisition
 
         codes_patterns_for_kind(CHANNEL, codes)
@@ -906,6 +955,15 @@ class Squirrel(Selection):
         slink.start()
 
     def get_injector(self):
+        '''
+        Get the injector used to feed live stream data into the squirrel.
+
+        :returns:
+            The injector, or ``None`` if :py:meth:`harvest_streams` has not
+            been called yet.
+        :rtype:
+            :py:class:`~pyrocko.squirrel.streaming.Injector` or ``None``
+        '''
         return self._injector
 
     def _load(self, check, transaction=None):
@@ -955,6 +1013,19 @@ class Squirrel(Selection):
             Remote data access client instance.
         :type source:
            subclass of :py:class:`~pyrocko.squirrel.client.base.Source`
+
+        :param check:
+            If ``True``, check file modification times of already indexed
+            local files (slow). If ``False``, use Squirrel's fast
+            ``--optimistic`` mode instead.
+        :type check:
+            bool
+
+        :param upgrade:
+            If ``True``, automatically migrate any FDSN waveform archives
+            found using an outdated on-disk storage layout.
+        :type upgrade:
+            bool
         '''
 
         self._sources.append(source)
@@ -1002,6 +1073,12 @@ class Squirrel(Selection):
             Squirrel's ``--optimistic`` mode). File deletions will go
             undetected in the latter case.
         :type check:
+            bool
+
+        :param upgrade:
+            If ``True``, automatically migrate any FDSN waveform archives
+            found using an outdated on-disk storage layout.
+        :type upgrade:
             bool
         '''
         if isinstance(ds, str):
@@ -1123,15 +1200,58 @@ class Squirrel(Selection):
             objects appropriate for the queried content type, or anything which
             can be converted to such objects.
 
-        :param naiv:
-            Bypass time span lookup through indices (slow, for testing).
-        :type naiv:
-            :py:class:`bool`
+        :param codes_exclude:
+            List of code patterns to exclude from query.
+        :type codes_exclude:
+            :py:class:`list` of :py:class:`~pyrocko.squirrel.model.Codes`
+            objects appropriate for the queried content type, or anything which
+            can be converted to such objects.
 
         :param kind_codes_ids:
             Kind-codes IDs of contents to be retrieved (internal use).
         :type kind_codes_ids:
             :py:class:`list` of :py:class:`int`
+
+        :param sample_rate_min:
+            Consider only content with a sampling rate equal to or greater
+            than the given value [Hz].
+        :type sample_rate_min:
+            float
+
+        :param sample_rate_max:
+            Consider only content with a sampling rate equal to or less than
+            the given value [Hz].
+        :type sample_rate_max:
+            float
+
+        :param naiv:
+            Bypass time span lookup through indices (slow, for testing).
+        :type naiv:
+            :py:class:`bool`
+
+        :param path:
+            Restrict query to content backed by files at the given path.
+        :type path:
+            :py:class:`str`
+
+        :param limit:
+            Limit query to return only up to a given maximum number of
+            entries.
+        :type limit:
+            int
+
+        :param tscale_min:
+            Skip content indexed at a finer time-block granularity than the
+            given value [s] (internal use). Content is internally indexed
+            into logarithmically-spaced time-block sizes (``kscale``,
+            see :py:data:`~pyrocko.squirrel.model.tscale_edges`) according
+            to each entry's own time span; setting this excludes entries
+            falling into blocks smaller than ``tscale_min``, which can speed
+            up queries when only coarser, aggregated content (e.g. large
+            :py:class:`~pyrocko.squirrel.model.WaveformPromise` entries) is
+            of interest.
+        :type tscale_min:
+            float
 
         :yields:
             :py:class:`~pyrocko.squirrel.model.Nut` objects representing the
@@ -1804,6 +1924,23 @@ class Squirrel(Selection):
             source.remove_waveform_promises(self, from_database=from_database)
 
     def update_responses(self, constraint=None, **kwargs):
+        '''
+        Update or partially update instrument response inventories.
+
+        :param constraint:
+            Selection of times or areas to be brought up to date.
+        :type constraint:
+            :py:class:`~pyrocko.squirrel.client.base.Constraint`
+
+        :param \\*\\*kwargs:
+            Shortcut for setting ``constraint=Constraint(**kwargs)``.
+
+        This function triggers all attached remote sources, to check for
+        updates in the response meta-data. The sources will only submit
+        queries when their expiration date has passed, or if the selection
+        spans into previously unseen times or areas. See also
+        :py:meth:`update`.
+        '''
         if constraint is None:
             constraint = client.Constraint(**kwargs)
 
@@ -2034,6 +2171,20 @@ class Squirrel(Selection):
             self._content_caches[cache_].clear_accessor(accessor_id)
 
     def get_cache_stats(self, cache_id):
+        '''
+        Get information about a memory cache state.
+
+        :param cache_id:
+            Name of cache to be queried. By default, two caches named
+            ``'default'`` and ``'waveform'`` are available.
+        :type cache_id:
+            str
+
+        :returns:
+            Cache state information.
+        :rtype:
+            :py:class:`~pyrocko.squirrel.cache.ContentCacheStats`
+        '''
         return self._content_caches[cache_id].get_stats()
 
     @filldocs
@@ -2807,6 +2958,42 @@ class Squirrel(Selection):
         Get waveform content entities matching given constraints.
 
         %(query_args)s
+
+        :param kind_codes_ids:
+            Kind-codes IDs of contents to be retrieved (internal use).
+        :type kind_codes_ids:
+            :py:class:`list` of :py:class:`int`
+
+        :param sample_rate_min:
+            Consider only waveforms with a sampling rate equal to or greater
+            than the given value [Hz].
+        :type sample_rate_min:
+            float
+
+        :param sample_rate_max:
+            Consider only waveforms with a sampling rate equal to or less
+            than the given value [Hz].
+        :type sample_rate_max:
+            float
+
+        :param order_only:
+            If ``True``, only resolve waveform promises into download orders
+            without actually running the downloads and without returning any
+            nuts (used internally to prefetch/queue data ahead of time).
+        :type order_only:
+            bool
+
+        :param tscale_min:
+            See :py:meth:`iter_nuts`.
+        :type tscale_min:
+            float
+
+        :param downloads_enabled:
+            If ``False``, do not resolve waveform promises into downloads,
+            regardless of the instance-wide :py:attr:`downloads_enabled`
+            setting.
+        :type downloads_enabled:
+            bool
 
         Like :py:meth:`get_nuts` with ``kind='waveform'`` but additionally
         resolves matching waveform promises (downloads waveforms from remote
@@ -3585,6 +3772,34 @@ class Squirrel(Selection):
         return str(self.get_stats())
 
     def get_codes_info(self, kind, codes=None):
+        '''
+        Get low-level information about codes and sampling rates available.
+
+        :param kind:
+            Content kind to be queried.
+        :type kind:
+            str
+
+        :param codes:
+            If given, restrict to given content codes patterns.
+        :type codes:
+            :py:class:`list` of :py:class:`~pyrocko.squirrel.model.Codes`
+            objects appropriate for the queried content type, or anything
+            which can be converted to such objects.
+
+        :returns:
+            List of ``(pattern, kind_codes_id, codes, deltat)`` tuples, one
+            per matching distinct combination of codes and sampling rate,
+            where ``pattern`` is the matched query pattern (or ``codes``
+            itself, if ``codes`` was not given), ``kind_codes_id`` its
+            internal database key, ``codes`` the matched
+            :py:class:`~pyrocko.squirrel.model.Codes` object, and ``deltat``
+            the associated sampling interval.
+        :rtype:
+            :py:class:`list` of :py:class:`tuple`
+
+        Mainly used internally, e.g. by :py:meth:`get_coverage`.
+        '''
         kind_id = to_kind_id(kind)
         if codes is not None:
             codes = codes_patterns_for_kind(kind_id, codes)
@@ -3752,6 +3967,49 @@ class Squirrel(Selection):
 
     def get_rich_coverage(
             self, tmin=None, tmax=None, codes=None, limit=None):
+
+        '''
+        Get combined coverage information for channel/response/waveform
+        content kinds.
+
+        :param tmin:
+            Start time of query interval.
+        :type tmin:
+            :py:func:`~pyrocko.util.get_time_float`
+
+        :param tmax:
+            End time of query interval.
+        :type tmax:
+            :py:func:`~pyrocko.util.get_time_float`
+
+        :param codes:
+            If given, restrict query to given content codes patterns.
+        :type codes:
+            :py:class:`list` of :py:class:`~pyrocko.squirrel.model.Codes`
+            objects appropriate for the queried content type, or anything
+            which can be converted to such objects.
+
+        :param limit:
+            Limit query to return only up to a given maximum number of
+            entries per matching time series (without setting this option,
+            very gappy data could cause the query to execute for a very
+            long time).
+        :type limit:
+            int
+
+        :returns:
+            One combined coverage entry per matching codes, merging
+            ``'channel'``, ``'response'``, ``'waveform'``,
+            ``'waveform_promise'`` and ``'carpet'`` coverage into a single
+            entry each, so availability across all of these content kinds
+            can be inspected together.
+        :rtype:
+            :py:class:`list` of :py:class:`~pyrocko.squirrel.model.Coverage`
+
+        Like :py:meth:`get_coverage`, but merges the coverage of several
+        content kinds relevant to waveform availability into one, e.g. for
+        display in a single overview plot.
+        '''
 
         kinds = [
             'channel',
@@ -3939,6 +4197,16 @@ class Squirrel(Selection):
             network_list=networks)
 
     def get_sources(self):
+        '''
+        Get list of attached remote data sources.
+
+        :returns:
+            Sources added with :py:meth:`add_source`, :py:meth:`add_fdsn`,
+            :py:meth:`add_catalog` or :py:meth:`add_dataset`.
+        :rtype:
+            :py:class:`list` of
+            :py:class:`~pyrocko.squirrel.client.base.Source` instances
+        '''
         return self._sources
 
     def default_preparator_mantra(

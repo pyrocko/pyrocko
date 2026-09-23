@@ -53,10 +53,17 @@ g_keys_conflicting_post_codes = {
 
 
 def make_task(*args):
+    '''
+    Create progress indicator task (see :py:mod:`pyrocko.progress`), logging
+    to this module's logger.
+    '''
     return progress.task(*args, logger=logger)
 
 
 def diff(fn_a, fn_b):
+    '''
+    Check if two files differ in size or content.
+    '''
     try:
         if os.stat(fn_a).st_size != os.stat(fn_b).st_size:
             return True
@@ -77,6 +84,26 @@ def diff(fn_a, fn_b):
 
 
 def move_or_keep(fn_temp, fn):
+    '''
+    Replace a file with a freshly downloaded temporary one, unless their
+    contents are identical.
+
+    :param fn_temp:
+        Path of newly downloaded temporary file.
+    :type fn_temp:
+        str
+
+    :param fn:
+        Path of target file to be replaced.
+    :type fn:
+        str
+
+    :returns:
+        ``'updated'``, ``'new'`` or ``'upstream unchanged'``, describing
+        the action taken.
+    :rtype:
+        str
+    '''
     if op.exists(fn):
         if diff(fn, fn_temp):
             os.rename(fn_temp, fn)
@@ -93,6 +120,20 @@ def move_or_keep(fn_temp, fn):
 
 
 def combine_selections(selection):
+    '''
+    Merge adjacent NSLC-plus-time-span entries into contiguous ones.
+
+    :param selection:
+        Entries of the form ``(net, sta, loc, cha, tmin, tmax)``, sorted by
+        codes then start time, where adjacent entries sharing the same
+        codes and touching time spans (end time of one equal to start time
+        of the next) are merged.
+    :type selection:
+        iterable of :py:class:`tuple`
+
+    :rtype:
+        :py:class:`list` of :py:class:`tuple`
+    '''
     out = []
     last = None
     for this in selection:
@@ -111,10 +152,35 @@ def combine_selections(selection):
 
 
 def orders_sort_key(order):
+    '''
+    Get sort key for a :py:class:`~pyrocko.squirrel.model.WaveformOrder`,
+    for sorting by codes, then start time.
+    '''
     return (order.codes, order.tmin)
 
 
 def orders_to_selection(orders, pad=1.0):
+    '''
+    Convert waveform orders to an FDSN dataselect-style selection.
+
+    :param orders:
+        Orders to be converted.
+    :type orders:
+        iterable of
+        :py:class:`~pyrocko.squirrel.model.WaveformOrder` objects
+
+    :param pad:
+        Number of samples of padding to add at each end of the requested
+        time spans.
+    :type pad:
+        float
+
+    :returns:
+        Combined (see :py:func:`combine_selections`), padded selection
+        entries of the form ``(net, sta, loc, cha, tmin, tmax)``.
+    :rtype:
+        :py:class:`list` of :py:class:`tuple`
+    '''
     selection = []
     nslc_to_deltat = {}
     for order in sorted(orders, key=orders_sort_key):
@@ -133,6 +199,31 @@ def orders_to_selection(orders, pad=1.0):
 
 
 def codes_to_selection(codes_list, tmin, tmax):
+    '''
+    Convert codes patterns and a time span to an FDSN-style selection.
+
+    :param codes_list:
+        Codes patterns to be converted, or ``None``.
+    :type codes_list:
+        :py:class:`list` of
+        :py:class:`~pyrocko.squirrel.model.CodesNSLCE` objects, or ``None``
+
+    :param tmin:
+        Start time to be used for all entries.
+    :type tmin:
+        :py:func:`~pyrocko.util.get_time_float`
+
+    :param tmax:
+        End time to be used for all entries.
+    :type tmax:
+        :py:func:`~pyrocko.util.get_time_float`
+
+    :returns:
+        Selection entries of the form ``(net, sta, loc, cha, tmin, tmax)``,
+        or ``None`` if ``codes_list`` is ``None``.
+    :rtype:
+        :py:class:`list` of :py:class:`tuple` or ``None``
+    '''
     if codes_list is None:
         return None
 
@@ -145,19 +236,47 @@ def codes_to_selection(codes_list, tmin, tmax):
 
 
 class ErrorEntry(Object):
-    time = Timestamp.T()
-    order = WaveformOrder.T()
-    kind = String.T()
-    details = String.T(optional=True)
+    '''
+    Single waveform download error occurrence.
+    '''
+
+    time = Timestamp.T(
+        help='Time at which the error occurred.')
+    order = WaveformOrder.T(
+        help='Waveform order which caused the error.')
+    kind = String.T(
+        help="Error category, e.g. ``'empty result'``, "
+             "``'invalid waveform'``, ``'http error'``, ``'aborted'`` or "
+             "``'partial result'``.")
+    details = String.T(
+        optional=True,
+        help='Additional free-form details about the error.')
 
 
 class ErrorAggregate(Object):
-    site = String.T()
-    kind = String.T()
-    details = String.T()
-    entries = List.T(ErrorEntry.T())
-    codes = List.T(CodesNSLCE.T())
-    time_spans = List.T(Tuple.T(2, Timestamp.T()))
+    '''
+    Summary of several :py:class:`ErrorEntry` occurrences sharing the same
+    ``kind``/``details``, see :py:meth:`ErrorLog.iter_aggregates`.
+    '''
+
+    site = String.T(
+        help='FDSN site url or alias name the errors occurred at.')
+    kind = String.T(
+        help='Common error category of the aggregated entries, see '
+             ':py:attr:`ErrorEntry.kind`.')
+    details = String.T(
+        help='Common details of the aggregated entries, see '
+             ':py:attr:`ErrorEntry.details`.')
+    entries = List.T(
+        ErrorEntry.T(),
+        help='Aggregated error entries.')
+    codes = List.T(
+        CodesNSLCE.T(),
+        help='Channel codes affected by the aggregated errors.')
+    time_spans = List.T(
+        Tuple.T(2, Timestamp.T()),
+        help='Distinct ``(tmin, tmax)`` time spans affected by the '
+             'aggregated errors.')
 
     def __str__(self):
         codes = [str(x) for x in self.codes]
@@ -178,18 +297,63 @@ class ErrorAggregate(Object):
 
 
 class ErrorLog(Object):
-    site = String.T()
-    entries = List.T(ErrorEntry.T())
-    checkpoints = List.T(Int.T())
+    '''
+    Log of waveform download errors encountered by :py:class:`FDSNSource`.
+    '''
+
+    site = String.T(
+        help='FDSN site url or alias name the errors occurred at.')
+    entries = List.T(
+        ErrorEntry.T(),
+        help='Logged error entries, in chronological order.')
+    checkpoints = List.T(
+        Int.T(),
+        help='Entry-count marks recorded by :py:meth:`append_checkpoint`, '
+             'used to delimit "recent" entries for '
+             ':py:meth:`summarize_recent`.')
 
     def append_checkpoint(self):
+        '''
+        Mark current end of log, for later use by
+        :py:meth:`summarize_recent`.
+        '''
         self.checkpoints.append(len(self.entries))
 
     def append(self, time, order, kind, details=''):
+        '''
+        Append an error entry to the log.
+
+        :param time:
+            Time at which the error occurred.
+        :type time:
+            :py:func:`~pyrocko.util.get_time_float`
+
+        :param order:
+            Waveform order which caused the error.
+        :type order:
+            :py:class:`~pyrocko.squirrel.model.WaveformOrder`
+
+        :param kind:
+            Error category, see :py:attr:`ErrorEntry.kind`.
+        :type kind:
+            str
+
+        :param details:
+            Additional free-form details about the error.
+        :type details:
+            str
+        '''
         entry = ErrorEntry(time=time, order=order, kind=kind, details=details)
         self.entries.append(entry)
 
     def iter_aggregates(self):
+        '''
+        Iterate over :py:class:`ErrorAggregate` summaries, grouping logged
+        entries by ``(kind, details)``.
+
+        :yields:
+            :py:class:`ErrorAggregate` objects.
+        '''
         by_kind_details = defaultdict(list)
         for entry in self.entries:
             by_kind_details[entry.kind, entry.details].append(entry)
@@ -210,6 +374,14 @@ class ErrorLog(Object):
                 time_spans=time_spans)
 
     def summarize_recent(self):
+        '''
+        Get one-line summary of errors logged since the last checkpoint
+        (see :py:meth:`append_checkpoint`), or of all entries if no
+        checkpoint was set.
+
+        :rtype:
+            str
+        '''
         ioff = self.checkpoints[-1] if self.checkpoints else 0
         recent = self.entries[ioff:]
         kinds = sorted(set(entry.kind for entry in recent))
@@ -221,7 +393,10 @@ class ErrorLog(Object):
 
 
 class Aborted(SquirrelError):
-    pass
+    '''
+    Raised internally to abort an in-progress waveform download, e.g. when
+    unexpectedly much data is being received.
+    '''
 
 
 class FDSNSource(Source):
@@ -305,6 +480,18 @@ class FDSNSource(Source):
         help='Path to Python module to locally patch metadata errors.')
 
     def __init__(self, site, query_args=None, codes=None, **kwargs):
+        '''
+        Create FDSN data source.
+
+        Arguments are as for the Guts fields above. ``codes`` and
+        ``query_args`` are mutually exclusive for the network/station/
+        location/channel/geographic-area keys (see
+        ``g_keys_conflicting_post_codes``).
+
+        :raises SquirrelError:
+            If both ``codes`` and conflicting ``query_args`` keys are
+            given.
+        '''
         if codes:
             codes = [CodesNSLCE(codes_) for codes_ in codes]
 
@@ -327,12 +514,36 @@ class FDSNSource(Source):
         self._cache_path = None
 
     def get_cache_path(self):
+        '''
+        Get path to this source's on-disk cache directory.
+
+        :rtype:
+            str
+        '''
         return op.join(self._cache_path, self._hash)
 
     def describe(self):
+        '''
+        Get short identifying description of the source.
+
+        :rtype:
+            str
+        '''
         return self._source_id
 
     def make_hash(self):
+        '''
+        Compute hash identifying this source's configuration.
+
+        Used to distinguish between differently-configured
+        :py:class:`FDSNSource` instances pointing at the same
+        :py:attr:`site` when choosing on-disk cache locations, so e.g.
+        anonymous and authenticated access to the same site are cached
+        separately.
+
+        :rtype:
+            str
+        '''
         s = self.site
         s += 'notoken' \
             if (self.auth_token is None and self.auth_token_path is None) \
@@ -360,9 +571,26 @@ class FDSNSource(Source):
         return ehash(s)
 
     def get_hash(self):
+        '''
+        Get hash identifying this source's configuration (see
+        :py:meth:`make_hash`).
+
+        :rtype:
+            str
+        '''
         return self._hash
 
     def get_auth_token(self):
+        '''
+        Get authentication token, reading it from :py:attr:`auth_token_path`
+        if :py:attr:`auth_token` is not set directly.
+
+        :rtype:
+            str
+
+        :raises FileLoadError:
+            If :py:attr:`auth_token_path` cannot be read.
+        '''
         if self.auth_token:
             return self.auth_token
 
@@ -382,6 +610,15 @@ class FDSNSource(Source):
                 'exclusive.')
 
     def setup(self, squirrel, check=True, upgrade=False):
+        '''
+        Set up cache directories and add already-downloaded local content
+        (waveforms, channel and response meta-data) to the squirrel.
+
+        See :py:meth:`~pyrocko.squirrel.client.base.Source.setup` for the
+        parameters. If ``upgrade`` is ``True``, any waveform archive found
+        using the old (pre ``-v2``) on-disk storage layout is migrated in
+        place; otherwise it is added as-is and a warning is logged.
+        '''
         self._cache_path = op.join(
             self.expand_path(self.cache_path)
             if self.cache_path
@@ -515,6 +752,22 @@ class FDSNSource(Source):
                 util.time_to_str(t, format='%Y-%m-%d %H:%M:%S'))
 
     def update_channel_inventory(self, squirrel, constraint=None):
+        '''
+        Query and cache channel/station meta-data for a given constraint,
+        unless already cached and not yet expired (see
+        :py:attr:`expires`).
+
+        :param squirrel:
+            Squirrel instance the source is attached to.
+        :type squirrel:
+            :py:class:`~pyrocko.squirrel.base.Squirrel`
+
+        :param constraint:
+            Selection of times or areas to be brought up to date. If not
+            given, an unconstrained (global) query is made.
+        :type constraint:
+            :py:class:`~pyrocko.squirrel.client.base.Constraint`
+        '''
         if constraint is None:
             constraint = Constraint()
 
@@ -645,6 +898,21 @@ class FDSNSource(Source):
         return self._get_expiration_time(self._get_channels_path())
 
     def update_waveform_promises(self, squirrel, constraint):
+        '''
+        Add waveform promises for channels with cached meta-data but
+        missing (or gappy) local waveform coverage, for a given
+        constraint.
+
+        :param squirrel:
+            Squirrel instance the source is attached to.
+        :type squirrel:
+            :py:class:`~pyrocko.squirrel.base.Squirrel`
+
+        :param constraint:
+            Selection of times or areas to promise waveforms for.
+        :type constraint:
+            :py:class:`~pyrocko.squirrel.client.base.Constraint`
+        '''
         from ..base import gaps
         cpath = os.path.abspath(self._get_channels_path())
 
@@ -738,10 +1006,64 @@ class FDSNSource(Source):
         return d
 
     def save_waveforms(self, trs):
+        '''
+        Save downloaded waveforms to the local waveform archive.
+
+        :param trs:
+            Waveforms to be saved.
+        :type trs:
+            :py:class:`list` of :py:class:`~pyrocko.trace.Trace` objects
+
+        :returns:
+            Paths of the created/updated files.
+        :rtype:
+            :py:class:`list` of :py:class:`str`
+        '''
         return self._archive.save(trs, check_append_merge=True)
 
     def download_waveforms(
             self, orders, success, error_permanent, error_temporary, aborted):
+
+        '''
+        Execute a batch of waveform download orders.
+
+        :param orders:
+            Waveform orders to be downloaded.
+        :type orders:
+            :py:class:`list` of
+            :py:class:`~pyrocko.squirrel.model.WaveformOrder` objects
+
+        :param success:
+            Callback ``success(order, traces)``, called for each
+            successfully (or partially) downloaded order.
+        :type success:
+            callable
+
+        :param error_permanent:
+            Callback ``error_permanent(order)``, called for orders which
+            failed in a way not expected to be resolved by retrying later.
+        :type error_permanent:
+            callable
+
+        :param error_temporary:
+            Callback ``error_temporary(order)``, called for
+            near-real-time orders (see
+            :py:meth:`~pyrocko.squirrel.model.WaveformOrder.is_near_real_time`)
+            which failed but may succeed if retried later.
+        :type error_temporary:
+            callable
+
+        :param aborted:
+            Callback ``aborted()``, returning ``True`` if downloading
+            should be aborted before processing further orders.
+        :type aborted:
+            callable
+
+        Downloaded waveforms are not saved automatically; ``success`` is
+        expected to do so, e.g. via :py:meth:`save_waveforms`. Download
+        errors are logged to an internal :py:class:`ErrorLog`, aggregated
+        summaries of which are logged as warnings.
+        '''
 
         elog = ErrorLog(site=self.site)
         orders.sort(key=orders_sort_key)
@@ -905,6 +1227,24 @@ class FDSNSource(Source):
             raise SquirrelError(str(e))
 
     def update_response_inventory(self, squirrel, constraint):
+        '''
+        Query and cache instrument responses for channels matching a given
+        constraint's codes, unless already cached and not yet expired (see
+        :py:attr:`expires`).
+
+        :param squirrel:
+            Squirrel instance the source is attached to.
+        :type squirrel:
+            :py:class:`~pyrocko.squirrel.base.Squirrel`
+
+        :param constraint:
+            Selection of codes to update responses for. Only
+            :py:attr:`~pyrocko.squirrel.client.base.Constraint.codes` is
+            used; responses are queried for the channels' entire
+            available time span.
+        :type constraint:
+            :py:class:`~pyrocko.squirrel.client.base.Constraint`
+        '''
         cpath = os.path.abspath(self._get_channels_path())
         nuts = squirrel.iter_nuts(
             'channel', path=cpath, codes=constraint.codes)
