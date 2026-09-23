@@ -88,14 +88,65 @@ g_codes_classes_ndot = {
 
 
 def to_codes_simple(kind_id, codes_safe_str):
+    '''
+    Convert a safe-string representation of codes to a codes object.
+
+    :param kind_id:
+        Content kind determining the target codes class, one of the ids
+        given in :py:data:`g_content_kind_ids`.
+    :type kind_id:
+        int
+
+    :param codes_safe_str:
+        Codes as a database-safe string representation.
+    :type codes_safe_str:
+        str
+
+    :rtype:
+        :py:class:`~pyrocko.model.codes.Codes` (subclass appropriate for
+        ``kind_id``)
+    '''
     return g_codes_classes[kind_id](safe_str=codes_safe_str)
 
 
 def to_codes(kind_id, obj):
+    '''
+    Convert an object to a codes object of the class appropriate for a
+    given content kind.
+
+    :param kind_id:
+        Content kind determining the target codes class, one of the ids
+        given in :py:data:`g_content_kind_ids`.
+    :type kind_id:
+        int
+
+    :param obj:
+        Value to be converted, anything accepted by the target codes
+        class's constructor (e.g. a dot-separated string or a tuple).
+
+    :rtype:
+        :py:class:`~pyrocko.model.codes.Codes` (subclass appropriate for
+        ``kind_id``)
+    '''
     return g_codes_classes[kind_id](obj)
 
 
 def to_codes_guess(s):
+    '''
+    Convert a dot-separated string to a codes object, guessing the
+    appropriate codes class from its number of dots.
+
+    :param s:
+        Dot-separated codes string, e.g. ``'NET.STA.LOC.CHA'``.
+    :type s:
+        str
+
+    :rtype:
+        :py:class:`~pyrocko.model.codes.Codes`
+
+    :raises CodesError:
+        If the number of dots does not match any known codes class.
+    '''
     try:
         return g_codes_classes_ndot[s.count('.')](s)
     except KeyError:
@@ -108,6 +159,33 @@ class codes_patterns_list(list):
 
 
 def codes_patterns_for_kind(kind_id, codes):
+    '''
+    Convert codes patterns to a normalized list of query patterns.
+
+    :param kind_id:
+        Content kind determining the target codes class, one of the ids
+        given in :py:data:`g_content_kind_ids`.
+    :type kind_id:
+        int
+
+    :param codes:
+        Single codes pattern, or list thereof, in any form accepted by
+        :py:func:`to_codes`. Already-normalized input (as returned by this
+        function) is passed through unchanged.
+    :type codes:
+        anything accepted by :py:func:`to_codes`, or
+        :py:class:`list` thereof
+
+    :returns:
+        Normalized list of codes patterns, appropriate for the queried
+        content kind. For station queries, an additional pattern matching
+        any location code is added, since SEED/StationXML conventions
+        treat the location code as part of the channel rather than the
+        station, unlike :py:class:`~pyrocko.model.codes.CodesNSL` (see its
+        docstring).
+    :rtype:
+        :py:class:`codes_patterns_list`
+    '''
     if isinstance(codes, codes_patterns_list):
         return codes
 
@@ -143,18 +221,50 @@ except Exception:
 
 
 def to_kind(kind_id):
+    '''
+    Get content kind name for a content kind id.
+
+    :param kind_id:
+        Content kind id, one of the ids given in
+        :py:data:`g_content_kind_ids`.
+    :type kind_id:
+        int
+
+    :rtype:
+        str
+    '''
     return g_content_kinds[kind_id]
 
 
 def to_kinds(kind_ids):
+    '''
+    Get content kind names for a list of content kind ids, see
+    :py:func:`to_kind`.
+    '''
     return [g_content_kinds[kind_id] for kind_id in kind_ids]
 
 
 def to_kind_id(kind):
+    '''
+    Get content kind id for a content kind name.
+
+    :param kind:
+        Content kind name, e.g. ``'waveform'``, ``'station'``,
+        ``'channel'``, ``'response'`` or ``'event'``.
+    :type kind:
+        str
+
+    :rtype:
+        int
+    '''
     return g_content_kinds.index(kind)
 
 
 def to_kind_ids(kinds):
+    '''
+    Get content kind ids for a list of content kind names, see
+    :py:func:`to_kind_id`.
+    '''
     return [g_content_kinds.index(kind) for kind in kinds]
 
 
@@ -243,6 +353,23 @@ g_offset_time_unit = 1.0 / g_offset_time_unit_inv
 
 
 def tsplit(t):
+    '''
+    Split time into full-seconds and fractional-offset parts, for compact,
+    fast-comparable database storage.
+
+    :param t:
+        Time to be split, or ``None``.
+    :type t:
+        :py:func:`~pyrocko.util.get_time_float`
+
+    :returns:
+        ``(seconds, offset)``, where ``seconds`` is the floored full
+        seconds part and ``offset`` the remaining fractional part, in
+        integer units of :py:data:`g_offset_time_unit` seconds. Returns
+        ``(None, 0)`` if ``t`` is ``None``.
+    :rtype:
+        :py:class:`tuple` of (:py:class:`int` or ``None``, :py:class:`int`)
+    '''
     if t is None:
         return None, 0
 
@@ -258,6 +385,26 @@ def tsplit(t):
 
 
 def tjoin(seconds, offset):
+    '''
+    Join a full-seconds/fractional-offset pair back into a single time
+    value (inverse of :py:func:`tsplit`).
+
+    :param seconds:
+        Full seconds part, or ``None``.
+    :type seconds:
+        int
+
+    :param offset:
+        Fractional part, in integer units of :py:data:`g_offset_time_unit`
+        seconds.
+    :type offset:
+        int
+
+    :returns:
+        Joined time, or ``None`` if ``seconds`` is ``None``.
+    :rtype:
+        :py:func:`~pyrocko.util.get_time_float`
+    '''
     if seconds is None:
         return None
 
@@ -314,12 +461,19 @@ class Station(Location):
     A seismic station.
     '''
 
-    codes = CodesNSL.T()
+    codes = CodesNSL.T(
+        help='Codes identifying the station (NET.STA.LOC).')
 
-    tmin = Timestamp.T(optional=True)
-    tmax = Timestamp.T(optional=True)
+    tmin = Timestamp.T(
+        optional=True,
+        help='Start time of station epoch.')
+    tmax = Timestamp.T(
+        optional=True,
+        help='End time of station epoch.')
 
-    description = Unicode.T(optional=True)
+    description = Unicode.T(
+        optional=True,
+        help='Additional description of the station.')
 
     def __init__(self, **kwargs):
         kwargs['codes'] = CodesNSL(kwargs['codes'])
@@ -327,6 +481,9 @@ class Station(Location):
 
     @property
     def time_span(self):
+        '''
+        Get station's epoch as ``(tmin, tmax)`` tuple.
+        '''
         return (self.tmin, self.tmax)
 
     def get_pyrocko_station(self):
@@ -356,12 +513,25 @@ class Station(Location):
 
 @squirrel_content
 class ChannelBase(Location):
-    codes = CodesNSLCE.T()
+    '''
+    Base class for :py:class:`Channel` and :py:class:`Sensor`, providing
+    the common properties of a single seismic recording channel or a group
+    of channels forming a sensor.
+    '''
 
-    tmin = Timestamp.T(optional=True)
-    tmax = Timestamp.T(optional=True)
+    codes = CodesNSLCE.T(
+        help='Codes identifying the channel (NET.STA.LOC.CHA.EXTRA).')
 
-    deltat = Float.T(optional=True)
+    tmin = Timestamp.T(
+        optional=True,
+        help='Start time of channel epoch.')
+    tmax = Timestamp.T(
+        optional=True,
+        help='End time of channel epoch.')
+
+    deltat = Float.T(
+        optional=True,
+        help='Sampling interval [s].')
 
     def __init__(self, **kwargs):
         kwargs['codes'] = CodesNSLCE(kwargs['codes'])
@@ -369,9 +539,31 @@ class ChannelBase(Location):
 
     @property
     def time_span(self):
+        '''
+        Get channel's epoch as ``(tmin, tmax)`` tuple.
+        '''
         return (self.tmin, self.tmax)
 
     def overlaps(self, tmin, tmax):
+        '''
+        Check if channel's epoch overlaps with a given time span.
+
+        :param tmin:
+            Start time of query interval.
+        :type tmin:
+            :py:func:`~pyrocko.util.get_time_float`
+
+        :param tmax:
+            End time of query interval.
+        :type tmax:
+            :py:func:`~pyrocko.util.get_time_float`
+
+        :returns:
+            ``True`` if the channel's epoch (:py:attr:`tmin`,
+            :py:attr:`tmax`) has any overlap with the given interval.
+        :rtype:
+            bool
+        '''
         return (
             self.tmin is None or tmax is None
             or self.tmin <= tmax
@@ -421,10 +613,23 @@ class Channel(ChannelBase):
     A channel of a seismic station.
     '''
 
-    dip = Float.T(optional=True)
-    azimuth = Float.T(optional=True)
+    dip = Float.T(
+        optional=True,
+        help='Dip angle of channel [deg], -90 is up, 0 is horizontal, '
+             '90 is down.')
+    azimuth = Float.T(
+        optional=True,
+        help='Azimuth angle of channel [deg], 0 is north, 90 is east.')
 
     def get_pyrocko_channel(self):
+        '''
+        Get channel as a classic Pyrocko channel object.
+
+        :returns:
+            Converted channel object.
+        :rtype:
+            :py:class:`pyrocko.model.station.Channel`
+        '''
         from pyrocko import model
         return model.Channel(*self._get_pyrocko_channel_args())
 
@@ -436,6 +641,10 @@ class Channel(ChannelBase):
 
     @property
     def orientation_enz(self):
+        '''
+        Get sensor orientation as unit vector in East-North-Up coordinates,
+        or ``None`` if azimuth or dip are not set.
+        '''
         if None in (self.azimuth, self.dip):
             return None
 
@@ -504,10 +713,31 @@ class Sensor(ChannelBase):
     Representation of a channel group.
     '''
 
-    channels = List.T(Channel.T())
+    channels = List.T(
+        Channel.T(),
+        help='Channels forming this sensor, e.g. the three components of a '
+             'three-component seismometer.')
 
     @classmethod
     def from_channels(cls, channels):
+        '''
+        Group channels into sensors.
+
+        :param channels:
+            Channels to be grouped.
+        :type channels:
+            iterable of :py:class:`Channel` objects
+
+        :returns:
+            Sensors formed by grouping the given channels by matching
+            station/location codes, orientation-independent channel code
+            (i.e. NET.STA.LOC.BI, where B and I are the SEED band and
+            instrument codes, e.g. ``'HH'``, omitting the component
+            character) and time span, splitting groups where the
+            individual channels' time spans don't fully align.
+        :rtype:
+            :py:class:`list` of :py:class:`Sensor` objects
+        '''
         groups = defaultdict(list)
         for channel in channels:
             groups[channel._get_sensor_codes()].append(channel)
@@ -540,10 +770,42 @@ class Sensor(ChannelBase):
             **dict(zip(ChannelBase.T.propnames, args)))
 
     def channel_vectors(self):
+        '''
+        Get orientation unit vectors of member channels.
+
+        :returns:
+            Orientation vectors of the member channels in East-North-Up
+            coordinates, stacked into a ``(nchannels, 3)`` array, in the
+            order of :py:attr:`channels`.
+        :rtype:
+            :py:class:`numpy.ndarray`
+        '''
         return num.vstack(
             [channel.orientation_enz for channel in self.channels])
 
     def projected_channels(self, system, component_names):
+        '''
+        Get synthetic channel definitions for a given target coordinate
+        system.
+
+        :param system:
+            Target coordinate system as a ``(3, 3)`` rotation matrix, rows
+            giving the new component directions in East-North-Up
+            coordinates.
+        :type system:
+            :py:class:`numpy.ndarray`
+
+        :param component_names:
+            Component codes to be used for the three output channels, e.g.
+            ``'ENZ'``.
+        :type component_names:
+            :py:class:`str` or :py:class:`list` of :py:class:`str`
+
+        :returns:
+            Synthetic channel definitions for the projected components.
+        :rtype:
+            :py:class:`list` of :py:class:`Channel` objects
+        '''
         return [
             Channel(
                 azimuth=math.atan2(e, n) * r2d,
@@ -554,20 +816,95 @@ class Sensor(ChannelBase):
             for comp, (e, n, z) in zip(component_names, system)]
 
     def matrix_to(self, system, epsilon=1e-7):
+        '''
+        Get rotation matrix from member channels to a given coordinate
+        system.
+
+        :param system:
+            Target coordinate system as a ``(3, 3)`` rotation matrix, rows
+            giving the new component directions in East-North-Up
+            coordinates.
+        :type system:
+            :py:class:`numpy.ndarray`
+
+        :param epsilon:
+            Absolute values below this threshold are set to zero in the
+            returned matrix, to clean up numerical noise.
+        :type epsilon:
+            float
+
+        :returns:
+            Rotation matrix mapping from the member channels' orientations
+            to the given target system.
+        :rtype:
+            :py:class:`numpy.ndarray`
+        '''
         m = num.dot(system, self.channel_vectors().T)
         m[num.abs(m) < epsilon] = 0.0
         return m
 
     def projection_to(self, system, component_names):
+        '''
+        Get projection to a given coordinate system.
+
+        :param system:
+            Target coordinate system as a ``(3, 3)`` rotation matrix, rows
+            giving the new component directions in East-North-Up
+            coordinates.
+        :type system:
+            :py:class:`numpy.ndarray`
+
+        :param component_names:
+            Component codes to be used for the three output channels, e.g.
+            ``'ENZ'``.
+        :type component_names:
+            :py:class:`str` or :py:class:`list` of :py:class:`str`
+
+        :returns:
+            A tuple ``(matrix, in_channels, out_channels)`` as expected by
+            :py:func:`pyrocko.trace.project`.
+        :rtype:
+            :py:class:`tuple`
+        '''
         return (
             self.matrix_to(system),
             self.channels,
             self.projected_channels(system, component_names))
 
     def projection_to_enz(self):
+        '''
+        Get projection to East-North-Up coordinates.
+
+        :returns:
+            A tuple ``(matrix, in_channels, out_channels)`` as expected by
+            :py:func:`pyrocko.trace.project`.
+        :rtype:
+            :py:class:`tuple`
+        '''
         return self.projection_to(num.identity(3), 'ENZ')
 
     def projection_to_trz(self, source, azimuth=None):
+        '''
+        Get projection to Transverse-Radial-Up coordinates.
+
+        :param source:
+            Source location to compute the backazimuth from, or ``None``
+            if ``azimuth`` is given directly.
+        :type source:
+            :py:class:`~pyrocko.model.location.Location`
+
+        :param azimuth:
+            Azimuth of the sensor as seen from the source [deg], overriding
+            the automatic backazimuth computation from ``source``.
+        :type azimuth:
+            float
+
+        :returns:
+            A tuple ``(matrix, in_channels, out_channels)`` as expected by
+            :py:func:`pyrocko.trace.project`.
+        :rtype:
+            :py:class:`tuple`
+        '''
         if azimuth is not None:
             assert source is None
         else:
@@ -660,6 +997,19 @@ class Sensor(ChannelBase):
             [   -ca,     sa, 0.]], dtype=float), 'LQT')  # noqa
 
     def project_to_enz(self, traces):
+        '''
+        Rotate traces to East-North-Up coordinates.
+
+        :param traces:
+            Traces to be rotated, matching this sensor's member channels.
+        :type traces:
+            :py:class:`list` of :py:class:`~pyrocko.trace.Trace` objects
+
+        :returns:
+            Rotated traces.
+        :rtype:
+            :py:class:`list` of :py:class:`~pyrocko.trace.Trace` objects
+        '''
         from pyrocko import trace
 
         matrix, in_channels, out_channels = self.projection_to_enz()
@@ -667,6 +1017,31 @@ class Sensor(ChannelBase):
         return trace.project(traces, matrix, in_channels, out_channels)
 
     def project_to_trz(self, source, traces, azimuth=None):
+        '''
+        Rotate traces to Transverse-Radial-Up coordinates.
+
+        :param source:
+            Source location to compute the backazimuth from, or ``None``
+            if ``azimuth`` is given directly.
+        :type source:
+            :py:class:`~pyrocko.model.location.Location`
+
+        :param traces:
+            Traces to be rotated, matching this sensor's member channels.
+        :type traces:
+            :py:class:`list` of :py:class:`~pyrocko.trace.Trace` objects
+
+        :param azimuth:
+            Azimuth of the sensor as seen from the source [deg], overriding
+            the automatic backazimuth computation from ``source``.
+        :type azimuth:
+            float
+
+        :returns:
+            Rotated traces.
+        :rtype:
+            :py:class:`list` of :py:class:`~pyrocko.trace.Trace` objects
+        '''
         from pyrocko import trace
 
         matrix, in_channels, out_channels = self.projection_to_trz(
@@ -726,15 +1101,37 @@ class ResponseStage(Object):
     response stages, e.g. sensor, pre-amplifier, digitizer, digital
     downsampling.
     '''
-    input_quantity = QuantityType.T(optional=True)
-    input_sample_rate = Float.T(optional=True)
-    output_quantity = QuantityType.T(optional=True)
-    output_sample_rate = Float.T(optional=True)
-    elements = List.T(FrequencyResponse.T())
-    log = List.T(Tuple.T(3, String.T()))
+    input_quantity = QuantityType.T(
+        optional=True,
+        help='Physical quantity accepted at input of stage.')
+    input_sample_rate = Float.T(
+        optional=True,
+        help='Sampling rate at input of stage [Hz].')
+    output_quantity = QuantityType.T(
+        optional=True,
+        help='Physical quantity produced at output of stage.')
+    output_sample_rate = Float.T(
+        optional=True,
+        help='Sampling rate at output of stage [Hz].')
+    elements = List.T(
+        FrequencyResponse.T(),
+        help='Sequence of frequency responses combined (multiplied) to '
+             'form this stage.')
+    log = List.T(
+        Tuple.T(3, String.T()),
+        help='Log messages noting problems encountered or simplifications '
+             'made while converting response information from its source '
+             'format, with entries of the form ``(level, context, '
+             'message)``.')
 
     @property
     def stage_type(self):
+        '''
+        Attempt to classify the stage as ``'sensor'``, ``'electronics'``,
+        ``'digitizer'``, ``'decimation'``, ``'conversion'``,
+        ``'combination'`` or ``'unknown'``, based on its input/output
+        quantities and decimation factor.
+        '''
         if self.input_quantity in observational_quantities \
                 and self.output_quantity in observational_quantities:
             return 'conversion'
@@ -765,6 +1162,11 @@ class ResponseStage(Object):
 
     @property
     def decimation_factor(self):
+        '''
+        Get decimation factor of stage, or ``None`` if it cannot be
+        determined from :py:attr:`input_sample_rate` and
+        :py:attr:`output_sample_rate`.
+        '''
         irate = self.input_sample_rate
         orate = self.output_sample_rate
         if irate is not None and orate is not None \
@@ -776,12 +1178,18 @@ class ResponseStage(Object):
 
     @property
     def summary_quantities(self):
+        '''
+        One-line summary of input/output quantities.
+        '''
         return '%s -> %s' % (
             self.input_quantity or '?',
             self.output_quantity or '?')
 
     @property
     def summary_rates(self):
+        '''
+        One-line summary of input/output sampling rates.
+        '''
         irate = self.input_sample_rate
         orate = self.output_sample_rate
         factor = self.decimation_factor
@@ -805,15 +1213,25 @@ class ResponseStage(Object):
 
     @property
     def summary_elements(self):
+        '''
+        One-line summary of the combined :py:attr:`elements`.
+        '''
         xs = [x.summary for x in self.elements]
         return '%s' % ('*'.join(x for x in xs if x != 'one') or 'one')
 
     @property
     def summary_log(self):
+        '''
+        One-letter-per-entry summary of :py:attr:`log` severities.
+        '''
         return ''.join(sorted(set(x[0][0].upper() for x in self.log)))
 
     @property
     def summary_entries(self):
+        '''
+        Get tuple of one-line summary values, for use with
+        :py:func:`~pyrocko.util.fmt_summary`.
+        '''
         return (
             self.__class__.__name__,
             self.stage_type,
@@ -824,9 +1242,20 @@ class ResponseStage(Object):
 
     @property
     def summary(self):
+        '''
+        One-line summary of the response stage.
+        '''
         return util.fmt_summary(self.summary_entries, (10, 15, 3, 30, 30, 0))
 
     def get_effective(self):
+        '''
+        Get effective frequency response of this stage.
+
+        :returns:
+            Combined response of all :py:attr:`elements`.
+        :rtype:
+            :py:class:`~pyrocko.response.MultiplyResponse`
+        '''
         return MultiplyResponse(responses=list(self.elements))
 
 
@@ -864,15 +1293,35 @@ class Response(Object):
     The instrument response of a seismic station channel.
     '''
 
-    codes = CodesNSLCE.T()
-    tmin = Timestamp.T(optional=True)
-    tmax = Timestamp.T(optional=True)
+    codes = CodesNSLCE.T(
+        help='Codes identifying the channel (NET.STA.LOC.CHA.EXTRA) this '
+             'response applies to.')
+    tmin = Timestamp.T(
+        optional=True,
+        help='Start time of response epoch.')
+    tmax = Timestamp.T(
+        optional=True,
+        help='End time of response epoch.')
 
-    stages = List.T(ResponseStage.T())
-    checkpoints = List.T(FrequencyResponseCheckpoint.T())
+    stages = List.T(
+        ResponseStage.T(),
+        help='Sequence of response stages, from sensor to digitizer '
+             'output.')
+    checkpoints = List.T(
+        FrequencyResponseCheckpoint.T(),
+        help='Gain checkpoints to be honoured, e.g. from a dataless SEED '
+             'volume or a StationXML file, used to sanity-check the '
+             'combined response computed from :py:attr:`stages`.')
 
-    deltat = Float.T(optional=True)
-    log = List.T(Tuple.T(3, String.T()))
+    deltat = Float.T(
+        optional=True,
+        help='Sampling interval at output of response [s].')
+    log = List.T(
+        Tuple.T(3, String.T()),
+        help='Log messages noting problems encountered or simplifications '
+             'made while converting response information from its source '
+             'format, with entries of the form ``(level, context, '
+             'message)``.')
 
     def __init__(self, **kwargs):
         kwargs['codes'] = CodesNSLCE(kwargs['codes'])
@@ -881,26 +1330,47 @@ class Response(Object):
 
     @property
     def time_span(self):
+        '''
+        Get response's epoch as ``(tmin, tmax)`` tuple.
+        '''
         return (self.tmin, self.tmax)
 
     @property
     def nstages(self):
+        '''
+        Number of response stages.
+        '''
         return len(self.stages)
 
     @property
     def input_quantity(self):
+        '''
+        Physical quantity accepted at input of first stage, or ``None`` if
+        no stages are present.
+        '''
         return self.stages[0].input_quantity if self.stages else None
 
     @property
     def output_quantity(self):
+        '''
+        Physical quantity produced at output of last stage, or ``None`` if
+        no stages are present.
+        '''
         return self.stages[-1].output_quantity if self.stages else None
 
     @property
     def output_sample_rate(self):
+        '''
+        Sampling rate at output of last stage [Hz], or ``None`` if no
+        stages are present.
+        '''
         return self.stages[-1].output_sample_rate if self.stages else None
 
     @property
     def summary_stages(self):
+        '''
+        One-line summary of the :py:attr:`stages`' types.
+        '''
         def grouped(xs):
             xs = list(xs)
             g = []
@@ -919,6 +1389,10 @@ class Response(Object):
 
     @property
     def summary_quantities(self):
+        '''
+        One-line summary of input/output quantities and output sample
+        rate.
+        '''
         orate = self.output_sample_rate
         return '%s -> %s%s' % (
             self.input_quantity or '?',
@@ -927,10 +1401,17 @@ class Response(Object):
 
     @property
     def summary_log(self):
+        '''
+        One-letter-per-entry summary of :py:attr:`log` severities.
+        '''
         return ''.join(sorted(set(x[0][0].upper() for x in self.log)))
 
     @property
     def summary_entries(self):
+        '''
+        Get tuple of one-line summary values, for use with
+        :py:func:`~pyrocko.util.fmt_summary`.
+        '''
         return (
             self.__class__.__name__,
             str(self.codes),
@@ -941,6 +1422,9 @@ class Response(Object):
 
     @property
     def summary(self):
+        '''
+        One-line summary of the response.
+        '''
         return util.fmt_summary(self.summary_entries, (10, 20, 55, 3, 35, 0))
 
     def get_effective(
@@ -949,6 +1433,46 @@ class Response(Object):
             stages=(None, None),
             mode='complete',
             gain_frequency=None):
+
+        '''
+        Get effective combined frequency response.
+
+        :param input_quantity:
+            If given, prepend a conversion from the given physical quantity
+            to the response's native :py:attr:`input_quantity`.
+        :type input_quantity:
+            str
+
+        :param stages:
+            Restrict combination to a sub-range of :py:attr:`stages`, given
+            as ``(start, stop)`` index tuple, following Python slicing
+            conventions. Use ``None`` for an open end.
+        :type stages:
+            :py:class:`tuple` of 2 :py:class:`int` or ``None``
+
+        :param mode:
+            ``'complete'`` to combine all selected stages, or ``'sensor'``
+            to instead replace non-sensor stages with a constant gain
+            evaluated at ``gain_frequency`` (useful to inspect the sensor's
+            response in isolation while still accounting for the overall
+            system gain).
+        :type mode:
+            str
+
+        :param gain_frequency:
+            Frequency [Hz] at which to evaluate the constant gain used to
+            replace non-sensor stages when ``mode='sensor'``. Required in
+            that case.
+        :type gain_frequency:
+            float
+
+        :returns:
+            Combined response.
+        :rtype:
+            :py:class:`~pyrocko.response.MultiplyResponse`
+
+        Results are cached per ``(input_quantity, stages)`` combination.
+        '''
 
         assert mode in ('complete', 'sensor')
         assert not (mode == 'sensor' and gain_frequency is None)
@@ -1018,13 +1542,21 @@ class WaveformPromise(Object):
     queries for waveforms missing at the remote site.
     '''
 
-    codes = CodesNSLCE.T()
-    tmin = Timestamp.T()
-    tmax = Timestamp.T()
+    codes = CodesNSLCE.T(
+        help='Codes identifying the channel (NET.STA.LOC.CHA.EXTRA) of the '
+             'promised waveform.')
+    tmin = Timestamp.T(
+        help='Start time of promised waveform.')
+    tmax = Timestamp.T(
+        help='End time of promised waveform.')
 
-    deltat = Float.T(optional=True)
+    deltat = Float.T(
+        optional=True,
+        help='Sampling interval of promised waveform [s].')
 
-    source_hash = String.T()
+    source_hash = String.T(
+        help='Hash identifying the remote source client providing this '
+             'promise.')
 
     def __init__(self, **kwargs):
         kwargs['codes'] = CodesNSLCE(kwargs['codes'])
@@ -1032,11 +1564,17 @@ class WaveformPromise(Object):
 
     @property
     def time_span(self):
+        '''
+        Get promise's temporal span as ``(tmin, tmax)`` tuple.
+        '''
         return (self.tmin, self.tmax)
 
 
 class InvalidWaveform(Exception):
-    pass
+    '''
+    Raised when a downloaded waveform fails validation, see
+    :py:meth:`WaveformOrder.validate`.
+    '''
 
 
 class WaveformOrder(Object):
@@ -1044,31 +1582,83 @@ class WaveformOrder(Object):
     Waveform request information.
     '''
 
-    source_id = String.T()
-    codes = CodesNSLCE.T()
-    deltat = Float.T()
-    tmin = Timestamp.T()
-    tmax = Timestamp.T()
-    gaps = List.T(Tuple.T(2, Timestamp.T()))
-    time_created = Timestamp.T()
-    anxious = Duration.T(default=600.)
+    source_id = String.T(
+        help='Id of remote source client to query, of the form '
+             '``\'client:<client-type>:<hash>\'``, e.g. '
+             '``\'client:fdsn:<hash>\'``.')
+    codes = CodesNSLCE.T(
+        help='Codes identifying the channel (NET.STA.LOC.CHA.EXTRA) to be '
+             'downloaded.')
+    deltat = Float.T(
+        help='Expected sampling interval of the waveform to be downloaded '
+             '[s].')
+    tmin = Timestamp.T(
+        help='Start time of waveform to be downloaded.')
+    tmax = Timestamp.T(
+        help='End time of waveform to be downloaded.')
+    gaps = List.T(
+        Tuple.T(2, Timestamp.T()),
+        help='List of ``(tmin, tmax)`` time spans already locally '
+             'available, to be excluded from the request when possible.')
+    time_created = Timestamp.T(
+        help='Time at which the order was created.')
+    anxious = Duration.T(
+        default=600.,
+        help='Time span [s] before ``tmax`` within which the order is '
+             'still considered to concern near-real-time data, see '
+             ':py:meth:`is_near_real_time`.')
 
     @property
     def client(self):
+        '''
+        Get remote source client type (e.g. ``'fdsn'``), parsed from
+        :py:attr:`source_id`.
+        '''
         return self.source_id.split(':')[1]
 
     def key1(self):
+        '''
+        Get key identifying the order, including its source, for
+        duplicate/repeat-order detection.
+        '''
         return (self.source_id, self.codes, self.tmin, self.tmax)
 
     def key2(self):
+        '''
+        Get key identifying the order, without its source, e.g. for
+        cross-client bookkeeping of already-satisfied requests.
+        '''
         return (self.codes, self.tmin, self.tmax)
 
     def describe(self, site='?'):
+        '''
+        Get one-line description of the order.
+
+        :param site:
+            Name of remote site, for display purposes.
+        :type site:
+            str
+
+        :rtype:
+            str
+        '''
         return '%s:%s %s [%s - %s]' % (
             self.client, site, str(self.codes),
             util.time_to_str(self.tmin), util.time_to_str(self.tmax))
 
     def validate(self, tr):
+        '''
+        Check that a downloaded trace matches this order.
+
+        :param tr:
+            Downloaded waveform to be checked.
+        :type tr:
+            :py:class:`~pyrocko.trace.Trace`
+
+        :raises InvalidWaveform:
+            If the trace has no data samples, a sampling interval not
+            matching :py:attr:`deltat`, or non-finite data values.
+        '''
         if tr.ydata.size == 0:
             raise InvalidWaveform(
                 'waveform with zero data samples')
@@ -1083,9 +1673,16 @@ class WaveformOrder(Object):
             raise InvalidWaveform('waveform has NaN values')
 
     def estimate_nsamples(self):
+        '''
+        Estimate number of samples expected for the ordered time span.
+        '''
         return int(round((self.tmax - self.tmin) / self.deltat))+1
 
     def is_near_real_time(self):
+        '''
+        Check if order's end time is close enough to its creation time to
+        be considered a near-real-time request (see :py:attr:`anxious`).
+        '''
         return self.tmax > self.time_created - self.anxious
 
 
@@ -1114,26 +1711,68 @@ class Nut(Object):
     etc. together with the information where it was found or generated.
     '''
 
-    file_path = String.T(optional=True)
-    file_format = String.T(optional=True)
-    file_mtime = Timestamp.T(optional=True)
-    file_size = Int.T(optional=True)
+    file_path = String.T(
+        optional=True,
+        help='Path of file containing the referenced content.')
+    file_format = String.T(
+        optional=True,
+        help='Content type of file, as used by the Squirrel IO backends '
+             '(e.g. ``\'mseed\'``, ``\'stationxml\'``, ``\'yaml\'``).')
+    file_mtime = Timestamp.T(
+        optional=True,
+        help='Modification time of file, for change detection.')
+    file_size = Int.T(
+        optional=True,
+        help='Size of file [bytes], for change detection.')
 
-    file_segment = Int.T(optional=True)
-    file_element = Int.T(optional=True)
+    file_segment = Int.T(
+        optional=True,
+        help='Index of segment within file, for file formats where a '
+             'single file can contain multiple segments.')
+    file_element = Int.T(
+        optional=True,
+        help='Index of content element within its segment, for content '
+             'types where a segment may hold more than one element.')
 
-    kind_id = Int.T()
-    codes = Codes.T()
+    kind_id = Int.T(
+        help='Content type, one of the ids given in '
+             ':py:data:`g_content_kind_ids`.')
+    codes = Codes.T(
+        help='Codes identifying the content, of a subclass appropriate for '
+             'the given content kind.')
 
-    tmin_seconds = Int.T(default=0)
-    tmin_offset = Int.T(default=0, optional=True)
-    tmax_seconds = Int.T(default=0)
-    tmax_offset = Int.T(default=0, optional=True)
+    tmin_seconds = Int.T(
+        default=0,
+        help='Full seconds part of start time of content, needed for fast '
+             'database queries.')
+    tmin_offset = Int.T(
+        default=0,
+        optional=True,
+        help='Fractional/high-precision part of start time of content '
+             '(see :py:func:`tsplit`).')
+    tmax_seconds = Int.T(
+        default=0,
+        help='Full seconds part of end time of content, needed for fast '
+             'database queries.')
+    tmax_offset = Int.T(
+        default=0,
+        optional=True,
+        help='Fractional/high-precision part of end time of content '
+             '(see :py:func:`tsplit`).')
 
-    deltat = Float.T(default=0.0)
+    deltat = Float.T(
+        default=0.0,
+        help='Sampling interval of content, if applicable, else ``0.0`` '
+             '[s].')
 
-    content = Any.T(optional=True)
-    raw_content = Dict.T(String.T(), Any.T())
+    content = Any.T(
+        optional=True,
+        help='The actual content object represented by this nut, if '
+             'attached.')
+    raw_content = Dict.T(
+        String.T(), Any.T(),
+        help='Additional, backend-specific raw content, keyed by content '
+             'kind.')
 
     content_in_db = False
 
@@ -1157,6 +1796,84 @@ class Nut(Object):
             tmin=None,
             tmax=None,
             values_nocheck=None):
+
+        '''
+        Create a nut.
+
+        :param file_path:
+            Path of file containing the referenced content.
+        :type file_path:
+            str
+
+        :param file_format:
+            Content type of file, as used by the Squirrel IO backends.
+        :type file_format:
+            str
+
+        :param file_mtime:
+            Modification time of file, for change detection.
+        :type file_mtime:
+            :py:func:`~pyrocko.util.get_time_float`
+
+        :param file_size:
+            Size of file [bytes], for change detection.
+        :type file_size:
+            int
+
+        :param file_segment:
+            Index of segment within file.
+        :type file_segment:
+            int
+
+        :param file_element:
+            Index of content element within its segment.
+        :type file_element:
+            int
+
+        :param kind_id:
+            Content type, one of the ids given in
+            :py:data:`g_content_kind_ids`.
+        :type kind_id:
+            int
+
+        :param codes:
+            Codes identifying the content, of a class appropriate for
+            ``kind_id`` (converted with :py:func:`to_codes` if needed).
+
+        :param tmin:
+            Start time of content. Alternative to giving ``tmin_seconds``/
+            ``tmin_offset`` directly.
+        :type tmin:
+            :py:func:`~pyrocko.util.get_time_float`
+
+        :param tmax:
+            End time of content. Alternative to giving ``tmax_seconds``/
+            ``tmax_offset`` directly.
+        :type tmax:
+            :py:func:`~pyrocko.util.get_time_float`
+
+        :param deltat:
+            Sampling interval of content, if applicable.
+        :type deltat:
+            float
+
+        :param content:
+            The actual content object represented by this nut, if to be
+            attached directly.
+
+        :param raw_content:
+            Additional, backend-specific raw content, keyed by content
+            kind.
+        :type raw_content:
+            dict
+
+        :param values_nocheck:
+            If given, a tuple of already-validated field values (as
+            produced by a database row), used to bypass normal argument
+            processing for fast, low-level construction (internal use).
+        :type values_nocheck:
+            tuple
+        '''
 
         if values_nocheck is not None:
             (self.file_path, self.file_format, self.file_mtime,
@@ -1204,25 +1921,52 @@ class Nut(Object):
                 self.equality_values == other.equality_values)
 
     def hash(self):
+        '''
+        Compute hash from :py:attr:`key`, identifying this nut's file
+        origin.
+
+        :rtype:
+            str
+        '''
         return ehash(','.join(str(x) for x in self.key))
 
     def __ne__(self, other):
         return not (self == other)
 
     def get_io_backend(self):
+        '''
+        Get the Squirrel IO backend module responsible for
+        :py:attr:`file_format`.
+        '''
         from . import io
         return io.get_backend(self.file_format)
 
     def file_modified(self):
+        '''
+        Check if the referenced file appears to have changed since
+        indexing, by comparing current vs. indexed modification time and
+        size.
+
+        :rtype:
+            bool
+        '''
         return self.get_io_backend().get_stats(self.file_path) \
             != (self.file_mtime, self.file_size)
 
     @property
     def dkey(self):
+        '''
+        Get key used to index this nut in the database's content table,
+        as ``(kind_id, tmin_seconds, tmin_offset, codes)``.
+        '''
         return (self.kind_id, self.tmin_seconds, self.tmin_offset, self.codes)
 
     @property
     def key(self):
+        '''
+        Get key identifying this nut's file origin, as
+        ``(file_path, file_segment, file_element, file_mtime)``.
+        '''
         return (
             self.file_path,
             self.file_segment,
@@ -1231,6 +1975,11 @@ class Nut(Object):
 
     @property
     def equality_values(self):
+        '''
+        Get values determining content equality (used by ``__eq__``), as
+        ``(file_segment, file_element, kind_id, codes, tmin_seconds,
+        tmin_offset, tmax_seconds, tmax_offset, deltat)``.
+        '''
         return (
             self.file_segment, self.file_element,
             self.kind_id, self.codes,
@@ -1238,6 +1987,21 @@ class Nut(Object):
             self.tmax_seconds, self.tmax_offset, self.deltat)
 
     def diff(self, other):
+        '''
+        Get list of differing :py:attr:`equality_values` fields between
+        this and another nut.
+
+        :param other:
+            Nut to compare against.
+        :type other:
+            :py:class:`Nut`
+
+        :returns:
+            ``(field_name, this_value, other_value)`` tuples for each
+            differing field.
+        :rtype:
+            :py:class:`list` of :py:class:`tuple`
+        '''
         names = [
             'file_segment', 'file_element', 'kind_id', 'codes',
             'tmin_seconds', 'tmin_offset', 'tmax_seconds', 'tmax_offset',
@@ -1254,6 +2018,11 @@ class Nut(Object):
 
     @property
     def tmin(self):
+        '''
+        Start time of content, joined from :py:attr:`tmin_seconds`/
+        :py:attr:`tmin_offset` (see :py:func:`tjoin`). Settable, splitting
+        into those two fields (see :py:func:`tsplit`).
+        '''
         return tjoin(self.tmin_seconds, self.tmin_offset)
 
     @tmin.setter
@@ -1262,6 +2031,11 @@ class Nut(Object):
 
     @property
     def tmax(self):
+        '''
+        End time of content, joined from :py:attr:`tmax_seconds`/
+        :py:attr:`tmax_offset` (see :py:func:`tjoin`). Settable, splitting
+        into those two fields (see :py:func:`tsplit`).
+        '''
         return tjoin(self.tmax_seconds, self.tmax_offset)
 
     @tmax.setter
@@ -1270,12 +2044,22 @@ class Nut(Object):
 
     @property
     def kscale(self):
+        '''
+        Time-block granularity index for this nut's time span, used for
+        indexing content at multiple scales (see :py:data:`tscale_edges`
+        and :py:meth:`~pyrocko.squirrel.base.Squirrel.iter_nuts`'s
+        ``tscale_min`` parameter).
+        '''
         if self.tmin_seconds is None or self.tmax_seconds is None:
             return 0
         return tscale_to_kscale(self.tmax_seconds - self.tmin_seconds)
 
     @property
     def waveform_kwargs(self):
+        '''
+        Get keyword arguments usable to create a
+        :py:class:`~pyrocko.trace.Trace` from this nut's meta-information.
+        '''
         network, station, location, channel, extra = self.codes
 
         return dict(
@@ -1290,6 +2074,10 @@ class Nut(Object):
 
     @property
     def waveform_promise_kwargs(self):
+        '''
+        Get keyword arguments usable to create a
+        :py:class:`WaveformPromise` from this nut's meta-information.
+        '''
         return dict(
             codes=self.codes,
             tmin=self.tmin,
@@ -1298,6 +2086,10 @@ class Nut(Object):
 
     @property
     def station_kwargs(self):
+        '''
+        Get keyword arguments usable to create a :py:class:`Station` from
+        this nut's meta-information.
+        '''
         network, station, location = self.codes
         return dict(
             codes=self.codes,
@@ -1306,6 +2098,10 @@ class Nut(Object):
 
     @property
     def channel_kwargs(self):
+        '''
+        Get keyword arguments usable to create a :py:class:`Channel` from
+        this nut's meta-information.
+        '''
         network, station, location, channel, extra = self.codes
         return dict(
             codes=self.codes,
@@ -1315,6 +2111,10 @@ class Nut(Object):
 
     @property
     def response_kwargs(self):
+        '''
+        Get keyword arguments usable to create a :py:class:`Response` from
+        this nut's meta-information.
+        '''
         return dict(
             codes=self.codes,
             tmin=tmin_or_none(self.tmin),
@@ -1323,6 +2123,11 @@ class Nut(Object):
 
     @property
     def event_kwargs(self):
+        '''
+        Get keyword arguments usable to create a
+        :py:class:`~pyrocko.model.event.Event` from this nut's
+        meta-information.
+        '''
         return dict(
             name=self.codes,
             time=self.tmin,
@@ -1330,6 +2135,15 @@ class Nut(Object):
 
     @property
     def trace_kwargs(self):
+        '''
+        Get keyword arguments usable to create a
+        :py:class:`~pyrocko.trace.Trace` matching this nut's meta-
+        information.
+
+        :py:class:`~pyrocko.trace.Trace`'s ``tmax`` is the time of the last
+        sample while :py:class:`Nut`'s ``tmax`` is one delta more to simplify
+        continuity checks.
+        '''
         network, station, location, channel, extra = self.codes
 
         return dict(
@@ -1344,10 +2158,21 @@ class Nut(Object):
 
     @property
     def dummy_trace(self):
+        '''
+        Get a lightweight, meta-information-only stand-in for a
+        :py:class:`~pyrocko.trace.Trace`.
+
+        :rtype:
+            :py:class:`DummyTrace`
+        '''
         return DummyTrace(self)
 
     @property
     def summary_entries(self):
+        '''
+        Get tuple of one-line summary values, for use with
+        :py:func:`~pyrocko.util.fmt_summary`.
+        '''
         if self.tmin == self.tmax:
             ts = util.time_to_str(self.tmin)
         else:
@@ -1363,6 +2188,9 @@ class Nut(Object):
 
     @property
     def summary(self):
+        '''
+        One-line summary of the nut.
+        '''
         return util.fmt_summary(self.summary_entries, (10, 16, 20, 0))
 
 
@@ -1422,8 +2250,24 @@ def group_channels(nuts):
 
 
 class DummyTrace(object):
+    '''
+    Lightweight, meta-information-only stand-in for a
+    :py:class:`~pyrocko.trace.Trace`, backed by a :py:class:`Nut`.
+
+    Exposes the subset of :py:class:`~pyrocko.trace.Trace`'s interface
+    (``tmin``, ``tmax``, ``deltat``, ``network``/``station``/``location``/
+    ``channel``/``extra``, ``nslc_id``, :py:meth:`overlaps`) needed where a
+    trace-like object is expected but no waveform data has been loaded,
+    see :py:attr:`Nut.dummy_trace`.
+    '''
 
     def __init__(self, nut):
+        '''
+        :param nut:
+            Nut to represent.
+        :type nut:
+            :py:class:`Nut`
+        '''
         self.nut = nut
         self.codes = nut.codes
         self.meta = {}
@@ -1465,6 +2309,23 @@ class DummyTrace(object):
         return self.codes.extra
 
     def overlaps(self, tmin, tmax):
+        '''
+        Check if the represented nut's time span overlaps with a given
+        time span.
+
+        :param tmin:
+            Start time of query interval.
+        :type tmin:
+            :py:func:`~pyrocko.util.get_time_float`
+
+        :param tmax:
+            End time of query interval.
+        :type tmax:
+            :py:func:`~pyrocko.util.get_time_float`
+
+        :rtype:
+            bool
+        '''
         return not (tmax < self.nut.tmin or self.nut.tmax < tmin)
 
 
@@ -1512,6 +2373,11 @@ class Coverage(Object):
 
     @classmethod
     def from_values(cls, args):
+        '''
+        Create coverage object from a
+        ``(pattern, codes, deltat, tmin, tmax, changes, kind_id)`` tuple
+        (internal use).
+        '''
         pattern, codes, deltat, tmin, tmax, changes, kind_id = args
         return cls(
             kind_id=kind_id,
@@ -1524,6 +2390,10 @@ class Coverage(Object):
 
     @property
     def summary_entries(self):
+        '''
+        Get tuple of one-line summary values, for use with
+        :py:func:`~pyrocko.util.fmt_summary`.
+        '''
         ts = '%s - %s' % (
             util.time_to_str(self.tmin),
             util.time_to_str(self.tmax))
@@ -1543,12 +2413,19 @@ class Coverage(Object):
 
     @property
     def summary(self):
+        '''
+        One-line summary of the coverage.
+        '''
         return util.fmt_summary(
             self.summary_entries,
             (10, 16, 20, 55, 10, 4, 0))
 
     @property
     def sample_rate(self):
+        '''
+        Sampling rate [Hz], derived from :py:attr:`deltat`, or ``None`` if
+        unset.
+        '''
         if self.deltat is None:
             return None
         elif self.deltat == 0.0:
@@ -1558,6 +2435,10 @@ class Coverage(Object):
 
     @property
     def labels(self):
+        '''
+        Get ``(codes, sample_rate)`` tuple of display labels, e.g. for use
+        as plot annotations.
+        '''
         srate = self.sample_rate
         return (
             ('%s' % str(self.codes)),
@@ -1565,6 +2446,10 @@ class Coverage(Object):
 
     @property
     def total(self):
+        '''
+        Total duration [s] covered by normal (non-gap) data, or ``None``
+        if :py:attr:`changes` is unset.
+        '''
         total_t = None
         for tmin, tmax, _ in self.iter_spans():
             total_t = (total_t or 0.0) + (tmax - tmin)
@@ -1572,6 +2457,14 @@ class Coverage(Object):
         return total_t
 
     def iter_spans(self):
+        '''
+        Iterate over covered time spans.
+
+        :yields:
+            ``(tmin, tmax, count)`` tuples, where ``count`` is the number
+            of overlapping/redundant data pieces covering the span (1 for
+            normal coverage, higher for duplicate/redundant data).
+        '''
         if self.changes is None:
             return
 
@@ -1585,6 +2478,19 @@ class Coverage(Object):
             last = (t, count)
 
     def iter_uncovered_by(self, other):
+        '''
+        Iterate over time spans covered here but not in another coverage.
+
+        :param other:
+            Coverage to compare against.
+        :type other:
+            :py:class:`Coverage`
+
+        :yields:
+            ``(tmin, tmax, ia, ib)`` tuples, where ``ia``/``ib`` are the
+            indices into this/the other coverage's :py:attr:`changes` at
+            the start of the yielded span.
+        '''
         if None in (self.changes, other.changes):
             return
 
@@ -1615,6 +2521,18 @@ class Coverage(Object):
             last = (t, ca, cb)
 
     def iter_uncovered_by_combined(self, other):
+        '''
+        Like :py:meth:`iter_uncovered_by`, but merging adjacent spans
+        belonging to the same gap in ``other``.
+
+        :param other:
+            Coverage to compare against.
+        :type other:
+            :py:class:`Coverage`
+
+        :yields:
+            ``(tmin, tmax)`` tuples.
+        '''
         ib_last = None
         group = None
         for tmin, tmax, _, ib in self.iter_uncovered_by(other):
@@ -1631,6 +2549,15 @@ class Coverage(Object):
             yield (group[0][0], group[-1][1])
 
     def changes_as_arrays(self):
+        '''
+        Get :py:attr:`changes` as a pair of NumPy arrays.
+
+        :returns:
+            ``(times, counts)``, or ``(None, None)`` if :py:attr:`changes`
+            is unset.
+        :rtype:
+            :py:class:`tuple` of 2 :py:class:`numpy.ndarray`
+        '''
         if self.changes is None:
             return None, None
 
@@ -1640,6 +2567,25 @@ class Coverage(Object):
         return times, counts
 
     def contiguous(self, tmin, tmax):
+        '''
+        Get coverage count for a time span, if constant throughout.
+
+        :param tmin:
+            Start of time span to check.
+        :type tmin:
+            :py:func:`~pyrocko.util.get_time_float`
+
+        :param tmax:
+            End of time span to check.
+        :type tmax:
+            :py:func:`~pyrocko.util.get_time_float`
+
+        :returns:
+            The coverage count if it is constant across ``[tmin, tmax]``,
+            or ``-1`` if it changes within the span or is unknown.
+        :rtype:
+            int
+        '''
 
         if self.changes is None or len(self.changes) < 1:
             return -1
@@ -1657,6 +2603,17 @@ class Coverage(Object):
         return count
 
     def get(self, time):
+        '''
+        Get coverage count at a given time instant.
+
+        :param time:
+            Time instant to query.
+        :type time:
+            :py:func:`~pyrocko.util.get_time_float`
+
+        :rtype:
+            int
+        '''
         for (t, v) in self.changes:
             if t <= time:
                 return v
@@ -1676,6 +2633,34 @@ def same_or_none(xs):
 
 
 def join_coverages(coverages, tbleed=0.0):
+    '''
+    Combine several coverages into one, merging their change points.
+
+    :param coverages:
+        Coverages to be combined, e.g. of several channels belonging to
+        the same sensor, for which overall combined data availability is
+        of interest.
+    :type coverages:
+        iterable of :py:class:`Coverage` objects
+
+    :param tbleed:
+        Time interval to be removed at coverage edges and gaps [s]. This can be
+        used, e.g. to track edge effect propagation through processing steps.
+    :type tbleed:
+        float
+
+    :returns:
+        Combined coverage. Its :py:attr:`~Coverage.kind_id`/
+        :py:attr:`~Coverage.deltat` are set only if all input coverages
+        agree on them, else left unset (``None``); its
+        :py:attr:`~Coverage.pattern`/:py:attr:`~Coverage.codes` are always
+        left unset.
+    :rtype:
+        :py:class:`Coverage`
+
+    :raises pyrocko.trace.NoData:
+        If ``coverages`` is empty, or the combined time span is empty.
+    '''
     from pyrocko import trace
 
     if not coverages:
@@ -1726,7 +2711,36 @@ def join_coverages(coverages, tbleed=0.0):
 
 
 def make_rich_coverage(kinds, coverages):
+    '''
+    Combine several coverages of the same codes but different content
+    kinds into one, encoding each kind's coverage state in separate bits
+    of the combined :py:attr:`~Coverage.changes` counts.
 
+    :param kinds:
+        Content kinds to encode, in the order their coverage states are
+        packed into the combined counts (2 bits per kind, low bit first,
+        see :py:meth:`~pyrocko.squirrel.base.Squirrel.get_rich_coverage`
+        for the kinds and their order used there).
+    :type kinds:
+        :py:class:`list` of :py:class:`str`
+
+    :param coverages:
+        Coverages to be combined, all sharing the same
+        :py:attr:`~Coverage.codes`, of the content kinds given in
+        ``kinds`` (any kind may be represented multiple times, or not at
+        all).
+    :type coverages:
+        iterable of :py:class:`Coverage` objects
+
+    :returns:
+        Combined coverage with ``kind_id=None`` and each change point's
+        count encoding, per kind, ``0`` for no coverage, ``1`` for normal
+        coverage, ``2`` for duplicate/redundant coverage or ``3`` if the
+        coverage state could not be determined (see
+        :py:attr:`~Coverage.changes`).
+    :rtype:
+        :py:class:`Coverage`
+    '''
     assert len(coverages) >= 1
     assert all(coverage.codes == coverages[0].codes for coverage in coverages)
     tmin = min(coverage.tmin for coverage in coverages)

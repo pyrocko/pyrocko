@@ -37,10 +37,37 @@ g_config_filename = 'config.yaml'
 
 
 def get_config_path(squirrel_path):
+    '''
+    Get path of environment's configuration file, given its directory.
+
+    :param squirrel_path:
+        Path to the Squirrel environment directory (``'.squirrel'`` or the
+        global cache directory).
+    :type squirrel_path:
+        str
+    '''
     return os.path.join(squirrel_path, g_config_filename)
 
 
 def get_squirrel_path(path=None):
+    '''
+    Detect the Squirrel environment directory relevant for a given path.
+
+    :param path:
+        Directory path to use as starting point for the search. By
+        default, the current working directory is used. Searches the
+        given (or current) directory and its parents upwards for a
+        ``'squirrel'`` or ``'.squirrel'`` directory containing an already
+        initialized database; falls back to the user's global Squirrel
+        cache directory if none is found.
+    :type path:
+        str
+
+    :returns:
+        Detected environment directory path.
+    :rtype:
+        str
+    '''
     if path is None:
         path = os.curdir
 
@@ -134,12 +161,33 @@ class Environment(HasPaths):
     Configuration object providing paths to database and cache.
     '''
 
-    database_path = Path.T(optional=True)
-    cache_path = Path.T(optional=True)
-    persistent = String.T(optional=True)
+    database_path = Path.T(
+        optional=True,
+        help='Path to the SQLite database file holding the index.')
+    cache_path = Path.T(
+        optional=True,
+        help='Path to the directory used for cached content, e.g. '
+             'downloaded waveforms.')
+    persistent = String.T(
+        optional=True,
+        help='Name of a persistent selection to reuse, or ``None`` to use '
+             'a temporary selection (see '
+             ':py:class:`~pyrocko.squirrel.selection.Selection`).')
 
     @classmethod
     def make(cls, squirrel_path):
+        '''
+        Create a new environment configuration for a given directory.
+
+        :param squirrel_path:
+            Path to the Squirrel environment directory. Used as base path
+            for :py:attr:`database_path`/:py:attr:`cache_path`.
+        :type squirrel_path:
+            str
+
+        :rtype:
+            :py:class:`Environment`
+        '''
         env = cls(
             database_path=g_db_filename,
             cache_path=g_cache_dirname)
@@ -149,6 +197,22 @@ class Environment(HasPaths):
 
     @classmethod
     def load(cls, squirrel_path):
+        '''
+        Load environment configuration from a directory's config file.
+
+        :param squirrel_path:
+            Path to the Squirrel environment directory containing the
+            configuration file (see :py:func:`get_config_path`).
+        :type squirrel_path:
+            str
+
+        :rtype:
+            :py:class:`Environment`
+
+        :raises SquirrelError:
+            If the config file cannot be read or does not contain a valid
+            :py:class:`Environment`.
+        '''
         path = get_config_path(squirrel_path)
         try:
             env = load(filename=path)

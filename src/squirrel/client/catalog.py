@@ -29,7 +29,40 @@ logger = logging.getLogger('psq.client.catalog')
 
 
 class Link(object):
+    '''
+    Chain link representing a locally mirrored time span of a
+    :py:class:`CatalogSource`'s remote catalog (internal use).
+    '''
+
     def __init__(self, tmin, tmax, tmodified, nevents=-1, content_id=None):
+        '''
+        :param tmin:
+            Start of the covered time span.
+        :type tmin:
+            :py:func:`~pyrocko.util.get_time_float`
+
+        :param tmax:
+            End of the covered time span.
+        :type tmax:
+            :py:func:`~pyrocko.util.get_time_float`
+
+        :param tmodified:
+            Time at which the link was last queried/refreshed.
+        :type tmodified:
+            :py:func:`~pyrocko.util.get_time_float`
+
+        :param nevents:
+            Number of events covered by this link, or ``-1`` if not yet
+            queried.
+        :type nevents:
+            int
+
+        :param content_id:
+            Hash identifying the on-disk file holding this link's events,
+            or ``None`` if it covers no events.
+        :type content_id:
+            str
+        '''
         self.tmin = tmin
         self.tmax = tmax
         self.tmodified = tmodified
@@ -45,10 +78,25 @@ class Link(object):
 
 
 class NoSuchCatalog(Exception):
-    pass
+    '''
+    Raised when an unknown catalog name is requested, see
+    :py:func:`get_catalog`.
+    '''
 
 
 def get_catalog(name):
+    '''
+    Get online catalog client by name.
+
+    :param name:
+        Catalog name, one of ``'geofon'``, ``'gcmt'``, ``'isc'`` or
+        ``'usgs'``.
+    :type name:
+        str
+
+    :raises NoSuchCatalog:
+        If ``name`` is not one of the known catalogs.
+    '''
     if name == 'geofon':
         from pyrocko.client.geofon import Geofon
         return Geofon()
@@ -109,6 +157,11 @@ class CatalogSource(Source):
              'used.')
 
     def __init__(self, catalog, query_args=None, **kwargs):
+        '''
+        Create catalog data source.
+
+        Arguments are as for the Guts fields above.
+        '''
         Source.__init__(self, catalog=catalog, query_args=query_args, **kwargs)
 
         self._hash = self.make_hash()
@@ -119,12 +172,31 @@ class CatalogSource(Source):
         self._cache_path = None
 
     def get_cache_path(self):
+        '''
+        Get path to this source's on-disk cache directory.
+
+        :rtype:
+            str
+        '''
         return self._cache_path
 
     def describe(self):
+        '''
+        Get short identifying description of the source.
+
+        :rtype:
+            str
+        '''
         return 'catalog:%s:%s' % (self.catalog, self.get_hash())
 
     def setup(self, squirrel, check=True, upgrade=False):
+        '''
+        Set up cache directory and add already-downloaded local events to
+        the squirrel.
+
+        See :py:meth:`~pyrocko.squirrel.client.base.Source.setup` for the
+        parameters.
+        '''
         self._force_query_age_max = self.anxious
         self._catalog = get_catalog(self.catalog)
 
@@ -142,6 +214,16 @@ class CatalogSource(Source):
             self._add_events_to_squirrel(squirrel)
 
     def make_hash(self):
+        '''
+        Compute hash identifying this source's configuration.
+
+        Used to distinguish between differently-configured
+        :py:class:`CatalogSource` instances pointing at the same
+        :py:attr:`catalog` when choosing on-disk cache locations.
+
+        :rtype:
+            str
+        '''
         s = self.catalog
         if self.query_args is not None:
             s += ','.join(
@@ -153,9 +235,34 @@ class CatalogSource(Source):
         return ehash(s)
 
     def get_hash(self):
+        '''
+        Get hash identifying this source's configuration (see
+        :py:meth:`make_hash`).
+
+        :rtype:
+            str
+        '''
         return self._hash
 
     def update_event_inventory(self, squirrel, constraint=None):
+        '''
+        Query and cache events for a given constraint, refreshing any
+        locally mirrored time spans found outdated (see
+        :py:attr:`expires`/:py:attr:`anxious`).
+
+        :param squirrel:
+            Squirrel instance the source is attached to.
+        :type squirrel:
+            :py:class:`~pyrocko.squirrel.base.Squirrel`
+
+        :param constraint:
+            Selection of times to be brought up to date. Required; if its
+            :py:attr:`~pyrocko.squirrel.client.base.Constraint.tmin`/
+            ``tmax`` are unset, the current data holdings' time span is
+            used instead.
+        :type constraint:
+            :py:class:`~pyrocko.squirrel.client.base.Constraint`
+        '''
 
         with LockDir(self._cache_path):
             self._load_chain()
@@ -327,6 +434,14 @@ class CatalogSource(Source):
         return Link(tmin, tmax, tmodified, len(events), content_id)
 
     def query_args_typed(self):
+        '''
+        Get :py:attr:`query_args` with known numeric keys (magnitude,
+        latitude, longitude and depth ranges) converted from ``str`` to
+        ``float``.
+
+        :rtype:
+            dict
+        '''
         if self.query_args is None:
             return {}
         else:

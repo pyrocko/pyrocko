@@ -44,6 +44,28 @@ def _translate_path_template(s):
 
 
 def time_to_template_vars(prefix, t):
+    '''
+    Get dict of path-template substitution variables for a time instant.
+
+    :param prefix:
+        Prefix to prepend to each generated variable name (e.g.
+        ``'wmin'`` or ``'wmax'``).
+    :type prefix:
+        str
+
+    :param t:
+        Time instant to be converted.
+    :type t:
+        :py:func:`~pyrocko.util.get_time_float`
+
+    :returns:
+        Dict with keys ``'<prefix>_year'``, ``'<prefix>_month'``,
+        ``'<prefix>_day'``, ``'<prefix>_jday'``, ``'<prefix>_hour'``,
+        ``'<prefix>_minute'``, ``'<prefix>_second'`` and (for backwards
+        compatibility) ``'<prefix>'``.
+    :rtype:
+        dict
+    '''
     d = dict(zip(
             [prefix + '_' + var
              for var in [
@@ -55,6 +77,37 @@ def time_to_template_vars(prefix, t):
 
 
 def iter_windows(tmin, tmax, tinc, tinc_nonuniform):
+    '''
+    Iterate over time windows covering a given time span.
+
+    :param tmin:
+        Start of the time span to be covered.
+    :type tmin:
+        :py:func:`~pyrocko.util.get_time_float`
+
+    :param tmax:
+        End of the time span to be covered.
+    :type tmax:
+        :py:func:`~pyrocko.util.get_time_float`
+
+    :param tinc:
+        Window length [s], or ``None`` to yield a single window covering
+        ``[tmin, tmax]``.
+    :type tinc:
+        float
+
+    :param tinc_nonuniform:
+        If given, ``tinc`` is ignored and windows follow non-uniform
+        calendar boundaries instead: ``'month'`` or ``'year'``.
+    :type tinc_nonuniform:
+        str
+
+    :yields:
+        ``(wmin, wmax)`` tuples.
+
+    :raises SquirrelError:
+        If ``tinc_nonuniform`` is set to an unsupported value.
+    '''
     if tinc is None:
         yield tmin, tmax
     elif tinc_nonuniform is None:
@@ -91,6 +144,25 @@ class StorageSchemeLayout(guts.Object):
         help='Template for file paths.')
 
     def get_additional(self, wmin, wmax):
+        '''
+        Get path-template substitution variables for a time window.
+
+        :param wmin:
+            Start of the window.
+        :type wmin:
+            :py:func:`~pyrocko.util.get_time_float`
+
+        :param wmax:
+            End of the window.
+        :type wmax:
+            :py:func:`~pyrocko.util.get_time_float`
+
+        :returns:
+            Combined ``'wmin_*'`` and ``'wmax_*'`` variables, see
+            :py:func:`time_to_template_vars`.
+        :rtype:
+            dict
+        '''
         d = {}
         d.update(time_to_template_vars('wmin', wmin))
         d.update(time_to_template_vars('wmax', wmax))
@@ -98,6 +170,13 @@ class StorageSchemeLayout(guts.Object):
 
     @classmethod
     def describe_header(self):
+        '''
+        Get column header line matching :py:meth:`describe`'s output, for
+        display purposes.
+
+        :rtype:
+            str
+        '''
         return '%8s %11s %6s %10s %12s %10s %6s %4s %8s %6s' % (
             'rate',
             'deltat',
@@ -111,6 +190,19 @@ class StorageSchemeLayout(guts.Object):
             'levels')
 
     def describe(self, deltat):
+        '''
+        Get one-line summary of file sizing for a given sampling interval,
+        for display purposes (see :py:meth:`describe_header` for the
+        matching column header).
+
+        :param deltat:
+            Sampling interval [s] to describe file sizing for.
+        :type deltat:
+            float
+
+        :rtype:
+            str
+        '''
         rate = 1.0 / deltat
         tblock = nice_time_tick_inc_approx_secs(deltat * nsamples_block)
         tsegment = deltat * nsamples_segment
@@ -151,18 +243,51 @@ class StorageScheme(guts.Object):
         help='Description of the storage scheme.')
     mseed_record_length = guts.IntChoice.T(
         optional=True,
-        choices=list(io.mseed.VALID_RECORD_LENGTHS))
+        choices=list(io.mseed.VALID_RECORD_LENGTHS),
+        help='MiniSEED record length [bytes] to use when saving. '
+             'Default: 4096.')
     mseed_steim = guts.IntChoice.T(
         optional=True,
-        choices=[1, 2])
+        choices=[1, 2],
+        help='MiniSEED STEIM compression variant to use when saving, '
+             '``1`` or ``2``. Default: 2.')
 
     def post_init(self):
+        '''
+        Guts post-initialization hook, setting up the (unset) base path.
+        '''
         self._base_path = None
 
     def set_base_path(self, base_path):
+        '''
+        Set base directory prepended to layout path templates.
+
+        :param base_path:
+            Base directory path, or ``None`` to use path templates as-is.
+        :type base_path:
+            str
+        '''
         self._base_path = base_path
 
     def select_layout(self, deltat):
+        '''
+        Select the most appropriate directory layout for a given sampling
+        interval.
+
+        :param deltat:
+            Sampling interval [s] to select a layout for.
+        :type deltat:
+            float
+
+        :returns:
+            The first of :py:attr:`layouts` whose
+            :py:attr:`~StorageSchemeLayout.time_increment` is large enough
+            to hold :py:attr:`min_segments_per_file` segments at the given
+            sampling interval (or has no time increment restriction),
+            falling back to the last layout.
+        :rtype:
+            :py:class:`StorageSchemeLayout`
+        '''
         tsegment = deltat * nsamples_segment
         twant = tsegment * self.min_segments_per_file
         for layout in self.layouts:
@@ -381,6 +506,17 @@ g_schemes = dict((scheme.name, scheme) for scheme in _g_schemes_list)
 
 
 def get_storage_scheme(name='default'):
+    '''
+    Get a fresh copy of a named built-in storage scheme.
+
+    :param name:
+        Name of the storage scheme, see :py:class:`StorageSchemeChoice`.
+    :type name:
+        str
+
+    :rtype:
+        :py:class:`StorageScheme`
+    '''
     return guts.clone(g_schemes[name])
 
 

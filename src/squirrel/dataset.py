@@ -34,10 +34,18 @@ km = 1000.
 
 
 class PersistentID(StringPattern):
+    '''
+    Pattern to validate persistent selection names (see
+    :py:class:`~pyrocko.squirrel.selection.Selection`).
+    '''
     pattern = re_persistent_name
 
 
 def make_builtin_datasets():
+    '''
+    Build the dict of built-in, ready-to-use example datasets, keyed by
+    their ``':<name>'`` dataset id (see :py:func:`read_dataset`).
+    '''
     datasets = {}
     for site in ['isc', 'geofon', 'gcmt', 'gcmt_ndk']:
         for magnitude_min in [4.0, 5.0, 6.0, 7.0]:
@@ -115,6 +123,11 @@ g_builtin_datasets = None
 
 
 def get_builtin_datasets():
+    '''
+    Get the dict of built-in, ready-to-use example datasets, keyed by their
+    ``':<name>'`` dataset id (see :py:func:`read_dataset`), building it on
+    first call.
+    '''
     global g_builtin_datasets
     g_builtin_datasets = make_builtin_datasets()
     return g_builtin_datasets
@@ -124,10 +137,35 @@ class Dataset(HasPaths):
     '''
     Dataset description.
     '''
-    sources = List.T(Source.T())
-    comment = String.T(optional=True)
+    sources = List.T(
+        Source.T(),
+        help='Local and remote data sources to be added to the squirrel.')
+    comment = String.T(
+        optional=True,
+        help='Description of the dataset, for display purposes.')
 
     def setup(self, squirrel, check=True, upgrade=False):
+        '''
+        Add the dataset's sources to a squirrel instance.
+
+        :param squirrel:
+            Squirrel instance to be configured.
+        :type squirrel:
+            :py:class:`~pyrocko.squirrel.base.Squirrel`
+
+        :param check:
+            If ``True``, check file modification times of already
+            indexed local files (slow). If ``False``, use Squirrel's fast
+            ``--optimistic`` mode instead.
+        :type check:
+            bool
+
+        :param upgrade:
+            If ``True``, automatically migrate any FDSN waveform archives
+            found using an outdated on-disk storage layout.
+        :type upgrade:
+            bool
+        '''
         for source in self.sources:
             squirrel.add_source(
                 source, check=check, upgrade=upgrade)

@@ -18,6 +18,28 @@ guts_prefix = 'squirrel'
 
 
 def get_matching(coverages, coverage):
+    '''
+    Find coverages with matching codes, best sampling-rate match first.
+
+    :param coverages:
+        Coverages to search.
+    :type coverages:
+        iterable of :py:class:`~pyrocko.squirrel.model.Coverage` objects
+
+    :param coverage:
+        Coverage to match against, by
+        :py:attr:`~pyrocko.squirrel.model.Coverage.codes` and, as a
+        tie-breaker for ordering, by
+        :py:attr:`~pyrocko.squirrel.model.Coverage.deltat`.
+    :type coverage:
+        :py:class:`~pyrocko.squirrel.model.Coverage`
+
+    :returns:
+        Matching coverages, with any having the same sampling rate as
+        ``coverage`` sorted first.
+    :rtype:
+        :py:class:`list` of :py:class:`~pyrocko.squirrel.model.Coverage`
+    '''
     matching = []
     for candidate in coverages:
         if candidate.codes == coverage.codes:
@@ -90,6 +112,10 @@ class SquirrelCheckProblem(Object):
 
 
 class KindChoiceWCR(StringChoice):
+    '''
+    Choice of content kind, restricted to ``'waveform'``, ``'channel'`` or
+    ``'response'`` (the kinds inspected by :py:func:`do_check`).
+    '''
     choices = ['waveform', 'channel', 'response']
 
 
@@ -107,6 +133,12 @@ class SquirrelCheckEntry(Object):
         help='Potential problems detected.')
 
     def get_text(self):
+        '''
+        Textual representation of this entry's check result.
+
+        :rtype:
+            str
+        '''
         lines = []
         lines.append('  %s: %s' % (
             self.codes.channel
@@ -125,7 +157,9 @@ class SquirrelCheck(Object):
     '''
     Container for Squirrel check results.
     '''
-    entries = List.T(SquirrelCheckEntry.T(), help='')
+    entries = List.T(
+        SquirrelCheckEntry.T(),
+        help='Check results, one entry per checked channel.')
 
     def get_nproblems(self):
         '''
