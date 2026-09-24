@@ -77,7 +77,7 @@ def iload(format, file_path, segment, content):
     if 'waveform' in content:
         nut.content = trace.Trace(
             ydata=s.data[0],
-            **nut.waveform_kwargs)
+            **nut.trace_kwargs)
 
     yield nut
     inut += 1

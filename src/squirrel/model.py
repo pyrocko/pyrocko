@@ -2055,24 +2055,6 @@ class Nut(Object):
         return tscale_to_kscale(self.tmax_seconds - self.tmin_seconds)
 
     @property
-    def waveform_kwargs(self):
-        '''
-        Get keyword arguments usable to create a
-        :py:class:`~pyrocko.trace.Trace` from this nut's meta-information.
-        '''
-        network, station, location, channel, extra = self.codes
-
-        return dict(
-            network=network,
-            station=station,
-            location=location,
-            channel=channel,
-            extra=extra,
-            tmin=self.tmin,
-            tmax=self.tmax,
-            deltat=self.deltat)
-
-    @property
     def waveform_promise_kwargs(self):
         '''
         Get keyword arguments usable to create a
