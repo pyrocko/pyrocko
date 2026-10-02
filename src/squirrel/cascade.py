@@ -14,6 +14,12 @@ from .storage import get_storage_scheme
 
 logger = logging.getLogger('psq.cascade')
 
+g_filenames_all = set()
+
+
+def check_append_hook(fn):
+    return fn in g_filenames_all
+
 
 def level_codes_check(ilevel, codes, method):
     if ilevel == 0:
@@ -37,7 +43,10 @@ def cascade(
         tmax=None,
         methods=['max', 'mean', 'min'],
         accessor_id='default',
-        storage_scheme='rug-store-100'):
+        storage_scheme='rug-store-100',
+        force=False,
+        append=False,
+        merge=False):
 
     assert kinds is None or kinds == ['carpet']
 
@@ -126,7 +135,14 @@ def cascade(
 
                         folded.data = folded.data.astype(num.float32)
 
-                        paths.extend(storage.save_carpets(folded))
+                        paths_this = storage.save_carpets(
+                            folded,
+                            overwrite=force,
+                            check_append_hook=check_append_hook if not (append or merge) else None,  # noqa
+                            check_append_merge=merge)
+
+                        paths.extend(paths_this)
+                        g_filenames_all.update(paths_this)
 
                 squirrel.advance_accessor(accessor_id, 'carpet')
 

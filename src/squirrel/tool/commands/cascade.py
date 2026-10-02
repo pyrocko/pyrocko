@@ -63,6 +63,28 @@ def setup(parser):
         metavar='PATH',
         help='Store output in directory PATH.')
 
+    parser.add_argument(
+        '--force',
+        dest='force',
+        action='store_true',
+        default=False,
+        help='Force overwriting of existing files.')
+
+    parser.add_argument(
+        '--append',
+        dest='append',
+        action='store_true',
+        default=False,
+        help='Append to existing files. Checks are preformed to ensure that '
+             'appended data has no overlap with already existing data.')
+
+    parser.add_argument(
+        '--merge',
+        dest='merge',
+        action='store_true',
+        default=False,
+        help='Merge with existing data in files.')
+
 
 def run(parser, args):
     from pyrocko.squirrel.cascade import cascade
@@ -89,4 +111,7 @@ def run(parser, args):
             storage_path=args.out_storage_path,
             nfold=args.nfold,
             methods=methods,
+            force=args.force,
+            append=args.append,
+            merge=args.merge,
             **args.squirrel_query)
