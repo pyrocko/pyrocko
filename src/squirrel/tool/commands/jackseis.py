@@ -62,6 +62,24 @@ def parse_rename_rule_from_string(s):
         return s
 
 
+def nonemin(a, b):
+    if a is None:
+        return b
+    elif b is None:
+        return a
+    else:
+        return min(a, b)
+
+
+def nonemax(a, b):
+    if a is None:
+        return b
+    elif b is None:
+        return a
+    else:
+        return max(a, b)
+
+
 class JackseisError(ToolError):
     pass
 
@@ -668,8 +686,8 @@ replacements. Examples: Direct replacement: ```XX``` - set all network codes to
                 for tr in traces:
                     try:
                         otr = tr.chop(
-                            max(twmin, tmin),
-                            min(twmax, tmax),
+                            nonemax(twmin, tmin),
+                            nonemin(twmax, tmax),
                             inplace=False)
 
                         chopped_traces.append(otr)
