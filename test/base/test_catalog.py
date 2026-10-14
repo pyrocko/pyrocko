@@ -95,7 +95,17 @@ class CatalogTestCase(unittest.TestCase):
         cat = catalog.ISC()
         tmin = util.stt('2009-02-22 05:00:00')
         tmax = util.stt('2009-02-22 19:00:00')
-        cat.get_events((tmin, tmax), magmin=5)
+        events = cat.get_events((tmin, tmax), magmin=5)
+
+        ev = events[-1]
+        cat.flush()
+        ev2 = cat.get_event(ev.name)
+        self.assertEqual(ev2.name, ev.name)
+        self.assertEqual(ev2.time, ev.time)
+        self.assertEqual(ev2.magnitude, ev.magnitude)
+
+        with self.assertRaises(catalog.NotFound):
+            cat.get_event('smi:ISC/evid=99999999999')
 
         markers = cat.get_phase_markers(
             (tmin, tmax), phases=['XXX'], station_codes=['XXXXX', 'YYYYY'])
