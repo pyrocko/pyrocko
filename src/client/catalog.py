@@ -8,6 +8,7 @@ Earthquake catalog data access.
 
 Namespace module including the
 :py:class:`~pyrocko.client.globalcmt.GlobalCMT`,
+:py:class:`~pyrocko.client.globalcmt.GlobalCMTNDK`,
 :py:class:`~pyrocko.client.geofon.Geofon`,
 :py:class:`~pyrocko.client.usgs.USGS`,
 :py:class:`~pyrocko.client.saxony.Saxony` and
@@ -15,7 +16,7 @@ Namespace module including the
 '''
 
 from .base_catalog import NotFound  # noqa
-from .globalcmt import GlobalCMT  # noqa
+from .globalcmt import GlobalCMT, GlobalCMTNDK  # noqa
 from .geofon import Geofon  # noqa
 from .usgs import USGS  # noqa
 from .saxony import Saxony  # noqa

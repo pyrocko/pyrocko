@@ -39,7 +39,7 @@ class PersistentID(StringPattern):
 
 def make_builtin_datasets():
     datasets = {}
-    for site in ['isc', 'geofon', 'gcmt']:
+    for site in ['isc', 'geofon', 'gcmt', 'gcmt_ndk']:
         for magnitude_min in [4.0, 5.0, 6.0, 7.0]:
             name = 'events-%s-m%g' % (site, magnitude_min)
             datasets[':' + name] = Dataset(
@@ -50,7 +50,7 @@ def make_builtin_datasets():
                 comment='Event catalog: %s, minimum magnitude: %g' % (
                     site, magnitude_min))
 
-    for site in ['geofon', 'gcmt']:
+    for site in ['geofon', 'gcmt', 'gcmt_ndk']:
         depth_min = 100*km
         for magnitude_min in [6.0, 7.0]:
             name = 'events-%s-m%g-d%g' % (site, magnitude_min, depth_min/km)
