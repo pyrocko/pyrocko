@@ -81,6 +81,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Cake ray-path plots: improved automatic determination of axes limits.
 - Pyrocko-GF: composite source models (`CombiSource` and friends) now
   check that their sub-sources are compatible with each other.
+- USGS catalog client: events are now named by their USGS event ID
+  (e.g. `us7000abcd`) instead of a name made from network and origin
+  time, and also report magnitude type and last update time. Event names
+  stored from earlier versions no longer match.
 
 ### Fixed
 - Squirrel: fixed a crash in `join_coverages` when given no or

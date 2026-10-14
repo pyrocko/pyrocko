@@ -9,11 +9,13 @@ Client to get earthquake catalog information from
 '''
 
 import time
+import json
 import logging
+from urllib.error import HTTPError
 
 from pyrocko import util, model
 from pyrocko.util import urlopen_ssl_check
-from .base_catalog import EarthquakeCatalog
+from .base_catalog import EarthquakeCatalog, NotFound
 
 logger = logging.getLogger('pyrocko.client.usgs')
 
@@ -71,13 +73,7 @@ class USGS(EarthquakeCatalog):
         if magmax != 10.:
             a('maxmagnitude=%g' % magmax)
 
-        url = 'https://earthquake.usgs.gov/fdsnws/event/1/query?' + '&'.join(p)
-
-        logger.debug('Opening URL: %s' % url)
-        page = urlopen_ssl_check(url).read()
-        logger.debug('Received page (%i bytes)' % len(page))
-
-        events = self._parse_events_page(page)
+        events = self._parse_events_page(self._query(p))
 
         for ev in events:
             self.events[ev.name] = ev
@@ -86,59 +82,69 @@ class USGS(EarthquakeCatalog):
             if time_range[0] <= ev.time and ev.time <= time_range[1]:
                 yield ev.name
 
-    def _parse_events_page(self, page):
+    def _query(self, p):
+        url = 'https://earthquake.usgs.gov/fdsnws/event/1/query?' + '&'.join(p)
 
-        import json
-        doc = json.loads(page.decode('utf-8'))
+        logger.debug('Opening URL: %s' % url)
+        try:
+            page = urlopen_ssl_check(url).read()
+        except HTTPError as e:
+            if e.code == 404:
+                raise NotFound(url)
 
-        events = []
-        for feat in doc['features']:
-            props = feat['properties']
-            geo = feat['geometry']
-            lon, lat, depth = [float(x) for x in geo['coordinates']]
-            t = util.str_to_time('1970-01-01 00:00:00') + \
-                props['time'] * 0.001
+            raise
 
-            if props['mag'] is not None:
-                mag = float(props['mag'])
-            else:
-                mag = None
+        logger.debug('Received page (%i bytes)' % len(page))
+        return json.loads(page.decode('utf-8'))
 
-            if props['place'] is not None:
-                region = props['place'].encode('ascii', 'replace').decode()
-            else:
-                region = None
+    def _parse_events_page(self, doc):
+        return [self._feature_to_event(feat) for feat in doc['features']]
 
-            catalog = str(props['net'].upper())
-            name = 'USGS-%s-' % catalog + util.time_to_str(
-                t, format='%Y-%m-%d_%H-%M-%S.3FRAC')
+    def _feature_to_event(self, feat):
+        props = feat['properties']
+        geo = feat['geometry']
+        lon, lat, depth = [float(x) for x in geo['coordinates']]
+        t = util.str_to_time('1970-01-01 00:00:00') + props['time'] * 0.001
 
-            ev = model.Event(
-                lat=lat,
-                lon=lon,
-                time=t,
-                name=name,
-                depth=depth*1000.,
-                magnitude=mag,
-                region=region,
-                catalog=catalog)
+        if props['mag'] is not None:
+            mag = float(props['mag'])
+        else:
+            mag = None
 
-            events.append(ev)
+        if props['place'] is not None:
+            region = props['place'].encode('ascii', 'replace').decode()
+        else:
+            region = None
 
-        return events
+        extras = {}
+        if props.get('updated') is not None:
+            extras['catalog_time_modified'] = props['updated'] * 0.001
+
+        return model.Event(
+            lat=lat,
+            lon=lon,
+            time=t,
+            name=str(feat['id']),
+            depth=depth*1000.,
+            magnitude=mag,
+            magnitude_type=props.get('magType') or None,
+            region=region,
+            catalog=str(props['net'].upper()),
+            extras=extras)
 
     def get_event(self, name):
-        if name not in self.events:
-            t = self._name_to_date(name)
-            for name2 in self.iter_event_names(
-                    time_range=(t-24*60*60, t+24*60*60)):
+        '''
+        Get event by USGS event ID.
 
-                if name2 == name:
-                    break
+        Any of the IDs associated with an event can be used. The returned
+        event has the preferred ID as its name.
+        '''
+
+        if name not in self.events:
+            ev = self._feature_to_event(
+                self._query(['format=geojson', 'eventid=%s' % name]))
+
+            self.events[ev.name] = ev
+            self.events[name] = ev
 
         return self.events[name]
-
-    def _name_to_date(self, name):
-        ds = name[-23:]
-        t = util.str_to_time(ds, format='%Y-%m-%d_%H-%M-%S.3FRAC')
-        return t
