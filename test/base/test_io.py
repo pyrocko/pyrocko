@@ -423,6 +423,9 @@ class IOTestCase(unittest.TestCase):
 
         # only event-level creation info
         (e,) = load('test.quakeml')
+        assert e.name == 'quakeml:ci.anss.org/event/09082344'
+        assert e.extras['catalog_origin_id'] \
+            == 'quakeml:ci.anss.org/origin/09082344'
         assert e.extras['catalog_time_modified'] \
             == util.stt('2013-03-05 19:04:21.285')
         assert e.extras['catalog_version'] == '2'
