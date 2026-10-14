@@ -1011,6 +1011,28 @@ class Event(Object):
 
         ev.region = self.get_effective_region()
 
+        # Revision info: latest creation time of any of the used elements,
+        # version of the origin or, if not available, of the event.
+        used = [self, origin, mag, foc_mech]
+        if foc_mech:
+            used.extend(foc_mech.moment_tensor_list[:1])
+
+        creation_infos = [
+            x.creation_info for x in used
+            if x is not None and x.creation_info is not None]
+
+        creation_times = [
+            ci.creation_time for ci in creation_infos
+            if ci.creation_time is not None]
+
+        if creation_times:
+            ev.extras['catalog_time_modified'] = max(creation_times)
+
+        for x in (origin, self):
+            if x.creation_info and x.creation_info.version is not None:
+                ev.extras['catalog_version'] = str(x.creation_info.version)
+                break
+
         return ev
 
     def get_effective_region(self):

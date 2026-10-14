@@ -415,6 +415,35 @@ class IOTestCase(unittest.TestCase):
         qml3 = guts.load_xml(string=s)
         assert qml2.dump_xml() == qml3.dump_xml()
 
+    def testReadQuakeMLCreationInfo(self):
+        def load(fn):
+            fpath = common.test_data_file(fn)
+            return quakeml.QuakeML.load_xml(
+                filename=fpath).get_pyrocko_events()
+
+        # only event-level creation info
+        (e,) = load('test.quakeml')
+        assert e.extras['catalog_time_modified'] \
+            == util.stt('2013-03-05 19:04:21.285')
+        assert e.extras['catalog_version'] == '2'
+
+        # event created earlier than origin, focal mechanism latest
+        e = load('example-catalog.xml')[0]
+        assert e.extras['catalog_time_modified'] \
+            >= util.stt('2017-10-27 09:06:38')
+        assert e.extras['catalog_version'] == '100'
+
+        # origin version preferred over event
+        (e,) = load('usgs.quakeml')
+        assert e.extras['catalog_time_modified'] \
+            >= util.stt('2018-02-14 03:37:36')
+        assert e.extras['catalog_version'] == '75'
+
+        # no creation times at all
+        (e,) = load('isc.quakeml')
+        assert 'catalog_time_modified' not in e.extras
+        assert 'catalog_version' not in e.extras
+
     def testReadQuakeML2(self):
         for fn in ['usgs.quakeml', 'isc.quakeml']:
             fpath = common.test_data_file(fn)
