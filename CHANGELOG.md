@@ -85,6 +85,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (e.g. `us7000abcd`) instead of a name made from network and origin
   time, and also report magnitude type and last update time. Event names
   stored from earlier versions no longer match.
+- QuakeML: events read from QuakeML are now named by the ID of the event
+  instead of the ID of its origin, so the name stays the same when the
+  event's location is revised.
 
 ### Fixed
 - Squirrel: fixed a crash in `join_coverages` when given no or

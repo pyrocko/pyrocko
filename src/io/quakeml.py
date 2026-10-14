@@ -962,6 +962,10 @@ class Event(Object):
         Uses *preferred* origin, magnitude, and moment tensor. If no preferred
         item is specified, it picks the first from the list and emits a
         warning.
+
+        The returned event is named by the public ID of the QuakeML event.
+        The public ID of the origin used is available as
+        ``extras['catalog_origin_id']``.
         '''
 
         origin = self.preferred_origin
@@ -977,6 +981,8 @@ class Event(Object):
                 'No origin available for event: %s' % self.public_id)
 
         ev = origin.get_pyrocko_event()
+        ev.name = self.public_id
+        ev.extras['catalog_origin_id'] = origin.public_id
 
         foc_mech = self.preferred_focal_mechanism
         if not foc_mech and self.focal_mechanism_list:
