@@ -85,6 +85,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (e.g. `us7000abcd`) instead of a name made from network and origin
   time, and also report magnitude type and last update time. Event names
   stored from earlier versions no longer match.
+- GEOFON catalog client: now uses GEOFON's FDSN event service. Results
+  are more precise, include moment tensors directly and report the time
+  of the latest revision. Magnitudes and the `geofon_status` tag are as
+  in GEOFON's own event lists, but magnitudes and locations are no longer
+  rounded. The `geofon_category` tag is gone; new tags give the evaluation
+  mode and status of the origin.
 - QuakeML: events read from QuakeML are now named by the ID of the event
   instead of the ID of its origin, so the name stays the same when the
   event's location is revised.
