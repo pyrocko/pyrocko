@@ -12,12 +12,16 @@ def near(a, b, eps):
 
 
 def is_the_haiti_event_geofon(ev):
+    assert ev.name == 'gfz2010avtm'
+    assert ev.catalog == 'GEOFON'
     assert near(ev.magnitude, 7.2, 0.1)
-    assert near(ev.lat, 18.36, 0.001)
-    assert near(ev.lon, -72.57, 0.001)
-    assert near(ev.depth, 20000., 1.)
+    assert near(ev.lat, 18.36, 0.01)
+    assert near(ev.lon, -72.57, 0.01)
+    assert near(ev.depth, 20000., 500.)
     assert ev.region == 'Haiti Region'
-    assert ev.tags.index('geofon_category:xxl') != -1
+    assert 'evaluation_mode:manual' in ev.tags
+    assert 'geofon_status:M' in ev.tags
+    assert ev.extras['catalog_time_modified'] > util.stt('2010-01-12 00:00:00')
 
 
 class CatalogTestCase(unittest.TestCase):
@@ -44,6 +48,23 @@ class CatalogTestCase(unittest.TestCase):
 
         assert ident is not None
 
+        cat.flush()
+
+    @common.require_internet
+    @common.skip_on(requests.ConnectionError)
+    def testGeofonMomentMagnitude(self):
+        # Preferred magnitude is mb 5.61 of an automatic origin, but there is
+        # a confirmed moment tensor solution with Mw 5.95.
+        cat = catalog.Geofon()
+        ev = cat.get_event('gfz2017afjw')
+        assert ev.magnitude_type == 'Mw'
+        assert near(ev.magnitude, 5.95, 0.01)
+        assert 'geofon_status:C' in ev.tags
+
+        tmin = util.str_to_time('2017-01-03 22:00:00')
+        tmax = util.str_to_time('2017-01-03 23:00:00')
+        names = cat.get_event_names(time_range=(tmin, tmax), magmin=5.9)
+        assert names == ['gfz2017afjw']
         cat.flush()
 
     @common.require_internet

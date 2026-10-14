@@ -1096,7 +1096,7 @@ class SquirrelTestCase(unittest.TestCase):
             tempdir = os.path.join(self.tempdir, 'test_catalog')
             sq = squirrel.Squirrel(database=database)
             sq.add_catalog(
-                'geofon', cache_path=tempdir, query_args={'magmin': 6.0})
+                'geofon', cache_path=tempdir, query_args={'magmin': 5.9})
             sq.update(tmin=tmin, tmax=tmax)
             assert len(sq.get_events()) == 1
             sq.update(tmin=tmin, tmax=tmax2)
