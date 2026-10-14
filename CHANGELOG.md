@@ -99,6 +99,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   wrong order relative to rotation and filtering, and being skipped
   for some traces.
 - Fixed compatibility with newer versions of NumPy and Matplotlib.
+- ISC catalog client: looking up a single event by its name works again.
 
 ### Security
 - Web-based services: the session cookie-secret file is now created

@@ -11,10 +11,12 @@ Client to get earthquake catalog information from
 import logging
 import re
 
+from urllib.error import HTTPError
+
 from pyrocko import util
 from pyrocko.util import urlopen
 from pyrocko.io import quakeml
-from .base_catalog import EarthquakeCatalog
+from .base_catalog import EarthquakeCatalog, NotFound
 
 logger = logging.getLogger('pyrocko.client.isc')
 
@@ -124,15 +126,55 @@ class ISC(EarthquakeCatalog):
                 yield ev.name
 
     def get_event(self, name):
-        if name not in self.events:
-            t = self._name_to_date(name)
-            for name2 in self.iter_event_names(
-                    time_range=(t-24*60*60, t+24*60*60)):
+        '''
+        Get event by name, e.g. ``'smi:ISC/evid=11713537'``.
 
-                if name2 == name:
+        A plain ISC event ID, e.g. ``'11713537'``, is also accepted.
+        '''
+
+        if name not in self.events:
+            # Looked up through the bulletin search, around the event time,
+            # so that the event is converted the same way as in
+            # :py:meth:`iter_event_names`.
+            t = self._get_event_time(name)
+            for name2 in self.iter_event_names(time_range=(t-60., t+60.)):
+                if self._event_id(name2) == self._event_id(name):
+                    self.events[name] = self.events[name2]
                     break
 
+        if name not in self.events:
+            raise NotFound()
+
         return self.events[name]
+
+    def _event_id(self, name):
+        m = re.match(r'^(?:smi:[^/]+/evid=)?(\d+)$', name)
+        if not m:
+            raise NotFound()
+
+        return m.group(1)
+
+    def _get_event_time(self, name):
+        url = 'https://www.isc.ac.uk/fdsnws/event/1/query?eventid=%s' \
+            % self._event_id(name)
+
+        logger.debug('Opening URL: %s' % url)
+        try:
+            page = urlopen(url).read().decode()
+        except HTTPError as e:
+            if e.code == 404:
+                raise NotFound(url)
+
+            raise
+
+        if not page.strip():
+            raise NotFound(url)
+
+        events = quakeml.QuakeML.load_xml(string=page).get_pyrocko_events()
+        if not events:
+            raise NotFound(url)
+
+        return events[0].time
 
     def get_phase_markers(self, time_range, station_codes, phases):
         '''
@@ -197,8 +239,3 @@ class ISC(EarthquakeCatalog):
             m.nslc_ids = new_nslc_ids
 
         return markers
-
-    def _name_to_date(self, name):
-        ds = name[-23:]
-        t = util.str_to_time(ds, format='%Y-%m-%d_%H-%M-%S.3FRAC')
-        return t
