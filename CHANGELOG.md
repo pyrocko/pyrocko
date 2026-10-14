@@ -29,6 +29,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
       one, using wildcards where they differ.
     - Content objects (waveforms, channels, ...) gained an `overlaps`
       method to test whether two selections overlap in time.
+- New GlobalCMT catalog client `GlobalCMTNDK` (catalog name `gcmt_ndk`,
+  datasets `:events-gcmt_ndk-m...`). It downloads and caches the
+  official catalog files instead of querying the web search, which is
+  much faster, and reports when each solution was computed.
 - Live data streaming: added waveform input from ESP32-based recorders
   and from PulseAudio (e.g. a laptop's built-in microphone), for quick
   experiments in Snuffler.
