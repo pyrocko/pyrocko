@@ -42,7 +42,6 @@ class Show(SquirrelCommand):
 
     def setup(self, parser):
         add_mantra_arguments(parser)
-        parser.add_sensor_array_arguments()
         parser.add_squirrel_selection_arguments()
         parser.add_squirrel_query_arguments()
 
@@ -74,7 +73,6 @@ class Process(SquirrelCommand):
 
     def setup(self, parser):
         add_mantra_arguments(parser)
-        parser.add_sensor_array_arguments()
 
         parser.add_argument(
             '--tinc',
