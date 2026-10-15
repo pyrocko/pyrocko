@@ -103,6 +103,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Squirrel: fixed a crash in `join_coverages` when given no or
   non-overlapping coverages.
 - Squirrel: fixed loading of associated event data in the SAC backend.
+- Squirrel: online event catalogs no longer return most events several
+  times. Clear the Squirrel catalog cache to get rid of the duplicates
+  stored by earlier versions.
 - Response plots: fixed a plotting bug and added a `format` option to
   control the output file type.
 - Snuffler: fixed instrument-response removal being applied in the
