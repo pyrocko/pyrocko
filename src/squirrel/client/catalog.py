@@ -282,7 +282,7 @@ class CatalogSource(Source):
                         tpack_min, tpack_max, tmodified)
 
                     tpack_min = tpack_max
-                    events[:self._nevents_query_hint] = []
+                    events[:self._nevents_chunk_hint] = []
 
                 t += self._tquery
 
