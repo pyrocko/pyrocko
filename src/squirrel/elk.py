@@ -108,7 +108,7 @@ def scaling(magnitude):
 
 
 def effective_latlon(lat, lon, north, east):
-    return tuple(float(x) for x in orthodrome.ne_to_latlon(
+    return tuple(float(x) for x in orthodrome.ne_to_latlon_proj(
         lat, lon, north, east))
 
 
@@ -123,8 +123,7 @@ def surface_distance(
         if b_north != 0.0 or b_east != 0.0:
             b_lat, b_lon = effective_latlon(b_lat, b_lon, b_north, b_east)
 
-        return float(orthodrome.distance_accurate50m_numpy(
-            a_lat, a_lon, b_lat, b_lon)[0])
+        return float(orthodrome.distance_proj(a_lat, a_lon, b_lat, b_lon))
 
 
 def elk_distance(
