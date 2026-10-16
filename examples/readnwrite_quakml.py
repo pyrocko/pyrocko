@@ -15,5 +15,5 @@ events = qml.get_pyrocko_events()
 for event in events:
     print(event)
 
-# save events as pyrocko catalog:
-model.event.dump_events(events, filename='test_pyrocko.pf')
+# save events as pyrocko catalog in the newer YAML based format
+model.event.dump_events(events, filename='test_pyrocko.pf', format='yaml')
