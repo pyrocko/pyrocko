@@ -1,4 +1,8 @@
 import { createIfNeeded, colors, onResizeDebounced } from './common.js'
+import {
+    makeMagnitudeScale,
+    byMagnitudeAscending,
+} from './context_events.js'
 
 // A framework-agnostic world-map widget: it neither imports Vue nor
 // knows anything about `gates`/Squirrel. It has no outputs -- it's a
@@ -10,9 +14,13 @@ import { createIfNeeded, colors, onResizeDebounced } from './common.js'
 //                                      {key, lat, lon, ...}
 //   setVisibleStationKeys(keySet)  -- a Set of station keys to draw as
 //                                      "active" rather than dimmed
+//   setEvents(events)              -- context events to plot, each
+//                                      {key, lat, lon, magnitude, color,
+//                                      title}, magnitude may be null
 export const squirrelMap = () => {
     let map
     let basemapGroup
+    let eventsGroup
     let symbolGroup
     let scale = 1.0
     let projection
@@ -21,6 +29,10 @@ export const squirrelMap = () => {
 
     let stations = []
     let visibleStationKeys = new Set()
+    let events = []
+
+    const eventRadiusMin = 2
+    const eventRadiusMax = 8
 
     const containerBounds = () => {
         return container.node().getBoundingClientRect()
@@ -45,8 +57,15 @@ export const squirrelMap = () => {
         })
     }
 
+    const projectEvents = () => {
+        eventsGroup.selectAll('circle').attr('transform', function (ev) {
+            return 'translate(' + projection([ev.lon, ev.lat]) + ')'
+        })
+    }
+
     const project = () => {
         projectBasemap()
+        projectEvents()
         projectCircles()
     }
 
@@ -144,11 +163,40 @@ export const squirrelMap = () => {
             )
     }
 
+    // Events are drawn below the stations, sized by magnitude relative to
+    // the events shown and coloured as given.
+    const reconcileEvents = () => {
+        const radius = makeMagnitudeScale(events, [
+            eventRadiusMin,
+            eventRadiusMax,
+        ])
+
+        eventsGroup
+            .selectAll('circle')
+            .data([...events].sort(byMagnitudeAscending), (ev) => ev.key)
+            .join((enter) =>
+                enter
+                    .append('circle')
+                    .attr('class', 'event-marker')
+                    .call((enter) => enter.append('title'))
+            )
+            .order()
+            .attr('r', (ev) => radius(ev.magnitude))
+            .style('fill', (ev) =>
+                ev.magnitude != null ? ev.color ?? null : 'none'
+            )
+            .select('title')
+            .text((ev) => ev.title ?? '')
+
+        projectEvents()
+    }
+
     const my = (selection) => {
         container = selection
         map = createIfNeeded(container, 'svg')
 
         basemapGroup = map.append('g')
+        eventsGroup = map.append('g').attr('class', 'events')
         symbolGroup = map.append('g')
 
         const projections = {
@@ -174,6 +222,13 @@ export const squirrelMap = () => {
     my.setStations = (newStations) => {
         stations = newStations
         reconcileStations()
+    }
+
+    my.setEvents = (newEvents) => {
+        events = newEvents
+        if (eventsGroup) {
+            reconcileEvents()
+        }
     }
 
     my.setVisibleStationKeys = (keys) => {

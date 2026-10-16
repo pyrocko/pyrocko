@@ -269,7 +269,8 @@ body.body--dark {
     stroke: var(--q-text-color-50);
 }
 
-#timeline .event-marker {
+#timeline .event-marker,
+#mini-map .event-marker {
     fill: var(--q-text-color-50);
     fill-opacity: 0.8;
     stroke: var(--q-text-color-30);
@@ -277,7 +278,8 @@ body.body--dark {
     cursor: default;
 }
 
-#timeline .event-marker:hover {
+#timeline .event-marker:hover,
+#mini-map .event-marker:hover {
     stroke: var(--q-text-color);
     stroke-width: 2;
 }
@@ -305,6 +307,17 @@ body.body--dark {
 
 .frequency-panel {
     background-color: var(--q-background-color-5);
+}
+
+/* Leaflet sets the stroke as SVG attribute, which this overrides; the
+   fill colour (by depth) is set per marker. */
+.leaflet-container .event-marker {
+    stroke: var(--q-text-color-30);
+}
+
+.leaflet-container .event-marker:hover {
+    stroke: var(--q-text-color);
+    stroke-width: 2;
 }
 
 .station-icon {

@@ -13,6 +13,11 @@ import {
     tomorrow,
 } from './common.js'
 
+import {
+    makeMagnitudeScale,
+    byMagnitudeAscending,
+} from './context_events.js'
+
 const projectionHelper = () => {
     let scale = d3.scaleLinear()
     let limits = [0, 1]
@@ -983,38 +988,13 @@ export const squirrelTimeline = (dataSource) => {
             (ev) => timeMin <= ev.time && ev.time <= timeMax
         )
 
-        const magnitudes = visible
-            .map((ev) => ev.magnitude)
-            .filter((m) => m != null)
+        const markerY = makeMagnitudeScale(visible, [yBottom, yTop])
+        const markerR = makeMagnitudeScale(visible, [
+            eventRadiusMin,
+            eventRadiusMax,
+        ])
 
-        let [mmin, mmax] = magnitudes.length
-            ? [Math.min(...magnitudes), Math.max(...magnitudes)]
-            : [0, 1]
-
-        if (mmax - mmin < 1.0) {
-            const mmid = 0.5 * (mmin + mmax)
-            mmin = mmid - 0.5
-            mmax = mmid + 0.5
-        }
-
-        const scaleY = d3
-            .scaleLinear()
-            .domain([mmin, mmax])
-            .range([yBottom, yTop])
-            .clamp(true)
-
-        const scaleR = d3
-            .scaleLinear()
-            .domain([mmin, mmax])
-            .range([eventRadiusMin, eventRadiusMax])
-            .clamp(true)
-
-        // Small ones first, so that large ones are drawn on top.
-        visible.sort(
-            (a, b) => (a.magnitude ?? -Infinity) - (b.magnitude ?? -Infinity)
-        )
-
-        const markerY = (ev) => scaleY(ev.magnitude ?? mmin)
+        visible.sort(byMagnitudeAscending)
 
         eventsGroup
             .selectAll('.event-marker')
@@ -1035,10 +1015,8 @@ export const squirrelTimeline = (dataSource) => {
             )
             .order()
             .attr('cx', (ev) => x(ev.time))
-            .attr('cy', markerY)
-            .attr('r', (ev) =>
-                ev.magnitude != null ? scaleR(ev.magnitude) : eventRadiusMin
-            )
+            .attr('cy', (ev) => markerY(ev.magnitude))
+            .attr('r', (ev) => markerR(ev.magnitude))
             .style('fill', (ev) =>
                 ev.magnitude != null ? ev.color ?? null : 'none'
             )
