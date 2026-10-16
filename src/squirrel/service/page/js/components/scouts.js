@@ -10,6 +10,14 @@ import {
     fmtDuration,
     onResizeDebounced,
 } from './../squirrel/common.js'
+import {
+    eventGroupToMarker,
+    makeMagnitudeScale,
+    byMagnitudeAscending,
+} from './../squirrel/context_events.js'
+
+const escapeHtml = (s) =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 export default {
     setup: () => {
@@ -33,6 +41,7 @@ export default {
 
         let map = null
         let mapResizeObserver = null
+        let eventLayer = null
 
         // Leaflet has no resize-detection of its own -- it has to be
         // told explicitly whenever its container's on-screen size
@@ -136,6 +145,36 @@ export default {
             }
         }
 
+        // Context events, one circle per event group. They are few (see
+        // gate.js), so the layer is simply rebuilt whenever they change.
+        // Station markers live in a higher Leaflet pane and stay on top.
+        const updateEventMarkers = () => {
+            if (eventLayer === null) {
+                return
+            }
+
+            eventLayer.clearLayers()
+
+            const markers = gates.contextEventGroups.value
+                .map(eventGroupToMarker)
+                .sort(byMagnitudeAscending)
+
+            const radius = makeMagnitudeScale(markers, [3, 10])
+
+            for (const m of markers) {
+                leaflet
+                    .circleMarker([m.lat, m.lon], {
+                        radius: radius(m.magnitude),
+                        className: 'event-marker',
+                        weight: 1,
+                        fillColor: m.color ?? '#888888',
+                        fillOpacity: m.magnitude != null ? 0.8 : 0.0,
+                    })
+                    .bindTooltip(escapeHtml(m.title).replace(/\n/g, '<br>'))
+                    .addTo(eventLayer)
+            }
+        }
+
         watch(mapContainer, () => {
             if (mapContainer.value) {
                 map = leaflet.map(mapContainer.value, {
@@ -169,11 +208,16 @@ export default {
                     mapResized
                 )
 
+                eventLayer = leaflet.layerGroup().addTo(map)
+                updateEventMarkers()
+
                 resetMarkers()
                 reconcileMarkers()
                 updateActiveState()
             }
         })
+
+        watch(gates.contextEventGroups, updateEventMarkers)
 
         watch(gates.stations, reconcileMarkers)
         watch(gates.visibleStationKeys, updateActiveState)
@@ -192,6 +236,11 @@ export default {
             watch(gates.visibleStationKeys, miniMap.setVisibleStationKeys, {
                 immediate: true,
             })
+            watch(
+                gates.contextEventGroups,
+                (groups) => miniMap.setEvents(groups.map(eventGroupToMarker)),
+                { immediate: true }
+            )
         })
 
         return { gates, connection, scout, timeToStr, format, fmtDuration }
