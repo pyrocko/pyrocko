@@ -117,6 +117,29 @@ export const tomorrow = () => {
     return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0) / 1000
 }
 
+// Colour coding of event depth. The names are the colour themes of the
+// service's /beachball handler (Pyrocko colour names), the colours their
+// values.
+const depthThresholds = [15e3, 30e3, 60e3, 120e3, 240e3, 480e3]
+
+export const depthThemeName = d3
+    .scaleThreshold()
+    .domain(depthThresholds)
+    .range(['brick', 'sienna', 'ochre', 'foliage', 'ocean', 'sky', 'plum'])
+
+export const depthColor = d3
+    .scaleThreshold()
+    .domain(depthThresholds)
+    .range([
+        '#bf4443',
+        '#af7050',
+        '#f0b01f',
+        '#8ead6e',
+        '#61c1c6',
+        '#4693d7',
+        '#a77fa7',
+    ])
+
 export const colors = {
     aluminium1: '#eeeeec',
     aluminium2: '#d3d7cf',

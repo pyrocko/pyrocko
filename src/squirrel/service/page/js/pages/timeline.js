@@ -2,8 +2,44 @@ const { onMounted, onActivated, ref, watch } = Vue
 import { squirrelTimeline } from '../squirrel/timeline.js'
 import { squirrelGates } from '../squirrel/gate.js'
 import { useFilters } from '../squirrel/filter.js'
-import { positiveOrNull } from '../squirrel/common.js'
+import {
+    positiveOrNull,
+    timeToStr,
+    format,
+    depthColor,
+} from '../squirrel/common.js'
 import ComponentRangeSelect from '../components/range_select.js'
+
+const fmtMagnitude = format('.1f')
+const fmtDepth = format('.0f')
+
+// One timeline marker per group of context events (e.g. one earthquake
+// reported by several catalogs), placed at its largest event.
+const eventGroupToMarker = (group) => {
+    const ev = group[0]
+    const lines = [
+        group.find((e) => e.region)?.region ?? '',
+        timeToStr(ev.time, '%Y-%m-%d %H:%M:%S.3FRAC'),
+        ...group.map(
+            (e) =>
+                (e.catalog || '?') +
+                ': ' +
+                (e.magnitude != null
+                    ? (e.magnitude_type || 'M') +
+                      ' ' +
+                      fmtMagnitude(e.magnitude)
+                    : 'M ?') +
+                (e.depth != null ? ', ' + fmtDepth(e.depth / 1000) + ' km' : '')
+        ),
+    ]
+    return {
+        key: ev.extras?.group_id ?? ev.name + '@' + ev.time,
+        time: ev.time,
+        magnitude: ev.magnitude,
+        color: ev.depth != null ? depthColor(ev.depth) : null,
+        title: lines.filter((line) => line).join('\n'),
+    }
+}
 
 export default {
     components: {
@@ -50,6 +86,12 @@ export default {
                 timeline.setSearchFilter(
                     filters.makeCodesMatcher(filters.searchActive.value)
                 )
+            )
+
+            watch(
+                gates.contextEventGroups,
+                (groups) => timeline.setEvents(groups.map(eventGroupToMarker)),
+                { immediate: true }
             )
         })
 
