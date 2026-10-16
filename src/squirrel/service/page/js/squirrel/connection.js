@@ -19,9 +19,12 @@ const setupConnection = () => {
             })
             if (!response.ok) {
                 latestError.value = await response.text()
-                throw new Error(
+                const error = new Error(
                     `Response status: ${response.status}, Server response text:\n'''\n${latestError.value}'''`
                 )
+                error.status = response.status
+                error.reason = response.statusText
+                throw error
             }
 
             return response.json()

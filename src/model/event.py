@@ -204,18 +204,19 @@ class EventFilter(Object):
             time_min=self.time_min,
             time_max=self.time_max)
 
-    def sql_condition(self):
+    def sql_condition(self, table=None):
         conditions = []
         args = []
         for k in ['time',  'magnitude', 'depth']:
+            column = k if table is None else '%s.%s' % (table, k)
             b = getattr(self, k + '_min')
             if b is not None:
-                conditions.append('? <= %s' % k)
+                conditions.append('? <= %s' % column)
                 args.append(b)
 
             b = getattr(self, k + '_max')
             if b is not None:
-                conditions.append('%s < ?' % k)
+                conditions.append('%s < ?' % column)
                 args.append(b)
 
         if conditions:

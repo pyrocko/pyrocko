@@ -32,6 +32,7 @@ from pyrocko import guts
 from pyrocko.squirrel.error import ToolError, SquirrelError
 from pyrocko.squirrel.mantra import Mantra
 from pyrocko import moment_tensor as pmt
+from pyrocko.model.event import EventFilter
 from pyrocko.plot import beachball
 from pyrocko.color import Color, g_pyrocko_color_cycle_base
 
@@ -130,6 +131,17 @@ def int_gt_zero(s):
     return i
 
 
+def to_group_key(x):
+    if not (isinstance(x, list) and len(x) == 2 and isinstance(x[1], str)):
+        raise ValueError('Group key must be a list [time, group_id].')
+
+    return (float(x[0]), x[1])
+
+
+# Maximum number of event groups returned per request.
+EVENT_GROUPS_LIMIT_MAX = 1000
+
+
 class SquirrelRequestHandler(server.RequestHandler):
 
     def initialize(self, squirrel=None):
@@ -189,6 +201,12 @@ class SquirrelRequestHandler(server.RequestHandler):
             'nx': int_gt_zero,
             'ny': int_gt_zero,
             'overview_method': lambda x: str_choice(x, ['mean', 'min', 'max']),
+            'magnitude_min': float,
+            'magnitude_max': float,
+            'depth_min': float,
+            'depth_max': float,
+            'limit': int_gt_zero,
+            'after': to_group_key,
         }
 
         def clean_or_none(f, x):
@@ -200,7 +218,8 @@ class SquirrelRequestHandler(server.RequestHandler):
                 for name in names]
 
         except Exception as e:
-            raise web.HTTPError(400, 'Bad request: %s' % str(e))
+            raise web.HTTPError(
+                400, reason='Bad request: %s' % ' '.join(str(e).split()))
 
     def post(self, method_name, extra=()):
         method = getattr(self, 'p_' + method_name, None)
@@ -299,6 +318,38 @@ class SquirrelRawHandler(SquirrelRequestHandler):
     def p_get_events(self, parameters):
         tmin, tmax = self.get_cleaned('tmin tmax', parameters)
         return self._squirrel.get_events()
+
+    def p_get_event_groups(self, parameters):
+        '''
+        Get a page of event groups, newest first.
+
+        Pass the ``next`` key of the response as ``after`` to get the following
+        page. ``next`` is ``null`` when there are no more groups.
+        '''
+
+        (tmin, tmax, magnitude_min, magnitude_max, depth_min, depth_max,
+         limit, after) = self.get_cleaned(
+            'tmin tmax magnitude_min magnitude_max depth_min depth_max '
+            'limit after', parameters)
+
+        limit = min(limit or 100, EVENT_GROUPS_LIMIT_MAX)
+
+        groups = self._squirrel.get_event_groups(
+            tmin=tmin,
+            tmax=tmax,
+            filter=EventFilter(
+                magnitude_min=magnitude_min,
+                magnitude_max=magnitude_max,
+                depth_min=depth_min,
+                depth_max=depth_max),
+            limit=limit,
+            after=after)
+
+        return dict(
+            groups=[
+                dict(key=list(key), events=events)
+                for (key, events) in groups],
+            next=list(groups[-1][0]) if len(groups) == limit else None)
 
     def p_get_channels(self, parameters):
         tmin, tmax, codes = self.get_cleaned('tmin tmax codes', parameters)

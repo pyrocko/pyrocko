@@ -76,7 +76,6 @@ export const squirrelGate = (gate_id) => {
     const channels = shallowRef([])
     const sensors = shallowRef([])
     const responses = shallowRef([])
-    const events = shallowRef([])
     const timeSpans = shallowRef({
         waveform: null,
         channel: null,
@@ -123,14 +122,6 @@ export const squirrelGate = (gate_id) => {
     //const fetchResponses = async () => {
     //    return gateRequest('get_responses')
     //}
-    //
-    //const fetchEvents = async () => {
-    //    const events = await gateRequest('get_events')
-    //    for (const ev of events) {
-    //        ev.time = strToTime(ev.time)
-    //    }
-    //    return events
-    //}
 
     const fetchTimeSpans = async () => {
         const newTimeSpans = {}
@@ -152,7 +143,6 @@ export const squirrelGate = (gate_id) => {
         channels.value = await fetchChannels()
         sensors.value = await fetchSensors()
         //responses.value = await fetchResponses()
-        //events.value = await fetchEvents()
     }
 
     const fetchContextInfos = async (request) => {
@@ -170,7 +160,6 @@ export const squirrelGate = (gate_id) => {
         channels,
         sensors,
         responses,
-        events,
         update,
         updateContext,
         contextInfos,
@@ -734,24 +723,6 @@ export const setupGates = () => {
         return responses
     })
 
-    const events = computed(() => {
-        const events = []
-        for (const gate of gates.value) {
-            for (const ev of gate.events) {
-                events.push(ev)
-            }
-        }
-        return events
-    })
-
-    const eventGroups = computed(() => {
-        const groups = Array.from(
-            Map.groupBy(events.value, (ev) => ev.extras.group_id).values()
-        )
-        groups.sort((a, b) => a[0].time - b[0].time)
-        return groups
-    })
-
     const timeSpans = computed(() => {
         const spans = {
             channel: null,
@@ -857,8 +828,6 @@ export const setupGates = () => {
         stations,
         visibleStationKeys,
         responses,
-        events,
-        eventGroups,
         timeSpans,
         getCoverages,
         getWaveviews,

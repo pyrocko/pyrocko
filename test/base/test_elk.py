@@ -266,6 +266,117 @@ class ElkTestCase(unittest.TestCase):
         self.assertEqual(
             [ev.name for ev in evs if condition(ev)], ['a1', 'a2', 'a3'])
 
+    def _add_grouped(self, conn, n):
+        # Groups of two events from catalogs A and B, B with larger
+        # magnitude.
+        elk.add_events(conn, 'main', [
+            make_event('A', 'a%i' % i, self.t0 + i * 3600.)
+            for i in range(n)])
+        elk.add_events(conn, 'main', [
+            make_event('B', 'b%i' % i, self.t0 + i * 3600. + 1.0,
+                       magnitude=5.2, lat=10.05)
+            for i in range(n)])
+
+    def test_event_groups_paging(self):
+        conn = self.make_db()
+        self._add_grouped(conn, 7)
+
+        keys = []
+        after = None
+        while True:
+            page = elk.get_event_groups(conn, 'main', limit=3, after=after)
+            if not page:
+                break
+
+            self.assertLessEqual(len(page), 3)
+            for key, evs in page:
+                self.assertEqual(
+                    sorted(ev.catalog for ev in evs), ['A', 'B'])
+                self.assertEqual(
+                    set(ev.extras['group_id'] for ev in evs), {key[1]})
+                keys.append(key)
+
+            after = page[-1][0]
+
+        self.assertEqual(len(keys), 7)
+        self.assertEqual(keys, sorted(keys, reverse=True))
+        self.assertEqual(
+            [time for (time, _) in keys],
+            [self.t0 + i * 3600. for i in reversed(range(7))])
+
+    def test_event_groups_filter(self):
+        conn = self.make_db()
+        self._add_grouped(conn, 3)
+        elk.add_events(conn, 'main', [
+            make_event('A', 'single', self.t0 + 10 * 3600.)])
+
+        groups = elk.get_event_groups(
+            conn, 'main', filter=EventFilter(magnitude_min=5.1))
+
+        # Only groups with matching events, only matching events in groups.
+        self.assertEqual(len(groups), 3)
+        for _, evs in groups:
+            self.assertEqual([ev.catalog for ev in evs], ['B'])
+
+        groups = elk.get_event_groups(
+            conn, 'main', filter=EventFilter(
+                time_min=self.t0 + 0.5 * 3600.,
+                time_max=self.t0 + 1.5 * 3600.))
+
+        self.assertEqual(len(groups), 1)
+        self.assertEqual(
+            sorted(ev.extras['catalog_id'] for ev in groups[0][1]),
+            ['a1', 'b1'])
+
+    def test_event_groups_superseded(self):
+        conn = self.make_db()
+        elk.add_events(conn, 'main', [make_event('A', 'a', self.t0)])
+        elk.add_events(
+            conn, 'main', [make_event('A', 'a', self.t0 + 1.0, magnitude=5.1)])
+
+        groups = elk.get_event_groups(conn, 'main')
+        self.assertEqual(len(groups), 1)
+        self.assertEqual([ev.magnitude for ev in groups[0][1]], [5.1])
+
+        groups = elk.get_event_groups(conn, 'main', include_superseded=True)
+        self.assertEqual(len(groups[0][1]), 2)
+
+    def test_squirrel_event_groups(self):
+        from pyrocko import squirrel
+
+        path = os.path.join(self.tempdir, 'events.elk')
+        conn = self.make_db()
+        self._add_grouped(conn, 4)
+        conn.close()
+
+        plain_path = os.path.join(self.tempdir, 'events.yaml')
+        model.dump_events([
+            make_event('C', 'c%i' % i, self.t0 + i * 3600. + 1800.)
+            for i in range(3)], plain_path)
+
+        sq = squirrel.Squirrel(
+            database=os.path.join(self.tempdir, 'squirrel.sqlite'))
+        sq.add([path, plain_path])
+
+        sizes = []
+        after = None
+        while True:
+            page = sq.get_event_groups(limit=2, after=after)
+            if not page:
+                break
+
+            sizes.extend(len(evs) for _, evs in page)
+            after = page[-1][0]
+
+        # Elk groups of two, interleaved with plain events of their own.
+        self.assertEqual(sizes, [2, 1, 2, 1, 2, 1, 2])
+
+        groups = sq.get_event_groups(
+            tmin=self.t0 + 1000., tmax=self.t0 + 4000.)
+        self.assertEqual(
+            [[ev.catalog for ev in evs] for _, evs in groups],
+            [['B', 'A'], ['C']])
+
 
 if __name__ == '__main__':
     util.setup_logging('test_elk', 'warning')

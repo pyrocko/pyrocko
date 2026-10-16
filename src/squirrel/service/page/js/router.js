@@ -6,6 +6,7 @@ import {
 import MainLayout from './layouts/main.js'
 import TimelinePage from './pages/timeline.js'
 import MapPage from './pages/map.js'
+import EventsPage from './pages/events.js'
 import MantrasPage from './pages/mantras.js'
 import ErrorNotFound from './pages/error_not_found.js'
 
@@ -17,6 +18,7 @@ const routes = [
         children: [
             { path: 'timeline', component: TimelinePage },
             { path: 'map', component: MapPage },
+            { path: 'events', component: EventsPage },
             { path: 'mantras', component: MantrasPage },
             { path: '', redirect: '/timeline' },
         ],
