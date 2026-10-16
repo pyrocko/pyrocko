@@ -341,6 +341,168 @@ class ElkTestCase(unittest.TestCase):
         groups = elk.get_event_groups(conn, 'main', include_superseded=True)
         self.assertEqual(len(groups[0][1]), 2)
 
+    def _random_events(self, n, seed=0, magnitude_min=3.0):
+        import numpy as num
+        rstate = num.random.RandomState(seed)
+        events = []
+        for i in range(n):
+            # Gutenberg-Richter distributed magnitudes (b = 1).
+            magnitude = magnitude_min \
+                + rstate.exponential(1.0 / num.log(10.))
+            events.append(make_event(
+                'A', 'r%i' % i,
+                self.t0 + rstate.uniform(0., 365. * 24. * 3600.),
+                magnitude=None if i % 50 == 0 else float(magnitude),
+                lat=float(rstate.uniform(-90., 90.)),
+                lon=float(rstate.uniform(-180., 180.))))
+
+        return events
+
+    def _largest_brute_force(
+            self, events, n, filter=None, lat_min=None, lat_max=None,
+            lon_min=None, lon_max=None):
+
+        condition = (filter or EventFilter()).get_condition()
+
+        def in_lon(lon):
+            if lon_min is None and lon_max is None:
+                return True
+            lo = -180. if lon_min is None else lon_min
+            hi = 180. if lon_max is None else lon_max
+            if lo <= hi:
+                return lo <= lon <= hi
+            else:
+                return lon >= lo or lon <= hi
+
+        selected = [
+            ev for ev in events
+            if condition(ev)
+            and (lat_min is None or ev.lat >= lat_min)
+            and (lat_max is None or ev.lat <= lat_max)
+            and in_lon(ev.lon)]
+
+        selected.sort(key=lambda ev: (
+            ev.magnitude is None, -(ev.magnitude or 0.0), -ev.time))
+
+        return [ev.name for ev in selected[:n]]
+
+    def test_largest_events(self):
+        conn = self.make_db()
+        events = self._random_events(3000)
+        elk.add_events(conn, 'main', events)
+
+        tday = 24. * 3600.
+        cases = [
+            dict(n=10),
+            dict(n=100),
+            dict(n=5000),
+            dict(n=20, filter=EventFilter(
+                time_min=self.t0 + 30 * tday, time_max=self.t0 + 60 * tday)),
+            dict(n=20, filter=EventFilter(
+                time_min=self.t0 + 30 * tday, time_max=self.t0 + 30.1 * tday)),
+            dict(n=50, lat_min=-10., lat_max=40., lon_min=0., lon_max=60.),
+            dict(n=50, lon_min=150., lon_max=-150.),
+            dict(n=50, filter=EventFilter(magnitude_min=4.0)),
+            dict(n=50, filter=EventFilter(
+                magnitude_min=3.2, magnitude_max=3.3)),
+            dict(n=50, filter=EventFilter(magnitude_max=3.5)),
+            dict(n=10, filter=EventFilter(magnitude_min=20.)),
+        ]
+
+        for kwargs in cases:
+            expected = self._largest_brute_force(events, **kwargs)
+            got = [
+                ev.extras['catalog_id']
+                for ev in elk.get_largest_events(conn, 'main', **kwargs)]
+
+            self.assertEqual(got, expected, kwargs)
+
+        # All events, the ones without magnitude last.
+        evs = elk.get_largest_events(conn, 'main', 5000)
+        self.assertEqual(len(evs), 3000)
+        self.assertTrue(all(ev.magnitude is None for ev in evs[-60:]))
+
+    def test_largest_events_micro(self):
+        # Small magnitudes, e.g. icequakes, must work as well.
+        conn = self.make_db()
+        events = self._random_events(1000, magnitude_min=-1.0)
+        elk.add_events(conn, 'main', events)
+        for n in [10, 100, 2000]:
+            expected = self._largest_brute_force(events, n)
+            got = [
+                ev.extras['catalog_id']
+                for ev in elk.get_largest_events(conn, 'main', n)]
+
+            self.assertEqual(got, expected, n)
+
+    def test_largest_events_superseded(self):
+        conn = self.make_db()
+        elk.add_events(conn, 'main', [
+            make_event('A', 'a', self.t0, magnitude=7.0),
+            make_event('A', 'b', self.t0 + 3600., magnitude=6.0)])
+        elk.add_events(conn, 'main', [
+            make_event('A', 'a', self.t0, magnitude=5.0)])
+
+        evs = elk.get_largest_events(conn, 'main', 10)
+        self.assertEqual(
+            [(ev.extras['catalog_id'], ev.magnitude) for ev in evs],
+            [('b', 6.0), ('a', 5.0)])
+
+    def test_rtree_after_vacuum(self):
+        path = os.path.join(self.tempdir, 'events.elk')
+        conn = self.make_db()
+        events = self._random_events(500)
+        elk.add_events(conn, 'main', events[:250])
+        elk.add_events(conn, 'main', events[250:])
+        expected = [
+            ev.extras['catalog_id']
+            for ev in elk.get_largest_events(conn, 'main', 30)]
+
+        conn.execute('VACUUM')
+        conn.close()
+
+        conn = elk.connect(path)
+        n_rtree, = conn.execute(
+            'SELECT COUNT(*) FROM events_rtree').fetchone()
+        self.assertEqual(n_rtree, 500)
+        got = [
+            ev.extras['catalog_id']
+            for ev in elk.get_largest_events(conn, 'main', 30)]
+        self.assertEqual(got, expected)
+
+    def test_squirrel_largest_events(self):
+        from pyrocko import squirrel
+
+        conn = self.make_db()
+        elk.add_events(conn, 'main', [
+            make_event('A', 'a%i' % i, self.t0 + i * 3600., magnitude=4. + i)
+            for i in range(4)])
+        conn.close()
+
+        plain_path = os.path.join(self.tempdir, 'events.yaml')
+        model.dump_events([
+            make_event('C', 'c%i' % i, self.t0 + i * 3600. + 1800.,
+                       magnitude=4.5 + i, lon=-170.)
+            for i in range(3)], plain_path)
+
+        sq = squirrel.Squirrel(
+            database=os.path.join(self.tempdir, 'squirrel.sqlite'))
+        sq.add([os.path.join(self.tempdir, 'events.elk'), plain_path])
+
+        self.assertEqual(
+            [ev.magnitude for ev in sq.get_largest_events(3)],
+            [7.0, 6.5, 6.0])
+
+        self.assertEqual(
+            [ev.magnitude for ev in sq.get_largest_events(
+                10, tmax=self.t0 + 7000.)],
+            [5.5, 5.0, 4.5, 4.0])
+
+        self.assertEqual(
+            [ev.magnitude for ev in sq.get_largest_events(
+                10, lon_min=170., lon_max=-160.)],
+            [6.5, 5.5, 4.5])
+
     def test_squirrel_event_groups(self):
         from pyrocko import squirrel
 
