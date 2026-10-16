@@ -1,13 +1,11 @@
 const { ref, shallowRef, reactive, watch } = Vue
 import { squirrelConnection } from '../squirrel/connection.js'
-import { timeToStr, strToTime, format } from '../squirrel/common.js'
-
-// Beachball colour by depth, using the colour themes of the service's
-// /beachball handler.
-const depthTheme = d3
-    .scaleThreshold()
-    .domain([15e3, 30e3, 60e3, 120e3, 240e3, 480e3])
-    .range(['brick', 'sienna', 'ochre', 'foliage', 'ocean', 'sky', 'plum'])
+import {
+    timeToStr,
+    strToTime,
+    format,
+    depthThemeName,
+} from '../squirrel/common.js'
 
 const fmtMagnitude = format('3.1f')
 const fmtDepth = format('4.0f')
@@ -179,7 +177,7 @@ export default {
                 mne: mt.mne,
                 mnd: mt.mnd,
                 med: mt.med,
-                theme: ev.depth != null ? depthTheme(ev.depth) : 'black',
+                theme: ev.depth != null ? depthThemeName(ev.depth) : 'black',
             })
             return 'beachball?' + params.toString()
         }

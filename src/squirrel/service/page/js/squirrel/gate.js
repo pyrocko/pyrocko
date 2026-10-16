@@ -6,6 +6,9 @@ import { squirrelConnection } from './connection.js'
 
 const TIME_MIN = strToTime('1900-01-01 00:00:00')
 const TIME_MAX = tomorrow() + 5 * 365 * 24 * 60 * 60
+
+// Number of context events (largest events in the current time window).
+const CONTEXT_EVENTS_LIMIT = 100
 const RE_2COMMA = new RegExp('([^,]+),([^,]+),', 'g')
 
 // Runs `fn` for the latest of possibly many arguments passed to the
@@ -756,6 +759,50 @@ export const setupGates = () => {
     const contextInfos = computed(() =>
         flattenGates((gate) => gate.contextInfos.value))
 
+    // Context events: the largest events in the current time window. They
+    // come from all event sources of the service, not from the individual
+    // gates, and are shared between timeline and map.
+    const contextEvents = shallowRef([])
+
+    const updateContextEvents = makeLatestWinsRunner(
+        async ([tmin, tmax]) => {
+            const events = await connection.value.request(
+                'raw/get_largest_events',
+                {
+                    tmin: timeToStr(tmin),
+                    tmax: timeToStr(tmax),
+                    limit: CONTEXT_EVENTS_LIMIT,
+                }
+            )
+            for (const ev of events) {
+                ev.time = strToTime(ev.time)
+            }
+            contextEvents.value = events
+        },
+        { debounceMs: 300 }
+    )
+
+    watch([timeMin, timeMax], updateContextEvents, { immediate: true })
+
+    // Context events of the same group (e.g. one earthquake reported by
+    // several catalogs) combined, largest magnitude first. Events without
+    // group form groups of their own.
+    const contextEventGroups = computed(() => {
+        const groups = Array.from(
+            Map.groupBy(
+                contextEvents.value,
+                (ev) => ev.extras?.group_id ?? Symbol()
+            ).values()
+        )
+        for (const group of groups) {
+            group.sort(
+                (a, b) =>
+                    (b.magnitude ?? -Infinity) - (a.magnitude ?? -Infinity)
+            )
+        }
+        return groups
+    })
+
     watch(timeSpans, () => {
         if (!initialTimeSpanSet) {
             let tmin = null
@@ -835,6 +882,8 @@ export const setupGates = () => {
         getDataRanges,
         getDataScales,
         contextInfos,
+        contextEvents,
+        contextEventGroups,
     }
 }
 

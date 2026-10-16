@@ -157,6 +157,9 @@ const projectionHelper = () => {
 //   setTimeSpan(tmin, tmax) -- the time range currently in view
 //   setCodes(codes)         -- the flat list of all known codes
 //   setSearchFilter(fn)     -- fn(code) -> bool, narrows setCodes()
+//   setEvents(events)       -- context events, shown as markers above
+//                              the tracks: [{key, time, magnitude, color,
+//                              title}], magnitude may be null
 //   refresh()               -- redraw with the current inputs (e.g.
 //                              when the underlying data changed but
 //                              none of the above did)
@@ -181,6 +184,8 @@ export const squirrelTimeline = (dataSource) => {
     let axisLineWidth = 2
     let fontSize = 12
     let labelPadding = [0.4, 0.2]
+    let eventRadiusMin = 3
+    let eventRadiusMax = 9
 
     // private
     let container
@@ -192,6 +197,8 @@ export const squirrelTimeline = (dataSource) => {
     let waveviewGroup
     let timeAxesGroup
     let tracksGroup
+    let eventsGroup
+    let eventLine
     let x = d3.scaleLinear()
     // let y = d3.scaleLinear()
     let trackStart = null
@@ -219,6 +226,7 @@ export const squirrelTimeline = (dataSource) => {
     let timeMax = 1
     let codes = []
     let searchFilter = () => true
+    let events = []
 
     // Local rendering state -- never reported outward, so these stay
     // plain variables rather than going through setX()/on().
@@ -226,6 +234,7 @@ export const squirrelTimeline = (dataSource) => {
     let trackWidth = 800
     let showBoxes = true
     let lastVisibleCodes = []
+    let hoveredEventKey = null
 
     const { on, emit } = makeEmitter()
 
@@ -302,6 +311,7 @@ export const squirrelTimeline = (dataSource) => {
         updateTracks(t)
         updateBoxes(t)
         updateTimeAxes()
+        updateEvents()
     }
 
     const resizeHandler = () => {
@@ -958,6 +968,105 @@ export const squirrelTimeline = (dataSource) => {
         axisGroups
     }
 
+    // Context events are drawn in the band above the upper time axis:
+    // higher and larger for larger magnitudes, relative to the events
+    // currently shown. Hovering a marker shows its origin time as a line
+    // across the tracks.
+    const updateEvents = () => {
+        const yTop = eventRadiusMax + 2
+        const yBottom = Math.max(
+            yTop,
+            marginTop - effectiveTrackPadding - tickLength - eventRadiusMax - 2
+        )
+
+        const visible = events.filter(
+            (ev) => timeMin <= ev.time && ev.time <= timeMax
+        )
+
+        const magnitudes = visible
+            .map((ev) => ev.magnitude)
+            .filter((m) => m != null)
+
+        let [mmin, mmax] = magnitudes.length
+            ? [Math.min(...magnitudes), Math.max(...magnitudes)]
+            : [0, 1]
+
+        if (mmax - mmin < 1.0) {
+            const mmid = 0.5 * (mmin + mmax)
+            mmin = mmid - 0.5
+            mmax = mmid + 0.5
+        }
+
+        const scaleY = d3
+            .scaleLinear()
+            .domain([mmin, mmax])
+            .range([yBottom, yTop])
+            .clamp(true)
+
+        const scaleR = d3
+            .scaleLinear()
+            .domain([mmin, mmax])
+            .range([eventRadiusMin, eventRadiusMax])
+            .clamp(true)
+
+        // Small ones first, so that large ones are drawn on top.
+        visible.sort(
+            (a, b) => (a.magnitude ?? -Infinity) - (b.magnitude ?? -Infinity)
+        )
+
+        const markerY = (ev) => scaleY(ev.magnitude ?? mmin)
+
+        eventsGroup
+            .selectAll('.event-marker')
+            .data(visible, (ev) => ev.key)
+            .join((enter) =>
+                enter
+                    .append('circle')
+                    .attr('class', 'event-marker')
+                    .on('pointerenter', (pev, ev) => {
+                        hoveredEventKey = ev.key
+                        updateEventLine()
+                    })
+                    .on('pointerleave', () => {
+                        hoveredEventKey = null
+                        updateEventLine()
+                    })
+                    .call((enter) => enter.append('title'))
+            )
+            .order()
+            .attr('cx', (ev) => x(ev.time))
+            .attr('cy', markerY)
+            .attr('r', (ev) =>
+                ev.magnitude != null ? scaleR(ev.magnitude) : eventRadiusMin
+            )
+            .style('fill', (ev) =>
+                ev.magnitude != null ? ev.color ?? null : 'none'
+            )
+            .select('title')
+            .text((ev) => ev.title ?? '')
+
+        updateEventLine()
+    }
+
+    const updateEventLine = () => {
+        const ev =
+            hoveredEventKey !== null
+                ? events.find((ev) => ev.key === hoveredEventKey)
+                : null
+
+        if (!ev || ev.time < timeMin || timeMax < ev.time) {
+            eventLine.style('display', 'none')
+            return
+        }
+
+        eventLine
+            .style('display', null)
+            .attr('x1', x(ev.time))
+            .attr('x2', x(ev.time))
+            .attr('y1', marginTop - effectiveTrackPadding)
+            .attr('y2', bounds.height - marginBottom + effectiveTrackPadding)
+    }
+
     const activateScrollMargins = () => {
         needScrollMargins = true
         if (deactivateScrollMarginsTimeoutId !== null) {
@@ -1199,6 +1308,11 @@ export const squirrelTimeline = (dataSource) => {
             .append('g')
             .attr('clip-path', 'url(#page)')
             .attr('class', 'tracks')
+        eventsGroup = timeline.append('g').attr('class', 'events')
+        eventLine = eventsGroup
+            .append('line')
+            .attr('class', 'event-line')
+            .style('display', 'none')
 
         container.on('pointerdown', pointerDownHandler)
         container.on('pointerup', pointerUpHandler)
@@ -1230,6 +1344,13 @@ export const squirrelTimeline = (dataSource) => {
     my.setSearchFilter = (fn) => {
         searchFilter = fn
         updateCodes()
+    }
+
+    my.setEvents = (newEvents) => {
+        events = newEvents
+        if (bounds) {
+            updateEvents()
+        }
     }
 
     my.refresh = update
