@@ -2273,6 +2273,100 @@ class Squirrel(Selection):
 
         import pyrocko.squirrel.elk as elk
 
+        tmin, tmax, codes, filter = self._get_event_selection_args(
+            obj, tmin, tmax, time, codes, filter)
+
+        events = self._get_plain_events(tmin, tmax, codes, filter, nlatest)
+
+        for prefix in self._iter_elk_prefixes(tmin, tmax, codes):
+            events.extend(
+                elk.get_events(
+                    self._conn,
+                    prefix=prefix,
+                    nlatest=nlatest,
+                    filter=filter))
+
+        events.sort(key=lambda ev: -ev.time)
+
+        if nlatest is not None:
+            events = events[:nlatest]
+
+        return events
+
+    @filldocs
+    def get_event_groups(
+            self,
+            obj=None,
+            tmin=None,
+            tmax=None,
+            time=None,
+            codes=None,
+            filter=None,
+            limit=None,
+            after=None):
+
+        '''
+        Get groups of events matching given constraints, page by page.
+
+        %(query_args)s
+
+        Events from event databases are grouped as determined by the database
+        (events of different catalogs describing the same earthquake). All
+        other events form groups of their own. Groups are ordered by
+        descending group key ``(time, group_id)``. Only the events of each
+        group which match the given constraints are included.
+
+        :param filter:
+            Event filter.
+        :type filter:
+            :py:class:`~pyrocko.model.event.EventFilter`
+
+        :param limit:
+            Maximum number of groups to return.
+        :type limit:
+            int
+
+        :param after:
+            Group key of the last group of the previous page. Only groups with
+            smaller key are returned.
+        :type after:
+            tuple ``(time, group_id)``
+
+        :returns:
+            List of ``(group_key, events)`` tuples.
+        '''
+
+        import pyrocko.squirrel.elk as elk
+
+        tmin, tmax, codes, filter = self._get_event_selection_args(
+            obj, tmin, tmax, time, codes, filter)
+
+        if after is not None:
+            after = (float(after[0]), str(after[1]))
+
+        groups = []
+        for ev in self._get_plain_events(tmin, tmax, codes, filter, None):
+            key = (ev.time, ev.name or '')
+            if after is None or key < after:
+                groups.append((key, [ev]))
+
+        for prefix in self._iter_elk_prefixes(tmin, tmax, codes):
+            groups.extend(
+                elk.get_event_groups(
+                    self._conn,
+                    prefix=prefix,
+                    filter=filter,
+                    limit=limit,
+                    after=after))
+
+        groups.sort(key=lambda group: group[0], reverse=True)
+
+        if limit is not None:
+            groups = groups[:limit]
+
+        return groups
+
+    def _get_event_selection_args(self, obj, tmin, tmax, time, codes, filter):
         tmin, tmax, codes = self._get_selection_args(
             EVENT, obj, tmin, tmax, time, codes)
 
@@ -2280,9 +2374,13 @@ class Squirrel(Selection):
             from pyrocko.model.event import EventFilter
             filter = EventFilter()
 
-        tmin = none_max(tmin, filter.time_min)
-        tmax = none_min(tmax, filter.time_max)
+        filter = clone(filter)
+        filter.time_min = none_max(tmin, filter.time_min)
+        filter.time_max = none_min(tmax, filter.time_max)
 
+        return filter.time_min, filter.time_max, codes, filter
+
+    def _get_plain_events(self, tmin, tmax, codes, filter, nlatest):
         # The limit can only be applied in the nut query if no event
         # attributes have to be checked afterwards.
         time_only = all(
@@ -2299,31 +2397,15 @@ class Squirrel(Selection):
         events = [self.get_content(nut) for nut in nuts]
 
         condition = filter.get_condition()
-        events = [ev for ev in events if condition(ev)]
+        return [ev for ev in events if condition(ev)]
 
+    def _iter_elk_prefixes(self, tmin, tmax, codes):
         nuts = sorted(
             self.iter_nuts('elk', tmin, tmax, codes),
             key=lambda nut: nut.dkey)
 
-        filter = clone(filter)
-        filter.time_min = tmin
-        filter.time_max = tmax
-
         for nut in nuts:
-            prefix = self._database.get_attachment_prefix(nut.file_path)
-            events.extend(
-                elk.get_events(
-                    self._conn,
-                    prefix=prefix,
-                    nlatest=nlatest,
-                    filter=filter))
-
-        events.sort(key=lambda ev: -ev.time)
-
-        if nlatest is not None:
-            events = events[:nlatest]
-
-        return events
+            yield self._database.get_attachment_prefix(nut.file_path)
 
     def _housekeep_recent_orders(self):
         now = time.time()

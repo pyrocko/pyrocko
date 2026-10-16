@@ -147,6 +147,14 @@ export default {
                             <q-item-section>Map</q-item-section>
                         </q-item>
 
+                        <q-item clickable v-ripple to="/events">
+                            <q-item-section avatar>
+                                <q-icon name="star" />
+                            </q-item-section>
+
+                            <q-item-section>Events</q-item-section>
+                        </q-item>
+
                         <q-item clickable v-ripple to="/mantras">
                             <q-item-section avatar>
                                 <q-icon name="settings" />

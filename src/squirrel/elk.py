@@ -12,6 +12,8 @@ from pyrocko import util, model
 from pyrocko import orthodrome
 from pyrocko import moment_tensor as pmt
 
+from .error import SquirrelError
+
 logger = logging.getLogger('psq.elk')
 
 km = 1000.
@@ -152,7 +154,7 @@ def attach(connection, prefix, path):
     ''', (path, prefix))
 
 
-class ElkError(Exception):
+class ElkError(SquirrelError):
     pass
 
 
@@ -643,7 +645,108 @@ def get_events(
     else:
         limit = ''
 
-    sql = '''
+    sql = _sql_select_events(prefix) + where + '''
+    ORDER BY ( SELECT -time FROM ''' + prefix + '''.events b
+               WHERE b.elk_id = a.group_id ),
+               -a.time
+''' + limit
+
+    events = [_row_to_event(row) for row in cursor.execute(sql, args)]
+    cursor.close()
+
+    return events
+
+
+def get_event_groups(
+        connection,
+        prefix,
+        filter=None,
+        limit=None,
+        after=None,
+        include_superseded=False):
+
+    '''
+    Query groups of events, page by page.
+
+    Groups are ordered by descending group key ``(time, group_id)``, where
+    ``time`` is the time of the event the group is named after. Only groups
+    with at least one event matching the filter are returned and only the
+    matching events of each group are included.
+
+    :param limit:
+        Maximum number of groups to return.
+    :param after:
+        Group key of the last group of the previous page. Only groups with
+        smaller key are returned.
+
+    :returns:
+        List of ``(group_key, events)`` tuples.
+    '''
+
+    check_database(connection, prefix)
+
+    if filter is None:
+        filter = model.event.EventFilter()
+    elif isinstance(filter, dict):
+        filter = model.event.EventFilter(**filter)
+
+    where, filter_args = filter.sql_condition(table='a')
+    conditions = [where[len('WHERE '):]] if where else []
+    if not include_superseded:
+        conditions.append('a.superseded_by IS NULL')
+
+    condition = ' AND '.join(conditions) if conditions else '1'
+
+    args = []
+    after_condition = ''
+    if after is not None:
+        after_condition = '''
+            AND ( g.time < ? OR ( g.time = ? AND g.elk_id < ? ) )'''
+        args.extend([after[0], after[0], after[1]])
+
+    args.extend(filter_args)
+
+    if limit is not None:
+        limit_clause = 'LIMIT ?'
+        args.append(limit)
+    else:
+        limit_clause = ''
+
+    cursor = connection.cursor()
+
+    group_keys = list(cursor.execute('''
+        SELECT g.time, g.elk_id FROM ''' + prefix + '''.events g
+        WHERE g.elk_id = g.group_id''' + after_condition + '''
+            AND EXISTS (
+                SELECT 1 FROM ''' + prefix + '''.events a
+                WHERE a.group_id = g.elk_id AND ''' + condition + ''' )
+        ORDER BY g.time DESC, g.elk_id DESC
+    ''' + limit_clause, args))
+
+    if not group_keys:
+        cursor.close()
+        return []
+
+    group_ids = [group_id for (_, group_id) in group_keys]
+    groups = dict((group_id, []) for group_id in group_ids)
+    sql = _sql_select_events(prefix) + '''
+        WHERE a.group_id IN ( %s ) AND %s
+        ORDER BY a.time DESC
+    ''' % (','.join('?' * len(group_ids)), condition)
+
+    for row in cursor.execute(sql, group_ids + filter_args):
+        ev = _row_to_event(row)
+        groups[ev.extras['group_id']].append(ev)
+
+    cursor.close()
+
+    return [
+        ((time, group_id), groups[group_id])
+        for (time, group_id) in group_keys]
+
+
+def _sql_select_events(prefix):
+    return '''
     SELECT a.elk_id, a.group_id, a.superseded_by, a.source, a.source_id,
         a.source_time_modified, a.source_version, a.time_created, a.time,
         a.lat, a.lon, a.north_shift, a.east_shift, a.depth, a.magnitude,
@@ -652,60 +755,52 @@ def get_events(
     FROM ''' + prefix + '''.events a
     LEFT JOIN ''' + prefix + '''.moment_tensors c
     ON c.elk_id = a.elk_id
-''' + where + '''
-    ORDER BY ( SELECT -time FROM ''' + prefix + '''.events b
-               WHERE b.elk_id = a.group_id ),
-               -a.time
-''' + limit
+'''
 
-    events = []
-    for row in cursor.execute(sql, args):
-        (elk_id, group_id, superseded_by, source, source_id,
-         source_time_modified, source_version, time_created,
-         time, lat, lon, north_shift, east_shift, depth, magnitude,
-         magnitude_type, duration, region, tags, extras,
-         mnn, mee, mdd, mne, mnd, med) = row
 
-        if mnn is not None:
-            mt = pmt.as_mt((mnn, mee, mdd, mne, mnd, med))
-        else:
-            mt = None
+def _row_to_event(row):
+    (elk_id, group_id, superseded_by, source, source_id,
+     source_time_modified, source_version, time_created,
+     time, lat, lon, north_shift, east_shift, depth, magnitude,
+     magnitude_type, duration, region, tags, extras,
+     mnn, mee, mdd, mne, mnd, med) = row
 
-        extras = json.loads(extras) if extras else {}
-        extras.update(
-            elk_id=elk_id,
-            time_created=time_created,
-            catalog_id=source_id,
-            group_id=group_id)
+    if mnn is not None:
+        mt = pmt.as_mt((mnn, mee, mdd, mne, mnd, med))
+    else:
+        mt = None
 
-        if source_time_modified is not None:
-            extras['catalog_time_modified'] = source_time_modified
+    extras = json.loads(extras) if extras else {}
+    extras.update(
+        elk_id=elk_id,
+        time_created=time_created,
+        catalog_id=source_id,
+        group_id=group_id)
 
-        if source_version is not None:
-            extras['catalog_version'] = source_version
+    if source_time_modified is not None:
+        extras['catalog_time_modified'] = source_time_modified
 
-        if superseded_by is not None:
-            extras['superseded_by'] = superseded_by
+    if source_version is not None:
+        extras['catalog_version'] = source_version
 
-        ev = model.Event(
-            name=elk_id,
-            time=time,
-            lat=lat,
-            lon=lon,
-            north_shift=north_shift,
-            east_shift=east_shift,
-            depth=depth,
-            magnitude=magnitude,
-            magnitude_type=magnitude_type or None,
-            duration=duration,
-            region=region,
-            catalog=source,
-            moment_tensor=mt,
-            tags=json.loads(tags) if tags else [],
-            extras=extras)
+    if superseded_by is not None:
+        extras['superseded_by'] = superseded_by
 
-        events.append(ev)
+    ev = model.Event(
+        name=elk_id,
+        time=time,
+        lat=lat,
+        lon=lon,
+        north_shift=north_shift,
+        east_shift=east_shift,
+        depth=depth,
+        magnitude=magnitude,
+        magnitude_type=magnitude_type or None,
+        duration=duration,
+        region=region,
+        catalog=source,
+        moment_tensor=mt,
+        tags=json.loads(tags) if tags else [],
+        extras=extras)
 
-    cursor.close()
-
-    return events
+    return ev
