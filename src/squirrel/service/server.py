@@ -138,8 +138,9 @@ def to_group_key(x):
     return (float(x[0]), x[1])
 
 
-# Maximum number of event groups returned per request.
+# Maximum number of event groups or events returned per request.
 EVENT_GROUPS_LIMIT_MAX = 1000
+EVENTS_LIMIT_MAX = 1000
 
 
 class SquirrelRequestHandler(server.RequestHandler):
@@ -207,6 +208,10 @@ class SquirrelRequestHandler(server.RequestHandler):
             'depth_max': float,
             'limit': int_gt_zero,
             'after': to_group_key,
+            'lat_min': float,
+            'lat_max': float,
+            'lon_min': float,
+            'lon_max': float,
         }
 
         def clean_or_none(f, x):
@@ -319,6 +324,39 @@ class SquirrelRawHandler(SquirrelRequestHandler):
         tmin, tmax = self.get_cleaned('tmin tmax', parameters)
         return self._squirrel.get_events()
 
+    def _get_event_filter(self, parameters):
+        magnitude_min, magnitude_max, depth_min, depth_max = \
+            self.get_cleaned(
+                'magnitude_min magnitude_max depth_min depth_max', parameters)
+
+        return EventFilter(
+            magnitude_min=magnitude_min,
+            magnitude_max=magnitude_max,
+            depth_min=depth_min,
+            depth_max=depth_max)
+
+    def p_get_largest_events(self, parameters):
+        '''
+        Get the largest events in a time span and region.
+
+        Events are ordered by descending magnitude. If ``lon_min > lon_max``,
+        the region crosses the date line.
+        '''
+
+        tmin, tmax, lat_min, lat_max, lon_min, lon_max, limit = \
+            self.get_cleaned(
+                'tmin tmax lat_min lat_max lon_min lon_max limit', parameters)
+
+        return self._squirrel.get_largest_events(
+            min(limit or 100, EVENTS_LIMIT_MAX),
+            tmin=tmin,
+            tmax=tmax,
+            filter=self._get_event_filter(parameters),
+            lat_min=lat_min,
+            lat_max=lat_max,
+            lon_min=lon_min,
+            lon_max=lon_max)
+
     def p_get_event_groups(self, parameters):
         '''
         Get a page of event groups, newest first.
@@ -327,21 +365,15 @@ class SquirrelRawHandler(SquirrelRequestHandler):
         page. ``next`` is ``null`` when there are no more groups.
         '''
 
-        (tmin, tmax, magnitude_min, magnitude_max, depth_min, depth_max,
-         limit, after) = self.get_cleaned(
-            'tmin tmax magnitude_min magnitude_max depth_min depth_max '
-            'limit after', parameters)
+        tmin, tmax, limit, after = self.get_cleaned(
+            'tmin tmax limit after', parameters)
 
         limit = min(limit or 100, EVENT_GROUPS_LIMIT_MAX)
 
         groups = self._squirrel.get_event_groups(
             tmin=tmin,
             tmax=tmax,
-            filter=EventFilter(
-                magnitude_min=magnitude_min,
-                magnitude_max=magnitude_max,
-                depth_min=depth_min,
-                depth_max=depth_max),
+            filter=self._get_event_filter(parameters),
             limit=limit,
             after=after)
 

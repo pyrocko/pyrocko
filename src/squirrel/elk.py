@@ -26,7 +26,7 @@ def unpack_application_id(b):
 ELK1 = unpack_application_id(b'ELK1')
 
 # Increment when the table layout changes. Stored as SQLite user_version.
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 # Event attributes which are managed by the database and are therefore not
 # stored in the extras column.
@@ -48,6 +48,20 @@ CONTENT_HASH_FACTORS = (
     ('east_shift', 10**3),
     ('depth', 10**3),
     ('magnitude', 10**4))
+
+
+# Stand-in for unknown magnitudes in the spatio-temporal index, which needs
+# numbers. Below any real magnitude, so that such events come last.
+RTREE_MAGNITUDE_UNKNOWN = -100.
+
+# Columns of the events table, except for the integer primary key, in the
+# order used for insertion.
+EVENT_COLUMNS = (
+    'elk_id', 'group_id', 'sequence_id', 'superseded_by', 'content_hash',
+    'source', 'source_id', 'source_time_modified', 'source_version',
+    'time_created', 'flag', 'time', 'lat', 'lon', 'north_shift',
+    'east_shift', 'depth', 'magnitude', 'magnitude_type', 'duration',
+    'region', 'tags', 'extras')
 
 
 def new_elk_id():
@@ -181,7 +195,8 @@ def init_database(connection, prefix):
 
     cursor.execute('''
         CREATE TABLE %s.events (
-            elk_id TEXT PRIMARY KEY,
+            event_id INTEGER PRIMARY KEY,
+            elk_id TEXT NOT NULL UNIQUE,
             group_id TEXT,
             sequence_id TEXT,
             superseded_by TEXT,
@@ -239,6 +254,50 @@ def init_database(connection, prefix):
 
     cursor.execute('''
         CREATE UNIQUE INDEX %s.index_content_hash ON events ( content_hash )
+    ''' % prefix)
+
+    # Spatio-temporal index for the selection of the largest events in a
+    # given region and time span. Events are points, the R-tree stores their
+    # coordinates as 32-bit floats, rounded outwards. Cartesian offsets
+    # (north_shift, east_shift) are not taken into account. The integer
+    # primary key of the events table is used to link the two, because, unlike
+    # the implicit rowid, it is stable under VACUUM.
+    cursor.execute('''
+        CREATE VIRTUAL TABLE %s.events_rtree USING rtree(
+            event_id,
+            time_min, time_max,
+            magnitude_min, magnitude_max,
+            lat_min, lat_max,
+            lon_min, lon_max )
+    ''' % prefix)
+
+    rtree_values = '''
+        new.event_id,
+        new.time, new.time,
+        coalesce(new.magnitude, %(m)g), coalesce(new.magnitude, %(m)g),
+        new.lat, new.lat,
+        new.lon, new.lon''' % dict(m=RTREE_MAGNITUDE_UNKNOWN)
+
+    cursor.execute('''
+        CREATE TRIGGER %s.events_rtree_insert AFTER INSERT ON events
+        BEGIN
+            INSERT INTO events_rtree VALUES ( %s );
+        END
+    ''' % (prefix, rtree_values))
+
+    cursor.execute('''
+        CREATE TRIGGER %s.events_rtree_update
+        AFTER UPDATE OF time, magnitude, lat, lon ON events
+        BEGIN
+            INSERT OR REPLACE INTO events_rtree VALUES ( %s );
+        END
+    ''' % (prefix, rtree_values))
+
+    cursor.execute('''
+        CREATE TRIGGER %s.events_rtree_delete AFTER DELETE ON events
+        BEGIN
+            DELETE FROM events_rtree WHERE event_id = old.event_id;
+        END
     ''' % prefix)
 
     connection.commit()
@@ -429,8 +488,10 @@ def _add_events(connection, cursor, prefix, events):
                 if ev.moment_tensor is not None))
 
     cursor.executemany(
-        'INSERT INTO %s.events VALUES (%s)' % (
-            prefix, ','.join('?'*23)), ((
+        'INSERT INTO %s.events ( %s ) VALUES ( %s )' % (
+            prefix,
+            ', '.join(EVENT_COLUMNS),
+            ', '.join('?' * len(EVENT_COLUMNS))), ((
                 elk_id,
                 None,
                 None,
@@ -743,6 +804,196 @@ def get_event_groups(
     return [
         ((time, group_id), groups[group_id])
         for (time, group_id) in group_keys]
+
+
+def split_lon_range(lon_min, lon_max):
+    '''
+    Get longitude range as list of non-wrapping ranges.
+
+    If ``lon_min > lon_max``, the range crosses the date line and is split in
+    two. Without limits, ``[(None, None)]`` is returned.
+    '''
+
+    if lon_min is None and lon_max is None:
+        return [(None, None)]
+
+    lon_min = -180. if lon_min is None else lon_min
+    lon_max = 180. if lon_max is None else lon_max
+    if lon_min <= lon_max:
+        return [(lon_min, lon_max)]
+    else:
+        # Range crossing the date line.
+        return [(lon_min, 180.), (-180., lon_max)]
+
+
+def get_largest_events(
+        connection,
+        prefix,
+        n,
+        filter=None,
+        lat_min=None,
+        lat_max=None,
+        lon_min=None,
+        lon_max=None,
+        include_superseded=False):
+
+    '''
+    Get the largest events in a given region and time span.
+
+    Events are selected by magnitude, using the spatio-temporal index.
+    Events without magnitude come last. Group membership is not taken into
+    account: several events of a group may be selected. They can be combined
+    using ``extras['group_id']``. Cartesian offsets of the events
+    (``north_shift``, ``east_shift``) are not taken into account.
+
+    :param n:
+        Maximum number of events to return.
+    :param filter:
+        Event filter (time, magnitude and depth limits).
+    :param lat_min, lat_max, lon_min, lon_max:
+        Region limits [deg]. If ``lon_min > lon_max``, the region crosses the
+        date line.
+
+    :returns:
+        List of events, ordered by descending magnitude.
+    '''
+
+    check_database(connection, prefix)
+
+    if filter is None:
+        filter = model.event.EventFilter()
+    elif isinstance(filter, dict):
+        filter = model.event.EventFilter(**filter)
+
+    where, filter_args = filter.sql_condition(table='a')
+    exact_conditions = [where[len('WHERE '):]] if where else []
+    if not include_superseded:
+        exact_conditions.append('a.superseded_by IS NULL')
+
+    # Conditions on the R-tree only select candidates; exact limits are
+    # applied to the events table (the R-tree's coordinates are rounded).
+    index_conditions = []
+    index_args = []
+    for (name, vmin, vmax) in [
+            ('time', filter.time_min, filter.time_max),
+            ('lat', lat_min, lat_max)]:
+
+        if vmin is not None:
+            index_conditions.append('r.%s_max >= ?' % name)
+            index_args.append(vmin)
+
+        if vmax is not None:
+            index_conditions.append('r.%s_min <= ?' % name)
+            index_args.append(vmax)
+
+    for (name, vmin, vmax) in [('lat', lat_min, lat_max)]:
+        if vmin is not None:
+            exact_conditions.append('a.%s >= ?' % name)
+            filter_args.append(vmin)
+
+        if vmax is not None:
+            exact_conditions.append('a.%s <= ?' % name)
+            filter_args.append(vmax)
+
+    lon_ranges = split_lon_range(lon_min, lon_max)
+
+    def query(select, magnitude_min, suffix='', suffix_args=()):
+        results = []
+        for (lon_range_min, lon_range_max) in lon_ranges:
+            conditions = list(index_conditions)
+            args = list(index_args)
+            if lon_range_min is not None:
+                conditions.append('r.lon_max >= ?')
+                args.append(lon_range_min)
+                conditions.append('r.lon_min <= ?')
+                args.append(lon_range_max)
+
+            conditions.extend(exact_conditions)
+            args.extend(filter_args)
+
+            if lon_range_min is not None:
+                conditions.append('a.lon >= ? AND a.lon <= ?')
+                args.extend([lon_range_min, lon_range_max])
+
+            if magnitude_min is not None:
+                conditions.append('r.magnitude_max >= ?')
+                conditions.append('a.magnitude >= ?')
+                args.extend([magnitude_min, magnitude_min])
+
+            sql = select + '''
+                WHERE ''' + (' AND '.join(conditions) or '1') + suffix
+
+            results.extend(
+                connection.execute(sql, args + list(suffix_args)))
+
+        return results
+
+    select_count = '''
+        SELECT COUNT(*) FROM ''' + prefix + '''.events_rtree r
+        JOIN ''' + prefix + '''.events a ON a.event_id = r.event_id '''
+
+    select_min_magnitude = '''
+        SELECT MIN(a.magnitude) FROM ''' + prefix + '''.events_rtree r
+        JOIN ''' + prefix + '''.events a ON a.event_id = r.event_id '''
+
+    # Lower the magnitude threshold until there are enough candidates. Steps
+    # are estimated from the Gutenberg-Richter relation with b = 1. If this
+    # takes long, there are probably not enough events in the region: the
+    # smallest magnitude there is then used to stop early.
+    magnitude_min = 10.
+    if filter.magnitude_max is not None:
+        magnitude_min = min(magnitude_min, filter.magnitude_max)
+
+    magnitude_floor = None
+    istep = 0
+    while True:
+        count = sum(
+            row[0] for row in query(select_count, magnitude_min))
+
+        if count >= n:
+            break
+
+        if count == 0:
+            magnitude_min -= 1.0
+        else:
+            magnitude_min -= max(0.1, math.log10(n / count) + 0.1)
+
+        istep += 1
+        if magnitude_floor is None and istep >= 4:
+            magnitudes = [
+                row[0] for row in query(select_min_magnitude, None)
+                if row[0] is not None]
+
+            magnitude_floor = min(magnitudes) if magnitudes else 10.
+
+        if filter.magnitude_min is not None \
+                and magnitude_min <= filter.magnitude_min:
+            magnitude_min = filter.magnitude_min
+            break
+
+        if magnitude_floor is not None and magnitude_min <= magnitude_floor:
+            # All events, including the ones without magnitude.
+            magnitude_min = None
+            break
+
+    select = _sql_select_events(prefix) + '''
+        JOIN ''' + prefix + '''.events_rtree r ON r.event_id = a.event_id '''
+
+    rows = query(
+        select,
+        magnitude_min,
+        '''
+        ORDER BY a.magnitude IS NULL, a.magnitude DESC, a.time DESC
+        LIMIT ?''',
+        (n,))
+
+    events = [_row_to_event(row) for row in rows]
+    events.sort(key=lambda ev: (
+        ev.magnitude is None,
+        -(ev.magnitude or 0.0),
+        -ev.time))
+
+    return events[:n]
 
 
 def _sql_select_events(prefix):

@@ -2366,6 +2366,90 @@ class Squirrel(Selection):
 
         return groups
 
+    @filldocs
+    def get_largest_events(
+            self,
+            n,
+            obj=None,
+            tmin=None,
+            tmax=None,
+            time=None,
+            codes=None,
+            filter=None,
+            lat_min=None,
+            lat_max=None,
+            lon_min=None,
+            lon_max=None):
+
+        '''
+        Get the largest events in a given region and time span.
+
+        :param n:
+            Maximum number of events to return.
+        :type n:
+            int
+
+        %(query_args)s
+
+        :param filter:
+            Event filter.
+        :type filter:
+            :py:class:`~pyrocko.model.event.EventFilter`
+
+        :param lat_min, lat_max, lon_min, lon_max:
+            Region limits [deg]. If ``lon_min > lon_max``, the region crosses
+            the date line. Cartesian offsets of the events (``north_shift``,
+            ``east_shift``) are not taken into account.
+        :type lat_min, lat_max, lon_min, lon_max:
+            float
+
+        :returns:
+            List of :py:class:`~pyrocko.model.event.Event` objects, ordered
+            by descending magnitude. Events without magnitude come last.
+            Group membership is not taken into account (see
+            ``extras['group_id']`` of events from event databases).
+        '''
+
+        import pyrocko.squirrel.elk as elk
+
+        tmin, tmax, codes, filter = self._get_event_selection_args(
+            obj, tmin, tmax, time, codes, filter)
+
+        lon_ranges = elk.split_lon_range(lon_min, lon_max)
+
+        def in_region(ev):
+            return (
+                (lat_min is None or lat_min <= ev.lat)
+                and (lat_max is None or ev.lat <= lat_max)
+                and any(
+                    lon_range_min is None
+                    or lon_range_min <= ev.lon <= lon_range_max
+                    for (lon_range_min, lon_range_max) in lon_ranges))
+
+        events = [
+            ev for ev in self._get_plain_events(
+                tmin, tmax, codes, filter, None)
+            if in_region(ev)]
+
+        for prefix in self._iter_elk_prefixes(tmin, tmax, codes):
+            events.extend(
+                elk.get_largest_events(
+                    self._conn,
+                    prefix=prefix,
+                    n=n,
+                    filter=filter,
+                    lat_min=lat_min,
+                    lat_max=lat_max,
+                    lon_min=lon_min,
+                    lon_max=lon_max))
+
+        events.sort(key=lambda ev: (
+            ev.magnitude is None,
+            -(ev.magnitude or 0.0),
+            -ev.time))
+
+        return events[:n]
+
     def _get_event_selection_args(self, obj, tmin, tmax, time, codes, filter):
         tmin, tmax, codes = self._get_selection_args(
             EVENT, obj, tmin, tmax, time, codes)
