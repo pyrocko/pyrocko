@@ -155,7 +155,7 @@ class TableElement(base.Element):
         if self._table and self._table.has_col(name):
             yield self._table.get_col(name)
 
-    def set_table(self, table):
+    def set_table(self, table, update_controls=True):
         self._table = table
 
         self._istate += 1
@@ -163,7 +163,8 @@ class TableElement(base.Element):
         if self._pipes is not None and self._istate != self._istate_view:
             self._clear_pipes()
 
-        self._update_controls()
+        if update_controls:
+            self._update_controls()
 
     def get_size_parameter_extra_entries(self):
         return []
