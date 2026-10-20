@@ -46,6 +46,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     - Pile viewer: added a trace deconvolution (instrument response
       removal) option, usable together with rotation and filtering.
 - Sparrow: added a zoom slider to the Navigation panel.
+- Sparrow: the Catalog element can load a second catalog with alternative
+  solutions for the same events and blend between the two with a slider.
 - Pyrocko-GF: `fomosto qseis` can now build scalar stores of volume
   change and pressure.
 - Trace: `lowpass`/`highpass`/`bandpass`/`bandstop` gained a `type`
@@ -118,6 +120,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   for some traces.
 - Fixed compatibility with newer versions of NumPy and Matplotlib.
 - ISC catalog client: looking up a single event by its name works again.
+- Sparrow: QuakeML files loaded into the Catalog element are no longer
+  additionally read as Pyrocko event files.
 
 ### Security
 - Web-based services: the session cookie-secret file is now created
