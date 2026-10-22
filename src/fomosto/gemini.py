@@ -1,1234 +1,1888 @@
-import asyncio
-import logging
-import shutil
-from pathlib import Path
-from subprocess import PIPE, Popen
-from tempfile import mkdtemp
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 
-import numpy as np
-from pyrocko import cake, gf, io, model, orthodrome, trace, util
-from pyrocko.guts import Float, Int, Object, String, Tuple, clone
+'''
+Fomosto backend for the GEMINI program system.
+
+GEMINI (Green's function of the Earth by MINor integration) by Jörg Dalkolmo
+and Wolfgang Friederich computes complete synthetic seismograms for a
+spherically symmetric, transversely isotropic, anelastic earth by numerical
+integration of the equations of motion in the frequency domain [Friederich
+& Dalkolmo 1995]. It consists of three programs, which this backend expects to
+be installed as ``fomosto_gemini_Gemini_2_2``, ``fomosto_gemini_Dispec_2_2``
+and ``fomosto_gemini_Totido_2_2``, e.g. with the ``fomosto-gemini`` package:
+
+* ``Gemini`` computes the Green's basis solutions in the frequency-degree
+  domain for a given source depth.
+* ``Dispec`` combines them with a moment tensor source and sums over the
+  spherical harmonics, giving spectra at the receivers.
+* ``Totido`` transforms the spectra to the time domain.
+
+The earth model, which may be transversely isotropic, is given in GEMINI's own
+polynomial format in the ``earthmodel`` entry of the store's ``extra/gemini``
+file. The ``earthmodel_1d`` in the store's ``config`` is an isotropic
+approximation of it, used for travel time tables. If the ``earthmodel`` entry
+is omitted, it is fitted to ``earthmodel_1d`` when the store is built.
+
+Models can be converted between the formats on the command line::
+
+    python -m pyrocko.fomosto.gemini nd-to-gemini IN OUT
+    python -m pyrocko.fomosto.gemini gemini-to-nd IN OUT
+
+Receivers must be at the surface. Components are computed in source-centred
+coordinates, with the source at the north pole and the receivers on the 180°
+meridian, so that any epicentral distance between 0° and 180° can be used.
+
+.. rubric:: References
+
+Friederich, W. and Dalkolmo, J. (1995): Complete synthetic seismograms for a
+spherically symmetric earth by a numerical computation of the Green's function
+in the frequency domain. Geophysical Journal International, 122, 537-550.
+'''
+
+import asyncio
+import hashlib
+import logging
+import math
+import os
+import shutil
+import signal
+import time
+from tempfile import mkdtemp
+from os.path import join as pjoin
+
+import numpy as num
+from numpy.polynomial import Polynomial
+
+from pyrocko import trace, cake, gf, util
+from pyrocko.guts import Object, Float, Int, Bool, Tuple, String
+from pyrocko.guts import TBase, literal
 from pyrocko.moment_tensor import MomentTensor, symmat6
 
-logger = logging.getLogger("pyrocko.fomosto.gemini")
+guts_prefix = 'pf'
 
+logger = logging.getLogger('pyrocko.fomosto.gemini')
 
-# Data files (green/, sources/, stations/, iasp91, lw200mhz, spec3k,
-# seismogr). The programs run in here, so the file names in the configs stay
-# relative to it, just like in gemini.sc, disp.sc and to.sc.
-GEMINI_DIRECTORY = Path(
-    "~/GeminiInhalt/FunktionierendeVersion/gemini-2.2.1"
-).expanduser()
+km = 1000.
 
-
-# The Fortran binaries, installed outside the data directory.
-BIN_DIRECTORY = Path("~/.local/bin").expanduser()
-
-guts_prefix = "gemini"
-
+# how to call the programs, for each GEMINI version
 program_bins = {
-    "gemini": BIN_DIRECTORY / "gemini_inputfile",
-    "dispec": BIN_DIRECTORY / "dispec_inputfile",
-    "totido": BIN_DIRECTORY / "totido_inputfile",
+    '2.2': {
+        'gemini': 'fomosto_gemini_Gemini_2_2',
+        'dispec': 'fomosto_gemini_Dispec_2_2',
+        'totido': 'fomosto_gemini_Totido_2_2',
+    },
 }
 
+default_version = '2.2'
 
-# Tests the existence of the binaries.
+# Array limits compiled into the Fortran programs.
+gemini_nlayer = 20        # Gemini: nlayer, max number of model layers
+gemini_ncoefs = 4         # Gemini: max number of polynomial coefficients
+gemini_lmx = 10000        # Gemini, Dispec: lmx, max harmonic degree
+dispec_nfr = 3000         # Dispec: nfr, max number of frequencies
+dispec_nseimx = 149       # Dispec: nseimx - 1, max number of receivers
+dispec_ntmx = 200         # Dispec: ntpmx, max length of degree taper
+totido_nfmax = 16384      # Totido: nfmax, max number of samples
+
+# Depth ranges [m] in which discontinuities are named when converting GEMINI
+# models to cake models.
+discontinuity_depth_ranges = {
+    'moho': (0.*km, 100.*km),
+    'cmb': (2591.*km, 3191.*km),
+    'icb': (4850.*km, 5450.*km),
+}
+
+# Default bulk attenuation, used where it is undefined or infinite.
+qkappa_default = 57823.
+
+# The CMT file holds the moment tensor in units of 10**cmt_exponent dyne cm,
+# here 1e15 Nm, keeping the output of Dispec and Totido at moderate values.
+cmt_exponent = 22
+cmt_moment = 10.0**cmt_exponent * 1e-7  # [Nm]
+
+# Dispec/Totido give nanometers for moments in Nm.
+nm = 1e-9
+
+
 def have_backend():
-    return all(binary.is_file() for binary in program_bins.values())
+    '''
+    Get the GEMINI versions for which all programs are available.
+    '''
+    return set(
+        version for (version, bins) in program_bins.items()
+        if all(shutil.which(exe) for exe in bins.values()))
 
 
-# Here, the input parameters for the simulated source, Gemini, Dispec and Totido are defined.
-# Later on it could be useful to define the Earthmodel (like iasp91 (not anisotropic), or other anisotropic models) here too.
-# Also the maximum degrees depending on the frequency could be defined here, but for now it is just the default lw200mhz file.
-class GeminiSource(Object):
-    """
-    Tags:   [phys] enters the calculation,
-            [label] only reaches the seismogr header,
-            [pad] is read by readcmt.f and discarded.
-    A [pad] value is irrelevant, but its column width is not.
-    """
-
-    # Line 1: basic event information.
-    event_id: str = String.T(default="ICHteste")  # [label] 8 characters
-    date: str = String.T(default="01/01/26")  # [label] dd/mm/yy
-    origin_time: str = String.T(default="00:00:00.0")  # [label] hh:mm:ss.s
-    latitude: float = Float.T(default=40.64)  # [pad] use centroid_latitude
-    longitude: float = Float.T(default=29.83)  # [pad] use centroid_longitude
-    depth: float = Float.T(default=90.0)  # [pad] use centroid_depth
-    mb: float = Float.T(default=2.0)  # [pad] body-wave magnitude
-    MS: float = Float.T(default=4.0)  # [pad] surface-wave magnitude
-    region: str = String.T(
-        default="KARAMURSEL TURKEI"
-    )  # [pad] max 24 characters
-
-    # Line 2: CMT header and inversion errors.
-    # Origin of the epicentre data: 'PDE' preliminary, 'MLI' NEIC monthly
-    # listings, 'ISC' ISC catalogue.
-    source_type: str = String.T(default="PDE")  # [pad]
-    bw_stations: int = Int.T(default=0)  # [pad] body-wave stations used
-    bw_records: int = Int.T(default=0)  # [pad] body-wave records used
-    bw_cutoff: int = Int.T(default=0)  # [pad] cut-off in s, i4 in readcmt.f
-    mw_stations: int = Int.T(default=0)  # [pad] mantle-wave stations used
-    mw_records: int = Int.T(default=0)  # [pad] mantle-wave records used
-    mw_cutoff: int = Int.T(default=0)  # [pad] cut-off in s, i4 in readcmt.f
-    centroid_time: float = Float.T(
-        default=0.0
-    )  # [phys] offset from origin_time in s
-    centroid_time_error: float = Float.T(
-        default=0.0
-    )  # [pad] standard error in s
-    centroid_latitude: float = Float.T(
-        default=40.64
-    )  # [phys] source latitude in degrees
-    centroid_latitude_error: float = Float.T(
-        default=0.0
-    )  # [pad] standard error
-    centroid_longitude: float = Float.T(
-        default=29.83
-    )  # [phys] source longitude in degrees
-    centroid_longitude_error: float = Float.T(
-        default=0.0
-    )  # [pad] standard error
-    centroid_depth: float = Float.T(default=10.0)  # [phys] source depth in km
-    centroid_depth_error: float = Float.T(
-        default=0.0
-    )  # [pad] standard error in km
-
-    # Line 3: moment tensor. Every component is scaled by 10**exponent and
-    # carries the standard error of the inversion.
-    duration: float = Float.T(default=0.0)  # [pad] read but never returned
-    exponent: int = Int.T(
-        default=27
-    )  # [phys] common exponent of all moment values
-    mrr: float = Float.T(default=2.02)  # [phys] radial-radial component
-    mrr_error: float = Float.T(default=0.0)  # [pad] standard error of mrr
-    mss: float = Float.T(default=-0.07)  # [phys] south-south component
-    mss_error: float = Float.T(default=0.0)  # [pad] standard error of mss
-    mee: float = Float.T(default=5.80)  # [phys] east-east component
-    mee_error: float = Float.T(default=0.0)  # [pad] standard error of mee
-    mrs: float = Float.T(default=0.02)  # [phys] radial-south component
-    mrs_error: float = Float.T(default=0.0)  # [pad] standard error of mrs
-    mre: float = Float.T(default=-0.34)  # [phys] radial-east component
-    mre_error: float = Float.T(default=0.0)  # [pad] standard error of mre
-    mse: float = Float.T(default=-1.34)  # [phys] south-east component
-    mse_error: float = Float.T(default=0.0)  # [pad] standard error of mse
-
-    # Line 4: principal axes and fault-plane solution. Entirely [pad] -
-    # readcmt.f returns none of it, and it is derivable from the tensor.
-    eigenvalue1: float = Float.T(default=0.0)  # [pad] principal axis 1
-    plunge1: int = Int.T(default=0)  # [pad] 0-90 degrees, i3 in readcmt.f
-    azimuth1: int = Int.T(default=0)  # [pad] 0-360 degrees, i4 in readcmt.f
-    eigenvalue2: float = Float.T(default=0.0)  # [pad] principal axis 2
-    plunge2: int = Int.T(default=0)  # [pad] 0-90 degrees, i3 in readcmt.f
-    azimuth2: int = Int.T(default=0)  # [pad] 0-360 degrees, i4 in readcmt.f
-    eigenvalue3: float = Float.T(default=0.0)  # [pad] principal axis 3
-    plunge3: int = Int.T(default=0)  # [pad] 0-90 degrees, i3 in readcmt.f
-    azimuth3: int = Int.T(default=0)  # [pad] 0-360 degrees, i4 in readcmt.f
-    scalar_moment: float = Float.T(
-        default=1.38
-    )  # [pad] scaled by 10**exponent
-    strike1: int = Int.T(default=0)  # [pad] 0-360 degrees, i4 in readcmt.f
-    dip1: int = Int.T(default=0)  # [pad] 0-90 degrees, i3 in readcmt.f
-    rake1: int = Int.T(
-        default=0
-    )  # [pad] -180 to +180 degrees, i5 in readcmt.f
-    strike2: int = Int.T(default=0)  # [pad] auxiliary plane, i4 in readcmt.f
-    dip2: int = Int.T(default=0)  # [pad] auxiliary plane, i3 in readcmt.f
-    rake2: int = Int.T(default=0)  # [pad] auxiliary plane, i5 in readcmt.f
+class GeminiError(gf.store.StoreError):
+    pass
 
 
-# This class converts the GeminiSource into the CMT file that Dispec reads.
-class CMTBuilder(object):
-    """Turn one GeminiSource into the CMT file that Dispec reads."""
+class Interrupted(gf.store.StoreError):
+    def __str__(self):
+        return 'Interrupted.'
 
-    text_widths = {"event_id": 8, "source_type": 3, "region": 24}
 
-    # readcmt.f reads with:
-    # line 1: a8,5(1x,a2),1x,f4.1,f7.2,f8.2,f6.1,2f3.1,a24
-    # line 2: a3,2(4x,i2,i3,i4),4x,f6.1,f4.1,f7.2,f5.2,f8.2,f5.2,f6.1,f5.1
-    # line 3: 4x,f4.1,4x,i2,6(f6.2,f5.2)
-    # line 4: 3(f7.2,i3,i4),f7.2,2(i4,i3,i5)
-    line_widths = (79, 79, 80, 73)
+def _fortran_floats(tokens):
+    return [float(tok.replace('D', 'E').replace('d', 'e')) for tok in tokens]
+
+
+class GeminiLayer(object):
+    '''
+    Layer of a GEMINI earth model.
+
+    :param r_bottom: radius of the bottom of the layer [km]
+    :param coefs: polynomial coefficients, array of shape ``(ncoefs, 6)``.
+        The columns are density [g/cm^3], vertical and horizontal P-wave
+        velocity, vertical and horizontal S-wave velocity [km/s], and the
+        anisotropy parameter eta. Rows are the coefficients of increasing
+        powers of the normalized radius ``x = r / r_surface``.
+    :param qmu: shear quality factor, ``<= 0`` for a fluid layer
+    :param qkappa: bulk quality factor
+    '''
+
+    def __init__(self, r_bottom, coefs, qmu, qkappa):
+        self.r_bottom = float(r_bottom)
+        self.coefs = num.array(coefs, dtype=float).reshape(-1, 6)
+        self.qmu = float(qmu)
+        self.qkappa = float(qkappa)
+
+    @property
+    def is_fluid(self):
+        return self.qmu <= 0.0
+
+    def evaluate(self, x):
+        '''
+        Evaluate the polynomials at normalized radii ``x``.
+
+        :returns: array of shape ``(6, len(x))`` with the rows density,
+            vpv, vph, vsv, vsh, eta
+        '''
+        x = num.atleast_1d(num.asarray(x, dtype=float))
+        result = num.zeros((6, x.size))
+        for coefs in self.coefs[::-1]:
+            result = result * x[num.newaxis, :] + coefs[:, num.newaxis]
+
+        return result
+
+
+class GeminiModel(object):
+    '''
+    Spherically symmetric, possibly transversely isotropic GEMINI earth model.
+
+    Densities are in [g/cm^3], velocities in [km/s] and radii in [km], as in
+    the native file format of GEMINI. Layers are ordered from the centre to
+    the surface.
+    '''
 
     def __init__(
-        self,
-        source,
-        filepath=GEMINI_DIRECTORY / "sources" / "Quelle",
-    ):
-        self.source = source
-        self.filepath = Path(filepath)
+            self, layers, r_surface,
+            reference_frequency=1.0,
+            transversely_isotropic=False,
+            comments=None):
+
+        self.layers = list(layers)
+        self.r_surface = float(r_surface)
+        self.reference_frequency = float(reference_frequency)
+        self.transversely_isotropic = bool(transversely_isotropic)
+        self.comments = list(comments or [])
+
+    @classmethod
+    def from_string(cls, s):
+        '''
+        Parse earth model in GEMINI's native file format.
+
+        This reads the format the same way as GEMINI's ``gtmanis.f`` does.
+        '''
+
+        lines = s.splitlines()
+        state = dict(iline=0)
+
+        def next_line():
+            iline = state['iline']
+            if iline >= len(lines):
+                raise GeminiError(
+                    'GEMINI earth model: unexpected end of input')
+
+            state['iline'] += 1
+            return lines[iline]
+
+        def read_values(n):
+            values = []
+            while len(values) < n:
+                values.extend(next_line().split())
+
+            try:
+                return _fortran_floats(values[:n])
+            except ValueError:
+                raise GeminiError(
+                    'GEMINI earth model: invalid number in line %i'
+                    % state['iline'])
+
+        comments = []
+        while state['iline'] < len(lines) \
+                and lines[state['iline']].startswith('#'):
+            comment = next_line()[1:].rstrip()
+            # marker line, added by to_string()
+            if 'Do not insert any comments below' not in comment:
+                comments.append(comment)
+
+        try:
+            nlayers = int(next_line()[:2])
+            line = next_line()
+            ncoefs = [int(line[2*i:2*i+2]) for i in range(nlayers)]
+        except ValueError:
+            raise GeminiError(
+                'GEMINI earth model: cannot read number of layers or number '
+                'of polynomial coefficients (fixed format 2 columns per '
+                'value)')
+
+        reference_frequency, = read_values(1)
+        ifanis, = read_values(1)
+        for _ in range(3):
+            next_line()
+
+        layers = []
+        for ilayer in range(nlayers):
+            r, rho, vpv, vph, vsv, vsh, qmu, qkappa, eta = read_values(9)
+            coefs = [[rho, vpv, vph, vsv, vsh, eta]]
+            for _ in range(ncoefs[ilayer] - 1):
+                coefs.append(read_values(6))
+
+            next_line()
+            layers.append(GeminiLayer(r, coefs, qmu, qkappa))
+
+        r_surface, = read_values(1)
+
+        return cls(
+            layers, r_surface,
+            reference_frequency=reference_frequency,
+            transversely_isotropic=int(ifanis) == 1,
+            comments=comments)
+
+    def to_string(self):
+        '''
+        Get earth model in GEMINI's native file format.
+        '''
+
+        def fmt(values):
+            return ' '.join('%19.13g' % v for v in values)
+
+        nlayers = len(self.layers)
+        lines = ['#' + comment for comment in self.comments]
+        lines.extend([
+            '# +++++++ Do not insert any comments below this line !! '
+            '+++++++++++++++',
+            '%2i  Number of layers' % nlayers,
+            ''.join('%2i' % layer.coefs.shape[0] for layer in self.layers)
+            + '  Number of polynomial coefficients in each layer',
+            '%g  Reference frequency of quality factors (Hertz)'
+            % self.reference_frequency,
+            '%i  Transversely isotropic? 1=y, else=n'
+            % int(self.transversely_isotropic),
+            '-' * 79,
+            'Radius Density V-Pv V-Ph V-Sv V-Sh Qmu Qk Eta',
+            '-' * 79])
+
+        for layer in self.layers:
+            rho, vpv, vph, vsv, vsh, eta = layer.coefs[0]
+            lines.append(fmt([
+                layer.r_bottom, rho, vpv, vph, vsv, vsh,
+                layer.qmu, layer.qkappa, eta]))
+
+            for coefs in layer.coefs[1:]:
+                lines.append(' '*20 + fmt(coefs))
+
+            # separator, any content is skipped by gtmanis.f
+            lines.append('')
+
+        lines.append(fmt([self.r_surface]))
+        lines.append('-' * 79)
+        return '\n'.join(lines) + '\n'
+
+    def validate(self, nlayers_max=gemini_nlayer):
+        if len(self.layers) == 0:
+            raise GeminiError('GEMINI earth model has no layers')
+
+        if len(self.layers) > nlayers_max:
+            raise GeminiError(
+                'GEMINI earth model has %i layers, GEMINI supports at most '
+                '%i' % (len(self.layers), nlayers_max))
+
+        if self.layers[0].r_bottom != 0.0:
+            raise GeminiError(
+                'GEMINI earth model must extend to the centre of the earth')
+
+        for layer in self.layers:
+            if not (1 <= layer.coefs.shape[0] <= gemini_ncoefs):
+                raise GeminiError(
+                    'GEMINI earth model layers must have 1 to %i polynomial '
+                    'coefficients' % gemini_ncoefs)
+
+        radii = [layer.r_bottom for layer in self.layers] + [self.r_surface]
+        if any(r2 <= r1 for (r1, r2) in zip(radii[:-1], radii[1:])):
+            raise GeminiError(
+                'GEMINI earth model layer radii must be increasing')
+
+        if self.layers[-1].is_fluid:
+            raise GeminiError(
+                'GEMINI does not support a fluid top layer (ocean)')
+
+    def layer_bounds(self):
+        radii = [layer.r_bottom for layer in self.layers] + [self.r_surface]
+        return list(zip(self.layers, radii[:-1], radii[1:]))
+
+    def isotropic_properties(self, layer, r):
+        '''
+        Get isotropic approximation of the material properties of a layer.
+
+        For a transversely isotropic model the equivalent isotropic Voigt
+        average moduli are used, as by GEMINI (after Dziewonski & Anderson
+        1980). For an isotropic model only the vertical velocities are used,
+        as by GEMINI.
+
+        :param layer: :py:class:`GeminiLayer` of this model
+        :param r: radii [km]
+        :returns: ``(vp, vs, rho, qp, qs)``, arrays in SI units
+        '''
+
+        rho, vpv, vph, vsv, vsh, eta = layer.evaluate(
+            num.asarray(r) / self.r_surface)
+
+        if layer.is_fluid:
+            vs = num.zeros_like(vpv)
+            vp = vpv
+        elif self.transversely_isotropic:
+            a = rho * vph**2
+            c = rho * vpv**2
+            n = rho * vsh**2
+            l_ = rho * vsv**2
+            f = eta * (a - 2.0*l_)
+            kappa = (4.0*(a + f - n) + c) / 9.0
+            mu = (a + c - 2.0*f + 5.0*n + 6.0*l_) / 15.0
+            vp = num.sqrt((kappa + 4.0/3.0 * mu) / rho)
+            vs = num.sqrt(mu / rho)
+        else:
+            vp = vpv
+            vs = vsv
+
+        if layer.is_fluid:
+            qs = num.zeros_like(vp)
+            qp = num.full_like(vp, layer.qkappa)
+        else:
+            s = (4.0/3.0) * (vs/vp)**2
+            qs = num.full_like(vp, layer.qmu)
+            qp = 1.0 / (s/layer.qmu + (1.0 - s)/layer.qkappa)
+
+        return vp*km, vs*km, rho*km, qp, qs
+
+    def to_cake(self, rtol=5e-4):
+        '''
+        Get isotropic approximation as :py:class:`pyrocko.cake.LayeredModel`.
+
+        Each polynomial layer is approximated by gradient layers, with nodes
+        inserted until linear interpolation deviates by less than ``rtol``
+        (relative) from the polynomials.
+
+        Discontinuities are named, as needed for standard phase definitions,
+        if they are roughly at the expected depth (see
+        :py:data:`discontinuity_depth_ranges`): the top of a fluid layer is
+        named ``cmb``, its bottom ``icb``, and the shallowest discontinuity
+        with a P-wave velocity increasing across 7.5 km/s is named ``moho``.
+        '''
+
+        def props(layer, r):
+            return num.array(self.isotropic_properties(layer, r))
+
+        def refine(layer, r_top, r_bottom, p_top, p_bottom, level=0):
+            # Nodes from top to bottom.
+            rm = 0.5 * (r_top + r_bottom)
+            pm = props(layer, [rm])[:, 0]
+            pm_lin = 0.5 * (p_top + p_bottom)
+            scale = num.maximum(num.abs(pm), num.abs(pm_lin))
+            scale[scale == 0.0] = 1.0
+            if level < 12 and num.any(num.abs(pm - pm_lin) > rtol * scale):
+                return refine(layer, r_top, rm, p_top, pm, level+1)[:-1] \
+                    + refine(layer, rm, r_bottom, pm, p_bottom, level+1)
+
+            return [(r_top, p_top), (r_bottom, p_bottom)]
+
+        r_surface = self.r_surface
+        lines = []
+        moho_found = False
+        for layer, r_bottom, r_top in self.layer_bounds()[::-1]:
+            p_top, p_bottom = props(layer, [r_top, r_bottom]).T
+            nodes = refine(layer, r_top, r_bottom, p_top, p_bottom)
+
+            name = None
+            if lines:
+                _, m_above, _ = lines[-1]
+                vp_below = nodes[0][1][0]
+                if m_above.vs != 0.0 and layer.is_fluid:
+                    name = 'cmb'
+                elif m_above.vs == 0.0 and not layer.is_fluid:
+                    name = 'icb'
+                elif not moho_found and m_above.vp < 7500. <= vp_below:
+                    name = 'moho'
+                    moho_found = True
+
+                if name is not None:
+                    zmin, zmax = discontinuity_depth_ranges[name]
+                    if not (zmin <= (r_surface - r_top)*km <= zmax):
+                        name = None
+
+                if name is None and num.allclose(
+                        nodes[0][1], m_above.astuple(), rtol=1e-6, atol=0.):
+                    nodes = nodes[1:]
+
+            for r, p in nodes:
+                lines.append(((r_surface - r)*km, cake.Material(*p), name))
+                name = None
+
+        return cake.LayeredModel.from_scanlines(lines)
+
+    @classmethod
+    def from_cake(
+            cls, mod,
+            nlayers_max=gemini_nlayer,
+            rtol_velocity=2e-3,
+            rtol_q=0.1,
+            nsamples_per_layer=20):
+
+        '''
+        Approximate :py:class:`pyrocko.cake.LayeredModel` by GEMINI layers.
+
+        The model is split at its discontinuities. The material properties in
+        each part are fitted with polynomials of up to third order in the
+        normalized radius, the quality factors are averaged. As long as the
+        total number of layers stays at most ``nlayers_max``, the worst
+        fitting part is split further, at the node minimizing the misfit. The
+        misfit is the maximum of the relative misfit of velocities and density
+        divided by ``rtol_velocity`` and the relative deviation of the quality
+        factors from the layer's constant value divided by ``rtol_q``. A
+        warning is issued if it exceeds 1 in the end.
+        '''
+
+        sublayers = [
+            layer for layer in mod.layers() if layer.zbot > layer.ztop]
+
+        if not sublayers:
+            raise GeminiError('cannot convert empty earth model')
+
+        r_surface = cake.earthradius / km
+        # cake models usually stop 1 m above the centre
+        if abs(sublayers[-1].zbot / km - r_surface) > 0.1:
+            raise GeminiError(
+                'earth model must extend to the centre of the earth (to a '
+                'depth of %g km) to be used with GEMINI' % r_surface)
+
+        if sublayers[0].ztop != 0.0:
+            raise GeminiError('earth model must start at the surface')
+
+        if sublayers[0].mtop.vs == 0.0:
+            raise GeminiError(
+                'GEMINI does not support a fluid top layer (ocean)')
+
+        # Group the cake layers into parts between discontinuities.
+        parts = []
+        for layer in sublayers:
+            if parts and parts[-1][-1].zbot == layer.ztop and \
+                    parts[-1][-1].mbot.astuple() == layer.mtop.astuple():
+                parts[-1].append(layer)
+            else:
+                parts.append([layer])
+
+        if len(parts) > nlayers_max:
+            raise GeminiError(
+                'earth model has %i discontinuities, more than GEMINI\'s '
+                'limit of %i layers' % (len(parts)-1, nlayers_max))
+
+        fits = [cls._fit_part(
+            part, r_surface, rtol_velocity, rtol_q, nsamples_per_layer)
+            for part in parts]
+
+        while len(fits) < nlayers_max:
+            imax = max(range(len(fits)), key=lambda i: fits[i]['misfit'])
+            fit = fits[imax]
+            if fit['misfit'] == 0.0 or len(fit['part']) < 2:
+                break
+
+            best = None
+            for isplit in range(1, len(fit['part'])):
+                fits_split = [
+                    cls._fit_part(
+                        part, r_surface, rtol_velocity, rtol_q,
+                        nsamples_per_layer)
+                    for part in (fit['part'][:isplit], fit['part'][isplit:])]
+
+                misfit = max(f['misfit'] for f in fits_split)
+                if best is None or misfit < best[0]:
+                    best = misfit, fits_split
+
+            fits[imax:imax+1] = best[1]
+
+        misfit = max(fit['misfit'] for fit in fits)
+        if misfit > 1.0:
+            logger.warning(
+                'GEMINI earth model approximation exceeds tolerances by a '
+                'factor of %g, consider increasing the number of layers or '
+                'the tolerances' % misfit)
+
+        layers = [fit['layer'] for fit in fits[::-1]]
+        layers[0].r_bottom = 0.0
+        return cls(layers, r_surface, reference_frequency=1.0, comments=[
+            ' Isotropic earth model for GEMINI, approximating a layered model',
+            ' by polynomials of the normalized radius x = r / r_surface.'])
 
     @staticmethod
-    def map_value_to_column_type(value, kind, length=None):
-        if value is None:
-            if kind == "int":
-                return 0
-            elif kind == "float":
-                return 0.0
-            elif kind == "date":
-                return "00/00/00"
-            elif kind == "time":
-                return "00:00:00.0"
-            else:
-                return " " * (length or 1)
+    def _fit_part(part, r_surface, rtol_velocity, rtol_q, nsamples_per_layer):
+        z = num.unique(num.concatenate([
+            num.linspace(layer.ztop, layer.zbot, nsamples_per_layer+1)
+            for layer in part]))
 
-        if kind == "int":
-            return round(float(value))
-        elif kind == "float":
-            return float(value)
-        elif kind == "str":
-            return str(value)[:length] if length else str(value)
-        return value
+        materials = []
+        for zz in z:
+            for layer in part:
+                if layer.ztop <= zz <= layer.zbot:
+                    materials.append(layer.material(zz))
+                    break
 
-    def extract_column_types(self):
-        source_column_values = {}
-        for data_attribute in self.source.T.properties:
-            if data_attribute.name == "date":
-                kind = "date"
-            elif data_attribute.name == "origin_time":
-                kind = "time"
-            elif isinstance(data_attribute, Int.T):
-                kind = "int"
-            elif isinstance(data_attribute, Float.T):
-                kind = "float"
-            else:
-                kind = "str"
+        vp, vs, rho, qp, qs = num.array(
+            [m.astuple() for m in materials]).T
 
-            source_column_values[data_attribute.name] = (
-                self.map_value_to_column_type(
-                    getattr(self.source, data_attribute.name),
-                    kind,
-                    self.text_widths.get(data_attribute.name),
-                )
-            )
+        vp, vs, rho = vp/km, vs/km, rho/km
+        x = (r_surface - z/km) / r_surface
+        is_fluid = num.all(vs == 0.0)
 
-        return source_column_values
+        nkinks = sum(
+            1 for layer in part
+            if isinstance(layer, cake.GradientLayer))
 
-    def lines(self):
-        v = self.extract_column_types()
-        line1 = f"{v['event_id']:8s} {v['date'][0:2]}/{v['date'][3:5]}/{v['date'][6:8]} {v['origin_time']}{v['latitude']:7.2f}{v['longitude']:8.2f}{v['depth']:6.1f}{v['mb']:3.1f}{v['MS']:3.1f}{v['region']:<24}"
-        line2 = f"{v['source_type']:3s} BW:{v['bw_stations']:2d}{v['bw_records']:3d}{v['bw_cutoff']:4d} MW:{v['mw_stations']:2d}{v['mw_records']:3d}{v['mw_cutoff']:4d} DT={v['centroid_time']:6.1f}{v['centroid_time_error']:4.1f}{v['centroid_latitude']:7.2f}{v['centroid_latitude_error']:5.2f}{v['centroid_longitude']:8.2f}{v['centroid_longitude_error']:5.2f}{v['centroid_depth']:6.1f}{v['centroid_depth_error']:5.1f}"
-        line3 = f" DUR{v['duration']:4.1f} EX{v['exponent']:3d}{v['mrr']:6.2f}{v['mrr_error']:5.2f}{v['mss']:6.2f}{v['mss_error']:5.2f}{v['mee']:6.2f}{v['mee_error']:5.2f}{v['mrs']:6.2f}{v['mrs_error']:5.2f}{v['mre']:6.2f}{v['mre_error']:5.2f}{v['mse']:6.2f}{v['mse_error']:5.2f}"
-        line4 = f"{v['eigenvalue1']:7.2f}{v['plunge1']:3d}{v['azimuth1']:4d}{v['eigenvalue2']:7.2f}{v['plunge2']:3d}{v['azimuth2']:4d}{v['eigenvalue3']:7.2f}{v['plunge3']:3d}{v['azimuth3']:4d}{v['scalar_moment']:7.2f}{v['strike1']:4d}{v['dip1']:3d}{v['rake1']:5d}{v['strike2']:4d}{v['dip2']:3d}{v['rake2']:5d}"
-        return [line1, line2, line3, line4]
+        degree = min(gemini_ncoefs - 1, nkinks)
 
-    def check(self, lines):
-        for i, line in enumerate(lines):
-            if len(line) > self.line_widths[i]:
-                raise ValueError(
-                    f"Line {i + 1} is too long: {len(line)} characters, max {self.line_widths[i]}"
-                )
-            elif len(line) < self.line_widths[i]:
-                raise ValueError(
-                    f"Line {i + 1} is too short: {len(line)} characters, min {self.line_widths[i]}"
-                )
-        return lines
+        def fit(values):
+            if degree == 0 or num.all(values == values[0]):
+                return num.array([values.mean()]), \
+                    num.full_like(values, values.mean())
 
-    def write(self, filepath=None):
-        filepath = Path(filepath or self.filepath)
-        lines = self.check(self.lines())
-        filepath.parent.mkdir(parents=True, exist_ok=True)
-        filepath.write_text("\n".join(lines) + "\n")
+            # Fit in scaled domain for numerical stability, then convert to
+            # coefficients of powers of x.
+            p = Polynomial.fit(x, values, degree)
+            coefs = p.convert().coef
+            coefs = num.concatenate(
+                [coefs, num.zeros(degree + 1 - coefs.size)])
 
-        logger.info(f"source written to {filepath}")
-        return filepath
+            return coefs, Polynomial(coefs)(x)
+
+        misfits = []
+        columns = []
+        for values in (rho, vp, vs):
+            coefs, values_fit = fit(values)
+            columns.append(coefs)
+            scale = max(num.abs(values).max(), 1e-3)
+            misfits.append(
+                num.abs(values_fit - values).max() / scale / rtol_velocity)
+
+        ncoefs = max(c.size for c in columns)
+        coefs = num.zeros((ncoefs, 6))
+        crho, cvp, cvs = [
+            num.concatenate([c, num.zeros(ncoefs - c.size)]) for c in columns]
+
+        coefs[:, 0] = crho
+        coefs[:, 1] = coefs[:, 2] = cvp
+        if not is_fluid:
+            coefs[:, 3] = coefs[:, 4] = cvs
+
+        coefs[0, 5] = 1.0
+
+        # Constant quality factors, averaging the attenuation 1/Q.
+        qkappas = num.array([m.qk() for m in materials])
+        qkappas = num.where(
+            num.isfinite(qkappas) & (qkappas > 0.0),
+            num.minimum(qkappas, qkappa_default),
+            qkappa_default)
+
+        qkappa = 1.0 / num.mean(1.0/qkappas)
+        if is_fluid:
+            qmu = -1.0
+        else:
+            qmu = 1.0 / num.mean(1.0/qs)
+            misfits.append(num.abs(qmu/qs - 1.0).max() / rtol_q)
+
+        layer = GeminiLayer(r_surface - part[-1].zbot/km, coefs, qmu, qkappa)
+
+        return dict(part=part, layer=layer, misfit=max(misfits))
+
+    def max_deviation(self, mod, ddepth=10.*km):
+        '''
+        Get maximum relative deviation from an isotropic cake model.
+
+        Compares the isotropic approximation of this model to ``mod`` in
+        terms of P- and S-wave velocities and density, at regularly sampled
+        depths, avoiding the immediate vicinity of discontinuities.
+
+        :returns: maximum relative deviation and depth [m] where it occurs
+        '''
+
+        dev_max = 0.0
+        z_dev_max = 0.0
+        for layer, r_bottom, r_top in self.layer_bounds():
+            z_top = (self.r_surface - r_top) * km
+            z_bottom = (self.r_surface - r_bottom) * km
+            n = max(2, int(math.ceil((z_bottom - z_top) / ddepth)))
+            eps = 1e-3 * (z_bottom - z_top)
+            z = num.linspace(z_top + eps, z_bottom - eps, n+1)
+            props = num.array(self.isotropic_properties(
+                layer, self.r_surface - z/km))
+
+            for zz, (vp, vs, rho) in zip(z, props[:3].T):
+                m = mod.material(zz)
+                for a, b in ((vp, m.vp), (vs, m.vs), (rho, m.rho)):
+                    # floor: 1 km/s or 1 g/cm^3 (shear velocity is 0 in
+                    # fluids)
+                    dev = abs(a - b) / max(abs(b), 1000.)
+                    if dev > dev_max:
+                        dev_max = dev
+                        z_dev_max = zz
+
+        return dev_max, z_dev_max
 
 
-class GeminiStation(Object):
-    # also read by Dispec, in the order of the columns of stations/GRSN_2003. for a greensfunction store, this would be the area to define the stations.
-    filepath: str = String.T(default="stations/GRSN_2003")
+class GeminiEarthmodel(Object):
+    '''
+    Earth model in GEMINI's native file format.
+    '''
 
+    dummy_for = GeminiModel
+    dummy_for_description = 'pyrocko.fomosto.gemini.GeminiModel'
 
-class GeminiEarthModel(Object):
-    # Right now, the earth model is written in a text file and read by Gemini.
-    filepath: str = String.T(
-        default="iasp91 # the input is not used right now"
-    )
+    class __T(TBase):
+        def regularize_extra(self, val):
+            if isinstance(val, str):
+                val = GeminiModel.from_string(val)
 
+            return val
 
-class GeminiMaximumDegreeWindow(Object):
-    filepath: str = String.T(default="lw200mhz")
+        def to_save(self, val):
+            return literal(val.to_string())
 
 
 class GeminiConfig(Object):
-    """Input parameters for GEMINI, in the order gemini.sc feeds them to the
-    binary.
-    GEMINI computes the basis solutions (expansion coefficients) in
-    the frequency-degree domain."""
+    '''
+    Configuration of the GEMINI backend, stored in ``extra/gemini``.
+    '''
 
-    # Kind of motion to calculate: 1 for P-SV only, 2 for SH only, 3 for both.
-    what_motion: int = Int.T(default=3)
-    # Verbose level of the monitor output: 0 reports every frequency, n
-    # reports every degree l with mod(l, n) == 0.
-    print_level: int = Int.T(default=0)
-    # Length of the seismogram in seconds.
-    seismo_lenght: int = Int.T(default=2048)
-    # Damping time of the complex frequency (Laplace transform). A fifth of
-    # seismo_lenght is a good choice.
-    damping_time: int = Int.T(default=400)
-    # Minimum frequency in millihertz. May be 0, GEMINI then raises it to at
-    # least 1/seismo_lenght.
-    minimum_frequency: int = Int.T(default=0)
-    # Maximum frequency in millihertz.
-    maximum_frequency: int = Int.T(default=100)
-    # Take dispersion (attenuation) into account, which makes the elastic
-    # moduli frequency-dependent: 1 for yes, 0 for no.
-    dispersion_switch: int = Int.T(default=1)
-    # Minimum degree of the spherical harmonics, 0 is recommended.
-    minimum_degree: int = Int.T(default=0)
-    # Maximum degree of the spherical harmonics. GEMINI does not compute
-    # beyond this limit.
-    maximum_degree: int = Int.T(default=5000)
-    # Step in the degree domain, normally 1 because of the 2*Pi periodicity.
-    # Larger values speed up the calculation but make the Earth
-    # 2*Pi/degree_step-periodic and thus produce alias effects.
-    degree_step: int = Int.T(default=1)
-    # Depth of the source in km, may be 0.
-    source_depth: int = Int.T(default=10)
-    # Accuracy ruling the Bulirsch-Stoer integrator. Do not be too greedy,
-    # 1.e-4 is sufficient.
-    accuracy: float = Float.T(default=1.0e-4)
-    # File name of the earth model.
-    earth_model: str = String.T(default="iasp91")
-    # File name of the window in the frequency-degree domain, holding
-    # tabulated maximum degrees for selected frequencies.
-    omega_ell_window: str = String.T(default="lw200mhz")
-    # Name of the output file with the expansion coefficients.
-    output_filepath: str = String.T(default="green/bas.f50.d100.3.out")
-    # Confirm the input.
-    confirmation: int = Int.T(default=1)
+    gemini_version = String.T(
+        default=default_version,
+        help='Version of the GEMINI programs to use.')
 
+    earthmodel = GeminiEarthmodel.T(
+        optional=True,
+        help='Earth model in GEMINI\'s native format (radius in [km], density '
+             'in [g/cm^3], velocities in [km/s], coefficients of polynomials '
+             'in the normalized radius r/r_surface), possibly transversely '
+             'isotropic. If not given, it is fitted to the isotropic '
+             '``earthmodel_1d`` of the store\'s config.')
 
-class GeminiRecieverSection_NOT_IN_USE(Object):
-    distance_min: float = Float.T(default=-30.0)
-    distance_max: float = Float.T(default=-71.0)
-    distance_delta: float = Float.T(default=10.0)
-    reciever_type: int = Int.T(default=4)
-
-
-class DispecConfig(Object):
-    """Input parameters for DISPEC, in the order disp.sc feeds them to the
-    binary.
-    DISPEC combines the GEMINI basis solutions with source and
-    stations and writes the spectra to 'spec3k' in the current directory."""
-
-    # File with the basis solutions calculated by GEMINI.
-    basis_solutions: str = String.T(default="green/bas.f50.d100.3.out")
-    # Source file holding exactly ONE set of earthquake parameters in
-    # Harvard-CMT format. dispec.f reads this name with '(a70)', so it has to
-    # stay short.
-    source_file: str = String.T(default="sources/Quelle")
-    # Source mechanism: 'm' for moment tensor, 'f' for single force.
-    source_mechanism: str = String.T(default="m")
-    # Maximum order 'm' in the sum over the spherical harmonics. Set 0 for an
-    # explosion-type source.
-    maximum_order: int = Int.T(default=2)
-    # Window in the omega-l domain, the same file GEMINI needs.
-    omega_ell_window: str = String.T(default="lw200mhz")
-    # Length of the taper applied on the l-range to avoid cut-off effects. An
-    # empirical number, do not choose it too large or it cuts into the
-    # surface wave branch.
-    ell_taper: int = Int.T(default=40)
-    # File with station names and parameters in IRIS-DMC format.
-    stations_file: str = String.T(default="stations/GRSN_2003")
-    # Receiver type: 1 station by latitude and longitude in degrees, 2 station
-    # by its abbreviation (e.g. PFO), 3 all stations in stations_file,
-    # 4 section along the great circle between two points on the sphere.
-    reciever_type: int = Int.T(default=3)
-    # Receiver selection matching reciever_type. Examples: type 1 '48.3 8.3',
-    # type 2 'BFO', type 3 'all' (a dummy, the program only reads format
-    # '(1x)'), type 4 '-30. -71. 48.3 8.3 10'.
-    recievers_file: str = String.T(default="all")
-    # Horizontal displacement is calculated in source centered coordinates by
-    # default. A number greater than zero yields station centered
-    # coordinates, i.e. north-south and east-west.
-    nsew_coordinates: int = Int.T(default=1)
-
-
-class TotidoConfig(Object):
-    """Input parameters for TOTIDO, in the order to.sc feeds them to the
-    binary.
-    TOTIDO turns the spectra from DISPEC into time series."""
-
-    # File with the spectra generated by DISPEC. In to.sc this is the only
-    # value without a default, it has to be passed as '-f <spectrumfile>'.
-    spectrum_filepath: str = String.T(default="spec3k")
-    # File with real and imaginary part of the instrument transfer function at
-    # the frequencies used in GEMINI and DISPEC, one line per frequency:
-    # frequency, real part, imaginary part.
-    response_file: str = String.T(default="")
-    # Time by which the beginning of the time series is delayed.
-    time_shift: float = Float.T(default=0.0)
-    # Number of Butterworth low pass filters applied to the seismogram.
-    lowpass_number: int = Int.T(default=0)
-    # Order of the low pass filter, e.g. 7.
-    lowpass_order: int = Int.T(default=0)
-    # Corner frequency of the low pass filter in Hz, e.g. 0.01.
-    lowpass_cutoff: float = Float.T(default=0.025)
-    # Number of Butterworth high pass filters applied to the seismogram.
-    highpass_number: int = Int.T(default=0)
-    # Order of the high pass filter, e.g. 3.
-    highpass_order: int = Int.T(default=0)
-    # Corner frequency of the high pass filter in Hz, e.g. 0.008.
-    highpass_cutoff: float = Float.T(default=0.025)
-    # Output format: 'a' for ASCII, 's' for SFF.
-    output_format: str = String.T(default="a")
-    # The FFT needs 2**n samples and zeros are appended to reach such a
-    # length. A number n greater than zero multiplies the number of samples
-    # by 2**n on top of that, interpolating and smoothing the time series.
-    zero_padding: int = Int.T(default=1)
-    # Type of seismogram: 'd' displacement, 'v' velocity, 'a' acceleration,
-    # 'g' accelerometer response.
-    seismo_type: str = String.T(default="v")
-    # Length of the output time series in seconds.
-    seconds_out: int = Int.T(default=2048)
-    # getopts option string of to.sc, through which the values above are
-    # overridden on the command line.
-    opts: str = String.T(default="L:l:H:h:s:o:O:p:r:f:")
-
-
-class GeminiConfigFull(Object):
-    gemini_config: GeminiConfig = GeminiConfig.T(default=GeminiConfig.D())
-    dispec_config: DispecConfig = DispecConfig.T(default=DispecConfig.D())
-    totido_config: TotidoConfig = TotidoConfig.T(default=TotidoConfig.D())
-    source: GeminiSource = GeminiSource.T(default=GeminiSource.D())
-    station: GeminiStation = GeminiStation.T(default=GeminiStation.D())
-    maximum_degree_based_on_frequency: GeminiMaximumDegreeWindow = (
-        GeminiMaximumDegreeWindow.T(default=GeminiMaximumDegreeWindow.D())
-    )
     time_region = Tuple.T(
-        2,
-        gf.Timing.T(),
-        default=(gf.Timing("begin-50"), gf.Timing("end+100")),
-    )
-    window_factor: float = Float.T(default=2.0)
+        2, gf.Timing.T(),
+        default=(gf.Timing('begin-50'), gf.Timing('end+100')),
+        help='Time window to be covered by the computed seismograms.')
+
+    cut = Tuple.T(
+        2, gf.Timing.T(),
+        optional=True,
+        help='Time window to which the Green\'s functions are cut before '
+             'they are stored.')
+
+    time_window_factor = Float.T(
+        default=2.0,
+        help='Factor to enlarge the length of the FFT time window relative '
+             'to ``time_region`` (it is further enlarged to a power of two '
+             'samples), to keep energy arriving after the time window from '
+             'wrapping around into it.')
+
+    damping_time = Float.T(
+        optional=True,
+        help='Damping time of the complex frequency [s], to suppress '
+             'time-domain aliasing. Default is a fifth of the FFT time window '
+             'length.')
+
+    frequency_max = Float.T(
+        optional=True,
+        help='Maximum frequency [Hz]. Default is just below the Nyquist '
+             'frequency of the store.')
+
+    slowness_max = Float.T(
+        default=0.6,
+        help='Maximum horizontal slowness [s/km], determining the maximum '
+             'harmonic degree to compute at each frequency. Truncation of the '
+             'harmonic degree range produces an artificial arrival with this '
+             'slowness, so it should be above the slowness of the slowest '
+             'phases of interest and arrive after the end of the time '
+             'window.')
+
+    harmonic_degree_max = Int.T(
+        default=gemini_lmx,
+        help='Absolute limit for the harmonic degree.')
+
+    degree_taper_length = Int.T(
+        default=40,
+        help='Length of the cosine taper applied at the upper end of the '
+             'harmonic degree range by Dispec. The degree range is '
+             'enlarged by this amount.')
+
+    include_physical_dispersion = Bool.T(
+        default=True,
+        help='Whether to use anelastic, frequency-dependent, complex moduli '
+             '(at the reference frequency of the model). If false, GEMINI '
+             'computes purely elastic, unattenuated seismograms.')
+
+    accuracy = Float.T(
+        default=1e-4,
+        help='Accuracy of the Bulirsch-Stoer integration in GEMINI.')
+
+    lowpass_order = Int.T(
+        default=0,
+        help='Order of Butterworth low-pass filter to apply (0: no '
+             'filter).')
+
+    lowpass_corner = Float.T(
+        default=1.0,
+        help='Corner frequency of Butterworth low-pass filter [Hz].')
+
+    nlayers_max = Int.T(
+        default=gemini_nlayer,
+        help='Maximum number of earth model layers supported by the GEMINI '
+             'executable.')
+
+    keep_basis_solutions = Bool.T(
+        default=False,
+        help='Whether to keep the files with basis solutions computed by '
+             'GEMINI (in the store\'s ``gemini_green`` directory) after the '
+             'store has been built.')
 
 
-config_filepath = (
-    GEMINI_DIRECTORY / "Configurations" / "gemini_config_full.yaml"
-)
+def _cmt_lines(m6_use, depth):
+    '''
+    Source file in Harvard CMT format, as read by Dispec's ``readcmt.f``.
+
+    The moment tensor components are given in units of 1e15 Nm, the source is
+    located at the north pole.
+    '''
+
+    mrr, mss, mee, mrs, mre, mse = m6_use
+
+    lat, lon = 90.0, 0.0
+    if depth > 9999.9:
+        raise GeminiError('source depth too large for CMT file format')
+
+    for v in m6_use:
+        if abs(v) >= 1000.:
+            raise GeminiError('moment tensor too large for CMT file format')
+
+    return [
+        '%-8s %2s/%2s/%2s %2s:%2s:%4.1f%7.2f%8.2f%6.1f%3.1f%3.1f%-24s' % (
+            'FOMOSTO', '01', '01', '00', '00', '00', 0.0, lat, lon, depth,
+            0.0, 0.0, 'FOMOSTO GEMINI'),
+        'PDE BW:%2i%3i%4i MW:%2i%3i%4i DT=%6.1f%4.1f%7.2f%5.2f%8.2f%5.2f'
+        '%6.1f%5.1f' % (
+            0, 0, 0, 0, 0, 0, 0.0, 0.0, lat, 0.0, lon, 0.0, depth, 0.0),
+        ' DUR%4.1f EX %2i' % (0.0, cmt_exponent) + ''.join(
+            '%6.2f%5.2f' % (v, 0.0) for v in (mrr, mss, mee, mrs, mre, mse)),
+        '%7.2f%3i%4i' % (0.0, 0, 0) * 3 + '%7.2f' % 0.0
+        + '%4i%3i%5i' % (0, 0, 0) * 2]
 
 
-def dump_config(config, filepath=config_filepath):
-    filepath = Path(filepath)
-    filepath.parent.mkdir(parents=True, exist_ok=True)
-    config.dump(filename=str(filepath))
-    logger.info(f"config dumped to {filepath}")
-    return filepath
+def _station_lines(distances):
+    '''
+    Station file in IRIS format for receivers on the 180 degree meridian.
+
+    With the source at the north pole, Dispec measures the epicentral
+    distance as the receiver's colatitude and the azimuth as 180 degrees minus
+    the receiver's longitude, which is then zero.
+    '''
+
+    lines = [
+        'Station file written by fomosto',
+        '',
+        '  year station network lat lon elev site']
+
+    for i, distance in enumerate(distances):
+        lat = 90.0 - distance * cake.m2d
+        lines.append(
+            '00 R%04i XX %.6f %.6f 0.0 fomosto' % (i, lat, 180.0))
+
+    return lines
 
 
-def load_config(filepath=config_filepath):
-    return GeminiConfigFull.load(filename=str(filepath))
+def _window_lines(frequency_max, slowness_max, r_surface, l_add, l_max):
+    '''
+    Degree limits in frequency-degree domain, as read by ``gtllim.f``.
+
+    The maximum degree is ``2 pi f r_surface slowness_max + l_add``, limited
+    to ``l_max``. ``gtllim.f`` interpolates linearly between the given
+    frequencies.
+    '''
+
+    lines = ['2']
+    for f in (0.0, frequency_max):
+        lmax = min(
+            l_max,
+            int(math.ceil(2.0*math.pi * f * r_surface * slowness_max)) + l_add)
+
+        lines.append('%.10g 0 %i' % (f*1000., lmax))
+
+    return lines
 
 
-def gemini_input(conf):
-    """Build the stdin block for GEMINI, like the heredoc in gemini.sc."""
+def _read_seismogr(fn, nreceivers):
+    '''
+    Read Totido's ASCII output, as written by ``writeAscii.f``.
 
-    return (
-        "\n".join(
-            str(value)
-            for value in [
-                conf.what_motion,
-                conf.print_level,
-                conf.seismo_lenght,
-                conf.damping_time,
-                conf.minimum_frequency,
-                conf.maximum_frequency,
-                conf.dispersion_switch,
-                conf.minimum_degree,
-                conf.maximum_degree,
-                conf.degree_step,
-                conf.source_depth,
-                conf.accuracy,
-                conf.earth_model,
-                conf.omega_ell_window,
-                conf.output_filepath,
-                conf.confirmation,
-            ]
-        )
-        + "\n"
-    )
+    :returns: list of arrays of shape ``(3, nsamples)`` with the columns
+        Z, NS, EW (which are r, theta, phi with Dispec's default of
+        source-centred coordinates).
+    '''
 
+    with open(fn, 'r') as f:
+        lines = f.read().splitlines()
 
-def dispec_input(conf):
-    """Build the stdin block for DISPEC, like the heredoc in disp.sc."""
+    try:
+        toks = lines[1].split()
+        nsamples = int(toks[1])
+        samprat = float(toks[3])
+        timeshift = float(toks[5])
 
-    return (
-        "\n".join(
-            str(value)
-            for value in [
-                conf.basis_solutions,
-                conf.source_file,
-                conf.source_mechanism,
-                conf.maximum_order,
-                conf.omega_ell_window,
-                conf.ell_taper,
-                conf.stations_file,
-                conf.reciever_type,
-                conf.recievers_file,
-                conf.nsew_coordinates,
-            ]
-        )
-        + "\n"
-    )
+        iline = 2
+        data = []
+        for ireceiver in range(nreceivers):
+            assert lines[iline].startswith('RECLat')
+            block = lines[iline+2:iline+2+nsamples]
+            assert len(block) == nsamples
+            data.append(num.array(
+                [_fortran_floats(line.split()[1:4]) for line in block],
+                dtype=float).T)
+
+            iline += 2 + nsamples
+
+    except (IndexError, ValueError, AssertionError):
+        raise GeminiError('could not read Totido output file "%s"' % fn)
+
+    return samprat, timeshift, data
 
 
-def totido_input(conf):
-    """Build the stdin block for TOTIDO, like the heredoc in to.sc."""
+class _Runner(object):
+    '''
+    Runs the GEMINI programs as asyncio subprocesses.
 
-    # totido.f reads each filter as 'number, (order, corner frequency)*number',
-    # so the three values share one line. With number 0 the rest of the line is
-    # ignored, which is why to.sc always writes all three.
-    return (
-        "\n".join(
-            str(value)
-            for value in [
-                conf.spectrum_filepath,
-                conf.response_file,
-                conf.time_shift,
-                f"{conf.lowpass_number} {conf.lowpass_order} {conf.lowpass_cutoff}",
-                f"{conf.highpass_number} {conf.highpass_order} {conf.highpass_cutoff}",
-                conf.zero_padding,
-                conf.seismo_type,
-                conf.seconds_out,
-                conf.output_format,
-            ]
-        )
-        + "\n"
-    )
+    At most ``nworkers`` programs run in parallel. The programs are started in
+    their own sessions, so that they do not receive the terminal's signals,
+    and are terminated by the runner when the coroutine running them is
+    cancelled.
+    '''
 
+    def __init__(self, nworkers, bins):
+        self._bins = bins
+        self._semaphore = asyncio.Semaphore(nworkers)
+        self._procs = {}
 
-def read_seismogr(filepath):
-    station_coords = []
-    blocks_together = []
-    block_number = 0
-
-    with open(filepath) as input_file:
-        input_file.readline()
-        samprat = float(input_file.readline().split()[3])
-        for line in input_file:
-            fields = line.split()
-            if not fields:
-                continue
+    def kill_all(self):
+        for proc in list(self._procs):
             try:
-                values = [float(value) for value in fields]
-            except ValueError:
-                if fields[0] == "RECLat":
-                    station_coords.append([float(fields[1]), float(fields[3])])
-                    block_number += 1
-                    blocks_together.append([])
-            else:
-                if block_number:
-                    blocks_together[block_number - 1].append(values)
-
-    return samprat, station_coords, blocks_together
-
-
-class MseedConverter:
-    def __init__(
-        self,
-        config,
-        ascii_filepath=GEMINI_DIRECTORY / "seismogr",
-        stations_filepath=GEMINI_DIRECTORY / "demo_stations.txt",
-        event_filepath=GEMINI_DIRECTORY / "demo_event.txt",
-        mseeds_dir=GEMINI_DIRECTORY / "mseed",
-    ):
-        self.config = config
-        self.ascii_filepath = Path(ascii_filepath)
-        self.stations_filepath = Path(stations_filepath)
-        self.event_filepath = Path(event_filepath)
-        self.mseeds_dir = Path(mseeds_dir)
-
-        _, station_coords, blocks_together = read_seismogr(self.ascii_filepath)
-
-        # station position
-        station_latitudes = [coord[0] for coord in station_coords]
-        station_longitudes = [coord[1] for coord in station_coords]
-
-        location_tolerance = 1e-3
-
-        def find_station(latitude, longitude):
-            for catalog in (
-                GEMINI_DIRECTORY / self.config.station.filepath,
-                # GEMINI_DIRECTORY / 'stations/GRSN_2003',
-                # GEMINI_DIRECTORY / 'stations/IRIS_1996'
-            ):
-                with open(catalog) as catalog_file:
-                    for line in catalog_file:
-                        fields = line.split()
-                        if len(fields) < 6 or fields[1] == "s_station":
-                            continue
-                        try:
-                            catalog_latitude = float(fields[3])
-                            catalog_longitude = float(fields[4])
-                            catalog_elevation = float(fields[5])
-                        except ValueError:
-                            continue
-                        if (
-                            abs(catalog_latitude - latitude)
-                            < location_tolerance
-                            and abs(catalog_longitude - longitude)
-                            < location_tolerance
-                        ):
-                            return fields[2], fields[1], catalog_elevation, ""
-
-            raise LookupError(
-                f"no station at lat {latitude}, lon {longitude} in {self.config.station.filepath}"
-            )
-
-        stations = []
-        for i in range(len(station_coords)):
-            network, station_code, elevation, location = find_station(
-                station_latitudes[i], station_longitudes[i]
-            )
-            stations.append(
-                model.Station(
-                    network=network,
-                    station=station_code,
-                    location=location,
-                    lat=station_latitudes[i],
-                    lon=station_longitudes[i],
-                    elevation=elevation,
-                    depth=0.0,
-                )
-            )
-
-        model.dump_stations(stations, filename=str(self.stations_filepath))
-
-        source = self.config.source
-
-        day, month, year = source.date.split("/")
-        start_time_string = f"20{year}-{month}-{day} {source.origin_time}"
-        formatted_start_time = float(util.str_to_time(start_time_string))
-
-        event = model.Event(
-            lat=source.latitude,
-            lon=source.longitude,
-            depth=source.depth * 1000,
-            time=formatted_start_time,
-            name=source.event_id,
-        )
-
-        model.dump_events([event], filename=str(self.event_filepath))
-
-        ## build traces
-        traces = []
-        for i in range(len(blocks_together)):
-            data = np.array(blocks_together[i])
-            times = data[:, 0]
-            delta_time = times[1] - times[0]
-            station = stations[i]
-            # seismogr holds the columns time, Z, NS, EW (writeAscii.f). Z is
-            # the radial component of dispec.f, positive up; NS and EW are
-            # already rotated so that positive points north and east
-            # (dispec.f, 'Transform to north-south and east-west components').
-            # pyrocko and fomosto use NED with z downward, so north and east
-            # pass through unchanged and only the vertical is flipped.
-            for direction, column, sign in (
-                ("N", 2, 1),
-                ("E", 3, 1.0),
-                ("D", 1, -1),
-            ):
-                traces.append(
-                    trace.Trace(
-                        network=station.network,
-                        station=station.station,
-                        location=station.location,
-                        channel=direction,
-                        tmin=formatted_start_time + times[0],
-                        deltat=delta_time,
-                        ydata=sign * data[:, column],
-                    )
-                )
-
-        # save
-        self.mseeds_dir.mkdir(parents=True, exist_ok=True)
-
-        io.save(
-            traces,
-            filename_template=str(
-                self.mseeds_dir
-                / "%(network)s.%(station)s.%(location)s.%(channel)s.mseed"
-            ),
-            format="mseed",
-        )
-        logger.info(f"Saved {len(traces)} traces to {self.mseeds_dir}")
-
-
-async def run_program(
-    program: str, input_string: str, gemini_directory: Path = GEMINI_DIRECTORY
-) -> str:
-    """Feed one input block into one of the Fortran programs"""
-    binary = program_bins[program]
-    logger.info(f"running {binary} in {gemini_directory}")
-    # logger.debug(f"input string:\n{input_string}")
-
-    prog = await asyncio.create_subprocess_shell(
-        str(binary),
-        stdin=asyncio.subprocess.PIPE,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-        cwd=gemini_directory,
-    )
-
-    try:
-        out, err = await prog.communicate(input=input_string.encode())
-    except BaseException:
-        prog.kill()
-        await prog.wait()
-        raise
-
-    try:
-        ret_code = await prog.wait()
-    except asyncio.CancelledError:
-        prog.terminate()
-        raise
-
-    if ret_code != 0:
-        raise RuntimeError(
-            f"{program} failed with return code {ret_code}\n"
-            f"Error: {err.decode()}\n"
-            f"Output: {out.decode()}"
-        )
-    logger.debug(f"{program} output:\n{out.decode()}")
-    return out.decode()
-
-
-async def run(
-    config,
-    gemini_directory=GEMINI_DIRECTORY,
-    cmt_build=True,
-    cmt_filepath=None,
-    gemini_run=True,
-    dispec_run=True,
-    totido_run=True,
-    mseed_convert=True,
-    mseeds_dir=GEMINI_DIRECTORY / "mseed",
-    stations_filepath=GEMINI_DIRECTORY / "demo_stations.txt",
-    event_filepath=GEMINI_DIRECTORY / "demo_event.txt",
-    snuffler_run=False,
-):
-    logger.info(f"Running GEMINI pipeline with config: {config}")
-    if cmt_build:
-        if cmt_filepath is None:
-            cmt_filepath = gemini_directory / config.dispec_config.source_file
-        CMTBuilder(config.source).write(cmt_filepath)
-        logger.info(f"CMT file written to {cmt_filepath}")
-    if gemini_run:
-        await run_program(
-            "gemini", gemini_input(config.gemini_config), gemini_directory
-        )
-        logger.info("GEMINI run completed")
-    if dispec_run:
-        await run_program(
-            "dispec", dispec_input(config.dispec_config), gemini_directory
-        )
-        logger.info("DISPEC run completed")
-    if totido_run:
-        await run_program(
-            "totido", totido_input(config.totido_config), gemini_directory
-        )
-        logger.info("TOTIDO run completed")
-    if mseed_convert:
-        MseedConverter(
-            config=config,
-            ascii_filepath=gemini_directory / "seismogr",
-            stations_filepath=stations_filepath,
-            event_filepath=event_filepath,
-            mseeds_dir=mseeds_dir,
-        )
-        logger.info("MSEED conversion completed")
-    if snuffler_run:
-        run_snuffler(
-            gemini_directory=gemini_directory,
-            mseeds_dir=mseeds_dir,
-            stations_filepath=stations_filepath,
-            event_filepath=event_filepath,
-        )
-        logger.info("Snuffler opened")
-
-
-configlong = load_config()
-
-
-async def run_parallel():
-    await asyncio.gather(
-        run(
-            config=configlong,
-            cmt_build=False,
-            gemini_run=False,
-            dispec_run=True,
-            totido_run=False,
-            mseed_convert=False,
-            snuffler_run=False,
-        ),
-        run(
-            config=configlong,
-            cmt_build=False,
-            gemini_run=False,
-            dispec_run=True,
-            totido_run=False,
-            mseed_convert=False,
-            snuffler_run=False,
-        ),
-    )
-
-
-def run_snuffler(
-    gemini_directory=GEMINI_DIRECTORY,
-    wait=True,
-    mseeds_dir=GEMINI_DIRECTORY / "mseed",
-    stations_filepath=GEMINI_DIRECTORY / "demo_stations.txt",
-    event_filepath=GEMINI_DIRECTORY / "demo_event.txt",
-):
-
-    snuffler = Popen(
-        [
-            "snuffler",
-            str(mseeds_dir),
-            f"--stations={stations_filepath}",
-            f"--events={event_filepath}",
-        ],
-        cwd=gemini_directory,
-    )
-
-    if not wait:
-        return snuffler
-
-    snuffler.wait()
-    return snuffler.returncode
-
-
-class GeminiMomentTensor(object):
-    """One moment tensor, given in NED and handed on in USE.
-
-    NED (Mnn, Mee, Mdd, Mne, Mnd, Med) is what fomosto uses for the elastic10
-    elementary sources, USE (Mrr, Mss, Mee, Mrs, Mre, Mse) is what line 3 of
-    the CMT file expects. pyrocko does the basis change, this class only
-    fixes the direction and the scaling.
-    """
-
-    def __init__(self, mnn, mee, mdd, mne, mnd, med, moment=1.0):
-        # symmat6 takes the NED components in exactly this order, so the
-        # arguments can be passed straight through. moment is in N m.
-        self.moment_tensor = MomentTensor(
-            m=symmat6(mnn, mee, mdd, mne, mnd, med) * moment
-        )
-
-    def m6_ned(self):
-        return self.moment_tensor.m6()
-
-    def m6_use(self):
-        return self.moment_tensor.m6_up_south_east()
-
-    def cmt_values(self):
-        scaled_values = np.array(self.m6_use()) * 1e7  # N m -> dyne cm
-        largest_scaled_value = np.abs(scaled_values).max()
-        if largest_scaled_value == 0.0:
-            return 0, scaled_values
-        exponent = int(np.floor(np.log10(largest_scaled_value)))
-        return exponent, scaled_values / 10.0**exponent
-
-
-elastic10_tensors = [
-    ("mmt1", GeminiMomentTensor(1, 0, 0, 1, 0, 0)),  # Mnn, Mne
-    ("mmt2", GeminiMomentTensor(0, 0, 0, 0, 1, 1)),  # Mnd, Med
-    ("mmt3", GeminiMomentTensor(0, 0, 1, 0, 0, 0)),  # Mdd
-    ("mmt4", GeminiMomentTensor(0, 1, 0, 0, 0, 0)),  # Mee
-]
-
-
-def print_elastic10():
-    """Show the four elementary sources in both conventions."""
-    print(
-        "%-6s %-30s %s"
-        % (
-            "id",
-            "NED (nn, ee, dd, ne, nd, ed)",
-            "USE (rr, ss, ee, rs, re, se)",
-        )
-    )
-    for name, tensor in elastic10_tensors:
-        print(
-            "%-6s %-30s %s"
-            % (
-                name,
-                " ".join("%4.0f" % v for v in tensor.m6_ned()),
-                " ".join("%4.0f" % v for v in tensor.m6_use()),
-            )
-        )
-
-
-def source_with_tensor(tensor, source):
-    """Set the moment tensor of a GeminiSource, leave everything else alone."""
-
-    source.exponent, komponenten = tensor.cmt_values()
-    (
-        source.mrr,
-        source.mss,
-        source.mee,
-        source.mrs,
-        source.mre,
-        source.mse,
-    ) = komponenten
-    return source
-
-
-km = 1000.0
-
-
-def gemini_store_config(**config_params):
-    d = dict(
-        id="Store_Dir",
-        ncomponents=10,
-        component_scheme="elastic10",
-        stored_quantity="displacement",
-        sample_rate=0.5,
-        receiver_depth=0 * km,
-        source_depth_min=10 * km,
-        source_depth_max=10 * km,
-        source_depth_delta=10 * km,
-        distance_min=100 * km,
-        distance_max=1000 * km,
-        distance_delta=10 * km,
-        earthmodel_1d=cake.load_model(),
-        modelling_code_id="gemini",
-        tabulated_phases=[
-            gf.meta.TPDef(id="begin", definition="p,P,p\\,P\\,Pv_(cmb)p"),
-            gf.meta.TPDef(id="end", definition="2.5"),
-            gf.meta.TPDef(id="P", definition="!P"),
-            gf.meta.TPDef(id="S", definition="!S"),
-            gf.meta.TPDef(id="p", definition="!p"),
-            gf.meta.TPDef(id="s", definition="!s"),
-        ],
-    )
-    d.update(config_params)
-    return gf.meta.ConfigTypeA(**d)
-
-
-def init(store_dir, variant, **config_params):
-    if variant is not None:
-        raise gf.store.StoreError(f"GEMINI does not have any variants yet")
-    config_params.setdefault("id", Path(store_dir).resolve().name)
-    config = gemini_store_config(**config_params)
-    config.validate()
-    return gf.store.Store.create_editables(
-        store_dir, config=config, extra={"gemini": GeminiConfigFull()}
-    )
-
-
-seismotypes = {"displacement": "d", "velocity": "v", "acceleration": "a"}
-max_receivers = 150
-
-
-def section_receivers(store_config):
-    distances = store_config.coords[1]
-    if len(distances) > max_receivers:
-        raise gf.store.StoreError(
-            f"dispec takes at most {max_receivers} receivers, store has {len(distances)}"
-        )
-    if store_config.distance_max * cake.m2d > 90.0:  #
-        raise gf.store.StoreError(
-            f"recievers are beyond 90 degrees so the North component would point back to the source"
-        )
-    start = (
-        store_config.distance_min - store_config.distance_delta
-    ) * cake.m2d
-    away = start - len(distances) * store_config.distance_delta * cake.m2d
-    return f"{start} 0.0 {away} 0.0 {len(distances)}"
-
-
-# Array limits of the Fortran programs.
-totido_nfmax = 16384
-dispec_nfr = 3000
-
-
-def fortran_nint(x):
-    return int(np.floor(x + 0.5))
-
-
-def totido_nsamples(seismo_lenght, maximum_frequency, zero_padding):
-    """Last frequency index and number of samples, as gemini.f and totido.f
-    compute them."""
-    nend = max(1, fortran_nint(maximum_frequency * seismo_lenght / 1000.0))
-    nzh = 1
-    while nzh < nend + 1:
-        nzh *= 2
-    return nend, 2 * nzh * 2**zero_padding
-
-
-def gemini_timing(store, extra, force=False):
-    """Derive seismo_lenght, zero_padding and the time window from the store."""
-
-    target_deltat = store.config.deltat
-    maximum_frequency = extra.gemini_config.maximum_frequency  # mHz
-    fmax = maximum_frequency / 1000.0  # Hz
-
-    if 2.0 * fmax * target_deltat >= 1.0:
-        raise gf.store.StoreError(
-            f"maximum_frequency {maximum_frequency} mHz is above the Nyquist "
-            f"frequency of the store sample_rate {store.config.sample_rate} Hz"
-        )
-
-    # Largest zero_padding whose pseudo sampling still stays strictly below
-    # Nyquist. Strictly, because an fmax exactly on Nyquist pushes TOTIDO to
-    # the next power of two.
-
-    zero_padding = 0
-    while 2.0 * fmax * target_deltat * 2 ** (zero_padding + 1) < 1.0:
-        zero_padding += 1
-    pseudo_deltat = target_deltat * 2**zero_padding
-
-    d = store.make_timing_params(
-        extra.time_region[0], extra.time_region[1], force=force
-    )
-    tmin = float(np.floor(d["tmin"] / target_deltat) * target_deltat)
-    tmax = float(np.ceil(d["tmax"] / target_deltat) * target_deltat)
-
-    duration_max = (tmax - tmin) * extra.window_factor
-    nsamples = trace.nextpow2(int(np.ceil(duration_max / pseudo_deltat)))
-    seismo_lenght = nsamples * pseudo_deltat
-    if seismo_lenght != round(seismo_lenght):
-        raise gf.store.StoreError(
-            f"seismo_lenght {seismo_lenght} s is not an integer, which "
-            f"GeminiConfig.seismo_lenght needs"
-        )
-    seismo_lenght = round(seismo_lenght)
-
-    # Check against what the Fortran programs will really do.
-    nend, nsamp = totido_nsamples(
-        seismo_lenght, maximum_frequency, zero_padding
-    )
-    if nsamp * target_deltat != seismo_lenght:
-        raise gf.store.StoreError(
-            f"totido would sample with {seismo_lenght / nsamp} s instead of "
-            f"{target_deltat} s (nend {nend} is the last frequency index), maybe you can try another maximum_frequency"
-        )
-    if nsamp > totido_nfmax:
-        raise gf.store.StoreError(
-            f"totido takes at most {totido_nfmax} samples, would need {nsamp}"
-        )
-    if nend > dispec_nfr:
-        raise gf.store.StoreError(
-            f"dispec takes at most {dispec_nfr} frequencies, would need {nend}"
-        )
-
-    timing = dict(
-        seismo_lenght=seismo_lenght,
-        damping_time=max(1, round(seismo_lenght / 5)),
-        zero_padding=zero_padding,
-        time_shift=tmin,
-        seconds_out=int(np.ceil(tmax - tmin)),
-    )
-    logger.info(
-        f"gemini timing: {timing}, nend {nend}, nsamples {nsamp}, "
-        f"window [{tmin}, {tmax}] s"
-    )
-    return timing
-
-
-def gemini_config_for_depth(store_config, extra, source_depth, timing):
-    depth_km = source_depth / km
-    if depth_km != round(depth_km):
-        raise gf.store.StoreError(
-            f"gemini only supports integer source depths in km, got {depth_km} this might be changeable in gemini.py"
-        )
-    if store_config.receiver_depth != 0.0:
-        raise gf.store.StoreError(
-            f"dispec only calculates receivers at the surface, got {store_config.receiver_depth}"
-        )
-    quantity = store_config.effective_stored_quantity
-    if quantity not in seismotypes:
-        raise gf.store.StoreError(
-            f"totido only supports stored_quantity in {list(seismotypes.keys())}, got {quantity}"
-        )
-
-    conf = clone(extra)
-    basic_file = f"green/bas.d{round(depth_km)}.out"
-
-    conf.gemini_config.source_depth = round(depth_km)
-    conf.gemini_config.output_filepath = basic_file
-    conf.dispec_config.basis_solutions = basic_file
-    conf.dispec_config.reciever_type = 4
-    conf.dispec_config.recievers_file = section_receivers(store_config)
-    conf.dispec_config.nsew_coordinates = 1
-    conf.totido_config.seismo_type = seismotypes[quantity]
-    conf.source.centroid_latitude = 0.0
-    conf.source.centroid_longitude = 0.0
-    conf.source.centroid_depth = depth_km
-    conf.source.centroid_time = 0.0
-
-    conf.gemini_config.seismo_lenght = timing["seismo_lenght"]
-    conf.gemini_config.damping_time = timing["damping_time"]
-    conf.totido_config.zero_padding = timing["zero_padding"]
-    conf.totido_config.time_shift = timing["time_shift"]
-    conf.totido_config.seconds_out = timing["seconds_out"]
-    return conf
-
-
-def check_sample_rate(samprat, store_config):
-    deltat = store_config.deltat
-    if abs(1.0 / samprat - deltat) > 1e-5 * deltat:
-        raise gf.store.StoreError(
-            f"seismogr samprat {samprat} does not fit store sample_rate "
-            f"{store_config.sample_rate}, check seismo_lenght and zero_padding"
-        )
-    return deltat
-
-
-def seismogr_traces(filepath, config, store_config):
-    samprat, station_coords, blocks_together = read_seismogr(filepath)
-    deltat = check_sample_rate(samprat, store_config)
-    source = config.source
-
-    traces = []
-    for i, ((latitude, longitude), block) in enumerate(
-        zip(station_coords, blocks_together)
-    ):
-        data = np.array(block)
-        _, distance_deg = orthodrome.azidist_numpy(
-            source.centroid_latitude,
-            source.centroid_longitude,
-            latitude,
-            longitude,
-        )
-        for direction, column, sign in (
-            ("N", 2, 1.0),
-            ("E", 3, 1.0),
-            ("D", 1, -1.0),
-        ):
-            traces.append(
-                trace.Trace(
-                    station=f"{i:04d}",
-                    channel=direction,
-                    tmin=config.totido_config.time_shift,
-                    deltat=deltat,
-                    ydata=sign
-                    * 1e-9
-                    * data[:, column],  # convert from nm to m
-                    meta=dict(distance=float(distance_deg) * cake.d2m),
-                )
-            )
-    return traces
-
-
-SHARED_INPUTS = ("green", "stations", "iasp91", "lw200mhz")
-
-
-def prepare_workdirectory(gemini_directory=GEMINI_DIRECTORY, tmp=None):
-    work_directory = Path(mkdtemp(prefix="geminirun-", dir=tmp))
-    for name in SHARED_INPUTS:
-        (work_directory / name).symlink_to(gemini_directory / name)
-    return work_directory
-
-
-async def run_one_tensor(
-    name,
-    tensor,
-    config,
-    store_config,
-    gemini_directory=GEMINI_DIRECTORY,
-    keep_temp=False,
-):
-    work_directory = prepare_workdirectory(gemini_directory)
-    tensor_config = clone(config)
-    tensor_config.source = source_with_tensor(tensor, tensor_config.source)
-    try:
-        await run(
-            config=tensor_config,
-            gemini_directory=work_directory,
-            gemini_run=False,
-            mseed_convert=False,
-        )
-        traces = seismogr_traces(
-            work_directory / "seismogr", tensor_config, store_config
-        )
-    finally:
-        if keep_temp:
+                proc.kill()
+            except ProcessLookupError:
+                pass
+
+    async def _terminate(self, proc, timeout=5.0):
+        try:
+            proc.terminate()
+        except ProcessLookupError:
+            return
+
+        try:
+            await asyncio.wait_for(proc.wait(), timeout)
+        except asyncio.TimeoutError:
             logger.warning(
-                f"not removing temporary work directory {work_directory}"
-            )
+                'Killing %s (pid %i), which did not terminate on SIGTERM.'
+                % (self._procs.get(proc, 'program'), proc.pid))
+
+            try:
+                proc.kill()
+            except ProcessLookupError:
+                pass
+
+            await proc.wait()
+
+    async def run(
+            self, program, input_str, cwd, expected_outputs, on_line=None,
+            on_start=None):
+
+        '''
+        Run program, when one of the ``nworkers`` slots is available.
+
+        ``on_start`` is called once the process has been started,
+        ``on_line`` for every line of its standard output.
+        '''
+
+        exe = self._bins[program]
+        async with self._semaphore:
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    exe,
+                    stdin=asyncio.subprocess.PIPE,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    cwd=cwd,
+                    start_new_session=True)
+
+            except OSError as e:
+                raise GeminiError('''could not start %s executable: "%s" (%s)
+Available fomosto backends and download links to the modelling codes are listed
+on
+
+      https://pyrocko.org/docs/current/apps/fomosto/backends.html
+''' % (program, exe, e))
+
+            self._procs[proc] = exe
+            if on_start:
+                on_start()
+
+            stderr_task = asyncio.ensure_future(proc.stderr.read())
+            try:
+                proc.stdin.write(input_str.encode('ascii'))
+                try:
+                    await proc.stdin.drain()
+                    proc.stdin.close()
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
+
+                output = []
+                async for line in proc.stdout:
+                    line = line.decode('ascii', errors='replace')
+                    output.append(line)
+                    if on_line:
+                        on_line(line)
+
+                error_str = (await stderr_task).decode(
+                    'ascii', errors='replace')
+
+                await proc.wait()
+
+            finally:
+                if proc.returncode is None:
+                    await self._terminate(proc)
+
+                if not stderr_task.done():
+                    stderr_task.cancel()
+                    await asyncio.wait([stderr_task])
+
+                del self._procs[proc]
+
+        output_str = ''.join(output)
+        logger.debug(
+            '===== begin %s output (%s) =====\n%s===== end %s output ====='
+            % (program, cwd, output_str, program))
+
+        errmess = []
+        if proc.returncode != 0:
+            errmess.append(
+                '%s had a non-zero exit state: %i'
+                % (program, proc.returncode))
+
+        if any(line.startswith(('STOP', 'Fortran runtime error'))
+               for line in error_str.splitlines()):
+            errmess.append('%s stopped with an error' % program)
+
+        if output_str.find('An error occured') != -1:
+            errmess.append(
+                "the string 'An error occured' appeared in %s output"
+                % program)
+
+        for fn in expected_outputs:
+            if not os.path.exists(pjoin(cwd, fn)):
+                errmess.append(
+                    '%s did not produce output file "%s"' % (program, fn))
+
+        if errmess:
+            raise GeminiError('''
+===== begin %s input =====
+%s===== end %s input =====
+===== begin %s output =====
+%s===== end %s output =====
+===== begin %s error =====
+%s===== end %s error =====
+%s
+%s has been invoked as "%s" in directory "%s"'''.lstrip() % (
+                program, input_str, program,
+                program, output_str, program,
+                program, error_str, program,
+                '\n'.join(errmess),
+                program, exe, cwd))
+
+        return output_str
+
+
+async def _gather(aws):
+    '''
+    Run awaitables concurrently, all or nothing.
+
+    If one of them fails, or if this coroutine is cancelled, the others are
+    cancelled, and their cleanup is waited for, before the error is raised.
+    '''
+
+    tasks = [asyncio.ensure_future(aw) for aw in aws]
+    if not tasks:
+        return []
+
+    try:
+        await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+    finally:
+        for task in tasks:
+            task.cancel()
+
+        await asyncio.wait(tasks)
+
+    for task in tasks:
+        if not task.cancelled() and task.exception() is not None:
+            raise task.exception()
+
+    return [task.result() for task in tasks]
+
+
+class _Tempdir(object):
+    def __init__(self, prefix, dir=None, keep=False):
+        self.path = mkdtemp(prefix=prefix, dir=dir)
+        self.keep = keep
+
+    def __enter__(self):
+        return self.path
+
+    def __exit__(self, *args):
+        if self.keep:
+            logger.warning(
+                'not removing temporary directory: %s' % self.path)
         else:
-            shutil.rmtree(work_directory)
-            logger.info(f"removed temporary work directory {work_directory}")
-    return traces
+            shutil.rmtree(self.path)
 
 
-elastic10_gfmapping = [
-    ("mmt1", GeminiMomentTensor(1, 0, 0, 1, 0, 0), {"N": 0, "E": 3, "D": 5}),
-    ("mmt2", GeminiMomentTensor(0, 0, 0, 0, 1, 1), {"N": 1, "E": 4, "D": 6}),
-    ("mmt3", GeminiMomentTensor(0, 0, 1, 0, 0, 0), {"N": 2, "D": 7}),
-    ("mmt4", GeminiMomentTensor(0, 1, 0, 0, 0, 0), {"N": 8, "D": 9}),
-]
+class GeminiGFBuilder(object):
+    '''
+    Builds a GF store with GEMINI.
 
+    Step 1 runs ``Gemini`` for each source depth (one block per depth). Step 2
+    runs ``Dispec`` and ``Totido`` for each of the elementary moment tensor
+    sources (one block per source depth and range of up to 149 distances) and
+    stores the Green's functions.
+    '''
 
-async def run_tensors(
-    config,
-    store_config,
-    tensors=elastic10_gfmapping,
-    gemini_directory=GEMINI_DIRECTORY,
-    gemini_run=True,
-    keep_temp=False,
-):
-    if gemini_run:
-        await run_program(
-            "gemini", gemini_input(config.gemini_config), gemini_directory
-        )
-        logger.info("GEMINI run completed")
-    return await asyncio.gather(
-        *[
-            run_one_tensor(
-                name,
-                tensor,
-                config,
-                store_config,
-                gemini_directory=gemini_directory,
-                keep_temp=keep_temp,
-            )
-            for name, tensor, gfmap in tensors
+    nsteps = 2
+
+    seismogram_types = {
+        'displacement': 'd',
+        'velocity': 'v',
+        'acceleration': 'a'}
+
+    def __init__(self, store_dir, force=False, tmp=None, keep_tmp=False):
+        self.store_dir = store_dir
+        self.force = force
+        self.tmp = tmp
+        self.keep_tmp = keep_tmp
+
+        self.store = gf.store.Store(store_dir, 'w')
+        try:
+            self._setup()
+        except Exception:
+            self.store.close()
+            raise
+
+    def close(self):
+        self.store.close()
+
+    def _setup(self):
+        store_config = self.store.config
+        self.conf = conf = self.store.get_extra('gemini')
+
+        if conf.gemini_version not in program_bins:
+            raise GeminiError(
+                'unsupported GEMINI version: %s' % conf.gemini_version)
+
+        if not isinstance(store_config, gf.meta.ConfigTypeA):
+            raise GeminiError(
+                'GEMINI backend only supports stores of type A (receivers '
+                'at the surface)')
+
+        if store_config.receiver_depth != 0.0:
+            raise GeminiError(
+                'GEMINI only computes Green\'s functions for receivers at '
+                'the surface, receiver_depth must be 0')
+
+        component_scheme = store_config.component_scheme
+        stored_quantity = store_config.effective_stored_quantity
+
+        if component_scheme not in ('elastic10', 'elastic8'):
+            raise GeminiError(
+                'GEMINI backend does not support component scheme "%s"'
+                % component_scheme)
+
+        if stored_quantity not in self.seismogram_types:
+            raise GeminiError(
+                'GEMINI backend does not support stored quantity "%s"'
+                % stored_quantity)
+
+        self.seismogram_type = self.seismogram_types[stored_quantity]
+
+        # Dispec's output components (r, theta, phi) are up, away from the
+        # source and anticlockwise around the source. Fomosto's (N, E, D)
+        # with the receiver north of the source are away from the source,
+        # clockwise around the source and down.
+        self.gfmapping = [
+            (MomentTensor(m=symmat6(1, 0, 0, 1, 0, 0)),
+             {'N': 0, 'E': 3, 'D': 5}),
+            (MomentTensor(m=symmat6(0, 0, 0, 0, 1, 1)),
+             {'N': 1, 'E': 4, 'D': 6}),
+            (MomentTensor(m=symmat6(0, 0, 1, 0, 0, 0)),
+             {'N': 2, 'D': 7}),
+            (MomentTensor(m=symmat6(0, 1, 0, 0, 0, 0)),
+             {'N': 8, 'D': 9}),
         ]
-    )
+
+        if component_scheme == 'elastic8':
+            self.gfmapping = self.gfmapping[:3]
+
+        if conf.earthmodel is None:
+            logger.info(
+                'No GEMINI earth model given in extra/gemini, fitting it to '
+                'the store\'s earthmodel_1d.')
+
+            model = GeminiModel.from_cake(
+                store_config.earthmodel_1d, nlayers_max=conf.nlayers_max)
+        else:
+            model = conf.earthmodel
+            dev, z = model.max_deviation(store_config.earthmodel_1d)
+            if dev > 0.02:
+                logger.warning(
+                    'The isotropic approximation of the GEMINI earth model '
+                    'in extra/gemini deviates from the store\'s '
+                    'earthmodel_1d by up to %.1f%% (at %g km depth), which '
+                    'is used for travel time tables. To fix, use the output '
+                    'of\n\n    python -m pyrocko.fomosto.gemini gemini-to-nd '
+                    '%s\n\nas earthmodel_1d in the store\'s config, and run '
+                    '"fomosto ttt" again.'
+                    % (dev*100., z/km,
+                       pjoin(self.store_dir, 'extra', 'gemini')))
+
+        model.validate(nlayers_max=conf.nlayers_max)
+        self.model = model
+
+        if abs(model.r_surface - cake.earthradius/km) > 1e-3:
+            logger.warning(
+                'Surface radius of GEMINI earth model (%g km) differs from '
+                'the radius used to convert surface distances to angles '
+                '(%g km).' % (model.r_surface, cake.earthradius/km))
+
+        if conf.degree_taper_length > dispec_ntmx:
+            raise GeminiError(
+                'degree_taper_length must be at most %i' % dispec_ntmx)
+
+        self._setup_timing()
+
+        self.window_str = '\n'.join(_window_lines(
+            self.frequency_max, conf.slowness_max, model.r_surface,
+            conf.degree_taper_length + 10,
+            min(gemini_lmx, conf.harmonic_degree_max))) + '\n'
+
+        self.model_str = model.to_string()
+
+        self.gf_directory = pjoin(self.store_dir, 'gemini_green')
+        util.ensuredir(self.gf_directory)
+
+        ndistances = store_config.ndistances
+        nblocks = (ndistances - 1) // dispec_nseimx + 1
+        nper = (ndistances - 1) // nblocks + 1
+        self.distance_blocks = [
+            (i*nper, min((i+1)*nper, ndistances)) for i in range(nblocks)]
+
+    def _setup_timing(self):
+        conf = self.conf
+        deltat = self.store.config.deltat
+
+        d = self.store.make_timing_params(
+            conf.time_region[0], conf.time_region[1], force=self.force)
+
+        tmin = math.floor(d['tmin'] / deltat) * deltat
+        tmax = math.ceil(d['tmax'] / deltat) * deltat
+
+        nsamples_out = int(round((tmax - tmin) / deltat)) + 1
+        nsamples = trace.nextpow2(
+            max(4, int(math.ceil(nsamples_out * conf.time_window_factor))))
+
+        nsamples_out = min(nsamples, nsamples_out)
+
+        tlen = nsamples * deltat
+
+        nend_max = nsamples // 2 - 1
+        if conf.frequency_max is None:
+            nend = nend_max
+        else:
+            nend = int(round(conf.frequency_max * tlen))
+            if nend > nend_max:
+                raise GeminiError(
+                    'frequency_max (%g Hz) must be below the Nyquist '
+                    'frequency (%g Hz) of the store' % (
+                        conf.frequency_max, 0.5 / deltat))
+
+        if nend < 1:
+            raise GeminiError('frequency_max is too low')
+
+        # Totido extends the spectrum to 2**n samples and zero-pads by
+        # another factor 2**zero_padding, giving 2*nzh samples.
+        nzh = trace.nextpow2(nend + 1)
+        zero_padding = int(round(math.log2(nsamples // (2*nzh))))
+        assert 2 * nzh * 2**zero_padding == nsamples
+
+        if nsamples > totido_nfmax:
+            raise GeminiError(
+                'time window needs %i samples, Totido supports at most %i. '
+                'Reduce time_region or the store\'s sampling rate.' % (
+                    nsamples, totido_nfmax))
+
+        if nend > dispec_nfr:
+            raise GeminiError(
+                'calculation needs %i frequencies, Dispec supports at most '
+                '%i. Reduce time_region or frequency_max.'
+                % (nend, dispec_nfr))
+
+        self.tmin = tmin
+        self.nsamples_out = nsamples_out
+        self.tlen = tlen
+        self.nend = nend
+        self.frequency_max = nend / tlen
+        self.zero_padding = zero_padding
+        self.damping_time = conf.damping_time or tlen / 5.0
+
+        logger.info(
+            'GEMINI time window length: %g s, %i samples, starting at %g s, '
+            '%i frequencies up to %g Hz, damping time: %g s'
+            % (tlen, nsamples, tmin, nend, self.frequency_max,
+               self.damping_time))
+
+    def depths(self):
+        return self.store.config.coords[0]
+
+    def nblocks(self, step):
+        ndepths = len(self.depths())
+        if step == 0:
+            return ndepths
+        else:
+            return ndepths * len(self.distance_blocks)
+
+    def step2_block(self, iblock):
+        idepth, idistblock = divmod(iblock, len(self.distance_blocks))
+        return idepth, idistblock
+
+    def gemini_input(self, depth):
+        conf = self.conf
+        return '\n'.join(str(x) for x in [
+            3,
+            0,
+            '%.10g' % self.tlen,
+            '%.10g' % self.damping_time,
+            0,
+            '%.10g' % (self.frequency_max * 1000.),
+            int(conf.include_physical_dispersion),
+            0,
+            min(gemini_lmx, conf.harmonic_degree_max),
+            1,
+            '%.10g' % (depth / km),
+            '%g' % conf.accuracy,
+            'earthmodel',
+            'window',
+            'basis',
+            1]) + '\n'
+
+    def basis_path(self, depth):
+        return pjoin(self.gf_directory, 'basis_%gkm' % (depth / km))
+
+    def basis_signature(self, depth):
+        h = hashlib.sha1()
+        for s in (self.gemini_input(depth), self.model_str, self.window_str):
+            h.update(s.encode('ascii'))
+
+        return h.hexdigest()
+
+    def have_basis(self, depth):
+        fn = self.basis_path(depth)
+        try:
+            with open(fn + '.signature', 'r') as f:
+                signature = f.read().strip()
+        except OSError:
+            return False
+
+        return os.path.exists(fn) and signature == self.basis_signature(depth)
+
+    def remove_basis(self, depth):
+        fn = self.basis_path(depth)
+        for path in (fn, fn + '.signature'):
+            if os.path.exists(path):
+                os.unlink(path)
+
+    async def run_gemini(self, runner, depth, label):
+        if self.have_basis(depth):
+            logger.info(
+                '%s: skipping, basis solutions exist already' % label)
+            return
+
+        self.remove_basis(depth)
+        tbeg = [None]
+        tlast = [None]
+
+        def on_start():
+            tbeg[0] = tlast[0] = time.time()
+            logger.info('%s: starting Gemini' % label)
+
+        def on_line(line):
+            toks = line.split()
+            if len(toks) == 6 and time.time() - tlast[0] > 30.:
+                try:
+                    nw = int(toks[1])
+                except ValueError:
+                    return
+
+                tlast[0] = time.time()
+                logger.info('%s: Gemini at frequency %i / %i' % (
+                    label, nw, self.nend))
+
+        with _Tempdir('tmp-', dir=self.gf_directory) as rundir:
+            for fn, s in [
+                    ('earthmodel', self.model_str),
+                    ('window', self.window_str)]:
+
+                with open(pjoin(rundir, fn), 'w') as f:
+                    f.write(s)
+
+            await runner.run(
+                'gemini', self.gemini_input(depth), rundir, ['basis'],
+                on_line=on_line, on_start=on_start)
+
+            fn = self.basis_path(depth)
+            os.replace(pjoin(rundir, 'basis'), fn)
+            with open(fn + '.signature', 'w') as f:
+                f.write(self.basis_signature(depth) + '\n')
+
+        logger.info('%s: done with Gemini, wallclock time: %.0f s' % (
+            label, time.time() - tbeg[0]))
+
+    def dispec_input(self):
+        return '\n'.join(str(x) for x in [
+            'basis',
+            'source',
+            'm',
+            2,
+            'window',
+            self.conf.degree_taper_length,
+            'stations',
+            3,
+            'all',
+            0]) + '\n'
+
+    def totido_input(self):
+        conf = self.conf
+        if conf.lowpass_order > 0:
+            lowpass = '1 %i %.10g' % (conf.lowpass_order, conf.lowpass_corner)
+        else:
+            lowpass = '0'
+
+        return '\n'.join(str(x) for x in [
+            'spec3k',
+            '',
+            '%.10g' % self.tmin,
+            lowpass,
+            '0',
+            self.zero_padding,
+            self.seismogram_type,
+            '%.10g' % ((self.nsamples_out + 0.5) * self.store.config.deltat),
+            'a']) + '\n'
+
+    async def run_dispec_totido(
+            self, runner, depth, distances, mt, on_start=None):
+
+        # Elementary moment tensor in units of cmt_moment.
+        m6 = mt.m6_up_south_east()
+
+        with _Tempdir('geminirun-', dir=self.tmp, keep=self.keep_tmp) \
+                as rundir:
+
+            os.symlink(
+                os.path.abspath(self.basis_path(depth)),
+                pjoin(rundir, 'basis'))
+
+            for fn, lines in [
+                    ('window', [self.window_str]),
+                    ('source', _cmt_lines(m6, depth/km)),
+                    ('stations', _station_lines(distances))]:
+
+                with open(pjoin(rundir, fn), 'w') as f:
+                    f.write('\n'.join(lines).rstrip('\n') + '\n')
+
+            await runner.run(
+                'dispec', self.dispec_input(), rundir, ['spec3k'],
+                on_start=on_start)
+
+            await runner.run(
+                'totido', self.totido_input(), rundir, ['seismogr'])
+
+            samprat, timeshift, data = _read_seismogr(
+                pjoin(rundir, 'seismogr'), len(distances))
+
+        deltat = self.store.config.deltat
+        if abs(1.0 / samprat - deltat) > 1e-4 * deltat:
+            raise GeminiError(
+                'Totido output sampling rate (%g Hz) does not match the '
+                'store\'s sampling rate (%g Hz)'
+                % (samprat, self.store.config.sample_rate))
+
+        if abs(timeshift - self.tmin) > 1e-3 * deltat + 1e-6 * abs(self.tmin):
+            raise GeminiError('Totido output has unexpected time shift')
+
+        factor = nm / cmt_moment
+        traces = []
+        for distance, (ur, utheta, uphi) in zip(distances, data):
+            for comp, ydata in [
+                    ('N', utheta),
+                    ('E', -uphi),
+                    ('D', -ur)]:
+
+                traces.append(trace.Trace(
+                    '', '', '', comp,
+                    tmin=self.tmin,
+                    deltat=deltat,
+                    ydata=ydata * factor,
+                    meta=dict(distance=distance)))
+
+        return traces
+
+    async def run_block(self, runner, iblock, label):
+        idepth, idistblock = self.step2_block(iblock)
+        depth = self.depths()[idepth]
+        ia, ib = self.distance_blocks[idistblock]
+        distances = self.store.config.coords[1][ia:ib]
+
+        if not self.have_basis(depth):
+            raise GeminiError(
+                'basis solutions for source depth %g km are missing, run '
+                'step 1 first' % (depth / km))
+
+        tbeg = []
+
+        def on_start():
+            # first of the programs of this block has been started
+            if not tbeg:
+                tbeg.append(time.time())
+                logger.info('%s: starting Dispec/Totido' % label)
+
+        results = await _gather(
+            self.run_dispec_totido(runner, depth, distances, mt, on_start)
+            for (mt, _) in self.gfmapping)
+
+        self.put_traces(depth, results)
+
+        logger.info('%s: done with Dispec/Totido, wallclock time: %.0f s' % (
+            label, time.time() - tbeg[0]))
+
+    def put_traces(self, depth, results):
+        store = self.store
+        conf = self.conf
+        skipped = 0
+        duplicate_inserts = 0
+        store.lock()
+        try:
+            for (_, gfmap), traces in zip(self.gfmapping, results):
+                for tr in traces:
+                    if tr.channel not in gfmap:
+                        continue
+
+                    args = (depth, tr.meta['distance'], gfmap[tr.channel])
+
+                    if conf.cut:
+                        tmin = store.t(conf.cut[0], args[:-1])
+                        tmax = store.t(conf.cut[1], args[:-1])
+                        if None in (tmin, tmax):
+                            skipped += 1
+                            continue
+
+                        tr.chop(tmin, tmax)
+
+                    try:
+                        store.put(args, gf.store.GFTrace.from_trace(tr))
+                    except gf.store.DuplicateInsert:
+                        duplicate_inserts += 1
+
+        finally:
+            store.unlock()
+
+        if skipped:
+            logger.warning(
+                '%i traces not stored, cut timing could not be determined'
+                % skipped)
+
+        if duplicate_inserts:
+            logger.warning(
+                '%i insertions skipped (duplicates)' % duplicate_inserts)
+
+    def block_label(self, step, iblock):
+        return 'step %i / %i, block %i / %i' % (
+            step+1, self.nsteps, iblock+1, self.nblocks(step))
+
+    async def run(self, runner, jobs, on_done):
+        '''
+        Run the given jobs, ``(step, iblock)`` pairs.
+
+        Step 2 blocks wait for the step 1 block of their source depth, if it
+        is among the jobs.
+        '''
+
+        jobs = set(jobs)
+        ndistblocks = len(self.distance_blocks)
+
+        async def depth_pipeline(idepth):
+            depth = self.depths()[idepth]
+            if (0, idepth) in jobs:
+                label = self.block_label(0, idepth)
+                await self.run_gemini(runner, depth, label)
+                on_done(0, idepth)
+
+            iblocks = [
+                ib for ib in range(
+                    idepth*ndistblocks, (idepth+1)*ndistblocks)
+                if (1, ib) in jobs]
+
+            async def block(ib):
+                await self.run_block(runner, ib, self.block_label(1, ib))
+                on_done(1, ib)
+
+            await _gather(block(ib) for ib in iblocks)
+
+        idepths = sorted(set(
+            iblock if step == 0 else self.step2_block(iblock)[0]
+            for (step, iblock) in jobs))
+
+        await _gather(depth_pipeline(idepth) for idepth in idepths)
 
 
-def put_traces(store, source_depth, relsults, tensors=elastic10_gfmapping):
-    for (name, tensor, gfmap), traces in zip(tensors, relsults):
-        for tr in traces:
-            if tr.channel in gfmap:
-                store.put(
-                    (source_depth, tr.meta["distance"], gfmap[tr.channel]),
-                    gf.store.GFTrace.from_trace(tr),
-                )
+async def _build_async(builder, jobs, on_done, nworkers):
+    loop = asyncio.get_running_loop()
+    main_task = asyncio.current_task()
+    runner = _Runner(nworkers, program_bins[builder.conf.gemini_version])
+    received = []
+
+    def handler(signum):
+        name = signal.Signals(signum).name
+        if not received:
+            logger.warning(
+                'Received %s, terminating running programs and cleaning up.'
+                % name)
+            main_task.cancel()
+        else:
+            logger.warning(
+                'Received %s again, killing running programs.' % name)
+            runner.kill_all()
+
+        received.append(signum)
+
+    signums = [signal.SIGINT, signal.SIGTERM, signal.SIGHUP]
+    for signum in signums:
+        loop.add_signal_handler(signum, handler, signum)
+
+    try:
+        await builder.run(runner, jobs, on_done)
+
+    except asyncio.CancelledError:
+        if received:
+            raise Interrupted()
+
+        raise
+
+    finally:
+        for signum in signums:
+            loop.remove_signal_handler(signum)
 
 
 def build(
-    store_dir,
-    force=False,
-    nworkers=None,
-    continue_=False,
-    step=None,
-    iblock=None,
-):
-    gf.store.Store.create_dependants(store_dir, force)
-    store = gf.store.Store(store_dir, "w")
-    try:
-        extra = store.get_extra("gemini")
-        timing = gemini_timing(store, extra, force=force)
-        for source_depth in store.config.coords[0]:
-            conf = gemini_config_for_depth(
-                store.config, extra, source_depth, timing
-            )
-            basis_solutions = (
-                GEMINI_DIRECTORY / conf.gemini_config.output_filepath
-            )
+        store_dir,
+        force=False,
+        nworkers=None,
+        continue_=False,
+        step=None,
+        iblock=None):
+
+    '''
+    Build GF store with GEMINI.
+
+    Follows the conventions of :py:meth:`pyrocko.gf.builder.Builder.build`
+    regarding the ``continue_``, ``step`` and ``iblock`` arguments. Step 1
+    computes the basis solutions with ``Gemini`` (one block per source
+    depth), step 2 computes and stores the Green's functions with ``Dispec``
+    and ``Totido``. Without ``step``, both steps run as a pipeline.
+    '''
+
+    nsteps = GeminiGFBuilder.nsteps
+    if step is not None and not (0 <= step < nsteps):
+        raise gf.store.StoreError('invalid step: %i' % (step+1))
+
+    if iblock is not None and step is None:
+        raise gf.store.StoreError('--step option must be given')
+
+    if not continue_ and iblock in (None, -1) and step in (None, 0):
+        gf.store.Store.create_dependants(store_dir, force)
+
+    status_fn = pjoin(store_dir, '.status')
+    done = set()
+    if iblock is None:
+        if not continue_:
+            with open(status_fn, 'w'):
+                pass
+        else:
             try:
-                results = asyncio.run(run_tensors(conf, store.config))
-                put_traces(store, source_depth, results)
-                logger.info(
-                    f"stored traces for source depth {source_depth / km:g} km"
-                )
-            finally:
-                basis_solutions.unlink(missing_ok=True)
-                logger.info(f"soremoved basis solutions {basis_solutions}")
+                with open(status_fn, 'r') as status:
+                    for line in status:
+                        done.add(tuple(int(x) for x in line.split()))
+            except IOError:
+                raise gf.store.StoreError('nothing to continue')
+
+    builder = GeminiGFBuilder(store_dir, force=force)
+    try:
+        steps = list(range(nsteps)) if step is None else [step]
+        jobs = []
+        for istep in steps:
+            nblocks = builder.nblocks(istep)
+            if iblock in (None, -1):
+                jobs.extend(
+                    (istep, i) for i in range(nblocks)
+                    if (istep, i) not in done)
+            else:
+                if not (0 <= iblock < nblocks):
+                    raise gf.store.StoreError(
+                        'invalid block index %i' % (iblock+1))
+
+                jobs.append((istep, iblock))
+
+        if iblock == -1:
+            for istep, i in jobs:
+                c = ['fomosto', 'build']
+                if not os.path.samefile(store_dir, '.'):
+                    c.append("'%s'" % store_dir)
+
+                c.append('--step=%i' % (istep+1))
+                c.append('--block=%i' % (i+1))
+                print(' '.join(c))
+
+            return
+
+        def on_done(istep, i):
+            if iblock is None:
+                with open(status_fn, 'a') as status:
+                    status.write('%i %i\n' % (istep, i))
+
+            done.add((istep, i))
+
+        asyncio.run(_build_async(
+            builder, jobs, on_done, nworkers or os.cpu_count() or 1))
+
+        if step is None and iblock is None:
+            if not builder.conf.keep_basis_solutions:
+                for depth in builder.depths():
+                    builder.remove_basis(depth)
+
+                try:
+                    os.rmdir(builder.gf_directory)
+                except OSError:
+                    pass
+
     finally:
-        store.close()
+        builder.close()
+
+    if iblock is None:
+        os.remove(status_fn)
+
+
+def init(store_dir, variant, config_params=None, earthmodel=None):
+    '''
+    Initialize GF store for GEMINI.
+
+    :param config_params: dict with parameters to override in the store's
+        config
+    :param earthmodel: :py:class:`GeminiModel`, possibly transversely
+        isotropic, to be used. If given, the store's ``earthmodel_1d`` is
+        set to its isotropic approximation, unless explicitly given in
+        ``config_params``. Otherwise, the GEMINI earth model is fitted to
+        ``earthmodel_1d``.
+    '''
+
+    if variant is None:
+        variant = default_version
+
+    if variant not in program_bins:
+        raise gf.store.StoreError('unsupported GEMINI variant: %s' % variant)
+
+    store_id = os.path.basename(os.path.realpath(store_dir))
+
+    d = dict(
+        id=store_id,
+        ncomponents=10,
+        component_scheme='elastic10',
+        stored_quantity=None,
+        sample_rate=0.2,
+        receiver_depth=0*km,
+        source_depth_min=10*km,
+        source_depth_max=20*km,
+        source_depth_delta=10*km,
+        distance_min=100*km,
+        distance_max=1000*km,
+        distance_delta=10*km,
+        earthmodel_1d=cake.load_model(),
+        modelling_code_id='gemini.%s' % variant,
+        tabulated_phases=[
+            gf.meta.TPDef(
+                id='begin',
+                definition='p,P,p\\,P\\,Pv_(cmb)p'),
+            gf.meta.TPDef(
+                id='end',
+                definition='2.5'),
+            gf.meta.TPDef(
+                id='P',
+                definition='!P'),
+            gf.meta.TPDef(
+                id='S',
+                definition='!S'),
+            gf.meta.TPDef(
+                id='p',
+                definition='!p'),
+            gf.meta.TPDef(
+                id='s',
+                definition='!s')])
+
+    if earthmodel is not None:
+        earthmodel.validate()
+        d['earthmodel_1d'] = earthmodel.to_cake()
+
+    if config_params is not None:
+        d.update(config_params)
+
+    config = gf.meta.ConfigTypeA(**d)
+    config.validate()
+
+    if earthmodel is None:
+        earthmodel = GeminiModel.from_cake(config.earthmodel_1d)
+
+    gemini = GeminiConfig(gemini_version=variant, earthmodel=earthmodel)
+
+    gemini.cut = gemini.time_region
+
+    return gf.store.Store.create_editables(
+        store_dir,
+        config=config,
+        extra={'gemini': gemini})
+
+
+def _load_gemini_model(fn):
+    with open(fn, 'r') as f:
+        s = f.read()
+
+    if s.startswith('--- !pf.GeminiConfig'):
+        from pyrocko.guts import load_string
+        conf = load_string(s)
+        if conf.earthmodel is None:
+            raise GeminiError('no earthmodel given in "%s"' % fn)
+
+        return conf.earthmodel
+
+    return GeminiModel.from_string(s)
+
+
+def main(args=None):
+    '''
+    Command line tool to convert earth models between formats.
+    '''
+
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(
+        prog='python -m pyrocko.fomosto.gemini',
+        description='Convert earth models between Pyrocko\'s .nd format and '
+                    'GEMINI\'s native polynomial format.')
+
+    subparsers = parser.add_subparsers(dest='command', required=True)
+
+    p = subparsers.add_parser(
+        'nd-to-gemini',
+        help='fit GEMINI model to layered earth model',
+        description='Approximate a layered earth model by polynomial layers '
+                    'for GEMINI. The result can be used as earthmodel in a '
+                    'store\'s extra/gemini file.')
+
+    p.add_argument(
+        'input', metavar='IN',
+        help='earth model in .nd format, or name of an earth model built '
+             'into Pyrocko, e.g. ak135-f-continental.m')
+
+    p.add_argument(
+        'output', metavar='OUT', nargs='?',
+        help='output file (default: standard output)')
+
+    p.add_argument(
+        '--nlayers-max', type=int, default=gemini_nlayer, metavar='N',
+        help='maximum number of layers (default: %(default)s)')
+
+    p = subparsers.add_parser(
+        'gemini-to-nd',
+        help='get isotropic approximation of GEMINI model',
+        description='Get the isotropic approximation of a, possibly '
+                    'transversely isotropic, GEMINI earth model in .nd '
+                    'format. The result can be used as earthmodel_1d in a '
+                    'store\'s config file.')
+
+    p.add_argument(
+        'input', metavar='IN',
+        help='earth model in GEMINI\'s native format, or a store\'s '
+             'extra/gemini file')
+
+    p.add_argument(
+        'output', metavar='OUT', nargs='?',
+        help='output file (default: standard output)')
+
+    args = parser.parse_args(args)
+
+    util.setup_logging('gemini', 'warning')
+
+    try:
+        if args.command == 'nd-to-gemini':
+            try:
+                mod = cake.load_model(args.input)
+            except ValueError:
+                raise GeminiError(
+                    'cannot read "%s" as earth model in .nd format'
+                    % args.input)
+
+            s = GeminiModel.from_cake(
+                mod, nlayers_max=args.nlayers_max).to_string()
+
+        else:
+            s = cake.write_nd_model_str(
+                _load_gemini_model(args.input).to_cake())
+
+    except (GeminiError, OSError, cake.CakeError) as e:
+        parser.exit(1, '%s: error: %s\n' % (parser.prog, e))
+
+    if args.output:
+        with open(args.output, 'w') as f:
+            f.write(s)
+    else:
+        sys.stdout.write(s)
+
+
+if __name__ == '__main__':
+    main()
