@@ -50,6 +50,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   solutions for the same events and blend between the two with a slider.
 - Pyrocko-GF: `fomosto qseis` can now build scalar stores of volume
   change and pressure.
+- Pyrocko-GF: new Fomosto backend `gemini` for global Green's functions with
+  the GEMINI program system, supporting transversely isotropic earth models.
 - Trace: `lowpass`/`highpass`/`bandpass`/`bandstop` gained a `type`
   option to select between the default `'ba'` and the numerically more
   stable `'sos'` filter representation.

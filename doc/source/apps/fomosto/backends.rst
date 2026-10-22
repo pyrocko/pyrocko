@@ -80,6 +80,61 @@ QSSP can also be used to calculate rotational seismograms.  To create a Pyrocko
 GF store with rotational Green's functions, just set ``stored_quantity:
 'rotation'`` in the store's ``config``.
 
+The ``gemini`` backend
+----------------------
+
+GEMINI (Green's function of the Earth by MINor integration) is a program
+system to compute complete synthetic seismograms for a spherically symmetric,
+transversely isotropic, anelastic earth. It has been written by Jörg Dalkolmo
+and Wolfgang Friederich [FriederichDalkolmo1995]_. The equations of motion
+are integrated numerically in the frequency domain, for each harmonic degree.
+
+Use this backend for global Green's functions when transverse isotropy of the
+earth model should be taken into account. It is restricted to receivers at the
+surface and to at most 16384 samples per trace.
+
+The backend expects the three programs of GEMINI to be installed as
+``fomosto_gemini_Gemini_2_2``, ``fomosto_gemini_Dispec_2_2`` and
+``fomosto_gemini_Totido_2_2``. The ``fomosto-gemini`` package downloads the
+original GEMINI 2.2 sources, applies fixes needed for modern compilers, and
+installs the programs under these names. To initialize a Green's function store
+to be built with GEMINI, run::
+
+    $ fomosto init gemini.2.2 my_gemini_gfs
+
+The version tag ``2.2`` is the default and may be omitted.
+
+The earth model used by GEMINI is given in GEMINI's native polynomial format
+in the ``earthmodel`` entry of the store's ``extra/gemini`` file. By default,
+it is a fit of the store's ``earthmodel_1d`` (AK135 by default). The
+``earthmodel_1d`` should be an isotropic approximation of it, as it is used to
+compute travel time tables. In Python, a store with a transversely isotropic
+model can be set up with
+
+.. code-block :: python
+
+    from pyrocko.fomosto import gemini
+
+    model = gemini.GeminiModel.from_string(open('spremani').read())
+    gemini.init('my_gemini_gfs', '2.2', earthmodel=model)
+
+Earth models can be converted between the two formats on the command line.
+To fit a GEMINI model (at most 20 polynomial layers) to a layered model in
+``.nd`` format, or to one of the models built into Pyrocko, run::
+
+    $ python -m pyrocko.fomosto.gemini nd-to-gemini my_model.nd my_model.gemini
+    $ python -m pyrocko.fomosto.gemini nd-to-gemini prem-no-ocean.m prem.gemini
+
+To get the isotropic approximation of a, possibly transversely isotropic,
+GEMINI model in ``.nd`` format, e.g. after editing the ``earthmodel`` in a
+store's ``extra/gemini`` file, run::
+
+    $ python -m pyrocko.fomosto.gemini gemini-to-nd my_gemini_gfs/extra/gemini my_model.nd
+
+and use the result as ``earthmodel_1d`` in the store's ``config`` (then run
+``fomosto ttt`` again). The input can also be a model file in GEMINI's native
+format.
+
 The ``psgrn_pscmp`` backend
 ---------------------------
 
@@ -160,6 +215,8 @@ References
 
 .. [AkiRichards2002] Aki, Keiiti, and Paul G. Richards. Quantitative
     seismology. Vol. 1. 2002.
+
+.. [FriederichDalkolmo1995] Friederich, W., Dalkolmo, J. (1995): Complete synthetic seismograms for a spherically symmetric earth by a numerical computation of the Green's function in the frequency domain. - Geophysical Journal International, 122, 2, 537-550.
 
 .. [Wang1999] Wang, R. (1999): A simple orthonormalization method for the stable and efficient computation of Green's functions. - Bulletin of the Seismological Society of America, 89, 733-741.
 
