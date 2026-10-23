@@ -18,6 +18,7 @@ from tempfile import mkdtemp
 from subprocess import Popen, PIPE
 
 from pyrocko.guts import Float, Int, Tuple, List, Object, String
+from pyrocko.fomosto import check_variant
 from pyrocko.model import Location
 from pyrocko import gf, util, trace, cake
 
@@ -26,6 +27,11 @@ from pyrocko import gf, util, trace, cake
 program_bins = {
     'pscmp.2008a': 'fomosto_pscmp2008a',
     'psgrn.2008a': 'fomosto_psgrn2008a'
+}
+
+# variants usable with ``fomosto init`` and the executables they need
+variants = {
+    '2008a': [program_bins['psgrn.2008a'], program_bins['pscmp.2008a']],
 }
 
 psgrn_displ_names = ('uz', 'ur', 'ut')
@@ -1672,14 +1678,7 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
 
 
 def init(store_dir, variant):
-    if variant is None:
-        variant = '2008a'
-
-    if ('pscmp.' + variant) not in program_bins:
-        raise gf.store.StoreError('unsupported pscmp variant: %s' % variant)
-
-    if ('psgrn.' + variant) not in program_bins:
-        raise gf.store.StoreError('unsupported psgrn variant: %s' % variant)
+    check_variant('psgrn_pscmp', variant, variants)
 
     c = PsGrnPsCmpConfig()
 

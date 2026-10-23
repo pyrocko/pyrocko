@@ -30,6 +30,26 @@ def g(trs, sta, cha):
             return tr
 
 
+def delay(tr, tshift):
+    '''
+    Delay trace by a fraction of a sample, keeping the sample times.
+    '''
+
+    y = tr.get_ydata().astype(float)
+    n = y.size
+    nfft = trace.nextpow2(3 * n)
+    ypad = num.full(nfft, y[-1])
+    ypad[:n] = y[0]
+    ypad[n:2*n] = y
+    omega = 2.0 * math.pi * num.fft.rfftfreq(nfft, tr.deltat)
+    ypad = num.fft.irfft(
+        num.fft.rfft(ypad) * num.exp(-1.0j * omega * tshift), nfft)
+
+    tr = tr.copy()
+    tr.set_ydata(ypad[n:2*n])
+    return tr
+
+
 class AhfullKiwiTestSetupEntry(Object):
     vp = Float.T()
     vs = Float.T()
@@ -155,7 +175,11 @@ class AhfullTestCase(unittest.TestCase):
             for cha in 'NED':
 
                 t1 = g(trs, 'S%03i' % i, cha)
-                t2 = g(trs_ref, 'S%03i' % i, cha)
+
+                # The source time function of the reference has been made
+                # with a running sum including the current sample, which
+                # makes it half a sample early.
+                t2 = delay(g(trs_ref, 'S%03i' % i, cha), 0.5 * s.deltat)
 
                 tmin = max(t1.tmin, t2.tmin)
                 tmax = min(t1.tmax, t2.tmax)

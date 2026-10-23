@@ -199,16 +199,33 @@ def fomo_wrapper_module(name):
                 (module probed: "%s")''' % (name, modname))
 
 
+def backends_details():
+    lines = []
+    for modelling_code_id, missing in fomosto.get_backend_variants():
+
+        if missing is None:
+            status = 'not usable, cannot import backend module'
+        elif missing:
+            status = 'not installed, missing: %s' % ', '.join(missing)
+        else:
+            status = 'installed'
+
+        lines.append('  %-25s %s' % (modelling_code_id, status))
+
+    return '\n'.join(lines)
+
+
 def command_init(args):
 
     details = '''
 
-Available modelling backends:
+Available modelling backends and their variants:
+
 %s
 
-  More information at
+  Installation instructions and more information at
     https://pyrocko.org/docs/current/apps/fomosto/backends.html
-''' % '\n'.join(['  * %s' % b for b in fomosto.AVAILABLE_BACKENDS])
+''' % backends_details()
 
     parser, options, args = cl_parse(
         'init', args,

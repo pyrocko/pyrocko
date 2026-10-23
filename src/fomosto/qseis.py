@@ -16,6 +16,7 @@ from subprocess import Popen, PIPE
 from os.path import join as pjoin
 
 from pyrocko import gf
+from pyrocko.fomosto import check_variant, correct_rectangle_rule
 from pyrocko import trace, util, cake
 from pyrocko.moment_tensor import MomentTensor, symmat6
 from pyrocko.guts import Float, Int, Tuple, List, Complex, Bool, Object, String
@@ -34,6 +35,10 @@ program_bins = {
     'qseis.2006a': 'fomosto_qseis2006a',
     'qseis.2006b': 'fomosto_qseis2006b',
 }
+
+# variants usable with ``fomosto init`` and the executables they need
+variants = dict(
+    (k.split('.', 1)[1], [exe]) for (k, exe) in program_bins.items())
 
 
 def have_backend():
@@ -182,7 +187,9 @@ class QSeisConfig(Object):
     gradient_resolution_vs = Float.T(default=0.0)
     gradient_resolution_density = Float.T(default=0.0)
 
-    wavelet_duration_samples = Float.T(default=0.0)
+    # short wavelet (delta impulse); values <= 0 make QSEIS use a wavelet of
+    # two samples, which delays the traces by one sample
+    wavelet_duration_samples = Float.T(default=0.001)
     wavelet_type = Int.T(default=2)
     user_wavelet_samples = List.T(Float.T())
 
@@ -758,9 +765,17 @@ in the directory %s'''.lstrip() % (
                     tmin += distance / vred
 
                 tmin += deltat
+                ydata = data[:, ireceiver+1]
+                if self.config.wavelet_type == 2:
+                    # QSEIS integrates with a running sum including the
+                    # current sample. Shifted by one sample, this is a sum
+                    # over the preceding samples, which is delayed by
+                    # deltat/2 and corrected here.
+                    ydata = correct_rectangle_rule(ydata, deltat)
+
                 tr = trace.Trace(
                     '', '%04i' % ireceiver, '', comp,
-                    tmin=tmin, deltat=deltat, ydata=data[:, ireceiver+1],
+                    tmin=tmin, deltat=deltat, ydata=ydata,
                     meta=dict(
                         ireceiver=ireceiver,
                         distance=distance*km,
@@ -1099,11 +1114,7 @@ class QSeisGFBuilder(gf.builder.Builder):
 
 
 def init(store_dir, variant, config_params=None):
-    if variant is None:
-        variant = '2006'
-
-    if variant not in ('2006', '2006a', '2006b'):
-        raise gf.store.StoreError('unsupported variant: %s' % variant)
+    check_variant('qseis', variant, variants)
 
     modelling_code_id = 'qseis.%s' % variant
 

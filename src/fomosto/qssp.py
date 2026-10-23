@@ -18,6 +18,7 @@ from subprocess import Popen, PIPE
 from os.path import join as pjoin
 
 from pyrocko import trace, util, cake, gf
+from pyrocko.fomosto import check_variant, correct_rectangle_rule
 from pyrocko.guts import Object, Float, String, Bool, Tuple, Int, List
 from pyrocko.moment_tensor import MomentTensor, symmat6
 
@@ -33,6 +34,10 @@ program_bins = {
     'qssp.2020': 'fomosto_qssp2020',
     'qssp.ppeg2017': 'fomosto_qsspppeg2017',
 }
+
+# variants usable with ``fomosto init`` and the executables they need
+variants = dict(
+    (k.split('.', 1)[1], [exe]) for (k, exe) in program_bins.items())
 
 
 def have_backend(version=None):
@@ -745,9 +750,15 @@ qssp has been invoked as "%s"'''.lstrip() % (
             for itrace in range(ntraces):
                 rec = self.config.receivers[itrace]
                 tmin = rec.tstart + toffset
+                ydata = data[:, itrace+1]
+                if self.config.qssp_version in ('2017', '2020'):
+                    # displacement and rotation are integrated with a
+                    # running sum in QSSP, which delays them by deltat/2
+                    ydata = correct_rectangle_rule(ydata, deltat)
+
                 tr = trace.Trace(
                     '', '%04i' % itrace, '', comp,
-                    tmin=tmin, deltat=deltat, ydata=data[:, itrace+1],
+                    tmin=tmin, deltat=deltat, ydata=ydata,
                     meta=dict(distance=rec.distance))
 
                 traces[itrace, comp] = tr
@@ -1095,11 +1106,7 @@ km = 1000.
 
 
 def init(store_dir, variant, config_params=None):
-    if variant is None:
-        variant = '2010beta'
-
-    if ('qssp.' + variant) not in program_bins:
-        raise gf.store.StoreError('unsupported qssp variant: %s' % variant)
+    check_variant('qssp', variant, variants)
 
     qssp = QSSPConfig(qssp_version=variant)
     if variant != 'ppeg2017':

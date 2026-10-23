@@ -57,6 +57,7 @@ import numpy as num
 from numpy.polynomial import Polynomial
 
 from pyrocko import trace, cake, gf, util
+from pyrocko.fomosto import check_variant
 from pyrocko.guts import Object, Float, Int, Bool, Tuple, String
 from pyrocko.guts import TBase, literal
 from pyrocko.moment_tensor import MomentTensor, symmat6
@@ -76,13 +77,15 @@ program_bins = {
     },
 }
 
-default_version = '2.2'
+# variants usable with ``fomosto init`` and the executables they need
+variants = dict(
+    (version, list(bins.values())) for (version, bins) in program_bins.items())
 
 # Array limits compiled into the Fortran programs.
 gemini_nlayer = 20        # Gemini: nlayer, max number of model layers
 gemini_ncoefs = 4         # Gemini: max number of polynomial coefficients
 gemini_lmx = 10000        # Gemini, Dispec: lmx, max harmonic degree
-dispec_nfr = 3000         # Dispec: nfr, max number of frequencies
+dispec_nfr = 4095         # Dispec: nfr, max number of frequencies
 dispec_nseimx = 149       # Dispec: nseimx - 1, max number of receivers
 dispec_ntmx = 200         # Dispec: ntpmx, max length of degree taper
 totido_nfmax = 16384      # Totido: nfmax, max number of samples
@@ -675,8 +678,9 @@ class GeminiConfig(Object):
     '''
 
     gemini_version = String.T(
-        default=default_version,
-        help='Version of the GEMINI programs to use.')
+        optional=True,
+        help='Version of the GEMINI programs to use (required, set by '
+             '``fomosto init``).')
 
     earthmodel = GeminiEarthmodel.T(
         optional=True,
@@ -1104,6 +1108,11 @@ class GeminiGFBuilder(object):
     def _setup(self):
         store_config = self.store.config
         self.conf = conf = self.store.get_extra('gemini')
+
+        if conf.gemini_version is None:
+            raise GeminiError(
+                'gemini_version must be set in extra/gemini, one of: %s'
+                % ', '.join(sorted(variants)))
 
         if conf.gemini_version not in program_bins:
             raise GeminiError(
@@ -1721,11 +1730,7 @@ def init(store_dir, variant, config_params=None, earthmodel=None):
         ``earthmodel_1d``.
     '''
 
-    if variant is None:
-        variant = default_version
-
-    if variant not in program_bins:
-        raise gf.store.StoreError('unsupported GEMINI variant: %s' % variant)
+    check_variant('gemini', variant, variants)
 
     store_id = os.path.basename(os.path.realpath(store_dir))
 

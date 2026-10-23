@@ -204,7 +204,6 @@ mantle
 
         trs = runner.get_traces()
         for tr in trs:
-            tr.shift(-config.deltat)
             tr.snap(interpolate=True)
             tr.lowpass(4, 0.05)
             tr.highpass(4, 0.01)
@@ -461,7 +460,6 @@ mantle
 
             trs2 = engine.process(source, targets).pyrocko_traces()
             for tr in trs2:
-                tr.shift(config.deltat)
                 tr.lowpass(4, config.sample_rate / 8., demean=False)
                 tr.highpass(4, config.sample_rate / 80.)
 
@@ -477,10 +475,10 @@ mantle
 
             ds = num.array(trace_norm(trs, trs2, channels='rtz'))
 
-            if not num.all(ds < 0.05):
+            if not num.all(ds < 0.01):
                 trace.snuffle(trs+trs2)
 
-            assert num.all(ds < 0.05)
+            assert num.all(ds < 0.01)
 
     def test_qseis_scalar_store(self):
         random.seed(23)
