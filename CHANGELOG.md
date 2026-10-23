@@ -52,6 +52,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   change and pressure.
 - Pyrocko-GF: new Fomosto backend `gemini` for global Green's functions with
   the GEMINI program system, supporting transversely isotropic earth models.
+- Fomosto: `fomosto init` without arguments now lists all backend variants
+  and tells whether the programs they need are installed.
 - Trace: `lowpass`/`highpass`/`bandpass`/`bandstop` gained a `type`
   option to select between the default `'ba'` and the numerically more
   stable `'sos'` filter representation.
@@ -76,6 +78,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Distances, azimuths and offsets between stations, events and other
   locations are now computed exactly on the WGS84 ellipsoid, instead of with
   approximations accurate to tens of meters. Results change slightly.
+- Fomosto: **breaking change** the variant of the backend must now always be
+  given when creating a GF store, e.g. `fomosto init qssp.2017 my_store`
+  instead of `fomosto init qssp my_store`, and in Python
+  `qssp.init(store_dir, '2017')` instead of `qssp.init(store_dir, None)`.
+  Previously, a default variant was chosen silently, which could be a version
+  of the modelling code which is not even installed. Run `fomosto init`
+  without arguments to see the available variants. Backends without
+  variants, like `ahfullgreen`, are not affected.
+- Pyrocko-GF: Green's functions computed with the `qssp` (versions 2017 and
+  2020), `qseis` and `ahfullgreen` backends no longer have a timing error of
+  half a sample. QSSP and QSEIS stores were half a sample late, `ahfullgreen`
+  was half a sample early, and all three were too large near the Nyquist
+  frequency (by up to 57%). `qseis2d` stores were one sample late. Stores
+  built before this change keep the old behaviour; rebuild them to get the
+  corrected Green's functions. Stores from different backends now agree in
+  timing, e.g. with the new `gemini` backend.
 - `squirrel jackseis`: chopped output traces are now clipped exactly to
   the requested time span, instead of being extended to the full
   processing block.
@@ -109,6 +127,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   event's location is revised.
 
 ### Fixed
+- Fomosto: the `qseis2d` backend was missing from the list of backends shown
+  by `fomosto init`.
+- Fomosto `qseis2d` backend: fixed a crash when the slowness window is
+  determined automatically (the default), and the window is now based on the
+  distances of the store. Fixed wrong timing when the time window does not
+  start at zero, and a too long source pulse at high sampling rates.
+- Fomosto `qseis` backend: the default source pulse is now short. The old
+  default of a QSEIS configuration created without `fomosto init` delayed the
+  Green's functions by one sample.
 - Squirrel: fixed a crash in `join_coverages` when given no or
   non-overlapping coverages.
 - Squirrel: fixed loading of associated event data in the SAC backend.

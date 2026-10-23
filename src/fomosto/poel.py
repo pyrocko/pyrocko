@@ -14,6 +14,7 @@ import numpy as num
 import signal
 
 from pyrocko.guts import Object, Float, Int, List, String
+from pyrocko.fomosto import check_variant
 from pyrocko.guts_array import Array
 from pyrocko import trace, util, gf
 
@@ -26,6 +27,10 @@ program_bins = {
     'poel.2012': 'fomosto_poel2012',
     'poel.2006': 'poel',
 }
+
+# variants usable with ``fomosto init`` and the executables they need
+variants = dict(
+    (k.split('.', 1)[1], [exe]) for (k, exe) in program_bins.items())
 
 
 def have_backend():
@@ -573,11 +578,7 @@ class PoelGFBuilder(gf.builder.Builder):
 
 
 def init(store_dir, variant):
-    if variant is None:
-        variant = '2012'
-
-    if variant not in ('2006', '2012'):
-        raise gf.store.StoreError('unsupported variant: %s' % variant)
+    check_variant('poel', variant, variants)
 
     poel = PoelConfig()
 

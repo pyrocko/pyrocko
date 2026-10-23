@@ -14,12 +14,8 @@ import signal
 from tempfile import mkdtemp
 from subprocess import Popen, PIPE
 import os.path as op
-try:
-    from scipy.integrate import cumulative_trapezoid
-except ImportError:
-    from scipy.integrate import cumtrapz as cumulative_trapezoid
-
 from pyrocko.moment_tensor import MomentTensor, symmat6
+from pyrocko.fomosto import check_variant, correct_rectangle_rule
 from pyrocko.guts import Float, Int, Tuple, List, Bool, Object, String
 from pyrocko import trace, util, cake, gf
 
@@ -36,6 +32,13 @@ logger = logging.getLogger('pyrocko.fomosto.qseis2d')
 program_bins = {
     'qseis2d.qseisS2014': 'fomosto_qseisS2014',
     'qseis2d.qseisR2014': 'fomosto_qseisR2014',
+}
+
+# variants usable with ``fomosto init`` and the executables they need
+variants = {
+    '2014': [
+        program_bins['qseis2d.qseisS2014'],
+        program_bins['qseis2d.qseisR2014']],
 }
 
 qseis2d_components = {
@@ -745,16 +748,17 @@ in the directory %s'''.lstrip() % (
         deltat = (data[-1, 0] - data[0, 0]) / (nsamples - 1)
         toffset = data[0, 0]
 
-        tred = self.config.time_reduction
+        # the time column of QSeisR already includes the time reduction
         rec = self.config.receiver
-        tmin = rec.tstart + toffset + deltat + tred
+        tmin = rec.tstart + toffset
 
         traces = []
         for itrace, comp in enumerate(self.config.components):
-            # qseis2d gives velocity-integrate to displacement
-            # integration removes one sample, add it again in front
-            displ = cumulative_trapezoid(num.concatenate(
-                (num.zeros(1), data[:, itrace + 1])), dx=deltat)
+            # QSeisR gives velocity, integrate to displacement without
+            # half-sample shift
+            displ = num.zeros(nsamples)
+            displ[1:] = num.cumsum(data[:-1, itrace + 1]) * deltat
+            displ = correct_rectangle_rule(displ, deltat)
 
             tr = trace.Trace(
                 '', '%04i' % itrace, '', comp,
@@ -821,27 +825,26 @@ class QSeis2dGFBuilder(gf.builder.Builder):
                 baseconf.time_region[0], baseconf.time_region[1],
                 force=force)
 
+            # QSeisR runs once per receiver with its own time reduction, so
+            # the window must cover the longest time span at any GF point
             shared['time_window_min'] = float(
-                    num.ceil(d['tlenmax'] / self.gf_config.sample_rate) *
-                    self.gf_config.sample_rate)
-            shared['time_reduction'] = d['tmin_vred']
+                (math.ceil(d['tlenmax'] / deltat) + 1) * deltat)
 
         time_window_min = shared['time_window_min']
 
         conf_s.nsamples = nextpow2(int(round(time_window_min / deltat)) + 1)
         conf_s.time_window = (conf_s.nsamples - 1) * deltat
-        conf_r.time_reduction = shared['time_reduction']
 
         if step == 0:
             if 'slowness_window' not in shared:
                 if conf_s.calc_slowness_window:
-                    phases = [
-                        storeconf.tabulated_phases[i].phases
-                        for i in range(len(
-                            storeconf.tabulated_phases))]
-
                     all_phases = []
-                    map(all_phases.extend, phases)
+                    # [s/km]
+                    slownesses = []
+                    for tpdef in storeconf.tabulated_phases:
+                        all_phases.extend(tpdef.phases)
+                        slownesses.extend(
+                            1.0 / v for v in tpdef.horizontal_velocities)
 
                     mean_source_depth = num.mean((
                         storeconf.source_depth_min,
@@ -850,15 +853,16 @@ class QSeis2dGFBuilder(gf.builder.Builder):
                     arrivals = conf_s.earthmodel_1d.arrivals(
                         phases=all_phases,
                         distances=num.linspace(
-                            conf_s.receiver_min_distance,
-                            conf_s.receiver_max_distance,
+                            storeconf.distance_min,
+                            storeconf.distance_max,
                             100) * cake.m2d,
                         zstart=mean_source_depth)
 
-                    ps = num.array(
-                        [arrivals[i].p for i in range(len(arrivals))])
+                    slownesses.extend(
+                        arrival.p / (cake.r2d * cake.d2m / km)
+                        for arrival in arrivals)
 
-                    slownesses = ps / (cake.r2d * cake.d2m / km)
+                    slownesses = num.array(slownesses)
 
                     shared['slowness_window'] = (0.,
                                                  0.,
@@ -919,7 +923,8 @@ class QSeis2dGFBuilder(gf.builder.Builder):
             (self.step + 1, self.nsteps, iblock + 1, self.nblocks))
 
         dx = self.gf_config.distance_delta
-        conf_r.wavelet_duration = 0.001 * self.gf_config.sample_rate
+        # short wavelet (delta impulse) [s]
+        conf_r.wavelet_duration = 0.001 / self.gf_config.sample_rate
 
         if self.step == 0:
             conf_s.source_depth = source_depth
@@ -927,6 +932,20 @@ class QSeis2dGFBuilder(gf.builder.Builder):
             runner.run(conf_s)
 
         else:
+            if len(self.store.config.ns) == 2:
+                args = (sz, firstx)
+            else:
+                args = (rz, sz, firstx)
+
+            tbegin = self.store.t(self.qseis_baseconf.time_region[0], args)
+            if tbegin is None:
+                raise QSeis2dError(
+                    'cannot determine begin of time window at source depth '
+                    '%g km, distance %g km' % (sz/km, firstx/km))
+
+            deltat = self.store.config.deltat
+            conf_r.time_reduction = math.floor(tbegin / deltat) * deltat
+
             conf_r.receiver = QSeisRReceiver(lat=90 - firstx * cake.m2d,
                                              lon=180.,
                                              tstart=0.0,
@@ -1068,11 +1087,7 @@ class QSeis2dGFBuilder(gf.builder.Builder):
 
 
 def init(store_dir, variant):
-    if variant is None:
-        variant = '2014'
-
-    if variant not in ('2014'):
-        raise gf.store.StoreError('unsupported variant: %s' % variant)
+    check_variant('qseis2d', variant, variants)
 
     modelling_code_id = 'qseis2d.%s' % variant
 

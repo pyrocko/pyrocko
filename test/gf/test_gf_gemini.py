@@ -92,6 +92,7 @@ class GeminiModelTestCase(unittest.TestCase):
 
     def test_config_yaml(self):
         conf = gemini.GeminiConfig(
+            gemini_version='2.2',
             earthmodel=gemini.GeminiModel.from_cake(cake.load_model()))
 
         conf2 = load_string(conf.dump())
@@ -111,7 +112,7 @@ class GeminiTestCase(unittest.TestCase):
         shutil.rmtree(self.tmpdir)
 
     def test_gemini_build(self):
-        gemini.init(self.tmpdir, None, config_params=dict(
+        gemini.init(self.tmpdir, '2.2', config_params=dict(
             source_depth_max=10e3,
             distance_min=500e3,
             distance_max=600e3))

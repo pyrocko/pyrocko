@@ -12,6 +12,7 @@ import logging
 import numpy as num
 from . import trace
 from .guts import Float, Object
+from .fomosto import correct_rectangle_rule
 from . import ahfullgreen_ext as ext
 
 logger = logging.getLogger('pyrocko.fomosto.ahfullgreen')
@@ -108,7 +109,11 @@ def make_seismogram(
         out -= m1 * 2.
 
         if quantity == 'displacement':
-            out = num.cumsum(out) * deltat
+            # integrate the exactly sampled velocity without half-sample
+            # shift
+            y = num.zeros(out.size)
+            y[1:] = num.cumsum(out[:-1]) * deltat
+            out = correct_rectangle_rule(y, deltat)
 
         outs.append(out)
 

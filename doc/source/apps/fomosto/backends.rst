@@ -9,6 +9,13 @@ hints on which one to use under what circumstances.
 
 .. highlight:: console
 
+The backend and its variant (version of the modelling code) must be given
+when a Green's function store is created with ``fomosto init``. To see which
+backends and variants are available and whether the external programs they
+need are installed, run::
+
+    $ fomosto init
+
 The ``ahfullgreen`` backend
 ---------------------------
 
@@ -101,8 +108,6 @@ installs the programs under these names. To initialize a Green's function store
 to be built with GEMINI, run::
 
     $ fomosto init gemini.2.2 my_gemini_gfs
-
-The version tag ``2.2`` is the default and may be omitted.
 
 The earth model used by GEMINI is given in GEMINI's native polynomial format
 in the ``earthmodel`` entry of the store's ``extra/gemini`` file. By default,
