@@ -10,6 +10,7 @@ import math
 import signal
 
 from pyrocko.guts import Object, clone
+from pyrocko.fomosto import check_variant
 from pyrocko import trace, cake, gf
 from pyrocko.ahfullgreen import add_seismogram, AhfullgreenSTFImpulse, \
     AhfullgreenSTF
@@ -25,6 +26,10 @@ logger = logging.getLogger('pyrocko.fomosto.ahfullgreen')
 program_bins = {
     'ahfullgreen': 'ahfullgreen',
 }
+
+# variants usable with ``fomosto init`` and the executables they need (none,
+# the code is built into Pyrocko)
+variants = {None: []}
 
 components = 'x y z'.split()
 
@@ -250,7 +255,7 @@ class AhfullGFBuilder(gf.builder.Builder):
 
 
 def init(store_dir, variant, config_params=None):
-    assert variant is None
+    check_variant('ahfullgreen', variant, variants)
 
     modelling_code_id = 'ahfullgreen'
 

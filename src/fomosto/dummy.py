@@ -10,6 +10,7 @@ import signal
 import numpy as num
 
 from pyrocko import trace, gf
+from pyrocko.fomosto import check_variant
 
 guts_prefix = 'pf'
 
@@ -79,8 +80,7 @@ km = 1000.
 
 
 def init(store_dir, variant):
-    if variant is not None:
-        raise gf.store.StoreError('unsupported variant: %s' % variant)
+    check_variant('dummy', variant, {None: []})
 
     store_id = os.path.basename(os.path.realpath(store_dir))
 

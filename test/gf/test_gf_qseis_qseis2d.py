@@ -170,6 +170,7 @@ mantle
             lon=0.,
             depth=10. * km)
 
+        random.seed(23)
         source.m6 = tuple(random.random() * 2. - 1. for x in range(6))
 
         azi = 0.    # QSeis2d only takes one receiver without azimuth variable
@@ -219,8 +220,25 @@ mantle
             else:
                 q2trcs.append(trc)
 
+        # compare body waves, surface waves are not well represented in
+        # qseis2d
+        tp, ts = [
+            min(ray.t for ray in mod.arrivals(
+                [dist*cake.m2d], phases=[cake.PhaseDef(phase)],
+                zstart=source.depth))
+            for phase in ('P', 'S')]
+
         for q, q2 in zip(qtrcs, q2trcs):
-            num.testing.assert_allclose(q.ydata, q2.ydata, atol=4e-23)
+            for tr in (q, q2):
+                tr.extend(tr.tmin-3000., tr.tmax+3000., fillmethod='repeat')
+                tr.highpass(2, 0.004, demean=False)
+                tr.lowpass(4, 0.03, demean=False)
+                tr.chop(tp-50., ts+150.)
+
+            misfit = num.linalg.norm(q.ydata - q2.ydata) \
+                / num.linalg.norm(q.ydata)
+
+            assert misfit < 0.1
 
 #        trace.snuffle(qtrcs + q2trcs)
 
