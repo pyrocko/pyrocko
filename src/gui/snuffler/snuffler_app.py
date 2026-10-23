@@ -23,6 +23,7 @@ from pyrocko.streaming import serial_hamster
 from pyrocko.streaming import slink
 from pyrocko.streaming import edl
 from pyrocko.streaming import datacube
+from pyrocko.streaming import pulse
 
 from pyrocko import pile            # noqa
 from pyrocko import util            # noqa
@@ -169,6 +170,34 @@ class CubeAcquisition(
         AcquisitionThread.got_trace(self, tr)
 
 
+class PulseAcquisition(
+        pulse.PulseInput, AcquisitionThread):
+
+    def __init__(self, *args, **kwargs):
+        pulse.PulseInput.__init__(self, *args, **kwargs)
+        AcquisitionThread.__init__(self)
+
+    def got_trace(self, tr):
+        AcquisitionThread.got_trace(self, tr)
+
+    def get_wanted_poll_interval(self):
+        return 100.
+
+
+class ESP32Acquisition(
+        serial_hamster.ESP32Hamster, AcquisitionThread):
+
+    def __init__(self, *args, **kwargs):
+        serial_hamster.ESP32Hamster.__init__(self, *args, **kwargs)
+        AcquisitionThread.__init__(self)
+
+    def got_trace(self, tr):
+        AcquisitionThread.got_trace(self, tr)
+
+    def get_wanted_poll_interval(self):
+        return 100.
+
+
 def setup_acquisition_sources(args):
 
     sources = []
@@ -182,6 +211,8 @@ def setup_acquisition_sources(args):
         msc = re.match(r'school://([^:?]+)(\?([^?]+))?', arg)
         med = re.match(r'edl://([^:]+)', arg)
         mcu = re.match(r'cube://([^:]+)', arg)
+        mpa = re.match(r'pulse://', arg)
+        mesp = re.match(r'esp32://(.+)', arg)
 
         if msl:
             host = msl.group(1)
@@ -244,16 +275,17 @@ def setup_acquisition_sources(args):
                 d = dict(parse_qsl(msc.group(3)))
 
             d_rate = {
-                '20': ('a', 20.032),
-                '40': ('b', 39.860),
-                '80': ('c', 79.719)}
+                'Lego_20': ('a', 20.032),
+                'Lego_40': ('b', 39.860),
+                'Lego_80': ('c', 79.719),
+                '25': ('d', 25.0013)}
 
-            s_rate = d.get('rate', '80')
+            s_rate = d.get('rate', '25')
             station = d.get('station', 'TEST')
 
             if s_rate not in d_rate:
                 raise Exception(
-                    'Unsupported rate: %s (expected "20", "40" or "80")'
+                    'Unsupported rate: %s (expected "20", "25", "40" or "80")'
                     % s_rate)
 
             s_gain = d.get('gain', '4')
@@ -288,8 +320,15 @@ def setup_acquisition_sources(args):
             device = mcu.group(1)
             cube = CubeAcquisition(device=device)
             sources.append(cube)
+        elif mpa:
+            pa = PulseAcquisition()
+            sources.append(pa)
+        elif mesp:
+            device = mesp.group(1)
+            esp32 = ESP32Acquisition(device=device)
+            sources.append(esp32)
 
-        if msl or mca or mus or msc or med or mcu:
+        if msl or mca or mus or msc or med or mcu or mpa or mesp:
             args.pop(iarg)
         else:
             iarg += 1
@@ -643,9 +682,9 @@ snufflings repository</a><br>you also have to pull an update from there.
 class SnufflerWindow(qw.QMainWindow):
 
     def __init__(
-            self, pile, stations=None, events=None, markers=None, ntracks=12,
-            marker_editor_sortable=True, follow=None, controls=True,
-            opengl=None, instant_close=False):
+            self, pile, stations=None, station_xmls=[], events=None,
+            markers=None, ntracks=12, marker_editor_sortable=True, follow=None,
+            controls=True, opengl=None, instant_close=False):
 
         qw.QMainWindow.__init__(self)
 
@@ -660,6 +699,8 @@ class SnufflerWindow(qw.QMainWindow):
             pile, ntracks_shown_max=ntracks, use_opengl=opengl,
             marker_editor_sortable=marker_editor_sortable,
             panel_parent=self)
+
+        self.pile_viewer.viewer.station_xmls.extend(station_xmls)
 
         self.marker_editor = self.pile_viewer.marker_editor()
         self.add_panel(
