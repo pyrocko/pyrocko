@@ -116,12 +116,12 @@ def snuffle(pile=None, **kwargs):
                 store_path = pjoin(
                     tempdir,
                     'trace-%(network)s.%(station)s.%(location)s.%(channel)s.'
-                    '%(tmin_ms)s.mseed')
+                    '%(tmin_ms)s.yaff')
             elif os.path.isdir(store_path):
                 store_path = pjoin(
                     store_path,
                     'trace-%(network)s.%(station)s.%(location)s.%(channel)s.'
-                    '%(tmin_ms)s.mseed')
+                    '%(tmin_ms)s.yaff')
 
             interval = min(
                 source.get_wanted_poll_interval() for source in sources)
@@ -174,7 +174,27 @@ def snuffler_from_commandline(args=None):
     if args is None:
         args = sys.argv[1:]
 
-    usage = '''usage: %prog [options] waveforms ...'''
+    usage = '''usage: %prog [options] waveforms ... \n
+                The following pseudo URLs are supported:\n\n
+                
+                seedlink://<host>[:<port>]/<pattern>\n
+                Acquire data through SeedLink from given <host>. The specified <pattern> is matched against strings of the form <network>.<station>.<location>.<channel>, where the placeholders stand for the corresponding IDs of each SeedLink data stream. To use this feature, slinktool must be installed.\n\n
+
+                school://<device>\n
+                Acquire data through serial line from “school seismometer”.\n\n
+
+                hb628://<device>[?rate=<rate>[&channels=<channels>]]\n
+                Acquire data from eight-channel USB-HB628 module. Example: to read channels 0, 3 and 5 from serial device /dev/ttyS0 at default rate (50Hz), use snuffler 'hb628:///dev/ttyS0?channels=035'. By default all channels are shown.\n\n
+
+                cam://<device>\n
+                Acquire data from Hamburg Univerisity Wiechert camera module.\n\n
+
+                cube://<device>\n
+                Acquire data from DiGOS DATA-CUBE recorder connected via serial interface. Example: snuffler cube:///dev/ttyUSB0\n\n
+
+                pulse://\n
+                Acquire data connected microphone through soundcard.
+                '''
     parser = OptionParser(usage=usage)
 
     parser.add_option(
@@ -305,6 +325,7 @@ def snuffler_from_commandline(args=None):
         default=False,
         help='print debugging information to stderr')
 
+
     options, args = parser.parse_args(list(args))
 
     if options.debug:
@@ -320,10 +341,11 @@ def snuffler_from_commandline(args=None):
     for stations_fn in extend_paths(options.station_fns):
         stations.extend(model.station.load_stations(stations_fn))
 
+    station_xmls = []
     for stationxml_fn in extend_paths(options.stationxml_fns):
-        stations.extend(
-            stationxml.load_xml(
-                filename=stationxml_fn).get_pyrocko_stations())
+        station_xml = stationxml.load_xml(filename=stationxml_fn)
+        stations.extend(station_xml.get_pyrocko_stations())
+        station_xmls.append(station_xml)
 
     events = []
     for event_fn in extend_paths(options.event_fns):
@@ -339,6 +361,7 @@ def snuffler_from_commandline(args=None):
         return pyrocko.snuffle(
             this_pile,
             stations=stations,
+            station_xmls=station_xmls,
             events=events,
             markers=markers,
             ntracks=options.ntracks,
