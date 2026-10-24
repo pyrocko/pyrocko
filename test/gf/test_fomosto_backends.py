@@ -6,7 +6,7 @@ import unittest
 import numpy as num
 
 from pyrocko import fomosto, util, gf
-from pyrocko.apps.fomosto import command_init
+from pyrocko.apps.fomosto import main as fomosto_main
 from pyrocko.fomosto import ahfullgreen, gemini, qssp
 
 
@@ -34,9 +34,10 @@ class FomostoBackendsTestCase(unittest.TestCase):
         try:
             for modelling_code_id in ('qssp', 'gemini', 'gemini.3.0'):
                 with self.assertRaises(SystemExit):
-                    command_init([modelling_code_id, tmpdir + '/store'])
+                    fomosto_main(
+                        ['init', modelling_code_id, tmpdir + '/store'])
 
-            command_init(['gemini.2.2', tmpdir + '/store'])
+            fomosto_main(['init', 'gemini.2.2', tmpdir + '/store'])
 
         finally:
             shutil.rmtree(tmpdir)

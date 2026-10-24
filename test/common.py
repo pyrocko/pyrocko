@@ -329,11 +329,17 @@ class Capture(object):
         return self.file.getvalue()
 
 
-def call(program, *args, **kwargs):
+def get_main(program):
     if program == 'fomosto':
         from pyrocko.apps.fomosto import main
     else:
         assert False, 'program %s not available' % program
+
+    return main
+
+
+def call(program, *args, **kwargs):
+    main = get_main(program)
 
     # tee = True
     tee = kwargs.get('tee', False)
@@ -346,13 +352,15 @@ def call(program, *args, **kwargs):
 
 
 def call_assert_usage(program, *args):
-    res = None
-    try:
-        call(program, *args)
-    except PyrockoExit as e:
-        res = e.result
+    main = get_main(program)
+    cap = Capture()
+    with cap:
+        try:
+            main(list(args))
+        except PyrockoExit as e:
+            assert e.result in (None, 0)
 
-    assert res.startswith('Usage')
+    assert cap.getvalue().startswith('usage:')
 
 
 class chdir(object):

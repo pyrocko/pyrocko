@@ -9,199 +9,153 @@ Fomosto - Green's function database management.
 
 import sys
 import re
+import os
 import os.path as op
 import logging
 import copy
 import shutil
-from optparse import OptionParser
+import argparse
 
-from pyrocko import util, trace, gf, cake, io, fomosto
+from pyrocko import util, trace, gf, io, fomosto
 from pyrocko.gui.snuffler import marker
 from pyrocko.util import mpl_show
+from pyrocko.cli import PyrockoArgumentParser, dq, ldq
 
 logger = logging.getLogger('pyrocko.apps.fomosto')
 km = 1e3
 
-
-def d2u(d):
-    return dict((k.replace('-', '_'), v) for (k, v) in d.items())
-
-
-subcommand_descriptions = {
-    'init':          'create a new empty GF store',
-    'build':         'compute GFs and fill into store',
-    'stats':         'print information about a GF store',
-    'check':         'check for problems in GF store',
-    'decimate':      'build decimated variant of a GF store',
-    'redeploy':      'copy traces from one GF store into another',
-    'view':          'view selected traces',
-    'extract':       'extract selected traces',
-    'import':        'convert Kiwi GFDB to GF store format',
-    'export':        'convert GF store to Kiwi GFDB format',
-    'ttt':           'create travel time tables',
-    'tttview':       'plot travel time table',
-    'tttextract':    'extract selected travel times',
-    'tttlsd':        'fix holes in travel time tables',
-    'sat':           'create stored ray attribute table',
-    'satview':       'plot stored ray attribute table',
-    'server':        'run seismosizer server',
-    'download':      'download GF store from a server',
-    'modelview':     'plot earthmodels',
-    'upgrade':       'upgrade store format to latest version',
-    'addref':        'import citation references to GF store config',
-    'qc':            'quality check',
-    'report':        "report for Green's Function databases",
-    'trans2rot':     'create rotational from translational store',
-    'fd2trans':      'extract elastic10 from elastic10_fd store',
-}
-
-subcommand_usages = {
-    'init':          ['init <type> <store-dir> [options]',
-                      'init redeploy <source> <destination> [options]'],
-    'build':         'build [store-dir] [options]',
-    'stats':         'stats [store-dir] [options]',
-    'check':         'check [store-dir] [options]',
-    'decimate':      'decimate [store-dir] <factor> [options]',
-    'redeploy':      'redeploy <source> <destination> [options]',
-    'view':          'view [store-dir] ... [options]',
-    'extract':       'extract [store-dir] <selection>',
-    'import':        'import <source> <destination> [options]',
-    'export':        'export [store-dir] <destination> [options]',
-    'ttt':           'ttt [store-dir] [options]',
-    'tttview':       'tttview [store-dir] <phase-ids> [options]',
-    'tttextract':    'tttextract [store-dir] <phase> <selection>',
-    'tttlsd':        'tttlsd [store-dir] <phase>',
-    'sat':           'sat [store-dir] [options]',
-    'satview':       'satview [store-dir] <phase-ids> [options]',
-    'server':        'server [options] <store-super-dir> ...',
-    'download':      'download [options] <site> <store-id>',
-    'modelview':     'modelview <selection>',
-    'upgrade':       'upgrade [store-dir] ...',
-    'addref':        'addref [store-dir] ... <filename> ...',
-    'qc':            'qc [store-dir]',
-    'report':        'report <subcommand> <arguments>... [options]',
-    'trans2rot':     'trans2rot <source> <destination>',
-    'fd2trans':      'fd2trans <source> <destination>',
-}
-
-subcommands = subcommand_descriptions.keys()
-
 program_name = 'fomosto'
 
-usage = program_name + ''' <subcommand> <arguments> ... [options]
+description = '''
+Fomosto - Green's function database management.
 
-Subcommands:
+This is ```fomosto```, the Pyrocko tool to create, build, inspect and manage
+Green's function (GF) stores. Fomosto does not compute Green's functions
+itself, it provides a unified interface to configure and run several
+modelling codes.
 
-    init          %(init)s
-    build         %(build)s
-    stats         %(stats)s
-    check         %(check)s
-    decimate      %(decimate)s
-    redeploy      %(redeploy)s
-    view          %(view)s
-    extract       %(extract)s
-    import        %(import)s
-    export        %(export)s
-    ttt           %(ttt)s
-    tttview       %(tttview)s
-    tttextract    %(tttextract)s
-    tttlsd        %(tttlsd)s
-    sat           %(sat)s
-    satview       %(satview)s
-    server        %(server)s
-    download      %(download)s
-    modelview     %(modelview)s
-    upgrade       %(upgrade)s
-    addref        %(addref)s
-    qc            %(qc)s
-    report        %(report)s
-    trans2rot     %(trans2rot)s
-    fd2trans      %(fd2trans)s
+This tool's functionality is available through several subcommands. Run
+```fomosto SUBCOMMAND --help``` to get further help.
+'''
 
-To get further help and a list of available options for any subcommand run:
-
-    fomosto <subcommand> --help
-
-''' % d2u(subcommand_descriptions)
+epilog = '''
 
 
-def add_common_options(parser):
-    parser.add_option(
-        '--loglevel',
-        action='store',
-        dest='loglevel',
-        type='choice',
-        choices=('critical', 'error', 'warning', 'info', 'debug'),
-        default='info',
-        help='set logger level to '
-             '"critical", "error", "warning", "info", or "debug". '
-             'Default is "%default".')
+----
+
+Manual: https://pyrocko.org/docs/current/apps/fomosto
+
+Tutorial: https://pyrocko.org/docs/current/apps/fomosto/tutorial.html
+'''
 
 
-def process_common_options(options):
-    util.setup_logging(program_name, options.loglevel)
+class FomostoError(Exception):
+    pass
 
 
-def cl_parse(command, args, setup=None, details=None):
-    usage = subcommand_usages[command]
-    descr = subcommand_descriptions[command]
-
-    if isinstance(usage, str):
-        usage = [usage]
-
-    susage = '%s %s' % (program_name, usage[0])
-    for s in usage[1:]:
-        susage += '\n%s%s %s' % (' '*7, program_name, s)
-
-    description = descr[0].upper() + descr[1:] + '.'
-
-    if details:
-        description = description + ' %s' % details
-
-    parser = OptionParser(usage=susage, description=description)
-    parser.format_description = lambda formatter: description
-
-    if setup:
-        setup(parser)
-
-    add_common_options(parser)
-    (options, args) = parser.parse_args(args)
-    process_common_options(options)
-    return parser, options, args
+nice_fatal_errors = (
+    FomostoError,
+    gf.StoreError,
+    gf.meta.GridSpecError,
+    gf.meta.OutOfBounds,
+    util.DownloadError)
 
 
-def die(message, err=''):
-    sys.exit('%s: error: %s \n %s' % (program_name, message, err))
+class FomostoArgumentParser(PyrockoArgumentParser):
+    '''
+    Argument parser with the general options of all fomosto subcommands.
+    '''
+
+    def __init__(self, *args, general_options=True, **kwargs):
+        kwargs['add_help'] = False
+        PyrockoArgumentParser.__init__(self, *args, **kwargs)
+
+        group = self.add_argument_group('General options')
+        group.add_argument(
+            '--help', '-h',
+            action='help',
+            help='Show this help message and exit.')
+
+        if general_options:
+            loglevel_choices = [
+                'critical', 'error', 'warning', 'info', 'debug']
+            loglevel_default = 'info'
+
+            group.add_argument(
+                '--loglevel',
+                choices=loglevel_choices,
+                default=loglevel_default,
+                metavar='LEVEL',
+                help='Set logger level. Choices: %s. Default: %s.' % (
+                    ldq(loglevel_choices), dq(loglevel_default)))
+
+
+def add_store_dir_argument(parser):
+    parser.add_argument(
+        'store_dir',
+        nargs='?',
+        default=op.curdir,
+        metavar='STORE_DIR',
+        help='Store directory. Default: current directory.')
+
+
+def add_store_dirs_argument(parser):
+    parser.add_argument(
+        'store_dirs',
+        nargs='*',
+        default=[op.curdir],
+        metavar='STORE_DIR',
+        help='Store directories. Default: current directory.')
+
+
+def add_force_argument(parser):
+    parser.add_argument(
+        '--force',
+        action='store_true',
+        help='Overwrite existing files.')
+
+
+def check_store_dir(store_dir):
+    store_dir = op.abspath(store_dir)
+    if not op.isdir(store_dir):
+        raise FomostoError('Not a directory: %s' % store_dir)
+
+    return store_dir
 
 
 def fomo_wrapper_module(name):
+    if not re.match(gf.meta.StringID.pattern, name):
+        raise FomostoError('Invalid modelling code ID: %s' % name)
+
+    words = name.split('.', 1)
+    if len(words) == 2:
+        name, variant = words
+    else:
+        name = words[0]
+        variant = None
+
+    name_clean = re.sub(r'[.-]', '_', name)
+    modname = '.'.join(['pyrocko', 'fomosto', name_clean])
     try:
-        if not re.match(gf.meta.StringID.pattern, name):
-            raise ValueError('invalid name')
-
-        words = name.split('.', 1)
-        if len(words) == 2:
-            name, variant = words
-        else:
-            name = words[0]
-            variant = None
-
-        name_clean = re.sub(r'[.-]', '_', name)
-        modname = '.'.join(['pyrocko', 'fomosto', name_clean])
         mod = __import__(modname, level=0)
-        return getattr(mod.fomosto, name_clean), variant
-
-    except ValueError:
-        die('invalid modelling code wrapper name')
-
     except ImportError:
-        die('''modelling code wrapper "%s" not available or not installed
-                (module probed: "%s")''' % (name, modname))
+        raise FomostoError(
+            'Modelling code wrapper "%s" not available or not installed '
+            '(module probed: "%s").' % (name, modname))
+
+    return getattr(mod.fomosto, name_clean), variant
 
 
 def backends_details():
+    # The docs should not show what is installed on the machine building them.
+    for_docs = os.environ.get('PYROCKO_RST_HELP', '0') != '0'
+
     lines = []
     for modelling_code_id, missing in fomosto.get_backend_variants():
+
+        if for_docs:
+            lines.append('    %s' % modelling_code_id)
+            continue
 
         if missing is None:
             status = 'not usable, cannot import backend module'
@@ -210,189 +164,13 @@ def backends_details():
         else:
             status = 'installed'
 
-        lines.append('  %-25s %s' % (modelling_code_id, status))
+        lines.append('    %-25s %s' % (modelling_code_id, status))
 
     return '\n'.join(lines)
 
 
-def command_init(args):
-
-    details = '''
-
-Available modelling backends and their variants:
-
-%s
-
-  Installation instructions and more information at
-    https://pyrocko.org/docs/current/apps/fomosto/backends.html
-''' % backends_details()
-
-    parser, options, args = cl_parse(
-        'init', args,
-        details=details)
-
-    if len(args) == 0:
-        sys.exit(parser.format_help())
-
-    if args[0] == 'redeploy':
-        if len(args) != 3:
-            parser.error('incorrect number of arguments')
-
-        source_dir, dest_dir = args[1:]
-
-        try:
-            source = gf.Store(source_dir)
-        except gf.StoreError as e:
-            die(e)
-
-        config = copy.deepcopy(source.config)
-        config.derived_from_id = source.config.id
-        try:
-            config_filenames = gf.store.Store.create_editables(
-                dest_dir, config=config)
-
-        except gf.StoreError as e:
-            die(e)
-
-        try:
-            dest = gf.Store(dest_dir)
-        except gf.StoreError as e:
-            die(e)
-
-        for k in source.extra_keys():
-            source_fn = source.get_extra_path(k)
-            dest_fn = dest.get_extra_path(k)
-            shutil.copyfile(source_fn, dest_fn)
-
-        logger.info(
-            '(1) configure settings in files:\n  %s'
-            % '\n  '.join(config_filenames))
-
-        logger.info(
-            '(2) run "fomosto redeploy <source> <dest>", as needed')
-
-    else:
-        if len(args) != 2:
-            parser.error('incorrect number of arguments')
-
-        (modelling_code_id, store_dir) = args
-
-        module, variant = fomo_wrapper_module(modelling_code_id)
-        try:
-            config_filenames = module.init(store_dir, variant)
-        except gf.StoreError as e:
-            die(e)
-
-        logger.info('(1) configure settings in files:\n  %s'
-                    % '\n  '.join(config_filenames))
-        logger.info('(2) run "fomosto ttt" in directory "%s"' % store_dir)
-        logger.info('(3) run "fomosto build" in directory "%s"' % store_dir)
-
-
-def get_store_dir(args):
-    if len(args) == 1:
-        store_dir = op.abspath(args.pop(0))
-    else:
-        store_dir = op.abspath(op.curdir)
-
-    if not op.isdir(store_dir):
-        die('not a directory: %s' % store_dir)
-
-    return store_dir
-
-
-def get_store_dirs(args):
-    if len(args) == 0:
-        store_dirs = [op.abspath(op.curdir)]
-    else:
-        store_dirs = [op.abspath(x) for x in args]
-
-    for store_dir in store_dirs:
-        if not op.isdir(store_dir):
-            die('not a directory: %s' % store_dir)
-
-    return store_dirs
-
-
-def command_build(args):
-
-    def setup(parser):
-        parser.add_option(
-            '--force', dest='force', action='store_true',
-            help='overwrite existing files')
-
-        parser.add_option(
-            '--nworkers', dest='nworkers', type='int', metavar='N',
-            help='run N worker processes in parallel')
-
-        parser.add_option(
-            '--continue', dest='continue_', action='store_true',
-            help='continue suspended build')
-
-        parser.add_option(
-            '--step', dest='step', type='int', metavar='I',
-            help='process block number IBLOCK')
-
-        parser.add_option(
-            '--block', dest='iblock', type='int', metavar='I',
-            help='process block number IBLOCK')
-
-    parser, options, args = cl_parse('build', args, setup=setup)
-
-    store_dir = get_store_dir(args)
-    try:
-        if options.step is not None:
-            step = options.step - 1
-        else:
-            step = None
-
-        if options.iblock is not None:
-            iblock = options.iblock - 1
-        else:
-            iblock = None
-
-        store = gf.Store(store_dir)
-        module, _ = fomo_wrapper_module(store.config.modelling_code_id)
-        module.build(
-            store_dir,
-            force=options.force,
-            nworkers=options.nworkers, continue_=options.continue_,
-            step=step,
-            iblock=iblock)
-
-    except gf.StoreError as e:
-        die(e)
-
-
-def command_stats(args):
-
-    parser, options, args = cl_parse('stats', args)
-    store_dir = get_store_dir(args)
-
-    try:
-        store = gf.Store(store_dir)
-        s = store.stats()
-
-    except gf.StoreError as e:
-        die(e)
-
-    for k in store.stats_keys:
-        print('%s: %s' % (k, s[k]))
-
-
-def command_check(args):
-
-    parser, options, args = cl_parse('check', args)
-    store_dir = get_store_dir(args)
-
-    try:
-        store = gf.Store(store_dir)
-        problems = store.check(show_progress=True)
-        if problems:
-            die('problems detected with gf store: %s' % store_dir)
-
-    except gf.StoreError as e:
-        die(e)
+def sindex(args):
+    return '(%s)' % ', '.join('%g' % x for x in args)
 
 
 def load_config(fn):
@@ -401,71 +179,199 @@ def load_config(fn):
         assert isinstance(config, gf.Config)
 
     except Exception:
-        die('cannot load gf config from file: %s' % fn)
+        raise FomostoError('Cannot load GF config from file: %s' % fn)
 
     return config
 
 
-def command_decimate(args):
+def setup_init(parser):
+    parser.add_argument(
+        'modelling_code_id',
+        metavar='MODELLING_CODE_ID',
+        help='Modelling code to use, including its variant, e.g. '
+             '```qssp.2017```, or ```redeploy``` to create a store with the '
+             'configuration of an existing one.')
 
-    def setup(parser):
-        parser.add_option(
-            '--config', dest='config_fn', metavar='FILE',
-            help='use modified spacial sampling given in FILE')
+    parser.add_argument(
+        'store_dir',
+        metavar='STORE_DIR',
+        help='Directory of the new store, or of the existing store to take '
+             'the configuration from with ```redeploy```.')
 
-        parser.add_option(
-            '--force', dest='force', action='store_true',
-            help='overwrite existing files')
+    parser.add_argument(
+        'dest_dir',
+        nargs='?',
+        metavar='DESTINATION',
+        help='Directory of the new store (only with ```redeploy```).')
 
-    parser, options, args = cl_parse('decimate', args, setup=setup)
-    try:
-        decimate = int(args.pop())
-    except Exception:
-        parser.error('cannot get <factor> argument')
 
-    store_dir = get_store_dir(args)
+def run_init(parser, args):
+    if args.modelling_code_id == 'redeploy':
+        if args.dest_dir is None:
+            parser.error('A destination is required with "redeploy".')
+
+        source_dir, dest_dir = args.store_dir, args.dest_dir
+
+        source = gf.Store(source_dir)
+
+        config = copy.deepcopy(source.config)
+        config.derived_from_id = source.config.id
+        config_filenames = gf.store.Store.create_editables(
+            dest_dir, config=config)
+
+        dest = gf.Store(dest_dir)
+
+        for k in source.extra_keys():
+            source_fn = source.get_extra_path(k)
+            dest_fn = dest.get_extra_path(k)
+            shutil.copyfile(source_fn, dest_fn)
+
+        logger.info(
+            '(1) Configure settings in files:\n  %s'
+            % '\n  '.join(config_filenames))
+
+        logger.info(
+            '(2) Run "fomosto redeploy <source> <dest>", as needed.')
+
+    else:
+        if args.dest_dir is not None:
+            parser.error('Too many arguments.')
+
+        store_dir = args.store_dir
+
+        module, variant = fomo_wrapper_module(args.modelling_code_id)
+        config_filenames = module.init(store_dir, variant)
+
+        logger.info('(1) Configure settings in files:\n  %s'
+                    % '\n  '.join(config_filenames))
+        logger.info('(2) Run "fomosto ttt" in directory "%s".' % store_dir)
+        logger.info('(3) Run "fomosto build" in directory "%s".' % store_dir)
+
+
+def setup_build(parser):
+    add_store_dir_argument(parser)
+    add_force_argument(parser)
+
+    parser.add_argument(
+        '--nworkers',
+        type=int,
+        metavar='N',
+        help='Run N worker processes in parallel. Default: number of CPUs.')
+
+    parser.add_argument(
+        '--continue',
+        dest='continue_',
+        action='store_true',
+        help='Continue suspended build.')
+
+    parser.add_argument(
+        '--step',
+        type=int,
+        metavar='I',
+        help='Process step number I only.')
+
+    parser.add_argument(
+        '--block',
+        dest='iblock',
+        type=int,
+        metavar='I',
+        help='Process block number I only (requires ``--step`` for '
+             'backends with several steps). With ```--block=0```, print '
+             'the commands to process all blocks separately.')
+
+
+def run_build(parser, args):
+    store_dir = check_store_dir(args.store_dir)
+
+    step = args.step - 1 if args.step is not None else None
+    iblock = args.iblock - 1 if args.iblock is not None else None
+
+    store = gf.Store(store_dir)
+    module, _ = fomo_wrapper_module(store.config.modelling_code_id)
+    module.build(
+        store_dir,
+        force=args.force,
+        nworkers=args.nworkers,
+        continue_=args.continue_,
+        step=step,
+        iblock=iblock)
+
+
+def setup_stats(parser):
+    add_store_dir_argument(parser)
+
+
+def run_stats(parser, args):
+    store = gf.Store(check_store_dir(args.store_dir))
+    s = store.stats()
+
+    for k in store.stats_keys:
+        print('%s: %s' % (k, s[k]))
+
+
+def setup_check(parser):
+    add_store_dir_argument(parser)
+
+
+def run_check(parser, args):
+    store_dir = check_store_dir(args.store_dir)
+    store = gf.Store(store_dir)
+    problems = store.check(show_progress=True)
+    if problems:
+        raise FomostoError('Problems detected with GF store: %s' % store_dir)
+
+
+def setup_decimate(parser):
+    add_store_dir_argument(parser)
+
+    parser.add_argument(
+        'factor',
+        type=int,
+        metavar='FACTOR',
+        help='Decimation factor.')
+
+    parser.add_argument(
+        '--config',
+        dest='config_fn',
+        metavar='FILE',
+        help='Use modified spatial sampling given in FILE.')
+
+    add_force_argument(parser)
+
+
+def run_decimate(parser, args):
+    store_dir = check_store_dir(args.store_dir)
 
     config = None
-    if options.config_fn:
-        config = load_config(options.config_fn)
+    if args.config_fn:
+        config = load_config(args.config_fn)
+
+    store = gf.Store(store_dir)
+    store.make_decimated(
+        args.factor, config=config, force=args.force, show_progress=True)
+
+
+def setup_redeploy(parser):
+    parser.add_argument(
+        'source_store_dir',
+        metavar='SOURCE',
+        help='Store to copy the traces from.')
+
+    parser.add_argument(
+        'dest_store_dir',
+        metavar='DESTINATION',
+        help='Store to copy the traces into.')
+
+
+def run_redeploy(parser, args):
+    source = gf.Store(args.source_store_dir)
 
     try:
-        store = gf.Store(store_dir)
-        store.make_decimated(decimate, config=config, force=options.force,
-                             show_progress=True)
-
-    except gf.StoreError as e:
-        die(e)
-
-
-def sindex(args):
-    return '(%s)' % ', '.join('%g' % x for x in args)
-
-
-def command_redeploy(args):
-
-    parser, options, args = cl_parse('redeploy', args)
-
-    if not len(args) == 2:
-        sys.exit(parser.format_help())
-
-    source_store_dir, dest_store_dir = args
-
-    try:
-        source = gf.Store(source_store_dir)
-    except gf.StoreError as e:
-        die(e)
-
-    try:
-        gf.store.Store.create_dependants(dest_store_dir)
+        gf.store.Store.create_dependants(args.dest_store_dir)
     except gf.StoreError:
         pass
 
-    try:
-        dest = gf.Store(dest_store_dir, 'w')
-
-    except gf.StoreError as e:
-        die(e)
+    dest = gf.Store(args.dest_store_dir, 'w')
 
     show_progress = True
 
@@ -473,16 +379,17 @@ def command_redeploy(args):
         if show_progress:
             pbar = util.progressbar('redeploying', dest.config.nrecords)
 
-        for i, args in enumerate(dest.config.iter_nodes()):
+        for i, node in enumerate(dest.config.iter_nodes()):
             try:
-                tr = source.get(args, interpolation='off')
-                dest.put(args, tr)
+                tr = source.get(node, interpolation='off')
+                dest.put(node, tr)
 
             except (gf.meta.OutOfBounds, gf.store.NotAllowedToInterpolate) as e:  # noqa
-                logger.debug('skipping %s, (%s)' % (sindex(args), e))
+                logger.debug('Skipping %s (%s).' % (sindex(node), e))
 
             except gf.store.StoreError as e:
-                logger.warning('cannot insert %s, (%s)' % (sindex(args), e))
+                logger.warning(
+                    'Cannot insert %s (%s).' % (sindex(node), e))
 
             if show_progress:
                 pbar.update(i+1)
@@ -492,163 +399,135 @@ def command_redeploy(args):
             pbar.finish()
 
 
-def command_trans2rot(args):
+def setup_trans2rot(parser):
+    parser.add_argument(
+        'source_store_dir',
+        metavar='SOURCE',
+        help='Translational input store.')
+
+    parser.add_argument(
+        'dest_store_dir',
+        metavar='DESTINATION',
+        help='Rotational output store.')
+
+
+def run_trans2rot(parser, args):
     from pyrocko.fomosto.elastic10_to_rotational8 \
         import elastic10_to_rotational8
 
-    details = '''
-
-Create a rotational GF store from a translational one using finite differences
-approximations (elastic10 or elastic10_fd to rotational8).
-
-If the source store is of type A and receivers at the surface, the free
-surface condition is used to replace the vertical derivatives with horizontal
-ones. If the input is of type B, the complete set of derivatives are used. It
-is important that the spatial sampling of the source store is high enough so
-that the finite difference approximations are sufficiently accurate.
-
-If the destination store directory does not exist, it is created and the extent
-and spacing of the source store is used for the rotational store. If it does
-exist and contains a valid `config`, it is used in place in order to allow for
-different input and output extents and spacings. The store must be empty in the
-latter case (delete the `index` and `traces` files if needed).
-'''
-
-    parser, options, args = cl_parse(
-        'trans2rot', args, details=details)
-
-    if not len(args) == 2:
-        sys.exit(parser.format_help())
-
-    source_store_dir, dest_store_dir = args
-
-    try:
-        elastic10_to_rotational8(source_store_dir, dest_store_dir)
-    except gf.store.StoreError as e:
-        die(e)
+    elastic10_to_rotational8(args.source_store_dir, args.dest_store_dir)
 
 
-def command_fd2trans(args):
+def setup_fd2trans(parser):
+    parser.add_argument(
+        'source_store_dir',
+        metavar='SOURCE',
+        help='Input store with finite difference support (elastic10_fd).')
+
+    parser.add_argument(
+        'dest_store_dir',
+        metavar='DESTINATION',
+        help='Output store (elastic10).')
+
+
+def run_fd2trans(parser, args):
     from pyrocko.fomosto.elastic10_fd_to_elastic10 \
         import elastic10_fd_to_elastic10
 
-    details = '''
-
-Extract regular GF store (elastic10) from a finite difference support GF store
-(elastic10_fd).
-'''
-
-    parser, options, args = cl_parse(
-        'fd2trans', args, details=details)
-
-    if not len(args) == 2:
-        sys.exit(parser.format_help())
-
-    source_store_dir, dest_store_dir = args
-
-    try:
-        elastic10_fd_to_elastic10(source_store_dir, dest_store_dir)
-    except gf.store.StoreError as e:
-        die(e)
+    elastic10_fd_to_elastic10(args.source_store_dir, args.dest_store_dir)
 
 
-def command_view(args):
-    def setup(parser):
-        parser.add_option(
-            '--extract',
-            dest='extract',
-            metavar='start:stop[:step|@num],...',
-            help='specify which traces to show')
+def setup_view(parser):
+    add_store_dirs_argument(parser)
 
-        parser.add_option(
-            '--show-phases',
-            dest='showphases',
-            default=None,
-            metavar='[phase_id1,phase_id2,...|all]',
-            help='add phase markers from ttt')
+    parser.add_argument(
+        '--extract',
+        metavar='SELECTION',
+        help='Specify which traces to show, as ```start:stop[:step|@num],'
+             '...```, one range per store dimension.')
 
-        parser.add_option(
-            '--opengl',
-            dest='opengl',
-            action='store_true',
-            default=None,
-            help='use OpenGL for drawing')
+    parser.add_argument(
+        '--show-phases',
+        dest='showphases',
+        metavar='PHASE_IDS',
+        help='Add phase markers from the travel time tables. Comma-separated '
+             'list of phase IDs, or ```all```.')
 
-        parser.add_option(
-            '--no-opengl',
-            dest='opengl',
-            action='store_false',
-            default=None,
-            help='do not use OpenGL for drawing')
+    parser.add_argument(
+        '--opengl',
+        dest='opengl',
+        action='store_true',
+        default=None,
+        help='Use OpenGL for drawing.')
 
-    parser, options, args = cl_parse('view', args, setup=setup)
+    parser.add_argument(
+        '--no-opengl',
+        dest='opengl',
+        action='store_false',
+        default=None,
+        help='Do not use OpenGL for drawing.')
 
+
+def run_view(parser, args):
     gdef = None
-    if options.extract:
-        try:
-            gdef = gf.meta.parse_grid_spec(options.extract)
-        except gf.meta.GridSpecError as e:
-            die(e)
+    if args.extract:
+        gdef = gf.meta.parse_grid_spec(args.extract)
 
-    store_dirs = get_store_dirs(args)
+    store_dirs = [check_store_dir(x) for x in args.store_dirs]
 
     alpha = 'abcdefghijklmnopqrstxyz'.upper()
 
     markers = []
     traces = []
 
-    try:
-        for istore, store_dir in enumerate(store_dirs):
-            store = gf.Store(store_dir)
-            if options.showphases == 'all':
-                phasenames = [pn.id for pn in store.config.tabulated_phases]
-            elif options.showphases is not None:
-                phasenames = options.showphases.split(',')
+    for istore, store_dir in enumerate(store_dirs):
+        store = gf.Store(store_dir)
+        if args.showphases == 'all':
+            phasenames = [pn.id for pn in store.config.tabulated_phases]
+        elif args.showphases is not None:
+            phasenames = args.showphases.split(',')
 
-            ii = 0
-            for args in store.config.iter_extraction(gdef):
-                gtr = store.get(args)
+        ii = 0
+        for node in store.config.iter_extraction(gdef):
+            gtr = store.get(node)
 
-                loc_code = ''
-                if len(store_dirs) > 1:
-                    loc_code = alpha[istore % len(alpha)]
+            loc_code = ''
+            if len(store_dirs) > 1:
+                loc_code = alpha[istore % len(alpha)]
 
-                if gtr:
+            if gtr:
 
-                    sta_code = '%04i (%s)' % (
-                        ii, ','.join('%gk' % (x/1000.) for x in args[:-1]))
-                    tmin = gtr.deltat * gtr.itmin
+                sta_code = '%04i (%s)' % (
+                    ii, ','.join('%gk' % (x/1000.) for x in node[:-1]))
+                tmin = gtr.deltat * gtr.itmin
 
-                    tr = trace.Trace(
-                        '',
-                        sta_code,
-                        loc_code,
-                        '%02i' % args[-1],
-                        ydata=gtr.data,
-                        deltat=gtr.deltat,
-                        tmin=tmin)
+                tr = trace.Trace(
+                    '',
+                    sta_code,
+                    loc_code,
+                    '%02i' % node[-1],
+                    ydata=gtr.data,
+                    deltat=gtr.deltat,
+                    tmin=tmin)
 
-                    if options.showphases:
-                        for phasename in phasenames:
-                            phase_tmin = store.t(phasename, args[:-1])
-                            if phase_tmin:
-                                m = marker.PhaseMarker(
-                                    [('',
-                                      sta_code,
-                                      loc_code,
-                                      '%02i' % args[-1])],
-                                    phase_tmin,
-                                    phase_tmin,
-                                    0,
-                                    phasename=phasename)
-                                markers.append(m)
+                if args.showphases:
+                    for phasename in phasenames:
+                        phase_tmin = store.t(phasename, node[:-1])
+                        if phase_tmin:
+                            m = marker.PhaseMarker(
+                                [('',
+                                  sta_code,
+                                  loc_code,
+                                  '%02i' % node[-1])],
+                                phase_tmin,
+                                phase_tmin,
+                                0,
+                                phasename=phasename)
+                            markers.append(m)
 
-                    traces.append(tr)
+                traces.append(tr)
 
-                ii += 1
-
-    except (gf.meta.GridSpecError, gf.StoreError, gf.meta.OutOfBounds) as e:
-        die(e)
+            ii += 1
 
     def setup(win):
         viewer = win.get_view()
@@ -661,34 +540,42 @@ def command_view(args):
         viewer.scalingmode_change()
 
     trace.snuffle(
-        traces, markers=markers, opengl=options.opengl, launch_hook=setup)
+        traces, markers=markers, opengl=args.opengl, launch_hook=setup)
 
 
-def command_extract(args):
-    def setup(parser):
-        parser.add_option(
-            '--format', dest='format', default='mseed',
-            choices=['mseed', 'sac', 'text', 'yaff'],
-            help='export to format "mseed", "sac", "text", or "yaff". '
-                 'Default is "mseed".')
+def setup_extract(parser):
+    add_store_dir_argument(parser)
 
-        fndfl = 'extracted/%(irecord)s_%(args)s.%(extension)s'
-        parser.add_option(
-            '--output', dest='output_fn', default=fndfl, metavar='TEMPLATE',
-            help='output path template [default: "%s"]' % fndfl)
+    parser.add_argument(
+        'selection',
+        metavar='SELECTION',
+        help='Traces to extract, as ```start:stop[:step|@num],...```, one '
+             'range per store dimension.')
 
-    parser, options, args = cl_parse('extract', args, setup=setup)
-    try:
-        sdef = args.pop()
-    except Exception:
-        parser.error('cannot get <selection> argument')
+    format_choices = ['mseed', 'sac', 'text', 'yaff']
+    format_default = 'mseed'
+    parser.add_argument(
+        '--format',
+        default=format_default,
+        choices=format_choices,
+        metavar='FORMAT',
+        help='Export to format FORMAT. Choices: %s. Default: %s.' % (
+            ldq(format_choices), dq(format_default)))
 
-    try:
-        gdef = gf.meta.parse_grid_spec(sdef)
-    except gf.meta.GridSpecError as e:
-        die(e)
+    fndfl = 'extracted/%(irecord)s_%(args)s.%(extension)s'
+    parser.add_argument(
+        '--output',
+        dest='output_fn',
+        default=fndfl,
+        metavar='TEMPLATE',
+        help='Output path template. Default: ```%s```.'
+             % fndfl.replace('%', '%%'))
 
-    store_dir = get_store_dir(args)
+
+def run_extract(parser, args):
+    gdef = gf.meta.parse_grid_spec(args.selection)
+
+    store_dir = check_store_dir(args.store_dir)
 
     extensions = {
         'mseed': 'mseed',
@@ -696,46 +583,51 @@ def command_extract(args):
         'text': 'txt',
         'yaff': 'yaff'}
 
-    try:
-        store = gf.Store(store_dir)
-        for args in store.config.iter_extraction(gdef):
-            gtr = store.get(args)
-            if gtr:
-                tr = trace.Trace(
-                    '', '', '', util.zfmt(store.config.ncomponents) % args[-1],
-                    ydata=gtr.data,
-                    deltat=gtr.deltat,
-                    tmin=gtr.deltat * gtr.itmin)
+    store = gf.Store(store_dir)
+    for node in store.config.iter_extraction(gdef):
+        gtr = store.get(node)
+        if gtr:
+            tr = trace.Trace(
+                '', '', '', util.zfmt(store.config.ncomponents) % node[-1],
+                ydata=gtr.data,
+                deltat=gtr.deltat,
+                tmin=gtr.deltat * gtr.itmin)
 
-                additional = dict(
-                    args='_'.join('%g' % x for x in args),
-                    irecord=store.str_irecord(args),
-                    extension=extensions[options.format])
+            additional = dict(
+                args='_'.join('%g' % x for x in node),
+                irecord=store.str_irecord(node),
+                extension=extensions[args.format])
 
-                io.save(
-                    tr,
-                    options.output_fn,
-                    format=options.format,
-                    additional=additional)
-
-    except (gf.meta.GridSpecError, gf.StoreError, gf.meta.OutOfBounds) as e:
-        die(e)
+            io.save(
+                tr,
+                args.output_fn,
+                format=args.format,
+                additional=additional)
 
 
-def command_import(args):
+def setup_import(parser):
+    parser.add_argument(
+        'source_path',
+        metavar='SOURCE',
+        help='Kiwi GFDB to import.')
+
+    parser.add_argument(
+        'dest_store_dir',
+        metavar='DESTINATION',
+        help='GF store to create.')
+
+
+def run_import(parser, args):
     try:
         from tunguska import gfdb
     except ImportError:
-        die('the kiwi tools must be installed to use this feature')
-
-    parser, options, args = cl_parse('import', args)
+        raise FomostoError(
+            'The Kiwi tools must be installed to use this feature.')
 
     show_progress = True
 
-    if not len(args) == 2:
-        sys.exit(parser.format_help())
-
-    source_path, dest_store_dir = args
+    source_path = args.source_path
+    dest_store_dir = args.dest_store_dir
 
     if op.isdir(source_path):
         source_path = op.join(source_path, 'db')
@@ -756,84 +648,89 @@ def command_import(args):
         ncomponents=db.ng
     )
 
+    gf.store.Store.create(dest_store_dir, config=config)
+    dest = gf.Store(dest_store_dir, 'w')
     try:
-        gf.store.Store.create(dest_store_dir, config=config)
-        dest = gf.Store(dest_store_dir, 'w')
-        try:
+        if show_progress:
+            pbar = util.progressbar(
+                'importing', dest.config.nrecords/dest.config.ncomponents)
+
+        for i, node in enumerate(dest.config.iter_nodes(level=-1)):
+            source_depth, distance = [float(x) for x in node]
+            traces = db.get_traces_pyrocko(distance, source_depth)
+            ig_to_trace = dict((tr.meta['ig']-1, tr) for tr in traces)
+            for ig in range(db.ng):
+                if ig in ig_to_trace:
+                    tr = ig_to_trace[ig]
+                    gf_tr = gf.store.GFTrace(
+                        tr.get_ydata(),
+                        int(round(tr.tmin / tr.deltat)),
+                        tr.deltat)
+
+                else:
+                    gf_tr = gf.store.Zero
+
+                dest.put((source_depth, distance, ig), gf_tr)
+
             if show_progress:
-                pbar = util.progressbar(
-                    'importing', dest.config.nrecords/dest.config.ncomponents)
+                pbar.update(i+1)
 
-            for i, args in enumerate(dest.config.iter_nodes(level=-1)):
-                source_depth, distance = [float(x) for x in args]
-                traces = db.get_traces_pyrocko(distance, source_depth)
-                ig_to_trace = dict((tr.meta['ig']-1, tr) for tr in traces)
-                for ig in range(db.ng):
-                    if ig in ig_to_trace:
-                        tr = ig_to_trace[ig]
-                        gf_tr = gf.store.GFTrace(
-                            tr.get_ydata(),
-                            int(round(tr.tmin / tr.deltat)),
-                            tr.deltat)
+    finally:
+        if show_progress:
+            pbar.finish()
 
-                    else:
-                        gf_tr = gf.store.Zero
-
-                    dest.put((source_depth, distance, ig), gf_tr)
-
-                if show_progress:
-                    pbar.update(i+1)
-
-        finally:
-            if show_progress:
-                pbar.finish()
-
-        dest.close()
-
-    except gf.StoreError as e:
-        die(e)
+    dest.close()
 
 
-def command_export(args):
+def setup_export(parser):
+    add_store_dir_argument(parser)
+
+    parser.add_argument(
+        'target_path',
+        metavar='DESTINATION',
+        help='Kiwi GFDB to create. If it is a directory, the GFDB is '
+             'created in it, with name ```kiwi_gfdb```.')
+
+    parser.add_argument(
+        '--nchunks',
+        type=int,
+        default=1,
+        metavar='N',
+        help='Split output GFDB into N chunks. Default: 1.')
+
+
+def run_export(parser, args):
     from subprocess import Popen, PIPE
 
     try:
         from tunguska import gfdb
-    except ImportError as err:
-        die('the kiwi tools must be installed to use this feature', err)
-
-    def setup(parser):
-        parser.add_option(
-            '--nchunks', dest='nchunks', type='int', default=1, metavar='N',
-            help='split output gfdb into N chunks')
-
-    parser, options, args = cl_parse('export', args, setup=setup)
+    except ImportError as e:
+        raise FomostoError(
+            'The Kiwi tools must be installed to use this feature (%s).' % e)
 
     show_progress = True
 
-    if len(args) not in (1, 2):
-        sys.exit(parser.format_help())
-
-    target_path = args.pop()
+    target_path = args.target_path
     if op.isdir(target_path):
         target_path = op.join(target_path, 'kiwi_gfdb')
-        logger.warning('exported gfdb will be named as "%s.*"' % target_path)
+        logger.warning('Exported GFDB will be named "%s.*".' % target_path)
 
-    source_store_dir = get_store_dir(args)
+    source_store_dir = check_store_dir(args.store_dir)
 
     source = gf.Store(source_store_dir, 'r')
     config = source.config
 
     if not isinstance(config, gf.meta.ConfigTypeA):
-        die('only stores of type A can be exported to Kiwi format')
+        raise FomostoError(
+            'Only stores of type A can be exported to Kiwi format.')
 
     if op.isfile(target_path + '.index'):
-        die('destation already exists')
+        raise FomostoError('Destination already exists: %s' % target_path)
 
     cmd = [str(x) for x in [
         'gfdb_build',
         target_path,
-        options.nchunks,
+        args.nchunks,
         config.ndistances,
         config.nsource_depths,
         config.ncomponents,
@@ -863,7 +760,7 @@ def command_export(args):
 
                 except gf.store.StoreError as e:
                     logger.warning(
-                        'cannot get %s, (%s)' % (sindex((z, x, ig)), e))
+                        'Cannot get %s (%s).' % (sindex((z, x, ig)), e))
                     data_out.append(None)
 
             # put a zero valued sample to no-data zero-traces at a compatible
@@ -894,18 +791,7 @@ def command_export(args):
             pbar.finish()
 
 
-def phasedef_or_horvel(x):
-    try:
-        return float(x)
-    except ValueError:
-        return cake.PhaseDef(x)
-
-
-def mkp(s):
-    return [phasedef_or_horvel(ps) for ps in s.split(',')]
-
-
-def stored_attribute_table_plots(phase_ids, options, args, attribute):
+def stored_attribute_table_plots(phase_ids, args, attribute):
     import numpy as num
     from pyrocko.plot.cake_plot import xscaled, yscaled, mpl_init
     from pyrocko.plot import mpl_labelspace as labelspace
@@ -913,37 +799,34 @@ def stored_attribute_table_plots(phase_ids, options, args, attribute):
     plt = mpl_init()
 
     np = 1
-    store_dir = get_store_dir(args)
+    store_dir = check_store_dir(args.store_dir)
     for phase_id in phase_ids:
-        try:
-            store = gf.Store(store_dir)
+        store = gf.Store(store_dir)
 
-            if options.receiver_depth is not None:
-                receiver_depth = options.receiver_depth * 1000.0
+        if args.receiver_depth is not None:
+            receiver_depth = args.receiver_depth * 1000.0
+        else:
+            if isinstance(store.config, (gf.ConfigTypeA, gf.ConfigTypeC)):
+                receiver_depth = store.config.receiver_depth
+
+            elif isinstance(store.config, gf.ConfigTypeB):
+                receiver_depth = store.config.receiver_depth_min
+
             else:
-                if isinstance(store.config, (gf.ConfigTypeA, gf.ConfigTypeC)):
-                    receiver_depth = store.config.receiver_depth
+                receiver_depth = 0.0
 
-                elif isinstance(store.config, gf.ConfigTypeB):
-                    receiver_depth = store.config.receiver_depth_min
+        phase = store.get_stored_phase(phase_id, attribute)
+        axes = plt.subplot(2, len(phase_ids), np)
+        labelspace(axes)
+        xscaled(1. / km, axes)
+        yscaled(1. / km, axes)
+        x = None
+        if isinstance(store.config, gf.ConfigTypeB):
+            x = (receiver_depth, None, None)
 
-                else:
-                    receiver_depth = 0.0
-
-            phase = store.get_stored_phase(phase_id, attribute)
-            axes = plt.subplot(2, len(phase_ids), np)
-            labelspace(axes)
-            xscaled(1. / km, axes)
-            yscaled(1. / km, axes)
-            x = None
-            if isinstance(store.config, gf.ConfigTypeB):
-                x = (receiver_depth, None, None)
-
-            phase.plot_2d(axes, x=x)
-            axes.set_title(phase_id)
-            np += 1
-        except gf.StoreError as e:
-            die(e)
+        phase.plot_2d(axes, x=x)
+        axes.set_title(phase_id)
+        np += 1
 
     axes = plt.subplot(2, 1, 2)
     num_d = 100
@@ -951,8 +834,8 @@ def stored_attribute_table_plots(phase_ids, options, args, attribute):
                              store.config.distance_max,
                              num_d)
 
-    if options.source_depth is not None:
-        source_depth = options.source_depth * km
+    if args.source_depth is not None:
+        source_depth = args.source_depth * km
     else:
         source_depth = store.config.source_depth_min + (
             store.config.source_depth_max - store.config.source_depth_min) / 2.
@@ -967,8 +850,8 @@ def stored_attribute_table_plots(phase_ids, options, args, attribute):
                     ylabel = 'TT [s]'
                 else:
                     attribute_vals[i] = store.get_stored_attribute(
-                        phase_id, options.attribute, (source_depth, d))
-                    ylabel = '%s [deg]' % options.attribute
+                        phase_id, args.attribute, (source_depth, d))
+                    ylabel = '%s [deg]' % args.attribute
 
             axes.plot(distances / km, attribute_vals, label=phase_id)
 
@@ -981,266 +864,246 @@ def stored_attribute_table_plots(phase_ids, options, args, attribute):
     mpl_show(plt)
 
 
-def command_ttt(args):
-    def setup(parser):
-        parser.add_option(
-            '--force', dest='force', action='store_true',
-            help='overwrite existing files')
+def add_attribute_plot_arguments(parser):
+    parser.add_argument(
+        '--source-depth',
+        type=float,
+        metavar='FLOAT',
+        help='Source depth [km]. Default: centre of the store\'s source '
+             'depth range.')
 
-    parser, options, args = cl_parse('ttt', args, setup=setup)
+    parser.add_argument(
+        '--receiver-depth',
+        type=float,
+        metavar='FLOAT',
+        help='Receiver depth [km]. Default: the store\'s (minimum) '
+             'receiver depth.')
 
-    store_dir = get_store_dir(args)
+
+def setup_ttt(parser):
+    add_store_dir_argument(parser)
+    add_force_argument(parser)
+
+
+def run_ttt(parser, args):
+    store = gf.Store(check_store_dir(args.store_dir))
+    store.make_travel_time_tables(force=args.force)
+
+
+def setup_tttview(parser):
+    add_store_dir_argument(parser)
+
+    parser.add_argument(
+        'phase_ids',
+        metavar='PHASE_IDS',
+        help='Comma-separated list of phase IDs, e.g. ```Pdiff,S```.')
+
+    add_attribute_plot_arguments(parser)
+
+
+def run_tttview(parser, args):
+    phase_ids = args.phase_ids.split(',')
+    stored_attribute_table_plots(phase_ids, args, attribute='phase')
+
+
+def setup_sat(parser):
+    add_store_dir_argument(parser)
+    add_force_argument(parser)
+
+    attribute_choices = gf.store.available_stored_tables[1:]
+    attribute_default = 'takeoff_angle'
+    parser.add_argument(
+        '--attribute',
+        choices=attribute_choices,
+        default=attribute_default,
+        metavar='ATTRIBUTE',
+        help='Calculate interpolation table for the given ray attribute. '
+             'Choices: %s. Default: %s.' % (
+                 ldq(attribute_choices), dq(attribute_default)))
+
+
+def run_sat(parser, args):
+    store = gf.Store(check_store_dir(args.store_dir))
+    store.make_stored_table(args.attribute, force=args.force)
+
+
+def setup_satview(parser):
+    add_store_dir_argument(parser)
+
+    parser.add_argument(
+        'phase_ids',
+        metavar='PHASE_IDS',
+        help='Comma-separated list of phase IDs, e.g. ```Pdiff,S```.')
+
+    add_attribute_plot_arguments(parser)
+
+    attribute_choices = gf.store.available_stored_tables[1:]
+    attribute_default = 'takeoff_angle'
+    parser.add_argument(
+        '--attribute',
+        choices=attribute_choices,
+        default=attribute_default,
+        metavar='ATTRIBUTE',
+        help='View the given ray attribute. Choices: %s. Default: %s.' % (
+            ldq(attribute_choices), dq(attribute_default)))
+
+
+def run_satview(parser, args):
+    phase_ids = args.phase_ids.split(',')
+
+    logger.info('Plotting stored attribute "%s".' % args.attribute)
+
+    stored_attribute_table_plots(phase_ids, args, attribute=args.attribute)
+
+
+def setup_tttextract(parser):
+    add_store_dir_argument(parser)
+
+    parser.add_argument(
+        'phases',
+        metavar='PHASES',
+        help='Comma-separated list of phase IDs or timing definitions.')
+
+    parser.add_argument(
+        'selection',
+        metavar='SELECTION',
+        help='Source/receiver configurations, as '
+             '```start:stop[:step|@num],...```, one range per store '
+             'dimension (except the component dimension).')
+
+    parser.add_argument(
+        '--output',
+        dest='output_fn',
+        metavar='TEMPLATE',
+        help='Output to text files instead of standard output, e.g. '
+             '```extracted/%%(args)s.txt```.')
+
+
+def run_tttextract(parser, args):
     try:
-        store = gf.Store(store_dir)
-        store.make_travel_time_tables(force=options.force)
-
-    except gf.StoreError as e:
-        die(e)
-
-
-def command_tttview(args):
-
-    def setup(parser):
-        parser.add_option(
-            '--source-depth', dest='source_depth', type=float,
-            help='Source depth in km')
-
-        parser.add_option(
-            '--receiver-depth', dest='receiver_depth', type=float,
-            help='Receiver depth in km')
-
-    parser, options, args = cl_parse(
-        'tttview', args, setup=setup,
-        details="Comma seperated <phase-ids>, eg. 'fomosto tttview Pdiff,S'.")
-
-    try:
-        phase_ids = args.pop().split(',')
-    except Exception:
-        parser.error('cannot get <phase-ids> argument')
-
-    stored_attribute_table_plots(phase_ids, options, args, attribute='phase')
-
-
-def command_sat(args):
-    def setup(parser):
-        parser.add_option(
-            '--force', dest='force', action='store_true',
-            help='overwrite existing files')
-
-        parser.add_option(
-            '--attribute',
-            action='store',
-            dest='attribute',
-            type='choice',
-            choices=gf.store.available_stored_tables[1::],
-            default='takeoff_angle',
-            help='calculate interpolation table for selected ray attributes.')
-
-    parser, options, args = cl_parse('sat', args, setup=setup)
-
-    store_dir = get_store_dir(args)
-    try:
-        store = gf.Store(store_dir)
-        store.make_stored_table(options.attribute, force=options.force)
-
-    except gf.StoreError as e:
-        die(e)
-
-
-def command_satview(args):
-
-    def setup(parser):
-        parser.add_option(
-            '--source-depth', dest='source_depth', type=float,
-            help='Source depth in km')
-
-        parser.add_option(
-            '--receiver-depth', dest='receiver_depth', type=float,
-            help='Receiver depth in km')
-
-        parser.add_option(
-            '--attribute',
-            action='store',
-            dest='attribute',
-            type='choice',
-            choices=gf.store.available_stored_tables[1::],
-            default='takeoff_angle',
-            help='view selected ray attribute.')
-
-    parser, options, args = cl_parse(
-        'satview', args, setup=setup,
-        details="Comma seperated <phase-ids>, eg. 'fomosto satview Pdiff,S'.")
-
-    try:
-        phase_ids = args.pop().split(',')
-    except Exception:
-        parser.error('cannot get <phase-ids> argument')
-
-    logger.info('Plotting stored attribute %s' % options.attribute)
-
-    stored_attribute_table_plots(
-        phase_ids, options, args, attribute=options.attribute)
-
-
-def command_tttextract(args):
-    def setup(parser):
-        parser.add_option(
-            '--output', dest='output_fn', metavar='TEMPLATE',
-            help='output to text files instead of stdout '
-                 '(example TEMPLATE: "extracted/%(args)s.txt")')
-
-    parser, options, args = cl_parse('tttextract', args, setup=setup)
-    try:
-        sdef = args.pop()
-    except Exception:
-        parser.error('cannot get <selection> argument')
-
-    try:
-        sphase = args.pop()
-    except Exception:
-        parser.error('cannot get <phase> argument')
-
-    try:
-        phases = [gf.meta.Timing(x.strip()) for x in sphase.split(',')]
+        phases = [gf.meta.Timing(x.strip()) for x in args.phases.split(',')]
     except gf.meta.InvalidTimingSpecification:
-        parser.error('invalid phase specification: "%s"' % sphase)
+        parser.error('Invalid phase specification: "%s".' % args.phases)
 
-    try:
-        gdef = gf.meta.parse_grid_spec(sdef)
-    except gf.meta.GridSpecError as e:
-        die(e)
+    gdef = gf.meta.parse_grid_spec(args.selection)
 
-    store_dir = get_store_dir(args)
+    store_dir = check_store_dir(args.store_dir)
 
-    try:
-        store = gf.Store(store_dir)
-        for args in store.config.iter_extraction(gdef, level=-1):
-            s = ['%e' % x for x in args]
-            for phase in phases:
-                t = store.t(phase, args)
-                if t is not None:
-                    s.append('%e' % t)
-                else:
-                    s.append('nan')
-
-            if options.output_fn:
-                d = dict(
-                    args='_'.join('%e' % x for x in args),
-                    extension='txt')
-
-                fn = options.output_fn % d
-                util.ensuredirs(fn)
-                with open(fn, 'a') as f:
-                    f.write(' '.join(s))
-                    f.write('\n')
+    store = gf.Store(store_dir)
+    for node in store.config.iter_extraction(gdef, level=-1):
+        s = ['%e' % x for x in node]
+        for phase in phases:
+            t = store.t(phase, node)
+            if t is not None:
+                s.append('%e' % t)
             else:
-                print(' '.join(s))
+                s.append('nan')
 
-    except (gf.meta.GridSpecError, gf.StoreError, gf.meta.OutOfBounds) as e:
-        die(e)
+        if args.output_fn:
+            d = dict(
+                args='_'.join('%e' % x for x in node),
+                extension='txt')
 
-
-def command_tttlsd(args):
-
-    def setup(parser):
-        pass
-
-    parser, options, args = cl_parse(
-        'tttlsd', args,
-        setup=setup,
-        details='''
-
-This subcommand fills holes in travel-time-tables by using an eikonal solver to
-predict travel-times for the missing values. The approach works best for simple
-P or S phases without any reflections or conversions. It creates new
-travel-time-tables which are named by adding the suffix `.lsd` to the original
-name. E.g. running `fomosto tttlsd begin` would produce a new travel-time-table
-`begin.lsd`. The new name can be referenced anywhere where a stored
-travel-time-table can be used, e.g. in `extra/qseis`.
-''')
-
-    try:
-        sphase_ids = args.pop()
-    except Exception:
-        parser.error('cannot get <phase> argument')
-
-    try:
-        phase_ids = [x.strip() for x in sphase_ids.split(',')]
-    except gf.meta.InvalidTimingSpecification:
-        parser.error('invalid phase specification: "%s"' % sphase_ids)
-
-    store_dir = get_store_dir(args)
-
-    try:
-        store = gf.Store(store_dir)
-        for phase_id in phase_ids:
-            store.fix_ttt_holes(phase_id)
-
-    except gf.StoreError as e:
-        die(e)
+            fn = args.output_fn % d
+            util.ensuredirs(fn)
+            with open(fn, 'a') as f:
+                f.write(' '.join(s))
+                f.write('\n')
+        else:
+            print(' '.join(s))
 
 
-def command_server(args):
+def setup_tttlsd(parser):
+    add_store_dir_argument(parser)
+
+    parser.add_argument(
+        'phase_ids',
+        metavar='PHASE_IDS',
+        help='Comma-separated list of phase IDs.')
+
+
+def run_tttlsd(parser, args):
+    phase_ids = [x.strip() for x in args.phase_ids.split(',')]
+
+    store_dir = check_store_dir(args.store_dir)
+
+    store = gf.Store(store_dir)
+    for phase_id in phase_ids:
+        store.fix_ttt_holes(phase_id)
+
+
+def setup_server(parser):
+    from pyrocko import server
+
+    parser.add_argument(
+        'store_superdirs',
+        nargs='+',
+        metavar='STORE_SUPER_DIR',
+        help='Directories containing the stores to serve.')
+
+    server.add_cli_arguments(
+        parser,
+        exclude=('page', 'open', 'cookie_secret_path'),
+        default_port=8080)
+
+
+def run_server(parser, args):
     from pyrocko.gf import server
 
-    def setup(parser):
-        server.add_cli_options(
-            parser,
-            exclude=('page', 'open'),
-            default_port=8080)
-
-    parser, options, args = cl_parse('server', args, setup=setup)
-
-    if len(args) == 0:
-        sys.exit(parser.format_help())
-
-    engine = gf.LocalEngine(store_superdirs=args)
+    engine = gf.LocalEngine(store_superdirs=args.store_superdirs)
 
     server.run(
         engine,
-        host=options.host,
-        port=options.port,
-        debug=options.debug)
+        host=args.host,
+        port=args.port,
+        debug=args.debug)
 
 
-def command_download(args):
+def setup_download(parser):
+    parser.add_argument(
+        'site',
+        metavar='SITE',
+        help='Server to download from, e.g. ```kinherd```.')
+
+    parser.add_argument(
+        'store_id',
+        nargs='?',
+        metavar='STORE_ID',
+        help='ID of the store to download. If not given, list the stores '
+             'available on the server.')
+
+    add_force_argument(parser)
+
+
+def run_download(parser, args):
     from pyrocko.gf import ws
 
-    details = '''
+    site, store_id = args.site, args.store_id
 
-Browse pre-calculated Green's function stores online:
-
-  https://greens-mill.pyrocko.org
-'''
-
-    def setup(parser):
-        parser.add_option(
-            '--force', dest='force', action='store_true',
-            help='overwrite existing files')
-
-    parser, options, args = cl_parse(
-        'download', args, setup=setup, details=details)
-    if len(args) not in (1, 2):
-        sys.exit(parser.format_help())
-
-    if len(args) == 2:
-        site, store_id = args
-        if not re.match(gf.meta.StringID.pattern, store_id):
-            die('invalid store ID')
-    else:
-        site, store_id = args[0], None
+    if store_id is not None \
+            and not re.match(gf.meta.StringID.pattern, store_id):
+        raise FomostoError('Invalid store ID: %s' % store_id)
 
     if site not in gf.ws.g_site_abbr:
         if -1 == site.find('://'):
             site = 'http://' + site
 
-    try:
-        ws.download_gf_store(site=site, store_id=store_id, force=options.force)
-    except ws.DownloadError as e:
-        die(str(e))
+    ws.download_gf_store(site=site, store_id=store_id, force=args.force)
 
 
-def command_modelview(args):
+def setup_modelview(parser):
+    add_store_dirs_argument(parser)
+
+    parser.add_argument(
+        '--parameters',
+        default='vp,vs',
+        metavar='PARAMETERS',
+        help='Comma-separated list of the parameters to plot. Choices: '
+             '```vp```, ```vs```, ```rho```, ```qp```, ```qs```, '
+             '```vp/vs```, ```qp/qs```. Default: ```vp,vs```.')
+
+
+def run_modelview(parser, args):
 
     import matplotlib.pyplot as plt
     import numpy as num
@@ -1255,19 +1118,11 @@ def command_modelview(args):
         'qs': '$Q_s$',
         'rho': '$\\rho$'}
 
-    def setup(parser):
-        parser.add_option(
-            '--parameters', dest='parameters',
-            default='vp,vs', metavar='vp,vs,....',
-            help='select one or several of vp, vs, rho, qp, qs, vp/vs, qp/qs')
-
     units = {'vp': '[km/s]', 'vs': '[km/s]', 'rho': '[g/cm^3]'}
 
-    parser, options, args = cl_parse('modelview', args, setup=setup)
+    store_dirs = [check_store_dir(x) for x in args.store_dirs]
 
-    store_dirs = get_store_dirs(args)
-
-    parameters = options.parameters.split(',')
+    parameters = args.parameters.split(',')
 
     fig, axes = plt.subplots(1,
                              len(parameters),
@@ -1280,28 +1135,24 @@ def command_modelview(args):
     axes = dict(zip(parameters, axes))
 
     for store_id in store_dirs:
-        try:
-            store = gf.Store(store_id)
-            mod = store.config.earthmodel_1d
-            z = mod.profile('z')
+        store = gf.Store(store_id)
+        mod = store.config.earthmodel_1d
+        z = mod.profile('z')
 
-            for p in parameters:
-                ax = axes[p]
-                labelspace(ax)
-                if '/' in p:
-                    p1, p2 = p.split('/')
-                    profile = mod.profile(p1)/mod.profile(p2)
-                else:
-                    profile = mod.profile(p)
+        for p in parameters:
+            ax = axes[p]
+            labelspace(ax)
+            if '/' in p:
+                p1, p2 = p.split('/')
+                profile = mod.profile(p1)/mod.profile(p2)
+            else:
+                profile = mod.profile(p)
 
-                ax.plot(profile, -z, label=store_id.split('/')[-1])
-                if p in ['vs', 'vp', 'rho']:
-                    xscaled(1./1000., ax)
+            ax.plot(profile, -z, label=store_id.split('/')[-1])
+            if p in ['vs', 'vp', 'rho']:
+                xscaled(1./1000., ax)
 
-                yscaled(1./km, ax)
-
-        except gf.StoreError as e:
-            die(e)
+            yscaled(1./km, ax)
 
     for p, ax in axes.items():
         ax.grid()
@@ -1340,116 +1191,242 @@ def command_modelview(args):
     mpl_show(plt)
 
 
-def command_upgrade(args):
-    parser, options, args = cl_parse('upgrade', args)
-    store_dirs = get_store_dirs(args)
-    try:
-        for store_dir in store_dirs:
-            store = gf.Store(store_dir)
-            nup = store.upgrade()
-            if nup == 0:
-                print('%s: already up-to-date.' % store_dir)
-            else:
-                print('%s: %i file%s upgraded.' % (
-                    store_dir, nup, ['s', ''][nup == 1]))
-
-    except gf.StoreError as e:
-        die(e)
+def setup_upgrade(parser):
+    add_store_dirs_argument(parser)
 
 
-def command_addref(args):
-    parser, options, args = cl_parse('addref', args)
+def run_upgrade(parser, args):
+    store_dirs = [check_store_dir(x) for x in args.store_dirs]
+    for store_dir in store_dirs:
+        store = gf.Store(store_dir)
+        nup = store.upgrade()
+        if nup == 0:
+            print('%s: already up-to-date.' % store_dir)
+        else:
+            print('%s: %i file%s upgraded.' % (
+                store_dir, nup, ['s', ''][nup == 1]))
 
+
+def setup_addref(parser):
+    parser.add_argument(
+        'paths',
+        nargs='+',
+        metavar='PATH',
+        help='Store directories (default: current directory) and BibTeX '
+             'files with the references to add.')
+
+
+def run_addref(parser, args):
     store_dirs = []
     filenames = []
-    for arg in args:
-        if op.isdir(arg):
-            store_dirs.append(arg)
-        elif op.isfile(arg):
-            filenames.append(arg)
+    for path in args.paths:
+        if op.isdir(path):
+            store_dirs.append(path)
+        elif op.isfile(path):
+            filenames.append(path)
         else:
-            die('invalid argument: %s' % arg)
+            raise FomostoError('Invalid argument: %s' % path)
 
     if not store_dirs:
         store_dirs.append('.')
 
     references = []
     try:
-        for filename in args:
+        for filename in filenames:
             references.extend(gf.meta.Reference.from_bibtex(filename=filename))
     except ImportError:
-        die('pybtex module must be installed to use this function')
+        raise FomostoError(
+            'The pybtex module must be installed to use this function.')
 
     if not references:
-        die('no references found')
+        raise FomostoError('No references found.')
 
     for store_dir in store_dirs:
-        try:
-            store = gf.Store(store_dir)
-            ids = [ref.id for ref in store.config.references]
-            for ref in references:
-                if ref.id in ids:
-                    die('duplicate reference id: %s' % ref.id)
-
-                ids.append(ref.id)
-                store.config.references.append(ref)
-
-            store.save_config(make_backup=True)
-
-        except gf.StoreError as e:
-            die(e)
-
-
-def command_qc(args):
-    parser, options, args = cl_parse('qc', args)
-
-    store_dir = get_store_dir(args)
-
-    try:
         store = gf.Store(store_dir)
-        s = store.stats()
-        if s['empty'] != 0:
-            print('has empty records')
+        ids = [ref.id for ref in store.config.references]
+        for ref in references:
+            if ref.id in ids:
+                raise FomostoError('Duplicate reference ID: %s' % ref.id)
 
-        for aname in ['author', 'author_email', 'description', 'references']:
+            ids.append(ref.id)
+            store.config.references.append(ref)
 
-            if not getattr(store.config, aname):
-                print('%s empty' % aname)
-
-    except gf.StoreError as e:
-        die(e)
+        store.save_config(make_backup=True)
 
 
-def command_report(args):
+def setup_qc(parser):
+    add_store_dir_argument(parser)
+
+
+def run_qc(parser, args):
+    store = gf.Store(check_store_dir(args.store_dir))
+    s = store.stats()
+    if s['empty'] != 0:
+        print('has empty records')
+
+    for aname in ['author', 'author_email', 'description', 'references']:
+
+        if not getattr(store.config, aname):
+            print('%s empty' % aname)
+
+
+def setup_report(parser):
+    parser.add_argument(
+        'report_args',
+        nargs=argparse.REMAINDER,
+        metavar='...',
+        help='Subcommand and arguments of the report tool. Run '
+             '```fomosto report``` without arguments to list its '
+             'subcommands.')
+
+
+def run_report(parser, args):
     from pyrocko.fomosto.report import report_call
-    report_call.run_program(args)
+    report_call.run_program(args.report_args)
+
+
+subcommands = [
+    ('init', 'Create a new empty GF store.', '''
+The new store is configured for the given modelling code, which must include
+the variant of the backend, e.g. ```qssp.2017```.
+
+With ```fomosto init redeploy SOURCE DESTINATION```, a new store is created
+with the configuration of an existing store.
+
+The following modelling backends and variants are available.
+
+%s
+
+Installation instructions and more information at
+https://pyrocko.org/docs/current/apps/fomosto/backends.html
+'''),
+    ('build', 'Compute GFs and fill into store.', None),
+    ('stats', 'Print information about a GF store.', None),
+    ('check', 'Check for problems in GF store.', None),
+    ('decimate', 'Build decimated variant of a GF store.', None),
+    ('redeploy', 'Copy traces from one GF store into another.', None),
+    ('view', 'View selected traces.', None),
+    ('extract', 'Extract selected traces.', None),
+    ('import', 'Convert Kiwi GFDB to GF store format.', None),
+    ('export', 'Convert GF store to Kiwi GFDB format.', None),
+    ('ttt', 'Create travel time tables.', None),
+    ('tttview', 'Plot travel time table.', None),
+    ('tttextract', 'Extract selected travel times.', None),
+    ('tttlsd', 'Fix holes in travel time tables.', '''
+This subcommand fills holes in travel time tables by using an eikonal solver
+to predict travel times for the missing values. The approach works best for
+simple P or S phases without any reflections or conversions. It creates new
+travel time tables which are named by adding the suffix ```.lsd``` to the
+original name. E.g. running ```fomosto tttlsd begin``` would produce a new
+travel time table ```begin.lsd```. The new name can be referenced anywhere
+where a stored travel time table can be used, e.g. in ```extra/qseis```.
+'''),
+    ('sat', 'Create stored ray attribute table.', None),
+    ('satview', 'Plot stored ray attribute table.', None),
+    ('server', 'Run seismosizer server.', None),
+    ('download', 'Download GF store from a server.', '''
+Browse pre-calculated Green's function stores online:
+https://greens-mill.pyrocko.org
+'''),
+    ('modelview', 'Plot earth models.', None),
+    ('upgrade', 'Upgrade store format to latest version.', None),
+    ('addref', 'Import citation references to GF store config.', None),
+    ('qc', 'Check GF store for missing data and metadata.', None),
+    ('report', 'Create reports for Green\'s function databases.', None),
+    ('trans2rot', 'Create rotational from translational store.', '''
+Create a rotational GF store from a translational one using finite
+differences approximations (elastic10 or elastic10_fd to rotational8).
+
+If the source store is of type A and receivers at the surface, the free
+surface condition is used to replace the vertical derivatives with horizontal
+ones. If the input is of type B, the complete set of derivatives are used. It
+is important that the spatial sampling of the source store is high enough so
+that the finite difference approximations are sufficiently accurate.
+
+If the destination store directory does not exist, it is created and the
+extent and spacing of the source store is used for the rotational store. If it
+does exist and contains a valid ```config```, it is used in place in order to
+allow for different input and output extents and spacings. The store must be
+empty in the latter case (delete the ```index``` and ```traces``` files if
+needed).
+'''),
+    ('fd2trans', 'Extract elastic10 from elastic10_fd store.', '''
+Extract regular GF store (elastic10) from a finite difference support GF store
+(elastic10_fd).
+'''),
+]
+
+
+def make_parser():
+    parser = FomostoArgumentParser(
+        prog=program_name,
+        description=description,
+        epilog=epilog,
+        general_options=False)
+
+    subparsers = parser.add_subparsers(
+        dest='subcommand',
+        metavar='SUBCOMMAND',
+        title='Subcommands')
+
+    for name, headline, details in subcommands:
+        subdescription = headline
+        if details:
+            if name == 'init':
+                details = details % backends_details()
+
+            subdescription += '\n' + details
+
+        subparser = subparsers.add_parser(
+            name,
+            help=headline,
+            description=subdescription,
+            epilog=epilog,
+            # the report tool parses its arguments itself
+            general_options=name != 'report')
+
+        globals()['setup_' + name](subparser)
+        subparser.set_defaults(
+            target=globals()['run_' + name], subparser=subparser)
+
+    return parser
 
 
 def main(args=None):
     '''
     CLI entry point for Pyrocko's ``fomosto`` app.
     '''
+
     if args is None:
         args = sys.argv[1:]
 
-    if len(args) < 1:
-        sys.exit('Usage: %s' % usage)
+    args = list(args)
 
-    command = args.pop(0)
+    if args and args[0] == 'help':
+        args = args[1:2] + ['--help']
 
-    if command in subcommands:
-        globals()['command_' + command](args)
+    if args and args[0] == 'report' and args[1:] not in (['--help'], ['-h']):
+        # The report tool parses its arguments itself.
+        util.setup_logging(program_name, 'info')
+        from pyrocko.fomosto.report import report_call
+        report_call.run_program(args[1:])
+        return
 
-    elif command in ('--help', '-h', 'help'):
-        if command == 'help' and args:
-            acommand = args[0]
-            if acommand in subcommands:
-                globals()['command_' + acommand](['--help'])
+    parser = make_parser()
+    args = parser.parse_args(args)
 
-        sys.exit('Usage: %s' % usage)
+    if 'target' not in args:
+        parser.print_help()
+        return
 
-    else:
-        sys.exit('fomosto: error: no such subcommand: %s' % command)
+    util.setup_logging(program_name, getattr(args, 'loglevel', 'info'))
+
+    try:
+        args.target(args.subparser, args)
+
+    except nice_fatal_errors as e:
+        logger.fatal(str(e))
+        sys.exit(1)
 
 
 if __name__ == '__main__':
