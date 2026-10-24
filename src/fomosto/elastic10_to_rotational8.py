@@ -5,7 +5,7 @@ from pyrocko import gf, guts, util
 import numpy as num
 
 
-logger = logging.getLogger('main')
+logger = logging.getLogger('pyrocko.fomosto.elastic10_to_rotational8')
 
 
 def a(*args):
@@ -45,13 +45,13 @@ def elastic10_to_rotational8(
 
     if source.config.component_scheme not in ('elastic10', 'elastic10_fd'):
         _raise(
-            'Only `elastic10` and `elastic10_fd` component schemes supported '
-            'for input store.')
+            'Only component schemes "elastic10" and "elastic10_fd" are '
+            'supported for the input store.')
 
     have_fd_components = source.config.component_scheme == 'elastic10_fd'
 
     if source.config.effective_stored_quantity != 'displacement':
-        _raise('Stored quantity of input store must be displacement.')
+        _raise('Stored quantity of input store must be "displacement".')
 
     if not os.path.exists(dest_store_dir):
         config = guts.clone(source.config)
@@ -81,7 +81,7 @@ def elastic10_to_rotational8(
 
     if have_fd_components and not (ta, tb) == ('A', 'A'):
         _raise(
-            'For input stores with component scheme `elastic10_fd`, only '
+            'For input stores with component scheme "elastic10_fd", only '
             'conversion from store type A to A is currently supported.')
 
     if (ta, tb) not in (('A', 'A'), ('B', 'B'), ('B', 'A')):
@@ -90,14 +90,14 @@ def elastic10_to_rotational8(
     if source.config.distance_delta > dest.config.distance_delta:
         _raise(
             'Distance spacing of output store must be equal to or larger '
-            'distance spacing of input store.')
+            'than the distance spacing of the input store.')
 
     if (ta, tb) == ('B', 'B'):
         if source.config.receiver_depth_delta \
                 > dest.config.receiver_depth_delta:
             _raise(
                 'Depth spacing of output store must be equal to or larger '
-                'depth spacing of input store.')
+                'than the depth spacing of the input store.')
 
     if ta == 'A':
         if source.config.receiver_depth \

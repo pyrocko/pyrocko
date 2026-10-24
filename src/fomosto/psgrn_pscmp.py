@@ -118,12 +118,12 @@ class PsGrnConfig(Object):
 
     sampling_interval = Float.T(
         default=1.0,
-        help='Exponential sampling 1.- equidistant, > 1. decreasing sampling'
-             ' with distance')
+        help='Exponential sampling factor: 1 for equidistant sampling, > 1 '
+             'for sampling decreasing with distance.')
     n_time_samples = Int.T(
         optional=True,
-        help='Number of temporal GF samples up to max_time. Has to be equal'
-             ' to a power of 2! If not, next power of 2 is taken.')
+        help='Number of temporal GF samples up to ``max_time``. Must be a '
+             'power of 2, otherwise the next power of 2 is used.')
     max_time = Float.T(
         optional=True,
         help='Maximum time [days] after seismic event.')
@@ -131,14 +131,16 @@ class PsGrnConfig(Object):
     gf_depth_spacing = Float.T(
         optional=True,
         help='Depth spacing [km] for the observation points. '
-             'If not defined depth spacing from the `StoreConfig` is used')
+             'If not given, the depth spacing of the store\'s config is '
+             'used.')
     gf_distance_spacing = Float.T(
         optional=True,
         help='Spatial spacing [km] for the observation points. '
-             'If not defined distance spacing from the `StoreConfig` is used')
+             'If not given, the distance spacing of the store\'s config is '
+             'used.')
     observation_depth = Float.T(
         default=0.,
-        help='Depth of observation points [km]')
+        help='Depth of observation points [km].')
 
     def items(self):
         return dict(self.T.inamevals(self))
@@ -341,7 +343,7 @@ def remove_if_exists(fn, force=False):
         if force:
             os.remove(fn)
         else:
-            raise gf.CannotCreate('file %s already exists' % fn)
+            raise gf.CannotCreate('File already exists: %s' % fn)
 
 
 class PsGrnRunner(object):
@@ -394,7 +396,7 @@ class PsGrnRunner(object):
             except OSError:
                 os.chdir(old_wd)
                 raise PsGrnError(
-                    '''could not start psgrn executable: "%s"
+                    '''Could not start PSGRN executable "%s".
 Available fomosto backends and download links to the modelling codes are listed
 on
 
@@ -416,16 +418,16 @@ on
         errmess = []
         if proc.returncode != 0:
             errmess.append(
-                'psgrn had a non-zero exit state: %i' % proc.returncode)
+                'PSGRN had a non-zero exit state (%i).' % proc.returncode)
 
         if error_str:
             logger.warning(
-                'psgrn emitted something via stderr: \n\n%s'
+                'PSGRN emitted something via stderr:\n\n%s'
                 % error_str.decode())
             # errmess.append('psgrn emitted something via stderr')
 
         if output_str.lower().find(b'error') != -1:
-            errmess.append("the string 'error' appeared in psgrn output")
+            errmess.append('The string "error" appeared in PSGRN output.')
 
         if errmess:
             os.chdir(old_wd)
@@ -437,8 +439,7 @@ on
 ===== begin psgrn error =====
 %s===== end psgrn error =====
 %s
-psgrn has been invoked as "%s"
-in the directory %s'''.lstrip() % (
+PSGRN has been invoked as "%s" in directory "%s".'''.lstrip() % (
                 input_str.decode(), output_str.decode(), error_str.decode(),
                 '\n'.join(errmess), program, self.outdir))
 
@@ -510,16 +511,16 @@ class PsCmpProfile(PsCmpObservation):
     n_steps = Int.T(default=10)
     slat = Float.T(
         default=0.,
-        help='Profile start latitude')
+        help='Profile start latitude [deg].')
     slon = Float.T(
         default=0.,
-        help='Profile start longitude')
+        help='Profile start longitude [deg].')
     elat = Float.T(
         default=0.,
-        help='Profile end latitude')
+        help='Profile end latitude [deg].')
     elon = Float.T(
         default=0.,
-        help='Profile end longitude')
+        help='Profile end longitude [deg].')
     distances = List.T(
         Float.T(),
         optional=True,
@@ -541,16 +542,16 @@ class PsCmpArray(PsCmpObservation):
     n_steps_lon = Int.T(default=10)
     slat = Float.T(
         default=0.,
-        help='Array start latitude')
+        help='Array start latitude [deg].')
     slon = Float.T(
         default=0.,
-        help='Array start longitude')
+        help='Array start longitude [deg].')
     elat = Float.T(
         default=0.,
-        help='Array end latitude')
+        help='Array end latitude [deg].')
     elon = Float.T(
         default=0.,
-        help='Array end longitude')
+        help='Array end longitude [deg].')
 
     def string_for_config(self):
         self.sw = 2
@@ -589,14 +590,14 @@ class PsCmpRectangularSource(Location, gf.seismosizer.Cloneable):
         help='Fault dip, downward from horizontal [deg].')
     rake = Float.T(
         default=0.0,
-        help='Rake angle, counter-clock wise from right-horizontal [deg].')
+        help='Rake angle, counter-clockwise from right-horizontal [deg].')
     torigin = Float.T(
         default=0.0,
         help='Origin time [s].')
     slip = Float.T(
         optional=True,
         default=1.0,
-        help='Slip amount [m]')
+        help='Slip amount [m].')
     pos_s = Float.T(
         optional=True,
         default=None,
@@ -711,10 +712,10 @@ class PsCmpTensileSF(Location, gf.seismosizer.Cloneable):
         help='Width of source rectangle [m].')
     torigin = Float.T(
         default=0.0,
-        help='Origin time [days]')
+        help='Origin time [days].')
     idx = String.T(
         default='nn',
-        help='Axis index for opening direction; "nn", "ee", or "dd"')
+        help='Axis index for opening direction: "nn", "ee", or "dd".')
 
     def to_rfs(self, nullification):
 
@@ -751,10 +752,10 @@ class PsCmpShearSF(Location, gf.seismosizer.Cloneable):
         help='Width of source rectangle [m].')
     torigin = Float.T(
         default=0.0,
-        help='Origin time [days]')
+        help='Origin time [days].')
     idx = String.T(
         default='ne',
-        help='Axis index for opening direction; "ne", "nd", or "ed"')
+        help='Axis index for opening direction: "ne", "nd", or "ed".')
 
     def to_rfs(self):
         kwargs = copy.deepcopy(self.__dict__)
@@ -780,10 +781,10 @@ class PsCmpMomentTensor(Location, gf.seismosizer.Cloneable):
         help='Width of source rectangle [m].')
     torigin = Float.T(
         default=0.0,
-        help='Origin time [days]')
+        help='Origin time [days].')
     idx = String.T(
         default='nn',
-        help='Axis index for MT component; '
+        help='Axis index for MT component: '
              '"nn", "ee", "dd", "ne", "nd", or "ed".')
 
     def to_rfs(self, nullification=-0.25):
@@ -799,7 +800,7 @@ class PsCmpMomentTensor(Location, gf.seismosizer.Cloneable):
             return ssf.to_rfs()
 
         else:
-            raise Exception('MT component not supported!')
+            raise Exception('MT component not supported: %s' % self.idx)
 
 
 class PsCmpCoulombStress(Object):
@@ -812,9 +813,9 @@ class PsCmpCoulombStressMasterFault(PsCmpCoulombStress):
     master_fault_strike = Float.T(default=300.)
     master_fault_dip = Float.T(default=15.)
     master_fault_rake = Float.T(default=90.)
-    sigma1 = Float.T(default=1.e6, help='[Pa]')
-    sigma2 = Float.T(default=-1.e6, help='[Pa]')
-    sigma3 = Float.T(default=0.0, help='[Pa]')
+    sigma1 = Float.T(default=1.e6, help='Principal stress 1 [Pa].')
+    sigma2 = Float.T(default=-1.e6, help='Principal stress 2 [Pa].')
+    sigma3 = Float.T(default=0.0, help='Principal stress 3 [Pa].')
 
     def string_for_config(self):
         return '%(friction)15e %(skempton_ratio)15e %(master_fault_strike)15f'\
@@ -837,7 +838,8 @@ class PsCmpSnapshots(Object):
              ' snapshots.')
     tmax = Float.T(
         default=1.0,
-        help='Time [days] after source time to end temporal sample f.')
+        help='Time [days] after source time to end temporal sample'
+             ' snapshots.')
     deltatdays = Float.T(
         default=1.0,
         help='Sample period [days].')
@@ -861,9 +863,9 @@ class PsCmpConfig(Object):
     rectangular_fault_size_factor = Float.T(
         default=1.,
         help='The size of the rectangular faults in the compound MT'
-             ' :py:class:`PsCmpMomentTensor` is dependend on the horizontal'
+             ' :py:class:`PsCmpMomentTensor` depends on the horizontal'
              ' spacing of the GF database. This factor is applied to the'
-             ' relationship in i.e. fault length & width = f * dx.')
+             ' relationship, i.e. fault length & width = f * dx.')
 
     snapshots = PsCmpSnapshots.T(
         optional=True)
@@ -1225,10 +1227,10 @@ class PsGrnPsCmpConfig(Object):
     '''
     tmin_days = Float.T(
         default=0.,
-        help='Min. time in days')
+        help='Minimum time [days].')
     tmax_days = Float.T(
         default=1.,
-        help='Max. time in days')
+        help='Maximum time [days].')
     gf_outdir = String.T(default='psgrn_functions')
 
     psgrn_config = PsGrnConfig.T(default=PsGrnConfig.D())
@@ -1297,15 +1299,14 @@ class PsCmpRunner(object):
 
             except OSError as err:
                 os.chdir(old_wd)
-                logger.error('OS error: {0}'.format(err))
                 raise PsCmpError(
-                    '''could not start pscmp executable: "%s"
+                    '''Could not start PSCMP executable "%s" (%s).
 Available fomosto backends and download links to the modelling codes are listed
 on
 
       https://pyrocko.org/docs/current/apps/fomosto/backends.html
 
-''' % program)
+''' % (program, err))
 
             (output_str, error_str) = proc.communicate(b'input\n')
 
@@ -1321,13 +1322,13 @@ on
         errmsg = []
         if proc.returncode != 0:
             errmsg.append(
-                'pscmp had a non-zero exit state: %i' % proc.returncode)
+                'PSCMP had a non-zero exit state (%i).' % proc.returncode)
 
         if error_str:
-            errmsg.append('pscmp emitted something via stderr')
+            errmsg.append('PSCMP emitted something via stderr.')
 
         if output_str.lower().find(b'error') != -1:
-            errmsg.append("the string 'error' appeared in pscmp output")
+            errmsg.append('The string "error" appeared in PSCMP output.')
 
         if errmsg:
             self.keep_tmp = True
@@ -1341,8 +1342,7 @@ on
 ===== begin pscmp error =====
 {pscmp_error}===== end pscmp error =====
 {error_messages}
-pscmp has been invoked as "{call}"
-in the directory {dir}'''.format(
+PSCMP has been invoked as "{call}" in directory "{dir}".'''.format(
                 pscmp_input=input_str,
                 pscmp_output=output_str,
                 pscmp_error=error_str,
@@ -1387,9 +1387,11 @@ in the directory {dir}'''.format(
             try:
                 _, idxs = pscmp_component_mapping[component]
             except KeyError:
-                raise Exception('component %s not supported! Either: %s' % (
-                    component, ', '.join(
-                        '"%s"' % k for k in pscmp_component_mapping.keys())))
+                raise Exception(
+                    'Component "%s" not supported, use one of: %s.' % (
+                        component, ', '.join(
+                            '"%s"' % k
+                            for k in pscmp_component_mapping.keys())))
 
             istart, iend = idxs
 
@@ -1433,7 +1435,7 @@ in the directory {dir}'''.format(
                 self.tempdir = None
             else:
                 logger.warning(
-                    'not removing temporary directory: %s' % self.tempdir)
+                    'Not removing temporary directory: %s' % self.tempdir)
 
 
 class PsGrnCmpGFBuilder(gf.builder.Builder):
@@ -1547,7 +1549,7 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
         dx = fc.distance_delta
 
         logger.info(
-            'Starting step %i / %i, block %i / %i' %
+            'Starting step %i / %i, block %i / %i...' %
             (self.step + 1, self.nsteps, iblock + 1, self.nblocks))
 
         if self.step == 0:
@@ -1669,7 +1671,7 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
                 finally:
                     if duplicate_inserts:
                         logger.warning(
-                            '%i insertions skipped (duplicates)'
+                            'Skipped %i duplicate insertions.'
                             % duplicate_inserts)
 
                     self.store.unlock()
@@ -1679,7 +1681,7 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
                     raise KeyboardInterrupt()
 
         logger.info(
-            'Done with step %i / %i, block %i / %i' % (
+            'Done with step %i / %i, block %i / %i.' % (
                 self.step + 1, self.nsteps, iblock + 1, self.nblocks))
 
 

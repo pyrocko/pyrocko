@@ -36,7 +36,7 @@ class DummyGFBuilder(gf.builder.Builder):
             self.get_block_extents(index)
 
         logger.info(
-            'Starting block %i / %i' % (index+1, self.nblocks))
+            'Starting block %i / %i...' % (index+1, self.nblocks))
 
         interrupted = []
 
@@ -65,7 +65,7 @@ class DummyGFBuilder(gf.builder.Builder):
         finally:
             if duplicate_inserts:
                 logger.warning(
-                    '%i insertions skipped (duplicates)' % duplicate_inserts)
+                    'Skipped %i duplicate insertions.' % duplicate_inserts)
 
             self.store.unlock()
             signal.signal(signal.SIGINT, original)
@@ -73,7 +73,7 @@ class DummyGFBuilder(gf.builder.Builder):
         if interrupted:
             raise KeyboardInterrupt()
 
-        logger.info('Done with block %i / %i' % (index+1, self.nblocks))
+        logger.info('Done with block %i / %i.' % (index+1, self.nblocks))
 
 
 km = 1000.

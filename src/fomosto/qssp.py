@@ -309,8 +309,8 @@ class QSSPConfigFull(QSSPConfig):
 
             if self.bandpass_order != 0:
                 raise QSSPError(
-                    'this version of qssp does not support bandpass '
-                    'settings, use lowpass instead')
+                    'This version of QSSP does not support bandpass '
+                    'settings, use lowpass instead.')
 
             d['sfilter'] = '%i %f' % (
                 self.lowpass_order,
@@ -335,8 +335,8 @@ class QSSPConfigFull(QSSPConfig):
 
             if self.lowpass_order != 0:
                 raise QSSPError(
-                    'this version of qssp does not support lowpass settings, '
-                    'use bandpass instead')
+                    'This version of QSSP does not support lowpass settings, '
+                    'use bandpass instead.')
 
             d['sfilter'] = '%i %f %f' % (
                 self.bandpass_order,
@@ -691,7 +691,7 @@ class QSSPRunner(object):
             except OSError:
                 os.chdir(old_wd)
                 raise QSSPError(
-                    '''could not start qssp executable: "%s"
+                    '''Could not start QSSP executable "%s".
 Available fomosto backends and download links to the modelling codes are listed
 on
 
@@ -713,16 +713,16 @@ on
         errmess = []
         if proc.returncode != 0:
             errmess.append(
-                'qssp had a non-zero exit state: %i' % proc.returncode)
+                'QSSP had a non-zero exit state (%i).' % proc.returncode)
         if error_str:
 
             logger.warning(
-                'qssp emitted something via stderr: \n\n%s'
+                'QSSP emitted something via stderr:\n\n%s'
                 % error_str.decode())
 
             # errmess.append('qssp emitted something via stderr')
         if output_str.lower().find(b'error') != -1:
-            errmess.append("the string 'error' appeared in qssp output")
+            errmess.append('The string "error" appeared in QSSP output.')
 
         if errmess:
             os.chdir(old_wd)
@@ -734,7 +734,7 @@ on
 ===== begin qssp error =====
 %s===== end qssp error =====
 %s
-qssp has been invoked as "%s"'''.lstrip() % (
+QSSP has been invoked as "%s".'''.lstrip() % (
                 input_str.decode(),
                 output_str.decode(),
                 error_str.decode(),
@@ -794,7 +794,7 @@ qssp has been invoked as "%s"'''.lstrip() % (
                 self.tempdir = None
             else:
                 logger.warning(
-                    'not removing temporary directory: %s' % self.tempdir)
+                    'Not removing temporary directory: %s' % self.tempdir)
 
 
 class QSSPGFBuilder(gf.builder.Builder):
@@ -928,13 +928,13 @@ class QSSPGFBuilder(gf.builder.Builder):
 
         if self.step == 0 and len(glob.glob(gf_path)) > 0:
             logger.info(
-                'Skipping step %i / %i, block %i / %i (GF already exists)'
+                'Skipping step %i / %i, block %i / %i (GF already exists).'
                 % (self.step+1, self.nsteps, iblock+1, self.nblocks))
 
             return
 
         logger.info(
-            'Starting step %i / %i, block %i / %i' %
+            'Starting step %i / %i, block %i / %i...' %
             (self.step+1, self.nsteps, iblock+1, self.nblocks))
 
         tbeg = time.time()
@@ -952,8 +952,8 @@ class QSSPGFBuilder(gf.builder.Builder):
                 ('elastic8', 'displacement')]:
 
             raise QSSPError(
-                'componentent_scheme "%s" is inconsistent with '
-                'stored_quantity "%s"' % (component_scheme, stored_quantity))
+                'Component scheme "%s" is inconsistent with stored quantity '
+                '"%s".' % (component_scheme, stored_quantity))
 
         conf.stored_quantity = stored_quantity
         conf.sampling_interval = 1.0 / self.gf_config.sample_rate
@@ -1055,7 +1055,7 @@ class QSSPGFBuilder(gf.builder.Builder):
 
                                 if not (ta <= tb and tb <= tc and tc <= td):
                                     raise QSSPError(
-                                        'invalid fade configuration')
+                                        'Invalid fade configuration.')
 
                                 t = tr.get_xdata()
                                 fin = num.interp(t, [ta, tb], [0., 1.])
@@ -1098,7 +1098,7 @@ class QSSPGFBuilder(gf.builder.Builder):
                 finally:
                     if duplicate_inserts:
                         logger.warning(
-                            '%i insertions skipped (duplicates)'
+                            'Skipped %i duplicate insertions.'
                             % duplicate_inserts)
 
                     self.store.unlock()
@@ -1109,8 +1109,8 @@ class QSSPGFBuilder(gf.builder.Builder):
 
         tend = time.time()
         logger.info(
-            'Done with step %i / %i, block %i / %i, wallclock time: %.0f s' % (
-                self.step+1, self.nsteps, iblock+1, self.nblocks, tend-tbeg))
+            'Done with step %i / %i, block %i / %i, wallclock time: %.0f s.'
+            % (self.step+1, self.nsteps, iblock+1, self.nblocks, tend-tbeg))
 
 
 km = 1000.

@@ -603,7 +603,8 @@ class QSeisSRunner(object):
 
             except OSError:
                 os.chdir(old_wd)
-                raise QSeis2dError('could not start qseisS: "%s"' % program)
+                raise QSeis2dError(
+                    'Could not start QSeisS executable "%s".' % program)
 
             (output_str, error_str) = proc.communicate(b'input\n')
 
@@ -619,13 +620,13 @@ class QSeisSRunner(object):
         errmess = []
         if proc.returncode != 0:
             errmess.append(
-                'qseisS had a non-zero exit state: %i' % proc.returncode)
+                'QSeisS had a non-zero exit state (%i).' % proc.returncode)
 
         if error_str:
-            errmess.append('qseisS emitted something via stderr')
+            errmess.append('QSeisS emitted something via stderr.')
 
         if output_str.lower().find(b'error') != -1:
-            errmess.append("the string 'error' appeared in qseisS output")
+            errmess.append('The string "error" appeared in QSeisS output.')
 
         if errmess:
             self.keep_tmp = True
@@ -639,8 +640,7 @@ class QSeisSRunner(object):
 ===== begin qseisS error =====
 %s===== end qseisS error =====
 %s
-qseisS has been invoked as "%s"
-in the directory %s'''.lstrip() % (
+QSeisS has been invoked as "%s" in directory "%s".'''.lstrip() % (
                 input_str.decode(),
                 output_str.decode(),
                 error_str.decode(),
@@ -659,7 +659,7 @@ in the directory %s'''.lstrip() % (
                 self.tempdir = None
             else:
                 logger.warning(
-                    'not removing temporary directory: %s' % self.tempdir)
+                    'Not removing temporary directory: %s' % self.tempdir)
 
 
 class QSeisRRunner(object):
@@ -703,7 +703,8 @@ class QSeisRRunner(object):
 
             except OSError:
                 os.chdir(old_wd)
-                raise QSeis2dError('could not start qseisR: "%s"' % program)
+                raise QSeis2dError(
+                    'Could not start QSeisR executable "%s".' % program)
 
             (output_str, error_str) = proc.communicate(b'input\n')
 
@@ -719,13 +720,13 @@ class QSeisRRunner(object):
         errmess = []
         if proc.returncode != 0:
             errmess.append(
-                'qseisR had a non-zero exit state: %i' % proc.returncode)
+                'QSeisR had a non-zero exit state (%i).' % proc.returncode)
 
         if error_str:
-            errmess.append('qseisR emitted something via stderr')
+            errmess.append('QSeisR emitted something via stderr.')
 
         if output_str.lower().find(b'error') != -1:
-            errmess.append("the string 'error' appeared in qseisR output")
+            errmess.append('The string "error" appeared in QSeisR output.')
 
         if errmess:
             self.keep_tmp = True
@@ -739,8 +740,7 @@ class QSeisRRunner(object):
 ===== begin qseisR error =====
 %s===== end qseisR error =====
 %s
-qseisR has been invoked as "%s"
-in the directory %s'''.lstrip() % (
+QSeisR has been invoked as "%s" in directory "%s".'''.lstrip() % (
                 input_str.decode(),
                 output_str.decode(),
                 error_str.decode(),
@@ -789,7 +789,7 @@ in the directory %s'''.lstrip() % (
                 self.tempdir = None
             else:
                 logger.warning(
-                    'not removing temporary directory: %s' % self.tempdir)
+                    'Not removing temporary directory: %s' % self.tempdir)
 
 
 class QSeis2dGFBuilder(gf.builder.Builder):
@@ -928,13 +928,13 @@ class QSeis2dGFBuilder(gf.builder.Builder):
         conf_r.info_path = info_path
 
         if self.step == 0 and os.path.isfile(fk_path):
-            logger.info('Skipping step %i / %i, block %i / %i'
-                        '(GF already exists)' %
+            logger.info('Skipping step %i / %i, block %i / %i '
+                        '(GF already exists).' %
                         (self.step + 1, self.nsteps, iblock + 1, self.nblocks))
             return
 
         logger.info(
-            'Starting step %i / %i, block %i / %i' %
+            'Starting step %i / %i, block %i / %i...' %
             (self.step + 1, self.nsteps, iblock + 1, self.nblocks))
 
         dx = self.gf_config.distance_delta
@@ -955,8 +955,8 @@ class QSeis2dGFBuilder(gf.builder.Builder):
             tbegin = self.store.t(self.qseis_baseconf.time_region[0], args)
             if tbegin is None:
                 raise QSeis2dError(
-                    'cannot determine begin of time window at source depth '
-                    '%g km, distance %g km' % (sz/km, firstx/km))
+                    'Cannot determine begin of time window at source depth '
+                    '%g km, distance %g km.' % (sz/km, firstx/km))
 
             deltat = self.store.config.deltat
             conf_r.time_reduction = math.floor(tbegin / deltat) * deltat
@@ -1045,7 +1045,7 @@ class QSeis2dGFBuilder(gf.builder.Builder):
 
                             if not (ta <= tb and tb <= tc and tc <= td):
                                 raise QSeis2dError(
-                                    'invalid fade configuration')
+                                    'Invalid fade configuration.')
 
                             t = tr.get_xdata()
                             fin = num.interp(t, [ta, tb], [0., 1.])
@@ -1087,7 +1087,7 @@ class QSeis2dGFBuilder(gf.builder.Builder):
 
                 finally:
                     if duplicate_inserts:
-                        logger.warning('%i insertions skipped (duplicates)' %
+                        logger.warning('Skipped %i duplicate insertions.' %
                                        duplicate_inserts)
 
                     self.store.unlock()
@@ -1097,7 +1097,7 @@ class QSeis2dGFBuilder(gf.builder.Builder):
                     raise KeyboardInterrupt()
 
             logger.info(
-                'Done with step %i / %i, block %i / %i' %
+                'Done with step %i / %i, block %i / %i.' %
                 (self.step + 1, self.nsteps, iblock + 1, self.nblocks))
 
 

@@ -131,7 +131,7 @@ class AhfullGFBuilder(gf.builder.Builder):
                 self.get_block_extents(index)
             rz = self.store.config.receiver.depth
 
-        logger.info('Starting block %i / %i' %
+        logger.info('Starting block %i / %i...' %
                     (index+1, self.nblocks))
 
         dx = self.gf_config.deltas[-1]
@@ -178,8 +178,8 @@ class AhfullGFBuilder(gf.builder.Builder):
 
         else:
             raise gf.UnavailableScheme(
-                'fomosto backend "ahfullgreen" cannot handle component scheme '
-                '"%s"' % component_scheme)
+                'Fomosto backend "ahfullgreen" cannot handle component scheme '
+                '"%s".' % component_scheme)
 
         for source_mech, gfmap in gfmapping:
 
@@ -214,12 +214,12 @@ class AhfullGFBuilder(gf.builder.Builder):
             try:
                 for itr, tr in enumerate(rawtraces):
                     if tr.channel not in gfmap:
-                        logger.debug('%s not in gfmap' % tr.channel)
+                        logger.debug('Not in gfmap: %s' % tr.channel)
                         continue
 
                     x = xs[tr.meta['isource']]
                     if x > firstx + (nx-1)*dx:
-                        logger.error('x out of range')
+                        logger.error('Distance out of range.')
                         continue
 
                     ig, factor = gfmap[tr.channel]
@@ -241,7 +241,7 @@ class AhfullGFBuilder(gf.builder.Builder):
 
             finally:
                 if duplicate_inserts:
-                    logger.warning('%i insertions skipped (duplicates)' %
+                    logger.warning('Skipped %i duplicate insertions.' %
                                    duplicate_inserts)
 
                 self.store.unlock()
@@ -250,7 +250,7 @@ class AhfullGFBuilder(gf.builder.Builder):
             if interrupted:
                 raise KeyboardInterrupt()
 
-        logger.info('Done with block %i / %i' %
+        logger.info('Done with block %i / %i.' %
                     (index+1, self.nblocks))
 
 
