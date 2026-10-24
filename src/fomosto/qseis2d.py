@@ -878,9 +878,11 @@ class QSeis2dGFBuilder(gf.builder.Builder):
         self.qseis_r_config = conf_r
         self.qseis_baseconf = baseconf
 
+        if tmp is None:
+            tmp = gf.builder.store_tmp_dir(store_dir)
+
         self.tmp = tmp
-        if self.tmp is not None:
-            util.ensuredir(self.tmp)
+        util.ensuredir(self.tmp)
 
         util.ensuredir(baseconf.gf_directory)
 
