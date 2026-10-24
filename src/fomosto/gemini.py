@@ -43,7 +43,10 @@ in the frequency domain. Geophysical Journal International, 122, 537-550.
 '''
 
 import asyncio
+import contextlib
 import hashlib
+import heapq
+import itertools
 import logging
 import math
 import os
@@ -878,19 +881,66 @@ def _read_seismogr(fn, nreceivers):
     return samprat, timeshift, data
 
 
+class _Slots(object):
+    '''
+    Limits the number of jobs running in parallel.
+
+    Waiting jobs get a free slot in order of priority (lowest first), and
+    in the order of their requests for equal priority.
+    '''
+
+    def __init__(self, nslots):
+        self._free = nslots
+        self._waiting = []
+        self._counter = itertools.count()
+
+    @contextlib.asynccontextmanager
+    async def __call__(self, priority=0):
+        if self._free > 0 and not self._waiting:
+            self._free -= 1
+        else:
+            future = asyncio.get_running_loop().create_future()
+            heapq.heappush(
+                self._waiting, (priority, next(self._counter), future))
+
+            try:
+                await future
+            except asyncio.CancelledError:
+                if future.done() and not future.cancelled():
+                    # slot was handed over just before the cancellation
+                    self._release()
+
+                raise
+
+        try:
+            yield
+        finally:
+            self._release()
+
+    def _release(self):
+        while self._waiting:
+            _, _, future = heapq.heappop(self._waiting)
+            if not future.done():
+                future.set_result(None)
+                return
+
+        self._free += 1
+
+
 class _Runner(object):
     '''
     Runs the GEMINI programs as asyncio subprocesses.
 
-    At most ``nworkers`` programs run in parallel. The programs are started in
-    their own sessions, so that they do not receive the terminal's signals,
-    and are terminated by the runner when the coroutine running them is
-    cancelled.
+    At most ``nworkers`` jobs run in parallel. A job holds one of the slots
+    given by :py:meth:`slot` and may run several programs one after the other.
+    The programs are started in their own sessions, so that they do not
+    receive the terminal's signals, and are terminated by the runner when the
+    coroutine running them is cancelled.
     '''
 
     def __init__(self, nworkers, bins):
         self._bins = bins
-        self._semaphore = asyncio.Semaphore(nworkers)
+        self.slot = _Slots(nworkers)
         self._procs = {}
 
     def kill_all(self):
@@ -925,65 +975,64 @@ class _Runner(object):
             on_start=None):
 
         '''
-        Run program, when one of the ``nworkers`` slots is available.
+        Run program. The caller must hold a slot.
 
         ``on_start`` is called once the process has been started,
         ``on_line`` for every line of its standard output.
         '''
 
         exe = self._bins[program]
-        async with self._semaphore:
-            try:
-                proc = await asyncio.create_subprocess_exec(
-                    exe,
-                    stdin=asyncio.subprocess.PIPE,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                    cwd=cwd,
-                    start_new_session=True)
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                exe,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=cwd,
+                start_new_session=True)
 
-            except OSError as e:
-                raise GeminiError('''could not start %s executable: "%s" (%s)
+        except OSError as e:
+            raise GeminiError('''could not start %s executable: "%s" (%s)
 Available fomosto backends and download links to the modelling codes are listed
 on
 
       https://pyrocko.org/docs/current/apps/fomosto/backends.html
 ''' % (program, exe, e))
 
-            self._procs[proc] = exe
-            if on_start:
-                on_start()
+        self._procs[proc] = exe
+        if on_start:
+            on_start()
 
-            stderr_task = asyncio.ensure_future(proc.stderr.read())
+        stderr_task = asyncio.ensure_future(proc.stderr.read())
+        try:
+            proc.stdin.write(input_str.encode('ascii'))
             try:
-                proc.stdin.write(input_str.encode('ascii'))
-                try:
-                    await proc.stdin.drain()
-                    proc.stdin.close()
-                except (BrokenPipeError, ConnectionResetError):
-                    pass
+                await proc.stdin.drain()
+                proc.stdin.close()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
 
-                output = []
-                async for line in proc.stdout:
-                    line = line.decode('ascii', errors='replace')
-                    output.append(line)
-                    if on_line:
-                        on_line(line)
+            output = []
+            async for line in proc.stdout:
+                line = line.decode('ascii', errors='replace')
+                output.append(line)
+                if on_line:
+                    on_line(line)
 
-                error_str = (await stderr_task).decode(
-                    'ascii', errors='replace')
+            error_str = (await stderr_task).decode(
+                'ascii', errors='replace')
 
-                await proc.wait()
+            await proc.wait()
 
-            finally:
-                if proc.returncode is None:
-                    await self._terminate(proc)
+        finally:
+            if proc.returncode is None:
+                await self._terminate(proc)
 
-                if not stderr_task.done():
-                    stderr_task.cancel()
-                    await asyncio.wait([stderr_task])
+            if not stderr_task.done():
+                stderr_task.cancel()
+                await asyncio.wait([stderr_task])
 
-                del self._procs[proc]
+            del self._procs[proc]
 
         output_str = ''.join(output)
         logger.debug(
@@ -1058,10 +1107,12 @@ async def _gather(aws):
 
 class _Tempdir(object):
     def __init__(self, prefix, dir=None, keep=False):
-        self.path = mkdtemp(prefix=prefix, dir=dir)
+        self.prefix = prefix
+        self.dir = dir
         self.keep = keep
 
     def __enter__(self):
+        self.path = mkdtemp(prefix=self.prefix, dir=self.dir)
         return self.path
 
     def __exit__(self, *args):
@@ -1364,22 +1415,23 @@ class GeminiGFBuilder(object):
                 logger.info('%s: Gemini at frequency %i / %i' % (
                     label, nw, self.nend))
 
-        with _Tempdir('tmp-', dir=self.gf_directory) as rundir:
-            for fn, s in [
-                    ('earthmodel', self.model_str),
-                    ('window', self.window_str)]:
+        async with runner.slot(priority=1):
+            with _Tempdir('tmp-', dir=self.gf_directory) as rundir:
+                for fn, s in [
+                        ('earthmodel', self.model_str),
+                        ('window', self.window_str)]:
 
-                with open(pjoin(rundir, fn), 'w') as f:
-                    f.write(s)
+                    with open(pjoin(rundir, fn), 'w') as f:
+                        f.write(s)
 
-            await runner.run(
-                'gemini', self.gemini_input(depth), rundir, ['basis'],
-                on_line=on_line, on_start=on_start)
+                await runner.run(
+                    'gemini', self.gemini_input(depth), rundir, ['basis'],
+                    on_line=on_line, on_start=on_start)
 
-            fn = self.basis_path(depth)
-            os.replace(pjoin(rundir, 'basis'), fn)
-            with open(fn + '.signature', 'w') as f:
-                f.write(self.basis_signature(depth) + '\n')
+                fn = self.basis_path(depth)
+                os.replace(pjoin(rundir, 'basis'), fn)
+                with open(fn + '.signature', 'w') as f:
+                    f.write(self.basis_signature(depth) + '\n')
 
         logger.info('%s: done with Gemini, wallclock time: %.0f s' % (
             label, time.time() - tbeg[0]))
@@ -1421,30 +1473,34 @@ class GeminiGFBuilder(object):
         # Elementary moment tensor in units of cmt_moment.
         m6 = mt.m6_up_south_east()
 
-        with _Tempdir('geminirun-', dir=self.tmp, keep=self.keep_tmp) \
-                as rundir:
+        # Dispec and Totido run in the same slot, so that at most one Dispec
+        # output file per slot exists. Step 2 jobs have precedence over step
+        # 1 jobs, to keep the number of unprocessed basis solutions low.
+        async with runner.slot(priority=0):
+            with _Tempdir(
+                    'geminirun-', dir=self.tmp, keep=self.keep_tmp) as rundir:
 
-            os.symlink(
-                os.path.abspath(self.basis_path(depth)),
-                pjoin(rundir, 'basis'))
+                os.symlink(
+                    os.path.abspath(self.basis_path(depth)),
+                    pjoin(rundir, 'basis'))
 
-            for fn, lines in [
-                    ('window', [self.window_str]),
-                    ('source', _cmt_lines(m6, depth/km)),
-                    ('stations', _station_lines(distances))]:
+                for fn, lines in [
+                        ('window', [self.window_str]),
+                        ('source', _cmt_lines(m6, depth/km)),
+                        ('stations', _station_lines(distances))]:
 
-                with open(pjoin(rundir, fn), 'w') as f:
-                    f.write('\n'.join(lines).rstrip('\n') + '\n')
+                    with open(pjoin(rundir, fn), 'w') as f:
+                        f.write('\n'.join(lines).rstrip('\n') + '\n')
 
-            await runner.run(
-                'dispec', self.dispec_input(), rundir, ['spec3k'],
-                on_start=on_start)
+                await runner.run(
+                    'dispec', self.dispec_input(), rundir, ['spec3k'],
+                    on_start=on_start)
 
-            await runner.run(
-                'totido', self.totido_input(), rundir, ['seismogr'])
+                await runner.run(
+                    'totido', self.totido_input(), rundir, ['seismogr'])
 
-            samprat, timeshift, data = _read_seismogr(
-                pjoin(rundir, 'seismogr'), len(distances))
+                samprat, timeshift, data = _read_seismogr(
+                    pjoin(rundir, 'seismogr'), len(distances))
 
         deltat = self.store.config.deltat
         if abs(1.0 / samprat - deltat) > 1e-4 * deltat:
