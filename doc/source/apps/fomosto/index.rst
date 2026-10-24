@@ -9,3 +9,16 @@ pre-calculated Green's function stores.
 
    tutorial
    backends
+
+Command reference
+-----------------
+
+The :app:`fomosto` tool and its subcommands are self-documenting with the
+``--help`` option. Run ``fomosto`` without any options to get the list of
+available subcommands. Run ``fomosto SUBCOMMAND --help`` to get details about
+a specific subcommand, e.g. ``fomosto build --help``.
+
+.. toctree::
+   :maxdepth: 3
+
+   fomosto <reference/fomosto>
