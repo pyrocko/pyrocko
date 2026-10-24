@@ -537,7 +537,19 @@ class QSeis2dConfig(Object):
     fade = Tuple.T(4, Timing.T(), optional=True)
     relevel_with_fade_in = Bool.T(default=False)
 
-    gf_directory = String.T(default='qseis2d_green')
+    gf_directory = String.T(
+        default='qseis2d_green',
+        help='Directory for the wavefield files computed by QSeisS in step 1. '
+             'A relative path is interpreted relative to the store '
+             'directory.')
+
+    keep_greens_functions = Bool.T(
+        default=False,
+        optional=True,
+        help='Whether to keep the wavefield files computed by QSeisS in '
+             'step 1 after the store has been built. Kept files are reused '
+             'by later builds, without checking whether they have been '
+             'computed with the current settings.')
 
 
 class QSeis2dError(gf.store.StoreError):
@@ -884,6 +896,7 @@ class QSeis2dGFBuilder(gf.builder.Builder):
         self.tmp = tmp
         util.ensuredir(self.tmp)
 
+        baseconf.gf_directory = _gf_directory(store_dir, baseconf)
         util.ensuredir(baseconf.gf_directory)
 
     def cleanup(self):
@@ -903,7 +916,7 @@ class QSeis2dGFBuilder(gf.builder.Builder):
         conf_s = copy.deepcopy(self.qseis_s_config)
         conf_r = copy.deepcopy(self.qseis_r_config)
 
-        gf_directory = op.abspath(self.qseis_baseconf.gf_directory)
+        gf_directory = self.qseis_baseconf.gf_directory
 
         fk_path = op.join(gf_directory, 'green_%.3fkm.fk' % source_depth)
         info_path = op.join(gf_directory, 'green_%.3fkm.info' % source_depth)
@@ -1146,9 +1159,54 @@ def init(store_dir, variant):
         store_dir, config=config, extra={'qseis2d': qseis2d})
 
 
+def _gf_directory(store_dir, conf):
+    return op.abspath(op.join(store_dir, conf.gf_directory))
+
+
+def _remove_greens_functions(store_dir):
+    store = gf.store.Store(store_dir)
+    gf_directory = _gf_directory(store_dir, store.get_extra('qseis2d'))
+
+    # only the files of this store's source depths, the directory may have
+    # been set to one shared with other stores
+    nremoved = 0
+    for depth in store.config.get_source_depths():
+        for ext in ('fk', 'info'):
+            fn = op.join(gf_directory, 'green_%.3fkm.%s' % (depth/km, ext))
+            if op.exists(fn):
+                os.unlink(fn)
+                nremoved += 1
+
+    try:
+        os.rmdir(gf_directory)
+    except OSError:
+        pass
+
+    return nremoved
+
+
 def build(store_dir, force=False, nworkers=None, continue_=False, step=None,
           iblock=None):
 
-    return QSeis2dGFBuilder.build(
+    keep = gf.store.Store(store_dir).get_extra('qseis2d') \
+        .keep_greens_functions
+
+    complete = step is None and iblock is None
+    if complete and not continue_ and not keep and (
+            force or not op.exists(op.join(store_dir, 'index'))):
+
+        # Files left over from earlier builds may have been computed with
+        # different settings. They would be reused without a check. With
+        # keep_greens_functions, reusing them is intended.
+        nremoved = _remove_greens_functions(store_dir)
+        if nremoved:
+            logger.info(
+                'Removed %i QSeisS wavefield files left over from an earlier '
+                'build.' % nremoved)
+
+    QSeis2dGFBuilder.build(
         store_dir, force=force, nworkers=nworkers, continue_=continue_,
         step=step, iblock=iblock)
+
+    if complete and not keep:
+        _remove_greens_functions(store_dir)

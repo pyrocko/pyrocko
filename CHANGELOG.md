@@ -94,10 +94,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Fomosto: temporary files of the modelling codes are now written to a `tmp`
   directory within the store being built, instead of the system's temporary
   directory, which is often small.
-- Fomosto: the intermediate Green's function files of QSSP are removed after
-  the store has been built, and files left over from an earlier, possibly
-  differently configured build are no longer reused. Experts can set
-  `keep_greens_functions: true` in `extra/qssp` to keep and reuse them.
+- Fomosto: the intermediate Green's function files of QSSP and QSeis2d are
+  removed after the store has been built, and files left over from an
+  earlier, possibly differently configured build are no longer reused.
+  Experts can set `keep_greens_functions: true` in `extra/qssp` or
+  `extra/qseis2d` to keep and reuse them. QSeis2d's files are now kept
+  within the store, instead of the directory `fomosto` was run from.
 - `squirrel jackseis`: chopped output traces are now clipped exactly to
   the requested time span, instead of being extended to the full
   processing block.
