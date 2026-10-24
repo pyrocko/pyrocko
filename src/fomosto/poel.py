@@ -521,9 +521,11 @@ class PoelGFBuilder(gf.builder.Builder):
 
         self.poel_config = self.store.get_extra('poel')
 
+        if tmp is None:
+            tmp = gf.builder.store_tmp_dir(store_dir)
+
         self.tmp = tmp
-        if self.tmp is not None:
-            util.ensuredir(self.tmp)
+        util.ensuredir(self.tmp)
 
     def cleanup(self):
         self.store.close()

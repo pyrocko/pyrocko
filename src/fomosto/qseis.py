@@ -861,9 +861,11 @@ class QSeisGFBuilder(gf.builder.Builder):
 
         self.qseis_config = conf
 
+        if tmp is None:
+            tmp = gf.builder.store_tmp_dir(store_dir)
+
         self.tmp = tmp
-        if self.tmp is not None:
-            util.ensuredir(self.tmp)
+        util.ensuredir(self.tmp)
 
     def cleanup(self):
         self.store.close()

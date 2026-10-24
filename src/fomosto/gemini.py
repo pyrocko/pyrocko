@@ -1141,6 +1141,9 @@ class GeminiGFBuilder(object):
         'acceleration': 'a'}
 
     def __init__(self, store_dir, force=False, tmp=None, keep_tmp=False):
+        if tmp is None:
+            tmp = gf.builder.store_tmp_dir(store_dir)
+
         self.store_dir = store_dir
         self.force = force
         self.tmp = tmp
@@ -1477,6 +1480,7 @@ class GeminiGFBuilder(object):
         # output file per slot exists. Step 2 jobs have precedence over step
         # 1 jobs, to keep the number of unprocessed basis solutions low.
         async with runner.slot(priority=0):
+            util.ensuredir(self.tmp)
             with _Tempdir(
                     'geminirun-', dir=self.tmp, keep=self.keep_tmp) as rundir:
 
@@ -1781,6 +1785,7 @@ def build(
 
     if iblock is None:
         os.remove(status_fn)
+        gf.builder.remove_store_tmp_dir(store_dir)
 
 
 def init(store_dir, variant, config_params=None, earthmodel=None):

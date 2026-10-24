@@ -1478,6 +1478,12 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
         gf.builder.Builder.__init__(
             self, storeconf, step, block_size=block_size, force=force)
 
+        if tmp is None:
+            tmp = gf.builder.store_tmp_dir(store_dir)
+
+        self.tmp = tmp
+        util.ensuredir(self.tmp)
+
         baseconf = self.store.get_extra('psgrn_pscmp')
 
         cg = PsGrnConfigFull(**baseconf.psgrn_config.items())
@@ -1589,7 +1595,7 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
                 n_steps=len(distances),
                 distances=distances)
 
-            runner = PsCmpRunner(keep_tmp=False)
+            runner = PsCmpRunner(tmp=self.tmp, keep_tmp=False)
 
             mtsize = float(dx * cc.rectangular_fault_size_factor)
 

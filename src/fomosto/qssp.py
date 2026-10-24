@@ -888,9 +888,11 @@ class QSSPGFBuilder(gf.builder.Builder):
         self.tstart = shared['tstart']
         conf.time_window = shared['time_window']
 
+        if tmp is None:
+            tmp = gf.builder.store_tmp_dir(store_dir)
+
         self.tmp = tmp
-        if self.tmp is not None:
-            util.ensuredir(self.tmp)
+        util.ensuredir(self.tmp)
 
         util.ensuredir(conf.gf_directory)
 

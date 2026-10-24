@@ -31,6 +31,28 @@ class Interrupted(store.StoreError):
 g_builders = {}
 
 
+def store_tmp_dir(store_dir):
+    '''
+    Get directory for the temporary files of a store's modelling code runs.
+
+    The temporary files are kept within the store, so that they need no space
+    on the (often small) system temporary file system.
+    '''
+
+    return os.path.abspath(pjoin(store_dir, 'tmp'))
+
+
+def remove_store_tmp_dir(store_dir):
+    '''
+    Remove a store's temporary directory, if it is empty.
+    '''
+
+    try:
+        os.rmdir(store_tmp_dir(store_dir))
+    except OSError:
+        pass
+
+
 def work_block(args):
     # previously this was a implemented as a classmethod __work_block but it
     # caused problems on Conda Python 3.8 on OSX.
@@ -198,6 +220,8 @@ class Builder(object):
                 signal.signal(signal.SIGINT, original)
 
         os.remove(status_fn)
+        if iblock is None:
+            remove_store_tmp_dir(store_dir)
 
 
 __all__ = ['Builder']

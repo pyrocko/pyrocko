@@ -94,6 +94,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   built before this change keep the old behaviour; rebuild them to get the
   corrected Green's functions. Stores from different backends now agree in
   timing, e.g. with the new `gemini` backend.
+- Fomosto: temporary files of the modelling codes are now written to a `tmp`
+  directory within the store being built, instead of the system's temporary
+  directory, which is often small.
 - `squirrel jackseis`: chopped output traces are now clipped exactly to
   the requested time span, instead of being extended to the full
   processing block.
