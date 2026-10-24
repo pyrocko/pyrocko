@@ -97,6 +97,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Fomosto: temporary files of the modelling codes are now written to a `tmp`
   directory within the store being built, instead of the system's temporary
   directory, which is often small.
+- Fomosto: revised command line interface, with clearer help texts and
+  messages, in the style of the `squirrel` tool.
 - Fomosto: the intermediate Green's function files of QSSP and QSeis2d are
   removed after the store has been built, and files left over from an
   earlier, possibly differently configured build are no longer reused.

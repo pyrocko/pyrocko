@@ -42,7 +42,8 @@ class FomostoTestCase(unittest.TestCase):
             with common.chdir('my_gfs'):
                 common.call_assert_usage('fomosto', '--help')
                 common.call_assert_usage('fomosto', 'help')
-                common.call_assert_usage('fomosto', 'init')
+                common.call_assert_usage('fomosto', 'help', 'init')
+                common.call_assert_usage('fomosto', 'build', '--help')
                 fomosto('ttt')
                 fomosto('build', '--nworkers=2')
                 fomosto('stats')

@@ -37,7 +37,7 @@ Invocation and online help
 --------------------------
 
 Fomosto is a command line program. A brief help overview is shown, when it is
-started without any arguments.
+started without any arguments or with ``--help``.
 
 .. application:: fomosto
 
@@ -47,40 +47,47 @@ started without any arguments.
 
 ::
 
-    $ fomosto
-    Usage: fomosto <subcommand> <arguments> ... [options]
+    $ fomosto --help
+    usage: fomosto [--help] SUBCOMMAND ...
+
+    [...]
 
     Subcommands:
+      SUBCOMMAND
+        init                Create a new empty GF store.
+        build               Compute GFs and fill into store.
+        stats               Print information about a GF store.
+        check               Check for problems in GF store.
+        decimate            Build decimated variant of a GF store.
+        redeploy            Copy traces from one GF store into another.
+        view                View selected traces.
+        extract             Extract selected traces.
+        import              Convert Kiwi GFDB to GF store format.
+        export              Convert GF store to Kiwi GFDB format.
+        ttt                 Create travel time tables.
+        tttview             Plot travel time table.
+        tttextract          Extract selected travel times.
+        tttlsd              Fix holes in travel time tables.
+        sat                 Create stored ray attribute table.
+        satview             Plot stored ray attribute table.
+        server              Run seismosizer server.
+        download            Download GF store from a server.
+        modelview           Plot earth models.
+        upgrade             Upgrade store format to latest version.
+        addref              Import citation references to GF store config.
+        qc                  Check GF store for missing data and metadata.
+        report              Create reports for Green's function databases.
+        trans2rot           Create rotational from translational store.
+        fd2trans            Extract elastic10 from elastic10_fd store.
 
-        init          create a new empty GF store
-        build         compute GFs and fill into store
-        stats         print information about a GF store
-        check         check for problems in GF store
-        decimate      build decimated variant of a GF store
-        redeploy      copy traces from one GF store into another
-        view          view selected traces
-        extract       extract selected traces
-        import        convert Kiwi GFDB to GF store format
-        export        convert GF store to Kiwi GFDB format
-        ttt           create travel time tables
-        tttview       plot travel time table
-        tttextract    extract selected travel times',
-        server        run seismosizer server,
-        download      download GF store from a server,
-        modelview     plot earthmodels,
-        upgrade       upgrade store format to latest version,
-        addref        import citation references to GF store config,
-        qc            quality check,
-        report        report for Green's function databases,
+To get further help and a list of available options for any subcommand run::
 
-    To get further help and a list of available options for any subcommand run:
-
-        fomosto <subcommand> --help
+    fomosto SUBCOMMAND --help
 
 The first argument selects the subcommand. All other arguments and options are
-dependant on the subcommand. Options start with a double dash, as in
-``--option``. If an option takes an argument, it must immediatly follow the
-option, as in ``--option=argument``.
+dependent on the subcommand. Options start with a double dash, as in
+``--option``. If an option takes an argument, it follows the option, as in
+``--option=argument`` or ``--option argument``.
 
 Creating a new Green's function store
 -------------------------------------
