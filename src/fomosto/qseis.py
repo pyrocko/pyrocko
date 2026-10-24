@@ -291,14 +291,14 @@ class QSeisConfigFull(QSeisConfig):
             if self.source_disk_radius is not None:
                 raise QSeisError(
                     'This version of QSEIS does not support the '
-                    '`source_disk_radius` parameter.')
+                    '"source_disk_radius" parameter.')
 
             d['str_source_disk_radius'] = ''
 
         if self.propagation_filters and ref_depth != 0.0:
             raise QSeisError(
                 'Earth model must start with zero depth if '
-                'propagation_filters are set.')
+                '"propagation_filters" are set.')
 
         d['n_depth_ranges'], d['str_depth_ranges'] = \
             aggregate(self.propagation_filters)
@@ -673,7 +673,7 @@ class QSeisRunner(object):
             except OSError:
                 os.chdir(old_wd)
                 raise QSeisError(
-                    '''could not start qseis executable: "%s"
+                    '''Could not start QSEIS executable "%s".
 Available fomosto backends and download links to the modelling codes are listed
 on
 
@@ -695,17 +695,17 @@ on
         errmess = []
         if proc.returncode != 0:
             errmess.append(
-                'qseis had a non-zero exit state: %i' % proc.returncode)
+                'QSEIS had a non-zero exit state (%i).' % proc.returncode)
 
         if error_str:
             logger.warning(
-                'qseis emitted something via stderr:\n\n%s'
+                'QSEIS emitted something via stderr:\n\n%s'
                 % error_str.decode())
 
             # errmess.append('qseis emitted something via stderr')
 
         if output_str.lower().find(b'error') != -1:
-            errmess.append("the string 'error' appeared in qseis output")
+            errmess.append('The string "error" appeared in QSEIS output.')
 
         if errmess:
             self.keep_tmp = True
@@ -719,8 +719,7 @@ on
 ===== begin qseis error =====
 %s===== end qseis error =====
 %s
-qseis has been invoked as "%s"
-in the directory %s'''.lstrip() % (
+QSEIS has been invoked as "%s" in directory "%s".'''.lstrip() % (
                 input_str.decode(), output_str.decode(), error_str.decode(),
                 '\n'.join(errmess), program, self.tempdir))
 
@@ -742,7 +741,7 @@ in the directory %s'''.lstrip() % (
                 for fn in self.config.gf_filenames for c in qseis_components]
         else:
             raise Exception(
-                'get_traces: which argument should be "seis" or "gf"')
+                'Argument "which" of get_traces must be "seis" or "gf".')
 
         traces = []
         distances = self.config.receiver_distances
@@ -792,7 +791,7 @@ in the directory %s'''.lstrip() % (
                 self.tempdir = None
             else:
                 logger.warning(
-                    'not removing temporary directory: %s' % self.tempdir)
+                    'Not removing temporary directory: %s' % self.tempdir)
 
 
 def in_array_almost_equal(x, arr, eps):
@@ -882,7 +881,7 @@ class QSeisGFBuilder(gf.builder.Builder):
 
         conf = copy.deepcopy(self.qseis_config)
 
-        logger.info('Starting block %i / %i' %
+        logger.info('Starting block %i / %i...' %
                     (index+1, self.nblocks))
 
         conf.source_depth = float(sz/km)
@@ -922,7 +921,8 @@ class QSeisGFBuilder(gf.builder.Builder):
                     vss=num.interp(rz, self.depth_profile, self.vs_profile))
             except ValueError:
                 raise ValueError(
-                    'Depth value %f outside interpolation range' % rz)
+                    'Depth %g km is outside of the interpolation range.'
+                    % (rz / km))
         else:
             dv_to_pressure_factor = +1
 
@@ -1042,8 +1042,8 @@ class QSeisGFBuilder(gf.builder.Builder):
 
                         if None in (tmin, tmax):
                             self.warn(
-                                'Failed cutting {} traces. ' +
-                                'Failed to determine time window')
+                                'Could not determine cut time window for {} '
+                                'traces.')
                             continue
 
                         tr.chop(tmin, tmax)
@@ -1060,9 +1060,9 @@ class QSeisGFBuilder(gf.builder.Builder):
 
                         if not (ta <= tb and tb <= tc and tc <= td):
                             raise QSeisError(
-                                'invalid fade configuration '
-                                '(it should be (ta <= tb <= tc <= td) but '
-                                'ta=%g, tb=%g, tc=%g, td=%g)' % (
+                                'Invalid fade configuration, it should be '
+                                '(ta <= tb <= tc <= td) but ta=%g, tb=%g, '
+                                'tc=%g, td=%g.' % (
                                     ta, tb, tc, td))
 
                         t = tr.get_xdata()
@@ -1099,7 +1099,7 @@ class QSeisGFBuilder(gf.builder.Builder):
                     try:
                         self.store.put(args, gf_tr)
                     except gf.store.DuplicateInsert:
-                        self.warn('{} insertions_skipped (duplicates)')
+                        self.warn('Skipped {} duplicate insertions.')
 
             finally:
                 self.log_warnings(index+1, logger)
@@ -1111,7 +1111,7 @@ class QSeisGFBuilder(gf.builder.Builder):
 
             conf.gf_sw_source_types = (0, 0, 0, 0, 0, 0)
 
-        logger.info('Done with block %i / %i' %
+        logger.info('Done with block %i / %i.' %
                     (index+1, self.nblocks))
 
 

@@ -54,11 +54,11 @@ def check_variant(name, variant, variants):
 
     if variant is None:
         raise StoreError(
-            'the variant of backend "%s" must be given, use one of: %s'
+            'The variant of backend "%s" must be given, use one of: %s'
             % (name, format_variants(name, variants)))
     else:
         raise StoreError(
-            'unsupported variant "%s" of backend "%s", use one of: %s'
+            'Unsupported variant "%s" of backend "%s", use one of: %s'
             % (variant, name, format_variants(name, variants)))
 
 

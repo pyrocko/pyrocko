@@ -115,7 +115,7 @@ class Builder(object):
 
     def log_warnings(self, index, logger):
         for warning, noccur in self.warnings.items():
-            msg = 'block {}: ' + warning
+            msg = 'Block {}: ' + warning
             logger.warning(msg.format(index, noccur))
 
         self.warnings = defaultdict(int)
@@ -145,7 +145,7 @@ class Builder(object):
             steps = [step]
 
         if iblock is not None and step is None and cls.nsteps != 1:
-            raise store.StoreError('--step option must be given')
+            raise store.StoreError('Option "--step" must be given.')
 
         done = set()
         status_fn = pjoin(store_dir, '.status')
@@ -164,13 +164,13 @@ class Builder(object):
                             for line in status:
                                 done.add(tuple(int(x) for x in line.split()))
                     except IOError:
-                        raise store.StoreError('nothing to continue')
+                        raise store.StoreError('Nothing to continue.')
 
         shared = {}
         for step in steps:
             builder = cls(store_dir, step, shared, force=force)
             if not (0 <= step < builder.nsteps):
-                raise store.StoreError('invalid step: %i' % (step+1))
+                raise store.StoreError('Invalid step: %i' % (step+1))
 
             if iblock in (None, -1):
                 iblocks = [x for x in builder.all_block_indices()
@@ -178,7 +178,7 @@ class Builder(object):
             else:
                 if not (0 <= iblock < builder.nblocks):
                     raise store.StoreError(
-                        'invalid block index %i' % (iblock+1))
+                        'Invalid block index: %i' % (iblock+1))
 
                 iblocks = [iblock]
 

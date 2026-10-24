@@ -210,7 +210,7 @@ class GeminiModel(object):
             iline = state['iline']
             if iline >= len(lines):
                 raise GeminiError(
-                    'GEMINI earth model: unexpected end of input')
+                    'Unexpected end of input in GEMINI earth model.')
 
             state['iline'] += 1
             return lines[iline]
@@ -224,7 +224,7 @@ class GeminiModel(object):
                 return _fortran_floats(values[:n])
             except ValueError:
                 raise GeminiError(
-                    'GEMINI earth model: invalid number in line %i'
+                    'Invalid number in line %i of GEMINI earth model.'
                     % state['iline'])
 
         comments = []
@@ -241,9 +241,9 @@ class GeminiModel(object):
             ncoefs = [int(line[2*i:2*i+2]) for i in range(nlayers)]
         except ValueError:
             raise GeminiError(
-                'GEMINI earth model: cannot read number of layers or number '
-                'of polynomial coefficients (fixed format 2 columns per '
-                'value)')
+                'Cannot read number of layers or number of polynomial '
+                'coefficients of GEMINI earth model (fixed format, 2 columns '
+                'per value).')
 
         reference_frequency, = read_values(1)
         ifanis, = read_values(1)
@@ -310,31 +310,31 @@ class GeminiModel(object):
 
     def validate(self, nlayers_max=gemini_nlayer):
         if len(self.layers) == 0:
-            raise GeminiError('GEMINI earth model has no layers')
+            raise GeminiError('GEMINI earth model has no layers.')
 
         if len(self.layers) > nlayers_max:
             raise GeminiError(
                 'GEMINI earth model has %i layers, GEMINI supports at most '
-                '%i' % (len(self.layers), nlayers_max))
+                '%i.' % (len(self.layers), nlayers_max))
 
         if self.layers[0].r_bottom != 0.0:
             raise GeminiError(
-                'GEMINI earth model must extend to the centre of the earth')
+                'GEMINI earth model must extend to the centre of the earth.')
 
         for layer in self.layers:
             if not (1 <= layer.coefs.shape[0] <= gemini_ncoefs):
                 raise GeminiError(
                     'GEMINI earth model layers must have 1 to %i polynomial '
-                    'coefficients' % gemini_ncoefs)
+                    'coefficients.' % gemini_ncoefs)
 
         radii = [layer.r_bottom for layer in self.layers] + [self.r_surface]
         if any(r2 <= r1 for (r1, r2) in zip(radii[:-1], radii[1:])):
             raise GeminiError(
-                'GEMINI earth model layer radii must be increasing')
+                'GEMINI earth model layer radii must be increasing.')
 
         if self.layers[-1].is_fluid:
             raise GeminiError(
-                'GEMINI does not support a fluid top layer (ocean)')
+                'GEMINI does not support a fluid top layer (ocean).')
 
     def layer_bounds(self):
         radii = [layer.r_bottom for layer in self.layers] + [self.r_surface]
@@ -394,7 +394,7 @@ class GeminiModel(object):
 
         Discontinuities are named, as needed for standard phase definitions,
         if they are roughly at the expected depth (see
-        :py:data:`discontinuity_depth_ranges`): the top of a fluid layer is
+        ``discontinuity_depth_ranges``): the top of a fluid layer is
         named ``cmb``, its bottom ``icb``, and the shallowest discontinuity
         with a P-wave velocity increasing across 7.5 km/s is named ``moho``.
         '''
@@ -475,21 +475,21 @@ class GeminiModel(object):
             layer for layer in mod.layers() if layer.zbot > layer.ztop]
 
         if not sublayers:
-            raise GeminiError('cannot convert empty earth model')
+            raise GeminiError('Cannot convert empty earth model.')
 
         r_surface = cake.earthradius / km
         # cake models usually stop 1 m above the centre
         if abs(sublayers[-1].zbot / km - r_surface) > 0.1:
             raise GeminiError(
-                'earth model must extend to the centre of the earth (to a '
-                'depth of %g km) to be used with GEMINI' % r_surface)
+                'Earth model must extend to the centre of the earth (to a '
+                'depth of %g km) to be used with GEMINI.' % r_surface)
 
         if sublayers[0].ztop != 0.0:
-            raise GeminiError('earth model must start at the surface')
+            raise GeminiError('Earth model must start at the surface.')
 
         if sublayers[0].mtop.vs == 0.0:
             raise GeminiError(
-                'GEMINI does not support a fluid top layer (ocean)')
+                'GEMINI does not support a fluid top layer (ocean).')
 
         # Group the cake layers into parts between discontinuities.
         parts = []
@@ -502,8 +502,8 @@ class GeminiModel(object):
 
         if len(parts) > nlayers_max:
             raise GeminiError(
-                'earth model has %i discontinuities, more than GEMINI\'s '
-                'limit of %i layers' % (len(parts)-1, nlayers_max))
+                'Earth model has %i discontinuities, more than GEMINI\'s '
+                'limit of %i layers.' % (len(parts)-1, nlayers_max))
 
         fits = [cls._fit_part(
             part, r_surface, rtol_velocity, rtol_q, nsamples_per_layer)
@@ -534,7 +534,7 @@ class GeminiModel(object):
             logger.warning(
                 'GEMINI earth model approximation exceeds tolerances by a '
                 'factor of %g, consider increasing the number of layers or '
-                'the tolerances' % misfit)
+                'the tolerances.' % misfit)
 
         layers = [fit['layer'] for fit in fits[::-1]]
         layers[0].r_bottom = 0.0
@@ -784,11 +784,11 @@ def _cmt_lines(m6_use, depth):
 
     lat, lon = 90.0, 0.0
     if depth > 9999.9:
-        raise GeminiError('source depth too large for CMT file format')
+        raise GeminiError('Source depth too large for CMT file format.')
 
     for v in m6_use:
         if abs(v) >= 1000.:
-            raise GeminiError('moment tensor too large for CMT file format')
+            raise GeminiError('Moment tensor too large for CMT file format.')
 
     return [
         '%-8s %2s/%2s/%2s %2s:%2s:%4.1f%7.2f%8.2f%6.1f%3.1f%3.1f%-24s' % (
@@ -876,7 +876,7 @@ def _read_seismogr(fn, nreceivers):
             iline += 2 + nsamples
 
     except (IndexError, ValueError, AssertionError):
-        raise GeminiError('could not read Totido output file "%s"' % fn)
+        raise GeminiError('Could not read Totido output file: %s' % fn)
 
     return samprat, timeshift, data
 
@@ -927,6 +927,12 @@ class _Slots(object):
         self._free += 1
 
 
+_program_names = {
+    'gemini': 'Gemini',
+    'dispec': 'Dispec',
+    'totido': 'Totido'}
+
+
 class _Runner(object):
     '''
     Runs the GEMINI programs as asyncio subprocesses.
@@ -960,7 +966,7 @@ class _Runner(object):
             await asyncio.wait_for(proc.wait(), timeout)
         except asyncio.TimeoutError:
             logger.warning(
-                'Killing %s (pid %i), which did not terminate on SIGTERM.'
+                'Killing "%s" (pid %i), which did not terminate on SIGTERM.'
                 % (self._procs.get(proc, 'program'), proc.pid))
 
             try:
@@ -992,12 +998,12 @@ class _Runner(object):
                 start_new_session=True)
 
         except OSError as e:
-            raise GeminiError('''could not start %s executable: "%s" (%s)
+            raise GeminiError('''Could not start %s executable "%s" (%s).
 Available fomosto backends and download links to the modelling codes are listed
 on
 
       https://pyrocko.org/docs/current/apps/fomosto/backends.html
-''' % (program, exe, e))
+''' % (_program_names[program], exe, e))
 
         self._procs[proc] = exe
         if on_start:
@@ -1035,6 +1041,7 @@ on
             del self._procs[proc]
 
         output_str = ''.join(output)
+        name = _program_names[program]
         logger.debug(
             '===== begin %s output (%s) =====\n%s===== end %s output ====='
             % (program, cwd, output_str, program))
@@ -1042,22 +1049,22 @@ on
         errmess = []
         if proc.returncode != 0:
             errmess.append(
-                '%s had a non-zero exit state: %i'
-                % (program, proc.returncode))
+                '%s had a non-zero exit state (%i).'
+                % (name, proc.returncode))
 
         if any(line.startswith(('STOP', 'Fortran runtime error'))
                for line in error_str.splitlines()):
-            errmess.append('%s stopped with an error' % program)
+            errmess.append('%s stopped with an error.' % name)
 
         if output_str.find('An error occured') != -1:
             errmess.append(
-                "the string 'An error occured' appeared in %s output"
-                % program)
+                'The string "An error occured" appeared in %s output.'
+                % name)
 
         for fn in expected_outputs:
             if not os.path.exists(pjoin(cwd, fn)):
                 errmess.append(
-                    '%s did not produce output file "%s"' % (program, fn))
+                    '%s did not produce output file "%s".' % (name, fn))
 
         if errmess:
             raise GeminiError('''
@@ -1068,12 +1075,12 @@ on
 ===== begin %s error =====
 %s===== end %s error =====
 %s
-%s has been invoked as "%s" in directory "%s"'''.lstrip() % (
+%s has been invoked as "%s" in directory "%s".'''.lstrip() % (
                 program, input_str, program,
                 program, output_str, program,
                 program, error_str, program,
                 '\n'.join(errmess),
-                program, exe, cwd))
+                name, exe, cwd))
 
         return output_str
 
@@ -1118,7 +1125,7 @@ class _Tempdir(object):
     def __exit__(self, *args):
         if self.keep:
             logger.warning(
-                'not removing temporary directory: %s' % self.path)
+                'Not removing temporary directory: %s' % self.path)
         else:
             shutil.rmtree(self.path)
 
@@ -1165,34 +1172,34 @@ class GeminiGFBuilder(object):
 
         if conf.gemini_version is None:
             raise GeminiError(
-                'gemini_version must be set in extra/gemini, one of: %s'
-                % ', '.join(sorted(variants)))
+                '"gemini_version" must be set in "extra/gemini", use one of: '
+                '%s' % ', '.join(sorted(variants)))
 
         if conf.gemini_version not in program_bins:
             raise GeminiError(
-                'unsupported GEMINI version: %s' % conf.gemini_version)
+                'Unsupported GEMINI version: %s' % conf.gemini_version)
 
         if not isinstance(store_config, gf.meta.ConfigTypeA):
             raise GeminiError(
                 'GEMINI backend only supports stores of type A (receivers '
-                'at the surface)')
+                'at the surface).')
 
         if store_config.receiver_depth != 0.0:
             raise GeminiError(
                 'GEMINI only computes Green\'s functions for receivers at '
-                'the surface, receiver_depth must be 0')
+                'the surface, "receiver_depth" must be 0.')
 
         component_scheme = store_config.component_scheme
         stored_quantity = store_config.effective_stored_quantity
 
         if component_scheme not in ('elastic10', 'elastic8'):
             raise GeminiError(
-                'GEMINI backend does not support component scheme "%s"'
+                'GEMINI backend does not support component scheme "%s".'
                 % component_scheme)
 
         if stored_quantity not in self.seismogram_types:
             raise GeminiError(
-                'GEMINI backend does not support stored quantity "%s"'
+                'GEMINI backend does not support stored quantity "%s".'
                 % stored_quantity)
 
         self.seismogram_type = self.seismogram_types[stored_quantity]
@@ -1217,8 +1224,8 @@ class GeminiGFBuilder(object):
 
         if conf.earthmodel is None:
             logger.info(
-                'No GEMINI earth model given in extra/gemini, fitting it to '
-                'the store\'s earthmodel_1d.')
+                'No GEMINI earth model given in "extra/gemini", fitting it to '
+                'the store\'s "earthmodel_1d".')
 
             model = GeminiModel.from_cake(
                 store_config.earthmodel_1d, nlayers_max=conf.nlayers_max)
@@ -1228,11 +1235,11 @@ class GeminiGFBuilder(object):
             if dev > 0.02:
                 logger.warning(
                     'The isotropic approximation of the GEMINI earth model '
-                    'in extra/gemini deviates from the store\'s '
-                    'earthmodel_1d by up to %.1f%% (at %g km depth), which '
+                    'in "extra/gemini" deviates from the store\'s '
+                    '"earthmodel_1d" by up to %.1f%% (at %g km depth), which '
                     'is used for travel time tables. To fix, use the output '
                     'of\n\n    python -m pyrocko.fomosto.gemini gemini-to-nd '
-                    '%s\n\nas earthmodel_1d in the store\'s config, and run '
+                    '%s\n\nas "earthmodel_1d" in the store\'s config, and run '
                     '"fomosto ttt" again.'
                     % (dev*100., z/km,
                        pjoin(self.store_dir, 'extra', 'gemini')))
@@ -1248,7 +1255,7 @@ class GeminiGFBuilder(object):
 
         if conf.degree_taper_length > dispec_ntmx:
             raise GeminiError(
-                'degree_taper_length must be at most %i' % dispec_ntmx)
+                '"degree_taper_length" must be at most %i.' % dispec_ntmx)
 
         self._setup_timing()
 
@@ -1293,12 +1300,12 @@ class GeminiGFBuilder(object):
             nend = int(round(conf.frequency_max * tlen))
             if nend > nend_max:
                 raise GeminiError(
-                    'frequency_max (%g Hz) must be below the Nyquist '
-                    'frequency (%g Hz) of the store' % (
+                    '"frequency_max" (%g Hz) must be below the Nyquist '
+                    'frequency (%g Hz) of the store.' % (
                         conf.frequency_max, 0.5 / deltat))
 
         if nend < 1:
-            raise GeminiError('frequency_max is too low')
+            raise GeminiError('"frequency_max" is too low.')
 
         # Totido extends the spectrum to 2**n samples and zero-pads by
         # another factor 2**zero_padding, giving 2*nzh samples.
@@ -1308,14 +1315,14 @@ class GeminiGFBuilder(object):
 
         if nsamples > totido_nfmax:
             raise GeminiError(
-                'time window needs %i samples, Totido supports at most %i. '
-                'Reduce time_region or the store\'s sampling rate.' % (
+                'Time window needs %i samples, Totido supports at most %i. '
+                'Reduce "time_region" or the store\'s sampling rate.' % (
                     nsamples, totido_nfmax))
 
         if nend > dispec_nfr:
             raise GeminiError(
-                'calculation needs %i frequencies, Dispec supports at most '
-                '%i. Reduce time_region or frequency_max.'
+                'Calculation needs %i frequencies, Dispec supports at most '
+                '%i. Reduce "time_region" or "frequency_max".'
                 % (nend, dispec_nfr))
 
         self.tmin = tmin
@@ -1328,7 +1335,7 @@ class GeminiGFBuilder(object):
 
         logger.info(
             'GEMINI time window length: %g s, %i samples, starting at %g s, '
-            '%i frequencies up to %g Hz, damping time: %g s'
+            '%i frequencies up to %g Hz, damping time: %g s.'
             % (tlen, nsamples, tmin, nend, self.frequency_max,
                self.damping_time))
 
@@ -1395,7 +1402,7 @@ class GeminiGFBuilder(object):
     async def run_gemini(self, runner, depth, label):
         if self.have_basis(depth):
             logger.info(
-                '%s: skipping, basis solutions exist already' % label)
+                '%s: skipping, basis solutions exist already.' % label)
             return
 
         self.remove_basis(depth)
@@ -1404,7 +1411,7 @@ class GeminiGFBuilder(object):
 
         def on_start():
             tbeg[0] = tlast[0] = time.time()
-            logger.info('%s: starting Gemini' % label)
+            logger.info('%s: starting Gemini...' % label)
 
         def on_line(line):
             toks = line.split()
@@ -1415,7 +1422,7 @@ class GeminiGFBuilder(object):
                     return
 
                 tlast[0] = time.time()
-                logger.info('%s: Gemini at frequency %i / %i' % (
+                logger.info('%s: Gemini at frequency %i / %i.' % (
                     label, nw, self.nend))
 
         async with runner.slot(priority=1):
@@ -1436,7 +1443,7 @@ class GeminiGFBuilder(object):
                 with open(fn + '.signature', 'w') as f:
                     f.write(self.basis_signature(depth) + '\n')
 
-        logger.info('%s: done with Gemini, wallclock time: %.0f s' % (
+        logger.info('%s: done with Gemini, wallclock time: %.0f s.' % (
             label, time.time() - tbeg[0]))
 
     def dispec_input(self):
@@ -1510,11 +1517,11 @@ class GeminiGFBuilder(object):
         if abs(1.0 / samprat - deltat) > 1e-4 * deltat:
             raise GeminiError(
                 'Totido output sampling rate (%g Hz) does not match the '
-                'store\'s sampling rate (%g Hz)'
+                'store\'s sampling rate (%g Hz).'
                 % (samprat, self.store.config.sample_rate))
 
         if abs(timeshift - self.tmin) > 1e-3 * deltat + 1e-6 * abs(self.tmin):
-            raise GeminiError('Totido output has unexpected time shift')
+            raise GeminiError('Totido output has unexpected time shift.')
 
         factor = nm / cmt_moment
         traces = []
@@ -1541,8 +1548,8 @@ class GeminiGFBuilder(object):
 
         if not self.have_basis(depth):
             raise GeminiError(
-                'basis solutions for source depth %g km are missing, run '
-                'step 1 first' % (depth / km))
+                'Basis solutions for source depth %g km are missing, run '
+                'step 1 first.' % (depth / km))
 
         tbeg = []
 
@@ -1550,7 +1557,7 @@ class GeminiGFBuilder(object):
             # first of the programs of this block has been started
             if not tbeg:
                 tbeg.append(time.time())
-                logger.info('%s: starting Dispec/Totido' % label)
+                logger.info('%s: starting Dispec/Totido...' % label)
 
         results = await _gather(
             self.run_dispec_totido(runner, depth, distances, mt, on_start)
@@ -1558,7 +1565,7 @@ class GeminiGFBuilder(object):
 
         self.put_traces(depth, results)
 
-        logger.info('%s: done with Dispec/Totido, wallclock time: %.0f s' % (
+        logger.info('%s: done with Dispec/Totido, wallclock time: %.0f s.' % (
             label, time.time() - tbeg[0]))
 
     def put_traces(self, depth, results):
@@ -1594,15 +1601,15 @@ class GeminiGFBuilder(object):
 
         if skipped:
             logger.warning(
-                '%i traces not stored, cut timing could not be determined'
-                % skipped)
+                'Could not determine cut time window for %i traces, not '
+                'stored.' % skipped)
 
         if duplicate_inserts:
             logger.warning(
-                '%i insertions skipped (duplicates)' % duplicate_inserts)
+                'Skipped %i duplicate insertions.' % duplicate_inserts)
 
     def block_label(self, step, iblock):
-        return 'step %i / %i, block %i / %i' % (
+        return 'Step %i / %i, block %i / %i' % (
             step+1, self.nsteps, iblock+1, self.nblocks(step))
 
     async def run(self, runner, jobs, on_done, remove_basis=False):
@@ -1695,19 +1702,20 @@ def build(
     '''
     Build GF store with GEMINI.
 
-    Follows the conventions of :py:meth:`pyrocko.gf.builder.Builder.build`
-    regarding the ``continue_``, ``step`` and ``iblock`` arguments. Step 1
-    computes the basis solutions with ``Gemini`` (one block per source
-    depth), step 2 computes and stores the Green's functions with ``Dispec``
-    and ``Totido``. Without ``step``, both steps run as a pipeline.
+    Follows the conventions of the ``build`` method of
+    :py:class:`pyrocko.gf.builder.Builder` regarding the ``continue_``,
+    ``step`` and ``iblock`` arguments. Step 1 computes the basis solutions
+    with ``Gemini`` (one block per source depth), step 2 computes and stores
+    the Green's functions with ``Dispec`` and ``Totido``. Without ``step``,
+    both steps run as a pipeline.
     '''
 
     nsteps = GeminiGFBuilder.nsteps
     if step is not None and not (0 <= step < nsteps):
-        raise gf.store.StoreError('invalid step: %i' % (step+1))
+        raise gf.store.StoreError('Invalid step: %i' % (step+1))
 
     if iblock is not None and step is None:
-        raise gf.store.StoreError('--step option must be given')
+        raise gf.store.StoreError('Option "--step" must be given.')
 
     if not continue_ and iblock in (None, -1) and step in (None, 0):
         gf.store.Store.create_dependants(store_dir, force)
@@ -1724,7 +1732,7 @@ def build(
                     for line in status:
                         done.add(tuple(int(x) for x in line.split()))
             except IOError:
-                raise gf.store.StoreError('nothing to continue')
+                raise gf.store.StoreError('Nothing to continue.')
 
     builder = GeminiGFBuilder(store_dir, force=force)
     try:
@@ -1739,7 +1747,7 @@ def build(
             else:
                 if not (0 <= iblock < nblocks):
                     raise gf.store.StoreError(
-                        'invalid block index %i' % (iblock+1))
+                        'Invalid block index: %i' % (iblock+1))
 
                 jobs.append((istep, iblock))
 
@@ -1871,7 +1879,7 @@ def _load_gemini_model(fn):
         from pyrocko.guts import load_string
         conf = load_string(s)
         if conf.earthmodel is None:
-            raise GeminiError('no earthmodel given in "%s"' % fn)
+            raise GeminiError('No earth model given in file: %s' % fn)
 
         return conf.earthmodel
 
@@ -1883,52 +1891,69 @@ def main(args=None):
     Command line tool to convert earth models between formats.
     '''
 
-    import argparse
     import sys
+    from pyrocko.cli import PyrockoArgumentParser
 
-    parser = argparse.ArgumentParser(
+    def add_help(parser):
+        parser.add_argument(
+            '--help', '-h',
+            action='help',
+            help='Show this help message and exit.')
+
+    parser = PyrockoArgumentParser(
+        add_help=False,
         prog='python -m pyrocko.fomosto.gemini',
         description='Convert earth models between Pyrocko\'s .nd format and '
                     'GEMINI\'s native polynomial format.')
 
-    subparsers = parser.add_subparsers(dest='command', required=True)
+    add_help(parser)
+
+    subparsers = parser.add_subparsers(
+        dest='command', required=True, metavar='SUBCOMMAND',
+        title='Subcommands')
 
     p = subparsers.add_parser(
         'nd-to-gemini',
-        help='fit GEMINI model to layered earth model',
+        add_help=False,
+        help='Fit GEMINI model to layered earth model.',
         description='Approximate a layered earth model by polynomial layers '
-                    'for GEMINI. The result can be used as earthmodel in a '
-                    'store\'s extra/gemini file.')
+                    'for GEMINI. The result can be used as ``earthmodel`` in '
+                    'a store\'s ``extra/gemini`` file.')
 
     p.add_argument(
         'input', metavar='IN',
-        help='earth model in .nd format, or name of an earth model built '
-             'into Pyrocko, e.g. ak135-f-continental.m')
+        help='Earth model in ``.nd`` format, or name of an earth model '
+             'built into Pyrocko, e.g. ```ak135-f-continental.m```.')
 
     p.add_argument(
         'output', metavar='OUT', nargs='?',
-        help='output file (default: standard output)')
+        help='Output file. Default: standard output.')
 
     p.add_argument(
         '--nlayers-max', type=int, default=gemini_nlayer, metavar='N',
-        help='maximum number of layers (default: %(default)s)')
+        help='Maximum number of layers. Default: %(default)s.')
+
+    add_help(p)
 
     p = subparsers.add_parser(
         'gemini-to-nd',
-        help='get isotropic approximation of GEMINI model',
+        add_help=False,
+        help='Get isotropic approximation of GEMINI model.',
         description='Get the isotropic approximation of a, possibly '
-                    'transversely isotropic, GEMINI earth model in .nd '
-                    'format. The result can be used as earthmodel_1d in a '
-                    'store\'s config file.')
+                    'transversely isotropic, GEMINI earth model in ``.nd`` '
+                    'format. The result can be used as ``earthmodel_1d`` in a '
+                    'store\'s ``config`` file.')
 
     p.add_argument(
         'input', metavar='IN',
-        help='earth model in GEMINI\'s native format, or a store\'s '
-             'extra/gemini file')
+        help='Earth model in GEMINI\'s native format, or a store\'s '
+             '``extra/gemini`` file.')
 
     p.add_argument(
         'output', metavar='OUT', nargs='?',
-        help='output file (default: standard output)')
+        help='Output file. Default: standard output.')
+
+    add_help(p)
 
     args = parser.parse_args(args)
 
@@ -1940,7 +1965,7 @@ def main(args=None):
                 mod = cake.load_model(args.input)
             except ValueError:
                 raise GeminiError(
-                    'cannot read "%s" as earth model in .nd format'
+                    'Cannot read "%s" as earth model in .nd format.'
                     % args.input)
 
             s = GeminiModel.from_cake(

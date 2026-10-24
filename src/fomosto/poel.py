@@ -399,7 +399,7 @@ class PoelRunner(object):
             except OSError:
                 os.chdir(old_wd)
                 raise PoelError(
-                    '''could not start poel executable: "%s"
+                    '''Could not start POEL executable "%s".
 Available fomosto backends and download links to the modelling codes are listed
 on
 
@@ -425,11 +425,11 @@ on
         errmess = []
         if proc.returncode != 0:
             errmess.append(
-                'poel had a non-zero exit state: %i' % proc.returncode)
+                'POEL had a non-zero exit state (%i).' % proc.returncode)
         if poel_error:
-            errmess.append('poel emitted something via stderr')
+            errmess.append('POEL emitted something via stderr.')
         if poel_output.lower().find(b'error') != -1:
-            errmess.append("the string 'error' appeared in poel output")
+            errmess.append('The string "error" appeared in POEL output.')
 
         if errmess:
             self.keep_tmp = True
@@ -439,7 +439,7 @@ on
 ===== begin poel output =====\n%s===== end poel output =====
 ===== begin poel error =====\n%s===== end poel error =====
 %s
-poel has been invoked as "%s"''' % (
+POEL has been invoked as "%s".''' % (
                     poel_input,
                     poel_output,
                     poel_error,
@@ -503,8 +503,8 @@ poel has been invoked as "%s"''' % (
                 shutil.rmtree(self.tempdir)
                 self.tempdir = None
             else:
-                logger.warn(
-                    'not removing temporary directory: %s' % self.tempdir)
+                logger.warning(
+                    'Not removing temporary directory: %s' % self.tempdir)
 
 
 class PoelGFBuilder(gf.builder.Builder):
@@ -531,7 +531,7 @@ class PoelGFBuilder(gf.builder.Builder):
         self.store.close()
 
     def work_block(self, index):
-        logger.info('Starting block %i / %i' % (index+1, self.nblocks))
+        logger.info('Starting block %i / %i...' % (index+1, self.nblocks))
 
         runner = PoelRunner(tmp=self.tmp)
 
@@ -576,7 +576,7 @@ class PoelGFBuilder(gf.builder.Builder):
 
         self.store.unlock()
 
-        logger.info('Done with block %i / %i' % (index+1, self.nblocks))
+        logger.info('Done with block %i / %i.' % (index+1, self.nblocks))
 
 
 def init(store_dir, variant):

@@ -4,7 +4,7 @@ import shutil
 from pyrocko import gf, guts, util
 
 
-logger = logging.getLogger('main')
+logger = logging.getLogger('pyrocko.fomosto.elastic10_fd_to_elastic10')
 
 
 def elastic10_fd_to_elastic10(
@@ -19,11 +19,12 @@ def elastic10_fd_to_elastic10(
 
     if source.config.component_scheme != 'elastic10_fd':
         _raise(
-            'Only `elastic10_fd` component scheme supported for input store.')
+            'Only component scheme "elastic10_fd" is supported for the input '
+            'store.')
 
     if source.config.short_type != 'A':
         _raise(
-            'Only type A stores supported for input store.')
+            'Only type A stores are supported as input store.')
 
     if not os.path.exists(dest_store_dir):
         config = guts.clone(source.config)
