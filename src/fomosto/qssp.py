@@ -186,6 +186,15 @@ class QSSPConfig(Object):
     nonzero_fade_in = Bool.T(default=False)
     nonzero_fade_out = Bool.T(default=False)
 
+    keep_greens_functions = Bool.T(
+        default=False,
+        optional=True,
+        help='Whether to keep the Green\'s function files computed by QSSP '
+             'in step 1 (in the store\'s ``qssp_green`` directory) after the '
+             'store has been built. Kept files are reused by later builds, '
+             'without checking whether they have been computed with the '
+             'current settings.')
+
     def items(self):
         return dict(self.T.inamevals(self))
 
@@ -1195,6 +1204,22 @@ def init(store_dir, variant, config_params=None):
         extra={'qssp': qssp})
 
 
+def _remove_greens_functions(store_dir):
+    gf_directory = pjoin(store_dir, 'qssp_green')
+    fns = glob.glob(pjoin(gf_directory, '?_GF_*')) \
+        + glob.glob(pjoin(gf_directory, '?_TEMP_*'))
+
+    for fn in fns:
+        os.unlink(fn)
+
+    try:
+        os.rmdir(gf_directory)
+    except OSError:
+        pass
+
+    return len(fns)
+
+
 def build(
         store_dir,
         force=False,
@@ -1203,9 +1228,26 @@ def build(
         step=None,
         iblock=None):
 
-    return QSSPGFBuilder.build(
+    keep = gf.store.Store(store_dir).get_extra('qssp').keep_greens_functions
+    complete = step is None and iblock is None
+    if complete and not continue_ and not keep and (
+            force or not os.path.exists(pjoin(store_dir, 'index'))):
+
+        # Files left over from earlier builds may have been computed with
+        # different settings. They would be reused without a check. With
+        # keep_greens_functions, reusing them is intended.
+        nremoved = _remove_greens_functions(store_dir)
+        if nremoved:
+            logger.info(
+                'Removed %i Green\'s function files left over from an earlier '
+                'build.' % nremoved)
+
+    QSSPGFBuilder.build(
         store_dir, force=force, nworkers=nworkers, continue_=continue_,
         step=step, iblock=iblock)
+
+    if complete and not keep:
+        _remove_greens_functions(store_dir)
 
 
 def get_conf(
