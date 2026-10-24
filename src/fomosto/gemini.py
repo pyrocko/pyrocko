@@ -1601,12 +1601,14 @@ class GeminiGFBuilder(object):
         return 'step %i / %i, block %i / %i' % (
             step+1, self.nsteps, iblock+1, self.nblocks(step))
 
-    async def run(self, runner, jobs, on_done):
+    async def run(self, runner, jobs, on_done, remove_basis=False):
         '''
         Run the given jobs, ``(step, iblock)`` pairs.
 
         Step 2 blocks wait for the step 1 block of their source depth, if it
-        is among the jobs.
+        is among the jobs. With ``remove_basis``, the basis solutions of a
+        source depth are removed when its step 2 jobs are done. This is only
+        safe if the jobs include all of its step 2 blocks not done yet.
         '''
 
         jobs = set(jobs)
@@ -1630,6 +1632,9 @@ class GeminiGFBuilder(object):
 
             await _gather(block(ib) for ib in iblocks)
 
+            if remove_basis:
+                self.remove_basis(depth)
+
         idepths = sorted(set(
             iblock if step == 0 else self.step2_block(iblock)[0]
             for (step, iblock) in jobs))
@@ -1637,7 +1642,7 @@ class GeminiGFBuilder(object):
         await _gather(depth_pipeline(idepth) for idepth in idepths)
 
 
-async def _build_async(builder, jobs, on_done, nworkers):
+async def _build_async(builder, jobs, on_done, nworkers, remove_basis):
     loop = asyncio.get_running_loop()
     main_task = asyncio.current_task()
     runner = _Runner(nworkers, program_bins[builder.conf.gemini_version])
@@ -1662,7 +1667,7 @@ async def _build_async(builder, jobs, on_done, nworkers):
         loop.add_signal_handler(signum, handler, signum)
 
     try:
-        await builder.run(runner, jobs, on_done)
+        await builder.run(runner, jobs, on_done, remove_basis)
 
     except asyncio.CancelledError:
         if received:
@@ -1753,10 +1758,15 @@ def build(
 
             done.add((istep, i))
 
+        remove_basis = step is None and iblock is None \
+            and not builder.conf.keep_basis_solutions
+
         asyncio.run(_build_async(
-            builder, jobs, on_done, nworkers or os.cpu_count() or 1))
+            builder, jobs, on_done, nworkers or os.cpu_count() or 1,
+            remove_basis))
 
         if step is None and iblock is None:
+            # basis solutions may be left over from interrupted builds
             if not builder.conf.keep_basis_solutions:
                 for depth in builder.depths():
                     builder.remove_basis(depth)
