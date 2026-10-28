@@ -23,27 +23,28 @@ All functions defined in this module return SI units (m, m/s, kg/m^3).
     doi: 10.1111/j.1365-246X.2011.04940.x."
 
 
-The model covers the following region with resolution of 0.5 x 0.5 degrees:
+The model covers the following region with resolution of 0.5 x 0.5 degrees::
 
-Extended Region:
-Latitude:   9 N - 89.5 N           ( original: 20 N - 89.5 N )
-Longitude: 56 W - 70 E             (          40 W - 70 E    )
+    Extended Region:
+    Latitude:   9 N - 89.5 N           ( original: 20 N - 89.5 N )
+    Longitude: 56 W - 70 E             (          40 W - 70 E    )
 
-Data is stored in: EPcrust_0_5.txt, where columns are:
+Data is stored in ``EPcrust_0_5.txt``, where columns are::
+
     LON   LAT   Topography   sediment_thickness   thickness_upper_crust
     thickness_lower_crust   VP_sediment   VP_upper_cruet   VP_lower_crust
     VS_sediment   VS_upper_crust   VS_lower_crust   RHO_sediment
     RHO_upper_crust RHO_lower_crust
 
-EPcrust is in 3 layer:
+EPcrust has 3 layers:
+
 - sediment
 - upper crust
 - lower crust
 
-EPcrust has an additional file with ice_thickness: Ice_thickness_0_5.txt
------
+EPcrust has an additional file with ice thickness: ``Ice_thickness_0_5.txt``.
 
-::
+Example::
 
     >>> from pyrocko.dataset import ep_crust
     >>> p = ep_crust.get_profile(10., 20.)
@@ -64,8 +65,7 @@ EPcrust has an additional file with ice_thickness: Ice_thickness_0_5.txt
      [  984.   984.  3640.  3640.  3856.  3856.]
      [ 2093.  2093.  2761.  2761.  2882.  2882.]]
 
-===============================================================================
-NOTE:
+.. note::
     EPcrust model has 3 layers and ice_thickness. To make this module similar
     to crust2x2, two more layers were added with default vp, vs, rho values
     (from crust2x2) for ice: 3810 1940 920 water: 1500 0 1020
