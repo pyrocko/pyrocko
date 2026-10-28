@@ -2616,83 +2616,52 @@ class LeapSecondsError(Exception):
     pass
 
 
-class LeapSecondsOutdated(LeapSecondsError):
-    pass
-
-
-class InvalidLeapSecondsFile(LeapSecondsOutdated):
-    pass
-
-
-def parse_leap_seconds_list(fn):
-    data = []
-    texpires = None
-    try:
-        t0 = int(round(str_to_time('1900-01-01 00:00:00')))
-    except TimeStrError:
-        t0 = int(round(str_to_time('1970-01-01 00:00:00'))) - 2208988800
-
-    tnow = int(round(time.time()))
-
-    if not op.exists(fn):
-        raise LeapSecondsOutdated('no leap seconds file found')
-
-    try:
-        with open(fn, 'rb') as f:
-            for line in f:
-                if line.strip().startswith(b'<!DOCTYPE'):
-                    raise InvalidLeapSecondsFile('invalid leap seconds file')
-
-                if line.startswith(b'#@'):
-                    texpires = int(line.split()[1]) + t0
-                elif line.startswith(b'#') or len(line) < 5:
-                    pass
-                else:
-                    toks = line.split()
-                    t = int(toks[0]) + t0
-                    nleap = int(toks[1]) - 10
-                    data.append((t, nleap))
-
-    except IOError:
-        raise LeapSecondsError('cannot read leap seconds file %s' % fn)
-
-    if texpires is None or tnow > texpires:
-        raise LeapSecondsOutdated('leap seconds list is outdated')
-
-    return data
+# Leap seconds as (t_utc, n) tuples, where t_utc is the system time [s] at
+# which the leap second takes effect and n is the number of leap seconds
+# inserted since 1972-01-01 (TAI - UTC - 10 s). Leap seconds have been
+# discontinued; this list is final.
+LEAP_SECONDS = (
+    (63072000, 0),  # 1972-01-01
+    (78796800, 1),  # 1972-07-01
+    (94694400, 2),  # 1973-01-01
+    (126230400, 3),  # 1974-01-01
+    (157766400, 4),  # 1975-01-01
+    (189302400, 5),  # 1976-01-01
+    (220924800, 6),  # 1977-01-01
+    (252460800, 7),  # 1978-01-01
+    (283996800, 8),  # 1979-01-01
+    (315532800, 9),  # 1980-01-01
+    (362793600, 10),  # 1981-07-01
+    (394329600, 11),  # 1982-07-01
+    (425865600, 12),  # 1983-07-01
+    (489024000, 13),  # 1985-07-01
+    (567993600, 14),  # 1988-01-01
+    (631152000, 15),  # 1990-01-01
+    (662688000, 16),  # 1991-01-01
+    (709948800, 17),  # 1992-07-01
+    (741484800, 18),  # 1993-07-01
+    (773020800, 19),  # 1994-07-01
+    (820454400, 20),  # 1996-01-01
+    (867715200, 21),  # 1997-07-01
+    (915148800, 22),  # 1999-01-01
+    (1136073600, 23),  # 2006-01-01
+    (1230768000, 24),  # 2009-01-01
+    (1341100800, 25),  # 2012-07-01
+    (1435708800, 26),  # 2015-07-01
+    (1483228800, 27),  # 2017-01-01
+)
 
 
 def read_leap_seconds2():
-    from pyrocko import config
-    conf = config.config()
-    fn = conf.leapseconds_path
-    url = conf.leapseconds_url
-    # check for outdated default URL
-    if url == 'http://www.ietf.org/timezones/data/leap-seconds.list':
-        url = 'https://www.ietf.org/timezones/data/leap-seconds.list'
-        logger.info(
-            'Leap seconds default URL is now: %s\nUsing new default.' % url)
+    '''
+    Get list of leap seconds.
 
-    if url == 'https://www.ietf.org/timezones/data/leap-seconds.list':
-        url = 'https://hpiers.obspm.fr/iers/bul/bulc/ntp/leap-seconds.list'
-        logger.info(
-            'Leap seconds default URL is now: %s\nUsing new default.' % url)
+    :returns: list of ``(t_utc, n)`` tuples, where ``t_utc`` is the system
+        time [s] at which the leap second takes effect and ``n`` is the
+        number of leap seconds inserted since 1972-01-01.
+    '''
 
-    for i in range(3):
-        try:
-            return parse_leap_seconds_list(fn)
-
-        except LeapSecondsOutdated:
-            try:
-                logger.info('updating leap seconds list...')
-                download_file(url, fn)
-
-            except Exception as e:
-                raise LeapSecondsError(
-                    'cannot download leap seconds list from %s to %s (%s)'
-                    % (url, fn, e))
-
-    raise LeapSecondsError('Could not retrieve/read leap seconds file.')
+    return list(LEAP_SECONDS)
 
 
 def gps_utc_offset(t_utc):

@@ -136,6 +136,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - QuakeML: events read from QuakeML are now named by the ID of the event
   instead of the ID of its origin, so the name stays the same when the
   event's location is revised.
+- The final list of leap seconds is now built in, so it is no longer
+  downloaded. The `leapseconds_path` and `leapseconds_url` config settings
+  are ignored.
 
 ### Fixed
 - Fomosto: the `qseis2d` backend was missing from the list of backends shown

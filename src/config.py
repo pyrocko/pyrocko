@@ -116,9 +116,11 @@ class PyrockoConfig(ConfigBase):
     colortables_dir = PathWithPlaceholders.T(
         default=os.path.join(pyrocko_dir_tmpl, 'colortables'))
     leapseconds_path = PathWithPlaceholders.T(
-        default=os.path.join(pyrocko_dir_tmpl, 'leap-seconds.list'))
+        optional=True,
+        help='Obsolete, ignored. Leap seconds are now built in.')
     leapseconds_url = String.T(
-        default='https://hpiers.obspm.fr/iers/bul/bulc/ntp/leap-seconds.list')
+        optional=True,
+        help='Obsolete, ignored. Leap seconds are now built in.')
     earthdata_credentials = Tuple.T(
         2, String.T(),
         optional=True)
@@ -159,7 +161,7 @@ def rec_expand(x):
                         rec_expand(ele)
         else:
             if isinstance(prop, PathWithPlaceholders.T):
-                newval = expand(val)
+                newval = expand(val) if val is not None else None
                 if newval != val:
                     setattr(x, prop.name, newval)
 
