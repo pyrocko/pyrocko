@@ -16,3 +16,12 @@ from ..station import *  # noqa
 AVAILABLE_TARGETS =\
     [WaveformGenerator, InSARGenerator,  # noqa
      GNSSCampaignGenerator]  # noqa
+
+__all__ = [  # noqa: F405
+    'TargetGenerator', 'NoiseGenerator',
+    'WaveformNoiseGenerator', 'WhiteNoiseGenerator', 'WaveformGenerator',
+    'ScenePatch', 'AtmosphericNoiseGenerator', 'InSARGenerator',
+    'GPSNoiseGenerator', 'GNSSCampaignGenerator',
+    'StationGenerator', 'ImportStationGenerator', 'CircleStationGenerator',
+    'RandomStationGenerator',
+    'AVAILABLE_TARGETS']
