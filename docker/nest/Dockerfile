@@ -19,7 +19,7 @@ RUN apt-get install -y \
     python3-geojson python3-pyqtgraph \
     python3-tornado \
     gmt gmt-gshhg poppler-utils imagemagick \
-    autoconf gfortran \
+    autoconf gfortran patch \
     && rm -f /usr/lib/python*/EXTERNALLY-MANAGED \
     && pip3 install --no-deps \
         utm git+https://github.com/pyrocko/kite
@@ -44,4 +44,6 @@ RUN mkdir -p /src \
     && cd /src && git clone https://git.pyrocko.org/pyrocko/fomosto-qssp.git \
     && cd fomosto-qssp && autoreconf -i && ./configure && make && make install \
     && cd /src && git clone https://git.pyrocko.org/pyrocko/fomosto-qssp2017.git \
-    && cd fomosto-qssp2017 && autoreconf -i && ./configure && make && make install
+    && cd fomosto-qssp2017 && autoreconf -i && ./configure && make && make install \
+    && cd /src && git clone https://git.pyrocko.org/pyrocko/fomosto-gemini.git \
+    && cd fomosto-gemini && autoreconf -i && ./configure && make && make install
