@@ -29,6 +29,7 @@ __pycache__/
 *.err_log
 .vagrant
 .idea
+.drone-token
 
 /test/example_run_dir/
 /test/example_run_dir_local/
