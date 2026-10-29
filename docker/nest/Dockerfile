@@ -20,9 +20,13 @@ RUN apt-get install -y \
     python3-tornado \
     gmt gmt-gshhg poppler-utils imagemagick \
     autoconf gfortran patch \
-    && rm -f /usr/lib/python*/EXTERNALLY-MANAGED \
-    && pip3 install --no-deps \
-        utm git+https://github.com/pyrocko/kite
+    && rm -f /usr/lib/python*/EXTERNALLY-MANAGED
+
+# pip 22.0 on ubuntu 22.04 lets system setuptools shadow the one in the
+# isolated build environment, which breaks the kite build:
+ARG base_image
+RUN { [ "$base_image" != "ubuntu:22.04" ] || pip3 install --upgrade pip ; } \
+    && pip3 install --no-deps utm git+https://github.com/pyrocko/kite
 
 # sparrow test is extremely slow on debian 11, use pip vtk there:
 ARG base_image
