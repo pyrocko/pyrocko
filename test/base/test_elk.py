@@ -28,15 +28,29 @@ class ElkTestCase(unittest.TestCase):
 
     def setUp(self):
         self.tempdir = tempfile.mkdtemp(prefix='pyrocko-elk')
+        # Cleanups run in reverse order, so this runs after all connections
+        # have been closed (open files cannot be removed on Windows).
+        self.addCleanup(shutil.rmtree, self.tempdir)
         self.t0 = util.str_to_time('2020-01-01 00:00:00')
 
-    def tearDown(self):
-        shutil.rmtree(self.tempdir)
+    def connect(self, name='events.elk'):
+        conn = elk.connect(os.path.join(self.tempdir, name))
+        self.addCleanup(conn.close)
+        return conn
 
     def make_db(self, name='events.elk'):
-        conn = elk.connect(os.path.join(self.tempdir, name))
+        conn = self.connect(name)
         elk.init_database(conn, 'main')
         return conn
+
+    def make_squirrel(self):
+        from pyrocko import squirrel
+        from pyrocko.squirrel import database as dbm
+
+        sq = squirrel.Squirrel(
+            database=os.path.join(self.tempdir, 'squirrel.sqlite'))
+        self.addCleanup(dbm.close_database, sq.get_database())
+        return sq
 
     def get_events(self, conn, **kwargs):
         return dict(
@@ -241,7 +255,7 @@ class ElkTestCase(unittest.TestCase):
             ids_old)
 
     def test_schema_check(self):
-        conn = elk.connect(os.path.join(self.tempdir, 'other.elk'))
+        conn = self.connect('other.elk')
         with self.assertRaises(elk.ElkError):
             elk.get_events(conn, 'main')
 
@@ -449,7 +463,6 @@ class ElkTestCase(unittest.TestCase):
             [('b', 6.0), ('a', 5.0)])
 
     def test_rtree_after_vacuum(self):
-        path = os.path.join(self.tempdir, 'events.elk')
         conn = self.make_db()
         events = self._random_events(500)
         elk.add_events(conn, 'main', events[:250])
@@ -461,7 +474,7 @@ class ElkTestCase(unittest.TestCase):
         conn.execute('VACUUM')
         conn.close()
 
-        conn = elk.connect(path)
+        conn = self.connect()
         n_rtree, = conn.execute(
             'SELECT COUNT(*) FROM events_rtree').fetchone()
         self.assertEqual(n_rtree, 500)
@@ -471,8 +484,6 @@ class ElkTestCase(unittest.TestCase):
         self.assertEqual(got, expected)
 
     def test_squirrel_largest_events(self):
-        from pyrocko import squirrel
-
         conn = self.make_db()
         elk.add_events(conn, 'main', [
             make_event('A', 'a%i' % i, self.t0 + i * 3600., magnitude=4. + i)
@@ -485,8 +496,7 @@ class ElkTestCase(unittest.TestCase):
                        magnitude=4.5 + i, lon=-170.)
             for i in range(3)], plain_path)
 
-        sq = squirrel.Squirrel(
-            database=os.path.join(self.tempdir, 'squirrel.sqlite'))
+        sq = self.make_squirrel()
         sq.add([os.path.join(self.tempdir, 'events.elk'), plain_path])
 
         self.assertEqual(
@@ -504,8 +514,6 @@ class ElkTestCase(unittest.TestCase):
             [6.5, 5.5, 4.5])
 
     def test_squirrel_event_groups(self):
-        from pyrocko import squirrel
-
         path = os.path.join(self.tempdir, 'events.elk')
         conn = self.make_db()
         self._add_grouped(conn, 4)
@@ -516,8 +524,7 @@ class ElkTestCase(unittest.TestCase):
             make_event('C', 'c%i' % i, self.t0 + i * 3600. + 1800.)
             for i in range(3)], plain_path)
 
-        sq = squirrel.Squirrel(
-            database=os.path.join(self.tempdir, 'squirrel.sqlite'))
+        sq = self.make_squirrel()
         sq.add([path, plain_path])
 
         sizes = []
