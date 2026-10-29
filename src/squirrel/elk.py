@@ -560,8 +560,9 @@ def _update_superseded(cursor, prefix, keys):
     Among all events with same catalog and catalog event ID, the most recent
     revision is current. Revisions are ordered by the modification time given
     by the catalog, if available for all of them, otherwise by the time they
-    have been added to the database. If there are several most recent
-    revisions, the oldest ID among them is used as reference for the others.
+    have been added to the database and then by their time-ordered IDs. If
+    there are several most recent revisions, the oldest ID among them is used
+    as reference for the others.
     '''
 
     for source, source_id in keys:
@@ -580,7 +581,11 @@ def _update_superseded(cursor, prefix, keys):
         if all(t_source is not None for (_, t_source, _) in rows):
             rows = [(elk_id, t_source) for (elk_id, t_source, _) in rows]
         else:
-            rows = [(elk_id, t_added) for (elk_id, _, t_added) in rows]
+            # Break ties by ID, e.g. when the clock resolution is too coarse
+            # to tell apart revisions added shortly after each other.
+            rows = [
+                (elk_id, (t_added, elk_id))
+                for (elk_id, _, t_added) in rows]
 
         tmax = max(t for (_, t) in rows)
         current = [elk_id for (elk_id, t) in rows if t == tmax]

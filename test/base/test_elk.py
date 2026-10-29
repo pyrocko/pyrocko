@@ -3,6 +3,7 @@ import shutil
 import tempfile
 import unittest
 import uuid
+from unittest import mock
 
 from pyrocko import util, model
 from pyrocko import moment_tensor as pmt
@@ -461,6 +462,19 @@ class ElkTestCase(unittest.TestCase):
         self.assertEqual(
             [(ev.extras['catalog_id'], ev.magnitude) for ev in evs],
             [('b', 6.0), ('a', 5.0)])
+
+    def test_superseded_same_time_created(self):
+        # With coarse clock resolution (Windows), revisions added shortly
+        # after each other get the same time_created.
+        conn = self.make_db()
+        with mock.patch.object(elk.time, 'time', return_value=self.t0):
+            elk.add_events(conn, 'main', [
+                make_event('A', 'a', self.t0, magnitude=7.0)])
+            elk.add_events(conn, 'main', [
+                make_event('A', 'a', self.t0, magnitude=5.0)])
+
+        evs = elk.get_events(conn, 'main')
+        self.assertEqual([ev.magnitude for ev in evs], [5.0])
 
     def test_rtree_after_vacuum(self):
         conn = self.make_db()
