@@ -14,6 +14,7 @@ import sqlite3
 import re
 import time
 import threading
+import warnings
 
 from pyrocko.io.io_common import FileLoadError
 from pyrocko import util
@@ -396,7 +397,7 @@ class Database(object):
             raise error.SquirrelError(
                 'Cannot connect to database: %s' % self._database_path)
 
-        self._conn.on_close(self.close)
+        self._conn.on_close(self.close_selections)
         self._conn.text_factory = str
 
         if log_statements:
@@ -408,13 +409,34 @@ class Database(object):
         connection_hook(self._conn)
 
     def __del__(self):
-        self.close()
+        self.close_selections()
 
-    def close(self):
+    def close_selections(self):
+        '''
+        Close all selections attached to this database.
+
+        This does not close the database connection. It is called
+        automatically right before the connection is closed, so that
+        selections can clean up while the connection is still usable. Use
+        :py:func:`close_database` to actually close the database.
+        '''
+
         for selection in self._selections[:]:
             selection.close()
 
         self._selections[:] = []
+
+    def close(self):
+        '''
+        Deprecated alias for :py:meth:`close_selections`.
+        '''
+
+        warnings.warn(
+            'Database.close() is deprecated, use Database.close_selections() '
+            'or close_database() instead.',
+            DeprecationWarning, stacklevel=2)
+
+        self.close_selections()
 
     def add_selection(self, selection):
         self._selections.append(selection)
