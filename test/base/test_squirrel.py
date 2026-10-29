@@ -15,6 +15,7 @@ import numpy as num
 
 from .. import common
 from pyrocko import squirrel, util, pile, io, trace, model as pmodel
+from pyrocko.squirrel import database as dbm
 from pyrocko import progress
 from pyrocko.parimap import parimap
 from pyrocko.client import fdsn
@@ -51,17 +52,9 @@ class SquirrelTestCase(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        for i in range(10):
-            try:
-                for d in cls.tempdirs:
-                    if os.path.exists(d):
-                        shutil.rmtree(d)
-
-                break
-
-            except Exception:
-                # trying to prevent random fails on windows
-                time.sleep(1)
+        for d in cls.tempdirs:
+            if os.path.exists(d):
+                shutil.rmtree(d)
 
     def test_nslce_codes(self):
 
@@ -230,6 +223,7 @@ class SquirrelTestCase(unittest.TestCase):
 
     def test_squirrel(self):
         db_path = os.path.join(self.tempdir, 'test.squirrel')
+        self.addCleanup(dbm.close_database, dbm.get_database(db_path))
         for kinds in [None, 'waveform', ['station', 'channel']]:
             for persistent in [None, 'my_selection1', 'my_selection2']:
                 sq = squirrel.Squirrel(database=db_path, persistent=persistent)
@@ -274,9 +268,6 @@ class SquirrelTestCase(unittest.TestCase):
                     sq._delete()
                 else:
                     del sq
-
-        from pyrocko.squirrel import database as dbm
-        dbm.close_database(db)
 
     def test_dig_undig(self):
         nuts = []
@@ -552,6 +543,7 @@ class SquirrelTestCase(unittest.TestCase):
         filldb = not os.path.exists(db_file_path)
 
         database = squirrel.Database(db_file_path)
+        self.addCleanup(dbm.close_database, database)
 
         bench = common.Benchmark('test_chop (%i x %i)' % (nt, ne))
 
@@ -774,6 +766,7 @@ class SquirrelTestCase(unittest.TestCase):
         if os.path.exists(db_file_path):
             os.unlink(db_file_path)
         database = squirrel.Database(db_file_path)
+        self.addCleanup(dbm.close_database, database)
         s = database.get_stats()
         assert s.nfiles == 0
         assert s.nnuts == 0
@@ -1255,7 +1248,9 @@ class SquirrelTestCase(unittest.TestCase):
 
         sq = squirrel.Squirrel(datadir, persistent='bla')
         sq.add(os.path.join(datadir, 'data'))
+        database = sq.get_database()
         sq.close()
+        dbm.close_database(database)
 
         try:
             work = [
@@ -1532,51 +1527,51 @@ def do_chopper(params):
     ijob, datadir, nfiles, nsamples, tmin, (group_by, mult) = params
 
     sq = squirrel.Squirrel(datadir, persistent='bla')
-    sq.add(os.path.join(datadir, 'data'))
-
-    ntr = 0
-    for tr in sq.get_waveforms(uncut=True):
-        ntr += 1
-        assert tr.data_len() == nsamples
-
-    assert ntr == nfiles
-
-    trs = sq.get_waveforms(tmin=tmin+10, tmax=tmin+200)
-    for tr in trs:
-        assert num.all(tr.get_ydata() == num.ones(190))
-
-    trs = sq.get_waveforms(tmin=tmin-100, tmax=tmin+100)
-    for tr in trs:
-        assert len(tr.get_ydata()) == 100
-
-    codes = sq.get_codes(kind='waveform')
-
-    s = 0
-    tinc = 122.
-    sq_tmin, sq_tmax = sq.get_time_span('waveform')
-    nbatches = 0
-    for batch in sq.chopper_waveforms(
-            tmin=None,
-            tmax=sq_tmax+1.,
-            tinc=tinc,
-            degap=False,
-            codes=codes,
-            group_by=group_by):
-
-        for tr in batch.traces:
-            s += num.sum(tr.ydata)
-
-        nbatches += 1
-
-    assert nbatches == int(math.ceil(nsamples * nfiles / tinc)) * mult
-
-    assert int(round(s)) == nfiles*nsamples
-
     database = sq.get_database()
-    del sq
+    try:
+        sq.add(os.path.join(datadir, 'data'))
 
-    from pyrocko.squirrel import database as dbm
-    dbm.close_database(database)
+        ntr = 0
+        for tr in sq.get_waveforms(uncut=True):
+            ntr += 1
+            assert tr.data_len() == nsamples
+
+        assert ntr == nfiles
+
+        trs = sq.get_waveforms(tmin=tmin+10, tmax=tmin+200)
+        for tr in trs:
+            assert num.all(tr.get_ydata() == num.ones(190))
+
+        trs = sq.get_waveforms(tmin=tmin-100, tmax=tmin+100)
+        for tr in trs:
+            assert len(tr.get_ydata()) == 100
+
+        codes = sq.get_codes(kind='waveform')
+
+        s = 0
+        tinc = 122.
+        sq_tmin, sq_tmax = sq.get_time_span('waveform')
+        nbatches = 0
+        for batch in sq.chopper_waveforms(
+                tmin=None,
+                tmax=sq_tmax+1.,
+                tinc=tinc,
+                degap=False,
+                codes=codes,
+                group_by=group_by):
+
+            for tr in batch.traces:
+                s += num.sum(tr.ydata)
+
+            nbatches += 1
+
+        assert nbatches == int(math.ceil(nsamples * nfiles / tinc)) * mult
+
+        assert int(round(s)) == nfiles*nsamples
+
+    finally:
+        del sq
+        dbm.close_database(database)
 
     return ijob
 
