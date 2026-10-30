@@ -1333,6 +1333,42 @@ steps:
     RSYNC_KEY:
       from_secret: rsync-key
 
+---
+
+kind: pipeline
+type: docker
+name: package-deb-ubuntu-26.04
+trigger:
+  branch:
+    exclude:  # special branches
+    - pip
+    - conda
+    - docs
+    - deploy-pip
+    - deploy-conda
+    - deploy-docs
+    - app
+
+steps:
+- name: build
+  image: pyrocko-build-deb-ubuntu-26.04
+  pull: never
+  commands:
+  - maintenance/deb/build.sh 1 ubuntu-26.04
+
+- name: stage
+  image: pyrocko-util
+  pull: never
+  commands:
+  - maintenance/drone-rsync.sh deb-packages-ubuntu-26.04 ${DRONE_COMMIT}/deb/ubuntu-26.04
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
+
 #---
 #
 #kind: pipeline
@@ -1390,6 +1426,7 @@ depends_on:
 - package-deb-debian-13
 - package-deb-ubuntu-22.04
 - package-deb-ubuntu-24.04
+- package-deb-ubuntu-26.04
 #- app-osx
 
 trigger:
