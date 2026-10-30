@@ -7,6 +7,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## Unreleased
 
 ### Added
+- New experimental features. Their interfaces may still change, and a
+  warning is shown when they are used:
+    - Processing pipelines ("mantras") on top of Squirrel: chain operators
+      like instrument response removal, rotation (ENZ, TRZ, LQT) or
+      spectrogram computation, configured in YAML files. Run them with the
+      new `squirrel mantra` command.
+    - Carpets: a new data type for multi-component data on a common time
+      axis, e.g. spectrograms, with its own file format (`.rug`) and
+      support in Squirrel.
+    - `squirrel spectrogram`: compute multi-resolution spectrograms of
+      large datasets and store them as carpets.
+    - `squirrel cascade`: pre-compute overviews of carpets, for fast
+      browsing of long datasets.
+    - Event databases: `squirrel catalog --out` collects events from
+      catalogs into a local database file, keeping track of revised
+      solutions. Such files can be added to Squirrel like other data.
+    - `squirrel service`: explore waveforms, spectrograms, metadata and
+      events of a dataset in the web browser, on a timeline and a map.
 - Support for Python 3.15.
 - Packages for Ubuntu 26.04.
 - Quick installation for trying out Pyrocko, with the new `pvc` installer:
