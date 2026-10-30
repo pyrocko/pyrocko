@@ -3280,8 +3280,7 @@ class Squirrel(Selection):
             'channel',
             'response',
             'waveform',
-            'waveform_promise',
-            'carpet']
+            'waveform_promise']
 
         coverages_all = []
         for kind in kinds:

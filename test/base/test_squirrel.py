@@ -1092,6 +1092,19 @@ class SquirrelTestCase(unittest.TestCase):
         responses = sq.get_responses(model='stationxml')
         assert len(responses) == 12
 
+    def test_rich_coverage(self):
+        database = squirrel.Database()
+        sq = squirrel.Squirrel(database=database)
+        sq.add([
+            common.test_data_file(fn) for fn in [
+                'grf-nuke-2017.mseed', 'grf-nuke-2017.stationxml']])
+
+        coverages = sq.get_rich_coverage()
+        codes = [str(coverage.codes) for coverage in coverages]
+        assert 'GR.GRA1..BHZ.' in codes
+        for coverage in coverages:
+            assert coverage.tmin <= coverage.tmax
+
     def test_events(self):
         fpath = common.test_data_file('events2.txt')
         database = squirrel.Database()
