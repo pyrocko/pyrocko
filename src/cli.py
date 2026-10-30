@@ -104,7 +104,9 @@ def _ansi_wrap(text, width, subsequent_indent=''):
     fragments = _ansi_sgr_re.split(text)
     codes = _ansi_sgr_re.findall(text)
     if not codes:
-        return textwrap.wrap(text, width, subsequent_indent=subsequent_indent)
+        return textwrap.wrap(
+            text, width, subsequent_indent=subsequent_indent,
+            break_on_hyphens=False)
 
     plain = ''.join(fragments)
 
@@ -121,7 +123,9 @@ def _ansi_wrap(text, width, subsequent_indent=''):
     spans = []
     cursor = 0
     for i, line in enumerate(
-            textwrap.wrap(plain, width, subsequent_indent=subsequent_indent)):
+            textwrap.wrap(
+                plain, width, subsequent_indent=subsequent_indent,
+                break_on_hyphens=False)):
 
         content = line[len(subsequent_indent):] if i > 0 else line
         start = plain.index(content, cursor)
@@ -197,7 +201,8 @@ def wrap_usage(s):
         if not line.startswith('usage:'):
             lines.append(line)
         else:
-            lines.extend(textwrap.wrap(line, 79, subsequent_indent=' '*24))
+            lines.extend(textwrap.wrap(
+                line, 79, subsequent_indent=' '*24, break_on_hyphens=False))
 
     return '\n'.join(lines)
 
