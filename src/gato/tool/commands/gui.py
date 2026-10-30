@@ -29,7 +29,7 @@ def setup(parser):
         dest='instant_close',
         default=False,
         action='store_true',
-        help='Close window without confimation.')
+        help='Close window without confirmation.')
 
     parser.add_squirrel_selection_arguments()
 

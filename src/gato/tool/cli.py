@@ -17,6 +17,18 @@ logger = logging.getLogger('gato.cli')
 
 g_program_name = 'gato'
 
+g_epilog_gato = '''
+
+
+----
+
+Manual: https://pyrocko.org/docs/current/apps/gato
+
+Data selection options: https://pyrocko.org/docs/current/apps/squirrel
+
+🐈
+'''
+
 
 def main(args=None):
     run(
@@ -31,7 +43,8 @@ This is ```gato```, a command-line front-end to the functionality of the
 generalized array toolkit.
 
 This tool's functionality is available through several subcommands. Run
-```gato SUBCOMMAND --help``` to get further help.''')
+```gato SUBCOMMAND --help``` to get further help.''',
+        epilog=g_epilog_gato)
 
 
 __all__ = [
