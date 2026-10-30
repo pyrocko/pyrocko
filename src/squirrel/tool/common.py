@@ -22,6 +22,21 @@ logger = logging.getLogger('psq.tool.common')
 help_time_format = 'Format: ```YYYY-MM-DD HH:MM:SS.FFF```, truncation allowed.'
 
 
+g_epilog_squirrel = '''
+
+
+----
+
+Manual: https://pyrocko.org/docs/current/apps/squirrel
+
+Tutorial: https://pyrocko.org/docs/current/apps/squirrel/tutorial.html
+
+Examples: https://pyrocko.org/docs/current/apps/squirrel/manual.html#examples
+
+🐿️
+'''
+
+
 class SquirrelArgumentParser(PyrockoArgumentParser):
     '''
     Parser for CLI arguments with a some extras for Squirrel based apps.
@@ -53,19 +68,11 @@ class SquirrelArgumentParser(PyrockoArgumentParser):
         self._have_query_arguments = False
         self._have_storage_scheme_arguments = False
 
-        kwargs['epilog'] = kwargs.get('epilog', '''
-
-
-----
-
-Manual: https://pyrocko.org/docs/current/apps/squirrel
-
-Tutorial: https://pyrocko.org/docs/current/apps/squirrel/tutorial.html
-
-Examples: https://pyrocko.org/docs/current/apps/squirrel/manual.html#examples
-
-🐿️
-''')
+        # Subcommand parsers inherit the epilog of their parent, unless set
+        # explicitly.
+        self._epilog_explicit = 'epilog' in kwargs
+        self._child_parsers = []
+        kwargs['epilog'] = kwargs.get('epilog', g_epilog_squirrel)
 
         kwargs['add_help'] = False
         PyrockoArgumentParser.__init__(self, *args, **kwargs)
@@ -96,6 +103,16 @@ Examples: https://pyrocko.org/docs/current/apps/squirrel/manual.html#examples
 
             mod.setup(subparser)
             subparser.set_defaults(target=mod.run, subparser=subparser)
+
+            if isinstance(subparser, SquirrelArgumentParser):
+                self._child_parsers.append(subparser)
+                subparser._inherit_epilog(self.epilog)
+
+    def _inherit_epilog(self, epilog):
+        if not self._epilog_explicit:
+            self.epilog = epilog
+            for child in self._child_parsers:
+                child._inherit_epilog(epilog)
 
     def parse_args(self, args=None, namespace=None):
         '''
