@@ -90,7 +90,7 @@ class CodesNSLCE(CodesNSLCEBase, Codes):
         elif nargs == 1 and isinstance(args[0], CodesNSL):
             t = (args[0].nsl) + ('*', '*')
         elif nargs == 1 and isinstance(args[0], CodesX):
-            t = ('*', '*', '*', '*', '*')
+            t = ('*', args[0].station_pattern, '*', '*', '*')
         elif safe_str is not None:
             t = safe_str.split('.')
         else:
@@ -224,7 +224,7 @@ class CodesNSL(CodesNSLBase, Codes):
         elif nargs == 1 and isinstance(args[0], CodesNSLCE):
             t = args[0].nsl
         elif nargs == 1 and isinstance(args[0], CodesX):
-            t = ('*', '*', '*')
+            t = ('*', args[0].station_pattern, '*')
         elif safe_str is not None:
             t = safe_str.split('.')
         else:
@@ -314,6 +314,14 @@ class CodesX(CodesXBase, Codes):
     @property
     def ns(self):
         return self[:2]
+
+    @property
+    def station_pattern(self):
+        '''
+        Station code pattern used when converting to channel or station
+        codes: the name, or ``'*'`` if the name is empty.
+        '''
+        return self.name or '*'
 
     def as_tuple(self):
         return tuple(self)

@@ -143,6 +143,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   are ignored.
 
 ### Fixed
+- Squirrel tools: `--codes` patterns of the forms `STA` and `NET.STA` now
+  work as documented. Before, `STA` matched everything and `NET.STA` failed.
 - Events now have zero elevation by default, like other locations. Before,
   some location computations failed for events, e.g. when used as grid nodes.
 - Fomosto: the `qseis2d` backend was missing from the list of backends shown

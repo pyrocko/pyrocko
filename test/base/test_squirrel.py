@@ -111,6 +111,30 @@ class SquirrelTestCase(unittest.TestCase):
 
         assert sta.codes is C('net.sta.loc.cha')
 
+    def test_codes_guess(self):
+        from pyrocko.squirrel.model import codes_patterns_for_kind, CHANNEL
+
+        C = squirrel.CodesNSLCE
+        available = [
+            C('GR.GRA1..BHZ.'), C('GR.GRA2..BHZ.'), C('GR.GRA1..BHZ.MS')]
+
+        def match(s):
+            patterns = codes_patterns_for_kind(
+                CHANNEL, squirrel.to_codes_guess(s))
+            return [
+                str(codes) for codes in available
+                if any(codes.matches(pattern) for pattern in patterns)]
+
+        assert match('GRA1') == ['GR.GRA1..BHZ.', 'GR.GRA1..BHZ.MS']
+        assert match('GR.GRA1') == ['GR.GRA1..BHZ.', 'GR.GRA1..BHZ.MS']
+        assert match('GR.GRA1.') == ['GR.GRA1..BHZ.', 'GR.GRA1..BHZ.MS']
+        assert match('GR.GRA1..BHZ') == ['GR.GRA1..BHZ.']
+        assert match('GR.GRA1..BHZ.*') == [
+            'GR.GRA1..BHZ.', 'GR.GRA1..BHZ.MS']
+
+        assert squirrel.to_codes_guess('cat') == squirrel.CodesX('cat')
+        assert C(squirrel.CodesX('')) == C('*.*.*.*.*')
+
     def test_detect(self):
         for (fn, format) in SquirrelTestCase.test_files:
             fpath = common.test_data_file(fn)

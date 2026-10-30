@@ -92,8 +92,13 @@ def to_codes(kind_id, obj):
 
 
 def to_codes_guess(s):
+    ndot = s.count('.')
+    if ndot == 1:
+        # NET.STA, any location
+        return CodesNSL(s + '.*')
+
     try:
-        return g_codes_classes_ndot[s.count('.')](s)
+        return g_codes_classes_ndot[ndot](s)
     except KeyError:
         raise CodesError('Cannot guess codes type: %s' % s)
 
