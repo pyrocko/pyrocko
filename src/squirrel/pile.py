@@ -420,7 +420,7 @@ class Pile(object):
         :param opengl: bool, whether to use opengl (default: ``False``)
         '''
 
-        from pyrocko.gui.snuffler import snuffle
+        from pyrocko.gui.snuffler.snuffler import snuffle
         snuffle(self, **kwargs)
 
     def add_file(self, mtf):
