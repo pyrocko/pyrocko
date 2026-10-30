@@ -202,7 +202,7 @@ class Event(Location):
 
     def __init__(
             self, lat=0., lon=0., north_shift=0., east_shift=0., time=0.,
-            name='', depth=None, elevation=None,
+            name='', depth=None, elevation=0.0,
             magnitude=None, magnitude_type=None, region=None, load=None,
             loadf=None, catalog=None, moment_tensor=None, duration=None,
             tags=None, extras=None):

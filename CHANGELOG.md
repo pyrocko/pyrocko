@@ -143,6 +143,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   are ignored.
 
 ### Fixed
+- Events now have zero elevation by default, like other locations. Before,
+  some location computations failed for events, e.g. when used as grid nodes.
 - Fomosto: the `qseis2d` backend was missing from the list of backends shown
   by `fomosto init`.
 - Fomosto `qseis2d` backend: fixed a crash when the slowness window is

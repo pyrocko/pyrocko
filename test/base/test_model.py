@@ -25,6 +25,21 @@ def near(a, b, eps):
 
 
 class ModelTestCase(unittest.TestCase):
+
+    def test_event_elevation_default(self):
+        # Like Location, Event defaults to zero elevation, while its depth
+        # may be unknown. Zero elevation is not written to YAML.
+        ev = model.Event(lat=1., lon=2.)
+        assert ev.elevation == 0.0
+        assert ev.depth is None
+        assert 'elevation' not in guts.dump(ev)
+
+        ev2 = guts.load(string=guts.dump(ev))
+        assert ev2.elevation == 0.0
+        assert ev2.depth is None
+
+        ev = model.Event(lat=1., lon=2., depth=1000.)
+        num.testing.assert_allclose(ev.coords5, [1., 2., 0., 0., 1000.])
     _tempdirs = []
 
     @classmethod
