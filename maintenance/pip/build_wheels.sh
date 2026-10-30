@@ -12,6 +12,7 @@ cp311-cp311
 cp312-cp312
 cp313-cp313
 cp314-cp314
+cp315-cp315
 "
 
 for pv in $pvs ; do

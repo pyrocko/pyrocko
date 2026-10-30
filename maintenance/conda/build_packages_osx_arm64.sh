@@ -40,3 +40,4 @@ conda-build --python 3.11 build
 conda-build --python 3.12 build
 conda-build --python 3.13 build
 conda-build --python 3.14 build
+conda-build --python 3.15 build

@@ -864,6 +864,7 @@ steps:
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py312
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py313
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py314
+  - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py315
 
   - conda create -y -n py310 python=3.10 m2-tar m2-gzip m2-patch setuptools pip numpy=1.21
   - conda run --no-capture-output -n py310 python -m pip wheel -v -w dist "--only-binary=:all:" .
@@ -879,6 +880,9 @@ steps:
 
   - conda create -y -n py314 python=3.14 m2-tar m2-gzip m2-patch setuptools pip numpy>2
   - conda run --no-capture-output -n py314 python -m pip wheel -v -w dist "--only-binary=:all:" .
+
+  - conda create -y -n py315 python=3.15 m2-tar m2-gzip m2-patch setuptools pip numpy>2
+  - conda run --no-capture-output -n py315 python -m pip wheel -v -w dist "--only-binary=:all:" .
 
 - name: upload-testing
   when:
@@ -917,6 +921,7 @@ steps:
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py312
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py313
   - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py314
+  - Remove-Item -Recurse -Force -ErrorAction Ignore C:\\Users\\IEUser\\miniconda3\\envs\\py315
 
 ---
 
@@ -937,6 +942,13 @@ platform:
   arch: arm64
 
 steps:
+- name: build-3.15
+  commands:
+  - mkdir -p wheels
+  - /usr/local/bin/python3.15 -m venv venv-3.15
+  - venv-3.15/bin/python -m pip install --upgrade pip
+  - venv-3.15/bin/python -m pip install wheel
+  - venv-3.15/bin/python -m pip wheel -v . -w dist "--only-binary=:all:"
 - name: build-3.14
   commands:
   - mkdir -p wheels
