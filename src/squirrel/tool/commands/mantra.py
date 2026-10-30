@@ -13,7 +13,7 @@ from pyrocko import progress, squirrel, util
 from pyrocko.io import FileSaveError
 from pyrocko.squirrel.error import ToolError
 from ..common import SquirrelCommand, add_mantra_arguments, \
-    get_mantras_from_arguments
+    get_mantras_from_arguments, hint_codes_patterns_extra
 
 headline = 'Processing pipelines and operator management.'
 
@@ -100,7 +100,7 @@ class Process(SquirrelCommand):
             dest='append',
             action='store_true',
             default=False,
-            help='Append to existing files. Checks are preformed to ensure '
+            help='Append to existing files. Checks are performed to ensure '
                  'that appended data has no overlap with already existing '
                  'data.')
 
@@ -133,6 +133,8 @@ class Process(SquirrelCommand):
         sq = args.make_squirrel()
         for mantra in mantras:
             mantra.setup(sq)
+            hint_codes_patterns_extra(
+                mantra.outlet, args.squirrel_query.get('codes', []))
 
             sq_tmin, sq_tmax = mantra.outlet.get_time_span('carpet')
 
