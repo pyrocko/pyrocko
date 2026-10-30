@@ -80,7 +80,7 @@ from pyrocko.gf import Earthmodel1D
 from ..model import (
     QuantityType, CodesNSLCE, CodesMatcher, CHANNEL, WAVEFORM, CARPET,
     get_selection_args, Sensor, Channel, Response, Coverage, join_coverages,
-    codes_patterns_list, make_rich_coverage
+    codes_patterns_list, make_rich_coverage, ProjectionError
 )
 
 from ..error import SquirrelError
@@ -2612,95 +2612,110 @@ class ToLQT(Transform):
     Rotate sensors to Longitudinal-Transverse-SH (ray-based)
     components, relative to a source and earth model.
 
+    Backazimuth and incidence angle are computed for each sensor from
+    :py:attr:`origin`, unless given explicitly with :py:attr:`backazimuth`
+    and :py:attr:`incidence`. Explicit values apply to all sensors, i.e.
+    they describe a plane wave, e.g. for the sensors of an array. They are
+    used consistently for the rotation of the waveforms and for the
+    orientations of the output channels.
+
     See :py:class:`Transform` for what's required/provided and how
     output codes are derived.
     '''
 
     name = String.T(default='lqt')
     components = 'LQT'
+
     origin = Location.T(
         optional=True,
-        help='Source location to compute backazimuth/incidence angle '
-             'from. Required unless ``azimuth``/``incidence`` (for '
-             ':py:meth:`get_orientation`) and ``distance`` (for '
-             ':py:meth:`project`) are given directly.')
+        help='Source location to compute backazimuth and incidence angle '
+             'from. Required unless ``backazimuth`` and ``incidence`` are '
+             'given, or ``backazimuth``, ``distance`` and '
+             '``source_depth``.')
+
     earthmodel = Earthmodel1D.T(
         optional=True,
         help='Earth model used for automatic incidence angle '
              'computation. Defaults to a built-in global model, see '
              ':py:func:`~pyrocko.squirrel.model.get_default_earthmodel`.')
+
     phases = List.T(
         String.T(),
         help='Candidate seismic phases to use for automatic incidence '
-             'angle computation, in Cake phase syntax.')
+             'angle computation, in Cake phase syntax. Default: '
+             '``p``, ``P``.')
+
     distance = Float.T(
         optional=True,
-        help='Source-sensor distance [deg], overriding the automatic '
-             'computation from ``origin``, for use by :py:meth:`project`.')
+        help='Source-sensor distance [deg] for automatic incidence angle '
+             'computation, overriding the distance computed from '
+             '``origin``.')
+
     source_depth = Float.T(
         optional=True,
-        help='Source depth [m], used for automatic incidence angle '
-             'computation by :py:meth:`project` (unlike '
-             ':py:meth:`get_orientation`, which always uses ``origin``\'s '
-             'depth, see class docstring caveat).')
-    azimuth = Float.T(
+        help='Source depth [m] for automatic incidence angle computation, '
+             'overriding the depth of ``origin``.')
+
+    backazimuth = Float.T(
         optional=True,
-        help='Azimuth of the sensor as seen from the source [deg], for '
-             'use by :py:meth:`get_orientation` (:py:meth:`project` '
-             'always computes azimuth automatically, see class '
-             'docstring caveat).')
+        help='Backazimuth [deg], i.e. direction from the sensors towards '
+             'the source, measured clockwise from north, overriding the '
+             'value computed from ``origin``.')
+
     incidence = Float.T(
         optional=True,
-        help='Incidence angle [deg], for use by '
-             ':py:meth:`get_orientation` (:py:meth:`project` always '
-             'computes incidence automatically, see class docstring '
-             'caveat).')
+        help='Incidence angle [deg], measured from vertical, overriding '
+             'the automatic computation.')
+
+    def get_backazimuth(self, sensor):
+        '''
+        Get backazimuth [deg] at a sensor, see :py:attr:`backazimuth`.
+        '''
+
+        if self.backazimuth is not None:
+            return self.backazimuth
+
+        if self.origin is None:
+            raise ProjectionError(
+                'Cannot determine backazimuth: Neither `origin` nor '
+                '`backazimuth` given.')
+
+        return self.origin.azibazi_to(sensor)[1]
+
+    def get_incidence(self, sensor):
+        '''
+        Get incidence angle [deg] at a sensor, see :py:attr:`incidence`.
+        '''
+
+        if self.incidence is not None:
+            return self.incidence
+
+        return sensor.incidence_angle(
+            source=self.origin,
+            earthmodel=self.earthmodel,
+            phases=self.phases,
+            distance=self.distance,
+            source_depth=self.source_depth)
 
     def project(self, sensor, trs_sensor):
         '''
         Rotate a sensor's traces to LQT, see
         :py:meth:`~pyrocko.squirrel.model.Sensor.project_to_lqt`.
-
-        Unlike :py:meth:`get_orientation`, this always lets
-        ``source_depth``/``azimuth``/``incidence`` be computed
-        automatically from ``origin``/``earthmodel``/``phases`` rather
-        than using this operator's own same-named attributes (see class
-        docstring).
         '''
 
         return sensor.project_to_lqt(
-            source=self.origin,
+            source=None,
             traces=trs_sensor,
-            earthmodel=self.earthmodel,
-            phases=self.phases,
-            distance=self.distance,
-            source_depth=None,
-            azimuth=None,
-            incidence=None)
+            azimuth=self.get_backazimuth(sensor),
+            incidence=self.get_incidence(sensor))
 
     def get_orientation(self, sensor, component):
         '''
-        Get ``(azimuth, dip)`` for a given LQT component character,
-        computing azimuth/incidence automatically from ``origin``/
-        ``earthmodel``/``phases`` unless overridden via ``azimuth``/
-        ``incidence``.
+        Get ``(azimuth, dip)`` for a given LQT component character.
         '''
-        from pyrocko import cake
 
-        if self.azimuth is None:
-            azimuth = self.origin.azibazi_to(sensor)[1] + 180.
-        else:
-            azimuth = self.azimuth
-
-        if self.incidence is None:
-            incidence = sensor.incidence_angle(
-                source=self.origin,
-                earthmodel=self.earthmodel,
-                phases=[cake.PhaseDef(name) for name in self.phases],
-                distance=self.distance,
-                source_depth=self.source_depth)
-        else:
-            incidence = self.incidence
+        azimuth = self.get_backazimuth(sensor) + 180.
+        incidence = self.get_incidence(sensor)
 
         return {
             'L': ((azimuth + 180.) % 360. - 180., incidence),

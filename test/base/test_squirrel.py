@@ -1380,6 +1380,95 @@ class SquirrelTestCase(unittest.TestCase):
             tuple(tr.station for tr in batch.traces) for batch in batches) \
             == [('A',), ('B',)]
 
+    def test_to_lqt(self):
+        from pyrocko.io import stationxml
+
+        tmin = util.str_to_time('2020-01-01 00:00:00')
+        nsamples = 100
+        deltat = 0.1
+        tmax = tmin + nsamples * deltat
+
+        station = pmodel.Station(
+            'N', 'STA', '', lat=10., lon=20., channels=[
+                pmodel.Channel('BHE', azimuth=90., dip=0.),
+                pmodel.Channel('BHN', azimuth=0., dip=0.),
+                pmodel.Channel('BHZ', azimuth=0., dip=-90.)])
+
+        fn = op.join(self.tempdir, 'stations.xml')
+        stationxml.FDSNStationXML.from_pyrocko_stations([station]) \
+            .dump_xml(filename=fn)
+
+        def make_p_wave(backazimuth, incidence):
+            # Particle motion along the ray, away from the source.
+            s = num.sin(num.linspace(0., 4.*num.pi, nsamples))
+            azi = (backazimuth + 180.) * (num.pi / 180.)
+            inc = incidence * (num.pi / 180.)
+            ampl = {
+                'E': num.sin(inc) * num.sin(azi),
+                'N': num.sin(inc) * num.cos(azi),
+                'Z': num.cos(inc)}
+
+            return s, [
+                trace.Trace(
+                    'N', 'STA', '', 'BH' + comp, tmin=tmin, deltat=deltat,
+                    ydata=ampl[comp] * s)
+                for comp in 'ENZ']
+
+        def check(op_lqt, s, backazimuth, incidence):
+            trs = {
+                tr.channel[-1]: tr
+                for tr in op_lqt.get_waveforms(tmin=tmin, tmax=tmax)}
+
+            assert sorted(trs.keys()) == ['L', 'Q', 'T']
+            num.testing.assert_allclose(trs['L'].ydata, s, atol=1e-9)
+            num.testing.assert_allclose(trs['Q'].ydata, 0., atol=1e-9)
+            num.testing.assert_allclose(trs['T'].ydata, 0., atol=1e-9)
+
+            channels = {
+                channel.codes.channel[-1]: channel
+                for channel in op_lqt.get_channels()}
+
+            def wrap(x):
+                return (x + 180.) % 360. - 180.
+
+            assert abs(wrap(
+                channels['L'].azimuth - (backazimuth + 180.))) < 1e-9
+            assert abs(channels['L'].dip - incidence) < 1e-9
+            assert abs(channels['Q'].dip - (90. - incidence)) < 1e-9
+            assert abs(wrap(
+                channels['T'].azimuth - (backazimuth + 270.))) < 1e-9
+
+        # Explicit backazimuth and incidence (plane wave).
+        database = squirrel.Database()
+        self.addCleanup(dbm.close_database, database)
+        sq = squirrel.Squirrel(database=database)
+        sq.add(fn)
+        s, traces = make_p_wave(30., 25.)
+        sq.add_volatile_waveforms(traces)
+
+        op_lqt = squirrel.ToLQT(backazimuth=30., incidence=25.)
+        op_lqt.add_input(sq)
+        check(op_lqt, s, 30., 25.)
+
+        # Automatic, from source location.
+        origin = pmodel.Location(lat=0., lon=0., depth=10000.)
+        op_lqt = squirrel.ToLQT(origin=origin)
+        sq_sensor, = sq.get_sensors()
+        backazimuth = op_lqt.get_backazimuth(sq_sensor)
+        incidence = op_lqt.get_incidence(sq_sensor)
+        assert abs(
+            backazimuth - origin.azibazi_to(sq_sensor)[1]) < 1e-9
+
+        database = squirrel.Database()
+        self.addCleanup(dbm.close_database, database)
+        sq = squirrel.Squirrel(database=database)
+        sq.add(fn)
+        s, traces = make_p_wave(backazimuth, incidence)
+        sq.add_volatile_waveforms(traces)
+
+        op_lqt.add_input(sq)
+        check(op_lqt, s, backazimuth, incidence)
+
     def test_operator_default_processing(self):
         from pyrocko.carpet import Carpet
         from pyrocko.model.codes import CodesNSLCE
