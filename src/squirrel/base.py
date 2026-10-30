@@ -934,7 +934,7 @@ class Squirrel(Selection):
         :param codes:
             Channel code patterns of the streams to subscribe to.
         :type codes:
-            :py:class:`list` of :py:class:`~pyrocko.squirrel.model.CodesNSLCE`
+            :py:class:`list` of :py:class:`~pyrocko.model.codes.CodesNSLCE`
             objects, or anything which can be converted to such objects
 
         Starts a background SeedLink acquisition thread. Received data only
@@ -1203,7 +1203,7 @@ class Squirrel(Selection):
         :param codes_exclude:
             List of code patterns to exclude from query.
         :type codes_exclude:
-            :py:class:`list` of :py:class:`~pyrocko.squirrel.model.Codes`
+            :py:class:`list` of :py:class:`~pyrocko.model.codes.Codes`
             objects appropriate for the queried content type, or anything which
             can be converted to such objects.
 
@@ -3783,7 +3783,7 @@ class Squirrel(Selection):
         :param codes:
             If given, restrict to given content codes patterns.
         :type codes:
-            :py:class:`list` of :py:class:`~pyrocko.squirrel.model.Codes`
+            :py:class:`list` of :py:class:`~pyrocko.model.codes.Codes`
             objects appropriate for the queried content type, or anything
             which can be converted to such objects.
 
@@ -3793,7 +3793,7 @@ class Squirrel(Selection):
             where ``pattern`` is the matched query pattern (or ``codes``
             itself, if ``codes`` was not given), ``kind_codes_id`` its
             internal database key, ``codes`` the matched
-            :py:class:`~pyrocko.squirrel.model.Codes` object, and ``deltat``
+            :py:class:`~pyrocko.model.codes.Codes` object, and ``deltat``
             the associated sampling interval.
         :rtype:
             :py:class:`list` of :py:class:`tuple`
@@ -3985,7 +3985,7 @@ class Squirrel(Selection):
         :param codes:
             If given, restrict query to given content codes patterns.
         :type codes:
-            :py:class:`list` of :py:class:`~pyrocko.squirrel.model.Codes`
+            :py:class:`list` of :py:class:`~pyrocko.model.codes.Codes`
             objects appropriate for the queried content type, or anything
             which can be converted to such objects.
 

@@ -48,7 +48,7 @@ class Constraint(Object):
     def __init__(self, **kwargs):
         '''
         Create constraint, converting ``codes`` to
-        :py:class:`~pyrocko.squirrel.model.CodesNSLCE` objects as needed.
+        :py:class:`~pyrocko.model.codes.CodesNSLCE` objects as needed.
         '''
         codes = kwargs.pop('codes', None)
 

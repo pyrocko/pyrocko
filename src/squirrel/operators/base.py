@@ -123,7 +123,7 @@ def scodes(codes):
     :param codes:
         Codes to be summarized.
     :type codes:
-        iterable of :py:class:`~pyrocko.squirrel.model.Codes` objects, all
+        iterable of :py:class:`~pyrocko.model.codes.Codes` objects, all
         of the same class
 
     :returns:
@@ -178,7 +178,7 @@ def by_codes(xs: HasCodes) -> dict[CodesNSLCE, tList[HasCodes]]:
         iterable
 
     :rtype:
-        dict of :py:class:`~pyrocko.squirrel.model.CodesNSLCE` to
+        dict of :py:class:`~pyrocko.model.codes.CodesNSLCE` to
         :py:class:`list`
     '''
     by_codes = defaultdict(list)
@@ -199,7 +199,7 @@ def by_codes_unique(xs: HasCodes) -> dict[CodesNSLCE, HasCodes]:
         iterable
 
     :rtype:
-        dict of :py:class:`~pyrocko.squirrel.model.CodesNSLCE` to object
+        dict of :py:class:`~pyrocko.model.codes.CodesNSLCE` to object
     '''
     return dict(
         (k, xs_group[0])
@@ -223,14 +223,14 @@ class CodesFilterBase(Object):
         :param it:
             Codes to be filtered.
         :type it:
-            iterable of :py:class:`~pyrocko.squirrel.model.CodesNSLCE`
+            iterable of :py:class:`~pyrocko.model.codes.CodesNSLCE`
 
         :returns:
             The base implementation returns all given codes unfiltered;
             subclasses restrict this.
         :rtype:
             :py:class:`list` of
-            :py:class:`~pyrocko.squirrel.model.CodesNSLCE`
+            :py:class:`~pyrocko.model.codes.CodesNSLCE`
         '''
         return list(it)
 
@@ -269,7 +269,7 @@ class CodesFilter(CodesFilterBase):
         :param codes:
             Codes to be checked.
         :type codes:
-            :py:class:`~pyrocko.squirrel.model.CodesNSLCE`
+            :py:class:`~pyrocko.model.codes.CodesNSLCE`
 
         :rtype:
             bool
@@ -286,11 +286,11 @@ class CodesFilter(CodesFilterBase):
         :param it:
             Codes to be filtered.
         :type it:
-            iterable of :py:class:`~pyrocko.squirrel.model.CodesNSLCE`
+            iterable of :py:class:`~pyrocko.model.codes.CodesNSLCE`
 
         :rtype:
             :py:class:`list` of
-            :py:class:`~pyrocko.squirrel.model.CodesNSLCE`
+            :py:class:`~pyrocko.model.codes.CodesNSLCE`
         '''
         if self._matcher is None and self._matcher_exclude is None:
             return list(it)
@@ -812,7 +812,7 @@ class BaseOperator(Object):
             output code.
         :type codes:
             :py:class:`list` of
-            :py:class:`~pyrocko.squirrel.model.CodesNSLCE`
+            :py:class:`~pyrocko.model.codes.CodesNSLCE`
 
         :yields:
             :py:class:`CodesMapping` objects.
@@ -861,7 +861,7 @@ class BaseOperator(Object):
             output code, and report only the matching output codes.
         :type codes:
             :py:class:`list` of
-            :py:class:`~pyrocko.squirrel.model.CodesNSLCE`
+            :py:class:`~pyrocko.model.codes.CodesNSLCE`
 
         :returns:
             ``(mappings, codes_out_match)`` if ``codes`` is given (an
@@ -870,7 +870,7 @@ class BaseOperator(Object):
         :rtype:
             :py:class:`tuple` of (:py:class:`list` of
             :py:class:`CodesMapping`, :py:class:`list` of
-            :py:class:`~pyrocko.squirrel.model.CodesNSLCE` or ``None``)
+            :py:class:`~pyrocko.model.codes.CodesNSLCE` or ``None``)
         '''
 
         self.update_mappings()
@@ -901,7 +901,7 @@ class BaseOperator(Object):
         first (see :py:meth:`update_mappings`).
 
         :yields:
-            :py:class:`~pyrocko.squirrel.model.CodesNSLCE` objects.
+            :py:class:`~pyrocko.model.codes.CodesNSLCE` objects.
         '''
 
         self.update_mappings()
@@ -922,7 +922,7 @@ class BaseOperator(Object):
 
         :rtype:
             :py:class:`list` of
-            :py:class:`~pyrocko.squirrel.model.CodesNSLCE`
+            :py:class:`~pyrocko.model.codes.CodesNSLCE`
         '''
         if kind is not None and kind not in self.kind_provides:
             return []
@@ -945,7 +945,7 @@ class BaseOperator(Object):
             :py:class:`list` of :py:class:`CodesMapping`
 
         :yields:
-            :py:class:`~pyrocko.squirrel.model.CodesNSLCE` objects.
+            :py:class:`~pyrocko.model.codes.CodesNSLCE` objects.
         '''
 
         self.update_mappings()
@@ -1650,7 +1650,7 @@ codes`).
             consistency and for use by overriding implementations).
         :type in_codes:
             :py:class:`list` of
-            :py:class:`~pyrocko.squirrel.model.CodesNSLCE`
+            :py:class:`~pyrocko.model.codes.CodesNSLCE`
 
         :param codes_to_channels:
             Input channels, keyed by input codes (see
@@ -1941,7 +1941,7 @@ class CodesProjectionBase(CodesFilter):
         :param codes:
             Input codes to compute the group key for.
         :type codes:
-            :py:class:`~pyrocko.squirrel.model.CodesNSLCE`
+            :py:class:`~pyrocko.model.codes.CodesNSLCE`
         '''
         raise NotImplementedError()
 
@@ -1960,7 +1960,7 @@ class CodesProjectionBase(CodesFilter):
             Input codes sharing a common :py:meth:`group_key`.
         :type codes:
             iterable of
-            :py:class:`~pyrocko.squirrel.model.CodesNSLCE`
+            :py:class:`~pyrocko.model.codes.CodesNSLCE`
 
         :param outlets:
             The operator's outlets (see
@@ -1980,7 +1980,7 @@ class CodesProjection(CodesProjectionBase):
     with ``{i.<attr>}``/``{o.<attr>}`` placeholders, referring to the
     input codes' attributes (``network``, ``station``, ``location``,
     ``channel``, ``extra``, and the extra attributes defined on
-    :py:class:`~pyrocko.squirrel.model.CodesNSLCE`, e.g.
+    :py:class:`~pyrocko.model.codes.CodesNSLCE`, e.g.
     ``channel_no_component``) and to the producing
     :py:class:`Outlet`'s :py:attr:`~Outlet.attributes` plus the
     operator's ``name``/``mantra`` (unset ``{o.*}`` placeholders resolve
@@ -2031,7 +2031,7 @@ class CodesProjection(CodesProjectionBase):
         :param codes:
             Input codes to compute the group key for.
         :type codes:
-            :py:class:`~pyrocko.squirrel.model.CodesNSLCE`
+            :py:class:`~pyrocko.model.codes.CodesNSLCE`
 
         :rtype:
             str
@@ -2062,7 +2062,7 @@ class CodesProjection(CodesProjectionBase):
             Input codes sharing a common :py:meth:`group_key`.
         :type codes_group:
             iterable of
-            :py:class:`~pyrocko.squirrel.model.CodesNSLCE`
+            :py:class:`~pyrocko.model.codes.CodesNSLCE`
 
         :param outlets:
             The operator's outlets.
@@ -2073,7 +2073,7 @@ class CodesProjection(CodesProjectionBase):
             Deduplicated, sorted output codes.
         :rtype:
             :py:class:`tuple` of
-            :py:class:`~pyrocko.squirrel.model.CodesNSLCE`
+            :py:class:`~pyrocko.model.codes.CodesNSLCE`
         '''
         return tuple(sorted(set(
             self._project_single(operator, codes, outlet)
@@ -2141,12 +2141,12 @@ class Operator(BaseOperator):
         :param added:
             Newly available input codes.
         :type added:
-            set of :py:class:`~pyrocko.squirrel.model.CodesNSLCE`
+            set of :py:class:`~pyrocko.model.codes.CodesNSLCE`
 
         :param removed:
             No-longer-available input codes.
         :type removed:
-            set of :py:class:`~pyrocko.squirrel.model.CodesNSLCE`
+            set of :py:class:`~pyrocko.model.codes.CodesNSLCE`
 
         :rtype:
             bool

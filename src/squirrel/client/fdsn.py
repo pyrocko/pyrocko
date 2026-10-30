@@ -206,7 +206,7 @@ def codes_to_selection(codes_list, tmin, tmax):
         Codes patterns to be converted, or ``None``.
     :type codes_list:
         :py:class:`list` of
-        :py:class:`~pyrocko.squirrel.model.CodesNSLCE` objects, or ``None``
+        :py:class:`~pyrocko.model.codes.CodesNSLCE` objects, or ``None``
 
     :param tmin:
         Start time to be used for all entries.

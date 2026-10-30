@@ -187,7 +187,7 @@ class Carpet(Object):
     multi-component waveforms of a single sensor or of a sensor array. The data
     samples are stored in a single 2D array where the first index runs over
     components and the second index over time. Metadata contains sampling rate,
-    start-time and :py:class:`~pyrocko.squirrel.model.CodesNSLCE` identifiers
+    start-time and :py:class:`~pyrocko.model.codes.CodesNSLCE` identifiers
     for the contained traces.
 
     The :py:gattr:`data` is held as a NumPy :py:class:`numpy.ma.MaskedArray`
