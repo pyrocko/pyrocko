@@ -9,3 +9,4 @@ Conceptual overviews on certain ingredients of Pyrocko.
    pyrocko-gf
    pseudo-dynamic-rupture
    squirrel
+   squirrel_mantras

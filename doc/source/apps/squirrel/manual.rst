@@ -198,3 +198,54 @@ I want to create a downsampled variant of my dataset::
 The output will be sampled at 10 Hz and the datatype in the Mini-SEEDs will be
 32-bit integers. Without the ``--out-data-type`` option, the output would be in
 double-precision floating point format.
+
+Spectrograms of long recordings
+...............................
+
+*Experimental.* I would like to look at spectrograms of several months of
+continuous recordings. With the waveforms in ``data/raw`` and the station and
+response metadata in ``meta/stations.xml``, compute the spectrograms::
+
+  squirrel spectrogram --add data/raw meta/stations.xml --out-storage-path data/spectrograms/main
+
+The instrument response is removed, so the spectrograms show ground velocity
+(see ``--quantity``). To browse long time spans quickly, pre-compute
+downsampled overviews::
+
+  squirrel cascade --add data/spectrograms/main --out-storage-path data/spectrograms/cascade
+
+Then view spectrograms and overviews in the web browser (see below)::
+
+  squirrel service --add data/spectrograms
+
+Spectrograms and overviews are stored as *carpets* (see
+:py:mod:`pyrocko.carpet`), in files organized by codes and time.
+
+Explore a dataset in the web browser
+....................................
+
+*Experimental.* I would like to interactively browse the waveforms, coverage,
+station metadata and events of my dataset::
+
+  squirrel service --add data/raw meta/stations.xml
+
+This starts a local web server and prints the address to open in the browser.
+Waveforms, carpets and their coverage are shown on a timeline, stations on a
+map. Processed data, e.g. instrument-corrected waveforms, can be added with
+``--mantra``, see :doc:`/topics/squirrel_mantras`. Run ``squirrel service
+--help-port-forwarding`` for how to access a service running on a remote
+machine.
+
+Collect events in a local event database
+........................................
+
+*Experimental.* I want to keep a local copy of the events of a catalog, which I
+can update from time to time, e.g. for all events of magnitude 6 and above in
+the Global-CMT catalog::
+
+  squirrel catalog --dataset :events-gcmt-m6 --tmin 2020 --tmax 2025 --out events.elk
+
+Running the command again later adds new events and updates revised ones. The
+database file can then be used like any other event source::
+
+  squirrel catalog --add events.elk --tmin 2024 --tmax 2025
