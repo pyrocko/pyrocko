@@ -365,7 +365,7 @@ class Clockdrift(SquirrelCommand):
             action='store_true',
             default=False,
             help='Append to existing files. This only works for mseed files. '
-                 'Checks are preformed to ensure that appended traces have no '
+                 'Checks are performed to ensure that appended traces have no '
                  'overlap with already existing traces.')
 
         parser.add_argument(
