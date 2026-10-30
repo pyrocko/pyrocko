@@ -191,6 +191,18 @@ class UtilTestCase(unittest.TestCase):
         yy = util.plf_integrate_piecewise(x_edges, x, y)
         assert num.all(num.abs(yy - num.array([0.5, 1.0, 0.5])) < 1e-6)
 
+    def test_glob_filter(self):
+        names = ['abc', 'abd', 'xyz']
+        assert util.glob_filter(['ab*'], names) == ['abc', 'abd']
+        assert util.glob_filter(['ab*', 'x*'], names) == names
+        assert util.glob_filter([], names) == names
+        assert util.glob_filter(['q*'], names) == []
+        assert util.glob_filter(
+            ['ab*'], names, raise_if_nomatch=True) == ['abc', 'abd']
+
+        with self.assertRaises(util.GlobFilterNoMatch):
+            util.glob_filter(['ab*', 'q*'], names, raise_if_nomatch=True)
+
     def test_arange2(self):
         num.testing.assert_almost_equal(
             util.arange2(0., 1., 0.1), num.linspace(0., 1., 11))
