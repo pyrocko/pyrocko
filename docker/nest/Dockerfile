@@ -36,7 +36,7 @@ RUN [ "$base_image" = "debian:11" ] \
 
 ARG base_image
 RUN apt-get install -y python3-sqlalchemy python3-lxml python3-greenlet \
-    && pip3 install --no-deps obspy==1.3 || exit 1
+    && CFLAGS=-std=gnu17 pip3 install --no-deps obspy==1.3 || exit 1
 
 RUN mkdir -p /src \
     && cd /src && git clone https://git.pyrocko.org/pyrocko/fomosto-qseis.git \
