@@ -909,7 +909,7 @@ class InvalidResponse(FrequencyResponse):
             logger.warning('Invalid response: %s' % self.message)
             self.have_warned = True
 
-        return num.full_like(freqs, None, dtype=num.complex)
+        return num.full_like(freqs, None, dtype=complex)
 
     @property
     def summary(self):

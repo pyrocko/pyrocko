@@ -223,6 +223,12 @@ class ResponseTestCase(unittest.TestCase):
             from pyrocko.plot.response import plot
             plot(resps, labels=labels, fmin=0.001, fmax=0.5/deltat, nf=200)
 
+    def test_invalid_response(self):
+        resp = response.InvalidResponse('test')
+        values = resp.evaluate(num.array([1., 2.]))
+        assert values.dtype == complex
+        assert num.all(num.isnan(values))
+
     def test_dump_load(self):
 
         r = response.FrequencyResponse()
