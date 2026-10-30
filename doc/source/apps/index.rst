@@ -13,5 +13,6 @@ Applications for everyday seismological practice.
    jackseis/index
    colosseo/index
    squirrel/index
+   gato/index
    sparrow/index
    pyrocko/index
