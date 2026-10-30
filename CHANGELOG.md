@@ -69,9 +69,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Guts: added an `equal()` function to compare two Guts objects, and a
   `TimeFloat` type to optionally support higher-precision time interval values,
   following the logic of the Timestamp type.
-- Web-based services (e.g. `squirrel service`): added a
-  `--cookie-secret-path` option to control where the session cookie
-  secret is stored, and `--help-port-forwarding` for guidance on
+- `fomosto server`: added `--help-port-forwarding` for guidance on
   remote/forwarded access.
 - New dataset module `pyrocko.dataset.slab2` giving access to the USGS Slab2
   subduction zone geometries, and a matching *Slabs* element in Sparrow.
@@ -176,10 +174,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   additionally read as Pyrocko event files.
 
 ### Security
-- Web-based services: the session cookie-secret file is now created
-  with owner-only permissions, and a warning is shown if an existing
-  one is more widely readable. This reduces the risk of session
-  hijacking on shared systems.
 - `mseed`: fixed a crash (segfault) that could be triggered by reading
   a corrupted or truncated MiniSEED record whose declared sample count
   didn't match its data. Such a record is now rejected with a regular
