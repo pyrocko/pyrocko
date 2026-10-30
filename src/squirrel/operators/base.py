@@ -2561,10 +2561,26 @@ class ToENZ(Transform):
             'Z': (0., -90.)}[component]
 
 
+def _get_backazimuth(operator, sensor):
+    if operator.backazimuth is not None:
+        return operator.backazimuth
+
+    if operator.origin is None:
+        raise ProjectionError(
+            'Cannot determine backazimuth: Neither `origin` nor '
+            '`backazimuth` given.')
+
+    return operator.origin.azibazi_to(sensor)[1]
+
+
 class ToTRZ(Transform):
     '''
     Rotate sensors to Transverse-Radial-Up components, relative to a
-    source or a fixed azimuth.
+    source or a fixed backazimuth.
+
+    The backazimuth is computed for each sensor from :py:attr:`origin`,
+    unless given explicitly with :py:attr:`backazimuth`, in which case it
+    applies to all sensors.
 
     See :py:class:`Transform` for what's required/provided and how
     output codes are derived.
@@ -2575,12 +2591,19 @@ class ToTRZ(Transform):
     origin = Location.T(
         optional=True,
         help='Source location to compute the backazimuth from. Required '
-             'unless ``azimuth`` is given directly.')
-    azimuth = Float.T(
+             'unless ``backazimuth`` is given.')
+    backazimuth = Float.T(
         optional=True,
-        help='Azimuth of the sensor as seen from the source [deg], '
-             'overriding the automatic backazimuth computation from '
-             '``origin``.')
+        help='Backazimuth [deg], i.e. direction from the sensors towards '
+             'the source, measured clockwise from north, overriding the '
+             'value computed from ``origin``.')
+
+    def get_backazimuth(self, sensor):
+        '''
+        Get backazimuth [deg] at a sensor, see :py:attr:`backazimuth`.
+        '''
+
+        return _get_backazimuth(self, sensor)
 
     def project(self, sensor, trs_sensor):
         '''
@@ -2588,18 +2611,15 @@ class ToTRZ(Transform):
         :py:meth:`~pyrocko.squirrel.model.Sensor.project_to_trz`.
         '''
         return sensor.project_to_trz(
-            source=self.origin,
+            source=None,
             traces=trs_sensor,
-            azimuth=self.azimuth)
+            backazimuth=self.get_backazimuth(sensor))
 
     def get_orientation(self, sensor, component):
         '''
         Get ``(azimuth, dip)`` for a given TRZ component character.
         '''
-        if self.azimuth is not None:
-            azimuth = self.azimuth
-        else:
-            azimuth = self.origin.azibazi_to(sensor)[1] + 180
+        azimuth = self.get_backazimuth(sensor) + 180.
 
         return {
             'T': ((azimuth + 90 + 180.) % 360. - 180., 0.),
@@ -2672,15 +2692,7 @@ class ToLQT(Transform):
         Get backazimuth [deg] at a sensor, see :py:attr:`backazimuth`.
         '''
 
-        if self.backazimuth is not None:
-            return self.backazimuth
-
-        if self.origin is None:
-            raise ProjectionError(
-                'Cannot determine backazimuth: Neither `origin` nor '
-                '`backazimuth` given.')
-
-        return self.origin.azibazi_to(sensor)[1]
+        return _get_backazimuth(self, sensor)
 
     def get_incidence(self, sensor):
         '''
@@ -2706,7 +2718,7 @@ class ToLQT(Transform):
         return sensor.project_to_lqt(
             source=None,
             traces=trs_sensor,
-            azimuth=self.get_backazimuth(sensor),
+            backazimuth=self.get_backazimuth(sensor),
             incidence=self.get_incidence(sensor))
 
     def get_orientation(self, sensor, component):

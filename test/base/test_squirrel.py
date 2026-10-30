@@ -1380,8 +1380,9 @@ class SquirrelTestCase(unittest.TestCase):
             tuple(tr.station for tr in batch.traces) for batch in batches) \
             == [('A',), ('B',)]
 
-    def test_to_lqt(self):
+    def test_rotation_operators(self):
         from pyrocko.io import stationxml
+        from pyrocko.squirrel.model import ProjectionError
 
         tmin = util.str_to_time('2020-01-01 00:00:00')
         nsamples = 100
@@ -1468,6 +1469,53 @@ class SquirrelTestCase(unittest.TestCase):
 
         op_lqt.add_input(sq)
         check(op_lqt, s, backazimuth, incidence)
+
+        # TRZ, with a radially polarized horizontal wave.
+        def check_trz(op_trz, s, backazimuth):
+            trs = {
+                tr.channel[-1]: tr
+                for tr in op_trz.get_waveforms(tmin=tmin, tmax=tmax)}
+
+            assert sorted(trs.keys()) == ['R', 'T', 'Z']
+            num.testing.assert_allclose(trs['R'].ydata, s, atol=1e-9)
+            num.testing.assert_allclose(trs['T'].ydata, 0., atol=1e-9)
+
+            channels = {
+                channel.codes.channel[-1]: channel
+                for channel in op_trz.get_channels()}
+
+            def wrap(x):
+                return (x + 180.) % 360. - 180.
+
+            assert abs(wrap(
+                channels['R'].azimuth - (backazimuth + 180.))) < 1e-9
+            assert abs(wrap(
+                channels['T'].azimuth - (backazimuth + 270.))) < 1e-9
+
+        for op_trz in [
+                squirrel.ToTRZ(backazimuth=30.),
+                squirrel.ToTRZ(origin=origin)]:
+
+            backazimuth = op_trz.get_backazimuth(sq_sensor)
+            database = squirrel.Database()
+            self.addCleanup(dbm.close_database, database)
+            sq = squirrel.Squirrel(database=database)
+            sq.add(fn)
+            s, traces = make_p_wave(backazimuth, 90.)
+            sq.add_volatile_waveforms(traces)
+            op_trz.add_input(sq)
+            check_trz(op_trz, s, backazimuth)
+
+        # Sensor methods: backazimuth and azimuth (direction of propagation)
+        # are equivalent, but only one of them may be given.
+        m1 = sq_sensor.projection_to_trz(None, backazimuth=30.)[0]
+        m2 = sq_sensor.projection_to_trz(None, azimuth=210.)[0]
+        num.testing.assert_allclose(m1, m2, atol=1e-12)
+        with self.assertRaises(ProjectionError):
+            sq_sensor.projection_to_trz(None, azimuth=210., backazimuth=30.)
+
+        with self.assertRaises(ProjectionError):
+            sq_sensor.projection_to_trz(None)
 
     def test_operator_default_processing(self):
         from pyrocko.carpet import Carpet

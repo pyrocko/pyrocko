@@ -893,20 +893,27 @@ class Sensor(ChannelBase):
         '''
         return self.projection_to(num.identity(3), 'ENZ')
 
-    def projection_to_trz(self, source, azimuth=None):
+    def projection_to_trz(self, source, azimuth=None, backazimuth=None):
         '''
         Get projection to Transverse-Radial-Up coordinates.
 
         :param source:
             Source location to compute the backazimuth from, or ``None``
-            if ``azimuth`` is given directly.
+            if ``backazimuth`` or ``azimuth`` is given directly.
         :type source:
             :py:class:`~pyrocko.model.location.Location`
 
         :param azimuth:
-            Azimuth of the sensor as seen from the source [deg], overriding
-            the automatic backazimuth computation from ``source``.
+            Direction of propagation at the sensor [deg], i.e.
+            ``backazimuth + 180``, overriding the automatic computation
+            from ``source``.
         :type azimuth:
+            float
+
+        :param backazimuth:
+            Backazimuth [deg], i.e. direction from the sensor towards the
+            source, overriding the automatic computation from ``source``.
+        :type backazimuth:
             float
 
         :returns:
@@ -915,9 +922,19 @@ class Sensor(ChannelBase):
         :rtype:
             :py:class:`tuple`
         '''
-        if azimuth is not None:
-            assert source is None
-        else:
+        if backazimuth is not None:
+            if azimuth is not None:
+                raise ProjectionError(
+                    'Only one of `azimuth` and `backazimuth` may be given.')
+
+            azimuth = backazimuth + 180.
+
+        if azimuth is None:
+            if source is None:
+                raise ProjectionError(
+                    'Cannot determine backazimuth: Neither `source` nor '
+                    '`backazimuth` given.')
+
             azimuth = source.azibazi_to(self)[1] + 180.
 
         return self.projection_to(num.array([
@@ -976,15 +993,59 @@ class Sensor(ChannelBase):
             phases=None,
             distance=None,
             source_depth=None,
-            azimuth=None,
+            backazimuth=None,
             incidence=None):
 
-        if azimuth is None:
+        '''
+        Get projection to Longitudinal-Transverse-SH (ray-based)
+        coordinates, after Plesinger et al. (1986).
+
+        :param source:
+            Source location to compute backazimuth and incidence angle
+            from, or ``None`` if these are given directly.
+        :type source:
+            :py:class:`~pyrocko.model.location.Location`
+
+        :param earthmodel:
+            Earth model for the incidence angle computation, see
+            :py:meth:`incidence_angle`.
+
+        :param phases:
+            Candidate phases for the incidence angle computation, see
+            :py:meth:`incidence_angle`.
+
+        :param distance:
+            Source-sensor distance [deg], see :py:meth:`incidence_angle`.
+
+        :param source_depth:
+            Source depth [m], see :py:meth:`incidence_angle`.
+
+        :param backazimuth:
+            Backazimuth [deg], i.e. direction from the sensor towards the
+            source, overriding the automatic computation from ``source``.
+        :type backazimuth:
+            float
+
+        :param incidence:
+            Incidence angle [deg], measured from vertical, overriding the
+            automatic computation.
+        :type incidence:
+            float
+
+        :returns:
+            A tuple ``(matrix, in_channels, out_channels)`` as expected by
+            :py:func:`pyrocko.trace.project`.
+        :rtype:
+            :py:class:`tuple`
+        '''
+
+        if backazimuth is None:
             if source is None:
                 raise ProjectionError(
-                    'Cannot determine azimuth angle: No `source` given.')
+                    'Cannot determine backazimuth: Neither `source` nor '
+                    '`backazimuth` given.')
 
-            azimuth = source.azibazi_to(self)[1]
+            backazimuth = source.azibazi_to(self)[1]
 
         if incidence is None:
             incidence = self.incidence_angle(
@@ -996,8 +1057,8 @@ class Sensor(ChannelBase):
 
         # reference is Plesinger et al., 1986
         iprime = incidence
-        ca = math.cos(azimuth*d2r)
-        sa = math.sin(azimuth*d2r)
+        ca = math.cos(backazimuth*d2r)
+        sa = math.sin(backazimuth*d2r)
         ci = math.cos(iprime*d2r)
         si = math.sin(iprime*d2r)
 
@@ -1026,13 +1087,14 @@ class Sensor(ChannelBase):
 
         return trace.project(traces, matrix, in_channels, out_channels)
 
-    def project_to_trz(self, source, traces, azimuth=None):
+    def project_to_trz(
+            self, source, traces, azimuth=None, backazimuth=None):
         '''
         Rotate traces to Transverse-Radial-Up coordinates.
 
         :param source:
             Source location to compute the backazimuth from, or ``None``
-            if ``azimuth`` is given directly.
+            if ``backazimuth`` or ``azimuth`` is given directly.
         :type source:
             :py:class:`~pyrocko.model.location.Location`
 
@@ -1042,9 +1104,14 @@ class Sensor(ChannelBase):
             :py:class:`list` of :py:class:`~pyrocko.trace.Trace` objects
 
         :param azimuth:
-            Azimuth of the sensor as seen from the source [deg], overriding
-            the automatic backazimuth computation from ``source``.
+            Direction of propagation at the sensor [deg], see
+            :py:meth:`projection_to_trz`.
         :type azimuth:
+            float
+
+        :param backazimuth:
+            Backazimuth [deg], see :py:meth:`projection_to_trz`.
+        :type backazimuth:
             float
 
         :returns:
@@ -1055,7 +1122,7 @@ class Sensor(ChannelBase):
         from pyrocko import trace
 
         matrix, in_channels, out_channels = self.projection_to_trz(
-            source, azimuth=azimuth)
+            source, azimuth=azimuth, backazimuth=backazimuth)
 
         return trace.project(traces, matrix, in_channels, out_channels)
 
@@ -1067,8 +1134,25 @@ class Sensor(ChannelBase):
             phases=None,
             distance=None,
             source_depth=None,
-            azimuth=None,
+            backazimuth=None,
             incidence=None):
+
+        '''
+        Rotate traces to Longitudinal-Transverse-SH (ray-based)
+        coordinates, see :py:meth:`projection_to_lqt`.
+
+        :param traces:
+            Traces to be rotated, matching this sensor's member channels.
+        :type traces:
+            :py:class:`list` of :py:class:`~pyrocko.trace.Trace` objects
+
+        Other parameters as for :py:meth:`projection_to_lqt`.
+
+        :returns:
+            Rotated traces.
+        :rtype:
+            :py:class:`list` of :py:class:`~pyrocko.trace.Trace` objects
+        '''
 
         from pyrocko import trace
 
@@ -1078,7 +1162,7 @@ class Sensor(ChannelBase):
             phases=phases,
             distance=distance,
             source_depth=source_depth,
-            azimuth=azimuth,
+            backazimuth=backazimuth,
             incidence=incidence)
 
         return trace.project(traces, matrix, in_channels, out_channels)
