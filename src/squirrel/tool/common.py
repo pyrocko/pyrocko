@@ -115,8 +115,14 @@ Examples: https://pyrocko.org/docs/current/apps/squirrel/manual.html#examples
 
         if eff_parser._have_selection_arguments:
             def make_squirrel(check_have_data=True):
-                return squirrel_from_selection_arguments(
+                sq = squirrel_from_selection_arguments(
                     args, check_have_data=check_have_data)
+
+                if 'squirrel_query' in args:
+                    hint_codes_patterns_extra(
+                        sq, args.squirrel_query.get('codes', []))
+
+                return sq
 
             args.make_squirrel = make_squirrel
 
@@ -677,6 +683,51 @@ def squirrel_query_from_arguments(args):
     return d
 
 
+def hint_codes_patterns_extra(source, patterns):
+    '''
+    Warn about codes patterns which only fail because of the extra code.
+
+    A pattern with four elements, like ``NET.STA.LOC.CHA``, only matches
+    codes with an empty extra code. If such a pattern matches none of the
+    codes available in ``source``, but would match with any extra code, a
+    hint is logged.
+
+    :param source:
+        Object providing the available codes through its ``get_codes()``
+        method, e.g. a :py:class:`~pyrocko.squirrel.base.Squirrel` or an
+        operator.
+
+    :param patterns:
+        Codes patterns, as given in ``args.squirrel_query['codes']``.
+    :type patterns:
+        :py:class:`list` of :py:class:`~pyrocko.model.codes.Codes`
+    '''
+
+    from pyrocko.squirrel.model import CodesNSLCE
+
+    patterns = [
+        pattern for pattern in patterns
+        if isinstance(pattern, CodesNSLCE) and pattern.extra == '']
+
+    if not patterns:
+        return
+
+    available = [
+        codes for codes in source.get_codes()
+        if isinstance(codes, CodesNSLCE)]
+
+    for pattern in patterns:
+        if any(codes.matches(pattern) for codes in available):
+            continue
+
+        pattern_any = pattern.replace(extra='*')
+        if any(codes.matches(pattern_any) for codes in available):
+            logger.warning(
+                'Codes pattern "%s" matches nothing because it only matches '
+                'an empty extra code. Did you mean "%s"?' % (
+                    '.'.join(pattern[:4]), str(pattern_any)))
+
+
 def add_squirrel_storage_scheme_arguments(parser):
     '''
     Set up command line options commonly used for saving.
@@ -925,6 +976,7 @@ __all__ = [
     'add_squirrel_selection_arguments',
     'squirrel_from_selection_arguments',
     'add_squirrel_query_arguments',
+    'hint_codes_patterns_extra',
     'squirrel_query_from_arguments',
     'add_squirrel_storage_scheme_arguments',
     'squirrel_effective_storage_scheme_from_arguments',

@@ -135,6 +135,28 @@ class SquirrelTestCase(unittest.TestCase):
         assert squirrel.to_codes_guess('cat') == squirrel.CodesX('cat')
         assert C(squirrel.CodesX('')) == C('*.*.*.*.*')
 
+    def test_hint_codes_patterns_extra(self):
+        from pyrocko.squirrel.tool.common import hint_codes_patterns_extra
+
+        C = squirrel.CodesNSLCE
+
+        class Source:
+            def get_codes(self):
+                return [C('GR.GRA1..BHZ.MS'), squirrel.CodesX('cat')]
+
+        def hints(s):
+            with self.assertLogs('psq.tool.common', 'WARNING') as cm:
+                hint_codes_patterns_extra(
+                    Source(), [squirrel.to_codes_guess(s)])
+                logging.getLogger('psq.tool.common').warning('end')
+
+            return cm.output[:-1]
+
+        assert len(hints('GR.GRA1..BHZ')) == 1
+        assert hints('GR.GRA1..BHZ.*') == []
+        assert hints('GR.GRA1') == []
+        assert hints('XX.GRA1..BHZ') == []
+
     def test_detect(self):
         for (fn, format) in SquirrelTestCase.test_files:
             fpath = common.test_data_file(fn)

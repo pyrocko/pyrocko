@@ -75,6 +75,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   remote/forwarded access.
 - New dataset module `pyrocko.dataset.slab2` giving access to the USGS Slab2
   subduction zone geometries, and a matching *Slabs* element in Sparrow.
+- Squirrel tools now hint when a `--codes` pattern matches nothing only
+  because it lacks the extra code, e.g. `GR.GRA1..BHZ` instead of
+  `GR.GRA1..BHZ.*`.
 
 ### Changed
 - Distances, azimuths and offsets between stations, events and other
