@@ -64,6 +64,24 @@ Options shared between subcommands are grouped into three categories:
   (``--tmin``, ``--tmax``, ``--time``), channel/station code pattern
   (``--codes``), and content kinds (``--kinds``).
 
+.. note::
+
+    Squirrel's codes have a fifth element, the *extra* code, in addition to
+    network, station, location and channel (``NET.STA.LOC.CHA.EXTRA``). It
+    is empty for ordinary recordings but is used e.g. to label processed or
+    derived data. A ``--codes`` pattern with four elements only matches codes
+    with an empty extra code: ``GR.GRA1..BHZ`` does not match
+    ``GR.GRA1..BHZ.MS``. To match any extra code, append ``.*``, e.g.
+    ``--codes 'GR.GRA1..BHZ.*'``. Squirrel tools print a hint when a pattern
+    matches nothing for this reason.
+
+.. note::
+
+    Mini-SEED cannot store the extra code, and it limits the length of the
+    other codes to 2 (network), 5 (station), 2 (location) and 3 (channel)
+    characters. When writing Mini-SEED, the extra code is dropped. Codes
+    that are too long cause an error.
+
 Examples
 --------
 
@@ -167,17 +185,16 @@ This will resample the data with sinc interpolation using the GPS information
 in the raw data. Add ``--rename-station ...``, ``--rename-channel ...`` as
 needed.
 
+**Note:** Always give the complete recording directory as input as the GPS
+information from neighboring files may be used for an optimal time correction.
+
 Downsampling
-------------
+............
 
 I want to create a downsampled variant of my dataset::
 
-  squirrel jackseis --add data/raw --out-sds-path data/raw-50hz --out-data-type int32 --downsample 10
+  squirrel jackseis --add data/raw --out-sds-path data/raw-10hz --out-data-type int32 --downsample 10
 
 The output will be sampled at 10 Hz and the datatype in the Mini-SEEDs will be
-32-bit integers. Without the ``--out-data-type`` option, the the output would
-be in double-precision floating point format.
-
-
-**Note:** Always give the complete recording directory as input as the GPS
-information from neighboring files may be used for an optimal time correction
+32-bit integers. Without the ``--out-data-type`` option, the output would be in
+double-precision floating point format.
