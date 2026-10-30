@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## Unreleased
 
 ### Added
+- Quick installation for trying out Pyrocko, with the new `pvc` installer:
+  `source <(curl -fsSL https://pyrocko.org/pvc_init) && pvc install`.
 - Squirrel:
     - New subcommand `squirrel mseed` to inspect and work with
       MiniSEED-specific details of waveform data.

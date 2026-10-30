@@ -1,0 +1,100 @@
+# Pyrocko's easy installer `pvc`, shell part.
+#
+# Usage:
+#
+#     source <(curl -fsSL https://pyrocko.org/pvc_init) && pvc install
+#
+# Defines the shell function `pvc`. On install, a copy of this file is placed
+# in ~/.pyrocko and sourced from the existing ~/.bashrc and ~/.zshrc, so that
+# `pvc` is available in new shells.
+
+_pvc_download () {
+    curl --fail --silent --show-error --location --output "$2" "$1"
+}
+
+_pvc_shellrc () {
+    local path_pvc_init line rc
+
+    path_pvc_init="${HOME}/.pyrocko/pvc_init"
+
+    _pvc_download "https://pyrocko.org/pvc_init" "${path_pvc_init}" \
+        || return 1
+
+    line="[ -s \"${path_pvc_init}\" ] && source \"${path_pvc_init}\" # pyrocko-pvc-init"
+    for rc in "${HOME}/.bashrc" "${HOME}/.zshrc"; do
+        if [ -f "${rc}" ] && ! grep --quiet "pyrocko-pvc-init" "${rc}"; then
+            echo "${line}" >> "${rc}"
+            echo "pvc: Added a line to \"${rc}\" to make \`pvc\` available in new shells."
+        fi
+    done
+}
+
+_pvc_install () {
+    local path_pvc_install
+
+    path_pvc_install="${HOME}/.pyrocko/pvc_install"
+
+    _pvc_download "https://pyrocko.org/pvc_install" "${path_pvc_install}" \
+        || return 1
+
+    python3 "${path_pvc_install}" "$@" || return 1
+
+    _pvc_shellrc || return 1
+
+    cat <<'EOF'
+You can also use the shortcut
+
+    pvc activate
+
+EOF
+}
+
+pvc () {
+    local command path_venv
+
+    command="$1"
+    [ $# -gt 0 ] && shift
+
+    path_venv="${HOME}/.pyrocko/venv"
+
+    mkdir -p "${HOME}/.pyrocko" || return 1
+
+    if [ "${command}" = "activate" ]; then
+        if [ ! -s "${path_venv}/bin/activate" ]; then
+            _pvc_install || return 1
+        fi
+        source "${path_venv}/bin/activate"
+
+    elif [ "${command}" = "install" ]; then
+        _pvc_install "$@" || return 1
+
+    else
+        cat <<'EOF'
+
+ =:-D Welcome to Pyrocko's easy installer `pvc`
+
+This tool installs Pyrocko into ~/.pyrocko/venv
+
+To install the current release of Pyrocko:
+
+    pvc install
+
+To install a branch, e.g. `feature/gato`, from source (needs a C compiler
+and the Python development headers):
+
+    pvc install --branch feature/gato
+
+To reinstall, add --force:
+
+    pvc install --force
+
+To activate the virtual environment:
+
+    pvc activate
+
+
+ =:-D Enjoy
+
+EOF
+    fi
+}

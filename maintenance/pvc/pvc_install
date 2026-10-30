@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+
+# Pyrocko's easy installer `pvc`, Python part. Usually run through the `pvc`
+# shell function defined in `pvc_init`.
+
+import argparse
+import os
+import subprocess
+import sys
+
+
+def die(reason):
+    print('Failed: %s' % reason, file=sys.stderr)
+    sys.exit(1)
+
+
+version_min = (3, 10)
+
+if sys.version_info[:2] < version_min:
+    die('Python %i.%i or newer required.' % version_min)
+
+
+try:
+    from venv import EnvBuilder
+    import ensurepip  # noqa
+except ImportError:
+    die('Python modules `venv` and `ensurepip` needed (on Debian/Ubuntu, '
+        'install package `python3-venv`).')
+
+
+parser = argparse.ArgumentParser(
+    prog='pvc install',
+    description='Create an isolated environment and install Pyrocko.')
+
+parser.add_argument(
+    '-f',
+    '--force',
+    action='store_true',
+    help='Delete and recreate the virtual environment.')
+
+parser.add_argument(
+    '-b',
+    '--branch',
+    metavar='BRANCH',
+    help='Install BRANCH from source instead of the latest release from '
+         'PyPI. Needs a C compiler and the Python development headers.')
+
+
+args = parser.parse_args()
+
+path_venv = os.path.join(os.path.expanduser('~'), '.pyrocko', 'venv')
+path_pip = os.path.join(path_venv, 'bin', 'pip')
+
+
+if not os.path.exists(path_venv) or args.force:
+    print('pvc: Creating virtual environment: %s' % path_venv)
+    builder = EnvBuilder(
+        system_site_packages=False,
+        clear=args.force,
+        symlinks=True,
+        upgrade=False,
+        with_pip=True,
+        prompt='Pyrocko =:-D',
+        upgrade_deps=True)
+
+    builder.create(path_venv)
+
+
+if args.branch:
+    package = 'pyrocko[gui] @ ' \
+        'git+https://git.pyrocko.org/pyrocko/pyrocko.git@%s' % args.branch
+else:
+    package = 'pyrocko[gui]'
+
+
+print('pvc: Installing: %s' % package)
+try:
+    subprocess.check_call([path_pip, 'install', '--upgrade', package])
+except subprocess.CalledProcessError:
+    die('Installation of %s failed.' % package)
+
+
+print('''
+REMEMBER
+
+To activate the Pyrocko virtual environment use:
+
+    source ~/.pyrocko/venv/bin/activate
+''')

@@ -15,6 +15,21 @@ For **Anaconda** users, prebuilt packages are available (see
 
 For additional information, refer to :doc:`details`.
 
+Quick installation for trying out Pyrocko
+-----------------------------------------
+
+To just try out Pyrocko under Linux or macOS, without touching the rest of
+your system, run in a *bash* or *zsh* terminal:
+
+.. code-block:: sh
+
+    source <(curl -fsSL https://pyrocko.org/pvc_init) && pvc install
+
+This installs the latest release of Pyrocko from PyPI into a virtual
+environment in ``~/.pyrocko/venv``. Afterwards, run ``pvc activate`` to use it
+in a terminal, or ``pvc`` for help. It needs Python 3.10 or newer, with the
+``venv`` module (on Debian and Ubuntu, install the package ``python3-venv``).
+
 .. toctree::
    :maxdepth: 2
 
