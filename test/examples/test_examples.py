@@ -37,8 +37,7 @@ skip_examples = [
 
 if not common.have_internet():
     skip_examples.extend([
-        'catalog_search_geofon.py',
-        'catalog_search_globalcmt.py',
+        'squirrel_catalog_search.py',
         'gnss_unr_campaign.py'])
 
 need_sys_argv_examples = {
